@@ -53,7 +53,7 @@ CONTAINS
     LOGICAL  :: CONVERGED
     INTEGER  :: i, k, mk, INFO
     REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: k_dd_ij(1:3,1:3)
     REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, u_d_1, u_d_2, u_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3
     REAL(DP) :: UVEC(4), CVEC(4)
@@ -136,12 +136,11 @@ CONTAINS
 
       CALL ComputeEddingtonTensorComponents_dd &
              ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
-               alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3   )
+               alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_dd_ij   )
 
-      A_d_1 = V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13
-      A_d_2 = V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23
-      A_d_3 = V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33
+      A_d_1 = V_u_1 * k_dd_ij(1,1) + V_u_2 * k_dd_ij(1,2) + V_u_3 * k_dd_ij(1,3)
+      A_d_2 = V_u_1 * k_dd_ij(1,2) + V_u_2 * k_dd_ij(2,2) + V_u_3 * k_dd_ij(2,3)
+      A_d_3 = V_u_1 * k_dd_ij(1,3) + V_u_2 * k_dd_ij(2,3) + V_u_3 * k_dd_ij(3,3)
 
       DET = W**2 - ( V_u_1 * A_d_1 + V_u_2 * A_d_2 + V_u_3 * A_d_3 )
 
@@ -276,7 +275,7 @@ CONTAINS
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23
     REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: k_dd_ij(1:3,1:3)
     REAL(DP) :: W  
     REAL(DP) :: DT 
     REAL(DP) :: B_d_1, B_d_2, B_d_3
@@ -284,8 +283,7 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_dd &
            ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
-             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_dd_ij  )
 
 
 
@@ -316,41 +314,41 @@ CONTAINS
     ! --- Conserved Number Flux Density (1) ---
 
     G_d_1 = W * I_d_1 &
-                 + (   V_u_1 * k_dd_11 &
-                     + V_u_2 * k_dd_12 &
-                     + V_u_3 * k_dd_13 ) * D
+                 + (   V_u_1 * k_dd_ij(1,1) &
+                     + V_u_2 * k_dd_ij(1,2) &
+                     + V_u_3 * k_dd_ij(1,3) ) * D
 
     ! --- Conserved Number Flux Density (2) ---
 
     G_d_2 = W * I_d_2 &
-                 + (   V_u_1 * k_dd_12 &
-                     + V_u_2 * k_dd_22 &
-                     + V_u_3 * k_dd_23 ) * D
+                 + (   V_u_1 * k_dd_ij(1,2) &
+                     + V_u_2 * k_dd_ij(2,2) &
+                     + V_u_3 * k_dd_ij(2,3) ) * D
 
     ! --- Conserved Number Flux Density (3) ---
 
     G_d_3 = W * I_d_3 &
-                 + (   V_u_1 * k_dd_13 &
-                     + V_u_2 * k_dd_23 &
-                     + V_u_3 * k_dd_33 ) * D
+                 + (   V_u_1 * k_dd_ij(1,3) &
+                     + V_u_2 * k_dd_ij(2,3) &
+                     + V_u_3 * k_dd_ij(3,3) ) * D
 
 
   END SUBROUTINE ComputeConserved_TwoMoment
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_dd_ij  )
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
-      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+      k_dd_ij(1:3,1:3)
 
     REAL(DP) :: FF, EF, a, b, DT
     REAL(DP) :: h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -398,26 +396,44 @@ CONTAINS
     k_dd_12 = a * u_d_1 * u_d_2 + b * h_d_1 * h_d_2
     k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
     k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3
-    
+   
+    k_dd_ij(1,1) = k_dd_11
+ 
+    k_dd_ij(1,2) = k_dd_12
+ 
+    k_dd_ij(1,3) = k_dd_13
+ 
+    k_dd_ij(2,1) = k_dd_12
+ 
+    k_dd_ij(2,2) = k_dd_22
+ 
+    k_dd_ij(2,3) = k_dd_23
+ 
+    k_dd_ij(3,1) = k_dd_13
+ 
+    k_dd_ij(3,2) = k_dd_23
+ 
+    k_dd_ij(3,3) = k_dd_33
+
+ 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
   SUBROUTINE ComputeEddingtonTensorComponents_uu &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_uu_11, k_uu_12, k_uu_13, k_uu_22, k_uu_23, k_uu_33, &
-      k_uu_10, k_uu_20, k_uu_30, k_uu_00, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_uu_ij  )
 
 
 	    REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
 	    REAL(DP), INTENT(out) :: &
-      k_uu_11, k_uu_12, k_uu_13, k_uu_22, k_uu_23, k_uu_33, k_uu_10, k_uu_20, k_uu_30, k_uu_00
+                k_uu_ij(0:3,0:3)
 
 
 	    REAL(DP) :: FF, EF, a, b
 	    REAL(DP) :: h_u_1, h_u_2, h_u_3
 	    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
 	    REAL(DP) :: u_u_1, u_u_2, u_u_3, W
-
+            REAL(DP) :: k_uu_11, k_uu_12, k_uu_13, k_uu_22, k_uu_23, k_uu_33, k_uu_10, k_uu_20, k_uu_30, k_uu_00
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -465,25 +481,58 @@ CONTAINS
     k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
                + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
 
+
+    k_uu_ij(0,0) = k_uu_00
+ 
+    k_uu_ij(0,1) = k_uu_10
+ 
+    k_uu_ij(0,2) = k_uu_20
+ 
+    k_uu_ij(0,3) = k_uu_30
+ 
+    k_uu_ij(1,0) = k_uu_10
+ 
+    k_uu_ij(1,1) = k_uu_11
+ 
+    k_uu_ij(1,2) = k_uu_12
+ 
+    k_uu_ij(1,3) = k_uu_13
+ 
+    k_uu_ij(2,0) = k_uu_20
+ 
+    k_uu_ij(2,1) = k_uu_12
+ 
+    k_uu_ij(2,2) = k_uu_22
+ 
+    k_uu_ij(2,3) = k_uu_23
+ 
+    k_uu_ij(3,0) = k_uu_30
+ 
+    k_uu_ij(3,1) = k_uu_13
+ 
+    k_uu_ij(3,2) = k_uu_23
+ 
+    k_uu_ij(3,3) = k_uu_33
+ 
+
+
   END SUBROUTINE ComputeEddingtonTensorComponents_uu
 
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, &
-      k_ud_11, k_ud_12, k_ud_21, k_ud_13, k_ud_31, k_ud_22, k_ud_23, k_ud_32, k_ud_33, &
-      k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00 )
-
-    REAL(DP), INTENT(in)  :: &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
+   REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
-      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, k_ud_21, k_ud_31, k_ud_32, & 
-      k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00 
+               k_ud_ij(0:3,0:3)
     REAL(DP) :: FF, EF, a, b, DT
     REAL(DP) :: h_u_1, h_u_2, h_u_3, h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
     REAL(DP) :: u_d_1, u_d_2, u_d_3, u_u_1, u_u_2, u_u_3, W, x, y
+    REAL(DP) :: k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, k_ud_21, k_ud_31, k_ud_32, & 
+                k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00 
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -564,31 +613,52 @@ CONTAINS
     k_ud_00 = x * y * ( V_u_1 * V_d_1 * k_ud_11 + V_u_1 * V_d_2 * k_ud_21 + V_u_1 * V_d_3 * k_ud_31 &
             + V_u_2 * V_d_1 * k_ud_12 + V_u_2 * V_d_2 * k_ud_22 + V_u_2 * V_d_3 * k_ud_32 &
             + V_u_3 * V_d_1 * k_ud_13 + V_u_3 * V_d_2 * k_ud_23 + V_u_3 * V_d_3 * k_ud_33 )
-             
+            
+    k_ud_ij(0,0) = k_ud_00
+ 
+    k_ud_ij(0,1) = k_ud_01
+ 
+    k_ud_ij(0,2) = k_ud_02
+ 
+    k_ud_ij(0,3) = k_ud_03
+ 
+    k_ud_ij(1,0) = k_ud_10
+ 
+    k_ud_ij(1,1) = k_ud_11
+ 
+    k_ud_ij(1,2) = k_ud_12
+ 
+    k_ud_ij(1,3) = k_ud_13
+ 
+    k_ud_ij(2,0) = k_ud_20
+ 
+    k_ud_ij(2,1) = k_ud_21
+ 
+    k_ud_ij(2,2) = k_ud_22
+ 
+    k_ud_ij(2,3) = k_ud_23
+ 
+    k_ud_ij(3,0) = k_ud_30
+ 
+    k_ud_ij(3,1) = k_ud_31
+ 
+    k_ud_ij(3,2) = k_ud_32
+ 
+    k_ud_ij(3,3) = k_ud_33 
+ 
+ 
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
 
   SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
-      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
-      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
-      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
-      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
-      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
-      l_ddd_332, l_ddd_333 )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_ddd_ijk )
  
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
 
     REAL(DP), INTENT(out) :: &
-      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
-      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
-      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
-      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
-      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
-      l_ddd_332, l_ddd_333
-
+      l_ddd_ijk(1:3,1:3,1:3)
 
     REAL(DP) :: FF, HF, a, b, DT
     REAL(DP) :: h_d_1, h_d_2, h_d_3
@@ -596,6 +666,13 @@ CONTAINS
     REAL(DP) :: B_d_1, B_d_2, B_d_3
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W
     REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
+    REAL(DP) :: &
+      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
+      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
+      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
+      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
+      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
+      l_ddd_332, l_ddd_333
    
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -725,33 +802,81 @@ CONTAINS
     l_ddd_333 & 
       = a * ( h_d_3 * h_dd_33 + h_d_3 * h_dd_33 + h_d_3 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_3
 
-
+    l_ddd_ijk(1,1,1) = l_ddd_111
+ 
+    l_ddd_ijk(1,1,2) = l_ddd_112
+ 
+    l_ddd_ijk(1,1,3) = l_ddd_113
+ 
+    l_ddd_ijk(1,2,1) = l_ddd_121
+ 
+    l_ddd_ijk(1,2,2) = l_ddd_122
+ 
+    l_ddd_ijk(1,2,3) = l_ddd_123
+ 
+    l_ddd_ijk(1,3,1) = l_ddd_131
+ 
+    l_ddd_ijk(1,3,2) = l_ddd_132
+ 
+    l_ddd_ijk(1,3,3) = l_ddd_133
+ 
+    l_ddd_ijk(2,1,1) = l_ddd_211
+ 
+    l_ddd_ijk(2,1,2) = l_ddd_212
+ 
+    l_ddd_ijk(2,1,3) = l_ddd_213
+ 
+    l_ddd_ijk(2,2,1) = l_ddd_221
+ 
+    l_ddd_ijk(2,2,2) = l_ddd_222
+ 
+    l_ddd_ijk(2,2,3) = l_ddd_223
+ 
+    l_ddd_ijk(2,3,1) = l_ddd_231
+ 
+    l_ddd_ijk(2,3,2) = l_ddd_232
+ 
+    l_ddd_ijk(2,3,3) = l_ddd_233
+ 
+    l_ddd_ijk(3,1,1) = l_ddd_311
+ 
+    l_ddd_ijk(3,1,2) = l_ddd_312
+ 
+    l_ddd_ijk(3,1,3) = l_ddd_313
+ 
+    l_ddd_ijk(3,2,1) = l_ddd_321
+ 
+    l_ddd_ijk(3,2,2) = l_ddd_322
+ 
+    l_ddd_ijk(3,2,3) = l_ddd_323
+ 
+    l_ddd_ijk(3,3,1) = l_ddd_331
+ 
+    l_ddd_ijk(3,3,2) = l_ddd_332
+ 
+    l_ddd_ijk(3,3,3) = l_ddd_333
 
   END SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian
 
   SUBROUTINE ComputeHeatFluxTensorComponents_uud_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
-      l_uud_000, l_uud_001, l_uud_002, l_uud_003, & 
-      l_uud_010, l_uud_011, l_uud_012, l_uud_013, & 
-      l_uud_020, l_uud_021, l_uud_022, l_uud_023, & 
-      l_uud_030, l_uud_031, l_uud_032, l_uud_033, & 
-      l_uud_100, l_uud_101, l_uud_102, l_uud_103, & 
-      l_uud_110, l_uud_111, l_uud_112, l_uud_113, & 
-      l_uud_120, l_uud_121, l_uud_122, l_uud_123, & 
-      l_uud_130, l_uud_131, l_uud_132, l_uud_133, & 
-      l_uud_200, l_uud_201, l_uud_202, l_uud_203, & 
-      l_uud_210, l_uud_211, l_uud_212, l_uud_213, & 
-      l_uud_220, l_uud_221, l_uud_222, l_uud_223, & 
-      l_uud_230, l_uud_231, l_uud_232, l_uud_233, & 
-      l_uud_300, l_uud_301, l_uud_302, l_uud_303, & 
-      l_uud_310, l_uud_311, l_uud_312, l_uud_313, & 
-      l_uud_320, l_uud_321, l_uud_322, l_uud_323, & 
-      l_uud_330, l_uud_331, l_uud_332, l_uud_333 )
-
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_ijk )
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
-    REAL(DP), INTENT(out) :: &
+     REAL(DP), INTENT(out)  :: &  
+      l_uud_ijk(0:3,0:3,0:3)
+
+    REAL(DP) :: FF, HF, a, b, DT, V_0, x, y
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
+    REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
+    REAL(DP) :: h_uu_11, h_uu_22, h_uu_33, h_uu_12, h_uu_13, h_uu_23, h_uu_21, h_uu_31, h_uu_32
+    REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
+   
+    REAL(DP) :: &
       l_uud_000, l_uud_001, l_uud_002, l_uud_003, & 
       l_uud_010, l_uud_011, l_uud_012, l_uud_013, & 
       l_uud_020, l_uud_021, l_uud_022, l_uud_023, & 
@@ -768,18 +893,6 @@ CONTAINS
       l_uud_310, l_uud_311, l_uud_312, l_uud_313, & 
       l_uud_320, l_uud_321, l_uud_322, l_uud_323, & 
       l_uud_330, l_uud_331, l_uud_332, l_uud_333
-
-
-    REAL(DP) :: FF, HF, a, b, DT, V_0, x, y
-    REAL(DP) :: h_u_1, h_u_2, h_u_3
-    REAL(DP) :: h_d_1, h_d_2, h_d_3
-    REAL(DP) :: I_d_1, I_d_2, I_d_3
-    REAL(DP) :: B_d_1, B_d_2, B_d_3
-    REAL(DP) :: V_d_1, V_d_2, V_d_3
-    REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
-    REAL(DP) :: h_uu_11, h_uu_22, h_uu_33, h_uu_12, h_uu_13, h_uu_23, h_uu_21, h_uu_31, h_uu_32
-    REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
-   
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -1047,6 +1160,137 @@ CONTAINS
               + V_d_3 * V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_d_3 * V_u_3 * l_uud_333 ) 
 
 
+    l_uud_ijk(0,0,0) = l_uud_000
+ 
+    l_uud_ijk(0,0,1) = l_uud_001
+ 
+    l_uud_ijk(0,0,2) = l_uud_002
+ 
+    l_uud_ijk(0,0,3) = l_uud_003
+ 
+    l_uud_ijk(0,1,0) = l_uud_010
+ 
+    l_uud_ijk(0,1,1) = l_uud_011
+ 
+    l_uud_ijk(0,1,2) = l_uud_012
+ 
+    l_uud_ijk(0,1,3) = l_uud_013
+ 
+    l_uud_ijk(0,2,0) = l_uud_020
+ 
+    l_uud_ijk(0,2,1) = l_uud_021
+ 
+    l_uud_ijk(0,2,2) = l_uud_022
+ 
+    l_uud_ijk(0,2,3) = l_uud_023
+ 
+    l_uud_ijk(0,3,0) = l_uud_030
+ 
+    l_uud_ijk(0,3,1) = l_uud_031
+ 
+    l_uud_ijk(0,3,2) = l_uud_032
+ 
+    l_uud_ijk(0,3,3) = l_uud_033
+ 
+    l_uud_ijk(1,0,0) = l_uud_100
+ 
+    l_uud_ijk(1,0,1) = l_uud_101
+ 
+    l_uud_ijk(1,0,2) = l_uud_102
+ 
+    l_uud_ijk(1,0,3) = l_uud_103
+ 
+    l_uud_ijk(1,1,0) = l_uud_110
+ 
+    l_uud_ijk(1,1,1) = l_uud_111
+ 
+    l_uud_ijk(1,1,2) = l_uud_112
+ 
+    l_uud_ijk(1,1,3) = l_uud_113
+ 
+    l_uud_ijk(1,2,0) = l_uud_120
+ 
+    l_uud_ijk(1,2,1) = l_uud_121
+ 
+    l_uud_ijk(1,2,2) = l_uud_122
+ 
+    l_uud_ijk(1,2,3) = l_uud_123
+ 
+    l_uud_ijk(1,3,0) = l_uud_130
+ 
+    l_uud_ijk(1,3,1) = l_uud_131
+ 
+    l_uud_ijk(1,3,2) = l_uud_132
+ 
+    l_uud_ijk(1,3,3) = l_uud_133
+ 
+    l_uud_ijk(2,0,0) = l_uud_200
+ 
+    l_uud_ijk(2,0,1) = l_uud_201
+ 
+    l_uud_ijk(2,0,2) = l_uud_202
+ 
+    l_uud_ijk(2,0,3) = l_uud_203
+ 
+    l_uud_ijk(2,1,0) = l_uud_210
+ 
+    l_uud_ijk(2,1,1) = l_uud_211
+ 
+    l_uud_ijk(2,1,2) = l_uud_212
+ 
+    l_uud_ijk(2,1,3) = l_uud_213
+ 
+    l_uud_ijk(2,2,0) = l_uud_220
+ 
+    l_uud_ijk(2,2,1) = l_uud_221
+ 
+    l_uud_ijk(2,2,2) = l_uud_222
+ 
+    l_uud_ijk(2,2,3) = l_uud_223
+ 
+    l_uud_ijk(2,3,0) = l_uud_230
+ 
+    l_uud_ijk(2,3,1) = l_uud_231
+ 
+    l_uud_ijk(2,3,2) = l_uud_232
+ 
+    l_uud_ijk(2,3,3) = l_uud_233
+ 
+    l_uud_ijk(3,0,0) = l_uud_300
+ 
+    l_uud_ijk(3,0,1) = l_uud_301
+ 
+    l_uud_ijk(3,0,2) = l_uud_302
+ 
+    l_uud_ijk(3,0,3) = l_uud_303
+ 
+    l_uud_ijk(3,1,0) = l_uud_310
+ 
+    l_uud_ijk(3,1,1) = l_uud_311
+ 
+    l_uud_ijk(3,1,2) = l_uud_312
+ 
+    l_uud_ijk(3,1,3) = l_uud_313
+ 
+    l_uud_ijk(3,2,0) = l_uud_320
+ 
+    l_uud_ijk(3,2,1) = l_uud_321
+ 
+    l_uud_ijk(3,2,2) = l_uud_322
+ 
+    l_uud_ijk(3,2,3) = l_uud_323
+ 
+    l_uud_ijk(3,3,0) = l_uud_330
+ 
+    l_uud_ijk(3,3,1) = l_uud_331
+ 
+    l_uud_ijk(3,3,2) = l_uud_332
+ 
+    l_uud_ijk(3,3,3) = l_uud_333
+ 
+
+
+
   END SUBROUTINE ComputeHeatFluxTensorComponents_uud_Lagrangian
 
 
@@ -1055,24 +1299,20 @@ CONTAINS
 
   SUBROUTINE ComputeHeatFluxTensorComponents_udd_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
-      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
-      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
-      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
-      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
-      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
-      l_udd_332, l_udd_333 )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_udd_ijk )
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
+      l_udd_ijk(1:3,1:3,1:3)      
+
+    REAL(DP) :: &
       l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
       l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
       l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
       l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
       l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
       l_udd_332, l_udd_333 
-
     REAL(DP) :: FF, HF, a, b, DT
     REAL(DP) :: h_u_1, h_u_2, h_u_3
     REAL(DP) :: h_d_1, h_d_2, h_d_3
@@ -1233,6 +1473,60 @@ CONTAINS
     l_udd_333 & 
       = a * ( h_u_3 * h_dd_33 + h_d_3 * h_ud_33 + h_d_3 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_3
 
+    l_udd_ijk(1,1,1) = l_udd_111
+ 
+    l_udd_ijk(1,1,2) = l_udd_112
+ 
+    l_udd_ijk(1,1,3) = l_udd_113
+ 
+    l_udd_ijk(1,2,1) = l_udd_121
+ 
+    l_udd_ijk(1,2,2) = l_udd_122
+ 
+    l_udd_ijk(1,2,3) = l_udd_123
+ 
+    l_udd_ijk(1,3,1) = l_udd_131
+ 
+    l_udd_ijk(1,3,2) = l_udd_132
+ 
+    l_udd_ijk(1,3,3) = l_udd_133
+ 
+    l_udd_ijk(2,1,1) = l_udd_211
+ 
+    l_udd_ijk(2,1,2) = l_udd_212
+ 
+    l_udd_ijk(2,1,3) = l_udd_213
+ 
+    l_udd_ijk(2,2,1) = l_udd_221
+ 
+    l_udd_ijk(2,2,2) = l_udd_222
+ 
+    l_udd_ijk(2,2,3) = l_udd_223
+ 
+    l_udd_ijk(2,3,1) = l_udd_231
+ 
+    l_udd_ijk(2,3,2) = l_udd_232
+ 
+    l_udd_ijk(2,3,3) = l_udd_233
+ 
+    l_udd_ijk(3,1,1) = l_udd_311
+ 
+    l_udd_ijk(3,1,2) = l_udd_312
+ 
+    l_udd_ijk(3,1,3) = l_udd_313
+ 
+    l_udd_ijk(3,2,1) = l_udd_321
+ 
+    l_udd_ijk(3,2,2) = l_udd_322
+ 
+    l_udd_ijk(3,2,3) = l_udd_323
+ 
+    l_udd_ijk(3,3,1) = l_udd_331
+ 
+    l_udd_ijk(3,3,2) = l_udd_332
+ 
+    l_udd_ijk(3,3,3) = l_udd_333
+ 
 
   END SUBROUTINE ComputeHeatFluxTensorComponents_udd_Lagrangian
 
@@ -1968,7 +2262,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in) :: alp, B_u_1, B_u_2, B_u_3
 
-    REAL(DP) :: k_ud_11, k_ud_22, k_ud_33, k_ud_12, k_ud_13, k_ud_23
+    REAL(DP) :: k_ud_ij(0:3,0:3)
     REAL(DP) :: W, DT, I_d_1, I_d_2, I_d_3, B_d_1, B_d_2, B_d_3
 
 
@@ -1991,12 +2285,12 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
 
     Flux_X1(1) = alp * I_u_1 + ( alp * V_u_1 - B_u_1 ) * W * D
-    Flux_X1(2) = alp * k_ud_11 * D + (alp * V_u_1 - B_u_1 ) * W * I_d_1
-    Flux_X1(3) = alp * k_ud_12 * D + (alp * V_u_1 - B_u_1 ) * W * I_d_2
-    Flux_X1(4) = alp * k_ud_13 * D + (alp * V_u_1 - B_u_1 ) * W * I_d_3
+    Flux_X1(2) = alp * k_ud_ij(1,1) * D + (alp * V_u_1 - B_u_1 ) * W * I_d_1
+    Flux_X1(3) = alp * k_ud_ij(1,2) * D + (alp * V_u_1 - B_u_1 ) * W * I_d_2
+    Flux_X1(4) = alp * k_ud_ij(1,3) * D + (alp * V_u_1 - B_u_1 ) * W * I_d_3
 
 
 
@@ -2014,7 +2308,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in) :: alp, B_u_1, B_u_2, B_u_3
 
-    REAL(DP) :: k_ud_11, k_ud_22, k_ud_33, k_ud_12, k_ud_13, k_ud_23
+    REAL(DP) :: k_ud_ij(0:3,0:3)
     REAL(DP) :: W, DT, I_d_1, I_d_2, I_d_3, B_d_1, B_d_2, B_d_3
 
 
@@ -2037,12 +2331,12 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33   )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
 
     Flux_X2(1) = alp * I_u_2 + ( alp * V_u_2 - B_u_2 ) * W * D
-    Flux_X2(2) = alp * k_ud_12 * D + (alp * V_u_2 - B_u_2 ) * W * I_d_1
-    Flux_X2(3) = alp * k_ud_22 * D + (alp * V_u_2 - B_u_2 ) * W * I_d_2
-    Flux_X2(4) = alp * k_ud_23 * D + (alp * V_u_2 - B_u_2 ) * W * I_d_3
+    Flux_X2(2) = alp * k_ud_ij(1,2) * D + (alp * V_u_2 - B_u_2 ) * W * I_d_1
+    Flux_X2(3) = alp * k_ud_ij(2,2) * D + (alp * V_u_2 - B_u_2 ) * W * I_d_2
+    Flux_X2(4) = alp * k_ud_ij(2,3) * D + (alp * V_u_2 - B_u_2 ) * W * I_d_3
 
 
 
@@ -2060,7 +2354,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in) :: alp, B_u_1, B_u_2, B_u_3
 
-    REAL(DP) :: k_ud_11, k_ud_22, k_ud_33, k_ud_12, k_ud_13, k_ud_23
+    REAL(DP) :: k_ud_ij(0:3,0:3)
     REAL(DP) :: W, DT, I_d_1, I_d_2, I_d_3, B_d_1, B_d_2, B_d_3
 
 
@@ -2083,13 +2377,13 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
 
 
     Flux_X3(1) = alp * I_u_3 + ( alp * V_u_3 - B_u_3 ) * W * D
-    Flux_X3(2) = alp * k_ud_13 * D + (alp * V_u_3 - B_u_3 ) * W * I_d_1
-    Flux_X3(3) = alp * k_ud_23 * D + (alp * V_u_3 - B_u_3 ) * W * I_d_2
-    Flux_X3(4) = alp * k_ud_33 * D + (alp * V_u_3 - B_u_3 ) * W * I_d_3
+    Flux_X3(2) = alp * k_ud_ij(1,3) * D + (alp * V_u_3 - B_u_3 ) * W * I_d_1
+    Flux_X3(3) = alp * k_ud_ij(2,3) * D + (alp * V_u_3 - B_u_3 ) * W * I_d_2
+    Flux_X3(4) = alp * k_ud_ij(3,3) * D + (alp * V_u_3 - B_u_3 ) * W * I_d_3
 
 
 
