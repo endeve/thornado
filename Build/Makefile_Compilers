@@ -135,7 +135,7 @@ DEBUG_dpochik      = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invali
 DEBUG_lucalin	   = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_bison        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -fcheck=all -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fdump-fortran-optimized
-DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_pgi    = -g -O0 -traceback -Mbounds -Ktrap=fp -Mnoopenmp
