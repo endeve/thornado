@@ -2776,31 +2776,6 @@ CONTAINS
   END FUNCTION f_E2
 
 
-  REAL(DP) FUNCTION LapseFunction( R, M )
-
-    REAL(DP), INTENT(in) :: R, M
-
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
-
-    LapseFunction = ABS( ( MAX( ABS( R ), SqrtTiny ) - Half * M ) &
-                       / ( MAX( ABS( R ), SqrtTiny ) + Half * M ) )
-
-    RETURN
-  END FUNCTION LapseFunction
-
-
-  REAL(DP) FUNCTION ConformalFactor( R, M )
-
-    REAL(DP), INTENT(in) :: R, M
-
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
-
-    ConformalFactor = One + Half * M / MAX( ABS( R ), SqrtTiny )
-
-    RETURN
-  END FUNCTION ConformalFactor
-
-
   REAL(DP) FUNCTION LorentzFactor( Psi, V )
 
     REAL(DP), INTENT(in) :: Psi, V
