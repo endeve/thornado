@@ -68,8 +68,6 @@ PROGRAM ApplicationDriver
     Timer_AMReX_Euler_InputOutput, &
     Timer_AMReX_Euler_MPI_Barrier
 
-use hdf5
-
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
