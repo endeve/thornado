@@ -305,7 +305,7 @@ CONTAINS
     REAL(DP) :: D, I_d_1, I_d_2, I_d_3, Kappa
     REAL(DP) ::    I_u_1, I_u_2, I_u_3
     REAL(DP) :: A_d_1, A_d_2, A_d_3
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: k_dd_ij(1:3,1:3)
     REAL(DP) :: D_00, D_ii
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
@@ -358,12 +358,11 @@ CONTAINS
 
       CALL ComputeEddingtonTensorComponents_dd &
              ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
-               alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+               alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_dd_ij  )
 
-      A_d_1 = V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13
-      A_d_2 = V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23
-      A_d_3 = V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33
+      A_d_1 = V_u_1 * k_dd_ij(1,1) + V_u_2 * k_dd_ij(1,2) + V_u_3 * k_dd_ij(1,3)
+      A_d_2 = V_u_1 * k_dd_ij(1,2) + V_u_2 * k_dd_ij(2,2) + V_u_3 * k_dd_ij(2,3)
+      A_d_3 = V_u_1 * k_dd_ij(1,3) + V_u_2 * k_dd_ij(2,3) + V_u_3 * k_dd_ij(3,3)
 
       DET = ( D_00 * D_ii &
               - ( V_u_1 * A_d_1 + V_u_2 * A_d_2 + V_u_3 * A_d_3 ) ) * D_ii**2

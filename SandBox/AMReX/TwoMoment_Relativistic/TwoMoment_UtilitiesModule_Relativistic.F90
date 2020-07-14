@@ -421,16 +421,16 @@ CONTAINS
 
   SUBROUTINE ComputeEddingtonTensorComponents_uu &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_uu_ij  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_uu_munu  )
 
 
 	    REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
 	    REAL(DP), INTENT(out) :: &
-                k_uu_ij(0:3,0:3)
+                k_uu_munu(0:3,0:3)
 
 
-	    REAL(DP) :: FF, EF, a, b
+	    REAL(DP) :: FF, EF, a, b, Gm_uu_11, Gm_uu_22, Gm_uu_33
 	    REAL(DP) :: h_u_1, h_u_2, h_u_3
 	    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
 	    REAL(DP) :: u_u_1, u_u_2, u_u_3, W
@@ -443,6 +443,10 @@ CONTAINS
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
    
+
+    Gm_uu_11 = 1.0_DP / Gm_dd_11 
+    Gm_uu_22 = 1.0_DP / Gm_dd_22 
+    Gm_uu_33 = 1.0_DP / Gm_dd_33 
 
     V_d_1 = Gm_dd_11 * V_u_1
     V_d_2 = Gm_dd_22 * V_u_2
@@ -464,9 +468,9 @@ CONTAINS
     ! --- Diagonal Euuington Tensor Components ---
 
 
-    k_uu_11 = a * ( Gm_dd_11 + u_u_1 * u_u_1 ) + b * h_u_1 * h_u_1
-    k_uu_22 = a * ( Gm_dd_22 + u_u_2 * u_u_2 ) + b * h_u_2 * h_u_2
-    k_uu_33 = a * ( Gm_dd_33 + u_u_3 * u_u_3 ) + b * h_u_3 * h_u_3
+    k_uu_11 = a * ( Gm_uu_11 + u_u_1 * u_u_1 ) + b * h_u_1 * h_u_1
+    k_uu_22 = a * ( Gm_uu_22 + u_u_2 * u_u_2 ) + b * h_u_2 * h_u_2
+    k_uu_33 = a * ( Gm_uu_33 + u_u_3 * u_u_3 ) + b * h_u_3 * h_u_3
     ! --- Off-Diagonal Euuington Tensor Components ---
     k_uu_12 = a * u_u_1 * u_u_2 + b * h_u_1 * h_u_2
     k_uu_13 = a * u_u_1 * u_u_3 + b * h_u_1 * h_u_3
@@ -482,39 +486,38 @@ CONTAINS
     k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
                + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
 
+    k_uu_munu(0,0) = k_uu_00
+ 
+    k_uu_munu(0,1) = k_uu_10
+ 
+    k_uu_munu(0,2) = k_uu_20
+ 
+    k_uu_munu(0,3) = k_uu_30
+ 
+    k_uu_munu(1,0) = k_uu_10
+ 
+    k_uu_munu(1,1) = k_uu_11
+ 
+    k_uu_munu(1,2) = k_uu_12
+ 
+    k_uu_munu(1,3) = k_uu_13
+ 
+    k_uu_munu(2,0) = k_uu_20
+ 
+    k_uu_munu(2,1) = k_uu_12
+ 
+    k_uu_munu(2,2) = k_uu_22
+ 
+    k_uu_munu(2,3) = k_uu_23
+ 
+    k_uu_munu(3,0) = k_uu_30
+ 
+    k_uu_munu(3,1) = k_uu_13
+ 
+    k_uu_munu(3,2) = k_uu_23
+ 
+    k_uu_munu(3,3) = k_uu_33
 
-    k_uu_ij(0,0) = k_uu_00
- 
-    k_uu_ij(0,1) = k_uu_10
- 
-    k_uu_ij(0,2) = k_uu_20
- 
-    k_uu_ij(0,3) = k_uu_30
- 
-    k_uu_ij(1,0) = k_uu_10
- 
-    k_uu_ij(1,1) = k_uu_11
- 
-    k_uu_ij(1,2) = k_uu_12
- 
-    k_uu_ij(1,3) = k_uu_13
- 
-    k_uu_ij(2,0) = k_uu_20
- 
-    k_uu_ij(2,1) = k_uu_12
- 
-    k_uu_ij(2,2) = k_uu_22
- 
-    k_uu_ij(2,3) = k_uu_23
- 
-    k_uu_ij(3,0) = k_uu_30
- 
-    k_uu_ij(3,1) = k_uu_13
- 
-    k_uu_ij(3,2) = k_uu_23
- 
-    k_uu_ij(3,3) = k_uu_33
- 
 
 
   END SUBROUTINE ComputeEddingtonTensorComponents_uu
@@ -523,11 +526,11 @@ CONTAINS
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_munu )
    REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
-               k_ud_ij(0:3,0:3)
+               k_ud_munu(0:3,0:3)
     REAL(DP) :: FF, EF, a, b, DT
     REAL(DP) :: h_u_1, h_u_2, h_u_3, h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
@@ -615,38 +618,37 @@ CONTAINS
             + V_u_2 * V_d_1 * k_ud_12 + V_u_2 * V_d_2 * k_ud_22 + V_u_2 * V_d_3 * k_ud_32 &
             + V_u_3 * V_d_1 * k_ud_13 + V_u_3 * V_d_2 * k_ud_23 + V_u_3 * V_d_3 * k_ud_33 )
             
-    k_ud_ij(0,0) = k_ud_00
+    k_ud_munu(0,0) = k_ud_00
  
-    k_ud_ij(0,1) = k_ud_01
+    k_ud_munu(0,1) = k_ud_01
  
-    k_ud_ij(0,2) = k_ud_02
+    k_ud_munu(0,2) = k_ud_02
  
-    k_ud_ij(0,3) = k_ud_03
+    k_ud_munu(0,3) = k_ud_03
  
-    k_ud_ij(1,0) = k_ud_10
+    k_ud_munu(1,0) = k_ud_10
  
-    k_ud_ij(1,1) = k_ud_11
+    k_ud_munu(1,1) = k_ud_11
  
-    k_ud_ij(1,2) = k_ud_12
+    k_ud_munu(1,2) = k_ud_12
  
-    k_ud_ij(1,3) = k_ud_13
+    k_ud_munu(1,3) = k_ud_13
  
-    k_ud_ij(2,0) = k_ud_20
+    k_ud_munu(2,0) = k_ud_20
  
-    k_ud_ij(2,1) = k_ud_21
+    k_ud_munu(2,1) = k_ud_21
  
-    k_ud_ij(2,2) = k_ud_22
+    k_ud_munu(2,2) = k_ud_22
  
-    k_ud_ij(2,3) = k_ud_23
+    k_ud_munu(2,3) = k_ud_23
  
-    k_ud_ij(3,0) = k_ud_30
+    k_ud_munu(3,0) = k_ud_30
  
-    k_ud_ij(3,1) = k_ud_31
+    k_ud_munu(3,1) = k_ud_31
  
-    k_ud_ij(3,2) = k_ud_32
+    k_ud_munu(3,2) = k_ud_32
  
-    k_ud_ij(3,3) = k_ud_33 
- 
+    k_ud_munu(3,3) = k_ud_33
  
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
@@ -861,11 +863,11 @@ CONTAINS
 
   SUBROUTINE ComputeHeatFluxTensorComponents_uud_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_ijk )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_munurho )
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
      REAL(DP), INTENT(out)  :: &  
-      l_uud_ijk(0:3,0:3,0:3)
+      l_uud_munurho(0:3,0:3,0:3)
 
     REAL(DP) :: FF, HF, a, b, DT, V_0, x, y
     REAL(DP) :: h_u_1, h_u_2, h_u_3
@@ -876,7 +878,8 @@ CONTAINS
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
     REAL(DP) :: h_uu_11, h_uu_22, h_uu_33, h_uu_12, h_uu_13, h_uu_23, h_uu_21, h_uu_31, h_uu_32
     REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
-   
+    REAL(DP) :: Gm_uu_11, Gm_uu_22, Gm_uu_33  
+ 
     REAL(DP) :: &
       l_uud_000, l_uud_001, l_uud_002, l_uud_003, & 
       l_uud_010, l_uud_011, l_uud_012, l_uud_013, & 
@@ -903,7 +906,11 @@ CONTAINS
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
+
+    Gm_uu_11 = 1.0_DP /  Gm_dd_11
+    Gm_uu_22 = 1.0_DP /  Gm_dd_22
+    Gm_uu_33 = 1.0_DP /  Gm_dd_33
+
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
@@ -930,11 +937,10 @@ CONTAINS
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
-    !need to change Gm-dd_ii to Gm_uu_ii
 
-    h_uu_11 = Gm_dd_11 + u_u_1 * u_u_1
-    h_uu_22 = Gm_dd_22 + u_u_2 * u_u_2
-    h_uu_33 = Gm_dd_33 + u_u_3 * u_u_3
+    h_uu_11 = Gm_uu_11 + u_u_1 * u_u_1
+    h_uu_22 = Gm_uu_22 + u_u_2 * u_u_2
+    h_uu_33 = Gm_uu_33 + u_u_3 * u_u_3
     h_uu_12 = u_u_1 * u_u_2
     h_uu_13 = u_u_1 * u_u_3
     h_uu_23 = u_u_2 * u_u_3
@@ -1161,134 +1167,133 @@ CONTAINS
               + V_d_3 * V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_d_3 * V_u_3 * l_uud_333 ) 
 
 
-    l_uud_ijk(0,0,0) = l_uud_000
+    l_uud_munurho(0,0,0) = l_uud_000
  
-    l_uud_ijk(0,0,1) = l_uud_001
+    l_uud_munurho(0,0,1) = l_uud_001
  
-    l_uud_ijk(0,0,2) = l_uud_002
+    l_uud_munurho(0,0,2) = l_uud_002
  
-    l_uud_ijk(0,0,3) = l_uud_003
+    l_uud_munurho(0,0,3) = l_uud_003
  
-    l_uud_ijk(0,1,0) = l_uud_010
+    l_uud_munurho(0,1,0) = l_uud_010
  
-    l_uud_ijk(0,1,1) = l_uud_011
+    l_uud_munurho(0,1,1) = l_uud_011
  
-    l_uud_ijk(0,1,2) = l_uud_012
+    l_uud_munurho(0,1,2) = l_uud_012
  
-    l_uud_ijk(0,1,3) = l_uud_013
+    l_uud_munurho(0,1,3) = l_uud_013
  
-    l_uud_ijk(0,2,0) = l_uud_020
+    l_uud_munurho(0,2,0) = l_uud_020
  
-    l_uud_ijk(0,2,1) = l_uud_021
+    l_uud_munurho(0,2,1) = l_uud_021
  
-    l_uud_ijk(0,2,2) = l_uud_022
+    l_uud_munurho(0,2,2) = l_uud_022
  
-    l_uud_ijk(0,2,3) = l_uud_023
+    l_uud_munurho(0,2,3) = l_uud_023
  
-    l_uud_ijk(0,3,0) = l_uud_030
+    l_uud_munurho(0,3,0) = l_uud_030
  
-    l_uud_ijk(0,3,1) = l_uud_031
+    l_uud_munurho(0,3,1) = l_uud_031
  
-    l_uud_ijk(0,3,2) = l_uud_032
+    l_uud_munurho(0,3,2) = l_uud_032
  
-    l_uud_ijk(0,3,3) = l_uud_033
+    l_uud_munurho(0,3,3) = l_uud_033
  
-    l_uud_ijk(1,0,0) = l_uud_100
+    l_uud_munurho(1,0,0) = l_uud_100
  
-    l_uud_ijk(1,0,1) = l_uud_101
+    l_uud_munurho(1,0,1) = l_uud_101
  
-    l_uud_ijk(1,0,2) = l_uud_102
+    l_uud_munurho(1,0,2) = l_uud_102
  
-    l_uud_ijk(1,0,3) = l_uud_103
+    l_uud_munurho(1,0,3) = l_uud_103
  
-    l_uud_ijk(1,1,0) = l_uud_110
+    l_uud_munurho(1,1,0) = l_uud_110
  
-    l_uud_ijk(1,1,1) = l_uud_111
+    l_uud_munurho(1,1,1) = l_uud_111
  
-    l_uud_ijk(1,1,2) = l_uud_112
+    l_uud_munurho(1,1,2) = l_uud_112
  
-    l_uud_ijk(1,1,3) = l_uud_113
+    l_uud_munurho(1,1,3) = l_uud_113
  
-    l_uud_ijk(1,2,0) = l_uud_120
+    l_uud_munurho(1,2,0) = l_uud_120
  
-    l_uud_ijk(1,2,1) = l_uud_121
+    l_uud_munurho(1,2,1) = l_uud_121
  
-    l_uud_ijk(1,2,2) = l_uud_122
+    l_uud_munurho(1,2,2) = l_uud_122
  
-    l_uud_ijk(1,2,3) = l_uud_123
+    l_uud_munurho(1,2,3) = l_uud_123
  
-    l_uud_ijk(1,3,0) = l_uud_130
+    l_uud_munurho(1,3,0) = l_uud_130
  
-    l_uud_ijk(1,3,1) = l_uud_131
+    l_uud_munurho(1,3,1) = l_uud_131
  
-    l_uud_ijk(1,3,2) = l_uud_132
+    l_uud_munurho(1,3,2) = l_uud_132
  
-    l_uud_ijk(1,3,3) = l_uud_133
+    l_uud_munurho(1,3,3) = l_uud_133
  
-    l_uud_ijk(2,0,0) = l_uud_200
+    l_uud_munurho(2,0,0) = l_uud_200
  
-    l_uud_ijk(2,0,1) = l_uud_201
+    l_uud_munurho(2,0,1) = l_uud_201
  
-    l_uud_ijk(2,0,2) = l_uud_202
+    l_uud_munurho(2,0,2) = l_uud_202
  
-    l_uud_ijk(2,0,3) = l_uud_203
+    l_uud_munurho(2,0,3) = l_uud_203
  
-    l_uud_ijk(2,1,0) = l_uud_210
+    l_uud_munurho(2,1,0) = l_uud_210
  
-    l_uud_ijk(2,1,1) = l_uud_211
+    l_uud_munurho(2,1,1) = l_uud_211
  
-    l_uud_ijk(2,1,2) = l_uud_212
+    l_uud_munurho(2,1,2) = l_uud_212
  
-    l_uud_ijk(2,1,3) = l_uud_213
+    l_uud_munurho(2,1,3) = l_uud_213
  
-    l_uud_ijk(2,2,0) = l_uud_220
+    l_uud_munurho(2,2,0) = l_uud_220
  
-    l_uud_ijk(2,2,1) = l_uud_221
+    l_uud_munurho(2,2,1) = l_uud_221
  
-    l_uud_ijk(2,2,2) = l_uud_222
+    l_uud_munurho(2,2,2) = l_uud_222
  
-    l_uud_ijk(2,2,3) = l_uud_223
+    l_uud_munurho(2,2,3) = l_uud_223
  
-    l_uud_ijk(2,3,0) = l_uud_230
+    l_uud_munurho(2,3,0) = l_uud_230
  
-    l_uud_ijk(2,3,1) = l_uud_231
+    l_uud_munurho(2,3,1) = l_uud_231
  
-    l_uud_ijk(2,3,2) = l_uud_232
+    l_uud_munurho(2,3,2) = l_uud_232
  
-    l_uud_ijk(2,3,3) = l_uud_233
+    l_uud_munurho(2,3,3) = l_uud_233
  
-    l_uud_ijk(3,0,0) = l_uud_300
+    l_uud_munurho(3,0,0) = l_uud_300
  
-    l_uud_ijk(3,0,1) = l_uud_301
+    l_uud_munurho(3,0,1) = l_uud_301
  
-    l_uud_ijk(3,0,2) = l_uud_302
+    l_uud_munurho(3,0,2) = l_uud_302
  
-    l_uud_ijk(3,0,3) = l_uud_303
+    l_uud_munurho(3,0,3) = l_uud_303
  
-    l_uud_ijk(3,1,0) = l_uud_310
+    l_uud_munurho(3,1,0) = l_uud_310
  
-    l_uud_ijk(3,1,1) = l_uud_311
+    l_uud_munurho(3,1,1) = l_uud_311
  
-    l_uud_ijk(3,1,2) = l_uud_312
+    l_uud_munurho(3,1,2) = l_uud_312
  
-    l_uud_ijk(3,1,3) = l_uud_313
+    l_uud_munurho(3,1,3) = l_uud_313
  
-    l_uud_ijk(3,2,0) = l_uud_320
+    l_uud_munurho(3,2,0) = l_uud_320
  
-    l_uud_ijk(3,2,1) = l_uud_321
+    l_uud_munurho(3,2,1) = l_uud_321
  
-    l_uud_ijk(3,2,2) = l_uud_322
+    l_uud_munurho(3,2,2) = l_uud_322
  
-    l_uud_ijk(3,2,3) = l_uud_323
+    l_uud_munurho(3,2,3) = l_uud_323
  
-    l_uud_ijk(3,3,0) = l_uud_330
+    l_uud_munurho(3,3,0) = l_uud_330
  
-    l_uud_ijk(3,3,1) = l_uud_331
+    l_uud_munurho(3,3,1) = l_uud_331
  
-    l_uud_ijk(3,3,2) = l_uud_332
+    l_uud_munurho(3,3,2) = l_uud_332
  
-    l_uud_ijk(3,3,3) = l_uud_333
- 
+    l_uud_munurho(3,3,3) = l_uud_333
 
 
 
