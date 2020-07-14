@@ -42,23 +42,20 @@ PROGRAM ApplicationDriver
     chk,               &
     wrt
   USE InputParsingModule,               ONLY: &
-    nLevels,         &
-    StepNo,          &
-    t,               &
-    dt,              &
-    t_end,           &
-    CFL,             &
-    t_wrt,           &
-    dt_wrt,          &
-    t_chk,           &
-    dt_chk,          &
-    iCycleD,         &
-    iCycleW,         &
-    iCycleChk,       &
-    WriteOutputData, &
+    nLevels,   &
+    StepNo,    &
+    t,         &
+    dt,        &
+    t_end,     &
+    CFL,       &
+    t_wrt,     &
+    dt_wrt,    &
+    t_chk,     &
+    dt_chk,    &
+    iCycleD,   &
+    iCycleW,   &
+    iCycleChk, &
     GEOM
-!!$  USE MF_UtilitiesModule,               ONLY: &
-!!$    WriteRawDataToFile
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
     InitializeTimers_AMReX_Euler,  &
@@ -210,9 +207,6 @@ PROGRAM ApplicationDriver
   StepNo = StepNo + 1
 
   CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
-!!$  IF( WriteOutputData ) &
-!!$    CALL WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
