@@ -1769,7 +1769,7 @@ CONTAINS
     AccretionRate      = AccretionRate      * ( SolarMass / Second )
     ShockRadius        = ShockRadius        * Kilometer
     PolytropicConstant = PolytropicConstant &
-                           * ( ( Erg / Centimeter**3 ) &
+                           * ( Erg / Centimeter**3 &
                            / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
     rPerturbationInner = rPerturbationInner * Kilometer
     rPerturbationOuter = rPerturbationOuter * Kilometer
