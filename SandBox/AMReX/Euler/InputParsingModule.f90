@@ -59,11 +59,11 @@ MODULE InputParsingModule
   REAL(AR)         , ALLOCATABLE :: xL(:), xR(:)
   CHARACTER(LEN=:) , ALLOCATABLE :: ProgramName
   CHARACTER(LEN=:) , ALLOCATABLE :: PlotFileBaseName
-  CHARACTER(LEN=:) , ALLOCATABLE :: OutputDataFileName
+  CHARACTER(LEN=:) , ALLOCATABLE :: NodalDataFileNameBase
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL          , SAVE        :: UsePhysicalUnits
   LOGICAL          , SAVE        :: InitializeFromFile
-  LOGICAL          , SAVE        :: WriteOutputData
+  LOGICAL          , SAVE        :: WriteNodalData
   LOGICAL          , SAVE        :: DEBUG
 
   ! --- Slope limiter ---
@@ -122,31 +122,29 @@ CONTAINS
       CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
-    UsePhysicalUnits   = .FALSE.
-    PlotFileBaseName   = 'thornado'
-    WriteOutputData    = .FALSE.
-    InitializeFromFile = .FALSE.
-    OutputDataFileName = 'OutputData.dat'
+    UsePhysicalUnits      = .FALSE.
+    PlotFileBaseName      = 'thornado'
+    InitializeFromFile    = .FALSE.
+    NodalDataFileNameBase = 'NodalData'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get   ( 'dt_wrt'            , dt_wrt             )
-      CALL PP % get   ( 'dt_chk'            , dt_chk             )
-      CALL PP % get   ( 't_end'             , t_end              )
-      CALL PP % get   ( 'nNodes'            , nNodes             )
-      CALL PP % get   ( 'nStages'           , nStages            )
-      CALL PP % get   ( 'CFL'               , CFL                )
-      CALL PP % get   ( 'ProgramName'       , ProgramName        )
-      CALL PP % getarr( 'bcX'               , bcX                )
-      CALL PP % getarr( 'swX'               , swX                )
-      CALL PP % get   ( 'iCycleD'           , iCycleD            )
-      CALL PP % get   ( 'iCycleW'           , iCycleW            )
-      CALL PP % get   ( 'iCycleChk'         , iCycleChk          )
-      CALL PP % get   ( 'iRestart'          , iRestart           )
-      CALL PP % query ( 'UsePhysicalUnits'  , UsePhysicalUnits   )
-      CALL PP % query ( 'PlotFileBaseName'  , PlotFileBaseName   )
-      CALL PP % query ( 'WriteOutputData'   , WriteOutputData    )
-      CALL PP % query ( 'InitializeFromFile', InitializeFromFile )
-      CALL PP % query ( 'OutputDataFileName', OutputDataFileName )
+      CALL PP % get   ( 'dt_wrt'               , dt_wrt                )
+      CALL PP % get   ( 'dt_chk'               , dt_chk                )
+      CALL PP % get   ( 't_end'                , t_end                 )
+      CALL PP % get   ( 'nNodes'               , nNodes                )
+      CALL PP % get   ( 'nStages'              , nStages               )
+      CALL PP % get   ( 'CFL'                  , CFL                   )
+      CALL PP % get   ( 'ProgramName'          , ProgramName           )
+      CALL PP % getarr( 'bcX'                  , bcX                   )
+      CALL PP % getarr( 'swX'                  , swX                   )
+      CALL PP % get   ( 'iCycleD'              , iCycleD               )
+      CALL PP % get   ( 'iCycleW'              , iCycleW               )
+      CALL PP % get   ( 'iCycleChk'            , iCycleChk             )
+      CALL PP % get   ( 'iRestart'             , iRestart              )
+      CALL PP % query ( 'UsePhysicalUnits'     , UsePhysicalUnits      )
+      CALL PP % query ( 'PlotFileBaseName'     , PlotFileBaseName      )
+      CALL PP % query ( 'InitializeFromFile'   , InitializeFromFile    )
+      CALL PP % query ( 'NodalDataFileNameBase', NodalDataFileNameBase )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN

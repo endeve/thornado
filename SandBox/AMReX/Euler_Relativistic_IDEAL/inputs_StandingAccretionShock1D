@@ -18,8 +18,8 @@ SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
-thornado.WriteOutputData    = 0
-thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
+SAS.WriteNodalData_SAS         = 1
+thornado.NodalDataFileNameBase = "MPNS1.4_Rs180_Mdot0.3"
 
 thornado.iRestart = -1
 

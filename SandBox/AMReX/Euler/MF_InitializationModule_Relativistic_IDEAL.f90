@@ -84,7 +84,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     xR,                 &
     Gamma_IDEAL,        &
     InitializeFromFile, &
-    OutputDataFileName
+    NodalDataFileNameBase
 
   IMPLICIT NONE
   PRIVATE
@@ -101,6 +101,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   REAL(AR), PARAMETER :: Pi       = ACOS( -1.0_AR )
   REAL(AR), PARAMETER :: TwoPi    = 2.0_AR * Pi
   REAL(AR), PARAMETER :: FourPi   = 4.0_AR * Pi
+
+  LOGICAL, PUBLIC :: WriteNodalData_SAS
 
 
 CONTAINS
@@ -1753,6 +1755,7 @@ CONTAINS
     PerturbationAmplitude = Zero
     rPerturbationInner    = Zero
     rPerturbationOuter    = Zero
+    WriteNodalData_SAS    = .FALSE.
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass'                 , MassPNS               )
       CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
@@ -1763,6 +1766,7 @@ CONTAINS
       CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
       CALL PP % query( 'rPerturbationInner'   , rPerturbationInner    )
       CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
+      CALL PP % query( 'WriteNodalData_SAS'   , WriteNodalData_SAS    )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -2209,19 +2213,25 @@ CONTAINS
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
 
-    OPEN( UNIT = 100, FILE = TRIM( OutputDataFileName ) )
+    OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase ) // '_D.dat' )
+    OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase ) // '_V.dat' )
+    OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase ) // '_P.dat' )
 
-    READ(100,*) FMT
+    READ(101,*) FMT
+    READ(102,*) FMT
+    READ(103,*) FMT
 
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      READ(100,TRIM(FMT)) D(:,iX1)
-      READ(100,TRIM(FMT)) V(:,iX1)
-      READ(100,TRIM(FMT)) P(:,iX1)
+      READ(101,TRIM(FMT)) D(:,iX1)
+      READ(102,TRIM(FMT)) V(:,iX1)
+      READ(103,TRIM(FMT)) P(:,iX1)
 
     END DO
 
-    CLOSE( 100 )
+    CLOSE( 103 )
+    CLOSE( 102 )
+    CLOSE( 101 )
 
   END SUBROUTINE ReadFluidFieldsFromFile
 
