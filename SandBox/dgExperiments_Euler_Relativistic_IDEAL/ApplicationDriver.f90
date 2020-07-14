@@ -340,9 +340,9 @@ PROGRAM ApplicationDriver
       MassPNS            = 1.4_DP    * SolarMass
       RadiusPNS          = 40.0_DP   * Kilometer
       ShockRadius        = 180.0_DP  * Kilometer
-      AccretionRate      = 0.3_DP    * SolarMass / Second
-      PolytropicConstant = 2.0e14_DP * Erg / Centimeter**3 &
-                                         / ( Gram / Centimeter**3 )**( Gamma )
+      AccretionRate      = 0.3_DP    * ( SolarMass / Second )
+      PolytropicConstant = 2.0e14_DP * ( Erg / Centimeter**3 &
+                                         / ( Gram / Centimeter**3 )**( Gamma ) )
       ApplyPerturbation     = .TRUE.
       PerturbationOrder     = 0
       PerturbationAmplitude = 0.04_DP

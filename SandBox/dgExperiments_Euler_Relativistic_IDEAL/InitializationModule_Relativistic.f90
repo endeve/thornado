@@ -148,11 +148,11 @@ CONTAINS
     ! --- Standing Accretion Shock (Defaults) ---
     REAL(DP) :: MassPNS               = 1.4_DP   * SolarMass
     REAL(DP) :: ShockRadius           = 180.0_DP * Kilometer
-    REAL(DP) :: AccretionRate         = 0.3_DP   * SolarMass / Second
+    REAL(DP) :: AccretionRate         = 0.3_DP   * ( SolarMass / Second )
     REAL(DP) :: PolytropicConstant    = 2.0e14_DP &
-                                          * ( Erg / Centimeter**3 ) &
+                                          * ( Erg / Centimeter**3 &
                                           / ( Gram / Centimeter**3 ) &
-                                          **( Four / Three ) ! Hard-coded
+                                          **( Four / Three ) ) ! Hard-coded
     LOGICAL  :: ApplyPerturbation     = .FALSE.
     INTEGER  :: PerturbationOrder     = 0
     REAL(DP) :: PerturbationAmplitude = 0.0_DP
@@ -160,8 +160,8 @@ CONTAINS
     REAL(DP) :: rPerturbationOuter    = 0.0_DP
 
     ! --- Yahil Collapse ---
-    REAL(DP) :: CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-    REAL(DP) :: CentralPressure = 6.0e27_DP * Erg  / Centimeter**3
+    REAL(DP) :: CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
+    REAL(DP) :: CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
     REAL(DP) :: CoreRadius      = 1.0e5_DP  * Kilometer
     REAL(DP) :: CollapseTime    = 1.50e2_DP * Millisecond
 
