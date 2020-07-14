@@ -75,8 +75,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment, &
     Flux_X1, &
-    Flux_E,  &
-    Flux_G,  &
+    Flux_E, &
     ComputeEddingtonTensorComponents_ud, &
     NumericalFlux_LLF
   USE MyAmrModule, ONLY: &
