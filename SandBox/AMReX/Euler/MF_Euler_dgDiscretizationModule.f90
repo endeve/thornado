@@ -88,6 +88,8 @@ CONTAINS
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
@@ -160,6 +162,8 @@ CONTAINS
       ! --- Apply boundary conditions to interior domains ---
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
