@@ -2483,7 +2483,7 @@ CONTAINS
   END FUNCTION Flux_E
 
   FUNCTION Source_E( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                      alp, B_u_1, B_u_2, B_u_3, U, dU_dX0, dU_dX1, dU_dX2, dU_dX3)
+                      alp, B_u_1, B_u_2, B_u_3, U_u, U_d, dU_dX0, dU_dX1, dU_dX2, dU_dX3)
 
 ! negative sign has been incorperated into Flux_E
 
@@ -2492,7 +2492,7 @@ CONTAINS
     REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in) :: alp, B_u_1, B_u_2, B_u_3
-    REAL(DP), INTENT(in) :: U(0:3), dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
+    REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3), dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
 
     REAL(DP) :: V_0, B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3)
@@ -2533,8 +2533,8 @@ CONTAINS
     DO j = 1,3
     DO nu = 0,3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U(j) * U(0) + l_uud_munurho(0,nu,j) * D + k_ud_munu(nu,j) * D * U(0) + k_uu_munu(nu,0) * D * U(j) ) * dU_dX0(nu) &
-                    + ( D * U(0) + I(0) ) * dU_dX0(j)
+      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(0) + l_uud_munurho(0,nu,j) * D + k_ud_munu(nu,j) * D * U_u(0) + k_uu_munu(nu,0) * D * U_d(j) ) * dU_dX0(nu) &
+                    + ( D * U_u(0) + I(0) ) * dU_dX0(j)
 
     END DO
     END DO
@@ -2542,8 +2542,8 @@ CONTAINS
     DO j = 1,3
     DO nu = 0,3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U(j) * U(1) + l_uud_munurho(1,nu,j) * D + k_ud_munu(nu,j) * D * U(1) + k_uu_munu(nu,1) * D * U(j) ) * dU_dX1(nu) &
-                    + ( D * U(1) + I(1) ) * dU_dX1(j)
+      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(1) + l_uud_munurho(1,nu,j) * D + k_ud_munu(nu,j) * D * U_u(1) + k_uu_munu(nu,1) * D * U_d(j) ) * dU_dX1(nu) &
+                    + ( D * U_u(1) + I(1) ) * dU_dX1(j)
 
     END DO
     END DO
@@ -2551,8 +2551,8 @@ CONTAINS
     DO j = 1,3
     DO nu = 0,3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U(j) * U(2) + l_uud_munurho(2,nu,j) * D + k_ud_munu(nu,j) * D * U(2) + k_uu_munu(nu,2) * D * U(j) ) * dU_dX2(nu) &
-                    + ( D * U(2) + I(2) )* dU_dX2(j)
+      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(2) + l_uud_munurho(2,nu,j) * D + k_ud_munu(nu,j) * D * U_u(2) + k_uu_munu(nu,2) * D * U_d(j) ) * dU_dX2(nu) &
+                    + ( D * U_u(2) + I(2) )* dU_dX2(j)
 
     END DO
     END DO
@@ -2560,8 +2560,8 @@ CONTAINS
     DO j = 1,3
     DO nu = 0,3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U(j) * U(3) + l_uud_munurho(3,nu,j) * D + k_ud_munu(nu,j) * D * U(3) + k_uu_munu(nu,3) * D * U(j) ) * dU_dX3(nu) &
-                    + ( D * U(3) + I(3) ) * dU_dX3(j)
+      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(3) + l_uud_munurho(3,nu,j) * D + k_ud_munu(nu,j) * D * U_u(3) + k_uu_munu(nu,3) * D * U_d(j) ) * dU_dX3(nu) &
+                    + ( D * U_u(3) + I(3) ) * dU_dX3(j)
 
     END DO
     END DO
