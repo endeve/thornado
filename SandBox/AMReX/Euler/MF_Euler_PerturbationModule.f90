@@ -1,4 +1,4 @@
-MODULE MF_PerturbationModule
+MODULE MF_Euler_PerturbationModule
 
   ! ---AMReX Modules ---
 
@@ -237,4 +237,4 @@ CONTAINS
   END SUBROUTINE MF_ApplyPerturbations_Euler
 
 
-END MODULE MF_PerturbationModule
+END MODULE MF_Euler_PerturbationModule

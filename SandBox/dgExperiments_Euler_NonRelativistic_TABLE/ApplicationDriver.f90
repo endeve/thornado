@@ -346,7 +346,7 @@ PROGRAM ApplicationDriver
 
       iCycleD = 10
       t_end   = 7.5d-2 * Millisecond
-      dt_wrt  = 1.25d-4 * Millisecond  
+      dt_wrt  = 1.25d-4 * Millisecond
 
     CASE DEFAULT
 
@@ -591,5 +591,16 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
+
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git info'
+  WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git describe --tags:'
+  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
 
 END PROGRAM ApplicationDriver
