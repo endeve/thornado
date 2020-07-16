@@ -452,6 +452,12 @@ CONTAINS
     V_d_2 = Gm_dd_22 * V_u_2
     V_d_3 = Gm_dd_33 * V_u_3
 
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
+
     u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
     u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
     u_u_3 = W * ( V_u_2 - B_u_2 / alp ) 
@@ -467,7 +473,6 @@ CONTAINS
    
     ! --- Diagonal Euuington Tensor Components ---
 
-
     k_uu_11 = a * ( Gm_uu_11 + u_u_1 * u_u_1 ) + b * h_u_1 * h_u_1
     k_uu_22 = a * ( Gm_uu_22 + u_u_2 * u_u_2 ) + b * h_u_2 * h_u_2
     k_uu_33 = a * ( Gm_uu_33 + u_u_3 * u_u_3 ) + b * h_u_3 * h_u_3
@@ -477,15 +482,14 @@ CONTAINS
     k_uu_23 = a * u_u_2 * u_u_3 + b * h_u_2 * h_u_3
 
 
-
     k_uu_10 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_11 + V_d_2 * k_uu_12 + V_d_3 * k_uu_13 ) / alp
 
     k_uu_20 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_12 + V_d_2 * k_uu_22 + V_d_3 * k_uu_23 ) / alp
+
     k_uu_30 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_13 + V_d_2 * k_uu_23 + V_d_3 * k_uu_33 ) / alp
     
     k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
                + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
-
     k_uu_munu(0,0) = k_uu_00
  
     k_uu_munu(0,1) = k_uu_10
@@ -1078,6 +1082,8 @@ CONTAINS
  
     l_uud_032 = x * (V_d_1 * l_uud_132 + V_d_2 * l_uud_232 + V_d_3 * l_uud_332) 
 
+    l_uud_033 = x * (V_d_1 * l_uud_133 + V_d_2 * l_uud_233 + V_d_3 * l_uud_333)
+ 
     l_uud_101 = x * (V_d_1 * l_uud_111 + V_d_1 * l_uud_121 + V_d_1 * l_uud_131) 
  
     l_uud_102 = x * (V_d_1 * l_uud_112 + V_d_1 * l_uud_122 + V_d_1 * l_uud_132) 
@@ -2437,22 +2443,19 @@ CONTAINS
  
     V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3   
 
-    I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
     I(1) = I_u_1
     I(2) = I_u_2
     I(3) = I_u_3
+    I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
 
     Flux_E = 0.0_DP
-
     DO nu = 0,3
 
       Flux_E(1) = Flux_E(1) + ( I(nu) * U(0) + k_uu_munu(0,nu) * D ) * dU_dX0(nu) 
       Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(0) + l_uud_munurho(0,nu,1) * D ) * dU_dX0(nu)
       Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(0) + l_uud_munurho(0,nu,2) * D ) * dU_dX0(nu)
       Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(0) + l_uud_munurho(0,nu,3) * D ) * dU_dX0(nu)
-
     END DO
-
 
     DO nu = 0,3
 
@@ -2526,10 +2529,10 @@ CONTAINS
  
     V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3   
 
-    I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
     I(1) = I_u_1
     I(2) = I_u_2
     I(3) = I_u_3
+    I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
 
     Source_E = 0.0_DP
 

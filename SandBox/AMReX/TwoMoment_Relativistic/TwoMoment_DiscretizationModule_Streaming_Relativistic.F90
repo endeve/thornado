@@ -1008,7 +1008,7 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX3, Verbose_Option = Verbose )
 
     CALL ComputeFourVelocity &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, U_u, U_d, Verbose_Option = Verbose  )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, U_u, U_d, uPF_K, Verbose_Option = Verbose  )
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
@@ -1082,36 +1082,6 @@ CONTAINS
 
     ! --- Compute Primitive Fluid ---
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX
-
-        CALL ComputePrimitive_Euler_Relativistic &
-               ( uCF_K(iNodeX,iCF_D       ,iZ2,iZ3,iZ4), &
-                 uCF_K(iNodeX,iCF_S1      ,iZ2,iZ3,iZ4), &
-                 uCF_K(iNodeX,iCF_S2      ,iZ2,iZ3,iZ4), &
-                 uCF_K(iNodeX,iCF_S3      ,iZ2,iZ3,iZ4), &
-                 uCF_K(iNodeX,iCF_E       ,iZ2,iZ3,iZ4), &
-                 uCF_K(iNodeX,iCF_Ne      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_D       ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V1      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V2      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V3      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_E       ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_Ne      ,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-
 
     ! --- Interpolate Radiation Fields ---
 
@@ -1177,7 +1147,6 @@ CONTAINS
                     dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNode,:,iZ2,iZ3,iZ4) )
         ! --- Right State Primitive ---
-
         CALL ComputePrimitive_TwoMoment &
                ( uCR_R(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
                  uCR_R(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
@@ -1608,7 +1577,7 @@ CONTAINS
 
   
   SUBROUTINE ComputeFourVelocity &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, U_u, U_d, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, U_u, U_d, uPF, Verbose_Option  )
 
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
@@ -1625,12 +1594,16 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       U_d(1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(out) :: &
+      uPF(nDOFX,nPF, &
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
     INTEGER  :: i, iZ2, iZ3, iZ4, iCF, iGF
-    REAL(DP) :: uPF(nPF), W, V_0
-
+    REAL(DP) :: W, V_0, V1, V2, V3
 
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1644,33 +1617,36 @@ CONTAINS
                  uCF(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
                  uCF(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
                  uCF(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
-                 uPF(iPF_D ), &
-                 uPF(iPF_V1), &
-                 uPF(iPF_V2), &
-                 uPF(iPF_V3), &
-                 uPF(iPF_E ), &
-                 uPF(iPF_Ne), &
+                 uPF(iNodeX,iPF_D,iZ2,iZ3,iZ4), &
+                 uPF(iNodeX,iPF_V1,iZ2,iZ3,iZ4), &
+                 uPF(iNodeX,iPF_V2,iZ2,iZ3,iZ4), &
+                 uPF(iNodeX,iPF_V3,iZ2,iZ3,iZ4), &
+                 uPF(iNodeX,iPF_E,iZ2,iZ3,iZ4), &
+                 uPF(iNodeX,iPF_Ne,iZ2,iZ3,iZ4), &
                  GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
         
-        W =1.0_DP /SQRT( 1.0_DP - ( uPF(iPF_V1)**2 * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
-           + uPF(iPF_V2)**2 * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) + uPF(iPF_V3)**2 * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) ) )
+        V1 = uPF(iNodeX,iPF_V1,iZ2,iZ3,iZ4)
+        V2 = uPF(iNodeX,iPF_V2,iZ2,iZ3,iZ4)
+        V3 = uPF(iNodeX,iPF_V3,iZ2,iZ3,iZ4)
+        W =1.0_DP /SQRT( 1.0_DP - ( V1**2 * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
+           + V2**2 * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) + V3**2 * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) ) )
 
-        V_0 = GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * uPF(iPF_V1) &
-            + GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * uPF(iPF_V2) &
-            + GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * uPF(iPF_V3)              
+        V_0 = GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * V1 &
+            + GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * V2 &
+            + GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * V3              
  
         U_u(iNodeX,0,iZ2,iZ3,iZ4) = W * ( 1.0_DP / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) ) 
-        U_u(iNodeX,1,iZ2,iZ3,iZ4) = W * ( uPF(iPF_V1) - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) )
-        U_u(iNodeX,2,iZ2,iZ3,iZ4) = W * ( uPF(iPF_V2) - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) )
-        U_u(iNodeX,3,iZ2,iZ3,iZ4) = W * ( uPF(iPF_V3) - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) )
+        U_u(iNodeX,1,iZ2,iZ3,iZ4) = W * ( V1 - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) )
+        U_u(iNodeX,2,iZ2,iZ3,iZ4) = W * ( V2 - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) )
+        U_u(iNodeX,3,iZ2,iZ3,iZ4) = W * ( V3 - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) / GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) )
 
 
         U_d(iNodeX,0,iZ2,iZ3,iZ4) = W * ( - GX (iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) + V_0 )
-        U_d(iNodeX,1,iZ2,iZ3,iZ4) = W * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * uPF(iPF_V1) 
-        U_d(iNodeX,2,iZ2,iZ3,iZ4) = W * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * uPF(iPF_V2) 
-        U_d(iNodeX,3,iZ2,iZ3,iZ4) = W * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * uPF(iPF_V3) 
+        U_d(iNodeX,1,iZ2,iZ3,iZ4) = W * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * V1
+        U_d(iNodeX,2,iZ2,iZ3,iZ4) = W * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * V2
+        U_d(iNodeX,3,iZ2,iZ3,iZ4) = W * GX (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * V3
 
 
       END DO
