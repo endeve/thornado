@@ -229,7 +229,7 @@ INCLUDE_LAPACK_dpochik         = -I/usr/include
 INCLUDE_LAPACK_lucalin         = -I/usr/include
 INCLUDE_LAPACK_bison           = -I/usr/include
 INCLUDE_LAPACK_paullaiu_gnu    = -I/usr/include
-INCLUDE_LAPACK_accre           = -I/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/ScaLAPACK/2.0.2/include
+INCLUDE_LAPACK_accre           = -I/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/ScaLAPACK/2.0.2/include
 INCLUDE_LAPACK_titan_gnu       =
 INCLUDE_LAPACK_titan_pgi       =
 INCLUDE_LAPACK_summitdev_gcc   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
@@ -311,7 +311,7 @@ LIBRARIES_LAPACK_dpochik       = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lb
 LIBRARIES_LAPACK_lucalin       = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
 LIBRARIES_LAPACK_bison         = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
 LIBRARIES_LAPACK_paullaiu_gnu  = -L/usr/lib/lapack  -llapack -lblas
-LIBRARIES_LAPACK_accre         = -L/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/ScaLAPACK/2.0.2/lib -lscalapack -lopenblas
+LIBRARIES_LAPACK_accre         = -L/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/ScaLAPACK/2.0.2/lib -lscalapack -lopenblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 				 -L/usr/lib/libblas -lblas
 LIBRARIES_LAPACK_titan_gnu     =

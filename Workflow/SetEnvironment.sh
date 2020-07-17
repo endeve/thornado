@@ -90,6 +90,11 @@ elif [[ $THORNADO_MACHINE == accre* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+  module purge
+  module load GCC/6.4.0-2.28
+  module load OpenMPI/2.1.1
+  module load HDF5/1.10.1
+
 elif [[ $THORNADO_MACHINE == ranchu* ]]; then
 
   echo
