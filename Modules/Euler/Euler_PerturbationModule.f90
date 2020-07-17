@@ -125,7 +125,7 @@ CONTAINS
         IF( PRESENT( BD_Amplitude_Option ) ) THEN
           BD_Amplitude = BD_Amplitude_Option
         ELSE
-          BD_Amplitude = 1.0_DP
+          BD_Amplitude = One
         END IF
 
         IF( UseUnits ) THEN
@@ -143,7 +143,7 @@ CONTAINS
        IF( PRESENT ( CO_V_Amplitude_Option ) ) THEN
          CO_V_Amplitude = CO_V_Amplitude_Option
        ELSE
-         CO_V_Amplitude = 1.0_DP
+         CO_V_Amplitude = One
        END IF
 
      CASE ( 'MullerJanka_Density' )
@@ -157,7 +157,7 @@ CONTAINS
        IF( PRESENT( MJ_D_Amplitude_Option ) ) THEN
          MJ_D_Amplitude = MJ_D_Amplitude_Option
        ELSE
-         MJ_D_Amplitude = 1.0_DP
+         MJ_D_Amplitude = One
        END IF
 
        IF ( UseUnits ) THEN
@@ -181,14 +181,16 @@ CONTAINS
        IF( PRESENT ( MJ_V_Amplitude_Option ) ) THEN
          MJ_V_Amplitude = MJ_V_Amplitude_Option
        ELSE
-         MJ_V_Amplitude = 1.0_DP
+         MJ_V_Amplitude = One
        END IF
 
        IF( PRESENT ( MJ_V_Ratio_Option ) ) THEN
          MJ_V_Ratio = MJ_V_Ratio_Option
        ELSE
-         MJ_V_Ratio = 0.5_DP
+         MJ_V_Ratio = Half
        END IF
+
+      CASE DEFAULT
 
     END SELECT
 
@@ -239,13 +241,12 @@ CONTAINS
 
 
   SUBROUTINE ApplyShellPerturbations &
-               ( Time, iX_B0, iX_E0, iX_B1, iX_E1, Gamma, G, U )
+               ( Time, iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     REAL(DP), INTENT(in) :: Time
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in) :: Gamma
     REAL(DP), INTENT(in) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
@@ -382,11 +383,11 @@ CONTAINS
 
       CASE ( 0 )
 
-        D = ( 1.0_DP + Amplitude ) * D
+        D = ( One + Amplitude ) * D
 
       CASE ( 1 )
 
-        D = ( 1.0_DP + Amplitude * COS( theta ) ) * D
+        D = ( One + Amplitude * COS( theta ) ) * D
 
     END SELECT
 
@@ -397,14 +398,14 @@ CONTAINS
                ( Time, GhostRadius_Min, ShellWidth, n, &
                  Amplitude, r, theta, V1, V2 )
 
-    INTEGER,  INTENT(in) :: n
-    REAL(DP), INTENT(in) :: Time
-    REAL(DP), INTENT(in) :: GhostRadius_Min
-    REAL(DP), INTENT(in) :: ShellWidth
-    REAL(DP), INTENT(in) :: Amplitude
-    REAL(DP), INTENT(in) :: r, theta
-    REAL(DP), INTENT(in) :: V1
-    REAL(DP), INTENT(inout) :: V2
+    INTEGER,  INTENT(in)  :: n
+    REAL(DP), INTENT(in)  :: Time
+    REAL(DP), INTENT(in)  :: GhostRadius_Min
+    REAL(DP), INTENT(in)  :: ShellWidth
+    REAL(DP), INTENT(in)  :: Amplitude
+    REAL(DP), INTENT(in)  :: r, theta
+    REAL(DP), INTENT(in)  :: V1
+    REAL(DP), INTENT(out) :: V2
 
     REAL(DP) :: Zeta
 
@@ -413,17 +414,9 @@ CONTAINS
 
     Zeta = Pi * ( ( r - GhostRadius_Min ) + ABS(V1) * Time ) / ( ShellWidth )
 
-    !PRINT*, 'Zeta: ', Zeta
-
-    !PRINT*, 'V1: ', V1
-
-    !PRINT*, 'V2 before perturbation: ', V2
-
-    V2 = ( Amplitude * ( 1 / r ) * V1 &
+    V2 = ( Amplitude * ( One / r ) * V1 &
              * SIN( ( n - 1 ) * theta ) &
              * SIN( ( n - 1 ) * Zeta ) )
-
-    !PRINT*, 'V2 after pertubation: ', V2
 
   END SUBROUTINE ApplyShellPerturbations_CouchOtt_Velocity
 
@@ -431,6 +424,8 @@ CONTAINS
   SUBROUTINE ApplyShellPerturbations_MullerJanka_Velocity &
                ( Time, GhostRadius_Min, ShellWidth, &
                  n, l, Amplitude, Ratio, r, theta, D, V1, V2 )
+
+    ! --- Still in progress. ---
 
     INTEGER,  INTENT(in) :: n, l
     REAL(DP), INTENT(in) :: Time
@@ -464,52 +459,42 @@ CONTAINS
 
     !PRINT*, 'V1 before perturbation: ', V1
 
-    PRINT*, 'V2 before perturbation: ', V2
-
-    PRINT*, 'Diemsionless perturbation for V2: ', ( ( SQRT( SIN( theta ) ) ) &
-               * COS( n * Pi * ( r - ShellWidth ) &
-                      / ( ShellWidth - ShellWidth ) ) &
-               * ( n * Pi ) &
-               * ( SphericalHarmonic_l1( l, theta ) ) )
-
-    PRINT*, 'Dimensionless perturbation for V1: ', ( ( SIN( n * Pi * ( r - ShellWidth ) &
-                                          / ( ShellWidth - ShellWidth ) ) ) &
-            * ( ( 3.0_DP / 2.0_DP ) * ( COS( theta ) / SQRT( SIN ( theta ) ) ) &
-            * SphericalHarmonic_l1( l, theta ) + SQRT( SIN( theta ) ) &
-            * SphericalHarmonic_l1_Derivative( l, theta ) ) )
+    !PRINT*, 'V2 before perturbation: ', V2
 
     V1_Perturb = Amplitude * V1 * SIN( n * Pi * ( r - ShellWidth ) &
-                                       / ( ShellWidth - ShellWidth ) ) &
+                                       / ( ShellWidth ) ) &
                 * ( ( 3.0_DP / 2.0_DP ) * ( COS( theta ) / SQRT( SIN ( theta ) ) ) &
                 * SphericalHarmonic_l1( l, theta ) + SQRT( SIN( theta ) ) &
                 * SphericalHarmonic_l1_Derivative( l, theta ) ) !/ ( D * r**2 )
 
     V2_Perturb = - Amplitude * ( V1 / Ratio ) * ( ( SQRT( SIN( theta ) ) ) &
                * COS( n * Pi * ( r - ShellWidth ) &
-                      / ( ShellWidth - ShellWidth ) ) &
+                      / ( ShellWidth ) ) &
                * ( ( n * Pi ) ) & !/ ( ShellBounds(2) - ShellBounds(1) ) ) &
-               * ( SphericalHarmonic_l1( l, theta ) ) ) * ( 1 / r )
+               * ( SphericalHarmonic_l1( l, theta ) ) ) * ( One / r )
 
     V1 = V1 + V1_Perturb
 
     V2 = V2 + V2_Perturb
 
-    PRINT*, 'V1 after perturbation: ', V1
+    !PRINT*, 'V1 after perturbation: ', V1
 
-    PRINT*, 'V2 after perturbation: ', V2
+    !PRINT*, 'V2 after perturbation: ', V2
 
-    PRINT*, 'Ratio of radial and theta velocities: ', V1_Perturb / ( r * V2_Perturb )
+    !PRINT*, 'Ratio of radial and theta velocities: ', V1_Perturb / ( r * V2_Perturb )
 
-    PRINT*, 'Radial kinetic energy density of perturbation: ', Half * D * V1_Perturb**2
+    !PRINT*, 'Radial kinetic energy density of perturbation: ', Half * D * V1_Perturb**2
 
-    PRINT*, 'Theta kinetic energy of perturbation: ', Half * D * r**2 * V2_Perturb**2
+    !PRINT*, 'Theta kinetic energy of perturbation: ', Half * D * r**2 * V2_Perturb**2
 
-    PRINT*, 'Ratio of kinetic energies: ', ( Half * D * V1_Perturb**2 ) / ( Half * D * r**2 * V2_Perturb**2 )
+    !PRINT*, 'Ratio of kinetic energies: ', ( Half * D * V1_Perturb**2 ) / ( Half * D * r**2 * V2_Perturb**2 )
 
   END SUBROUTINE ApplyShellPerturbations_MullerJanka_Velocity
 
 
   SUBROUTINE ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    ! --- Still in progress. ---
 
     INTEGER, INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -532,7 +517,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     P(Rand_NodeX(:),Rand_X1(:),Rand_X2(:),Rand_X3(:),iPF_V1) &
-      = ( 1.0_DP + Rand_Amplitude ) &
+      = ( One + Rand_Amplitude ) &
         * P(Rand_NodeX(:),Rand_X1(:),Rand_X2(:),Rand_X3(:),iPF_V1)
 
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -584,13 +569,13 @@ CONTAINS
     IF( l .LT. 0 ) THEN
       STOP "l < 0!"
     ELSE IF( l .EQ. 0 ) THEN
-      ALP_l1 = 0
+      ALP_l1 = Zero
     ELSE IF( l .EQ. 1 ) THEN
-      ALP_l1 = SQRT( 1.0_DP - mu**2 )
+      ALP_l1 = SQRT( One - mu**2 )
     ELSE
-      ALP_l1 = ( mu * ( 2.0_DP * l - 1.0_DP ) / ( l - 1.0_DP ) ) &
+      ALP_l1 = ( mu * ( 2.0_DP * l - One ) / ( l - One ) ) &
                   * AssociatedLegendrePolynomial( l - 1, mu ) &
-                  - ( l / ( l - 1.0_DP ) ) &
+                  - ( l / ( l - One ) ) &
                   * AssociatedLegendrePolynomial( l - 2, mu )
     END IF
     RETURN
@@ -612,7 +597,7 @@ CONTAINS
     ELSE
       DALP_l1 = ( l * mu * AssociatedLegendrePolynomial( l, mu ) &
                   - ( l + 1 ) * AssociatedLegendrePolynomial( l - 1, mu ) ) &
-                / SQRT( 1.0_DP - mu**2 )
+                / SQRT( One - mu**2 )
 
     END IF
     RETURN

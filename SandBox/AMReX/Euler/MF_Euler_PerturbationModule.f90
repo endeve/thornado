@@ -42,7 +42,6 @@ MODULE MF_Euler_PerturbationModule
     nLevels,          &
     DEBUG,            &
     UsePhysicalUnits, &
-    Gamma_IDEAL,      &
     GEOM
 
   IMPLICIT NONE
@@ -160,6 +159,11 @@ CONTAINS
         CALL amrex_parmparse_build( PP )
         CALL amrex_parmparse_destroy( PP )
 
+      CASE DEFAULT
+
+        CALL InitializeShellPerturbations &
+               ( PerturbType_Option = 'None' )
+
      END SELECT
 
   END SUBROUTINE MF_InitializePerturbations_Euler
@@ -215,10 +219,10 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPerturbations_Euler'
 
-        IF( iX_E1(1) .GE. GEOM(iLevel) % DOMAIN % hi(1) )THEN
+        IF( iX_E1(1) .GT. GEOM(iLevel) % DOMAIN % hi(1) )THEN
 
           CALL ApplyShellPerturbations &
-                 ( Time(iLevel), iX_B0, iX_E0, iX_B1, iX_E1, Gamma_IDEAL, G, U )
+                 ( Time(iLevel), iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
         END IF
 
