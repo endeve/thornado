@@ -28,7 +28,7 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
   LOGICAL, PARAMETER :: Debug = .FALSE.
 
   REAL(DP), PARAMETER :: dCs_Threshold = 0.1_DP
-  REAL(DP), PARAMETER :: D_Threshold   = 1.0d13
+  REAL(DP), PARAMETER :: D_Threshold   = 1.0d16 * Gram / Centimeter**3
   REAL(DP), PARAMETER, DIMENSION(6,6) :: &
     I_6x6 = RESHAPE( (/1, 0, 0, 0, 0, 0, &
                        0, 1, 0, 0, 0, 0, &
@@ -51,24 +51,18 @@ CONTAINS
     REAL(DP), INTENT(in)  :: U(nCF)
     REAL(DP), INTENT(out) :: R(nCF,nCF)
     REAL(DP), INTENT(out) :: invR(nCF,nCF)
-
     LOGICAL,  INTENT(in) , OPTIONAL :: UseAnalytic_Option
     REAL(DP), INTENT(out), OPTIONAL :: cs_T
     REAL(DP), INTENT(out), OPTIONAL :: FJ(nCF,nCF)
 
-    LOGICAL :: UseAnalytic
-
-    INTEGER  :: i
+    LOGICAL  :: UseAnalytic
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33
     REAL(DP) :: D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
     REAL(DP) :: E, Ne, P, Cs, Cs_table
     REAL(DP) :: K, H, Tau, T, Y, Vsq, CsSq, W, Em, Gm, S
-    REAL(DP) :: D_PhysicalUnits
-
     REAL(DP) :: dPdD, dPdT, dPdY
     REAL(DP) :: dEdD, dEdT, dEdY
     REAL(DP) :: dPdE, dPdDe, dPdTau
-
     REAL(DP) :: dFdU(nCF,nCF)
 
     IF ( PRESENT ( UseAnalytic_Option ) ) THEN
@@ -116,25 +110,41 @@ CONTAINS
 
     CsSq = Tau**2 * ( P * dPdE - dPdTau ) + Y * dPdDe
 
-    D_PhysicalUnits = D / ( Gram / Centimeter**3 )
-
-    IF ( ( CsSq .LT. Zero ) .OR. ( D_PhysicalUnits  .GT. D_Threshold ) ) THEN
-      Cs = Cs_table
+    IF ( CsSq .LT. Zero .OR. D .GT. D_Threshold ) THEN
       R    = I_6x6
       invR = I_6x6
+
+      IF ( PRESENT( cs_T ) )THEN
+        cs_T = Cs_table
+      END IF
+
+      IF( PRESENT( FJ ) ) THEN
+        FJ = I_6x6
+      END IF
+
+      RETURN
     ELSE
       Cs = SQRT( CsSq )
       IF ( ABS( Cs - Cs_table ) / Cs_table .GT. dCs_Threshold ) THEN
         R    = I_6x6
         invR = I_6x6
+
+        IF ( PRESENT( cs_T ) )THEN
+          cs_T = Cs_table
+        END IF
+
+        IF( PRESENT( FJ ) ) THEN
+          FJ = I_6x6
+        END IF
+
         RETURN
-     END IF
+      END IF
     END IF
 
-    K = ( (- (Y/Tau) * dPdDe + dPdE * ( &
-          Half * Vsq + Em) + dPdTau * Tau )/(dPdE) )
-    H = ( Cs**2 / (dPdE * Tau) ) + K
-    W = Tau * (dPdE*(Vsq - 2.0_DP * Em) &
+    K = ( ( - ( Y / Tau ) * dPdDe + dPdE * ( &
+          Half * Vsq + Em ) + dPdTau * Tau ) / ( dPdE ) )
+    H = ( Cs**2 / ( dPdE * Tau ) ) + K
+    W = Tau * ( dPdE * ( Vsq - 2.0_DP * Em ) &
                - 2.0_DP * dPdTau * Tau )
 
     ! --- Compute the flux Jacobian for debugging/use in numeric routine ---
