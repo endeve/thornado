@@ -37,7 +37,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ComputeIncrement_Explicit
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     MF_TwoMoment_ComputeIncrement_Implicit
-
+  USE MF_TwoMoment_PositivityLimiter, ONLY: &
+    MF_TwoMoment_ApplyPositivityLimiter
   ! --- Local Modules ---
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
@@ -167,6 +168,18 @@ CONTAINS
                               1, MF_U(iLevel) % nComp(), 0 )
         END IF
 
+        IF( jS == iS - 1 )THEN
+
+
+          ! --- Apply Limiters ---
+
+
+          CALL MF_TwoMoment_ApplyPositivityLimiter &
+                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
+
+        END IF
+
+
       END DO ! jS = 1, iS - 1
 
       IF( ANY( a_IM(:,iS) .NE. 0.0_AR ) .OR. ( w_IM(iS) .NE. 0.0_AR ) )THEN
@@ -231,6 +244,8 @@ CONTAINS
 
       END DO
 
+          CALL MF_TwoMoment_ApplyPositivityLimiter &
+                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
     END IF
   END DO

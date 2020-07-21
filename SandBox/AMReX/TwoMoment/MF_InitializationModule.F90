@@ -732,18 +732,18 @@ print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
  
-              E = NodeCoordinate( MeshE, iZ1, iNodeE )   
+              E = NodeCoordinate( MeshE, iZ1, iNodeE ) 
               S = SQRT(1.0_AR+ uPF_K(iNodeX,iPF_V1))/SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1))
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                 !=1d-8
+                 =1d-8
                  != 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
-                  = S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
+                  != S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
                  ! = 0.5_AR
                   ! = 0.5_AR * ( 1.0_AR - Mu_0 ) / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                  != 0.999_AR * uPR_K( iNodeZ, iZ1, iPR_D, iS )
-                 !=0.0_AR 
-                 = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 =0.0_AR 
+                 != W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
                  != W * 0.5_AR
                  ! = 0.5_AR * ( 1.0_AR + Mu_0 ) * uPR_K(iNodeZ,iZ1,iPR_D,iS)
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &

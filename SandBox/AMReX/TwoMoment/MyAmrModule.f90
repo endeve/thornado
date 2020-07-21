@@ -72,6 +72,10 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
+  ! --- Positivity limiter ---
+  LOGICAL  :: UsePositivityLimiter
+  REAL(AR) :: Min_1, Min_2
+
 CONTAINS
 
   SUBROUTINE MyAmrInit
@@ -170,7 +174,15 @@ CONTAINS
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
 
-
+    ! --- Positivitiy limiter parameters PL.* ---
+    UsePositivityLimiter = .TRUE.
+    Min_1                = 1.0e-12_AR
+    Min_2                = 1.0e-12_AR
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
+      CALL PP % query( 'Min_1'               , Min_1                )
+      CALL PP % query( 'Min_2'               , Min_2                )
+    CALL amrex_parmparse_destroy( PP )
 
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
 
