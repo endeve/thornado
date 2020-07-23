@@ -1974,19 +1974,12 @@ CONTAINS
     CHARACTER(LEN=64) :: FileName
     INTEGER           :: nLines
 
-    LOGICAL               :: InitializeFromFile
     INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
     REAL(DP)              :: K, C_X, C_D, C_V, C_M, R, XX
     REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
 
-    InitializeFromFile = .TRUE.
-
     K = CentralPressure / CentralDensity**( Gamma_IDEAL )
 
-    WRITE(*,*)
-    WRITE(*,'(6x,A,L)') &
-      'InitializeFromFile:  ', &
-      InitializeFromFile
     WRITE(*,*)
     WRITE(*,'(6x,A,F5.3)') &
       'Adiabatic Gamma:     ', &
@@ -2020,102 +2013,98 @@ CONTAINS
             * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
             * CollapseTime**( Four - Three * Gamma_IDEAL )
 
-    IF( InitializeFromFile )THEN
+    FileName = 'YahilHomologousCollapse_Gm_130.dat'
 
-      FileName = 'YahilHomologousCollapse_Gm_130.dat'
+    ! --- https://stackoverflow.com/questions/30692424/
+    !     how-to-read-number-of-lines-in-fortran-90-from-a-text-file
+    nLines = 0
+    OPEN(100,FILE=TRIM(FileName))
+    READ(100,*)
+    DO
+      READ(100,*,END=10)
+      nLines = nLines + 1
+    END DO
+    10 CLOSE(100)
 
-      ! --- https://stackoverflow.com/questions/30692424/
-      !     how-to-read-number-of-lines-in-fortran-90-from-a-text-file
-      nLines = 0
-      OPEN(1,FILE=TRIM(FileName))
-      READ(1,*)
-      DO
-        READ(1,*,END=10)
-        nLines = nLines + 1
-      END DO
-      10 CLOSE(1)
+    ALLOCATE( X(nLines) )
+    ALLOCATE( D(nLines) )
+    ALLOCATE( V(nLines) )
+    ALLOCATE( M(nLines) )
 
-      ALLOCATE( X(nLines) )
-      ALLOCATE( D(nLines) )
-      ALLOCATE( V(nLines) )
-      ALLOCATE( M(nLines) )
+    OPEN(100,FILE=TRIM(FileName))
+    READ(100,*)
 
-      OPEN(1,FILE=TRIM(FileName))
-      READ(1,*)
+    DO iX1 = 1, nLines
 
-      DO iX1 = 1, nLines
+      READ(100,*) X(iX1), D(iX1), V(iX1), M(iX1)
 
-        READ(1,*) X(iX1), D(iX1), V(iX1), M(iX1)
+    END DO
 
-      END DO
+    CLOSE(100)
 
-      CLOSE(1)
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Mass:                ', &
+      M(nLines) * C_M / SolarMass, ' Msun'
+    WRITE(*,*)
 
-      WRITE(*,'(6x,A,ES10.3E3,A)') &
-        'Mass:                ', &
-        M(nLines) * C_M / SolarMass, ' Msun'
-      WRITE(*,*)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E1(1)
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E1(1)
+     DO iNodeX = 1, nDOFX
 
-       DO iNodeX = 1, nDOFX
+       iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-         iNodeX1 = NodeNumberTableX(1,iNodeX)
+       R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+       XX = C_X * R
 
-         R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-         XX = C_X * ( R / Centimeter )
+       iX_L = Locate( XX, X, nLines )
 
-         iX_L = Locate( XX, X, nLines )
+       uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+         = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                       D(iX_L), D(iX_L+1) )
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-           = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                         D(iX_L), D(iX_L+1) )
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+         = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                       V(iX_L), V(iX_L+1) )
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-           = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                         V(iX_L), V(iX_L+1) )
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+       uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+             / ( Gamma_IDEAL - One )
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-           = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
-               / ( Gamma_IDEAL - One )
+     END DO
 
-       END DO
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
-        CALL ComputePressureFromPrimitive_IDEAL &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
-                 uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
 
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(:,iX1,iX2,iX3,iAF_P) )
+    END DO
+    END DO
+    END DO
 
-      END DO
-      END DO
-      END DO
-
-      DEALLOCATE( M )
-      DEALLOCATE( V )
-      DEALLOCATE( D )
-      DEALLOCATE( X )
-
-    ELSE
-    END IF
+    DEALLOCATE( M )
+    DEALLOCATE( V )
+    DEALLOCATE( D )
+    DEALLOCATE( X )
 
   END SUBROUTINE InitializeFields_YahilCollapse_FromFile
+
 
   SUBROUTINE InitializeFields_YahilCollapse_FromScratch &
     ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )

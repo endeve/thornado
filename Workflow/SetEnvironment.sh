@@ -50,7 +50,7 @@ elif [[ $THORNADO_MACHINE == acf* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
-  module unload PE-intel PE-gnu 
+  module unload PE-intel PE-gnu
 
 elif [[ $THORNADO_MACHINE == acf* ]]; then
 
@@ -84,6 +84,14 @@ elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
 
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+elif [[ $THORNADO_MACHINE == jrober* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+  export POSEIDON_DIR=~/Poseidon
+  export PETSC_DIR=/usr/local/petsc/petsc-3.10.4
+  export PETSC_ARCH=/usr/local/petsc/petsc-3.10.4/arch-darwin-c-debug
 
 elif [[ $THORNADO_MACHINE == accre* ]]; then
 
@@ -187,12 +195,12 @@ elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
 
 elif [[ $THORNADO_MACHINE == acf_gnu ]]; then
 
-  echo 
+  echo
 
   module load PE-gnu
   module swap intel-mpi/2018.1.163 openmpi/3.0.0-gcc6.3.0
   module load hdf5
-  module load lapack 
+  module load lapack
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
@@ -224,6 +232,10 @@ elif [[ $THORNADO_MACHINE == kristopher ]]; then
   export POSEIDON_DIR=~/Desktop/Work/ORNL/poseidon
 
 elif [[ $THORNADO_MACHINE == sjdunham ]]; then
+
+  echo
+
+elif [[ $THORNADO_MACHINE == jrober ]]; then
 
   echo
 

@@ -46,3 +46,14 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   GravitySolutionModule_Newtonian_Poseidon.F90
+
+GravitySolutionModule_CFA_Poseidon.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryComputationModule.o \
+  GeometryFieldsModule.o \
+  UnitsModule.o \
+  GravitySolutionModule_CFA_Poseidon.F90
