@@ -1,36 +1,36 @@
 PROGRAM ApplicationDriver
 
-  USE KindModule,                                       ONLY: &
+  USE KindModule, ONLY: &
     DP,   &
     Zero, &
     One,  &
     Two,  &
     Pi,   &
     TwoPi
-  USE ProgramInitializationModule,                      ONLY: &
+  USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
-  USE ReferenceElementModuleX,                          ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
-  USE ReferenceElementModuleX_Lagrange,                 ONLY: &
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
-  USE EquationOfStateModule,                            ONLY: &
+  USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
-  USE ProgramHeaderModule,                              ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     iX_B0,  &
     iX_B1,  &
     iX_E0,  &
     iX_E1,  &
     nDimsX, &
     nDOFX
-  USE GeometryComputationModule,                        ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-  USE InitializationModule_Relativistic,                ONLY: &
+  USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
-  USE Euler_SlopeLimiterModule_Relativistic_IDEAL,      ONLY: &
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
     FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
@@ -38,14 +38,14 @@ PROGRAM ApplicationDriver
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
-  USE Euler_UtilitiesModule_Relativistic,               ONLY: &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
-  USE InputOutputModuleHDF,                             ONLY: &
+  USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF,  &
     WriteAccretionShockDiagnosticsHDF
-  USE FluidFieldsModule,                                ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
@@ -53,16 +53,20 @@ PROGRAM ApplicationDriver
     uPF, &
     uAF, &
     uDF
-  USE GeometryFieldsModule,                             ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     nGF, &
     uGF
-  USE Euler_dgDiscretizationModule,                     ONLY: &
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+    InitializeGravitySolver_CFA_Poseidon, &
+    FinalizeGravitySolver_CFA_Poseidon,   &
+    SolveGravity_CFA_Poseidon
+  USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE TimeSteppingModule_SSPRK,                         ONLY: &
+  USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
-  USE UnitsModule,                                      ONLY: &
+  USE UnitsModule, ONLY: &
     Kilometer,   &
     SolarMass,   &
     Second,      &
@@ -71,11 +75,11 @@ PROGRAM ApplicationDriver
     Gram,        &
     Erg,         &
     UnitsDisplay
-  USE Euler_TallyModule_Relativistic_IDEAL,             ONLY: &
+  USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
     FinalizeTally_Euler_Relativistic_IDEAL,   &
     ComputeTally_Euler_Relativistic_IDEAL
-  USE TimersModule_Euler,                               ONLY: &
+  USE TimersModule_Euler, ONLY: &
     TimeIt_Euler,            &
     InitializeTimers_Euler,  &
     FinalizeTimers_Euler,    &
@@ -86,6 +90,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_Finalize
   USE AccretionShockDiagnosticsModule, ONLY: &
     ComputeAccretionShockDiagnostics
+  USE Poseidon_UtilitiesModule, ONLY: &
+    ComputeSourceTerms_Poseidon
 
   IMPLICIT NONE
 
@@ -103,6 +109,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseTroubledCellIndicator
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: SelfGravity
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
@@ -115,6 +122,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
+  REAL(DP)      :: ZoomX(3)
 
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
@@ -137,10 +145,15 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
+  REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
+
   swX = [ 0, 0, 0 ]
   RestartFileNumber = -1
 
   t = 0.0_DP
+
+  SelfGravity = .FALSE.
+  ZoomX       = 1.0_DP
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -364,15 +377,17 @@ PROGRAM ApplicationDriver
 
     CASE( 'StaticTOV' )
 
+       SelfGravity = .TRUE.
+
        CoordinateSystem = 'SPHERICAL'
 
        Gamma = 2.0_DP
-       t_end = 1.0e+1 * Millisecond
-       bcX = [ 30, 0, 0 ]
+       t_end = 1.0e1_DP * Millisecond
+       bcX   = [ 30, 0, 0 ]
 
-       nX = [ 128, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-       xL = [ Zero, Zero, Zero  ]
+       nX = [ 128                 , 1   , 1     ]
+      swX = [ 1                   , 0   , 0     ]
+       xL = [ Zero                , Zero, Zero  ]
        xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
 
       WriteGF = .TRUE.
@@ -381,21 +396,24 @@ PROGRAM ApplicationDriver
 
     CASE( 'YahilCollapse' )
 
-       CoordinateSystem = 'SPHERICAL'
+      SelfGravity = .TRUE.
 
-       Gamma = 1.30_DP
-       t_end = CollapseTime - 0.5_DP * Millisecond
-       bcX = [ 30, 0, 0 ]
+      CoordinateSystem = 'SPHERICAL'
 
-       CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-       CentralPressure = 6.0e27_DP * Erg / Centimeter**3
-       CoreRadius      = 1.0e4_DP  * Kilometer
-       CollapseTime    = 1.50e2_DP * Millisecond
+      CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
+      CentralPressure = 6.0e27_DP * Erg / Centimeter**3
+      CoreRadius      = 1.0e5_DP  * Kilometer
+      CollapseTime    = 1.50e2_DP * Millisecond
 
-       nX = [ 256, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-       xL = [ Zero      , Zero, Zero  ]
-       xR = [ CoreRadius,  Pi , TwoPi ]
+      Gamma = 1.30_DP
+      t_end = CollapseTime - 0.5_DP * Millisecond
+      bcX = [ 30, 0, 0 ]
+
+      nX    = [ 256                 , 1     , 1      ]
+      swX   = [ 1                   , 0     , 0      ]
+      xL    = [ Zero                , Zero  , Zero   ]
+      xR    = [ CoreRadius          , Pi    , TwoPi  ]
+      ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
 
       WriteGF = .TRUE.
 
@@ -423,13 +441,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -468,6 +486,8 @@ PROGRAM ApplicationDriver
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -481,8 +501,20 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX &
+  IF( SelfGravity )THEN
+
+    ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3),1:5) )
+
+    CALL InitializeGravitySolver_CFA_Poseidon
+
+  ELSE
+
+    CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
+
+  END IF
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -545,9 +577,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
-!!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 1
+  iCycleW = 1; dt_wrt = -1.0d0
+!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -557,6 +589,16 @@ PROGRAM ApplicationDriver
 
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+  IF( SelfGravity )THEN
+
+    CALL ComputeSourceTerms_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+    CALL SolveGravity_CFA_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+  END IF
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -629,8 +671,20 @@ PROGRAM ApplicationDriver
 
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-    CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
+    IF( SelfGravity )THEN
+
+      CALL UpdateFluid_SSPRK &
+             ( t, dt, uGF, uCF, uDF, &
+               ComputeIncrement_Euler_DG_Explicit, &
+               SolveGravity_CFA_Poseidon )
+
+    ELSE
+
+      CALL UpdateFluid_SSPRK &
+             ( t, dt, uGF, uCF, uDF, &
+               ComputeIncrement_Euler_DG_Explicit )
+
+    END IF
 
     IF( .NOT. OPTIMIZE )THEN
 
@@ -703,6 +757,16 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+    IF( SelfGravity )THEN
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+    END IF
+
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -729,6 +793,14 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
+
+  IF( SelfGravity )THEN
+
+    DEALLOCATE( U_Poseidon )
+
+    CALL FinalizeGravitySolver_CFA_Poseidon
+
+  END IF
 
   CALL FinalizeEquationOfState
 
