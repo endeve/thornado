@@ -94,7 +94,6 @@ CONTAINS
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
     ! --- Initial Guess ---
-
     D     = N
     I_u_1 = G_d_1
     I_u_2 = G_d_2
@@ -125,7 +124,6 @@ CONTAINS
           - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-
     k = 0
     CONVERGED = .FALSE.
     DO WHILE( .NOT. CONVERGED .AND. k < MaxIterations )
@@ -380,7 +378,6 @@ CONTAINS
           - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-
     h_d_1 = I_d_1 / ( FF * D )
     h_d_2 = I_d_2 / ( FF * D )
     h_d_3 = I_d_3 / ( FF * D )

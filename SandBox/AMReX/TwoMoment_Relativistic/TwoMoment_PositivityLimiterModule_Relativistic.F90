@@ -5,30 +5,44 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
     SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nNodesZ, &
-    nDOFE, nDOFX
+    nDOFE, nDOFX, nNodesX
   USE ReferenceElementModule, ONLY: &
     nDOF_E, &
     nDOF_X1, &
     nDOF_X2, &
     nDOF_X3, &
     Weights_Q
+  USE ReferenceElementModuleX,          ONLY: &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3, &
+    WeightsX_q
   USE ReferenceElementModule_Lagrange, ONLY: &
     L_E_Dn,  L_E_Up, &
     L_X1_Dn, L_X1_Up, &
     L_X2_Dn, L_X2_Up, &
     L_X3_Dn, L_X3_Up
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    LX_X1_Dn, &
+    LX_X1_Up, &
+    LX_X2_Dn, &
+    LX_X2_Up, &
+    LX_X3_Dn, &
+    LX_X3_Up
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE GeometryFieldsModuleE, ONLY: &
     nGE, iGE_Ep2
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_SqrtGm
+    nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
+    iCF_E, iCF_NE
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -47,6 +61,12 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
   REAL(DP),   PARAMETER :: One_EPS = One - 1.0d1 * EPSILON( One )
   REAL(DP), ALLOCATABLE :: InterpMat(:,:)
 
+  INTEGER, PARAMETER    :: nPS_X = 7  ! Number of Positive Point Sets Euler
+  INTEGER               :: nPP_X(nPS_X) ! Number of Positive Points Per Set Euler
+  INTEGER               :: nPT_X      ! Total number of Positive Points Euler
+  INTEGER               :: N_X
+  REAL(DP), ALLOCATABLE :: InterpMat_X(:,:)
+
 CONTAINS
 
 
@@ -60,7 +80,7 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER :: i, iNodeZ, iOS
+    INTEGER :: i, iNodeZ, iNodeX, iOS, iOS_X, iDim
 
     IF( PRESENT( Min_1_Option ) )THEN
       Min_1 = Min_1_Option
@@ -119,23 +139,32 @@ CONTAINS
       END IF
 
     END DO
-
     nPT = SUM( nPP )
+
+
 
     ALLOCATE( InterpMat(nPT,nDOFZ) )
 
+
     InterpMat = Zero
+
     DO iNodeZ = 1, nDOFZ
 
+
       InterpMat(iNodeZ,iNodeZ) = One
+
 
       IF( SUM( nPP(2:3) ) > 0 )THEN
 
         iOS = nPP(1)
+
         InterpMat(iOS+1:iOS+nDOF_E,iNodeZ) = L_E_Dn(1:nDOF_E,iNodeZ)
 
+
         iOS = iOS + nPP(2)
+
         InterpMat(iOS+1:iOS+nDOF_E,iNodeZ) = L_E_Up(1:nDOF_E,iNodeZ)
+
 
       END IF
 
@@ -171,6 +200,72 @@ CONTAINS
 
     END DO
 
+    nPP_X(1:nPS_X) = 0
+    nPP_X(1)     = PRODUCT( nNodesX(1:3) )
+
+    DO iDim = 1, 3
+
+      IF( nNodesX(iDim) > 1 )THEN
+
+        nPP_X(2*iDim:2*iDim+1) &
+          = PRODUCT( nNodesX(1:3), MASK = [1,2,3] .NE. iDim )
+
+      END IF
+
+    END DO
+
+    nPT_X = SUM( nPP_X(1:nPS_X) )
+
+    ALLOCATE( InterpMat_X(nPT_X,nDOFX) )
+    InterpMat_X = Zero
+
+    DO iNodeX = 1, nDOFX
+
+
+      InterpMat_X(iNodeX,iNodeX) = One
+      IF( SUM( nPP_X(2:3) ) > 0 )THEN
+
+        ! --- X1 ---
+
+        iOS_X = nPP_X(1)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X1,iNodeX) = LX_X1_Dn(1:nDOFX_X1,iNodeX)
+
+        iOS_X = iOS_X + nPP_X(2)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X1,iNodeX) = LX_X1_Up(1:nDOFX_X1,iNodeX)
+
+      END IF
+
+      IF( SUM( nPP_X(4:5) ) > 0 )THEN
+
+        ! --- X2 ---
+
+        iOS_X = SUM( nPP_X(1:3) )
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X2,iNodeX) = LX_X2_Dn(1:nDOFX_X2,iNodeX)
+
+        iOS_X = iOS_X + nPP_X(4)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X2,iNodeX) = LX_X2_Up(1:nDOFX_X2,iNodeX)
+
+      END IF
+
+      IF( SUM( nPP_X(6:7) ) > 0 )THEN
+
+        ! --- X3 ---
+
+        iOS_X = SUM( nPP_X(1:5) )
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X3,iNodeX) = LX_X3_Dn(1:nDOFX_X3,iNodeX)
+
+        iOS_X = iOS_X + nPP_X(6)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X3,iNodeX) = LX_X3_Up(1:nDOFX_X3,iNodeX)
+
+      END IF
+
+
+    END DO
+
+
+
+
+
   END SUBROUTINE InitializePositivityLimiter_TwoMoment
 
 
@@ -203,7 +298,8 @@ CONTAINS
                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     LOGICAL  :: RecomputePointValues
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP, iP_X
+    INTEGER  :: iX_B0(3), iX_E0(3)
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
@@ -254,12 +350,97 @@ CONTAINS
                 G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                      nSpecies)
+    REAL(DP) :: D_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                D_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: S1_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                S1_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: S2_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                S2_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: S3_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                S3_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: E_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                E_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: NE_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                NE_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: DP_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 V1_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 V2_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 V3_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 EP_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 NEP_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: G_11_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                G_11_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: G_22_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                G_22_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: G_33_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                G_33_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
     PRINT*, "      ApplyPositivityLimiter_TwoMoment"
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
+
+
+    iX_E0(1) = iZ_E0(2)
+    iX_E0(2) = iZ_E0(3)
+    iX_E0(3) = iZ_E0(4)
+
+    iX_B0(1) = iZ_B0(2)
+    iX_B0(2) = iZ_B0(3)
+    iX_B0(3) = iZ_B0(4)
+
+    N_X = PRODUCT( iX_E0 - iX_B0 + 1 )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -299,11 +480,30 @@ CONTAINS
     END DO
     END DO
 
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-    CALL ComputePointValues( iZ_B0, iZ_E0, N_Q , N_P  )
-    CALL ComputePointValues( iZ_B0, iZ_E0, G1_Q, G1_P )
-    CALL ComputePointValues( iZ_B0, iZ_E0, G2_Q, G2_P )
-    CALL ComputePointValues( iZ_B0, iZ_E0, G3_Q, G3_P )
+      D_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_D)
+      S1_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_S1)
+      S2_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_S2)
+      S3_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_S3)
+      E_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_E)
+      NE_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_NE)
+
+      G_11_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
+      G_22_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
+      G_33_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
+
+    END DO
+    END DO
+    END DO
+
+
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G3_Q, G3_P )
 
 
 
@@ -360,11 +560,53 @@ CONTAINS
 
     IF( RecomputePointValues )THEN
 
-      CALL ComputePointValues( iZ_B0, iZ_E0, N_Q , N_P  )
+      CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
 
     END IF
 
     ! --- Ensure Positive "Gamma" ---
+
+    CALL ComputePointValuesX( iX_B0, iX_E0, D_Q , D_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, S1_Q , S1_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, S2_Q , S2_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, S3_Q , S3_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, E_Q , E_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, NE_Q , NE_P  )
+
+
+    CALL ComputePointValuesX( iX_B0, iX_E0, G_11_Q , G_11_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, G_22_Q , G_22_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, G_33_Q , G_33_P  )
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iP = 1, nPT_X
+
+        CALL ComputePrimitive_Euler_Relativistic &
+                 (D_P(iP,iZ2,iZ3,iZ4), &
+                 S1_P(iP,iZ2,iZ3,iZ4), &
+                 S2_P(iP,iZ2,iZ3,iZ4), &
+                 S3_P(iP,iZ2,iZ3,iZ4), &
+                 E_P(iP,iZ2,iZ3,iZ4), &
+                 NE_P(iP,iZ2,iZ3,iZ4), &
+                 DP_P(iP,iZ2,iZ3,iZ4), &
+                 V1_P(iP,iZ2,iZ3,iZ4), &
+                 V2_P(iP,iZ2,iZ3,iZ4), &
+                 V3_P(iP,iZ2,iZ3,iZ4), &
+                 EP_P(iP,iZ2,iZ3,iZ4), &
+                 NEP_P(iP,iZ2,iZ3,iZ4), &
+                 G_11_P(iP,iZ2,iZ3,iZ4), &
+                 G_22_P(iP,iZ2,iZ3,iZ4), &
+                 G_33_P(iP,iZ2,iZ3,iZ4) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
 
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -377,34 +619,42 @@ CONTAINS
 
       DO iP = 1, nPT
 
+        CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
+
         Gamma &
           = GammaFun &
               ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
                 G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
                 G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS) )
+                G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                 V1_P(iP_X,iZ2,iZ3,iZ4), &
+                 V2_P(iP_X,iZ2,iZ3,iZ4), &
+                 V3_P(iP_X,iZ2,iZ3,iZ4), &
+                 G_11_P(iP_X,iZ2,iZ3,iZ4), &
+                 G_22_P(iP_X,iZ2,iZ3,iZ4), &
+                 G_33_P(iP_X,iZ2,iZ3,iZ4) )
 
         Gamma_Min = MIN( Gamma, Gamma_Min )
 
         IF( Gamma_Min < Min_2 )THEN
 
-          CALL SolveTheta_Bisection &
-                 ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                   G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                   G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                   G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                   N_K (   iZ1,iZ2,iZ3,iZ4,iS), &
-                   G1_K(   iZ1,iZ2,iZ3,iZ4,iS), &
-                   G2_K(   iZ1,iZ2,iZ3,iZ4,iS), &
-                   G3_K(   iZ1,iZ2,iZ3,iZ4,iS), &
-                   Theta_P )
-
-          Theta_2 = MIN( Theta_2, Theta_P )
+!          CALL SolveTheta_Bisection &
+!                 ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                   G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                   G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                   G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                   N_K (   iZ1,iZ2,iZ3,iZ4,iS), &
+!                   G1_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+!                   G2_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+!                   G3_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+!                   Theta_P )
+!
+!          Theta_2 = MIN( Theta_2, Theta_P )
+           Theta_2 = 0.0_DP
 
         END IF
 
       END DO
-
       IF( Gamma_Min < Min_2 )THEN
 
         ! --- Limit Towards Cell Average ---
@@ -454,8 +704,24 @@ CONTAINS
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
+  SUBROUTINE ComputePointValuesX( iX_B0, iX_E0, U_Q, U_P )
 
-  SUBROUTINE ComputePointValues( iZ_B0, iZ_E0, U_Q, U_P )
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3)
+    REAL(DP), INTENT(in)  :: &
+      U_Q(nDOFX,iX_B0(1):iX_E0(1), &
+                iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: &
+      U_P(nDOFX,iX_B0(1):iX_E0(1), &
+                iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nPT_X, N_X, nDOFX, One, InterpMat_X, nPT_X, &
+             U_Q, nDOFX, Zero, U_P, nPT_X )
+
+  END SUBROUTINE ComputePointValuesX
+
+  SUBROUTINE ComputePointValuesZ( iZ_B0, iZ_E0, U_Q, U_P )
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4)
@@ -470,7 +736,7 @@ CONTAINS
            ( 'N', 'N', nPT, N_R, nDOFZ, One, InterpMat, nPT, &
              U_Q, nDOFZ, Zero, U_P, nPT )
 
-  END SUBROUTINE ComputePointValues
+  END SUBROUTINE ComputePointValuesZ
 
 
   SUBROUTINE ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q, U_K )
@@ -509,7 +775,7 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage
 
 
-  REAL(DP) FUNCTION GammaFun( N, G1, G2, G3 )
+  REAL(DP) FUNCTION GammaFun( N, G1, G2, G3, V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -517,10 +783,16 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: N, G1, G2, G3
+    REAL(DP), INTENT(in) :: N, G1, G2, G3, V1, V2 ,V3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP) :: G
 
-    GammaFun = N - SQRT( G1**2 + G2**2 + G3**2 )
-
+    G = Gm_dd_11 * G1**2 + Gm_dd_22 * G2**2 + Gm_dd_33 * G3**2 &
+      - ( V1**2 * Gm_dd_11**2 * G1**2 + V2**2 * Gm_dd_22**2 * G2**2 + V3**2 * Gm_dd_33**2 * G3**2 ) &
+      - 2.0_DP * ( V1 * V2 * Gm_dd_11 * Gm_dd_22 * G1 * G2 + V1 * V3 * Gm_dd_11 * Gm_dd_33 * G1 * G3 &
+      + V2 * V3 * Gm_dd_22 * Gm_dd_33 * G2 * G3 )
+    G = SQRT(G)  
+   
+    GammaFun = N - G 
     RETURN
   END FUNCTION GammaFun
 
@@ -547,10 +819,10 @@ CONTAINS
     REAL(DP) :: f_a, f_b, f_c
 
     x_a = Zero
-    f_a = GammaFun( N_K, G1_K, G2_K, G3_K ) - Min_2
+!    f_a = GammaFun( N_K, G1_K, G2_K, G3_K ) - Min_2
 
     x_b = One
-    f_b = GammaFun( N_P, G1_P, G2_P, G3_P ) - Min_2
+!    f_b = GammaFun( N_P, G1_P, G2_P, G3_P ) - Min_2
 
     dx = One
 
@@ -563,12 +835,12 @@ CONTAINS
       dx = Half * dx
       x_c = x_a + dx
 
-      f_c = GammaFun &
-              ( x_c * N_P  + ( One - x_c ) * N_K,  &
-                x_c * G1_P + ( One - x_c ) * G1_K, &
-                x_c * G2_P + ( One - x_c ) * G2_K, &
-                x_c * G3_P + ( One - x_c ) * G3_K ) - Min_2
-
+!      f_c = GammaFun &
+!              ( x_c * N_P  + ( One - x_c ) * N_K,  &
+!                x_c * G1_P + ( One - x_c ) * G1_K, &
+!                x_c * G2_P + ( One - x_c ) * G2_K, &
+!                x_c * G3_P + ( One - x_c ) * G3_K ) - Min_2
+!
       IF( f_a * f_c < Zero )THEN
 
         x_b = x_c
@@ -593,5 +865,40 @@ CONTAINS
 
   END SUBROUTINE SolveTheta_Bisection
 
+  SUBROUTINE PointsZtoPointsX( nNodes, iPT_Z, iPT_X )
+
+
+    INTEGER, INTENT(in)  :: nNodes, iPT_Z
+    INTEGER, INTENT(out) :: iPT_X
+
+    IF (nNodes .EQ. 2) THEN
+      
+      IF(iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 10) THEN
+        iPT_X = 1
+      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 7) THEN
+        iPT_X = 2      
+      ELSE IF(iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 8) THEN
+        iPT_X = 3
+      ELSE IF(iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 12) THEN
+        iPT_X = 4
+      END IF
+
+    ELSE IF(nNodes .EQ. 3) THEN
+
+      IF(iPT_Z .EQ. 16 .OR. iPT_Z .EQ. 17 .OR. iPT_Z .EQ. 18) THEN
+        iPT_X = 1
+      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 10 .OR. iPT_Z .EQ. 13) THEN
+        iPT_X = 2      
+      ELSE IF(iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 14) THEN
+        iPT_X = 3
+      ELSE IF(iPT_Z .EQ. 7 .OR. iPT_Z .EQ. 8 .OR. iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 12 .OR. iPT_Z .EQ. 15) THEN
+        iPT_X = 4
+      ELSE IF(iPT_Z .EQ. 19 .OR. iPT_Z .EQ. 20 .OR. iPT_Z .EQ. 21) THEN
+        iPT_X = 5
+      END IF
+
+    END IF
+
+  END SUBROUTINE
 
 END MODULE TwoMoment_PositivityLimiterModule_Relativistic

@@ -1068,7 +1068,6 @@ CONTAINS
     DO iCR = 1, nCR
 
       DO iNodeZ = 1, nDOFZ
-
         uCR_K(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
           = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
       END DO
