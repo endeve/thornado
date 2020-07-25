@@ -509,6 +509,14 @@ CONTAINS
     REAL(DP) :: EL, F_EL, ER, F_ER, a2, a1, a0
     REAL(DP) :: E_HLL, S_HLL, FE_HLL, FS_HLL
 
+#if defined HYDRO_RIEMANN_SOLVER_HLL
+
+    AlphaMiddle_Euler_Relativistic = 1.0e1_DP
+
+    RETURN
+
+#endif
+
     EL   = tauL + DL
     F_EL = F_tauL + F_DL
     ER   = tauR + DR
