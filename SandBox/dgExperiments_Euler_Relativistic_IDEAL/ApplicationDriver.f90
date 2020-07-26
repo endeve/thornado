@@ -52,7 +52,8 @@ PROGRAM ApplicationDriver
     uCF, &
     uPF, &
     uAF, &
-    uDF
+    uDF, &
+    iPF_D
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     uGF
@@ -103,7 +104,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
-  LOGICAL       :: SuppressTally = .TRUE.
+  LOGICAL       :: SuppressTally = .FALSE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -400,8 +401,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-      CentralPressure = 6.0e27_DP * Erg / Centimeter**3
+      CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
+      CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
       CoreRadius      = 1.0e5_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
 
@@ -462,7 +463,7 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.03_DP
+  LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
@@ -505,7 +506,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:5) )
+                                 iX_B0(3):iX_E0(3),1:7) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
@@ -573,13 +574,15 @@ PROGRAM ApplicationDriver
 
   IF( RestartFileNumber .GE. 0 )THEN
 
-    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
   END IF
 
-  iCycleD = 1
-  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 10
+!!$  iCycleW = 1; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -627,10 +630,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           SuppressTally_Option = SuppressTally )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF, uCF, SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -721,27 +722,33 @@ PROGRAM ApplicationDriver
         CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
         CALL ComputeTally_Euler_Relativistic_IDEAL &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
         wrt = .FALSE.
 
       END IF
     END IF
 
-!!$    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-!!$
-!!$      CALL ComputeFromConserved_Euler_Relativistic &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!!$
-!!$      CALL ComputeAccretionShockDiagnostics &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-!!$
-!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-!!$
-!!$    END IF
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
+    END IF
+
+    IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) ) EXIT
+
+    END IF
 
   END DO
 
@@ -775,10 +782,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
@@ -814,11 +818,17 @@ PROGRAM ApplicationDriver
   WRITE(*,'(2x,A)') 'git info'
   WRITE(*,'(2x,A)') '--------'
   WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
   WRITE(*,'(2x,A)') 'git describe --tags:'
   CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
   CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
   WRITE(*,*)
 
 END PROGRAM ApplicationDriver

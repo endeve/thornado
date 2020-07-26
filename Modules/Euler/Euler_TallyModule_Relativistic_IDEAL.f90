@@ -1,22 +1,25 @@
 MODULE Euler_TallyModule_Relativistic_IDEAL
 
-  USE KindModule,                         ONLY: &
-    DP, &
-    Zero
-  USE UnitsModule,                        ONLY: &
+  USE KindModule, ONLY: &
+    DP,   &
+    Zero, &
+    Two,  &
+    Pi
+  USE UnitsModule, ONLY: &
     UnitsDisplay
-  USE ProgramHeaderModule,                ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     nDOFX
-  USE ReferenceElementModuleX,            ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
-  USE MeshModule,                         ONLY: &
+  USE MeshModule, ONLY: &
     MeshX
-  USE GeometryFieldsModule,               ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm
-  USE FluidFieldsModule,                  ONLY: &
+    iGF_SqrtGm,   &
+    iGF_Psi
+  USE FluidFieldsModule, ONLY: &
     nCF,    &
     iCF_D,  &
     iCF_S1, &
@@ -33,7 +36,7 @@ MODULE Euler_TallyModule_Relativistic_IDEAL
     iPF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
-  USE EquationOfStateModule,              ONLY: &
+  USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
 
   IMPLICIT NONE
@@ -44,24 +47,25 @@ MODULE Euler_TallyModule_Relativistic_IDEAL
   PUBLIC :: ComputeTally_Euler_Relativistic_IDEAL
 
   LOGICAL               :: SuppressTally
-  CHARACTER(256)        :: TallyFileName
+  CHARACTER(256)        :: TallyFileName, FMT
   INTEGER               :: nTallies
-  INTEGER               :: iTally_Pres
-  REAL(DP), ALLOCATABLE :: EulerTally(:,:)
+  INTEGER               :: iTally_Eb ! baryonic mass
+  INTEGER               :: iTally_Eg ! gravitational mass
+  REAL(DP), ALLOCATABLE :: EulerTally(:)
 
 
 CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, G, U, SuppressTally_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option )
 
     INTEGER,  INTENT(in)           :: &
-      iX_B0(3), iX_E0(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)           :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
 
@@ -73,27 +77,22 @@ CONTAINS
 
     IF( SuppressTally ) RETURN
 
-    nTallies    = nCF + 1
-    iTally_Pres = nCF + 1
+    iTally_Eb = nCF + 1
+    iTally_Eg = nCF + 2
+    nTallies  = nCF + 2
 
-    ALLOCATE( EulerTally(1:nTallies,0:1) )
+    ALLOCATE( EulerTally(1:nTallies) )
+
+    WRITE(FMT,'(A,I2.2,A)') '(',  nTallies, 'ES25.16E3,1x)'
 
     TallyFileName = '../Output/.EulerTally.dat'
 
     OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
 
-    WRITE( FileUnit, '(7(A20,x))' ) &
-      'Time', 'D', 'S1', 'S2', 'S3', 'tau', 'P'
+    WRITE(FileUnit,'(A)') &
+      'Time, D, S1, S2, S3, tau, BaryonicMass, GravitationalMass'
 
     CLOSE( FileUnit )
-
-    CALL ComputeTally_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, G, U, Time = Zero, &
-             iState_Option = 0, DisplayTally_Option = .FALSE. )
-
-    CALL ComputeTally_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, G, U, Time = Zero, &
-             iState_Option = 1, DisplayTally_Option = .TRUE. )
 
   END SUBROUTINE InitializeTally_Euler_Relativistic_IDEAL
 
@@ -107,71 +106,44 @@ CONTAINS
 
 
   SUBROUTINE ComputeTally_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time )
 
     INTEGER,  INTENT(in) :: &
-      iX_B0(3), iX_E0(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in) :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
       Time
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iState_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      DisplayTally_Option
 
-    LOGICAL  :: DisplayTally
-    INTEGER  :: iState, iCF
-    INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: P(nDOFX,nPF), Pressure(nDOFX)
+    INTEGER  :: iCF, iX1, iX2, iX3
+    REAL(DP) :: P(nDOFX,nPF), d3X
 
     IF( SuppressTally ) RETURN
-
-    IF( PRESENT( iState_Option ) )THEN
-      iState = iState_Option
-    ELSE
-      iState = 1
-    END IF
-
-    IF( PRESENT( DisplayTally_Option ) )THEN
-      DisplayTally = DisplayTally_Option
-    ELSE
-      DisplayTally = .FALSE.
-    END IF
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width(iX_B0(1):iX_E0(1)), &
         dX2 => MeshX(2) % Width(iX_B0(2):iX_E0(2)), &
         dX3 => MeshX(3) % Width(iX_B0(3):iX_E0(3)) )
 
-    EulerTally(:,iState) = Zero
-
-    ! --- Conserved Fluid ---
-
-    DO iCF = 1, nCF
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-
-        EulerTally(iCF,iState) &
-          = EulerTally(iCF,iState) &
-              + SUM( WeightsX_q(:) &
-                       * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                       * U(:,iX1,iX2,iX3,iCF) ) &
-                  * dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-      END DO
-      END DO
-      END DO
-
-    END DO
+    EulerTally = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3) ! Hack for 1D spherical
+
+      DO iCF = 1, nCF
+
+        EulerTally(iCF) &
+          = EulerTally(iCF) &
+              + SUM( WeightsX_q(:) &
+                       * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+                       * U(:,iX1,iX2,iX3,iCF) ) &
+                  * d3X
+      END DO
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( U(:,iX1,iX2,iX3,iCF_D) , U(:,iX1,iX2,iX3,iCF_S1), &
@@ -183,17 +155,21 @@ CONTAINS
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive &
-             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure )
+      ! --- Baryonic Mass ---
 
-      ! --- Pressure ---
+      EulerTally(iTally_Eb) &
+        = EulerTally(iTally_Eb) &
+            + d3X * SUM( WeightsX_q(:) &
+                     * P(:,iPF_D) &
+                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
-      EulerTally(iTally_Pres,iState) &
-        = EulerTally(iTally_Pres,iState) &
-            + SUM( WeightsX_q(:) &
-                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                     * Pressure(:) ) &
-                * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      ! --- Gravitational Mass ---
+
+      EulerTally(iTally_Eg) &
+        = EulerTally(iTally_Eg) &
+            + d3X * SUM( WeightsX_q(:) &
+                     * ( P(:,iPF_D) + P(:,iPF_E) ) &
+                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) / G(:,iX1,iX2,iX3,iGF_Psi) )
 
     END DO
     END DO
@@ -201,11 +177,7 @@ CONTAINS
 
     END ASSOCIATE ! dX1, etc.
 
-    IF( DisplayTally )THEN
-
-      CALL WriteTally_Euler( Time )
-
-    END IF
+    CALL WriteTally_Euler( Time )
 
   END SUBROUTINE ComputeTally_Euler_Relativistic_IDEAL
 
@@ -218,16 +190,18 @@ CONTAINS
 
     ASSOCIATE( U => UnitsDisplay )
 
-    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), POSITION='APPEND', ACTION='WRITE' )
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
 
-    WRITE( FileUnit, '(7(ES20.12,x))' ) &
-      Time                      / U % TimeUnit, &
-      EulerTally(iCF_D,      1) / U % MassUnit, &
-      EulerTally(iCF_S1,     1) / U % MomentumUnit, &
-      EulerTally(iCF_S2,     1) / U % MomentumUnit, &
-      EulerTally(iCF_S3,     1) / U % MomentumUnit, &
-      EulerTally(iCF_E,      1) / U % EnergyGlobalUnit, &
-      EulerTally(iTally_Pres,1) / U % PressureUnit
+    WRITE(FileUnit,FMT) &
+      Time                  / U % TimeUnit,         &
+      EulerTally(iCF_D    ) / U % MassUnit,         &
+      EulerTally(iCF_S1   ) / U % MomentumUnit,     &
+      EulerTally(iCF_S2   ) / U % MomentumUnit,     &
+      EulerTally(iCF_S3   ) / U % MomentumUnit,     &
+      EulerTally(iCF_E    ) / U % EnergyGlobalUnit, &
+      EulerTally(iTally_Eb) / U % MassUnit,         &
+      EulerTally(iTally_Eg) / U % MassUnit
 
     CLOSE( FileUnit )
 
