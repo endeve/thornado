@@ -191,7 +191,7 @@ CONTAINS
     ! --- E, S, S^1, S^2, S^3 ---
     REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),5)
+                                 iX_B0(3):iX_E0(3),7)
 
     LOGICAL :: SolveGravity
     LOGICAL :: DEBUG = .FALSE.

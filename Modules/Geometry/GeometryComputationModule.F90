@@ -25,6 +25,8 @@ MODULE GeometryComputationModule
 
   PUBLIC :: ComputeGeometryX
   PUBLIC :: ComputeGeometryX_FromScaleFactors
+  PUBLIC :: LapseFunction
+  PUBLIC :: ConformalFactor
 
 
 CONTAINS

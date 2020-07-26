@@ -92,6 +92,12 @@ CONTAINS
        U_Poseidon(:,iX1,iX2,iX3,5) &
          = U(:,iX1,iX2,iX3,iCF_S3) / G(:,iX1,iX2,iX3,iGF_Gm_dd_33)
 
+       U_Poseidon(:,iX1,iX2,iX3,6) &
+         = uPF(:,iPF_D)
+
+       U_Poseidon(:,iX1,iX2,iX3,7) &
+         = uPF(:,iPF_E)
+
      END DO
      END DO
      END DO
