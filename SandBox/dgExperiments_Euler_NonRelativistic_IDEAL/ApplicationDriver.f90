@@ -534,11 +534,17 @@ PROGRAM ApplicationDriver
   WRITE(*,'(2x,A)') 'git info'
   WRITE(*,'(2x,A)') '--------'
   WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
   WRITE(*,'(2x,A)') 'git describe --tags:'
   CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
   CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
   WRITE(*,*)
 
 END PROGRAM ApplicationDriver
