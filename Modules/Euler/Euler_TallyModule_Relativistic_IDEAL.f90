@@ -85,7 +85,7 @@ CONTAINS
 
     WRITE(FMT,'(A,I2.2,A)') '(',  nTallies, 'ES25.16E3,1x)'
 
-    TallyFileName = '../Output/.EulerTally.dat'
+    TallyFileName = '../Output/EulerTally.dat'
 
     OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
 
