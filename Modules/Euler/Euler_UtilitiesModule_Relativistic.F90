@@ -539,11 +539,11 @@ CONTAINS
     IF     ( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) &
             .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
 
-      STOP 'AlphaMiddle is undefined'
+      CALL DescribeError_Euler( 09 )
 
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) )THEN
 
-      STOP 'AlphaMiddle is undefined'
+      CALL DescribeError_Euler( 09, 'a0 < 0' )
 
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
 
@@ -1140,7 +1140,7 @@ CONTAINS
         'za, zb = ', za, zb
       WRITE(*,'(8x,A,2ES15.6E3)') &
         'fa, fb = ', fa, fb
-      STOP
+      CALL DescribeError_Euler( 08 )
 
     END IF
 

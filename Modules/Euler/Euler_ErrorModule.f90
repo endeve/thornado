@@ -128,9 +128,9 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_UtilitiesModule_Relativistic'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ComputePrimitive_Scalar'
+            'SUBROUTINE: SolveZ_Bisection'
            WRITE(*,'(2x,A)') &
-            'q < 0'
+            'No Root in Interval'
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
@@ -142,9 +142,9 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_UtilitiesModule_Relativistic'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ComputePrimitive_Vector'
+            'FUNCTION: AlphaMiddle_Euler_Relativistic'
            WRITE(*,'(2x,A)') &
-            'q < 0'
+            'AlphaMiddle Undefined'
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
