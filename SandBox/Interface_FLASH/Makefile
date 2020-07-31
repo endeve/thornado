@@ -75,7 +75,7 @@ OBJS = \
        EquationOfStateModule_TABLE.o \
        EquationOfStateModule_IDEAL.o \
        TwoMoment_ClosureModule.o \
-       TwoMoment_PositivityLimiterModule.o \
+       TwoMoment_PositivityLimiterModule_Old.o \
        TwoMoment_DiscretizationModule_Streaming.o \
        TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
        TwoMoment_NeutrinoMatterSolverModule.o \
@@ -132,7 +132,7 @@ TimeSteppingModule_Flash.o: \
   RadiationFieldsModule.o \
   TwoMoment_DiscretizationModule_Streaming.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
-  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_PositivityLimiterModule_Old.o \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
@@ -164,7 +164,7 @@ ThornadoInitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_PositivityLimiterModule_Old.o \
   TwoMoment_MeshRefinementModule.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   ThornadoInitializationModule.F90
