@@ -62,6 +62,9 @@ MODULE InitializationModule_Relativistic
     iCF_Ne, &
     uAF,    &
     iAF_P
+  USE Euler_BoundaryConditionsModule,     ONLY: &
+    ExpD, &
+    ExpE
   USE EquationOfStateModule_IDEAL,        ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
@@ -1431,6 +1434,11 @@ CONTAINS
     REAL(DP) :: Psi  (1:nNodesX(1),iX_B1(1):iX_E1(1))
     LOGICAL  :: FirstPreShockElement = .FALSE.
 
+    INTEGER, PARAMETER :: nX_LeastSquares = 5
+    REAL(DP)           :: lnR(nX_LeastSquares,nNodesX(1)), &
+                          lnD(nX_LeastSquares,nNodesX(1)), &
+                          lnE(nX_LeastSquares,nNodesX(1))
+
     ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
 
     Mdot = AccretionRate
@@ -1682,9 +1690,52 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
                uAF(:,iX1,iX2,iX3,iAF_P) )
 
+      IF( iX1 .LT. nX_LeastSquares+1 .AND. iX1 .GT. 0 )THEN
+
+        DO iNodeX1 = 1, nNodesX(1)
+
+          lnD(iX1,iNodeX1) = LOG( uCF(iNodeX1,iX1,iX2,iX3,iCF_D) )
+          lnE(iX1,iNodeX1) = LOG( uCF(iNodeX1,iX1,iX2,iX3,iCF_E) )
+
+        END DO
+
+      END IF
+
     END DO
     END DO
     END DO
+
+    DO iX1 = 1, nX_LeastSquares
+
+      DO iNodeX1 = 1, nNodesX(1)
+
+        lnR(iX1,iNodeX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNodeX1 ) )
+
+      END DO
+
+    END DO
+
+    ! --- Expression for exponents from:
+    !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
+
+    ExpD = ( nX_LeastSquares * nNodesX(1) * SUM( lnR * lnD ) &
+               - SUM( lnR ) * SUM( lnD ) ) &
+             / ( nX_LeastSquares * nNodesX(1) * SUM( lnR**2 ) &
+               - SUM( lnR )**2 )
+    ExpE = ( nX_LeastSquares * nNodesX(1) * SUM( lnR * lnE ) &
+               - SUM( lnR ) * SUM( lnE ) ) &
+             / ( nX_LeastSquares * nNodesX(1) * SUM( lnR**2 ) &
+               - SUM( lnR )**2 )
+
+    WRITE(*,'(6x,A,I2.2)') &
+      'nX_LeastSquares: ', &
+      nX_LeastSquares
+    WRITE(*,'(6x,A,F9.6)') &
+      'ExpD:            ', &
+      ExpD
+    WRITE(*,'(6x,A,F9.6)') &
+      'ExpE:            ', &
+      ExpE
 
   END SUBROUTINE InitializeFields_StandingAccretionShock
 
