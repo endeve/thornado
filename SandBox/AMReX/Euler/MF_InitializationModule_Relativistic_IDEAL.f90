@@ -2137,10 +2137,10 @@ CONTAINS
       WRITE(*,'(6x,A,I2.2)') &
         'nX_LeastSquares: ', &
         nX_LeastSquares
-      WRITE(*,'(6x,A,F9.6)') &
+      WRITE(*,'(6x,A,F8.6)') &
         'ExpD:            ', &
         ExpD
-      WRITE(*,'(6x,A,F9.6)') &
+      WRITE(*,'(6x,A,F8.6)') &
         'ExpE:            ', &
         ExpE
 
@@ -2204,10 +2204,10 @@ CONTAINS
     ! --- Expression for exponents from:
     !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
 
-    ExpD = ( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
+    ExpD = -( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
              / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
 
-    ExpE = ( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
+    ExpE = -( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
              / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
 
     DO iDim = 1, 3

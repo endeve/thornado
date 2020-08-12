@@ -1718,11 +1718,11 @@ CONTAINS
     ! --- Expression for exponents from:
     !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
 
-    ExpD = ( nX_LeastSquares * nNodesX(1) * SUM( lnR * lnD ) &
+    ExpD = -( nX_LeastSquares * nNodesX(1) * SUM( lnR * lnD ) &
                - SUM( lnR ) * SUM( lnD ) ) &
              / ( nX_LeastSquares * nNodesX(1) * SUM( lnR**2 ) &
                - SUM( lnR )**2 )
-    ExpE = ( nX_LeastSquares * nNodesX(1) * SUM( lnR * lnE ) &
+    ExpE = -( nX_LeastSquares * nNodesX(1) * SUM( lnR * lnE ) &
                - SUM( lnR ) * SUM( lnE ) ) &
              / ( nX_LeastSquares * nNodesX(1) * SUM( lnR**2 ) &
                - SUM( lnR )**2 )
@@ -1730,10 +1730,10 @@ CONTAINS
     WRITE(*,'(6x,A,I2.2)') &
       'nX_LeastSquares: ', &
       nX_LeastSquares
-    WRITE(*,'(6x,A,F9.6)') &
+    WRITE(*,'(6x,A,F8.6)') &
       'ExpD:            ', &
       ExpD
-    WRITE(*,'(6x,A,F9.6)') &
+    WRITE(*,'(6x,A,F8.6)') &
       'ExpE:            ', &
       ExpE
 
