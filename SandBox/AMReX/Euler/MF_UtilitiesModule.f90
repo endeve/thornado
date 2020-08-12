@@ -13,9 +13,10 @@ MODULE MF_UtilitiesModule
   USE amrex_geometry_module,             ONLY: &
     amrex_geometry
   USE amrex_multifab_module,             ONLY: &
-    amrex_multifab, &
-    amrex_mfiter,   &
-    amrex_mfiter_build
+    amrex_multifab,     &
+    amrex_mfiter,       &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
 
   ! --- thornado Modules ---
 
@@ -79,6 +80,14 @@ MODULE MF_UtilitiesModule
   PUBLIC :: ShowVariableFromMultiFab
   PUBLIC :: WriteNodalDataToFile_SAS
   PUBLIC :: WriteNodalDataToFile
+  PUBLIC :: CombineGridData
+
+  INTERFACE CombineGridData
+    MODULE PROCEDURE CombineGridData1D
+    MODULE PROCEDURE CombineGridData3D
+  END INTERFACE CombineGridData
+
+  REAL(AR), PARAMETER, PUBLIC :: Zero = 0.0_AR
 
 
 CONTAINS
@@ -179,6 +188,8 @@ CONTAINS
         END DO
 
       END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
 
@@ -299,6 +310,8 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
       END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
 
@@ -531,6 +544,8 @@ CONTAINS
 
       END DO
 
+      CALL amrex_mfiter_destroy( MFI )
+
     END DO
 
     ! --- Combine data from all processes ---
@@ -701,6 +716,160 @@ CONTAINS
     DEALLOCATE( G )
 
   END SUBROUTINE WriteNodalDataToFile
+
+
+  SUBROUTINE CombineGridData1D( MF, nF, iField, U )
+
+    TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
+    INTEGER,              INTENT(in)  :: nF, iField
+    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(AR), CONTIGUOUS, POINTER :: U_P(:,:,:,:)
+    REAL(AR)                      :: U_K(nDOFX,nF)
+
+    REAL(AR) :: U0(nDOFX,1-swX(1):nX(1)+swX(1),0:nLevels-1)
+
+    INTEGER  :: iNodeX, iX1, iLevel, iX_B(3), iX_E(3), lo(4), hi(4)
+
+    U0 = Zero
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        U_P => MF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo = LBOUND( U_P )
+        hi = UBOUND( U_P )
+
+        iX_B = BX % lo
+        iX_E = BX % hi
+
+        ! -- Get physical ghost cells right ---
+
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B(1) - swX(1)
+        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E(1) + swX(1)
+
+        DO iX1 = iX_B(1), iX_E(1)
+
+          U_K = RESHAPE( U_P(iX1,iX_B(2),iX_B(3),lo(4):hi(4)), [ nDOFX, nF ] )
+
+          U0(:,iX1,iLevel) = U_K(1:nNodesX(1),iField)
+
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    ! --- Combine data from different grids ---
+
+    DO iX1 = 1-swX(1), nX(1)+swX(1)
+
+      DO iNodeX = 1, nNodesX(1)
+
+        CALL amrex_parallel_reduce_sum( U0(iNodeX,iX1,:), nLevels )
+
+        U(iNodeX,iX1) = U0(iNodeX,iX1,0)
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE CombineGridData1D
+
+
+  SUBROUTINE CombineGridData3D( MF, nF, iField, U )
+
+    TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
+    INTEGER,              INTENT(in)  :: nF, iField
+    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(AR), CONTIGUOUS, POINTER :: U_P(:,:,:,:)
+    REAL(AR)                      :: U_K(nDOFX,nF)
+
+    REAL(AR) :: U0(nDOFX,1-swX(1):nX(1)+swX(1), &
+                         1-swX(2):nX(2)+swX(2), &
+                         1-swX(3):nX(3)+swX(3),0:nLevels-1)
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3, iLevel, iX_B(3), iX_E(3), lo(4), hi(4)
+
+    U0 = Zero
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        U_P => MF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo = LBOUND( U_P )
+        hi = UBOUND( U_P )
+
+        iX_B = BX % lo
+        iX_E = BX % hi
+
+        ! -- Get physical ghost cells right ---
+
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B(1) - swX(1)
+        IF( BX % lo(2) .EQ. 1     ) iX_B(2) = iX_B(2) - swX(2)
+        IF( BX % lo(3) .EQ. 1     ) iX_B(3) = iX_B(3) - swX(3)
+        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E(1) + swX(1)
+        IF( BX % hi(2) .EQ. nX(2) ) iX_E(2) = iX_E(2) + swX(2)
+        IF( BX % hi(3) .EQ. nX(3) ) iX_E(3) = iX_E(3) + swX(3)
+
+        DO iX3 = iX_B(3), iX_E(3)
+        DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+
+          U_K = RESHAPE( U_P(iX1,iX2,iX3,lo(4):hi(4)), [ nDOFX, nF ] )
+
+          U0(:,iX1,iX2,iX3,iLevel) = U_K(:,iField)
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    ! --- Combine data from different grids ---
+
+    DO iX3 = 1-swX(3), nX(3)+swX(3)
+    DO iX2 = 1-swX(2), nX(2)+swX(2)
+    DO iX1 = 1-swX(1), nX(1)+swX(1)
+
+      DO iNodeX = 1, nDOFX
+
+        CALL amrex_parallel_reduce_sum( U0(iNodeX,iX1,iX2,iX3,:), nLevels )
+
+        U(iNodeX,iX1,iX2,iX3) = U0(iNodeX,iX1,iX2,iX3,0)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE CombineGridData3D
 
 
 END MODULE MF_UtilitiesModule
