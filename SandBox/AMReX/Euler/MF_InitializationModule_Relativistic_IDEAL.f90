@@ -13,7 +13,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     amrex_mfiter_destroy
   USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_max
+    amrex_parallel_reduce_max,  &
+    amrex_parallel_reduce_sum
   USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
@@ -58,6 +59,9 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     iCF_Ne, &
     nAF,    &
     iAF_P
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ExpD, &
+    ExpE
   USE Euler_UtilitiesModule,   ONLY: &
     ComputeConserved_Euler
   USE EquationOfStateModule,   ONLY: &
@@ -85,6 +89,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Gamma_IDEAL,        &
     InitializeFromFile, &
     NodalDataFileNameBase
+  USE MF_UtilitiesModule,      ONLY: &
+    CombineGridData
 
   IMPLICIT NONE
   PRIVATE
@@ -1708,7 +1714,7 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -1744,9 +1750,9 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: P     (:,:)
     REAL(AR), ALLOCATABLE :: Alpha (:,:)
     REAL(AR), ALLOCATABLE :: Psi   (:,:)
-    REAL(AR), ALLOCATABLE :: Alpha0(:,:,:)
-    REAL(AR), ALLOCATABLE :: Psi0  (:,:,:)
     LOGICAL  :: FirstPreShockElement = .FALSE.
+
+    INTEGER, PARAMETER :: nX_LeastSquares = 5
 
     ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
 
@@ -1855,8 +1861,6 @@ CONTAINS
     ALLOCATE( P     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
     ALLOCATE( Alpha (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
     ALLOCATE( Psi   (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Alpha0(1:nNodesX(1),iX_B1(1):iX_E1(1),0:nLevels-1) )
-    ALLOCATE( Psi0  (1:nNodesX(1),iX_B1(1):iX_E1(1),0:nLevels-1) )
 
     IF( InitializeFromFile )THEN
 
@@ -1866,79 +1870,8 @@ CONTAINS
 
       ! --- Make local copies of Lapse and Conformal Factor ---
 
-      Alpha0 = Zero
-      Psi0   = Zero
-
-      DO iLevel = 0, nLevels-1
-
-        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
-
-        DO WHILE( MFI % next() )
-
-          uGF => MF_uGF(iLevel) % DataPtr( MFI )
-
-          BX = MFI % tilebox()
-
-          lo_G = LBOUND( uGF )
-          hi_G = UBOUND( uGF )
-
-          iX_B = BX % lo
-          iX_E = BX % hi
-
-          ! -- Get physical ghost cells right ---
-
-          IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B(1) - swX(1)
-          IF( BX % lo(2) .EQ. 1     ) iX_B(2) = iX_B(2) - swX(2)
-          IF( BX % lo(3) .EQ. 1     ) iX_B(3) = iX_B(3) - swX(3)
-          IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E(1) + swX(1)
-          IF( BX % hi(2) .EQ. nX(2) ) iX_E(2) = iX_E(2) + swX(2)
-          IF( BX % hi(3) .EQ. nX(3) ) iX_E(3) = iX_E(3) + swX(3)
-
-          DO iX3 = iX_B(3), iX_E(3)
-          DO iX2 = iX_B(2), iX_E(2)
-          DO iX1 = iX_B(1), iX_E(1)
-
-            uGF_K &
-              = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
-            DO iNodeX3 = 1, nNodesX(3)
-            DO iNodeX2 = 1, nNodesX(2)
-            DO iNodeX1 = 1, nNodesX(1)
-
-              iNodeX = NodeNumberX(iNodeX1,iNodeX2,iNodeX3)
-
-              Alpha0(iNodeX1,iX1,iLevel) = uGF_K(iNodeX,iGF_Alpha)
-              Psi0  (iNodeX1,iX1,iLevel) = uGF_K(iNodeX,iGF_Psi)
-
-            END DO
-            END DO
-            END DO
-
-          END DO
-          END DO
-          END DO
-
-        END DO
-
-        CALL amrex_mfiter_destroy( MFI )
-
-      END DO
-
-      ! --- Combine data from different grids ---
-
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        DO iNodeX1 = 1, nNodesX(1)
-
-          CALL amrex_parallel_reduce_max( Alpha0(iNodeX1,iX1,:), nLevels )
-          CALL amrex_parallel_reduce_max( Psi0  (iNodeX1,iX1,:), nLevels )
-
-          Alpha(iNodeX1,iX1) = Alpha0(iNodeX1,iX1,0)
-          Psi  (iNodeX1,iX1) = Psi0  (iNodeX1,iX1,0)
-
-        END DO
-
-      END DO
+      CALL CombineGridData( MF_uGF, nGF, iGF_Alpha, Alpha )
+      CALL CombineGridData( MF_uGF, nGF, iGF_Psi  , Psi   )
 
       ! --- Locate first element with un-shocked fluid ---
 
@@ -2185,8 +2118,6 @@ CONTAINS
 
     END DO
 
-    DEALLOCATE( Psi0   )
-    DEALLOCATE( Alpha0 )
     DEALLOCATE( Psi    )
     DEALLOCATE( Alpha  )
     DEALLOCATE( P )
@@ -2199,10 +2130,93 @@ CONTAINS
 
     END DO
 
+    CALL ComputeExtrapolationExponents( MF_uCF, nX_LeastSquares )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,I2.2)') &
+        'nX_LeastSquares: ', &
+        nX_LeastSquares
+      WRITE(*,'(6x,A,F9.6)') &
+        'ExpD:            ', &
+        ExpD
+      WRITE(*,'(6x,A,F9.6)') &
+        'ExpE:            ', &
+        ExpE
+
+    END IF
+
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
 
   ! --- Auxiliary functions/subroutines for SAS problem ---
+
+
+  SUBROUTINE ComputeExtrapolationExponents( MF_uCF, nX_LeastSquares )
+
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    INTEGER             , INTENT(in) :: nX_LeastSquares
+
+    REAL(AR) :: lnR   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnD   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnE   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnR_LS(nNodesX(1),nX_LeastSquares)
+    REAL(AR) :: lnD_LS(nNodesX(1),nX_LeastSquares)
+    REAL(AR) :: lnE_LS(nNodesX(1),nX_LeastSquares)
+
+    INTEGER  :: iX1, iNodeX1, iDim
+    REAL(AR) :: n
+
+    TYPE(MeshType) :: MeshX(3)
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    ! --- Make local copies of X1, D, and tau ---
+
+    DO iX1 = 1-swX(1), nX(1)+swX(1)
+
+      DO iNodeX1 = 1, nNodesX(1)
+
+        lnR(iNodeX1,iX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNodeX1 ) )
+
+      END DO
+
+    END DO
+
+    CALL CombineGridData( MF_uCF, nCF, iCF_D, lnD )
+    CALL CombineGridData( MF_uCF, nCF, iCF_E, lnE )
+
+    lnD = LOG( lnD )
+    lnE = LOG( lnE )
+
+    lnR_LS = lnR(:,1:nX_LeastSquares)
+    lnD_LS = lnD(:,1:nX_LeastSquares)
+    lnE_LS = lnE(:,1:nX_LeastSquares)
+
+    n = DBLE( nNodesX(1) ) * DBLE( nX_LeastSquares )
+
+    ! --- Expression for exponents from:
+    !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
+
+    ExpD = ( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
+             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+
+    ExpE = ( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
+             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE ComputeExtrapolationExponents
 
 
   SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )

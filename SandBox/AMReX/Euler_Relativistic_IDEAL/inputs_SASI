@@ -42,7 +42,7 @@ thornado.nStages = 3
 
 thornado.CFL = 0.5
 
-thornado.bcX         = 11 03 00
+thornado.bcX         = 100 03 00
 geometry.is_periodic = 0  0  1
 
 geometry.coord_sys = 2
