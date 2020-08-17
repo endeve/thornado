@@ -68,7 +68,6 @@ CONTAINS
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
 
-    
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
@@ -98,7 +97,6 @@ CONTAINS
     I_u_1 = G_d_1
     I_u_2 = G_d_2
     I_u_3 = G_d_3
-
 !    D     = ( -3.0_DP * N + 3.0_DP * V_u_1 * G_d_1 + 3.0_DP * V_u_2 * G_d_2 + 3.0_DP * V_u_3 * G_d_3 ) / DTG
 !    I_d_1 = ( h_dd_11 * V_u_1 + h_dd_12 * V_u_2 + h_dd_13 * V_u_3 ) * N  &
 !          + ( h_dd_22*V_u_2**2 + 2*h_dd_23*V_u_2*V_u_3 + V_u_1*h_dd_12*V_u_2 &
@@ -263,6 +261,7 @@ CONTAINS
       PRINT*
 
     END IF
+
   END SUBROUTINE ComputePrimitive_TwoMoment
 
   SUBROUTINE ComputeConserved_TwoMoment &

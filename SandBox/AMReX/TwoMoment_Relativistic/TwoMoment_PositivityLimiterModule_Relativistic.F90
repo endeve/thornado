@@ -473,7 +473,6 @@ CONTAINS
       G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = U_R(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
       G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = U_R(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
       G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = U_R(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
-
     END DO
     END DO
     END DO
@@ -650,6 +649,7 @@ CONTAINS
 !                   Theta_P )
 !
 !          Theta_2 = MIN( Theta_2, Theta_P )
+           !print*, iZ1, iZ2, N_P (iP,iZ1,iZ2,iZ3,iZ4,iS),G1_P (iP,iZ1,iZ2,iZ3,iZ4,iS), Gamma, Gamma_Min
            Theta_2 = 0.0_DP
 
         END IF
@@ -791,7 +791,6 @@ CONTAINS
       - 2.0_DP * ( V1 * V2 * Gm_dd_11 * Gm_dd_22 * G1 * G2 + V1 * V3 * Gm_dd_11 * Gm_dd_33 * G1 * G3 &
       + V2 * V3 * Gm_dd_22 * Gm_dd_33 * G2 * G3 )
     G = SQRT(G)  
-   
     GammaFun = N - G 
     RETURN
   END FUNCTION GammaFun
