@@ -730,9 +730,11 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: U_P(:,:,:,:)
     REAL(AR)                      :: U_K(nDOFX,nF)
 
-    REAL(AR) :: U0(nDOFX,1-swX(1):nX(1)+swX(1),0:nLevels-1)
+    REAL(AR) :: U0(nNodesX(1),1-swX(1):nX(1)+swX(1),0:nLevels-1)
 
     INTEGER  :: iNodeX, iX1, iLevel, iX_B(3), iX_E(3), lo(4), hi(4)
+
+    ! --- This subroutine assumes MF is spherically-symmetric ---
 
     U0 = Zero
 
