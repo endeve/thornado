@@ -80,11 +80,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
     Source_E, &
     ComputeEddingtonTensorComponents_ud, &
     NumericalFlux_LLF
-  USE MyAmrModule, ONLY: &
-    dt
-
-
-
 
   IMPLICIT NONE
   PRIVATE
@@ -3400,7 +3395,9 @@ CONTAINS
          print*, "G3 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS) 
          print*, "WN-ABS(G1) ", W *uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS)) 
          n = n+1
-         uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) = SIGN(W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) ,  uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) )
+         uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) &
+           = SIGN( W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                       uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) )
       END IF
         CALL ComputePrimitive_TwoMoment &
                ( uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS), &
