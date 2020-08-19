@@ -19,6 +19,7 @@ PROGRAM main
     MF_uCF, &
     MF_uGF
   USE InitializationModule,             ONLY: &
+    wrt,              &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
@@ -86,6 +87,25 @@ PROGRAM main
     CALL MF_Update_IMEX_RK &
            ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
             Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    IF( ALL( t + dt .GT. t_wrt ) )THEN
+      t_wrt = t_wrt + dt_wrt
+      wrt   = .TRUE.
+
+    END IF
+
+    IF( wrt )THEN
+
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
+      CALL WriteFieldsAMReX_PlotFile &
+               ( t(0), StepNo, &
+                 MF_uCR_Option = MF_uCR, &
+                 MF_uPR_Option = MF_uPR )
+      wrt = .FALSE.
+    END IF
+
+
 !    IF (t(0) .GE. n) THEN
 !
 !  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
