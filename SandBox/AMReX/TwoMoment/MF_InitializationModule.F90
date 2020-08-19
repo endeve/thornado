@@ -295,7 +295,6 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-    
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
                 = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
@@ -579,34 +578,34 @@ CONTAINS
     CHARACTER(len=1):: nds
     CHARACTER(len=2)::nxn1
     CHARACTER(len=3)::nxn2
-    IF ( nDOFX == 1) THEN
-      nds="1"
-    ELSE IF( nDOFX == 2) THEN
-      nds="2"
-    ELSE
-      nds="3"
-    END IF 
-
-    IF ( nX(1) == 32) THEN
-      nxn1="32"
-    ELSE IF( nX(1) == 64) THEN
-      nxn1="64"
-    ELSE IF (nX(1) == 128) THEN
-      nxn2="128"
-    ELSE
-      nxn2="256"
-    END IF 
-
-    
-
-    print*, name1
-    IF (nX(1)==32 .OR. nX(1)==64) THEN
-      name1='X'//nds//nxn1//'.txt'
-    ELSE
-      name1='X'//nds//nxn2//'.txt'
-    END IF
-    name1=trim(name1)
-
+!    IF ( nDOFX == 1) THEN
+!      nds="1"
+!    ELSE IF( nDOFX == 2) THEN
+!      nds="2"
+!    ELSE
+!      nds="3"
+!    END IF 
+!
+!    IF ( nX(1) == 32) THEN
+!      nxn1="32"
+!    ELSE IF( nX(1) == 64) THEN
+!      nxn1="64"
+!    ELSE IF (nX(1) == 128) THEN
+!      nxn2="128"
+!    ELSE
+!      nxn2="256"
+!    END IF 
+!
+!    
+!
+!    print*, name1
+!    IF (nX(1)==32 .OR. nX(1)==64) THEN
+!      name1='X'//nds//nxn1//'.txt'
+!    ELSE
+!      name1='X'//nds//nxn2//'.txt'
+!    END IF
+!    name1=trim(name1)
+!
 
     uCR_K = Zero
     uPF_K = Zero
@@ -652,7 +651,7 @@ CONTAINS
 
         lo_F = LBOUND( uCF )
         hi_F = UBOUND( uCF )
-   open(1, file = name1, status = 'new') 
+   !open(1, file = name1, status = 'new') 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = BX % lo(1), BX % hi(1)         
@@ -665,6 +664,7 @@ CONTAINS
             iNodeX1 = NodeNumberTableX(1,iNodeX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+print*, X1    
             uPF_K(iNodeX,iPF_D ) = 1.0_AR
 
             
@@ -686,8 +686,7 @@ CONTAINS
             END IF
 
             W = 1.0_AR / SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1)**2) 
-print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
-      write(1,*) X1
+      !write(1,*) X1
             uPF_K(iNodeX,iPF_V2) = V_0(2)
             uPF_K(iNodeX,iPF_V3) = V_0(3)
             uPF_K(iNodeX,iPF_E ) = 0.1_AR

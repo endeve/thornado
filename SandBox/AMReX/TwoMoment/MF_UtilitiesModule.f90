@@ -524,7 +524,8 @@ MODULE MF_UtilitiesModule
       OPEN( UNIT = 106, FILE = TRIM( FileNameBase ) // 'G1.dat'      )
       OPEN( UNIT = 107, FILE = TRIM( FileNameBase ) // 'G2.dat'      )
       OPEN( UNIT = 108, FILE = TRIM( FileNameBase ) // 'G3.dat'      )
-      OPEN( UNIT = 109, FILE = TRIM( FileNameBase ) // 'N_middle.dat'      )
+      OPEN( UNIT = 109, FILE = TRIM( FileNameBase ) // 'D_middle.dat'      )
+      OPEN( UNIT = 110, FILE = TRIM( FileNameBase ) // 'D_spatial.dat'      )
 
 
       ! --- Hacked to work only for 1D and 2D problems ---
@@ -583,7 +584,11 @@ MODULE MF_UtilitiesModule
               G3 
             IF (iX1 .EQ. nX(1)/2 .AND. iNodeX1 .EQ. 1) THEN
               WRITE(109,'(ES24.16E3,1x)',ADVANCE='NO') &
-                N 
+                D
+            END IF  
+            IF (iE .EQ. 1 .AND. iNodeE .EQ. 1) THEN 
+              WRITE(110,'(ES24.16E3,1x)',ADVANCE='NO') &
+                D
             END IF  
           END DO
           END DO
@@ -605,6 +610,7 @@ MODULE MF_UtilitiesModule
       END DO
       END DO
 
+      CLOSE( 110 )
       CLOSE( 109 )
       CLOSE( 108 )
       CLOSE( 107 )
