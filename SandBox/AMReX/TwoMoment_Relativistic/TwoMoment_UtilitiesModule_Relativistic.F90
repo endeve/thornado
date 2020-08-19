@@ -1158,16 +1158,34 @@ CONTAINS
               + V_d_2 * V_u_1 * l_uud_231 + V_d_2 * V_u_2 * l_uud_232 + V_d_2 * V_u_3 * l_uud_233 & 
               + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
 
-    l_uud_000 = x**2 * y * (  V_d_1 * V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
-              + V_d_1 * V_d_2 * V_u_1 * l_uud_121 + V_d_1 * V_d_2 * V_u_2 * l_uud_122 + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
-              + V_d_1 * V_d_3 * V_u_1 * l_uud_131 + V_d_1 * V_d_3 * V_u_2 * l_uud_132 + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
-              + V_d_2 * V_d_1 * V_u_1 * l_uud_211 + V_d_2 * V_d_1 * V_u_2 * l_uud_212 + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
-              + V_d_2 * V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_d_2 * V_u_3 * l_uud_223 & 
-              + V_d_2 * V_d_3 * V_u_1 * l_uud_231 + V_d_2 * V_d_3 * V_u_2 * l_uud_232 + V_d_2 * V_d_3 * V_u_3 * l_uud_233 & 
-              + V_d_3 * V_d_1 * V_u_1 * l_uud_311 + V_d_3 * V_d_1 * V_u_2 * l_uud_312 + V_d_3 * V_d_1 * V_u_3 * l_uud_313 & 
-              + V_d_3 * V_d_2 * V_u_1 * l_uud_321 + V_d_3 * V_d_2 * V_u_2 * l_uud_322 + V_d_3 * V_d_2 * V_u_3 * l_uud_323 & 
-              + V_d_3 * V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_d_3 * V_u_3 * l_uud_333 ) 
-
+    l_uud_000 &
+      = x**2 * y * (   V_d_1 * V_d_1 * V_u_1 * l_uud_111 &
+                     + V_d_1 * V_d_1 * V_u_2 * l_uud_112 &
+                     + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
+                     + V_d_1 * V_d_2 * V_u_1 * l_uud_121 &
+                     + V_d_1 * V_d_2 * V_u_2 * l_uud_122 &
+                     + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
+                     + V_d_1 * V_d_3 * V_u_1 * l_uud_131 &
+                     + V_d_1 * V_d_3 * V_u_2 * l_uud_132 &
+                     + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
+                     + V_d_2 * V_d_1 * V_u_1 * l_uud_211 &
+                     + V_d_2 * V_d_1 * V_u_2 * l_uud_212 &
+                     + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
+                     + V_d_2 * V_d_2 * V_u_1 * l_uud_221 &
+                     + V_d_2 * V_d_2 * V_u_2 * l_uud_222 &
+                     + V_d_2 * V_d_2 * V_u_3 * l_uud_223 & 
+                     + V_d_2 * V_d_3 * V_u_1 * l_uud_231 &
+                     + V_d_2 * V_d_3 * V_u_2 * l_uud_232 &
+                     + V_d_2 * V_d_3 * V_u_3 * l_uud_233 & 
+                     + V_d_3 * V_d_1 * V_u_1 * l_uud_311 &
+                     + V_d_3 * V_d_1 * V_u_2 * l_uud_312 &
+                     + V_d_3 * V_d_1 * V_u_3 * l_uud_313 & 
+                     + V_d_3 * V_d_2 * V_u_1 * l_uud_321 &
+                     + V_d_3 * V_d_2 * V_u_2 * l_uud_322 &
+                     + V_d_3 * V_d_2 * V_u_3 * l_uud_323 & 
+                     + V_d_3 * V_d_3 * V_u_1 * l_uud_331 &
+                     + V_d_3 * V_d_3 * V_u_2 * l_uud_332 &
+                     + V_d_3 * V_d_3 * V_u_3 * l_uud_333 )
 
     l_uud_munurho(0,0,0) = l_uud_000
  
@@ -2532,40 +2550,58 @@ CONTAINS
 
     Source_E = 0.0_DP
 
+    DO j  = 1, 3
+    DO nu = 0, 3
 
-
-    DO j = 1,3
-    DO nu = 0,3
-
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(0) + l_uud_munurho(0,nu,j) * D + k_ud_munu(nu,j) * D * U_u(0) + k_uu_munu(nu,0) * D * U_d(j) ) * dU_dX0(nu) &
-                    + ( D * U_u(0) + I(0) ) * dU_dX0(j)
-
-    END DO
-    END DO
-
-    DO j = 1,3
-    DO nu = 0,3
-
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(1) + l_uud_munurho(1,nu,j) * D + k_ud_munu(nu,j) * D * U_u(1) + k_uu_munu(nu,1) * D * U_d(j) ) * dU_dX1(nu) &
-                    + ( D * U_u(1) + I(1) ) * dU_dX1(j)
+      Source_E(j) &
+        = Source_E(j) &
+            - ( I(nu) * U_d(j) * U_u(0) &
+                + l_uud_munurho(0,nu,j) * D &
+                + k_ud_munu(nu,j) * D * U_u(0) &
+                + k_uu_munu(nu,0) * D * U_d(j) ) * dU_dX0(nu) &
+            + ( D * U_u(0) + I(0) ) * dU_dX0(j)
 
     END DO
     END DO
 
-    DO j = 1,3
-    DO nu = 0,3
+    DO j  = 1, 3
+    DO nu = 0, 3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(2) + l_uud_munurho(2,nu,j) * D + k_ud_munu(nu,j) * D * U_u(2) + k_uu_munu(nu,2) * D * U_d(j) ) * dU_dX2(nu) &
-                    + ( D * U_u(2) + I(2) )* dU_dX2(j)
+      Source_E(j) &
+        = Source_E(j) &
+            - ( I(nu) * U_d(j) * U_u(1) &
+                + l_uud_munurho(1,nu,j) * D &
+                + k_ud_munu(nu,j) * D * U_u(1) &
+                + k_uu_munu(nu,1) * D * U_d(j) ) * dU_dX1(nu) &
+            + ( D * U_u(1) + I(1) ) * dU_dX1(j)
 
     END DO
     END DO
 
-    DO j = 1,3
-    DO nu = 0,3
+    DO j  = 1, 3
+    DO nu = 0, 3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(3) + l_uud_munurho(3,nu,j) * D + k_ud_munu(nu,j) * D * U_u(3) + k_uu_munu(nu,3) * D * U_d(j) ) * dU_dX3(nu) &
-                    + ( D * U_u(3) + I(3) ) * dU_dX3(j)
+      Source_E(j) &
+        = Source_E(j) &
+            - ( I(nu) * U_d(j) * U_u(2) &
+                + l_uud_munurho(2,nu,j) * D &
+                + k_ud_munu(nu,j) * D * U_u(2) &
+                + k_uu_munu(nu,2) * D * U_d(j) ) * dU_dX2(nu) &
+            + ( D * U_u(2) + I(2) ) * dU_dX2(j)
+
+    END DO
+    END DO
+
+    DO j  = 1, 3
+    DO nu = 0, 3
+
+      Source_E(j) &
+        = Source_E(j) &
+            - ( I(nu) * U_d(j) * U_u(3) &
+                + l_uud_munurho(3,nu,j) * D &
+                + k_ud_munu(nu,j) * D * U_u(3) &
+                + k_uu_munu(nu,3) * D * U_d(j) ) * dU_dX3(nu) &
+            + ( D * U_u(3) + I(3) ) * dU_dX3(j)
 
     END DO
     END DO
@@ -2573,6 +2609,7 @@ CONTAINS
     RETURN
 
   END FUNCTION Source_E
+
 !  FUNCTION Flux_E( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
 !                      alp, B_u_1, B_u_2, B_u_3, dW_dX1, dW_dX2, dW_dX3, &
 !                      dWV_u_1_dX1, dWV_u_2_dX1, dWV_u_3_dX1, &
