@@ -989,38 +989,38 @@ CONTAINS
     CHARACTER(len=2)::nxn1
     CHARACTER(len=3)::nxn2
 
-    IF ( nDOFX == 1) THEN
-      nds="1"
-    ELSE IF( nDOFX == 2) THEN
-      nds="2"
-    ELSE
-      nds="3"
-    END IF 
-
-    IF ( nX(1) == 32) THEN
-      nxn1="32"
-    ELSE IF( nX(1) == 64) THEN
-      nxn1="64"
-    ELSE IF (nX(1) == 128) THEN
-      nxn2="128"
-    ELSE
-      nxn2="256"
-    END IF 
-
-    
-
-    print*, name1
-    IF (nX(1)==32 .OR. nX(1)==64) THEN
-      name1='dU0'//nds//nxn1//'.txt'
-      name2='dU1'//nds//nxn1//'.txt'
-    ELSE
-      name1='dU0'//nds//nxn2//'.txt'
-      name1='dU1'//nds//nxn2//'.txt'
-    END IF
-    name1=trim(name1)
-    name2=trim(name2)
-
-
+!    IF ( nDOFX == 1) THEN
+!      nds="1"
+!    ELSE IF( nDOFX == 2) THEN
+!      nds="2"
+!    ELSE
+!      nds="3"
+!    END IF 
+!
+!    IF ( nX(1) == 32) THEN
+!      nxn1="32"
+!    ELSE IF( nX(1) == 64) THEN
+!      nxn1="64"
+!    ELSE IF (nX(1) == 128) THEN
+!      nxn2="128"
+!    ELSE
+!      nxn2="256"
+!    END IF 
+!
+!    
+!
+!    print*, name1
+!    IF (nX(1)==32 .OR. nX(1)==64) THEN
+!      name1='dU0'//nds//nxn1//'.txt'
+!      name2='dU1'//nds//nxn1//'.txt'
+!    ELSE
+!      name1='dU0'//nds//nxn2//'.txt'
+!      name1='dU1'//nds//nxn2//'.txt'
+!    END IF
+!    name1=trim(name1)
+!    name2=trim(name2)
+!
+!
     IF( iZ_E0(1) .EQ. iZ_B0(1) ) RETURN
 
     Verbose = .TRUE.
@@ -1047,22 +1047,21 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, U_u, U_d, uPF_K, Verbose_Option = Verbose  )
 
 
-    open(2, file = name1, status = 'new') 
-    open(3, file = name2, status = 'new') 
+    !open(2, file = name1, status = 'new') 
+    !open(3, file = name2, status = 'new') 
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    !DO iZ4 = iZ_B0(4), iZ_E0(4)
+    !DO iZ3 = iZ_B0(3), iZ_E0(3)
+    !DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      DO iNodeX = 1, nDOFX
-         write(2,*) dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)
-         write(3,*) dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)
-      END DO
+      !DO iNodeX = 1, nDOFX
+         !write(2,*) dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)
+         !write(3,*) dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)
+      !END DO
 
-    END DO
-    END DO
-    END DO
-STOP
+    !END DO
+    !END DO
+    !END DO
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
