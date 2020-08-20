@@ -92,9 +92,11 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option, SuppressBC_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+      Verbose_Option, SuppressBC_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
@@ -111,8 +113,9 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
-    LOGICAL,  INTENT(in),  OPTIONAL :: &
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      Verbose_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -141,13 +144,14 @@ CONTAINS
          iZ_B0(4):iZ_E0(4))
 
     SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
+    IF( PRESENT( SuppressBC_Option ) )THEN
       SuppressBC = SuppressBC_Option
-
+    END IF
 
     Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
-      Verbose = Verbose_Option    
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    END IF
    
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
@@ -161,6 +165,7 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
