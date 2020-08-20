@@ -12,9 +12,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module,   ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_max,  &
-    amrex_parallel_reduce_sum
+    amrex_parallel_ioprocessor
   USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
@@ -1745,11 +1743,13 @@ CONTAINS
     REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, C1, C2, C3
     REAL(AR) :: D0, V0, P0
     REAL(AR) :: W, dX1, Ka, Kb, Mdot
-    REAL(AR), ALLOCATABLE :: D     (:,:)
-    REAL(AR), ALLOCATABLE :: V     (:,:)
-    REAL(AR), ALLOCATABLE :: P     (:,:)
-    REAL(AR), ALLOCATABLE :: Alpha (:,:)
-    REAL(AR), ALLOCATABLE :: Psi   (:,:)
+    REAL(AR), ALLOCATABLE :: D      (:,:)
+    REAL(AR), ALLOCATABLE :: V      (:,:)
+    REAL(AR), ALLOCATABLE :: P      (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha  (:,:)
+    REAL(AR), ALLOCATABLE :: Psi    (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha3D(:,:,:,:)
+    REAL(AR), ALLOCATABLE :: Psi3D  (:,:,:,:)
     LOGICAL  :: FirstPreShockElement = .FALSE.
 
     INTEGER, PARAMETER :: nX_LeastSquares = 5
@@ -1856,11 +1856,17 @@ CONTAINS
     iX_B1 = [1,1,1] - swX
     iX_E1 = nX      + swX
 
-    ALLOCATE( D     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( V     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( P     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Alpha (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Psi   (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( D      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( V      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( P      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha  (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Psi    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha3D(1:nDOFX     ,iX_B1(1):iX_E1(1), &
+                                   iX_B1(2):iX_E1(2), &
+                                   iX_B1(3):iX_E1(3)) )
+    ALLOCATE( Psi3D  (1:nDOFX     ,iX_B1(1):iX_E1(1), &
+                                   iX_B1(2):iX_E1(2), &
+                                   iX_B1(3):iX_E1(3)) )
 
     IF( InitializeFromFile )THEN
 
@@ -1870,8 +1876,15 @@ CONTAINS
 
       ! --- Make local copies of Lapse and Conformal Factor ---
 
-      CALL CombineGridData( MF_uGF, nGF, iGF_Alpha, Alpha )
-      CALL CombineGridData( MF_uGF, nGF, iGF_Psi  , Psi   )
+      CALL CombineGridData( MF_uGF, nGF, iGF_Alpha, Alpha3D )
+      CALL CombineGridData( MF_uGF, nGF, iGF_Psi  , Psi3D   )
+
+      DO iX1 = iX_B1(1), iX_E1(1)
+
+        Alpha(:,iX1) = Alpha3D(1:nNodesX(1),iX1,1,1)
+        Psi  (:,iX1) = Psi3D  (1:nNodesX(1),iX1,1,1)
+
+      END DO
 
       ! --- Locate first element with un-shocked fluid ---
 
@@ -2118,8 +2131,10 @@ CONTAINS
 
     END DO
 
-    DEALLOCATE( Psi    )
-    DEALLOCATE( Alpha  )
+    DEALLOCATE( Psi3D   )
+    DEALLOCATE( Alpha3D )
+    DEALLOCATE( Psi     )
+    DEALLOCATE( Alpha   )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
@@ -2160,6 +2175,12 @@ CONTAINS
     REAL(AR) :: lnR   (nNodesX(1),1-swX(1):nX(1)+swX(1))
     REAL(AR) :: lnD   (nNodesX(1),1-swX(1):nX(1)+swX(1))
     REAL(AR) :: lnE   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnD3D (nDOFX     ,1-swX(1):nX(1)+swX(1), &
+                                  1-swX(2):nX(2)+swX(2), &
+                                  1-swX(3):nX(3)+swX(3))
+    REAL(AR) :: lnE3D (nDOFX     ,1-swX(1):nX(1)+swX(1), &
+                                  1-swX(2):nX(2)+swX(2), &
+                                  1-swX(3):nX(3)+swX(3))
     REAL(AR) :: lnR_LS(nNodesX(1),nX_LeastSquares)
     REAL(AR) :: lnD_LS(nNodesX(1),nX_LeastSquares)
     REAL(AR) :: lnE_LS(nNodesX(1),nX_LeastSquares)
@@ -2179,18 +2200,20 @@ CONTAINS
 
     ! --- Make local copies of X1, D, and tau ---
 
+    CALL CombineGridData( MF_uCF, nCF, iCF_D, lnD3D )
+    CALL CombineGridData( MF_uCF, nCF, iCF_E, lnE3D )
+
     DO iX1 = 1-swX(1), nX(1)+swX(1)
 
       DO iNodeX1 = 1, nNodesX(1)
 
         lnR(iNodeX1,iX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNodeX1 ) )
+        lnD(iNodeX1,iX1) = lnD3D(iNodeX1,iX1,1,1)
+        lnE(iNodeX1,iX1) = lnE3D(iNodeX1,iX1,1,1)
 
       END DO
 
     END DO
-
-    CALL CombineGridData( MF_uCF, nCF, iCF_D, lnD )
-    CALL CombineGridData( MF_uCF, nCF, iCF_E, lnE )
 
     lnD = LOG( lnD )
     lnE = LOG( lnE )
