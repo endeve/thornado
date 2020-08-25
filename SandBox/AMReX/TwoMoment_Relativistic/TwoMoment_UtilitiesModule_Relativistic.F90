@@ -486,6 +486,7 @@ CONTAINS
     
     k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
                + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
+
     k_uu_munu(0,0) = k_uu_00
  
     k_uu_munu(0,1) = k_uu_10
@@ -1080,41 +1081,41 @@ CONTAINS
 
     l_uud_033 = x * (V_d_1 * l_uud_133 + V_d_2 * l_uud_233 + V_d_3 * l_uud_333)
  
-    l_uud_101 = x * (V_d_1 * l_uud_111 + V_d_1 * l_uud_121 + V_d_1 * l_uud_131) 
+    l_uud_101 = x * (V_d_1 * l_uud_111 + V_d_2 * l_uud_121 + V_d_3 * l_uud_131) 
  
-    l_uud_102 = x * (V_d_1 * l_uud_112 + V_d_1 * l_uud_122 + V_d_1 * l_uud_132) 
+    l_uud_102 = x * (V_d_1 * l_uud_112 + V_d_2 * l_uud_122 + V_d_3 * l_uud_132) 
  
-    l_uud_103 = x * (V_d_1 * l_uud_113 + V_d_1 * l_uud_123 + V_d_1 * l_uud_133) 
+    l_uud_103 = x * (V_d_1 * l_uud_113 + V_d_2 * l_uud_123 + V_d_3 * l_uud_133) 
  
-    l_uud_201 = x * (V_d_2 * l_uud_211 + V_d_2 * l_uud_221 + V_d_2 * l_uud_231) 
+    l_uud_201 = x * (V_d_1 * l_uud_211 + V_d_2 * l_uud_221 + V_d_3 * l_uud_231) 
  
-    l_uud_202 = x * (V_d_2 * l_uud_212 + V_d_2 * l_uud_222 + V_d_2 * l_uud_232) 
+    l_uud_202 = x * (V_d_1 * l_uud_212 + V_d_2 * l_uud_222 + V_d_3 * l_uud_232) 
  
-    l_uud_203 = x * (V_d_2 * l_uud_213 + V_d_2 * l_uud_223 + V_d_2 * l_uud_233) 
+    l_uud_203 = x * (V_d_1 * l_uud_213 + V_d_2 * l_uud_223 + V_d_3 * l_uud_233) 
  
-    l_uud_301 = x * (V_d_3 * l_uud_311 + V_d_3 * l_uud_321 + V_d_3 * l_uud_331) 
+    l_uud_301 = x * (V_d_1 * l_uud_311 + V_d_2 * l_uud_321 + V_d_3 * l_uud_331) 
  
-    l_uud_302 = x * (V_d_3 * l_uud_312 + V_d_3 * l_uud_322 + V_d_3 * l_uud_332) 
+    l_uud_302 = x * (V_d_1 * l_uud_312 + V_d_2 * l_uud_322 + V_d_3 * l_uud_332) 
  
-    l_uud_303 = x * (V_d_3 * l_uud_313 + V_d_3 * l_uud_323 + V_d_3 * l_uud_333)
+    l_uud_303 = x * (V_d_1 * l_uud_313 + V_d_2 * l_uud_323 + V_d_3 * l_uud_333)
  
-    l_uud_110 = y * (V_d_1 * l_uud_111 + V_d_1 * l_uud_112 + V_d_1 * l_uud_113) 
+    l_uud_110 = y * (V_u_1 * l_uud_111 + V_u_2 * l_uud_112 + V_u_3 * l_uud_113) 
  
-    l_uud_120 = y * (V_d_1 * l_uud_121 + V_d_1 * l_uud_122 + V_d_1 * l_uud_123) 
+    l_uud_120 = y * (V_u_1 * l_uud_121 + V_u_2 * l_uud_122 + V_u_3 * l_uud_123) 
  
-    l_uud_130 = y * (V_d_1 * l_uud_131 + V_d_1 * l_uud_132 + V_d_1 * l_uud_133)
+    l_uud_130 = y * (V_u_1 * l_uud_131 + V_u_2 * l_uud_132 + V_u_3 * l_uud_133)
  
-    l_uud_210 = y * (V_d_2 * l_uud_211 + V_d_2 * l_uud_212 + V_d_2 * l_uud_213)
+    l_uud_210 = y * (V_u_1 * l_uud_211 + V_u_2 * l_uud_212 + V_u_3 * l_uud_213)
  
-    l_uud_220 = y * (V_d_2 * l_uud_221 + V_d_2 * l_uud_222 + V_d_2 * l_uud_223)
+    l_uud_220 = y * (V_u_1 * l_uud_221 + V_u_2 * l_uud_222 + V_u_3 * l_uud_223)
  
-    l_uud_230 = y * (V_d_2 * l_uud_231 + V_d_2 * l_uud_232 + V_d_2 * l_uud_233)
+    l_uud_230 = y * (V_u_1 * l_uud_231 + V_u_2 * l_uud_232 + V_u_3 * l_uud_233)
  
-    l_uud_310 = y * (V_d_3 * l_uud_311 + V_d_3 * l_uud_312 + V_d_3 * l_uud_313)
+    l_uud_310 = y * (V_u_1 * l_uud_311 + V_u_2 * l_uud_312 + V_u_3 * l_uud_313)
  
-    l_uud_320 = y * (V_d_3 * l_uud_321 + V_d_3 * l_uud_322 + V_d_3 * l_uud_323)
+    l_uud_320 = y * (V_u_1 * l_uud_321 + V_u_2 * l_uud_322 + V_u_3 * l_uud_323)
  
-    l_uud_330 = y * (V_d_3 * l_uud_331 + V_d_3 * l_uud_332 + V_d_3 * l_uud_333)
+    l_uud_330 = y * (V_u_1 * l_uud_331 + V_u_2 * l_uud_332 + V_u_3 * l_uud_333)
 
     l_uud_001 = x**2 * (  V_d_1 * V_d_1 * l_uud_111 + V_d_1 * V_d_2 * l_uud_121 + V_d_1 * V_d_3 * l_uud_131 & 
               + V_d_2 * V_d_1 * l_uud_211 + V_d_2 * V_d_2 * l_uud_221 + V_d_2 * V_d_3 * l_uud_231 & 
@@ -1158,7 +1159,8 @@ CONTAINS
               + V_d_2 * V_u_1 * l_uud_231 + V_d_2 * V_u_2 * l_uud_232 + V_d_2 * V_u_3 * l_uud_233 & 
               + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
 
-    l_uud_000 = x**2 * y * (  V_d_1 * V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
+    l_uud_000 = x**2 * y * (  V_d_1 * V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_d_1 * V_u_2 * l_uud_112 &
+              + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
               + V_d_1 * V_d_2 * V_u_1 * l_uud_121 + V_d_1 * V_d_2 * V_u_2 * l_uud_122 + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
               + V_d_1 * V_d_3 * V_u_1 * l_uud_131 + V_d_1 * V_d_3 * V_u_2 * l_uud_132 + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
               + V_d_2 * V_d_1 * V_u_1 * l_uud_211 + V_d_2 * V_d_1 * V_u_2 * l_uud_212 + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
@@ -2413,7 +2415,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: U(0:3), dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
 
     REAL(DP) :: V_0, B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
-    REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3)
+    REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3), dU_dX(0:3,0:3)
     INTEGER :: mu, nu
 
     CALL ComputeEddingtonTensorComponents_uu &
@@ -2444,41 +2446,42 @@ CONTAINS
     I(3) = I_u_3
     I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
 
+
+
+    dU_dX(0,0) = dU_dX0(0) 
+    dU_dX(0,1) = dU_dX0(1) 
+    dU_dX(0,2) = dU_dX0(2) 
+    dU_dX(0,3) = dU_dX0(3) 
+
+    dU_dX(1,0) = dU_dX1(0) 
+    dU_dX(1,1) = dU_dX1(1) 
+    dU_dX(1,2) = dU_dX1(2) 
+    dU_dX(1,3) = dU_dX1(3) 
+
+    dU_dX(2,0) = dU_dX2(0) 
+    dU_dX(2,1) = dU_dX2(1) 
+    dU_dX(2,2) = dU_dX2(2) 
+    dU_dX(2,3) = dU_dX2(3)
+ 
+    dU_dX(3,0) = dU_dX3(0) 
+    dU_dX(3,1) = dU_dX3(1) 
+    dU_dX(3,2) = dU_dX3(2) 
+    dU_dX(3,3) = dU_dX3(3) 
+
+
     Flux_E = 0.0_DP
+   
+    DO mu = 0,3
     DO nu = 0,3
 
-      Flux_E(1) = Flux_E(1) + ( I(nu) * U(0) + k_uu_munu(0,nu) * D ) * dU_dX0(nu) 
-      Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(0) + l_uud_munurho(0,nu,1) * D ) * dU_dX0(nu)
-      Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(0) + l_uud_munurho(0,nu,2) * D ) * dU_dX0(nu)
-      Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(0) + l_uud_munurho(0,nu,3) * D ) * dU_dX0(nu)
-    END DO
-
-    DO nu = 0,3
-
-      Flux_E(1) = Flux_E(1) + ( I(nu) * u(1) + k_uu_munu(1,nu) * D ) * dU_dX1(nu) 
-      Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(1) + l_uud_munurho(1,nu,1) * D ) * dU_dX1(nu)
-      Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(1) + l_uud_munurho(1,nu,2) * D ) * dU_dX1(nu)
-      Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(1) + l_uud_munurho(1,nu,3) * D ) * dU_dX1(nu)
+      Flux_E(1) = Flux_E(1) + ( I(nu) * U(mu) + k_uu_munu(mu,nu) * D ) * dU_dX(mu,nu) 
+      Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(mu) + l_uud_munurho(mu,nu,1) * D ) * dU_dX(mu,nu)
+      Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(mu) + l_uud_munurho(mu,nu,2) * D ) * dU_dX(mu,nu)
+      Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(mu) + l_uud_munurho(mu,nu,3) * D ) * dU_dX(mu,nu)
 
     END DO
-
-    DO nu = 0,3
-
-      Flux_E(1) = Flux_E(1) + ( I(nu) * u(2) + k_uu_munu(2,nu) * D ) * dU_dX2(nu) 
-      Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(2) + l_uud_munurho(2,nu,1) * D ) * dU_dX2(nu)
-      Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(2) + l_uud_munurho(2,nu,2) * D ) * dU_dX2(nu)
-      Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(2) + l_uud_munurho(2,nu,3) * D ) * dU_dX2(nu)
-
     END DO
 
-    DO nu = 0,3
-
-      Flux_E(1) = Flux_E(1) + ( I(nu) * u(3) + k_uu_munu(3,nu) * D ) * dU_dX0(nu) 
-      Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(3) + l_uud_munurho(3,nu,1) * D ) * dU_dX3(nu)
-      Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(3) + l_uud_munurho(3,nu,2) * D ) * dU_dX3(nu)
-      Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(3) + l_uud_munurho(3,nu,3) * D ) * dU_dX3(nu)
-
-    END DO
 
     Flux_E = - Flux_E
 
@@ -2499,7 +2502,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3), dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
 
     REAL(DP) :: V_0, B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
-    REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3)
+    REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3), dU_dX(0:3,0:3)
     INTEGER :: mu, nu, j
 
     CALL ComputeEddingtonTensorComponents_uu &
@@ -2530,42 +2533,45 @@ CONTAINS
     I(3) = I_u_3
     I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
 
+    dU_dX(0,0) = dU_dX0(0) 
+    dU_dX(0,1) = dU_dX0(1) 
+    dU_dX(0,2) = dU_dX0(2) 
+    dU_dX(0,3) = dU_dX0(3) 
+
+    dU_dX(1,0) = dU_dX1(0) 
+    dU_dX(1,1) = dU_dX1(1) 
+    dU_dX(1,2) = dU_dX1(2) 
+    dU_dX(1,3) = dU_dX1(3) 
+
+    dU_dX(2,0) = dU_dX2(0) 
+    dU_dX(2,1) = dU_dX2(1) 
+    dU_dX(2,2) = dU_dX2(2) 
+    dU_dX(2,3) = dU_dX2(3)
+ 
+    dU_dX(3,0) = dU_dX3(0) 
+    dU_dX(3,1) = dU_dX3(1) 
+    dU_dX(3,2) = dU_dX3(2) 
+    dU_dX(3,3) = dU_dX3(3) 
+
     Source_E = 0.0_DP
 
 
 
     DO j = 1,3
+    DO mu = 0,3
     DO nu = 0,3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(0) + l_uud_munurho(0,nu,j) * D + k_ud_munu(nu,j) * D * U_u(0) + k_uu_munu(nu,0) * D * U_d(j) ) * dU_dX0(nu) &
-                    + ( D * U_u(0) + I(0) ) * dU_dX0(j)
+      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(mu) + l_uud_munurho(mu,nu,j) * D &
+                    + k_ud_munu(nu,j) * D * U_u(mu) + k_uu_munu(nu,mu) * D * U_d(j) ) * dU_dX(mu,nu)
 
+    END DO
     END DO
     END DO
 
     DO j = 1,3
-    DO nu = 0,3
+    DO mu = 0,3
 
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(1) + l_uud_munurho(1,nu,j) * D + k_ud_munu(nu,j) * D * U_u(1) + k_uu_munu(nu,1) * D * U_d(j) ) * dU_dX1(nu) &
-                    + ( D * U_u(1) + I(1) ) * dU_dX1(j)
-
-    END DO
-    END DO
-
-    DO j = 1,3
-    DO nu = 0,3
-
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(2) + l_uud_munurho(2,nu,j) * D + k_ud_munu(nu,j) * D * U_u(2) + k_uu_munu(nu,2) * D * U_d(j) ) * dU_dX2(nu) &
-                    + ( D * U_u(2) + I(2) )* dU_dX2(j)
-
-    END DO
-    END DO
-
-    DO j = 1,3
-    DO nu = 0,3
-
-      Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(3) + l_uud_munurho(3,nu,j) * D + k_ud_munu(nu,j) * D * U_u(3) + k_uu_munu(nu,3) * D * U_d(j) ) * dU_dX3(nu) &
-                    + ( D * U_u(3) + I(3) ) * dU_dX3(j)
+      Source_E(j) = Source_E(j) + ( D * U_u(mu) + I(mu) ) * dU_dX(mu,j)
 
     END DO
     END DO
