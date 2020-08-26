@@ -2,6 +2,26 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five
+  USE ProgramHeaderModule, ONLY: &
+    nDOFZ, nDOFX, nDOFE
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3
+  USE FluidFieldsModule, ONLY: &
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
+  USE RadiationFieldsModule, ONLY: &
+    nSpecies, &
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor_Relativistic, &
     EddingtonFactor, &
@@ -12,6 +32,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
 
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputeConserved_TwoMoment
+  PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: ComputeEddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_ud
@@ -332,6 +353,119 @@ CONTAINS
 
 
   END SUBROUTINE ComputeConserved_TwoMoment
+
+
+  SUBROUTINE ComputeFromConserved_TwoMoment &
+     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, CF, CR, PR )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      CF(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCF)
+    REAL(DP), INTENT(in)  :: &
+      CR(1:nDOFZ, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      PR(1:nDOFZ, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nPR,1:nSpecies)
+
+    INTEGER  :: &
+      iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeX
+    REAL(DP) :: &
+      PF(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nPF)
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        CALL ComputePrimitive_Euler_Relativistic &
+               ( CF(iNodeX,iZ2,iZ3,iZ4,iCF_D ), &
+                 CF(iNodeX,iZ2,iZ3,iZ4,iCF_S1), &
+                 CF(iNodeX,iZ2,iZ3,iZ4,iCF_S2), &
+                 CF(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
+                 CF(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
+                 CF(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_D ), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_E ), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_Ne), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        CALL ComputePrimitive_TwoMoment &
+               ( CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
+                 Zero, Zero, Zero, &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha ), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeFromConserved_TwoMoment
+
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -1159,17 +1293,34 @@ CONTAINS
               + V_d_2 * V_u_1 * l_uud_231 + V_d_2 * V_u_2 * l_uud_232 + V_d_2 * V_u_3 * l_uud_233 & 
               + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
 
-    l_uud_000 = x**2 * y * (  V_d_1 * V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_d_1 * V_u_2 * l_uud_112 &
-              + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
-              + V_d_1 * V_d_2 * V_u_1 * l_uud_121 + V_d_1 * V_d_2 * V_u_2 * l_uud_122 + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
-              + V_d_1 * V_d_3 * V_u_1 * l_uud_131 + V_d_1 * V_d_3 * V_u_2 * l_uud_132 + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
-              + V_d_2 * V_d_1 * V_u_1 * l_uud_211 + V_d_2 * V_d_1 * V_u_2 * l_uud_212 + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
-              + V_d_2 * V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_d_2 * V_u_3 * l_uud_223 & 
-              + V_d_2 * V_d_3 * V_u_1 * l_uud_231 + V_d_2 * V_d_3 * V_u_2 * l_uud_232 + V_d_2 * V_d_3 * V_u_3 * l_uud_233 & 
-              + V_d_3 * V_d_1 * V_u_1 * l_uud_311 + V_d_3 * V_d_1 * V_u_2 * l_uud_312 + V_d_3 * V_d_1 * V_u_3 * l_uud_313 & 
-              + V_d_3 * V_d_2 * V_u_1 * l_uud_321 + V_d_3 * V_d_2 * V_u_2 * l_uud_322 + V_d_3 * V_d_2 * V_u_3 * l_uud_323 & 
-              + V_d_3 * V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_d_3 * V_u_3 * l_uud_333 ) 
-
+    l_uud_000 &
+      = x**2 * y * (   V_d_1 * V_d_1 * V_u_1 * l_uud_111 &
+                     + V_d_1 * V_d_1 * V_u_2 * l_uud_112 &
+                     + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
+                     + V_d_1 * V_d_2 * V_u_1 * l_uud_121 &
+                     + V_d_1 * V_d_2 * V_u_2 * l_uud_122 &
+                     + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
+                     + V_d_1 * V_d_3 * V_u_1 * l_uud_131 &
+                     + V_d_1 * V_d_3 * V_u_2 * l_uud_132 &
+                     + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
+                     + V_d_2 * V_d_1 * V_u_1 * l_uud_211 &
+                     + V_d_2 * V_d_1 * V_u_2 * l_uud_212 &
+                     + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
+                     + V_d_2 * V_d_2 * V_u_1 * l_uud_221 &
+                     + V_d_2 * V_d_2 * V_u_2 * l_uud_222 &
+                     + V_d_2 * V_d_2 * V_u_3 * l_uud_223 & 
+                     + V_d_2 * V_d_3 * V_u_1 * l_uud_231 &
+                     + V_d_2 * V_d_3 * V_u_2 * l_uud_232 &
+                     + V_d_2 * V_d_3 * V_u_3 * l_uud_233 & 
+                     + V_d_3 * V_d_1 * V_u_1 * l_uud_311 &
+                     + V_d_3 * V_d_1 * V_u_2 * l_uud_312 &
+                     + V_d_3 * V_d_1 * V_u_3 * l_uud_313 & 
+                     + V_d_3 * V_d_2 * V_u_1 * l_uud_321 &
+                     + V_d_3 * V_d_2 * V_u_2 * l_uud_322 &
+                     + V_d_3 * V_d_2 * V_u_3 * l_uud_323 & 
+                     + V_d_3 * V_d_3 * V_u_1 * l_uud_331 &
+                     + V_d_3 * V_d_3 * V_u_2 * l_uud_332 &
+                     + V_d_3 * V_d_3 * V_u_3 * l_uud_333 )
 
     l_uud_munurho(0,0,0) = l_uud_000
  
@@ -2579,6 +2730,7 @@ CONTAINS
     RETURN
 
   END FUNCTION Source_E
+
 !  FUNCTION Flux_E( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
 !                      alp, B_u_1, B_u_2, B_u_3, dW_dX1, dW_dX2, dW_dX3, &
 !                      dWV_u_1_dX1, dWV_u_2_dX1, dWV_u_3_dX1, &

@@ -80,11 +80,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
     Source_E, &
     ComputeEddingtonTensorComponents_ud, &
     NumericalFlux_LLF
-  USE MyAmrModule, ONLY: &
-    dt
-
-
-
 
   IMPLICIT NONE
   PRIVATE
@@ -97,9 +92,11 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option, SuppressBC_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+      Verbose_Option, SuppressBC_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
@@ -116,8 +113,9 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
-    LOGICAL,  INTENT(in),  OPTIONAL :: &
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      Verbose_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -146,13 +144,14 @@ CONTAINS
          iZ_B0(4):iZ_E0(4))
 
     SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
+    IF( PRESENT( SuppressBC_Option ) )THEN
       SuppressBC = SuppressBC_Option
-
+    END IF
 
     Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
-      Verbose = Verbose_Option    
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    END IF
    
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
@@ -166,6 +165,7 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
@@ -890,7 +890,8 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
-    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      Verbose_Option
 
     INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, INFO
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -1024,27 +1025,33 @@ CONTAINS
     IF( iZ_E0(1) .EQ. iZ_B0(1) ) RETURN
 
     Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    END IF
 
     IF (Verbose) THEN
        PRINT*, "      ComputeIncrement_ObserverCorrections"
     END IF
 
     CALL ComputeWeakDerivatives_X0 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX0, Verbose_Option = Verbose )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX0, &
+             Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX1, Verbose_Option = Verbose )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX1, &
+             Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX2, Verbose_Option = Verbose )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX2, &
+             Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX3, Verbose_Option = Verbose )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX3, &
+             Verbose_Option = Verbose )
 
     CALL ComputeFourVelocity &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, U_u, U_d, uPF_K, Verbose_Option = Verbose  )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, U_u, U_d, uPF_K, &
+             Verbose_Option = Verbose  )
 
 
     !open(2, file = name1, status = 'new') 
@@ -1113,6 +1120,7 @@ CONTAINS
     END DO
 
     ! --- Permute Radiation Fields ---
+
     DO iZ1 = iZ_B1(1), iZ_E1(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1160,7 +1168,9 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
       DO iNode = 1, nDOF_E ! = nDOFX
+
         ! --- Left State Primitive --
+
         CALL ComputePrimitive_TwoMoment &
                ( uCR_L(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
                  uCR_L(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
@@ -1179,7 +1189,9 @@ CONTAINS
                  uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
                  uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
                  uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4) )
+
         ! --- Left State Flux ---
+
         Flux_L &
           = Flux_E( uPR_L(iPR_D ), uPR_L(iPR_I1), &
                     uPR_L(iPR_I2), uPR_L(iPR_I3), &
@@ -1199,6 +1211,7 @@ CONTAINS
                     dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNode,:,iZ2,iZ3,iZ4) )
         ! --- Right State Primitive ---
+
         CALL ComputePrimitive_TwoMoment &
                ( uCR_R(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
                  uCR_R(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
@@ -1238,10 +1251,12 @@ CONTAINS
                     dU_dX1(iNode,:,iZ2,iZ3,iZ4), &
                     dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNode,:,iZ2,iZ3,iZ4) )
+
         ! --- Numerical Flux ---
 
         EdgeEnergyCubed &
           = ( MeshE % Center(iZ1) - Half * MeshE % Width(iZ1) )**3
+
         IF( UpwindFlux )THEN
 
           AlphaP = 0.0_DP
@@ -1295,6 +1310,7 @@ CONTAINS
                   ( W * uPR_L(iCR),  &
                     W * uPR_R(iCR), &
                     Flux_L(iCR), Flux_R(iCR), Alpha )
+
             NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
               = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
                   * EdgeEnergyCubed * Weights_E(iNode) &
@@ -1313,6 +1329,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
     ! --- Surface Contributions ---
 
     ! --- Contributions from Left Face ---
@@ -1328,6 +1345,7 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nV, nDOF_E, - One, L_E_Up, nDOF_E, &
              NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
              nDOF_E, One,  dU_E, nDOFZ )
+
 
     !--------------------
     ! --- Volume Term ---
@@ -1365,6 +1383,7 @@ CONTAINS
                  uGF_K(iNodeX,iGF_Beta_1,iZ2,iZ3,iZ4), &
                  uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
                  uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4) )
+
         Flux_K &
           = Flux_E( uPR_K(iPR_D ), uPR_K(iPR_I1), &
                     uPR_K(iPR_I2), uPR_K(iPR_I3), &
@@ -1383,8 +1402,6 @@ CONTAINS
                     dU_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
-
-
         DO iCR = 1, nCR
 
           Flux_q(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1405,7 +1422,8 @@ CONTAINS
     END DO
     END DO
     END DO
-   ! --- Volume Contributions ---
+
+    ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFZ, nV, nDOFZ, One, dLdE_q, nDOFZ, &
@@ -1483,16 +1501,16 @@ CONTAINS
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
               * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
               * S_E(1)
-
-
+        
         ! --- iCR_G2 ---
-
+        
         dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
           = dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
             - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
               * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
               * S_E(2)
+
         ! --- iCR_G3 ---
 
         dU_E(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1523,6 +1541,7 @@ CONTAINS
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_E(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1)
+
       END DO
 
     END DO
@@ -3401,7 +3420,9 @@ CONTAINS
          print*, "G3 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS) 
          print*, "WN-ABS(G1) ", W *uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS)) 
          n = n+1
-         uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) = SIGN(W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) ,  uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) )
+         uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) &
+           = SIGN( W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                       uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) )
       END IF
         CALL ComputePrimitive_TwoMoment &
                ( uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS), &

@@ -84,7 +84,9 @@ CONTAINS
   END SUBROUTINE InitializeTimers_AMReX_Euler
 
 
-  SUBROUTINE FinalizeTimers_AMReX_Euler
+  SUBROUTINE FinalizeTimers_AMReX_Euler( WriteAtIntermediateTime_Option )
+
+    LOGICAL, INTENT(in), OPTIONAL :: WriteAtIntermediateTime_Option
 
     REAL(AR) :: Timer(nTimers), TotalTime
     REAL(AR) :: TimerSum(nTimers), TimerMin(nTimers), &
@@ -95,6 +97,12 @@ CONTAINS
     CHARACTER(64) :: &
       OutMMA = '(10x,A6,ES13.6E3,A4,A6,ES13.6E3,A4,A6,ES13.6E3,A2)'
     INTEGER       :: iT
+
+    LOGICAL :: WriteAtIntermediateTime
+
+    WriteAtIntermediateTime = .FALSE.
+    IF( PRESENT( WriteAtIntermediateTime_Option ) ) &
+      WriteAtIntermediateTime = WriteAtIntermediateTime_Option
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
@@ -269,6 +277,9 @@ CONTAINS
       WRITE(*,*)
 
     END IF
+
+    IF( WriteAtIntermediateTime ) &
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Program )
 
     RETURN
   END SUBROUTINE FinalizeTimers_AMReX_Euler

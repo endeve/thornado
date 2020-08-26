@@ -82,11 +82,6 @@ MODULE MF_UtilitiesModule
   PUBLIC :: WriteNodalDataToFile
   PUBLIC :: CombineGridData
 
-  INTERFACE CombineGridData
-    MODULE PROCEDURE CombineGridData1D
-    MODULE PROCEDURE CombineGridData3D
-  END INTERFACE CombineGridData
-
   REAL(AR), PARAMETER, PUBLIC :: Zero = 0.0_AR
 
 
@@ -718,77 +713,7 @@ CONTAINS
   END SUBROUTINE WriteNodalDataToFile
 
 
-  SUBROUTINE CombineGridData1D( MF, nF, iField, U )
-
-    TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
-    INTEGER,              INTENT(in)  :: nF, iField
-    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):)
-
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-
-    REAL(AR), CONTIGUOUS, POINTER :: U_P(:,:,:,:)
-    REAL(AR)                      :: U_K(nDOFX,nF)
-
-    REAL(AR) :: U0(nDOFX,1-swX(1):nX(1)+swX(1),0:nLevels-1)
-
-    INTEGER  :: iNodeX, iX1, iLevel, iX_B(3), iX_E(3), lo(4), hi(4)
-
-    U0 = Zero
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
-
-      DO WHILE( MFI % next() )
-
-        U_P => MF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        lo = LBOUND( U_P )
-        hi = UBOUND( U_P )
-
-        iX_B = BX % lo
-        iX_E = BX % hi
-
-        ! -- Get physical ghost cells right ---
-
-        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B(1) - swX(1)
-        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E(1) + swX(1)
-
-        DO iX1 = iX_B(1), iX_E(1)
-
-          U_K = RESHAPE( U_P(iX1,iX_B(2),iX_B(3),lo(4):hi(4)), [ nDOFX, nF ] )
-
-          U0(:,iX1,iLevel) = U_K(1:nNodesX(1),iField)
-
-        END DO
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-    ! --- Combine data from different grids ---
-
-    DO iX1 = 1-swX(1), nX(1)+swX(1)
-
-      DO iNodeX = 1, nNodesX(1)
-
-        CALL amrex_parallel_reduce_sum( U0(iNodeX,iX1,:), nLevels )
-
-        U(iNodeX,iX1) = U0(iNodeX,iX1,0)
-
-      END DO
-
-    END DO
-
-  END SUBROUTINE CombineGridData1D
-
-
-  SUBROUTINE CombineGridData3D( MF, nF, iField, U )
+  SUBROUTINE CombineGridData( MF, nF, iField, U )
 
     TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
     INTEGER,              INTENT(in)  :: nF, iField
@@ -869,7 +794,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE CombineGridData3D
+  END SUBROUTINE CombineGridData
 
 
 END MODULE MF_UtilitiesModule
