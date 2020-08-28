@@ -160,10 +160,10 @@ PROGRAM ApplicationDriver
       CALL FinalizeTimers_Euler &
              ( Verbose_Option = amrex_parallel_ioprocessor(), &
                SuppressApplicationDriver_Option = .TRUE., &
-               IntermediateTime_Option = .FALSE. )
+               WriteAtIntermediateTime_Option = .FALSE. )
 
       CALL FinalizeTimers_AMReX_Euler &
-             ( IntermediateTime_Option = .FALSE. )
+             ( WriteAtIntermediateTime_Option = .FALSE. )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
