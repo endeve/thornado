@@ -168,6 +168,8 @@ CONTAINS
     REAL(DP) :: CoreRadius      = 1.0e5_DP  * Kilometer
     REAL(DP) :: CollapseTime    = 1.50e2_DP * Millisecond
 
+    uPF(:,:,:,:,iPF_Ne) = Zero
+
     IF( PRESENT( AdvectionProfile_Option ) ) &
       AdvectionProfile = TRIM( AdvectionProfile_Option )
 
