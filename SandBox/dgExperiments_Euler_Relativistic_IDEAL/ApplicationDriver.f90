@@ -500,7 +500,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:7) )
+                                 iX_B0(3):iX_E0(3),1:6) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
