@@ -12,6 +12,8 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
+  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -202,6 +204,9 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
+        CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
@@ -220,6 +225,9 @@ CONTAINS
       END IF
 
     END DO
+
+    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
