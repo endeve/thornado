@@ -58,7 +58,8 @@ PROGRAM ApplicationDriver
   USE UnitsModule, ONLY: &
     UnitsDisplay, &
     Kilometer,    &
-    Second
+    Second,       &
+    Millisecond
 
   IMPLICIT NONE
 
@@ -66,9 +67,11 @@ PROGRAM ApplicationDriver
 
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
+  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: EosTableName
   LOGICAL       :: wrt
+  LOGICAL       :: OPTIMIZE = .FALSE.
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
@@ -87,6 +90,7 @@ PROGRAM ApplicationDriver
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
   ProgramName  = 'Advection'
+!!$  ProgramName  = 'RiemannProblem'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -109,12 +113,27 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0e2_DP, 1.0e2_DP, 1.0e2_DP ] * Kilometer
 
+    CASE( 'RiemannProblem' )
+
+      RiemannProblemName = 'Sod'
+
+      t_end = 2.5e-2_DP * Millisecond
+      bcX   = [ 2, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 128, 1, 1 ]
+      swX = [ 2, 0, 0 ]
+      xL  = [ -5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR  = [ +5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+
     CASE DEFAULT
 
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -122,13 +141,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
