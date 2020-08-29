@@ -12,6 +12,7 @@ EULER = \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_SlopeLimiterModule.o \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
