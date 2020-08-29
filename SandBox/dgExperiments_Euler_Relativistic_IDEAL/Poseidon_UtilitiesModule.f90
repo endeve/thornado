@@ -1,13 +1,21 @@
 MODULE Poseidon_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP, Three
+    DP,  &
+    One, &
+    Two, &
+    Three
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_Alpha,    &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3,   &
+    nGF
   USE FluidFieldsModule, ONLY: &
     nCF,    &
     iCF_D,  &
@@ -45,12 +53,19 @@ CONTAINS
      REAL(DP), INTENT(in)  :: U         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
      REAL(DP), INTENT(out) :: U_Poseidon(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
-     REAL(DP) :: uPF(nDOFX,nPF), Pressure(nDOFX)
-     INTEGER  :: iX1, iX2, iX3
+     REAL(DP) :: uGF(nDOFX,nGF), uPF(nDOFX,nPF), Pressure(nDOFX), &
+                 LorentzFactor(nDOFX), Enthalpy(nDOFX), BetaDotV(nDOFX)
+     INTEGER  :: iX1, iX2, iX3, iGF
 
      DO iX3 = iX_B0(3), iX_E0(3)
      DO iX2 = iX_B0(2), iX_E0(2)
      DO iX1 = iX_B0(1), iX_E0(1)
+
+       DO iGF = 1, nGF
+
+         uGF(:,iGF) = G(:,iX1,iX2,iX3,iGF)
+
+       END DO
 
        ! --- Compute trace of stress tensor ---
 
@@ -67,9 +82,9 @@ CONTAINS
                 uPF(:,iPF_V3), &
                 uPF(:,iPF_E ), &
                 uPF(:,iPF_Ne), &
-                G  (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                G  (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                G  (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+                uGF(:,iGF_Gm_dd_11), &
+                uGF(:,iGF_Gm_dd_22), &
+                uGF(:,iGF_Gm_dd_33) )
 
        CALL ComputePressureFromPrimitive_IDEAL &
               ( uPF(:,iPF_D), uPF(:,iPF_E), uPF(:,iPF_Ne), Pressure )
@@ -78,25 +93,36 @@ CONTAINS
          = U(:,iX1,iX2,iX3,iCF_E) + U(:,iX1,iX2,iX3,iCF_D)
 
        U_Poseidon(:,iX1,iX2,iX3,2) &
-         = U(:,iX1,iX2,iX3,iCF_S1) * uPF(:,iPF_V1) &
-             + U(:,iX1,iX2,iX3,iCF_S2) * uPF(:,iPF_V2) &
-             + U(:,iX1,iX2,iX3,iCF_S3) * uPF(:,iPF_V3) &
-             + Three * Pressure
+         =   U(:,iX1,iX2,iX3,iCF_S1) * uPF(:,iPF_V1) &
+           + U(:,iX1,iX2,iX3,iCF_S2) * uPF(:,iPF_V2) &
+           + U(:,iX1,iX2,iX3,iCF_S3) * uPF(:,iPF_V3) &
+           + Three * Pressure
 
        U_Poseidon(:,iX1,iX2,iX3,3) &
-         = U(:,iX1,iX2,iX3,iCF_S1) / G(:,iX1,iX2,iX3,iGF_Gm_dd_11)
+         = U(:,iX1,iX2,iX3,iCF_S1) / uGF(:,iGF_Gm_dd_11)
 
        U_Poseidon(:,iX1,iX2,iX3,4) &
-         = U(:,iX1,iX2,iX3,iCF_S2) / G(:,iX1,iX2,iX3,iGF_Gm_dd_22)
+         = U(:,iX1,iX2,iX3,iCF_S2) / uGF(:,iGF_Gm_dd_22)
 
        U_Poseidon(:,iX1,iX2,iX3,5) &
-         = U(:,iX1,iX2,iX3,iCF_S3) / G(:,iX1,iX2,iX3,iGF_Gm_dd_33)
+         = U(:,iX1,iX2,iX3,iCF_S3) / uGF(:,iGF_Gm_dd_33)
+
+       LorentzFactor &
+         = One / SQRT( One                              &
+             - ( uGF(:,iGF_Gm_dd_11) * uPF(:,iPF_V1)**2 &
+               + uGF(:,iGF_Gm_dd_22) * uPF(:,iPF_V2)**2 &
+               + uGF(:,iGF_Gm_dd_33) * uPF(:,iPF_V3)**2 ) )
+
+       BetaDotV =   uGF(:,iGF_Gm_dd_11) * uGF(:,iGF_Beta_1) * uPF(:,iPF_V1) &
+                  + uGF(:,iGF_Gm_dd_22) * uGF(:,iGF_Beta_2) * uPF(:,iPF_V2) &
+                  + uGF(:,iGF_Gm_dd_33) * uGF(:,iGF_Beta_3) * uPF(:,iPF_V3)
+
+       Enthalpy = uPF(:,iPF_D) + uPF(:,iPF_E) + Pressure
 
        U_Poseidon(:,iX1,iX2,iX3,6) &
-         = uPF(:,iPF_D)
-
-       U_Poseidon(:,iX1,iX2,iX3,7) &
-         = uPF(:,iPF_E)
+         = Enthalpy * ( Two * LorentzFactor**2               &
+             * ( One - BetaDotV / uGF(:,iGF_Alpha) ) - One ) &
+             + Two * Pressure
 
      END DO
      END DO

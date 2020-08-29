@@ -4,15 +4,15 @@ all: ApplicationDriver #ComputePrimitiveTest #SlopeLimiterDiagnostics
 
 ApplicationDriver: \
 	$(thornado) \
-	InitializationModule_Relativistic.o \
 	Poseidon_UtilitiesModule.o \
+	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	AccretionShockDiagnosticsModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	InitializationModule_Relativistic.o \
 	Poseidon_UtilitiesModule.o \
+	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	AccretionShockDiagnosticsModule.o \
 	ApplicationDriver.o \
