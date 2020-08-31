@@ -111,9 +111,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       AdvectionProfile_Option
 
-    REAL(DP), PARAMETER :: D_0 = 1.0d12 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: Amp = 1.0d11 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: L   = 1.0d02 * Kilometer
+    REAL(DP), PARAMETER :: D_0    = 1.6608d3 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Amp    = 3.00d3   * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: L      = 1.0d02   * Kilometer
+    REAL(DP), PARAMETER :: Ye_0   = 0.0125_DP
+    REAL(DP), PARAMETER :: Amp_Ye = 0.030_DP
 
     CHARACTER(32) :: AdvectionProfile
     INTEGER       :: iX1, iX2, iX3
@@ -260,7 +262,41 @@ CONTAINS
               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
                 = 0.3_DP
 
-          END IF
+            END IF
+
+          CASE( 'TopHat' )
+
+            IF( ( X1 .GE. -0.4_DP * L ) .AND. ( X1 .LE. 0.4_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.5d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = Ye_0 + Amp_Ye
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.5d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = Ye_0
+
+            END IF
 
         END SELECT
 
