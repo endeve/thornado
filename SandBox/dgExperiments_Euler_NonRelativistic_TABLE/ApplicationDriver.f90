@@ -92,7 +92,7 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'ShockEntropyWave'
+  ProgramName = 'Advection'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
@@ -110,29 +110,29 @@ PROGRAM ApplicationDriver
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'SineWave'
+      AdvectionProfile = 'TopHat'
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 08, 01, 01 ]
-      xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
-      xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
+      nX = [ 256, 01, 01 ]
+      xL = [ -1.0d2, 0.0d0, 0.0d0 ] * Kilometer
+      xR = [  1.0d2, 1.0d2, 1.0d2 ] * Kilometer
       zoomX = One
 
       bcX = [ 1, 1, 1 ]
 
-      nNodes  = 3
-      nStages = 3
+      nNodes  = 2
+      nStages = 2
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .FALSE.
+      UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 1.0d-2
-      UsePositivityLimiter      = .FALSE.
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.0d-3
+      UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
       t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
