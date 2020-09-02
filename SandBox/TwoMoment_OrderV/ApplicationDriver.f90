@@ -94,7 +94,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'TransparentVortex'
+  ProgramName = 'TransparentShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -323,9 +323,9 @@ PROGRAM ApplicationDriver
 
     CASE( 'TransparentShock' )
 
-      Direction = 'Y' ! --- (X,Y, or Z)
+      Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 2.5d-4 ! --- Shock Width
+      LengthScale = 1.0d-1 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
@@ -369,13 +369,13 @@ PROGRAM ApplicationDriver
       eR  = 5.0d1
       bcE = 10
 
-      nNodes = 2
+      nNodes = 1
 
-      TimeSteppingScheme = 'SSPRK2'
+      TimeSteppingScheme = 'SSPRK1'
 
       t_end   = 5.0d0
       iCycleD = 1
-      iCycleW = 250
+      iCycleW = 10
       maxCycles = 1000000
 
       D_0   = 0.0_DP
