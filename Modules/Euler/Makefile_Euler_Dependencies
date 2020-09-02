@@ -102,6 +102,19 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   Euler_ErrorModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 
+Euler_PositivityLimiterModule_Relativistic_TABLE.o \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  UnitsModule.o \
+  TimersModule_Euler.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.f90
+
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o \

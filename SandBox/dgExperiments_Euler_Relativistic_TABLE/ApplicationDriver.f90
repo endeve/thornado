@@ -17,6 +17,13 @@ PROGRAM ApplicationDriver
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
+  USE EquationOfStateModule_TABLE, ONLY: &
+    MinD, &
+    MaxD, &
+    MinT, &
+    MaxT, &
+    MinY, &
+    MaxY
   USE ProgramHeaderModule, ONLY: &
     iX_B0,  &
     iX_B1,  &
@@ -31,6 +38,10 @@ PROGRAM ApplicationDriver
     InitializeSlopeLimiter_Euler_Relativistic_TABLE, &
     FinalizeSlopeLimiter_Euler_Relativistic_TABLE,   &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
+  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
+    InitializePositivityLimiter_Euler_Relativistic_TABLE, &
+    FinalizePositivityLimiter_Euler_Relativistic_TABLE,   &
+    ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
@@ -98,6 +109,9 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
 
+  ! --- Positivity Limiter ---
+
+  LOGICAL :: UsePositivityLimiter
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -105,8 +119,8 @@ PROGRAM ApplicationDriver
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
-!!$  ProgramName  = 'Advection'
-  ProgramName  = 'RiemannProblem'
+  ProgramName  = 'Advection'
+!!$  ProgramName  = 'RiemannProblem'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -157,13 +171,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -180,6 +194,10 @@ PROGRAM ApplicationDriver
   UseTroubledCellIndicator  = .FALSE.
   LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
+
+  ! --- Positivity Limiter ---
+
+  UsePositivityLimiter = .TRUE.
 
   ! === End of User Input ===
 
@@ -240,6 +258,17 @@ PROGRAM ApplicationDriver
            UseConservativeCorrection_Option &
              = UseConservativeCorrection )
 
+  CALL InitializePositivityLimiter_Euler_Relativistic_TABLE &
+         ( UsePositivityLimiter_Option &
+             = UsePositivityLimiter, &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = ( One + EPSILON(One) ) * MinD, &
+           Min_2_Option = ( One + EPSILON(One) ) * MinT, &
+           Min_3_Option = ( One + EPSILON(One) ) * MinY, &
+           Max_1_Option = ( One - EPSILON(One) ) * MaxD, &
+           Max_2_Option = ( One - EPSILON(One) ) * MaxT, &
+           Max_3_Option = ( One - EPSILON(One) ) * MaxY )
+
   CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
@@ -265,6 +294,9 @@ PROGRAM ApplicationDriver
 
   CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+  CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 

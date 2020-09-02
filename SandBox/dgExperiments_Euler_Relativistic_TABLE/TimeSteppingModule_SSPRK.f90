@@ -14,6 +14,8 @@ MODULE TimeSteppingModule_SSPRK
     nCF
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
+  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -207,6 +209,9 @@ CONTAINS
         CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
+        CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
@@ -228,6 +233,9 @@ CONTAINS
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
