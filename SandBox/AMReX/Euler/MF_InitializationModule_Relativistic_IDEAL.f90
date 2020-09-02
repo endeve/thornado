@@ -84,9 +84,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     nLevels,            &
     xL,                 &
     xR,                 &
-    Gamma_IDEAL,        &
-    InitializeFromFile, &
-    NodalDataFileNameBase
+    Gamma_IDEAL
   USE MF_UtilitiesModule,      ONLY: &
     CombineGridData
 
@@ -106,7 +104,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   REAL(AR), PARAMETER :: TwoPi    = 2.0_AR * Pi
   REAL(AR), PARAMETER :: FourPi   = 4.0_AR * Pi
 
-  LOGICAL, PUBLIC :: WriteNodalData_SAS
+  LOGICAL,          PUBLIC              :: WriteNodalData_SAS
+  CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: NodalDataFileNameBase_SAS
 
 
 CONTAINS
@@ -1750,29 +1749,33 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: Psi    (:,:)
     REAL(AR), ALLOCATABLE :: Alpha3D(:,:,:,:)
     REAL(AR), ALLOCATABLE :: Psi3D  (:,:,:,:)
-    LOGICAL  :: FirstPreShockElement = .FALSE.
-
-    INTEGER, PARAMETER :: nX_LeastSquares = 5
+    LOGICAL               :: FirstPreShockElement = .FALSE.
+    LOGICAL               :: InitializeFromFile
+    INTEGER, PARAMETER    :: nX_LeastSquares = 5
 
     ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
 
-    ApplyPerturbation     = .FALSE.
-    PerturbationOrder     = 0
-    PerturbationAmplitude = Zero
-    rPerturbationInner    = Zero
-    rPerturbationOuter    = Zero
-    WriteNodalData_SAS    = .FALSE.
+    ApplyPerturbation         = .FALSE.
+    PerturbationOrder         = 0
+    PerturbationAmplitude     = Zero
+    rPerturbationInner        = Zero
+    rPerturbationOuter        = Zero
+    InitializeFromFile        = .FALSE.
+    WriteNodalData_SAS        = .FALSE.
+    NodalDataFileNameBase_SAS = 'M1.4_Rs180_Mdot0.3'
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get  ( 'Mass'                 , MassPNS               )
-      CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
-      CALL PP % get  ( 'ShockRadius'          , ShockRadius           )
-      CALL PP % get  ( 'PolytropicConstant'   , PolytropicConstant    )
-      CALL PP % query( 'ApplyPerturbation'    , ApplyPerturbation     )
-      CALL PP % query( 'PerturbationOrder'    , PerturbationOrder     )
-      CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
-      CALL PP % query( 'rPerturbationInner'   , rPerturbationInner    )
-      CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
-      CALL PP % query( 'WriteNodalData_SAS'   , WriteNodalData_SAS    )
+      CALL PP % get  ( 'Mass'                     , MassPNS                   )
+      CALL PP % get  ( 'AccretionRate'            , AccretionRate             )
+      CALL PP % get  ( 'ShockRadius'              , ShockRadius               )
+      CALL PP % get  ( 'PolytropicConstant'       , PolytropicConstant        )
+      CALL PP % query( 'ApplyPerturbation'        , ApplyPerturbation         )
+      CALL PP % query( 'PerturbationOrder'        , PerturbationOrder         )
+      CALL PP % query( 'PerturbationAmplitude'    , PerturbationAmplitude     )
+      CALL PP % query( 'rPerturbationInner'       , rPerturbationInner        )
+      CALL PP % query( 'rPerturbationOuter'       , rPerturbationOuter        )
+      CALL PP % query( 'InitializeFromFile'       , InitializeFromFile        )
+      CALL PP % query( 'WriteNodalData_SAS'       , WriteNodalData_SAS        )
+      CALL PP % query( 'NodalDataFileNameBase_SAS', NodalDataFileNameBase_SAS )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -1982,18 +1985,30 @@ CONTAINS
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,*)
-        WRITE(*,'(6x,A)') 'Shock location:'
-        WRITE(*,'(8x,A)') 'Pre-shock:'
-        WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
-        WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
-        WRITE(*,'(8x,A)') 'Post-shock:'
-        WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
-        WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
+        WRITE(*,'(6x,A)') 'Jump Conditions'
+        WRITE(*,'(6x,A)') '---------------'
         WRITE(*,*)
-        WRITE(*,'(6x,A,ES13.6E3)') &
-          'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
+        WRITE(*,'(8x,A)') 'Pre-shock:'
+        WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+        WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+          D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+        WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+          V_1 / ( Kilometer / Second ), ' km/s'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+          P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+        WRITE(*,*)
+        WRITE(*,'(8x,A)') 'Post-shock:'
+        WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+        WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+          D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+        WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+          V_2 / ( Kilometer / Second ), ' km/s'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+          P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
         WRITE(*,*)
 
       END IF
@@ -2250,9 +2265,17 @@ CONTAINS
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
 
-    OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase ) // '_D.dat' )
-    OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase ) // '_V.dat' )
-    OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase ) // '_P.dat' )
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(6x,A,A)') &
+        'NodalDataFileNameBase_SAS = ', NodalDataFileNameBase_SAS
+
+    END IF
+
+    OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_D.dat' )
+    OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_V.dat' )
+    OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_P.dat' )
 
     READ(101,*) FMT
     READ(102,*) FMT

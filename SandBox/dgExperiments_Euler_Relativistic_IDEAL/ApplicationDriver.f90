@@ -155,7 +155,7 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
 !  ProgramName = 'YahilCollapse'
 
