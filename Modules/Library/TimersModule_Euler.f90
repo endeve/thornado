@@ -87,12 +87,14 @@ CONTAINS
 
 
   SUBROUTINE FinalizeTimers_Euler &
-    ( Verbose_Option, SuppressApplicationDriver_Option )
+    ( Verbose_Option, SuppressApplicationDriver_Option, &
+      WriteAtIntermediateTime_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
     LOGICAL, INTENT(in), OPTIONAL :: SuppressApplicationDriver_Option
+    LOGICAL, INTENT(in), OPTIONAL :: WriteAtIntermediateTime_Option
 
-    LOGICAL  :: Verbose, SuppressApplicationDriver
+    LOGICAL  :: Verbose, SuppressApplicationDriver, WriteAtIntermediateTime
     REAL(DP) :: TotalTime
 
     CHARACTER(6)  :: Label_Level1  = '(8x,A)'
@@ -121,6 +123,10 @@ CONTAINS
     SuppressApplicationDriver = .FALSE.
     IF( PRESENT( SuppressApplicationDriver_Option ) ) &
       SuppressApplicationDriver = SuppressApplicationDriver_Option
+
+    WriteAtIntermediateTime = .FALSE.
+    IF( PRESENT( WriteAtIntermediateTime_Option ) ) &
+      WriteAtIntermediateTime = WriteAtIntermediateTime_Option
 
     CALL TimersStop_Euler( Timer_Euler_Program )
 
@@ -320,6 +326,9 @@ CONTAINS
           * Timer_Euler_CharacteristicDecomposition / Timer_Euler_Program, ' %'
 
     END IF
+
+    IF( WriteAtIntermediateTime ) &
+      CALL TimersStart_Euler( Timer_Euler_Program )
 
     RETURN
   END SUBROUTINE FinalizeTimers_Euler

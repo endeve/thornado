@@ -168,6 +168,8 @@ CONTAINS
     REAL(DP) :: CoreRadius      = 1.0e5_DP  * Kilometer
     REAL(DP) :: CollapseTime    = 1.50e2_DP * Millisecond
 
+    uPF(:,:,:,:,iPF_Ne) = Zero
+
     IF( PRESENT( AdvectionProfile_Option ) ) &
       AdvectionProfile = TRIM( AdvectionProfile_Option )
 
@@ -1588,19 +1590,32 @@ CONTAINS
     Kb = P_2 / D_2**( Gamma_IDEAL )
 
     WRITE(*,*)
-    WRITE(*,'(6x,A)') 'Shock location:'
-    WRITE(*,'(8x,A)') 'Pre-shock:'
-    WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
-    WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
-    WRITE(*,'(8x,A)') 'Post-shock:'
-    WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
-    WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
+      WRITE(*,'(6x,A)') 'Jump Conditions'
+      WRITE(*,'(6x,A)') '---------------'
+      WRITE(*,*)
+      WRITE(*,'(8x,A)') 'Pre-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+        D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+        V_1 / ( Kilometer / Second ), ' km/s'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+        P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+      WRITE(*,*)
+      WRITE(*,'(8x,A)') 'Post-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+        D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+        V_2 / ( Kilometer / Second ), ' km/s'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+        P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
     WRITE(*,*)
-    WRITE(*,'(6x,A,ES13.6E3)') &
-      'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 10.0_DP )
-    WRITE(*,*)
+
 
     ! --- Post-shock Fields ---
 

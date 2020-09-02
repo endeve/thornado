@@ -155,6 +155,18 @@ PROGRAM ApplicationDriver
                MF_uGF % P, &
                MF_uCF % P )
 
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+      CALL FinalizeTimers_Euler &
+             ( Verbose_Option = amrex_parallel_ioprocessor(), &
+               SuppressApplicationDriver_Option = .TRUE., &
+               WriteAtIntermediateTime_Option = .FALSE. )
+
+      CALL FinalizeTimers_AMReX_Euler &
+             ( WriteAtIntermediateTime_Option = .FALSE. )
+
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
       chk = .FALSE.
 
     END IF

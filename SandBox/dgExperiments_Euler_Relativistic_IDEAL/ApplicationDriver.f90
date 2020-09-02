@@ -46,16 +46,12 @@ PROGRAM ApplicationDriver
     ReadFieldsHDF,  &
     WriteAccretionShockDiagnosticsHDF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
-    nPF, &
-    nAF, &
     uCF, &
     uPF, &
     uAF, &
     uDF, &
     iPF_D
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     uGF
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     InitializeGravitySolver_CFA_Poseidon, &
@@ -112,7 +108,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: SelfGravity
   LOGICAL       :: UseConservativeCorrection
-  INTEGER       :: iCycle, iCycleD, iCycleW = 0
+  INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   INTEGER       :: RestartFileNumber
@@ -148,14 +144,6 @@ PROGRAM ApplicationDriver
 
   REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
 
-  swX = [ 0, 0, 0 ]
-  RestartFileNumber = -1
-
-  t = 0.0_DP
-
-  SelfGravity = .FALSE.
-  ZoomX       = 1.0_DP
-
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -167,9 +155,15 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
 !  ProgramName = 'YahilCollapse'
+
+  swX               = [ 0, 0, 0 ]
+  RestartFileNumber = -1
+  t                 = 0.0_DP
+  ZoomX             = 1.0_DP
+  SelfGravity       = .FALSE.
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -506,7 +500,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:7) )
+                                 iX_B0(3):iX_E0(3),1:6) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 

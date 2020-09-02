@@ -130,7 +130,7 @@ CONTAINS
     IF( PRESENT( BetaTVB_Option ) ) &
       BetaTVB = BetaTVB_Option
 
-    SlopeTolerance = 1.0d-3
+    SlopeTolerance = 1.0e-3_DP
     IF( PRESENT( SlopeTolerance_Option ) ) &
       SlopeTolerance = SlopeTolerance_Option
 
@@ -145,7 +145,7 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
+    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &

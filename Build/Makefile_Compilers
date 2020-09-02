@@ -138,7 +138,7 @@ DEBUG_dpochik      = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invali
 DEBUG_lucalin	   = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_bison        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -fcheck=all -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fdump-fortran-optimized
-DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
 DEBUG_jrober       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
 DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
@@ -226,6 +226,7 @@ INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_dpochik       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_sjdunham      = -I$(POSEIDON_DIR)/Obj
+INCLUDE_POSEIDON_jrober        = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
@@ -309,6 +310,7 @@ LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_kristopher  = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_dpochik     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_sjdunham    = $(POSEIDON_DIR)/Obj/poseidon.a
+LIBRARIES_POSEIDON_jrober      = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas

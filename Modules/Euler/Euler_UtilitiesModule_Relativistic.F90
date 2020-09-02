@@ -51,6 +51,8 @@ MODULE Euler_UtilitiesModule_Relativistic
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid,         &
     ComputePressureFromSpecificInternalEnergy
+  USE UnitsModule, ONLY: &
+    AtomicMassUnit
   USE TimersModule_Euler,ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -114,19 +116,20 @@ CONTAINS
     r = S    / CF_D
     k = r    / ( One + q )
 
-    CALL SolveZ_Bisection( CF_D, q, r, k, z0 )
+    CALL SolveZ_Bisection( CF_D, CF_Ne, q, r, k, z0 )
 
     ! --- Eq. C15 ---
 
-    W    = SQRT( One + z0**2 )
-    PF_D = CF_D / W
+    W     = SQRT( One + z0**2 )
+    PF_D  = CF_D / W
+    PF_Ne = CF_Ne / W
 
     ! --- Eq. C16 ---
 
     eps = W * q - z0 * r + z0**2 / ( One + W )
 
     CALL ComputePressureFromSpecificInternalEnergy &
-           ( PF_D, eps, 0.0_DP, p )
+           ( PF_D, eps, AtomicMassUnit * PF_Ne / PF_D, p )
 
     h = One + eps + p / PF_D
 
@@ -134,7 +137,6 @@ CONTAINS
     PF_V2 = ( CF_S2 / GF_Gm22 ) / ( CF_D * W * h )
     PF_V3 = ( CF_S3 / GF_Gm33 ) / ( CF_D * W * h )
     PF_E  = CF_D * ( eps + p / PF_D ) / W - p
-    PF_Ne = CF_Ne / W
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -1072,11 +1074,11 @@ CONTAINS
   ! --- Auxiliary utilities for ComputePrimitive ---
 
 
-  REAL(DP) FUNCTION FunZ( z, D, q, r, k )
+  REAL(DP) FUNCTION FunZ( z, D, Ne, q, r, k )
 
-    REAL(DP), INTENT(in) :: z, D, q, r, k
+    REAL(DP), INTENT(in) :: z, D, Ne, q, r, k
 
-    REAL(DP) :: Wt, rhot, epst, pt, at
+    REAL(DP) :: Wt, rhot, epst, pt, at, Ye
 
     ! --- Eq. C15 ---
 
@@ -1087,8 +1089,10 @@ CONTAINS
 
     epst = Wt * q - z * r + z**2 / ( One + Wt )
 
+    Ye = Ne * AtomicMassUnit / D
+
     CALL ComputePressureFromSpecificInternalEnergy &
-         ( rhot, epst, 0.0_DP, pt )
+           ( rhot, epst, Ye, pt )
 
     ! --- Eq. C20 ---
 
@@ -1102,9 +1106,9 @@ CONTAINS
   END FUNCTION FunZ
 
 
-  SUBROUTINE SolveZ_Bisection( CF_D, q, r, k, z0 )
+  SUBROUTINE SolveZ_Bisection( CF_D, CF_Ne, q, r, k, z0 )
 
-    REAL(DP), INTENT(in)  :: CF_D, q, r, k
+    REAL(DP), INTENT(in)  :: CF_D, CF_Ne, q, r, k
     REAL(DP), INTENT(out) :: z0
 
     LOGICAL             :: CONVERGED
@@ -1121,8 +1125,8 @@ CONTAINS
 
     ! --- Compute FunZ for upper and lower bounds ---
 
-    fa = FunZ( za, CF_D, q, r, k )
-    fb = FunZ( zb, CF_D, q, r, k )
+    fa = FunZ( za, CF_D, CF_Ne, q, r, k )
+    fb = FunZ( zb, CF_D, CF_Ne, q, r, k )
 
     ! --- Check that sign of FunZ changes across bounds ---
 
@@ -1178,7 +1182,7 @@ CONTAINS
 
       ! --- Compute f(zc) for midpoint zc ---
 
-      fc = FunZ( zc, CF_D, q, r, k )
+      fc = FunZ( zc, CF_D, CF_Ne, q, r, k )
 
       ! --- Change zc to za or zb, depending on sign of fc ---
 

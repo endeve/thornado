@@ -703,7 +703,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D  / UnitP
+    D_P = D  / UnitD
     E_P = Em / UnitE
     Y_P = Y  / UnitY
 

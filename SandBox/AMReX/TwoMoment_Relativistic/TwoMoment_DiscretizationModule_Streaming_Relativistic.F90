@@ -1210,7 +1210,6 @@ CONTAINS
                     dU_dX1(iNode,:,iZ2,iZ3,iZ4), &
                     dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNode,:,iZ2,iZ3,iZ4) )
-
         ! --- Right State Primitive ---
 
         CALL ComputePrimitive_TwoMoment &
@@ -1403,7 +1402,6 @@ CONTAINS
                     dU_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
-
         DO iCR = 1, nCR
 
           Flux_q(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1493,6 +1491,7 @@ CONTAINS
                     dU_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
+
 
         ! --- iCR_G1 ---
 

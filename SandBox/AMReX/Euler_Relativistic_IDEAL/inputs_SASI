@@ -18,8 +18,8 @@ SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
-thornado.WriteOutputData    = 0
-thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
+SAS.NodalDataFileNameBase_SAS = "MPNS1.4_Rs180_Mdot0.3"
+SAS.InitializeFromFile        = 0
 
 thornado.iRestart           = -1
 thornado.InitializeFromFile = 0
@@ -49,7 +49,7 @@ geometry.coord_sys = 2
 geometry.prob_lo   = 040.0 0.0               0.0
 geometry.prob_hi   = 1000.0 3.1415926535897931 6.2831853071795862
 
-amr.n_cell            = 1024 256 001
+amr.n_cell            = 128 64 001
 thornado.swX          = 01   01  00
 amr.max_grid_size_x   = 64
 amr.max_grid_size_y   = 64

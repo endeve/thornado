@@ -8,39 +8,84 @@ from data files created in MakeDataFiles.py.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import subprocess
+
+# --- Get user's HOME directory ---
+HOME = subprocess.check_output( ["echo $HOME"], shell = True)
+HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-ProblemName = 'SASI' # Only used for name of movie file
 
-# Define custom variables as seen near line 40
-Field1 = 'Entropy'
-Field2 = 'PF_D'
+# First
 
-DataFileName1 = 'MovieData_{:}.dat'.format( Field1 )
-DataFileName2 = 'MovieData_{:}.dat'.format( Field2 )
+Root1   = 'M1.4_Rs180_Mdot0.3'
+suffix1 = ''
 
-UseLogScale1 = False  # Do you want your first field plotted in log scale?
-UseLogScale2 = True  # Do you want your second field plotted in log scale?
+DataDirectory1 = HOME + '{:}/'.format( Root1 )
 
-cmap1 = 'Purples' # Color scheme for first movie
-cmap2 = 'jet'     # Color scheme for second movie
+PlotFileBaseName1 = 'plt_{:}{:}'.format( Root1, suffix1 )
 
-UseCustomTicks = True # Define limits for colorbar near line 166
+Field1 = 'PolytropicConstant' # Field to plot
+
+cmap1 = 'Purples' # Color scheme
+
+UseLogScale1 = True # Use log scale?
+
+# Second
+
+Root2   = 'M1.4_Rs180_Mdot0.3'
+suffix2 = ''
+
+DataDirectory2 = HOME + '{:}/'.format( Root2 )
+
+PlotFileBaseName2 = 'plt_{:}{:}'.format( Root2, suffix2 )
+
+Field2 = 'PolytropicConstant' # Field to plot
+
+cmap2 = 'Purples' # Color scheme
+
+UseLogScale2 = True # Use log scale?
+
+# Global
+
+MovieName = 'SASI_{:}_{:}'.format( Field1, Field2 )
+
+MovieRunTime = 30.0 # seconds
+
+UsePhysicalUnits = True # Does your data use physical units?
+
+UseCustomTicks = True # Define limits for colorbar near line 70
 
 zAxisVertical = True # Orient z-axis
+
 ############# End of user input #############
+
+ID1           = '{:}{:}_{:}'.format( Root1, suffix1, Field1 )
+DataFileName1 = '{:}_MovieData.dat'.format( ID1 )
+TimeFileName1 = '{:}_MovieTime.dat'.format( ID1 )
+
+ID2           = '{:}{:}_{:}'.format( Root2, suffix2, Field2 )
+DataFileName2 = '{:}_MovieData.dat'.format( ID2 )
+TimeFileName2 = '{:}_MovieTime.dat'.format( ID2 )
 
 from MakeDataFiles import *
 
-MakeDataFile( Field1, DataFileName1 )
-MakeDataFile( Field2, DataFileName2 )
+xL, xH, nX, FileArray1 \
+  = MakeDataFile( Field1, DataDirectory1, DataFileName1, TimeFileName1, \
+                  PlotFileBaseName1, UsePhysicalUnits )
+
+xL, xH, nX, FileArray2 \
+  = MakeDataFile( Field2, DataDirectory2, DataFileName2, TimeFileName2, \
+                  PlotFileBaseName2, UsePhysicalUnits )
 
 print( 'Reading in data files...' )
+
 Data1 = np.loadtxt( DataFileName1 ).reshape( \
-                                    (FileArray.shape[0],nX[0],nX[1]) )
+                                    (FileArray1.shape[0],nX[0],nX[1]) )
 Data2 = np.loadtxt( DataFileName2 ).reshape( \
-                                    (FileArray.shape[0],nX[0],nX[1]) )
-Time = np.loadtxt( TimeFileName )
+                                    (FileArray2.shape[0],nX[0],nX[1]) )
+
+Time = np.loadtxt( TimeFileName1 ) # These should be the same for both fields
 
 fig = plt.figure( figsize = (8,6) )
 ax  = fig.add_subplot( 111, polar = True )
@@ -51,40 +96,37 @@ X2  = np.linspace( xL[1], xH[1], nX[1] )
 theta1, r = np.meshgrid( X2, X1 )
 theta2, r = np.meshgrid( 2.0 * np.pi - X2, X1 )
 
-if( UseLogScale1 ):
-    from matplotlib.colors import LogNorm
-    norm1 = LogNorm()
-    def f1(t):
-        return np.abs( Data1[t] )
-else:
-    norm1 = None
-    def f1(t):
-        return Data1[t]
-
-if( UseLogScale2 ):
-    from matplotlib.colors import LogNorm
-    norm2 = LogNorm()
-    def f2(t):
-        return np.abs( Data2[t] )
-else:
-    norm2 = None
-    def f2(t):
-        return Data2[t]
-
 if( UseCustomTicks ):
 
     vmin1 = min( +np.inf, np.min( Data1 ) )
     vmax1 = max( -np.inf, np.max( Data1 ) )
     vmin2 = min( +np.inf, np.min( Data2 ) )
     vmax2 = max( -np.inf, np.max( Data2 ) )
+
     if( UseLogScale1 ):
-        ticks1 = np.logspace( np.log10( vmin1 ), np.log10( vmax1 ), 5 )
+
+        if  ( vmax1 < 0.0 ):
+            ticks1 = np.linspace( -np.log10(-vmin1), -np.log10(-vmax1), 5 )
+        elif( vmin1 < 0.0 ):
+            ticks1 = np.linspace( -np.log10(-vmin1), +np.log10(+vmax1), 5 )
+        else:
+            ticks1 = np.logspace( +np.log10(+vmin1), +np.log10(+vmax1), 5 )
+
     else:
+
         ticks1 = np.linspace( vmin1, vmax1, 5 )
 
     if( UseLogScale2 ):
-        ticks2 = np.logspace( np.log10( vmin2 ), np.log10( vmax2 ), 5 )
+
+        if  ( vmax2 < 0.0 ):
+            ticks2 = np.linspace( -np.log10(-vmin2), -np.log10(-vmax2), 5 )
+        elif( vmin2 < 0.0 ):
+            ticks2 = np.linspace( -np.log10(-vmin2), +np.log10(+vmax2), 5 )
+        else:
+            ticks2 = np.logspace( +np.log10(+vmin2), +np.log10(+vmax2), 5 )
+
     else:
+
         ticks2 = np.linspace( vmin2, vmax2, 5 )
 
     ticklabels1 = []
@@ -101,16 +143,50 @@ else:
     vmin2 = min( +np.inf, np.min( Data2 ) )
     vmax2 = max( -np.inf, np.max( Data2 ) )
 
+if( UseLogScale1 ):
+
+    from matplotlib.colors import LogNorm, SymLogNorm
+
+    if( np.any( Data1 < 0.0 ) ):
+        Norm1 = SymLogNorm( vmin = vmin1, vmax = vmax1, \
+                            linthresh = 1.0e2, base = 10 )
+    else:
+        Norm1 = LogNorm   ( vmin = vmin1, vmax = vmax1 )
+
+else:
+
+    Norm1 = plt.Normalize ( vmin = vmin1, vmax = vmax1 )
+
+if( UseLogScale2 ):
+
+    from matplotlib.colors import LogNorm, SymLogNorm
+
+    if( np.any( Data2 < 0.0 ) ):
+        Norm2 = SymLogNorm( vmin = vmin2, vmax = vmax2, \
+                            linthresh = 1.0e2, base = 10 )
+    else:
+        Norm2 = LogNorm   ( vmin = vmin2, vmax = vmax2 )
+
+else:
+
+    Norm2 = plt.Normalize ( vmin = vmin2, vmax = vmax2 )
+
+def f1(t):
+    return Data1[t]
+def f2(t):
+    return Data2[t]
+
 # Taken from:
 # https://brushingupscience.com/2016/06/21/matplotlib-animations-the-easy-way/
 im1 = ax.pcolormesh( theta1, r, f1(0)[:-1,:-1], \
                      cmap = cmap1, \
-                     vmin = vmin1, vmax = vmax1, \
-                     norm = norm1 )
+                     norm = Norm1 )
 im2 = ax.pcolormesh( theta2, r, f2(0)[:-1,:-1], \
                      cmap = cmap2, \
-                     vmin = vmin2, vmax = vmax2, \
-                     norm = norm2 )
+                     norm = Norm2 )
+
+# Limits on coordinate axes
+
 ax.set_thetamin( 0.0   )
 ax.set_thetamax( 360.0 )
 ax.set_theta_direction( -1 )
@@ -139,21 +215,27 @@ cbar2.ax.set_ylabel( Field2 )
 cb2axes.yaxis.set_ticks_position( 'left' )
 cb2axes.yaxis.set_label_position( 'left' )
 
+TimeUnit = ''
+if( UsePhysicalUnits ): TimeUnit = ' ms'
+
 def UpdateFrame(t):
     im1.set_array( f1(t)[:-1,:-1].flatten() )
     im2.set_array( f2(t)[:-1,:-1].flatten() )
-    if( UsePhysicalUnits ):
-      time_text.set_text('time = {:d} ms'.format( np.int( Time[t] ) ) )
-    else:
-      time_text.set_text('time = {:d}'.format( np.int( Time[t] ) ) )
+    time_text.set_text('time = {:d}{:}'.format( np.int( Time[t] ), TimeUnit ) )
     return im1, im2,
 
 # Call the animator
-print( 'Making movie...' )
-anim = animation.FuncAnimation( fig, UpdateFrame, frames = FileArray.shape[0], \
-                                interval = 100, blit = True )
 
-anim.save( '{:}_movie.mp4'.format( ProblemName ), fps = 5 )
+print( 'Making movie...' )
+
+nFrames = max( FileArray1.shape[0], FileArray2.shape[0] )
+fps = nFrames / MovieRunTime
+
+anim \
+  = animation.FuncAnimation \
+      ( fig, UpdateFrame, frames = nFrames, blit = True )
+
+anim.save( '{:}_Movie.mp4'.format( MovieName ), fps = fps )
 plt.close()
 
 import os

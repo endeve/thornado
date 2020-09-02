@@ -62,7 +62,6 @@ MODULE InputParsingModule
   CHARACTER(LEN=:) , ALLOCATABLE :: NodalDataFileNameBase
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL          , SAVE        :: UsePhysicalUnits
-  LOGICAL          , SAVE        :: InitializeFromFile
   LOGICAL          , SAVE        :: WriteNodalData
   LOGICAL          , SAVE        :: DEBUG
 
@@ -124,7 +123,6 @@ CONTAINS
 
     UsePhysicalUnits      = .FALSE.
     PlotFileBaseName      = 'thornado'
-    InitializeFromFile    = .FALSE.
     NodalDataFileNameBase = 'NodalData'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -143,7 +141,6 @@ CONTAINS
       CALL PP % get   ( 'iRestart'             , iRestart              )
       CALL PP % query ( 'UsePhysicalUnits'     , UsePhysicalUnits      )
       CALL PP % query ( 'PlotFileBaseName'     , PlotFileBaseName      )
-      CALL PP % query ( 'InitializeFromFile'   , InitializeFromFile    )
       CALL PP % query ( 'NodalDataFileNameBase', NodalDataFileNameBase )
     CALL amrex_parmparse_destroy( PP )
 
