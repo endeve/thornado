@@ -2485,8 +2485,10 @@ CONTAINS
     INTEGER,  PARAMETER :: M_inner = 3
     INTEGER,  PARAMETER :: M = 3
     INTEGER,  PARAMETER :: MaxIter = 100
-    INTEGER,  PARAMETER :: LWORK = 2 * MAX(M_inner,2)
-    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+    INTEGER,  PARAMETER :: MaxIter_inner = 100
+    INTEGER,  PARAMETER :: LWORK_inner = 2 * MAX(M_inner,2)
+    INTEGER,  PARAMETER :: LWORK = 2 * MAX(M,2)
+    REAL(DP), PARAMETER :: Rtol = 1.0d-8
     REAL(DP), PARAMETER :: Utol = 1.0d-10
 
     ! --- Local Variables ---
@@ -2500,7 +2502,8 @@ CONTAINS
     REAL(DP) :: C(2), Unew(2), Jnorm(2)
     REAL(DP) :: W2_S(1:nE_G)
     REAL(DP) :: W3_S(1:nE_G)
-    REAL(DP) :: Alpha(1:M_inner)
+    REAL(DP) :: Alpha(1:MAX(M,M_inner))
+    REAL(DP) :: WORK_inner(1:LWORK_inner)
     REAL(DP) :: WORK(1:LWORK)
     REAL(DP) :: GVECm(2)
     ! REAL(DP) :: FVECm(2) !NEW: removed error vector
@@ -2532,6 +2535,8 @@ CONTAINS
     Eold = E
     Jold = J
 
+    ! PRINT*, "--- presolve ---"
+
     IF( UsePreconditionerEmAb )THEN
 
       CALL TimersStart( Timer_Im_EmAb_FP )
@@ -2542,6 +2547,8 @@ CONTAINS
       CALL TimersStop( Timer_Im_EmAb_FP )
 
     END IF
+
+
 
     S_Y = N_B * Yold
     S_E = D   * Eold
@@ -2562,7 +2569,7 @@ CONTAINS
     nIterations_Inner = 0
     CONVERGED = .FALSE.
     DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
-
+      ! PRINT*, "--- main loop. iteration:", k
       k  = k + 1
       mk = MIN( M, k )
 
@@ -2578,7 +2585,7 @@ CONTAINS
              ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
 
       ! --- NES Kernels ---
-
+      ! PRINT*, "--- nes ---"
       CALL ComputeNeutrinoOpacities_NES_Point &
              ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
                Phi_0_In_NES(:,:,1), Phi_0_Ot_NES(:,:,1) )
@@ -2588,7 +2595,7 @@ CONTAINS
                Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
 
       ! --- Pair Kernels ---
-
+      ! PRINT*, "--- pair ---"
       CALL ComputeNeutrinoOpacities_Pair_Point &
              ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
                Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
@@ -2611,8 +2618,8 @@ CONTAINS
       ! START INNER LOOP
       CALL TimersStart(Timer_Im_NestInner)
 
-      DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
-
+      DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter_inner )
+        !PRINT*, "--- inner loop ---"
         k_inner  = k_inner + 1
         mk_inner = MIN( M_inner, k_inner )
 
@@ -2696,8 +2703,6 @@ CONTAINS
 
           CONVERGED_INNER = .TRUE.
 
-          nIterations_Inner = nIterations_Inner + k_inner
-
         END IF
 
         IF ( .NOT. CONVERGED_INNER )THEN
@@ -2716,7 +2721,7 @@ CONTAINS
               = FVEC_inner(:,1:mk_inner-1) - SPREAD( FVEC_inner(:,mk_inner), DIM = 2, NCOPIES = mk_inner-1 )
 
             CALL DGELS( 'N', 2*nE_G, mk_inner-1, 1, AMAT_inner(:,1:mk_inner-1), 2*nE_G, &
-                        BVEC_inner, 2*nE_G, WORK, LWORK, INFO )
+                        BVEC_inner, 2*nE_G, WORK_inner, LWORK_inner, INFO )
 
             Alpha(1:mk_inner-1) = BVEC_inner(1:mk_inner-1)
 
@@ -2751,6 +2756,9 @@ CONTAINS
 
       END DO ! END OF INNER LOOP
 
+      ! SAVE INNER ITERATION COUNT
+      nIterations_Inner = nIterations_Inner + k_inner
+
       CALL TimersStop(Timer_Im_NestInner)
 
       ! --- Right-Hand Side Vectors ---
@@ -2771,14 +2779,6 @@ CONTAINS
       THEN
 
         CONVERGED = .TRUE.
-
-        Iterations_Min = MIN( Iterations_Min, k )
-        Iterations_Max = MAX( Iterations_Max, k )
-        Iterations_Ave = Iterations_Ave + k
-
-        nIterations_Outer = k
-        nIterations_Inner &
-          = FLOOR( DBLE( nIterations_Inner ) / DBLE( k ) )
 
       END IF
 
@@ -2876,6 +2876,14 @@ CONTAINS
 
     J = Jnew
 
+    ! SAVE ITERATION COUNTS
+    Iterations_Min = MIN( Iterations_Min, k )
+    Iterations_Max = MAX( Iterations_Max, k )
+    Iterations_Ave = Iterations_Ave + k
+
+    nIterations_Outer = k
+    nIterations_Inner &
+      = FLOOR( DBLE( nIterations_Inner ) / DBLE( k ) )
 
   END SUBROUTINE SolveMatterEquations_FP_NestedAA
 
@@ -2905,6 +2913,7 @@ CONTAINS
     INTEGER,  PARAMETER :: iE = 2
     INTEGER,  PARAMETER :: M = 3
     INTEGER,  PARAMETER :: MaxIter = 100
+    INTEGER,  PARAMETER :: MaxIter_inner = 100
     INTEGER,  PARAMETER :: LWORK = 2 * 2
     REAL(DP), PARAMETER :: Rtol = 1.0d-8
     REAL(DP), PARAMETER :: Utol = 1.0d-10
@@ -3033,7 +3042,7 @@ CONTAINS
       ! START INNER LOOP
       CALL TimersStart(Timer_Im_NestInner)
 
-      DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
+      DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter_inner )
 
         k_inner = k_inner + 1
 

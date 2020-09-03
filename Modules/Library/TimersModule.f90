@@ -155,6 +155,54 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_Out              :', Timer_Im_Out           , ' s'
     WRITE(*,*)
 
+    open(2, file = '../Output/timer.dat', status = 'old', position = 'append')
+    WRITE(2,'(5X,A)') 'Timers Summary'
+    WRITE(2,'(5X,A)') '--------------'
+    WRITE(2,*)
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') 'Initialize              :', Timer_Initialize       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') 'InputOutput             :', Timer_InputOutput      , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') 'Evolve                  :', Timer_Evolve           , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '  AddFieldsF            :', Timer_AddFieldsF       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '  AddFieldsR            :', Timer_AddFieldsR       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '  PositivityLimiter     :', Timer_PositivityLimiter, ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    PL_In               :', Timer_PL_In            , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    PL_Points           :', Timer_PL_Points        , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    PL_CellAverage      :', Timer_PL_CellAverage   , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    PL_Theta_1          :', Timer_PL_Theta_1       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    PL_Theta_2          :', Timer_PL_Theta_2       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    PL_Out              :', Timer_PL_Out           , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '  Explicit              :', Timer_Explicit         , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_In               :', Timer_Ex_In            , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Div              :', Timer_Ex_Div           , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Geometry         :', Timer_Ex_Geometry      , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Permute          :', Timer_Ex_Permute       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Interpolate      :', Timer_Ex_Interpolate   , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Flux             :', Timer_Ex_Flux          , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Increment        :', Timer_Ex_Increment     , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Ex_Out              :', Timer_Ex_Out           , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '  Implicit              :', Timer_Implicit         , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_In               :', Timer_Im_In            , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_MapForward       :', Timer_Im_MapForward    , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_EosIn            :', Timer_Im_EosIn         , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_Solve            :', Timer_Im_Solve         , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeOpacity :', Timer_Im_ComputeOpacity, ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeRate    :', Timer_Im_ComputeRate   , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeLS      :', Timer_Im_ComputeLS     , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '      Im_UpdateFP       :', Timer_Im_UpdateFP      , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    CoupledAA           :', Timer_Im_CoupledAA     , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    NestedAA            :', Timer_Im_NestedAA      , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    NestedNewton        :', Timer_Im_NestedNewton  , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Newton              :', Timer_Im_Newton        , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Nested Inner loop   :', Timer_Im_NestInner     , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    EmAb_FP precond     :', Timer_Im_EmAb_FP       , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_Pair_Presolve    :', Timer_Im_Presolve      , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_Increment        :', Timer_Im_Increment     , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_EosOut           :', Timer_Im_EosOut        , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_MapBackward      :', Timer_Im_MapBackward   , ' s'
+    WRITE(2,'(7X,A,5x,ES12.6E2,A)') '    Im_Out              :', Timer_Im_Out           , ' s'
+    WRITE(2,*)
+    close(2)
+
     RETURN
   END SUBROUTINE FinalizeTimers
 

@@ -1,6 +1,6 @@
 MICROPHYSICS           = WEAKLIB
 MOMENT_CLOSURE         = MAXIMUM_ENTROPY_CB
-NEUTRINO_MATTER_SOLVER = FIXED_POINT_COUPLED
+NEUTRINO_MATTER_SOLVER = FIXED_POINT_NESTED_AA
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -110,7 +110,7 @@ DeleptonizationWave1D.o: \
   Euler_UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
-  DeleptonizationWave1D.f90
+  DeleptonizationWave1D.F90
 
 InitializationModule.o: \
   KindModule.o \

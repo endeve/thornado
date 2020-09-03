@@ -5,7 +5,7 @@ TWO_MOMENT = \
   TwoMoment_MeshRefinementModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_SlopeLimiterModule.o \
-  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_PositivityLimiterModule_Old.o \
   TwoMoment_DiscretizationModule_Streaming.o \
-  TwoMoment_NeutrinoMatterSolverModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_Old.o
+  TwoMoment_NeutrinoMatterSolverModule.o 
+#  TwoMoment_DiscretizationModule_Collisions_Neutrinos_Old.o

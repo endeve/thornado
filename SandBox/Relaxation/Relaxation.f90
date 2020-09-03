@@ -108,7 +108,7 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-  Configuration = 1
+  Configuration = 2
 
   SELECT CASE( Configuration )
 
@@ -168,9 +168,9 @@ PROGRAM Relaxation
   WRITE(*,*)
 
 
-  dt_0    = 1.0d-2 * Millisecond
+  dt_0    = 1.0d-1 * Millisecond
   t       = 0.0d-0 * Millisecond
-  t_end   = 5.0d-1 * Millisecond
+  t_end   = 3.0d1 * Millisecond
   iCycleD = 1
   iCycleW = 1
 
@@ -257,6 +257,24 @@ PROGRAM Relaxation
            OpacityTableName_Pair_Option &
              = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
            Verbose_Option = .TRUE. )
+
+   ! ! --- Initialize Equation of State ---
+   !
+   ! CALL InitializeEquationOfState_TABLE &
+   !        ( EquationOfStateTableName_Option = 'wl-EOS-SFHo-25-40-100.h5' )
+   !
+   ! ! --- Initialize Opacities ---
+   !
+   ! CALL InitializeOpacities_TABLE &
+   !        ( OpacityTableName_EmAb_Option &
+   !            = 'wl-Op-SFHo-25-40-100-E40-B85-AbEm.h5', &
+   !          OpacityTableName_Iso_Option  &
+   !            = 'wl-Op-SFHo-25-40-100-E40-B85-Iso.h5', &
+   !          OpacityTableName_NES_Option &
+   !            = 'wl-Op-SFHo-25-40-100-E40-B85-NES.h5', &
+   !          OpacityTableName_Pair_Option &
+   !            = 'wl-Op-SFHo-25-40-100-E40-B85-Pair.h5', &
+   !          Verbose_Option = .TRUE. )
 
   ! --- Set Initial Condition ---
 
@@ -362,6 +380,13 @@ PROGRAM Relaxation
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
+
+  open(1, file = '../Output/timer.dat', status = 'new', position = 'append')
+  WRITE(1,*)
+  WRITE(1,*) &
+    '', 'Finished ', iCycle, ' Cycles in ', Timer_Evolve, ' s'
+  WRITE(1,*)
+  close(1)
 
   ! --- Finalize ---
 

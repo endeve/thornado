@@ -39,7 +39,11 @@ PROGRAM NeutrinoOpacities
     InitializeDevice, &
     FinalizeDevice
   USE NeutrinoOpacitiesSparseComputationModule, ONLY: &
-    ComputeNeutrinoOpacities_NES_Points_SG
+    ComputeNeutrinoOpacities_EC_Points_SG, &
+    ComputeNeutrinoOpacities_ES_Points_SG, &
+    ComputeNeutrinoOpacities_NES_Points_SG, &
+    ComputeNeutrinoOpacities_Pair_Points_SG
+
 
   IMPLICIT NONE
 
@@ -84,18 +88,22 @@ PROGRAM NeutrinoOpacities
     D, T, Y
   REAL(DP), DIMENSION(nPointsE) :: &
     E, dE
-  REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
+  REAL(DP), DIMENSION(nPointsE,nSpecies,nPointsX) :: &
     Chi, &     ! --- Absorption Opacity
     Sigma, &   ! --- Scattering Opacity (Isoenergetic)
     Chi_NES, & ! --- Integrated NES Opacity
-    Chi_Pair   ! --- Integrated Pair Opacity
+    Chi_Pair, &   ! --- Integrated Pair Opacity
+    Chi_SG, &     ! --- Absorption Opacity (Sparse Grid)
+    Sigma_SG, &   ! --- Scattering Opacity (Isoenergetic) (Sparse Grid)
+    Chi_NES_SG, & ! --- Integrated NES Opacity  (Sparse Grid)
+    Chi_Pair_SG   ! --- Integrated Pair Opacity (Sparse Grid)
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
     Phi_0_NES_In_1, Phi_0_NES_In_2, Phi_0_NES_Out_1, Phi_0_NES_Out_2, &
     Phi_0_Pair_In_1, Phi_0_Pair_In_2, Phi_0_Pair_Out_1, Phi_0_Pair_Out_2, &
     Phi_0_NES_In_1_SG, Phi_0_NES_In_2_SG, Phi_0_NES_Out_1_SG, Phi_0_NES_Out_2_SG, &
     Phi_0_Pair_In_1_SG, Phi_0_Pair_In_2_SG, Phi_0_Pair_Out_1_SG, Phi_0_Pair_Out_2_SG
 
-  type(TasmanianSparseGrid) :: gridNES, grid1, grid2, grid3
+  type(TasmanianSparseGrid) :: gridEmAb, gridIso, gridNES, gridPair
   INTEGER :: dims, outs, level
   INTEGER :: N1, N2, N3
   INTEGER :: N, i, j, verm, vern
@@ -110,9 +118,9 @@ PROGRAM NeutrinoOpacities
   DOUBLE PRECISION :: desired_x(2)
   DOUBLE PRECISION :: randPoints(4,1000), randPoints2(2,1000), randPoints3(3,1000)
   DOUBLE PRECISION :: PI = 4.D0*DATAN(1.D0)
-  CHARACTER (LEN=40) :: ReducedNESGridName
+  CHARACTER (LEN=60) :: ReducedGridName
   logical :: SGReadError
-  DOUBLE PRECISION :: SGerrorNES
+  DOUBLE PRECISION :: SGerror
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -186,22 +194,35 @@ PROGRAM NeutrinoOpacities
 
   Timer_ReadOpacities = MPI_WTIME()
 
+  CALL InitializeOpacities_TABLE &
+         ( OpacityTableName_EmAb_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
+           OpacityTableName_Iso_Option  &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+           OpacityTableName_NES_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+           OpacityTableName_Pair_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+           Verbose_Option = .TRUE. )
+
   ! CALL InitializeOpacities_TABLE &
-  !        ( OpacityTableName_EmAb_Option &
-  !            = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
-  !          OpacityTableName_Iso_Option  &
+  !        ( OpacityTableName_Iso_Option  &
   !            = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
-  !          OpacityTableName_NES_Option &
-  !            = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
-  !          OpacityTableName_Pair_Option &
-  !            = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
   !          Verbose_Option = .TRUE. )
 
-  CALL InitializeOpacities_TABLE &
-         ( OpacityTableName_NES_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
-           Verbose_Option = .TRUE. )
   Timer_ReadOpacities = MPI_WTIME() - Timer_ReadOpacities
+
+  ! --- Compute EmAb Opacities ---
+  CALL ComputeNeutrinoOpacities_EC_Points &
+    (1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Chi(:,1,:) )
+  CALL ComputeNeutrinoOpacities_EC_Points &
+    (1, nPointsE, 1, nPointsX, E, D, T, Y, 2, Chi(:,2,:) )
+
+  ! --- Compute Iso Opacities ---
+  CALL ComputeNeutrinoOpacities_ES_Points &
+    (1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 1, Sigma(:,1,:) )
+  CALL ComputeNeutrinoOpacities_ES_Points &
+    (1, nPointsE, 1, nPointsX, E, D, T, Y, 2, 1, Sigma(:,2,:) )
 
   ! --- Compute NES Opacities ---
 
@@ -214,14 +235,74 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
+  ! --- Compute Pair Opacities ---
+
+  CALL ComputeNeutrinoOpacities_Pair_Points &
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 2, 1, &
+           Phi_0_Pair_In_1(:,:,:), Phi_0_Pair_Out_1(:,:,:), &
+           Phi_0_Pair_In_2(:,:,:), Phi_0_Pair_Out_2(:,:,:) )
 
 
 
+  ! --- Compressed EmAb test ---
+  CALL tsgAllocateGrid(gridEmAb)
+  ! ReducedGridName =  'SGOpacities/reduced_EmAb_log.grid'
+  ReducedGridName =  'SGOpacities/reduced_EmAb_log_trunc_20.grid'
+  ! ReducedGridName =  'SGOpacities/EmAb_log.grid'
+  ! ReducedGridName =  'SGOpacities/EmAb_log_trunc_20.grid'
+  SGReadError = tsgRead(gridEmAb, ReducedGridName)
+
+  CALL ComputeNeutrinoOpacities_EC_Points_SG &
+  ( gridEmAb, 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Chi_SG(:,1,:) )
+  CALL ComputeNeutrinoOpacities_EC_Points_SG &
+  ( gridEmAb, 1, nPointsE, 1, nPointsX, E, D, T, Y, 2, Chi_SG(:,2,:) )
+
+  SGerror = MAXVAL(ABS(Chi_SG - Chi)) &
+                / MAXVAL(ABS(Chi))
+
+  WRITE(*,*) "-------------------------------------------------------------------------------------------------"
+  WRITE(*,*) "EmAb SG ERROR = ", SGerror
+  WRITE(*,*) "-------------------------------------------------------------------------------------------------"
+
+  CALL WriteMatrix &
+        ( nPointsE, nPointsX, Chi (:,1,:), 'Chi_1.dat'  )
+  CALL WriteMatrix &
+        ( nPointsE, nPointsX, Chi_SG (:,1,:), 'Chi_1_SG.dat'  )
+
+    CALL tsgDeallocateGrid(gridEmAb)
+
+
+  ! --- Compressed Iso test ---
+  CALL tsgAllocateGrid(gridIso)
+  ! ReducedGridName =  'SGOpacities/reduced_IS_log.grid'
+  ReducedGridName =  'SGOpacities/reduced_IS_log_trunc_20.grid'
+  ! ReducedGridName =  'SGOpacities/IS_log.grid'
+  ! ReducedGridName =  'SGOpacities/IS_log_trunc_20.grid'
+
+  SGReadError = tsgRead(gridIso, ReducedGridName)
+
+  CALL ComputeNeutrinoOpacities_ES_Points_SG &
+  ( gridIso, 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 1, Sigma_SG(:,1,:) )
+  CALL ComputeNeutrinoOpacities_ES_Points_SG &
+  ( gridIso, 1, nPointsE, 1, nPointsX, E, D, T, Y, 2, 1, Sigma_SG(:,2,:) )
+
+  SGerror = MAXVAL(ABS(Sigma_SG - Sigma)) &
+                / MAXVAL(ABS(Sigma))
+
+  WRITE(*,*) "-------------------------------------------------------------------------------------------------"
+  WRITE(*,*) "Iso SG ERROR = ", SGerror
+  WRITE(*,*) "-------------------------------------------------------------------------------------------------"
+  CALL tsgDeallocateGrid(gridIso)
+
+
+  ! --- Compressed NES test ---
   CALL tsgAllocateGrid(gridNES)
-  ! ReducedNESGridName =  'reduced_NES_bin.grid'
-  ReducedNESGridName =  'NES_log_bin.grid'
-  ! ReducedNESGridName =  'reduced_NES_log_bin.grid'
-  SGReadError = tsgRead(gridNES, ReducedNESGridName)
+  ! ReducedGridName =  'SGOpacities/reduced_NES_log.grid'
+  ReducedGridName =  'SGOpacities/reduced_NES_log_trunc_20.grid'
+  ! ReducedGridName =  'SGOpacities/NES_log.grid'
+  ! ReducedGridName =  'SGOpacities/NES_log_trunc_20.grid'
+
+  SGReadError = tsgRead(gridNES, ReducedGridName)
 
 
   CALL ComputeNeutrinoOpacities_NES_Points_SG &
@@ -229,11 +310,11 @@ PROGRAM NeutrinoOpacities
            Phi_0_NES_In_1_SG(:,:,:), Phi_0_NES_Out_1_SG(:,:,:), &
            Phi_0_NES_In_2_SG(:,:,:), Phi_0_NES_Out_2_SG(:,:,:) )
 
-  SGerrorNES = MAXVAL(ABS(Phi_0_NES_In_1_SG - Phi_0_NES_In_1)) &
+  SGerror = MAXVAL(ABS(Phi_0_NES_In_1_SG - Phi_0_NES_In_1)) &
                 / MAXVAL(ABS(Phi_0_NES_In_1))
 
   WRITE(*,*) "-------------------------------------------------------------------------------------------------"
-  WRITE(*,*) "NES SG ERROR = ", SGerrorNES
+  WRITE(*,*) "NES SG ERROR = ", SGerror
   WRITE(*,*) "-------------------------------------------------------------------------------------------------"
 
   CALL WriteMatrix &
@@ -241,6 +322,32 @@ PROGRAM NeutrinoOpacities
   CALL WriteMatrix &
          ( nPointsE, nPointsE, Phi_0_NES_In_1_SG (:,:,1), 'Phi_0_NES_In_1_SG.dat'  )
 
+  CALL tsgDeallocateGrid(gridNES)
+
+  !
+  ! --- Compressed PAIR test ---
+  CALL tsgAllocateGrid(gridPair)
+  ! ReducedGridName =  'SGOpacities/reduced_PAIR_log.grid'
+  ReducedGridName =  'SGOpacities/reduced_PAIR_log_trunc_20.grid'
+  ! ReducedGridName =  'SGOpacities/PAIR_log.grid'
+  ! ReducedGridName =  'SGOpacities/PAIR_log_trunc_20.grid'
+
+  SGReadError = tsgRead(gridPair, ReducedGridName)
+
+
+  CALL ComputeNeutrinoOpacities_Pair_Points_SG &
+        (gridNES, 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 2, 1, &
+          Phi_0_Pair_In_1_SG(:,:,:), Phi_0_Pair_Out_1_SG(:,:,:), &
+          Phi_0_Pair_In_2_SG(:,:,:), Phi_0_Pair_Out_2_SG(:,:,:) )
+
+  SGerror = MAXVAL(ABS(Phi_0_Pair_In_1_SG - Phi_0_Pair_In_1)) &
+               / MAXVAL(ABS(Phi_0_Pair_In_1))
+
+  WRITE(*,*) "-------------------------------------------------------------------------------------------------"
+  WRITE(*,*) "Pair SG ERROR = ", SGerror
+  WRITE(*,*) "-------------------------------------------------------------------------------------------------"
+
+  CALL tsgDeallocateGrid(gridPair)
 
 
 
@@ -249,6 +356,5 @@ PROGRAM NeutrinoOpacities
 
   CALL FinalizeOpacities_TABLE
 
-  CALL tsgDeallocateGrid(gridNES)
 
 END PROGRAM NeutrinoOpacities
