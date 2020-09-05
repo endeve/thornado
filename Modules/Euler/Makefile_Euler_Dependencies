@@ -102,7 +102,7 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   Euler_ErrorModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 
-Euler_PositivityLimiterModule_Relativistic_TABLE.o \
+Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
