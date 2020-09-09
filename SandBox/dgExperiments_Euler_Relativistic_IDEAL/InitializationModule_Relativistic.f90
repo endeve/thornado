@@ -1593,30 +1593,30 @@ CONTAINS
     Kb = P_2 / D_2**( Gamma_IDEAL )
 
     WRITE(*,*)
-      WRITE(*,'(6x,A)') 'Jump Conditions'
-      WRITE(*,'(6x,A)') '---------------'
-      WRITE(*,*)
-      WRITE(*,'(8x,A)') 'Pre-shock:'
-      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
-      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-        D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
-      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-        V_1 / ( Kilometer / Second ), ' km/s'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-        P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
-      WRITE(*,*)
-      WRITE(*,'(8x,A)') 'Post-shock:'
-      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
-      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-        D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
-      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-        V_2 / ( Kilometer / Second ), ' km/s'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-        P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+    WRITE(*,'(6x,A)') 'Jump Conditions'
+    WRITE(*,'(6x,A)') '---------------'
+    WRITE(*,*)
+    WRITE(*,'(8x,A)') 'Pre-shock:'
+    WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+    WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+      D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+    WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+      V_1 / ( Kilometer / Second ), ' km/s'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+      P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+    WRITE(*,*)
+    WRITE(*,'(8x,A)') 'Post-shock:'
+    WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+    WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+      D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+    WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+      V_2 / ( Kilometer / Second ), ' km/s'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+      P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
     WRITE(*,*)
 
 
