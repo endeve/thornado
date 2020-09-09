@@ -136,10 +136,11 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Power(0:2)
 
   ! --- Yahil Collapse ---
-  REAL(DP) :: CentralDensity, CentralPressure, CoreRadius, CollapseTime
+  REAL(DP) :: D0, CentralDensity, CentralPressure, CoreRadius, CollapseTime
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
+
   REAL(DP) :: Timer_Evolution
 
   REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
@@ -149,15 +150,15 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   ProgramName = 'Advection'
-!  ProgramName = 'Advection2D'
-!  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2D'
-!  ProgramName = 'RiemannProblemSpherical'
-!  ProgramName = 'SedovTaylorBlastWave'
-!  ProgramName = 'KelvinHelmholtzInstability'
-  ProgramName = 'StandingAccretionShock'
-!  ProgramName = 'StaticTOV'
-!  ProgramName = 'YahilCollapse'
+!!$  ProgramName = 'Advection2D'
+!!$  ProgramName = 'RiemannProblem'
+!!$  ProgramName = 'RiemannProblem2D'
+!!$  ProgramName = 'RiemannProblemSpherical'
+!!$  ProgramName = 'SedovTaylorBlastWave'
+!!$  ProgramName = 'KelvinHelmholtzInstability'
+!!$  ProgramName = 'StandingAccretionShock'
+!!$  ProgramName = 'StaticTOV'
+!!$  ProgramName = 'YahilCollapse'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -400,7 +401,10 @@ PROGRAM ApplicationDriver
       CoreRadius      = 1.0e5_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
 
+      ! --- These values come from Table 2 in the Yahil paper ---
       Gamma = 1.30_DP
+      D0    = 1.75_DP
+
       t_end = CollapseTime - 0.5_DP * Millisecond
       bcX = [ 30, 0, 0 ]
 
@@ -561,6 +565,7 @@ PROGRAM ApplicationDriver
            PerturbationAmplitude_Option = PerturbationAmplitude, &
            rPerturbationInner_Option    = rPerturbationInner, &
            rPerturbationOuter_Option    = rPerturbationOuter, &
+           D0_Option                    = D0, &
            CentralDensity_Option        = CentralDensity, &
            CentralPressure_Option       = CentralPressure, &
            CoreRadius_Option            = CoreRadius, &
