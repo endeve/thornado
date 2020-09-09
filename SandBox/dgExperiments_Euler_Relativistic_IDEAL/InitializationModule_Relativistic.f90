@@ -2128,11 +2128,11 @@ CONTAINS
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
          = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                          D(iX_L), D(iX_L+1) )
+                                              D(iX_L), D(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
          = dvdV * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                        V(iX_L), V(iX_L+1) )
+                                            V(iX_L), V(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
@@ -2181,10 +2181,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: TotalEnclosedMass
 
     INTEGER               :: N, iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
-    REAL(DP)              :: dr, dX, K, XX, R
+    REAL(DP)              :: dr, dX, XX, R
     REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), Numer(:), Denom(:)
-
-    K = PolytropicConstant
 
     dr = 1.0e-2_DP * Kilometer
     N = ( 1.1_DP * CoreRadius ) / dr ! Extra elements needed for ghost cells
@@ -2227,18 +2225,18 @@ CONTAINS
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
          = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       D(iX_L), D(iX_L+1) )
+                                              D(iX_L), D(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
          = dvdV * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       V(iX_L), V(iX_L+1) )
+                                            V(iX_L), V(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+         = PolytropicConstant * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
              / ( Gamma_IDEAL - One )
 
      END DO
@@ -2336,7 +2334,7 @@ CONTAINS
 
       ELSE IF( ABS( Denom(iX1) ) .LT. Threshold )THEN
 
-        Numer(iX1) = NumerC + NumerPrime + ( X(iX1) - XC ) 
+        Numer(iX1) = NumerC + NumerPrime + ( X(iX1) - XC )
         Denom(iX1) = DenomC + DenomPrime + ( X(iX1) - XC )
 
       END IF
