@@ -46,12 +46,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeSourceTerms_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, U_Poseidon )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Sources )
 
      INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-     REAL(DP), INTENT(in)  :: G         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-     REAL(DP), INTENT(in)  :: U         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-     REAL(DP), INTENT(out) :: U_Poseidon(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+     REAL(DP), INTENT(in)  :: G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+     REAL(DP), INTENT(in)  :: U      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+     REAL(DP), INTENT(out) :: Sources(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
      REAL(DP) :: uGF(nDOFX,nGF), uPF(nDOFX,nPF), Pressure(nDOFX), &
                  LorentzFactor(nDOFX), Enthalpy(nDOFX), BetaDotV(nDOFX)
@@ -89,22 +89,22 @@ CONTAINS
        CALL ComputePressureFromPrimitive_IDEAL &
               ( uPF(:,iPF_D), uPF(:,iPF_E), uPF(:,iPF_Ne), Pressure )
 
-       U_Poseidon(:,iX1,iX2,iX3,1) &
+       Sources(:,iX1,iX2,iX3,1) &
          = U(:,iX1,iX2,iX3,iCF_E) + U(:,iX1,iX2,iX3,iCF_D)
 
-       U_Poseidon(:,iX1,iX2,iX3,2) &
+       Sources(:,iX1,iX2,iX3,2) &
          =   U(:,iX1,iX2,iX3,iCF_S1) * uPF(:,iPF_V1) &
            + U(:,iX1,iX2,iX3,iCF_S2) * uPF(:,iPF_V2) &
            + U(:,iX1,iX2,iX3,iCF_S3) * uPF(:,iPF_V3) &
            + Three * Pressure
 
-       U_Poseidon(:,iX1,iX2,iX3,3) &
+       Sources(:,iX1,iX2,iX3,3) &
          = U(:,iX1,iX2,iX3,iCF_S1) / uGF(:,iGF_Gm_dd_11)
 
-       U_Poseidon(:,iX1,iX2,iX3,4) &
+       Sources(:,iX1,iX2,iX3,4) &
          = U(:,iX1,iX2,iX3,iCF_S2) / uGF(:,iGF_Gm_dd_22)
 
-       U_Poseidon(:,iX1,iX2,iX3,5) &
+       Sources(:,iX1,iX2,iX3,5) &
          = U(:,iX1,iX2,iX3,iCF_S3) / uGF(:,iGF_Gm_dd_33)
 
        LorentzFactor &
@@ -119,7 +119,7 @@ CONTAINS
 
        Enthalpy = uPF(:,iPF_D) + uPF(:,iPF_E) + Pressure
 
-       U_Poseidon(:,iX1,iX2,iX3,6) &
+       Sources(:,iX1,iX2,iX3,6) &
          = Enthalpy * ( Two * LorentzFactor**2               &
              * ( One - BetaDotV / uGF(:,iGF_Alpha) ) - One ) &
              + Two * Pressure

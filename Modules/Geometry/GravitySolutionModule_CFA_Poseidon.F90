@@ -42,7 +42,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
   USE UnitsModule, ONLY: &
-    SolarMass
+    SolarMass,centimeter,gram,second,erg,kilometer
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -122,14 +122,14 @@ CONTAINS
 
 
   SUBROUTINE SolveGravity_CFA_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Sources )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout)    :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      Sources(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     REAL(DP)         :: Psi_BC, AlphaPsi_BC, GravitationalMass
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
@@ -145,26 +145,26 @@ CONTAINS
 
     ! Set Source Values !
     CALL Poseidon_Input_Sources &
-           ( 0, 0, 0,                         &
-             Local_E      = U(:,:,:,:,1),     &
-             Local_S      = U(:,:,:,:,2),     &
-             Local_Si     = U(:,:,:,:,3:5),   &
-             Local_RE_Dim = nX(1),            &
-             Local_TE_Dim = nX(2),            &
-             Local_PE_Dim = nX(3),            &
-             Local_RQ_Dim = nNodesX(1),       &
-             Local_TQ_Dim = nNodesX(2),       &
-             Local_PQ_Dim = nNodesX(3),       &
-             Input_R_Quad = MeshX(1) % Nodes, &
-             Input_T_Quad = MeshX(2) % Nodes, &
-             Input_P_Quad = MeshX(3) % Nodes, &
-             Left_Limit   = -Half,            &
+           ( 0, 0, 0,                             &
+             Local_E      = Sources(:,:,:,:,1),   &
+             Local_S      = Sources(:,:,:,:,2),   &
+             Local_Si     = Sources(:,:,:,:,3:5), &
+             Local_RE_Dim = nX(1),                &
+             Local_TE_Dim = nX(2),                &
+             Local_PE_Dim = nX(3),                &
+             Local_RQ_Dim = nNodesX(1),           &
+             Local_TQ_Dim = nNodesX(2),           &
+             Local_PQ_Dim = nNodesX(3),           &
+             Input_R_Quad = MeshX(1) % Nodes,     &
+             Input_T_Quad = MeshX(2) % Nodes,     &
+             Input_P_Quad = MeshX(3) % Nodes,     &
+             Left_Limit   = -Half,                &
              Right_Limit  = +Half )
 
     ! --- Set Boundary Values ---
 
     CALL ComputeGravitationalMass &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GravitationalMass )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Sources, GravitationalMass )
 
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
@@ -180,7 +180,7 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Initialize_Flat_Space_Guess_Values()
+    CALL Initialize_Flat_Space_Guess_Values() ! Possibly move this to init call
 
     CALL Poseidon_Run()
 
@@ -342,19 +342,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeGravitationalMass &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Sources, Mass )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      Sources(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(out) :: &
       Mass
 
     INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: PF_D(nDOFX), PF_E(nDOFX), d3X
+    REAL(DP) :: d3X
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width(1:nX(1)), &
@@ -371,13 +371,12 @@ CONTAINS
 
       d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
-      PF_D = U(:,iX1,iX2,iX3,6)
-      PF_E = U(:,iX1,iX2,iX3,7)
-
       Mass &
-        = Mass + d3X * SUM( WeightsX_q * ( PF_D + PF_E )    &
-                              * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                              / G(:,iX1,iX2,iX3,iGF_Psi) )
+        = Mass + d3X                                     &
+            * SUM( WeightsX_q                            &
+                     * Sources(:,iX1,iX2,iX3,6)          &
+                     * G      (:,iX1,iX2,iX3,iGF_Alpha)  &
+                     * G      (:,iX1,iX2,iX3,iGF_SqrtGm) )
 
     END DO
     END DO
