@@ -120,7 +120,7 @@ CONTAINS
                  ApplyPerturbation_Option, PerturbationOrder_Option, &
                  PerturbationAmplitude_Option, &
                  rPerturbationInner_Option, rPerturbationOuter_Option, &
-                 CentralDensity_Option, CentralPressure_Option, &
+                 D0_Option, CentralDensity_Option, CentralPressure_Option, &
                  CoreRadius_Option, CollapseTime_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
@@ -136,6 +136,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: PerturbationAmplitude_Option
     REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationInner_Option
     REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationOuter_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: D0_Option
     REAL(DP),         INTENT(in), OPTIONAL :: CentralDensity_Option
     REAL(DP),         INTENT(in), OPTIONAL :: CentralPressure_Option
     REAL(DP),         INTENT(in), OPTIONAL :: CoreRadius_Option
@@ -163,6 +164,7 @@ CONTAINS
     REAL(DP) :: rPerturbationOuter    = 0.0_DP
 
     ! --- Yahil Collapse ---
+    REAL(DP) :: D0              = 1.75_DP
     REAL(DP) :: CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
     REAL(DP) :: CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
     REAL(DP) :: CoreRadius      = 1.0e5_DP  * Kilometer
@@ -268,7 +270,8 @@ CONTAINS
       CASE( 'YahilCollapse' )
 
          CALL InitializeFields_YahilCollapse &
-                ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+                ( D0, CentralDensity, CentralPressure, &
+                  CoreRadius, CollapseTime )
 
       CASE DEFAULT
 
@@ -1590,30 +1593,30 @@ CONTAINS
     Kb = P_2 / D_2**( Gamma_IDEAL )
 
     WRITE(*,*)
-      WRITE(*,'(6x,A)') 'Jump Conditions'
-      WRITE(*,'(6x,A)') '---------------'
-      WRITE(*,*)
-      WRITE(*,'(8x,A)') 'Pre-shock:'
-      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
-      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-        D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
-      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-        V_1 / ( Kilometer / Second ), ' km/s'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-        P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
-      WRITE(*,*)
-      WRITE(*,'(8x,A)') 'Post-shock:'
-      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
-      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-        D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
-      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-        V_2 / ( Kilometer / Second ), ' km/s'
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-        P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+    WRITE(*,'(6x,A)') 'Jump Conditions'
+    WRITE(*,'(6x,A)') '---------------'
+    WRITE(*,*)
+    WRITE(*,'(8x,A)') 'Pre-shock:'
+    WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+    WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+      D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+    WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+      V_1 / ( Kilometer / Second ), ' km/s'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+      P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+    WRITE(*,*)
+    WRITE(*,'(8x,A)') 'Post-shock:'
+    WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+    WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+      D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+    WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+      V_2 / ( Kilometer / Second ), ' km/s'
+    WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+      P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
     WRITE(*,*)
 
 
@@ -2005,60 +2008,52 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_YahilCollapse &
-    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+    ( D0, CentralDensity, CentralPressure, CoreRadius, CollapseTime )
 
+    REAL(DP), INTENT(in) :: D0
     REAL(DP), INTENT(in) :: CentralDensity
     REAL(DP), INTENT(in) :: CentralPressure
     REAL(DP), INTENT(in) :: CoreRadius
     REAL(DP), INTENT(in) :: CollapseTime
 
-    LOGICAL, PARAMETER :: ReadFromFile = .TRUE.
+    LOGICAL, PARAMETER :: ReadFromFile = .FALSE.
+
+    REAL(DP) :: PolytropicConstant, dXdr, drhodD, dvdV, dmdM, TotalEnclosedMass
+
+    PolytropicConstant = CentralPressure / CentralDensity**Gamma_IDEAL
+
+    dXdr   = PolytropicConstant**( -Half ) &
+               * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
+               * CollapseTime**( Gamma_IDEAL - Two )
+    drhodD = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
+    dvdV   = PolytropicConstant**( Half ) &
+               * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
+               * CollapseTime**( One - Gamma_IDEAL )
+    dmdM   = PolytropicConstant**( Three / Two ) &
+               * CollapseTime**( Four - Three * Gamma_IDEAL ) &
+               * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two )
 
     IF( ReadFromFile )THEN
 
       CALL InitializeFields_YahilCollapse_FromFile &
-             ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+             ( dXdr, drhodD, dvdV, &
+               PolytropicConstant, TotalEnclosedMass )
 
     ELSE
 
       CALL InitializeFields_YahilCollapse_FromScratch &
-             ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+             ( dXdr, drhodD, dvdV, &
+               PolytropicConstant, CoreRadius, D0, TotalEnclosedMass )
 
     END IF
-
-  END SUBROUTINE InitializeFields_YahilCollapse
-
-
-  SUBROUTINE InitializeFields_YahilCollapse_FromFile &
-    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
-
-    REAL(DP), INTENT(in) :: CentralDensity
-    REAL(DP), INTENT(in) :: CentralPressure
-    REAL(DP), INTENT(in) :: CoreRadius
-    REAL(DP), INTENT(in) :: CollapseTime
-
-    CHARACTER(LEN=64) :: FileName
-    INTEGER           :: nLines
-
-    INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
-    REAL(DP)              :: K, C_X, C_D, C_V, C_M, R, XX
-    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
-
-    K = CentralPressure / CentralDensity**( Gamma_IDEAL )
 
     WRITE(*,*)
     WRITE(*,'(6x,A,F5.3)') &
       'Adiabatic Gamma:     ', &
       Gamma_IDEAL
     WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Central Density:     ', &
-      CentralDensity / ( Gram / Centimeter**3  ), ' g/cm^3'
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Central Pressure:    ', &
-      CentralPressure / ( Erg / Centimeter**3  ), ' erg/cm^3'
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
       'Polytropic Constant: ', &
-      K / ( Erg / Centimeter**3 &
+      PolytropicConstant / ( Erg / Centimeter**3 &
               / ( Gram / Centimeter**3  )**( Gamma_IDEAL ) ), &
       ' ( erg/cm^3 ) / ( g/cm^3 )^( Gamma )'
     WRITE(*,'(6x,A,ES10.3E3,A)') &
@@ -2067,17 +2062,25 @@ CONTAINS
     WRITE(*,'(6x,A,ES10.3E3,A)') &
       'Collapse Time:       ', &
       CollapseTime / Millisecond, ' ms'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Mass:                ', &
+      TotalEnclosedMass * dmdM / SolarMass, ' Msun'
+    WRITE(*,*)
 
-    C_X = K**( -Half ) &
-            * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
-            * CollapseTime**( Gamma_IDEAL - Two )
-    C_D = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
-    C_V = K**( Half ) &
-            * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
-            * CollapseTime**( One - Gamma_IDEAL )
-    C_M = K**( Three / Two ) &
-            * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
-            * CollapseTime**( Four - Three * Gamma_IDEAL )
+  END SUBROUTINE InitializeFields_YahilCollapse
+
+
+  SUBROUTINE InitializeFields_YahilCollapse_FromFile &
+    ( dXdr, drhodD, dvdV, PolytropicConstant, TotalEnclosedMass )
+
+    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, PolytropicConstant
+    REAL(DP), INTENT(out) :: TotalEnclosedMass
+
+    CHARACTER(LEN=64)     :: FileName
+    INTEGER               :: nLines
+    INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
+    REAL(DP)              :: R, XX
+    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
 
     FileName = 'YahilHomologousCollapse_Gm_130.dat'
 
@@ -2108,10 +2111,7 @@ CONTAINS
 
     CLOSE(100)
 
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Mass:                ', &
-      M(nLines) * C_M / SolarMass, ' Msun'
-    WRITE(*,*)
+    TotalEnclosedMass = M(nLines)
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -2122,24 +2122,24 @@ CONTAINS
        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-       XX = C_X * R
+       XX = dXdr * R
 
        iX_L = Locate( XX, X, nLines )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-         = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       D(iX_L), D(iX_L+1) )
+         = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                              D(iX_L), D(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-         = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       V(iX_L), V(iX_L+1) )
+         = dvdV * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                            V(iX_L), V(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+         = PolytropicConstant * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
              / ( Gamma_IDEAL - One )
 
      END DO
@@ -2173,59 +2173,21 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_YahilCollapse_FromScratch &
-    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+    ( dXdr, drhodD, dvdV, PolytropicConstant, &
+      CoreRadius, D0, TotalEnclosedMass )
 
-    REAL(DP), INTENT(in) :: CentralDensity
-    REAL(DP), INTENT(in) :: CentralPressure
-    REAL(DP), INTENT(in) :: CoreRadius
-    REAL(DP), INTENT(in) :: CollapseTime
+    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, PolytropicConstant, &
+                             CoreRadius, D0
+    REAL(DP), INTENT(out) :: TotalEnclosedMass
 
     INTEGER               :: N, iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
-    REAL(DP)              :: dr, dX, K, XX, R, C_X, C_D, C_V, C_M
+    REAL(DP)              :: dr, dX, XX, R
     REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), Numer(:), Denom(:)
-    LOGICAL               :: CONVERGED
-
-    K = CentralPressure / CentralDensity**( Gamma_IDEAL )
-
-    WRITE(*,*)
-    WRITE(*,'(6x,A,F5.3)') &
-      'Adiabatic Gamma:     ', &
-      Gamma_IDEAL
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Central Density:     ', &
-      CentralDensity / ( Gram / Centimeter**3  ), ' g/cm^3'
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Central Pressure:    ', &
-      CentralPressure / ( Erg / Centimeter**3  ), ' erg/cm^3'
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Polytropic Constant: ', &
-      K / ( Erg / Centimeter**3 &
-              / ( Gram / Centimeter**3  )**( Gamma_IDEAL ) ), &
-      ' ( erg/cm^3 ) / ( g/cm^3 )^( Gamma )'
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Core Radius:         ', &
-      CoreRadius / Kilometer, ' km'
-    WRITE(*,'(6x,A,ES10.3E3,A)') &
-      'Collapse Time:       ', &
-      CollapseTime / Millisecond, ' ms'
 
     dr = 1.0e-2_DP * Kilometer
     N = ( 1.1_DP * CoreRadius ) / dr ! Extra elements needed for ghost cells
 
-    ! --- Conversion factors from Yahil paper ---
-
-    C_X = K**( -Half ) &
-            * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
-            * CollapseTime**( Gamma_IDEAL - Two )
-    C_D = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
-    C_V = K**( Half ) &
-            * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
-            * CollapseTime**( One - Gamma_IDEAL )
-    C_M = K**( Three / Two ) &
-            * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
-            * CollapseTime**( Four - Three * Gamma_IDEAL )
-
-    dX = C_X * dr
+    dX = dXdr * dr
 
     ALLOCATE( Numer(N) )
     ALLOCATE( Denom(N) )
@@ -2236,24 +2198,15 @@ CONTAINS
     ALLOCATE( M(N) )
 
     X    (1) = SqrtTiny
-    D    (1) = CentralDensity / C_D
-    U    (1) = -( Gamma_IDEAL - Two ) * X(1)
+    D    (1) = D0
+    U    (1) = Zero
     M    (1) = Zero
     Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
     Denom(1) = Denominator( D(1), U(1) )
 
-    CONVERGED = .FALSE.
+    CALL IntegrateD( dX, X, D, U, M, Numer, Denom )
 
-    DO WHILE( .NOT. CONVERGED )
-
-      CALL IntegrateD( dX, X, D, U, M, Numer, Denom, CONVERGED )
-
-    END DO
-
-    WRITE(*,'(6x,A,ES11.3E3,A)') &
-      'Mass:               ', &
-      M(N) * C_M / SolarMass, ' Msun'
-    WRITE(*,*)
+    TotalEnclosedMass = M(N)
 
     V = ( Gamma_IDEAL - Two ) * X + U
 
@@ -2266,24 +2219,24 @@ CONTAINS
        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-       XX = C_X * R
+       XX = dXdr * R
 
        iX_L = Locate( XX, X, N )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-         = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       D(iX_L), D(iX_L+1) )
+         = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                              D(iX_L), D(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-         = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       V(iX_L), V(iX_L+1) )
+         = dvdV * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                            V(iX_L), V(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+         = PolytropicConstant * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
              / ( Gamma_IDEAL - One )
 
      END DO
@@ -2322,20 +2275,16 @@ CONTAINS
   ! --- Auxiliary functions for Yahil collapse problem ---
 
 
-  SUBROUTINE IntegrateD( dX, X, D, U, M, Numer, Denom, CONVERGED )
+  SUBROUTINE IntegrateD( dX, X, D, U, M, Numer, Denom )
 
     REAL(DP), INTENT(in)    :: dX
     REAL(DP), INTENT(inout) :: X(:), D(:), U(:), M(:), Numer(:), Denom(:)
-    LOGICAL,  INTENT(out)   :: CONVERGED
 
-    REAL(DP)            :: dD, dM, dNumer, dDenom
+    REAL(DP)            :: dDdX, dMdX, XC, &
+                           NumerC, DenomC, NumerPrime, DenomPrime
     INTEGER             :: iX1
-    LOGICAL             :: FirstTime, WriteToFile
+    LOGICAL             :: WriteToFile, FirstTime
     REAL(DP), PARAMETER :: Threshold = 0.015_DP
-
-    CONVERGED = .FALSE.
-
-    FirstTime = .TRUE.
 
     WriteToFile = .FALSE.
 
@@ -2355,31 +2304,16 @@ CONTAINS
 
     END IF
 
+    FirstTime = .TRUE.
+
     DO iX1 = 2, SIZE(X)
 
-      dD = Numer(iX1-1) / Denom(iX1-1)
-      D(iX1) = D(iX1-1) + dX * dD
-
-      ! --- Check for 'infinite' derivative ---
-
-      IF( ABS( dD ) .GT. 5.0_DP )THEN
-
-        PRINT*, 'Infinite derivative'
-
-        X    (1) = SqrtTiny
-        D    (1) = 0.9_DP * D(1)
-        U    (1) = -( Gamma_IDEAL - Two ) * X(1)
-        M    (1) = Zero
-        Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
-        Denom(1) = Denominator( D(1), U(1) )
-
-        RETURN
-      END IF
-
-      dM     = dMdX( X(iX1-1), D(iX1-1) )
-      M(iX1) = M(iX1-1) + dX * dM
+      dDdX = Numer(iX1-1) / Denom(iX1-1)
+      dMdX = FourPi * X(iX1-1)**2 * D(iX1-1)
 
       X(iX1) = X(iX1-1) + dX
+      D(iX1) = D(iX1-1) + dX * dDdX
+      M(iX1) = M(iX1-1) + dX * dMdX
 
       U(iX1) = ( Four - Three * Gamma_IDEAL ) * M(iX1) &
                  / ( FourPi * X(iX1)**2 * D(iX1) )
@@ -2389,15 +2323,19 @@ CONTAINS
 
       IF( ABS( Denom(iX1) ) .LT. Threshold .AND. FirstTime )THEN
 
-        dNumer = Numer(iX1) - Numer(iX1-1)
-        dDenom = Denom(iX1) - Denom(iX1-1)
+        XC     = X(iX1)
+        NumerC = Numer(iX1)
+        DenomC = Denom(iX1)
+
+        DenomPrime = ( Denom(iX1) - Denom(iX1-1) ) / dX
+        NumerPrime = -NumerC / ( DenomC / DenomPrime )
 
         FirstTime = .FALSE.
 
       ELSE IF( ABS( Denom(iX1) ) .LT. Threshold )THEN
 
-        Numer(iX1) = Numer(iX1-1) + dNumer
-        Denom(iX1) = Denom(iX1-1) + dDenom
+        Numer(iX1) = NumerC + NumerPrime + ( X(iX1) - XC )
+        Denom(iX1) = DenomC + DenomPrime + ( X(iX1) - XC )
 
       END IF
 
@@ -2423,24 +2361,6 @@ CONTAINS
 
     END IF
 
-    ! --- Check for sub-sonic maximum ---
-
-    IF( MINVAL( Denom ) .GT. Zero )THEN
-
-      PRINT*, 'Sub-sonic maxmum'
-
-      X    (1) = SqrtTiny
-      D    (1) = 1.5_DP * D(1)
-      U    (1) = -( Gamma_IDEAL - Two ) * X(1)
-      M    (1) = Zero
-      Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
-      Denom(1) = Denominator( D(1), U(1) )
-
-      RETURN
-    END IF
-
-    CONVERGED = .TRUE.
-
   END SUBROUTINE IntegrateD
 
 
@@ -2461,15 +2381,6 @@ CONTAINS
     Denominator = Gamma_IDEAL * D**( Gamma_IDEAL - One ) - U**2
 
   END FUNCTION Denominator
-
-
-  REAL(DP) FUNCTION dMdX( X, D )
-
-    REAL(DP), INTENT(in) :: X, D
-
-    dMdX = FourPi * X**2 * D
-
-  END FUNCTION dMdX
 
 
   ! --- End of auxiliary functions for Yahil collapse problem ---

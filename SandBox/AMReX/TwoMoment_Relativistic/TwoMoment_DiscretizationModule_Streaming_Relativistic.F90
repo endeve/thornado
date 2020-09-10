@@ -39,6 +39,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
     dLdX3_q
   USE MeshModule, ONLY: &
     MeshE, &
+    NodeCoordinate, &
     MeshX
   USE GeometryFieldsModuleE, ONLY: &
     nGE, &
@@ -79,7 +80,10 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
     Flux_E, &
     Source_E, &
     ComputeEddingtonTensorComponents_ud, &
+    ComputeHeatFluxTensorComponents_uud_Lagrangian, &
     NumericalFlux_LLF
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
 
   IMPLICIT NONE
   PRIVATE
@@ -826,6 +830,8 @@ CONTAINS
              Flux_q, nDOFZ, One, dU_X1, nDOFZ )
 
 
+    open(1, file = "dU_X_1_rel01.txt", status = 'unknown') 
+    open(2, file = "dU_X_2_rel01.txt", status = 'unknown') 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -839,6 +845,16 @@ CONTAINS
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_X1(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2)
 
+    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 1) THEN
+
+         write(1,*) dU_X1(iNodeZ,1,iZ1,iZ3,iZ4,iS,iZ2)
+
+    END IF
+    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 2) THEN
+
+         write(2,*) dU_X1(iNodeZ,2,iZ1,iZ3,iZ4,iS,iZ2)
+
+    END IF
       END DO
 
     END DO
@@ -982,7 +998,7 @@ CONTAINS
                   (nDOFZ,nCR, &
                    iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
                    iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E0(1))
-    REAL(DP):: W, E2, C
+    REAL(DP):: W, E2, C, l_uud_munurho(0:3,0:3,0:3), k_ud_munu(0:3,0:3)
 
     LOGICAL :: Verbose
     CHARACTER(len=40) :: name1, name2
@@ -1161,6 +1177,7 @@ CONTAINS
 
     ! --- Numerical Flux ---
 
+   ! open(5, file = "Num001.txt", status = 'unknown') 
     DO iZ1 = iZ_B0(1), iZ_E1(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1189,7 +1206,6 @@ CONTAINS
                  uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
                  uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
                  uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4) )
-
         ! --- Left State Flux ---
 
         Flux_L &
@@ -1284,7 +1300,7 @@ CONTAINS
        
           W = 1.0_DP / SQRT(W)
            
-          C = 1.5_DP
+          C = 1.0_DP
           CALL ComputeAlpha( uPF_K(iNode,iPF_V1,iZ2,iZ3,iZ4), &
                              uPF_K(iNode,iPF_V2,iZ2,iZ3,iZ4), &
                              uPF_K(iNode,iPF_V3,iZ2,iZ3,iZ4), &
@@ -1311,12 +1327,14 @@ CONTAINS
                     W * uPR_R(iCR), &
                     Flux_L(iCR), Flux_R(iCR), Alpha )
 
+          IF (iZ1 .EQ. 13 .AND. iCR .EQ. 1) THEN
+    !         print*, NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1)
+          END IF
             NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
               = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
                   * EdgeEnergyCubed * Weights_E(iNode) &
                   * uGF_K(iNode,iGF_SqrtGm,iZ2,iZ3,iZ4) &
                   * NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1)
-
           END DO
 
         END IF
@@ -1329,7 +1347,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Surface Contributions ---
 
     ! --- Contributions from Left Face ---
@@ -1350,7 +1367,6 @@ CONTAINS
     !--------------------
     ! --- Volume Term ---
     !--------------------
-
 
     DO iZ1 = iZ_B0(1), iZ_E0(1)
     DO iS  = 1, nSpecies
@@ -1402,6 +1418,7 @@ CONTAINS
                     dU_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
+
         DO iCR = 1, nCR
 
           Flux_q(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1422,7 +1439,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
@@ -1492,7 +1508,6 @@ CONTAINS
                     dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
 
-
         ! --- iCR_G1 ---
 
         dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1529,6 +1544,8 @@ CONTAINS
     END DO
     END DO
 
+    open(3, file = "dU_E_1_rel01.txt", status = 'unknown') 
+    open(4, file = "dU_E_2_rel01.txt", status = 'unknown') 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1542,6 +1559,16 @@ CONTAINS
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_E(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1)
 
+    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 1) THEN
+
+         write(3,*) dU_E(iNodeZ,1,iZ2,iZ3,iZ4,iS,iZ1)
+
+    END IF
+    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 2) THEN
+
+         write(4,*) dU_E(iNodeZ,2,iZ2,iZ3,iZ4,iS,iZ1)
+
+    END IF
       END DO
 
     END DO
@@ -1553,7 +1580,7 @@ CONTAINS
 
     END ASSOCIATE ! dZ1, etc    END ASSOCIATE ! dZ1, etc..
 
-
+STOP
   END SUBROUTINE ComputeIncrement_ObserverCorrections 
 
 
@@ -1728,10 +1755,10 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: nK(4), nK_X1(4), nX, nX_X1
-    INTEGER  :: iNodeX
+    INTEGER  :: iNodeX, iNodeX1
     INTEGER  :: i, iZ2, iZ3, iZ4, iCF, iGF
     REAL(DP) :: &
-      uPF_K(nPF), uPF_L(nPF), uPF_R(nPF)
+      uPF_K(nPF), uPF_L(nPF), uPF_R(nPF), X1, V0, pi3, pi23, sine, cose
     REAL(DP) :: &
       V_u_X1(nDOFX_X1,3,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
              iZ_B0(2):iZ_E0(2)+1), &
@@ -2172,13 +2199,41 @@ CONTAINS
 
  !  open(1, file = name2, status = 'new') 
  
-!   open(2, file = name1, status = 'new')  
+!   open(2, file = name1, status = 'new') 
+V0=-0.05
+pi3 = 3.1415926535897932384626433832795028841971_DP / 3.0_DP
+pi23 = 2.0_DP * 3.1415926535897932384626433832795028841971_DP / 3.0_DP
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
       DO iNodeX = 1, nDOFX
 
+!        iNodeX1 = NodeNumberTableX(1,iNodeX)
+!
+!        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
+!        IF( X1 .GT. 2.0_DP .AND. X1 .LT. 3.5_DP) THEN
+!          sine = SIN( pi23 - pi3 * X1 )
+!          cose = COS( pi23 - pi3 * X1 )
+!          dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
+!          = (pi23*V0**2*sine**3*cose)/(1.0_DP-V0**2*sine**4)**(3.0_DP/2.0_DP)
+!          dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
+!          = -(1.0_DP/V0)*pi23*sine*cose/(((1/V0**2)-sine**4)*(1.0_DP-V0**2*sine**4)**(1.0/2.0))
+!        ELSE IF ( X1 .GT. 6.5_DP .AND. X1 .LT. 8.0_DP ) THEN
+!          sine = SIN( pi23 - pi3 * X1 )
+!          cose = COS( pi23 - pi3 * X1 )
+!          dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
+!          = (pi23*V0**2*sine**3*cose)/(1.0_DP-V0**2*sine**4)**(3.0_DP/2.0_DP)
+!          dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
+!          = -(1.0_DP/V0)*pi23*sine*cose/(((1/V0**2)-sine**4)*(1.0_DP-V0**2*sine**4)**(1.0/2.0))
+!
+!
+!        ELSE 
+!
+!          dU_dX1(iNodeX,0,iZ2,iZ3,iZ4) = 0.0_DP
+!          dU_dX1(iNodeX,1,iZ2,iZ3,iZ4) = 0.0_DP
+!
+!        END IF
         dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
           = -GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
@@ -2188,6 +2243,10 @@ CONTAINS
 
         dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
           = dWV_d_dX1(iNodeX,1,iZ3,iZ4,iZ2)
+
+
+
+
 
         dU_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
           = dWV_d_dX1(iNodeX,2,iZ3,iZ4,iZ2)
@@ -3315,8 +3374,9 @@ CONTAINS
     DO mu = 1, 4 
     DO nu = 1, 4
 
-      Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
-     
+     ! Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
+       Alpha = Alpha + 0.5_DP * ( U_u(mu) + l_mu(mu) ) * ( dU_dX(mu,nu) + dU_dX(nu,mu) ) &
+             * ( U_u(nu) + l_mu(nu))
     END DO
     END DO
  

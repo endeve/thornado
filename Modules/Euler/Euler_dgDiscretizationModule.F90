@@ -2556,7 +2556,9 @@ CONTAINS
       DO iCF = 1, nCF
 
         dU(:,iX1,iX2,iX3,iCF) &
-          = dU(:,iX1,iX2,iX3,iCF) / ( G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) ) &
+          = dU(:,iX1,iX2,iX3,iCF) &
+              - U(:,iX1,iX2,iX3,iCF) &
+              / ( G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) ) &
               * ( Term1 + Term2 + Term3 )
 
       END DO

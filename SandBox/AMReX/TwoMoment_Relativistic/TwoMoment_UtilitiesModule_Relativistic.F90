@@ -498,9 +498,9 @@ CONTAINS
     V_d_3 = Gm_dd_33 * V_u_3
 
 
-    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
-    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
-    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+    u_d_1 = W * V_d_1
+    u_d_2 = W * V_d_2
+    u_d_3 = W * V_d_3
  
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
@@ -693,9 +693,9 @@ CONTAINS
 
     V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
 
-    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
-    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
-    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+    u_d_1 = W * V_d_1
+    u_d_2 = W * V_d_2
+    u_d_3 = W * V_d_3
 
     u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
     u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
@@ -801,7 +801,7 @@ CONTAINS
     REAL(DP) :: FF, HF, a, b, DT
     REAL(DP) :: h_d_1, h_d_2, h_d_3
     REAL(DP) :: I_d_1, I_d_2, I_d_3
-    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W
     REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
     REAL(DP) :: &
@@ -826,9 +826,13 @@ CONTAINS
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
 
-    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
-    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
-    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    u_d_1 = W * V_d_1
+    u_d_2 = W * V_d_2
+    u_d_3 = W * V_d_3
 
 
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
@@ -1054,9 +1058,9 @@ CONTAINS
     V_d_2 = Gm_dd_22 * V_u_2
     V_d_3 = Gm_dd_33 * V_u_3
 
-    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
-    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
-    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+    u_d_1 = W * V_d_1
+    u_d_2 = W * V_d_2
+    u_d_3 = W * V_d_3
 
     u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
     u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
@@ -1110,7 +1114,6 @@ CONTAINS
     h_d_3 = I_d_3 / ( FF * D )
 
     ! --- Diagonal Heat Flux Tensor Components ---
-
     l_uud_111 & 
       = a * ( h_u_1 * h_ud_11 + h_u_1 * h_ud_11 + h_d_1 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_1
 
@@ -1478,7 +1481,7 @@ CONTAINS
     REAL(DP) :: h_u_1, h_u_2, h_u_3
     REAL(DP) :: h_d_1, h_d_2, h_d_3
     REAL(DP) :: I_d_1, I_d_2, I_d_3
-    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
     REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
     REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
@@ -1497,9 +1500,13 @@ CONTAINS
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
 
-    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
-    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
-    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    u_d_1 = W * V_d_1
+    u_d_2 = W * V_d_2
+    u_d_3 = W * V_d_3
 
     u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
     u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
@@ -2669,6 +2676,8 @@ CONTAINS
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_munurho )
 
+
+
     B_d_1 = Gm_dd_11 * B_u_1 
     B_d_2 = Gm_dd_22 * B_u_2 
     B_d_3 = Gm_dd_33 * B_u_3 
@@ -2945,5 +2954,5 @@ CONTAINS
 !   Flux_G(3) = I_u_3 + W * D * V_u_3 - ( B_u_3 / alp ) * vI
 !
 !   END FUNCTION Flux_G
-!
-END MODULE TwoMoment_UtilitiesModule_Relativistic
+
+END MODULE TwoMoment_UtilitiesModule_Relativistic!

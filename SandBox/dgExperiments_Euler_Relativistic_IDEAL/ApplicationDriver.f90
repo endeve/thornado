@@ -136,28 +136,29 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Power(0:2)
 
   ! --- Yahil Collapse ---
-  REAL(DP) :: CentralDensity, CentralPressure, CoreRadius, CollapseTime
+  REAL(DP) :: D0, CentralDensity, CentralPressure, CoreRadius, CollapseTime
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
+
   REAL(DP) :: Timer_Evolution
 
-  REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
+  REAL(DP), ALLOCATABLE :: SourceTerms_Poseidon(:,:,:,:,:)
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   ProgramName = 'Advection'
-!  ProgramName = 'Advection2D'
-!  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2D'
-!  ProgramName = 'RiemannProblemSpherical'
-!  ProgramName = 'SedovTaylorBlastWave'
-!  ProgramName = 'KelvinHelmholtzInstability'
-  ProgramName = 'StandingAccretionShock'
-!  ProgramName = 'StaticTOV'
-!  ProgramName = 'YahilCollapse'
+!!$  ProgramName = 'Advection2D'
+!!$  ProgramName = 'RiemannProblem'
+!!$  ProgramName = 'RiemannProblem2D'
+!!$  ProgramName = 'RiemannProblemSpherical'
+!!$  ProgramName = 'SedovTaylorBlastWave'
+!!$  ProgramName = 'KelvinHelmholtzInstability'
+!!$  ProgramName = 'StandingAccretionShock'
+!!$  ProgramName = 'StaticTOV'
+!!$  ProgramName = 'YahilCollapse'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -400,15 +401,18 @@ PROGRAM ApplicationDriver
       CoreRadius      = 1.0e5_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
 
+      ! --- These values come from Table 2 in the Yahil paper ---
       Gamma = 1.30_DP
+      D0    = 1.75_DP
+
       t_end = CollapseTime - 0.5_DP * Millisecond
       bcX = [ 30, 0, 0 ]
 
-      nX    = [ 256                 , 1     , 1      ]
+      nX    = [ 128                 , 1     , 1      ]
       swX   = [ 1                   , 0     , 0      ]
       xL    = [ Zero                , Zero  , Zero   ]
       xR    = [ CoreRadius          , Pi    , TwoPi  ]
-      ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
+      ZoomX = [ 1.071835456828339_DP, 1.0_DP, 1.0_DP ]
 
       WriteGF = .TRUE.
 
@@ -498,9 +502,9 @@ PROGRAM ApplicationDriver
 
   IF( SelfGravity )THEN
 
-    ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
-                                 iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:6) )
+    ALLOCATE( SourceTerms_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3),1:6) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
@@ -561,6 +565,7 @@ PROGRAM ApplicationDriver
            PerturbationAmplitude_Option = PerturbationAmplitude, &
            rPerturbationInner_Option    = rPerturbationInner, &
            rPerturbationOuter_Option    = rPerturbationOuter, &
+           D0_Option                    = D0, &
            CentralDensity_Option        = CentralDensity, &
            CentralPressure_Option       = CentralPressure, &
            CoreRadius_Option            = CoreRadius, &
@@ -590,10 +595,10 @@ PROGRAM ApplicationDriver
   IF( SelfGravity )THEN
 
     CALL ComputeSourceTerms_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 
     CALL SolveGravity_CFA_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   END IF
 
@@ -761,10 +766,10 @@ PROGRAM ApplicationDriver
     IF( SelfGravity )THEN
 
       CALL ComputeSourceTerms_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 
       CALL SolveGravity_CFA_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
     END IF
 
@@ -794,7 +799,7 @@ PROGRAM ApplicationDriver
 
   IF( SelfGravity )THEN
 
-    DEALLOCATE( U_Poseidon )
+    DEALLOCATE( SourceTerms_Poseidon )
 
     CALL FinalizeGravitySolver_CFA_Poseidon
 
