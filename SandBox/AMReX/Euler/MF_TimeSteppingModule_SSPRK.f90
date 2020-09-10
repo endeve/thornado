@@ -2,37 +2,37 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,                ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,                 ONLY: &
     amrex_box
-  USE amrex_geometry_module,  ONLY: &
+  USE amrex_geometry_module,            ONLY: &
     amrex_geometry
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,            ONLY: &
     amrex_multifab,         &
     amrex_multifab_build,   &
     amrex_multifab_destroy, &
     amrex_mfiter,           &
     amrex_mfiter_build,     &
     amrex_mfiter_destroy
-  USE amrex_boxarray_module,  ONLY: &
+  USE amrex_boxarray_module,            ONLY: &
     amrex_boxarray,       &
     amrex_boxarray_build, &
     amrex_boxarray_destroy
-  USE amrex_distromap_module, ONLY: &
+  USE amrex_distromap_module,           ONLY: &
     amrex_distromap,       &
     amrex_distromap_build, &
     amrex_distromap_destroy
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,  ONLY: &
+  USE ProgramHeaderModule,              ONLY: &
     swX,   &
     nDOFX, &
     nX
-  USE FluidFieldsModule,    ONLY: &
+  USE FluidFieldsModule,                ONLY: &
     nCF
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,             ONLY: &
     nGF
 
   ! --- Local Modules ---
@@ -41,7 +41,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     MF_ApplySlopeLimiter_Euler
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,               ONLY: &
     nLevels, &
     DEBUG
   USE TimersModule_AMReX_Euler,         ONLY: &
@@ -74,15 +74,16 @@ MODULE MF_TimeSteppingModule_SSPRK
   INTERFACE
     SUBROUTINE MF_Euler_Increment &
       ( GEOM, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
-      USE amrex_base_module, ONLY: &
-        amrex_geometry, &
+      USE amrex_geometry_module, ONLY: &
+        amrex_geometry
+      USE amrex_multifab_module, ONLY: &
         amrex_multifab
-      USE MyAmrModule, ONLY: &
+      USE InputParsingModule,    ONLY: &
         nLevels
-      TYPE(amrex_geometry), INTENT(in   ) :: GEOM   (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in   ) :: MF_uCF (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in   ) :: MF_uDF (0:nLevels-1)
+      TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uDF (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
     END SUBROUTINE MF_Euler_Increment
   END INTERFACE
@@ -230,11 +231,11 @@ CONTAINS
   SUBROUTINE MF_UpdateFluid_SSPRK &
     ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
-    REAL(AR),             INTENT(in   ) :: t(0:nLevels-1), dt(0:nLevels-1)
+    REAL(AR),             INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
-    TYPE(amrex_geometry), INTENT(in   ) :: GEOM  (0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
     PROCEDURE(MF_Euler_Increment)       :: MF_ComputeIncrement_Euler
 
     INTEGER :: iS, jS
@@ -320,7 +321,7 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (1)'
 
-        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U )
+        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U, MF_uDF )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ComputeIncrement_Euler'
 
@@ -350,7 +351,7 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
 
-    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
+    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

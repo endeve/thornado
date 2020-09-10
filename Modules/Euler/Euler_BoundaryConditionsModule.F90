@@ -1,17 +1,29 @@
 MODULE Euler_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP
+    DP,    &
+    Three, &
+    Four
   USE MeshModule, ONLY: &
-    MeshX, NodeCoordinate
+    MeshX, &
+    NodeCoordinate
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, WeightsX_q
+    NodeNumberTableX, &
+    WeightsX_q
   USE ProgramHeaderModule, ONLY: &
-    bcX, swX, nDOFX, nNodesX
+    bcX,   &
+    swX,   &
+    nDOFX, &
+    nNodesX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -19,38 +31,43 @@ MODULE Euler_BoundaryConditionsModule
   PRIVATE
 
   PUBLIC :: ApplyBoundaryConditions_Euler
+  PUBLIC :: ApplyInnerBC_Euler
+  PUBLIC :: ApplyOuterBC_Euler
 
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Both  = 0
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Inner = 1
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_None  = 3
 
+  REAL(DP), PUBLIC :: ExpD = Three
+  REAL(DP), PUBLIC :: ExpE = Four
+
 
 CONTAINS
 
 
-  LOGICAL FUNCTION ApplyInnerBC( iApplyBC )
+  LOGICAL FUNCTION ApplyInnerBC_Euler( iApplyBC )
 
     INTEGER, INTENT(in) :: iApplyBC
 
-    ApplyInnerBC = .FALSE.
+    ApplyInnerBC_Euler = .FALSE.
     IF( iApplyBC .EQ. iApplyBC_Euler_Inner .OR. &
         iApplyBC .EQ. iApplyBC_Euler_Both ) &
-    ApplyInnerBC = .TRUE.
+      ApplyInnerBC_Euler = .TRUE.
 
-  END FUNCTION ApplyInnerBC
+  END FUNCTION ApplyInnerBC_Euler
 
 
-  LOGICAL FUNCTION ApplyOuterBC( iApplyBC )
+  LOGICAL FUNCTION ApplyOuterBC_Euler( iApplyBC )
 
     INTEGER, INTENT(in) :: iApplyBC
 
-    ApplyOuterBC = .FALSE.
+    ApplyOuterBC_Euler = .FALSE.
     IF( iApplyBC .EQ. iApplyBC_Euler_Outer .OR. &
         iApplyBC .EQ. iApplyBC_Euler_Both ) &
-    ApplyOuterBC = .TRUE.
+      ApplyOuterBC_Euler = .TRUE.
 
-  END FUNCTION ApplyOuterBC
+  END FUNCTION ApplyOuterBC_Euler
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler &
@@ -113,18 +130,20 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#ifndef USE_AMREX_TRUE
+
       DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(:,iX_B0(1)-iX1,iX2,iX3,iCF) &
               = U(:,iX_E0(1)-(iX1-1),iX2,iX3,iCF)
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
               = U(:,iX_B0(1)+(iX1-1),iX2,iX3,iCF)
 
@@ -132,6 +151,8 @@ CONTAINS
         END DO
         END DO
       END DO
+
+#endif
 
     CASE ( 2 ) ! Homogeneous
 
@@ -141,12 +162,12 @@ CONTAINS
         DO iX1 = 1, swX(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(:,iX_B0(1)-iX1,iX2,iX3,iCF) &
               = U(:,iX_B0(1),iX2,iX3,iCF)
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
               = U(:,iX_E0(1),iX2,iX3,iCF)
 
@@ -173,24 +194,24 @@ CONTAINS
           DO iCF = 1, nCF
 
             ! --- Inner Boundary ---
-            IF( ApplyInnerBC( iApplyBC ) ) &
+            IF( ApplyInnerBC_Euler( iApplyBC ) ) &
               U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF) &
                 = U(jNodeX,iX_B0(1),iX2,iX3,iCF)
 
             ! --- Outer boundary ---
-            IF( ApplyOuterBC( iApplyBC ) ) &
+            IF( ApplyOuterBC_Euler( iApplyBC ) ) &
               U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF) &
                 = U(jNodeX,iX_E0(1),iX2,iX3,iCF)
 
           END DO
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
               = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_S1) &
               = - U(jNodeX,iX_E0(1),iX2,iX3,iCF_S1)
 
@@ -205,7 +226,7 @@ CONTAINS
     CASE ( 30 ) ! Reflecting (Inner), Zero (Outer)
 
       ! --- Inner Boundary ---
-      IF( ApplyInnerBC( iApplyBC ) )THEN
+      IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -247,7 +268,7 @@ CONTAINS
       DO iX1 = 1, swX(1)
 
         ! --- Inner Boundary ---
-        IF( ApplyInnerBC( iApplyBC ) )THEN
+        IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
           DO iNodeX3 = 1, nNodesX(3)
           DO iNodeX2 = 1, nNodesX(2)
@@ -275,7 +296,7 @@ CONTAINS
         END IF
 
         ! --- Outer Boundary ---
-        IF( ApplyOuterBC( iApplyBC ) )THEN
+        IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
           DO iCF = 1, nCF
             U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
               = U(:,iX_E0(1),iX2,iX3,iCF)
@@ -289,7 +310,7 @@ CONTAINS
     CASE ( 11 ) ! Custom BCs for Accretion Problem
 
       ! --- Inner Boundary ---
-      IF( ApplyInnerBC( iApplyBC ) )THEN
+      IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         R_0 = MeshX(1) % Center(1) &
                 + MeshX(1) % Width(1) &
@@ -327,6 +348,47 @@ CONTAINS
 
       END IF
 
+    CASE ( 100 ) ! Custom BCs for Relativistic SAS Problem
+
+      ! --- Inner Boundary ---
+      IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
+
+        R_0 = MeshX(1) % Center(1) &
+                + MeshX(1) % Width(1) &
+                    * MeshX(1) % Nodes(1)
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
+
+            iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+            iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+
+            D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
+            E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
+
+            R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
+
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+              = D_0 * ( R_0 / R_q )**( ExpD )
+
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+              = E_0 * ( R_0 / R_q )**( ExpE )
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -337,7 +399,7 @@ CONTAINS
 
         ! --- Outer: Homogeneous ---
 
-        IF( ApplyOuterBC( iApplyBC ) )THEN
+        IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
           DO iCF = 1, nCF
             U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
               = U(:,iX_E0(1),iX2,iX3,iCF)
@@ -375,18 +437,20 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#ifndef USE_AMREX_TRUE
+
       DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX_B0(2)-iX2,iX3,iCF) &
               = U(:,iX1,iX_E0(2)-(iX2-1),iX3,iCF)
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
               = U(:,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
 
@@ -394,6 +458,8 @@ CONTAINS
         END DO
         END DO
       END DO
+
+#endif
 
     CASE ( 2 ) ! Homogeneous
 
@@ -403,12 +469,12 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX_B0(2)-iX2,iX3,iCF) &
               = U(:,iX1,iX_B0(2),iX3,iCF)
 
            ! --- Outer Boundary ---
-           IF( ApplyOuterBC( iApplyBC ) ) &
+           IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
               = U(:,iX1,iX_E0(2),iX3,iCF)
 
@@ -435,24 +501,24 @@ CONTAINS
           DO iCF = 1, nCF
 
             ! --- Inner boundary ---
-            IF( ApplyInnerBC( iApplyBC ) ) &
+            IF( ApplyInnerBC_Euler( iApplyBC ) ) &
               U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF) &
                 = U(jNodeX,iX1,iX_B0(2),iX3,iCF)
 
             ! --- Outer boundary ---
-            IF( ApplyOuterBC( iApplyBC ) ) &
+            IF( ApplyOuterBC_Euler( iApplyBC ) ) &
               U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF) &
                 = U(jNodeX,iX1,iX_E0(2),iX3,iCF)
 
           END DO
 
             ! --- Inner boundary ---
-            IF( ApplyInnerBC( iApplyBC ) ) &
+            IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
               = - U(jNodeX,iX1,iX_B0(2),iX3,iCF_S2)
 
             ! --- Outer boundary ---
-            IF( ApplyOuterBC( iApplyBC ) ) &
+            IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) &
               = - U(jNodeX,iX1,iX_E0(2),iX3,iCF_S2)
 
@@ -471,7 +537,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) )THEN
+          IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
             DO iNodeX3 = 1, nNodesX(3)
             DO iNodeX2 = 1, nNodesX(2)
@@ -499,7 +565,7 @@ CONTAINS
           END IF
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) )THEN
+          IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
             DO iCF = 1, nCF
               U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
                 = U(:,iX1,iX_E0(2),iX3,iCF)
@@ -520,7 +586,7 @@ CONTAINS
 
         ! --- Outer: Homogeneous ---
 
-        IF( ApplyOuterBC( iApplyBC ) )THEN
+        IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
           DO iCF = 1, nCF
             U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
               = U(:,iX1,iX_E0(2),iX3,iCF)
@@ -557,18 +623,20 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#ifndef USE_AMREX_TRUE
+
       DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX2,iX_B0(3)-iX3,iCF) &
               = U(:,iX1,iX2,iX_E0(3)-(iX3-1),iCF)
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX2,iX_E0(3)+iX3,iCF) &
               = U(:,iX1,iX2,iX_B0(3)+(iX3-1),iCF)
 
@@ -576,6 +644,8 @@ CONTAINS
         END DO
         END DO
       END DO
+
+#endif
 
     CASE ( 2 ) ! Homogeneous
 
@@ -585,12 +655,12 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX2,iX_B0(3)-iX3,iCF) &
               = U(:,iX1,iX2,iX_B0(3),iCF)
 
           ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
             U(:,iX1,iX2,iX_E0(3)+iX3,iCF) &
               = U(:,iX1,iX2,iX_E0(3),iCF)
 
@@ -609,7 +679,7 @@ CONTAINS
 
         ! --- Outer: Homogeneous ---
 
-        IF( ApplyOuterBC( iApplyBC ) )THEN
+        IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
           DO iCF = 1, nCF
             U(:,iX1,iX2,iX_E0(3)+iX3,iCF) &
               = U(:,iX1,iX2,iX_E0(3),iCF)

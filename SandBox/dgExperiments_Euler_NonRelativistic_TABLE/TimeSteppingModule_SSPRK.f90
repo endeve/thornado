@@ -39,7 +39,7 @@ MODULE TimeSteppingModule_SSPRK
         G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(inout)        :: &
         U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(in)           :: &
+      REAL(DP), INTENT(inout)        :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
         dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)

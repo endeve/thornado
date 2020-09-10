@@ -2,16 +2,16 @@ MODULE MF_GeometryModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,                         ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,                          ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,                     ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,                     ONLY: &
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
@@ -29,12 +29,12 @@ MODULE MF_GeometryModule
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,                        ONLY: &
     nLevels
-  USE MF_UtilitiesModule,       ONLY: &
-    AMReX2thornado, &
-    thornado2AMReX
-  USE TimersModule_AMReX_Euler, ONLY: &
+  USE MF_UtilitiesModule,                        ONLY: &
+    amrex2thornado_Euler, &
+    thornado2amrex_Euler
+  USE TimersModule_AMReX_Euler,                  ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_DataTransfer
@@ -52,7 +52,7 @@ CONTAINS
   SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(AR),             INTENT(in   ) :: Mass
+    REAL(AR),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -82,7 +82,7 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -91,7 +91,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nGF, iX_B1, iX_E1, uGF, G )
+        CALL thornado2amrex_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         DEALLOCATE( G )
 
@@ -109,7 +109,7 @@ CONTAINS
   SUBROUTINE MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(AR),             INTENT(in   ) :: Mass
+    REAL(AR),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -139,7 +139,7 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -148,7 +148,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nGF, iX_B1, iX_E1, uGF, G )
+        CALL thornado2amrex_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         DEALLOCATE( G )
 

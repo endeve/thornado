@@ -7,27 +7,53 @@ Generate a movie from data files created in MakeDataFiles.py.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import subprocess
+
+# --- Get user's HOME directory ---
+HOME = subprocess.check_output( ["echo $HOME"], shell = True)
+HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-ProblemName = 'SASI' # Only used for name of movie file
 
-# Define custom variables as seen near line 40
-Field = 'PF_D'
+Root   = 'M1.4_Rs180_Mdot0.3'
+suffix = ''
 
-DataFileName = 'MovieData_{:}.dat'.format( Field )
+DataDirectory = HOME + '{:}/'.format( Root )
 
-UseLogScale = True # Do you want your field plotted in log scale?
+PlotFileBaseName = 'plt_{:}{:}'.format( Root, suffix )
+
+Field = 'PF_D' # Field to plot
 
 cmap = 'Purples' # Color scheme for movie
 
-UseCustomTicks = True # Define limits for colorbar near line 166
+UseLogScale = True # Use log scale for field?
+
+MovieName = 'SASI_{:}'.format( Field )
+
+MovieRunTime = 30.0 # seconds
+
+UsePhysicalUnits = True # Does your data use physical units?
+
+UseCustomTicks = True # Define limits for colorbar near line 70
 
 zAxisVertical = False # Orient z-axis
+
+WriteExtras = False # Set to true if generating data on
+                    # external machine (Summit, ACF, etc.)
+
 ############# End of user input #############
+
+ID = '{:}{:}_{:}'.format( Root, suffix, Field )
+
+DataFileName = '{:}_MovieData.dat'.format( ID )
+TimeFileName = '{:}_MovieTime.dat'.format( ID )
 
 from MakeDataFiles import *
 
-MakeDataFile( Field, DataFileName )
+xL, xH, nX, FileArray \
+  = MakeDataFile( Field, DataDirectory, DataFileName, TimeFileName, \
+                  PlotFileBaseName, UsePhysicalUnits, \
+                  WriteExtras )
 
 print( 'Reading in data file...' )
 Data = np.loadtxt( DataFileName ).reshape( \
@@ -38,59 +64,63 @@ fig = plt.figure( figsize = (8,6) )
 ax  = fig.add_subplot( 111, polar = True )
 xL  = xL.to_ndarray()
 xH  = xH.to_ndarray()
-X1  = np.linspace( xL[0], xH[0], nX[0] )
-X2  = np.linspace( xL[1], xH[1], nX[1] )
+X1  = np.linspace( xL[0], xH[0], nX[0]+1 )
+X2  = np.linspace( xL[1], xH[1], nX[1]+1 )
 theta, r = np.meshgrid( X2, X1 )
 
-if( UseLogScale ):
-
-    if( np.any( Data < 0.0 ) ):
-        def f(t):
-            return np.sign( Data[t] ) * np.log10( np.abs( Data[t] ) + 1.0 )
-    else:
-        def f(t):
-            return np.log10( Data[t] )
-
-else:
-
-    def f(t):
-        return Data[t]
+vmin = min( +np.inf, np.min( Data ) )
+vmax = max( -np.inf, np.max( Data ) )
 
 if( UseCustomTicks ):
 
-    vmin = min( +np.inf, np.min( Data ) )
-    vmax = max( -np.inf, np.max( Data ) )
+    vmin = min( +np.inf, Data.min() )
+    vmax = max( -np.inf, Data.max() )
 
     if( UseLogScale ):
 
-        vmax = np.log10( vmax )
-
-        if( np.any( Data < 0.0 ) ):
-            vmin = -np.log10( abs( np.min( Data ) ) )
+        if  ( vmax < 0.0 ):
+            ticks = np.linspace( -np.log10(-vmin), -np.log10(-vmax), 5 )
+        elif( vmin < 0.0 ):
+            ticks = np.linspace( -np.log10(-vmin), +np.log10(+vmax), 5 )
         else:
-          vmin = np.log10( vmin )
-
-        ticks = np.linspace( vmin, vmax, 5 )
+            ticks = np.logspace( +np.log10(+vmin), +np.log10(+vmax), 5 )
 
     else:
+
         ticks = np.linspace( vmin, vmax, 5 )
 
     ticklabels = []
     for tick in ticks:
         ticklabels.append( '{:.3e}'.format( tick ) )
 
+if( UseLogScale ):
+
+    from matplotlib.colors import LogNorm, SymLogNorm
+
+    if( np.any( Data < 0.0 ) ):
+
+        Norm = SymLogNorm( vmin = vmin, vmax = vmax, \
+                           linthresh = 1.0e2, base = 10 )
+
+    else:
+
+        Norm = LogNorm( vmin = vmin, vmax = vmax )
 else:
 
-    vmin = min( +np.inf, np.min( Data ) )
-    vmax = max( -np.inf, np.max( Data ) )
+    Norm = plt.Normalize( vmin = vmin, vmax = vmax )
+
+def f(t):
+    return Data[t]
 
 # Taken from:
 # https://brushingupscience.com/2016/06/21/matplotlib-animations-the-easy-way/
-im = ax.pcolormesh( theta, r, f(0)[:-1,:-1], \
+im = ax.pcolormesh( theta, r, f(0)[:,:], \
                     cmap = cmap, \
-                    vmin = vmin, vmax = vmax, \
-                    norm = None )
-ax.set_thetamin( 180.0/np.pi * X2[0 ] )
+                    norm = Norm )
+
+# Limits on coordinate axes
+
+ax.set_thetamin( 180.0/np.pi * X2[0]  )
 ax.set_thetamax( 180.0/np.pi * X2[-1] )
 ax.set_theta_direction( -1 )
 
@@ -107,20 +137,26 @@ if( UseCustomTicks ):
 else:
     cbar = fig.colorbar( im )
 
+TimeUnit = ''
+if( UsePhysicalUnits ): TimeUnit = ' ms'
+
 def UpdateFrame(t):
-    im.set_array( f(t)[:-1,:-1].flatten() )
-    if( UsePhysicalUnits ):
-      time_text.set_text('time = {:d} ms'.format( np.int( Time[t] ) ) )
-    else:
-      time_text.set_text('time = {:d}'.format( np.int( Time[t] ) ) )
+    im.set_array( f(t)[:,:].flatten() )
+    time_text.set_text('time = {:d}{:}'.format( np.int( Time[t] ), TimeUnit ) )
     return im,
 
 # Call the animator
-print( 'Making movie...' )
-anim = animation.FuncAnimation( fig, UpdateFrame, frames = FileArray.shape[0], \
-                                interval = 100, blit = True )
 
-anim.save( '{:}_{:}.mp4'.format( ProblemName, Field ), fps = 5 )
+print( 'Making movie...' )
+
+nFrames = FileArray.shape[0]
+fps = nFrames / MovieRunTime
+
+anim \
+  = animation.FuncAnimation \
+      ( fig, UpdateFrame, frames = nFrames, blit = True )
+
+anim.save( '{:}_Movie.mp4'.format( MovieName ), fps = fps )
 plt.close()
 
 import os

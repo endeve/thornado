@@ -2,44 +2,45 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module,  ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_sum
-  USE amrex_parmparse_module, ONLY: &
+  USE amrex_parallel_module,   ONLY: &
+    amrex_parallel_ioprocessor
+  USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,            ONLY: &
+  USE ProgramHeaderModule,     ONLY: &
     nDOFX,   &
     nX,      &
     nNodesX, &
     swX,     &
     nDimsX
-  USE ReferenceElementModuleX,        ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE MeshModule,                     ONLY: &
+  USE MeshModule,              ONLY: &
     MeshType,    &
     CreateMesh,  &
     DestroyMesh, &
     NodeCoordinate
-  USE GeometryFieldsModule,           ONLY: &
+  USE GeometryFieldsModule,    ONLY: &
     nGF,          &
+    iGF_Alpha,    &
+    iGF_Psi,      &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
-  USE FluidFieldsModule,              ONLY: &
+  USE FluidFieldsModule,       ONLY: &
     nCF,    &
     iCF_D,  &
     iCF_S1, &
@@ -56,29 +57,36 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     iCF_Ne, &
     nAF,    &
     iAF_P
-  USE Euler_UtilitiesModule,          ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ExpD, &
+    ExpE
+  USE Euler_UtilitiesModule,   ONLY: &
     ComputeConserved_Euler
-  USE EquationOfStateModule,          ONLY: &
+  USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
-  USE UnitsModule,                    ONLY: &
+  USE UnitsModule,             ONLY: &
     Kilometer,    &
     Second,       &
     SolarMass,    &
-    SpeedOfLight
-  USE UtilitiesModule,                ONLY: &
+    Gram,         &
+    Centimeter,   &
+    Erg,          &
+    SpeedOfLight, &
+    GravitationalConstant
+  USE UtilitiesModule,         ONLY: &
     NodeNumberX
-  USE Euler_ErrorModule,              ONLY: &
+  USE Euler_ErrorModule,       ONLY: &
     DescribeError_Euler
 
   ! --- Local Modules ---
 
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels,            &
     xL,                 &
     xR,                 &
-    Gamma_IDEAL,        &
-    InitializeFromFile, &
-    OutputDataFileName
+    Gamma_IDEAL
+  USE MF_UtilitiesModule,      ONLY: &
+    CombineGridData
 
   IMPLICIT NONE
   PRIVATE
@@ -96,6 +104,9 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   REAL(AR), PARAMETER :: TwoPi    = 2.0_AR * Pi
   REAL(AR), PARAMETER :: FourPi   = 4.0_AR * Pi
 
+  LOGICAL,          PUBLIC              :: WriteNodalData_SAS
+  CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: NodalDataFileNameBase_SAS
+
 
 CONTAINS
 
@@ -103,10 +114,9 @@ CONTAINS
   SUBROUTINE MF_InitializeFields_Relativistic_IDEAL &
     ( ProgramName, MF_uGF, MF_uCF )
 
-    CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -117,17 +127,25 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'Sod' )
+      CASE( 'Advection1D' )
 
-        CALL InitializeFields_Sod( MF_uGF, MF_uCF )
-
-      CASE( 'Contact' )
-
-        CALL InitializeFields_Contact( MF_uGF, MF_uCF )
+        CALL InitializeFields_Advection1D( MF_uGF, MF_uCF )
 
       CASE( 'Advection2D' )
 
         CALL InitializeFields_Advection2D( MF_uGF, MF_uCF )
+
+      CASE( 'RiemannProblem1D' )
+
+        CALL InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
+
+      CASE( 'RiemannProblem2D' )
+
+        CALL InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
+
+      CASE( 'RiemannProblemSpherical' )
+
+        CALL InitializeFields_RiemannProblemSpherical( MF_uGF, MF_uCF )
 
       CASE( 'KelvinHelmholtz' )
 
@@ -136,14 +154,6 @@ CONTAINS
       CASE( 'KelvinHelmholtz3D' )
 
         CALL InitializeFields_KelvinHelmholtz3D( MF_uGF, MF_uCF )
-
-      CASE( 'RiemannProblem2D' )
-
-        CALL InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
-
-      CASE( 'IsolatedShock2D' )
-
-        CALL InitializeFields_IsolatedShock2D( MF_uGF, MF_uCF )
 
       CASE( 'StandingAccretionShock_Relativistic' )
 
@@ -156,11 +166,13 @@ CONTAINS
           WRITE(*,*)
           WRITE(*,'(4x,A,A)') 'Unknown Program: ', TRIM( ProgramName )
           WRITE(*,'(4x,A)')   'Valid Options:'
-          WRITE(*,'(6x,A)')     'Sod'
+          WRITE(*,'(6x,A)')     'Advection1D'
           WRITE(*,'(6x,A)')     'Advection2D'
+          WRITE(*,'(6x,A)')     'RiemannProblem1D'
+          WRITE(*,'(6x,A)')     'RiemannProblem2D'
+          WRITE(*,'(6x,A)')     'RiemannProblemSpherical'
           WRITE(*,'(6x,A)')     'KelvinHelmholtz'
           WRITE(*,'(6x,A)')     'KelvinHelmholtz3D'
-          WRITE(*,'(6x,A)')     'RiemannProblem2D'
           WRITE(*,'(6x,A)')     'StandingAccretionShock_Relativistic'
         END IF
 
@@ -171,13 +183,12 @@ CONTAINS
   END SUBROUTINE MF_InitializeFields_Relativistic_IDEAL
 
 
-  SUBROUTINE InitializeFields_Sod( MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields_Advection1D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
-    INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
     REAL(AR)       :: X1
@@ -185,6 +196,7 @@ CONTAINS
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
     REAL(AR)       :: uAF_K(nDOFX,nAF)
+    INTEGER        :: iDim
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -193,132 +205,42 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_parmparse)         :: PP
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    uGF_K = Zero
-    uCF_K = Zero
-    uPF_K = Zero
-    uAF_K = Zero
+    ! --- Problem-dependent Parameters ---
+    CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
 
-    DO iDim = 1, 3
+    AdvectionProfile = 'SineWave'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'AdvectionProfile', AdvectionProfile )
+    CALL amrex_parmparse_destroy( PP )
 
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
+    IF( TRIM( AdvectionProfile ) .NE. 'SineWave' )THEN
 
-    END DO
+      IF( amrex_parallel_ioprocessor() )THEN
 
-    DO iLevel = 0, nLevels-1
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for AdvectionProfile: ', &
+          TRIM( AdvectionProfile )
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') '  SineWave'
+        WRITE(*,*)
+        WRITE(*,'(A)') 'Stopping...'
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      END IF
 
-      DO WHILE( MFI % next() )
+      CALL DescribeError_Euler( 99 )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+    END IF
 
-        BX = MFI % tilebox()
+    IF( amrex_parallel_ioprocessor() )THEN
 
-        lo_G = LBOUND( uGF )
-        hi_G = UBOUND( uGF )
+      WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
 
-        lo_F = LBOUND( uCF )
-        hi_F = UBOUND( uCF )
-
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
-
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-          DO iNodeX = 1, nDOFX
-
-            IF( X1 .LE. Half ) THEN
-
-              uPF_K(iNodeX,iPF_D)  = One
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
-
-            ELSE
-
-              uPF_K(iNodeX,iPF_D)  = 0.125_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = 0.1_AR / (Gamma_IDEAL - One)
-
-            END IF
-
-          END DO
-
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
-          CALL ComputeConserved_Euler &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                   uGF_K(:,iGF_Gm_dd_11), &
-                   uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33), &
-                   uAF_K(:,iAF_P) )
-
-          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
-
-        END DO
-        END DO
-        END DO
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
-
-  END SUBROUTINE InitializeFields_Sod
-
-
-  SUBROUTINE InitializeFields_Contact( MF_uGF, MF_uCF )
-
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
-    ! --- thornado ---
-    INTEGER        :: iDim
-    INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
-    TYPE(MeshType) :: MeshX(3)
-
-    ! --- AMReX ---
-    INTEGER                       :: iLevel
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    END IF
 
     uGF_K = Zero
     uCF_K = Zero
@@ -363,21 +285,13 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            IF( X1 .LE. Half ) THEN
+            IF     ( TRIM( AdvectionProfile ) .EQ. 'SineWave' )THEN
 
-              uPF_K(iNodeX,iPF_D)  = 0.5_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
+              uPF_K(iNodeX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X1 )
+              uPF_K(iNodeX,iPF_V1) = 0.1_AR
               uPF_K(iNodeX,iPF_V2) = Zero
               uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
-
-            ELSE
-
-              uPF_K(iNodeX,iPF_D)  = 0.1_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = 0.99_AR
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
+              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
             END IF
 
@@ -416,12 +330,12 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE InitializeFields_Contact
+  END SUBROUTINE InitializeFields_Advection1D
 
 
   SUBROUTINE InitializeFields_Advection2D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -448,9 +362,33 @@ CONTAINS
     ! --- Problem-dependent Parameters ---
     CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
 
+    AdvectionProfile = 'SineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get( 'AdvectionProfile', AdvectionProfile )
+      CALL PP % query( 'AdvectionProfile', AdvectionProfile )
     CALL amrex_parmparse_destroy( PP )
+
+    IF( TRIM( AdvectionProfile ) .NE. 'SineWaveX1' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX1X2' )THEN
+
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for AdvectionProfile: ', &
+          TRIM( AdvectionProfile )
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') '  SineWaveX1'
+        WRITE(*,'(A)') '  SineWaveX2'
+        WRITE(*,'(A)') '  SineWaveX1X2'
+        WRITE(*,*)
+        WRITE(*,'(A)') 'Stopping...'
+
+      END IF
+
+      CALL DescribeError_Euler( 99 )
+
+    END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -568,11 +506,877 @@ CONTAINS
   END SUBROUTINE InitializeFields_Advection2D
 
 
+  SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    ! --- thornado ---
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX, iNodeX1
+    REAL(AR)       :: X1
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    INTEGER        :: iDim
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_parmparse)         :: PP
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-Specific Parameters ---
+    CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
+    REAL(AR)                      :: XD, Vs
+    REAL(AR)                      :: LeftState(nPF), RightState(nPF)
+
+    RiemannProblemName = 'Sod'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A,A)') &
+        '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+      WRITE(*,*)
+
+    END IF
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'Sod' )
+
+        XD = Half
+
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.125_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 0.1_AR / ( Gamma_IDEAL - One )
+
+      CASE( 'IsolatedShock' )
+
+        XD = Half
+
+        Vs = 0.01_AR
+
+        RightState(iPF_D)  = 1.0_AR
+        RightState(iPF_V1) = -0.9_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E)  = 1.0_AR / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs,                 &
+                 RightState(iPF_D ), &
+                 RightState(iPF_V1), &
+                 RightState(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 LeftState (iPF_D ), &
+                 LeftState (iPF_V1), &
+                 LeftState (iPF_E ) )
+
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+
+      CASE( 'IsolatedContact' )
+
+        Vs = 0.01_AR
+        XD = Half
+
+        LeftState(iPF_D ) = 5.9718209694880811e0_AR
+        LeftState(iPF_V1) = Vs
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 1.0_AR
+        RightState(iPF_V1) = Vs
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+      CASE( 'MBProblem1' )
+
+        XD = Half
+
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.9_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 1.0_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 10.0_AR / ( Gamma_IDEAL - One )
+
+      CASE( 'MBProblem4' )
+
+        XD = Half
+
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0e3_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 1.0_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 1.0e-2_AR / ( Gamma_IDEAL - One )
+
+      CASE( 'PerturbedShockTube' )
+
+        XD = Half
+
+        LeftState(iPF_D ) = 5.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 50.0_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.0_AR ! --- Dummy ---
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 5.0_AR / ( Gamma_IDEAL - One )
+
+      CASE( 'ShockReflection' )
+
+        XD = One
+
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.99999_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 0.01_AR / ( Gamma_IDEAL - One )
+
+        ! --- All of these are dummies ---
+        RightState(iPF_D ) = 0.0_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 0.0_AR
+
+      CASE DEFAULT
+
+        IF( amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(A,A)') &
+            'Invalid choice for RiemannProblemName: ', &
+            TRIM( RiemannProblemName )
+          WRITE(*,'(A)') 'Valid choices:'
+          WRITE(*,'(A)') &
+            "  'Sod' - &
+            Sod's shock tube"
+          WRITE(*,'(A)') &
+            "  'MBProblem1' - &
+            Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
+          WRITE(*,'(A)') &
+            "  'MBProblem4' - &
+            Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
+          WRITE(*,'(A)') &
+            "  'PerturbedShockTube' - &
+            Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+            Sinusoidal density perturbation"
+          WRITE(*,'(A)') &
+            "  'ShockReflection' - &
+            Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+            Planar shock reflection"
+          WRITE(*,*)
+          WRITE(*,'(A)') 'Stopping...'
+
+        END IF
+
+        CALL DescribeError_Euler( 99 )
+
+    END SELECT
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
+
+        WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+        WRITE(*,*)
+
+      END IF
+
+      WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+      WRITE(*,*)
+      WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Right State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Left State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
+      WRITE(*,*)
+
+    END IF
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            IF( X1 .LE. XD ) THEN
+
+              uPF_K(iNodeX,iPF_D)  = LeftState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = LeftState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = LeftState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = LeftState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = LeftState(iPF_E )
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = RightState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = RightState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = RightState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = RightState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = RightState(iPF_E )
+
+              IF( TRIM( RiemannProblemName ) .EQ. 'PerturbedShockTube' ) &
+                uPF_k(iNodeX,iPF_D) &
+                  = 2.0_AR + 0.3_AR * SIN( 50.0_AR * X1 )
+
+            END IF
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblem1D
+
+
+  SUBROUTINE InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    ! --- thornado ---
+    INTEGER        :: iDim
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_parmparse)         :: PP
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-specific parameters ---
+    CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
+    REAL(AR)                      :: X1D, X2D, Vs, V2
+    REAL(AR)                      :: NE(nPF), NW(nPF), SE(nPF), SW(nPF)
+
+    RiemannProblemName = 'DzB2002'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A,A)') &
+        '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+      WRITE(*,*)
+
+    END IF
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'DzB2002' )
+
+        X1D = Half
+        X2D = Half
+
+        NE(iPF_D ) = 0.1_AR
+        NE(iPF_V1) = 0.0_AR
+        NE(iPF_V2) = 0.0_AR
+        NE(iPF_V3) = 0.0_AR
+        NE(iPF_E ) = 0.01_AR / ( Gamma_IDEAL - One )
+
+        NW(iPF_D ) = 0.1_AR
+        NW(iPF_V1) = 0.99_AR
+        NW(iPF_V2) = 0.0_AR
+        NW(iPF_V3) = 0.0_AR
+        NW(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        SW(iPF_D ) = 0.5_AR
+        SW(iPF_V1) = 0.0_AR
+        SW(iPF_V2) = 0.0_AR
+        SW(iPF_V3) = 0.0_AR
+        SW(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        SE(iPF_D ) = 0.1_AR
+        SE(iPF_V1) = 0.0_AR
+        SE(iPF_V2) = 0.99_AR
+        SE(iPF_V3) = 0.0_AR
+        SE(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+      CASE( 'IsolatedShock' )
+
+        X1D = Half
+        X2D = Half
+
+        Vs  = 0.01_AR
+
+        NE(iPF_D ) = 1.0_AR
+        NE(iPF_V1) = -0.9_AR
+        NE(iPF_V2) = 0.0_AR
+        NE(iPF_V3) = 0.0_AR
+        NE(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs, &
+                 NE(iPF_D ), &
+                 NE(iPF_V1), &
+                 NE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 NW(iPF_D ), &
+                 NW(iPF_V1), &
+                 NW(iPF_E ) )
+
+        NW(iPF_V2) = 0.0_AR
+        NW(iPF_V3) = 0.0_AR
+
+        SE(iPF_D ) = 1.0_AR
+        SE(iPF_V1) = -0.9_AR
+        SE(iPF_V2) = 0.0_AR
+        SE(iPF_V3) = 0.0_AR
+        SE(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs, &
+                 SE(iPF_D ), &
+                 SE(iPF_V1), &
+                 SE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 SW(iPF_D ), &
+                 SW(iPF_V1), &
+                 SW(iPF_E ) )
+
+        SW(iPF_V2) = 0.0_AR
+        SW(iPF_V3) = 0.0_AR
+
+      CASE DEFAULT
+
+        IF( amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(A,A)') &
+            'Invalid choice for RiemannProblemName: ', &
+            TRIM( RiemannProblemName )
+          WRITE(*,'(A)') 'Valid choices:'
+          WRITE(*,'(A)') &
+            "  'DzB2002' - &
+            Del Zanna & Bucciantini (2002) AA, 390, 1177, Figure 6"
+          WRITE(*,'(A)') '  IsolatedShock'
+          WRITE(*,*)
+          WRITE(*,'(A)') 'Stopping...'
+
+        END IF
+
+        CALL DescribeError_Euler( 99 )
+
+    END SELECT
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
+
+        WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+        WRITE(*,*)
+
+      END IF
+
+      WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+      WRITE(*,*)
+      WRITE(*,'(6x,A,F8.6)') 'X1D = ', X1D
+      WRITE(*,'(6x,A,F8.6)') 'X2D = ', X2D
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'NE:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NE(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NE(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NE(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NE(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NE(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'NW:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NW(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NW(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NW(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NW(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NW(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'SW:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SW(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SW(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SW(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SW(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SW(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'SE:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SE(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SE(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SE(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SE(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SE(iPF_E )
+      WRITE(*,*)
+
+    END IF
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            ! --- NE ---
+            IF     ( X1 .GT. X1D .AND. X2 .GT. X2D )THEN
+
+              uPF_K(iNodeX,iPF_D ) = NE(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = NE(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = NE(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = NE(iPF_V3)
+              uPF_K(iNodeX,iPF_E ) = NE(iPF_E )
+
+            ! --- NW ---
+            ELSE IF( X1 .LE. X1D .AND. X2 .GT. X2D )THEN
+
+              uPF_K(iNodeX,iPF_D ) = NW(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = NW(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = NW(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = NW(iPF_V3)
+              uPF_K(iNodeX,iPF_E ) = NW(iPF_E )
+
+            ! --- SW ---
+            ELSE IF( X1 .LE. X1D .AND. X2 .LE. X2D )THEN
+
+              uPF_K(iNodeX,iPF_D ) = SW(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = SW(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = SW(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = SW(iPF_V3)
+              uPF_K(iNodeX,iPF_E ) = SW(iPF_E )
+
+            ! --- SE ---
+            ELSE
+
+              uPF_K(iNodeX,iPF_D ) = SE(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = SE(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = SE(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = SE(iPF_V3)
+              uPF_K(iNodeX,iPF_E ) = SE(iPF_E )
+
+            END IF
+
+            IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
+
+              ! --- Perturb velocity in X2-direction ---
+              CALL RANDOM_NUMBER( V2 )
+              uPF_K(iNodeX,iPF_V2) = 1.0e-13_AR * ( Two * V2 - One )
+
+            END IF
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblem2D
+
+
+  SUBROUTINE InitializeFields_RiemannProblemSpherical( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    ! --- thornado ---
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX, iNodeX1
+    REAL(AR)       :: X1
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    INTEGER        :: iDim
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_parmparse)         :: PP
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-Specific Parameters ---
+    CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
+    REAL(AR)                      :: XD
+    REAL(AR)                      :: LeftState(nPF), RightState(nPF)
+
+    RiemannProblemName = 'SphericalSod'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A,A)') &
+        '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+      WRITE(*,*)
+
+    END IF
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'SphericalSod' )
+
+        XD = One
+
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.125_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 0.1_AR / ( Gamma_IDEAL - One )
+
+      CASE DEFAULT
+
+        IF( amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(A,A)') &
+            'Invalid choice for RiemannProblemName: ', &
+            TRIM( RiemannProblemName )
+          WRITE(*,'(A)') 'Valid choices:'
+          WRITE(*,'(A)') &
+            "  'SphericalSod' - &
+            Spherical Sod shock tube"
+          WRITE(*,*)
+          WRITE(*,'(A)') 'Stopping...'
+
+        END IF
+
+        CALL DescribeError_Euler( 99 )
+
+    END SELECT
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+      WRITE(*,*)
+      WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Right State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Left State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
+      WRITE(*,*)
+
+    END IF
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            IF( X1 .LE. XD ) THEN
+
+              uPF_K(iNodeX,iPF_D)  = LeftState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = LeftState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = LeftState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = LeftState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = LeftState(iPF_E )
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = RightState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = RightState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = RightState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = RightState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = RightState(iPF_E )
+
+            END IF
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+
   ! --- Relativistic 2D Kelvin-Helmholtz instability a la
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -735,7 +1539,7 @@ CONTAINS
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz3D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -898,401 +1702,16 @@ CONTAINS
   END SUBROUTINE InitializeFields_KelvinHelmholtz3D
 
 
-  ! --- Isolated shock ---
-  SUBROUTINE InitializeFields_IsolatedShock2D( MF_uGF, MF_uCF )
-
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
-    ! --- thornado ---
-    INTEGER        :: iDim
-    INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
-    TYPE(MeshType) :: MeshX(3)
-
-    ! --- AMReX ---
-    INTEGER                       :: iLevel
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
-    ! --- Problem-specific parameters ---
-    REAL(AR) :: Vs, X1D, X2D, NE(nPF), NW(nPF), SE(nPF), SW(nPF), V2
-
-    Vs  = 0.01_AR
-
-    X1D = 0.5_AR
-    X2D = 0.5_AR
-
-    NE(iPF_D ) = 1.0_AR
-    NE(iPF_V1) = -0.9_AR
-    NE(iPF_V2) = 0.0_AR
-    NE(iPF_V3) = 0.0_AR
-    NE(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
-
-    CALL ComputeLeftState &
-           ( Vs, &
-             NE(iPF_D ), &
-             NE(iPF_V1), &
-             NE(iPF_E ) * ( Gamma_IDEAL - One ), &
-             NW(iPF_D ), &
-             NW(iPF_V1), &
-             NW(iPF_E ) )
-
-    NW(iPF_V2) = 0.0_AR
-    NW(iPF_V3) = 0.0_AR
-
-    SE(iPF_D ) = 1.0_AR
-    SE(iPF_V1) = -0.9_AR
-    SE(iPF_V2) = 0.0_AR
-    SE(iPF_V3) = 0.0_AR
-    SE(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
-
-    CALL ComputeLeftState &
-           ( Vs, &
-             SE(iPF_D ), &
-             SE(iPF_V1), &
-             SE(iPF_E ) * ( Gamma_IDEAL - One ), &
-             SW(iPF_D ), &
-             SW(iPF_V1), &
-             SW(iPF_E ) )
-
-    SW(iPF_V2) = 0.0_AR
-    SW(iPF_V3) = 0.0_AR
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
-      WRITE(*,*)
-      WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
-      WRITE(*,*)
-      WRITE(*,'(6x,A,F8.6)') 'X1D = ', X1D
-      WRITE(*,'(6x,A,F8.6)') 'X2D = ', X2D
-      WRITE(*,*)
-      WRITE(*,'(6x,A)') 'NE:'
-      WRITE(*,*)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NE(iPF_D )
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NE(iPF_V1)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NE(iPF_V2)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NE(iPF_V3)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NE(iPF_E )
-      WRITE(*,*)
-      WRITE(*,'(6x,A)') 'NW:'
-      WRITE(*,*)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NW(iPF_D )
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NW(iPF_V1)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NW(iPF_V2)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NW(iPF_V3)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NW(iPF_E )
-      WRITE(*,*)
-      WRITE(*,'(6x,A)') 'SE:'
-      WRITE(*,*)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SE(iPF_D )
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SE(iPF_V1)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SE(iPF_V2)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SE(iPF_V3)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SE(iPF_E )
-      WRITE(*,*)
-      WRITE(*,'(6x,A)') 'SW:'
-      WRITE(*,*)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SW(iPF_D )
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SW(iPF_V1)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SW(iPF_V2)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SW(iPF_V3)
-      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SW(iPF_E )
-
-    END IF
-
-    uGF_K = Zero
-    uCF_K = Zero
-    uPF_K = Zero
-    uAF_K = Zero
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        lo_G = LBOUND( uGF )
-        hi_G = UBOUND( uGF )
-
-        lo_F = LBOUND( uCF )
-        hi_F = UBOUND( uCF )
-
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
-
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-            ! --- NE ---
-            IF     ( X1 .GT. X1D .AND. X2 .GT. X2D )THEN
-
-              uPF_K(iNodeX,iPF_D ) = NE(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = NE(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = NE(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = NE(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = NE(iPF_E )
-
-            ! --- NW ---
-            ELSE IF( X1 .LE. X1D .AND. X2 .GT. X2D )THEN
-
-              uPF_K(iNodeX,iPF_D ) = NW(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = NW(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = NW(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = NW(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = NW(iPF_E )
-
-            ! --- SW ---
-            ELSE IF( X1 .LE. X1D .AND. X2 .LE. X2D )THEN
-
-              uPF_K(iNodeX,iPF_D ) = SW(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = SW(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = SW(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = SW(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = SW(iPF_E )
-
-            ! --- SE ---
-            ELSE
-
-              uPF_K(iNodeX,iPF_D ) = SE(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = SE(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = SE(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = SE(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = SE(iPF_E )
-
-            END IF
-
-            ! --- Perturb velocity in X2-direction ---
-            CALL RANDOM_NUMBER( V2 )
-            uPF_K(iNodeX,iPF_V2) = 1.0e-13_AR * ( Two * V2 - One )
-
-          END DO
-
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
-          CALL ComputeConserved_Euler &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                   uGF_K(:,iGF_Gm_dd_11), &
-                   uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33), &
-                   uAF_K(:,iAF_P) )
-
-          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
-
-        END DO
-        END DO
-        END DO
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
-
-  END SUBROUTINE InitializeFields_IsolatedShock2D
-
-
-  ! --- Relativistic 2D Riemann problem from
-  !     Del Zanna & Bucciantini, (2002), A&A, 390, 1177 ---
-  SUBROUTINE InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
-
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
-    ! --- thornado ---
-    INTEGER        :: iDim
-    INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
-    TYPE(MeshType) :: MeshX(3)
-
-    ! --- AMReX ---
-    INTEGER                       :: iLevel
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
-    uGF_K = Zero
-    uCF_K = Zero
-    uPF_K = Zero
-    uAF_K = Zero
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        lo_G = LBOUND( uGF )
-        hi_G = UBOUND( uGF )
-
-        lo_F = LBOUND( uCF )
-        hi_F = UBOUND( uCF )
-
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
-
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-            ! --- NE ---
-            IF     ( X1 .GT. Half .AND. X2 .GT. Half )THEN
-
-              uPF_K(iNodeX,iPF_D ) = 0.1_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_E ) = 0.01_AR / ( Gamma_IDEAL - One )
-
-            ! --- NW ---
-            ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
-
-              uPF_K(iNodeX,iPF_D ) = 0.1_AR
-              uPF_K(iNodeX,iPF_V1) = 0.99_AR
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
-
-            ! --- SW ---
-            ELSE IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
-
-              uPF_K(iNodeX,iPF_D ) = Half
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
-
-            ! --- SE ---
-            ELSE
-
-              uPF_K(iNodeX,iPF_D ) = 0.1_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = 0.99_AR
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
-
-            END IF
-
-          END DO
-
-          uPF_K(:,iPF_V3) = Zero
-
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
-          CALL ComputeConserved_Euler &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                   uGF_K(:,iGF_Gm_dd_11), &
-                   uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33), &
-                   uAF_K(:,iAF_P) )
-
-          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
-
-        END DO
-        END DO
-        END DO
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
-
-  END SUBROUTINE InitializeFields_RiemannProblem2D
-
-
   SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
     ( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -1311,75 +1730,116 @@ CONTAINS
     TYPE(amrex_parmparse)         :: PP
 
     ! --- Problem-dependent Parameters ---
-    INTEGER               :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
-    REAL(AR)              :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
-    REAL(AR)              :: Alpha, Psi, V0, VSq, W
-    REAL(AR)              :: dX1, PolytropicConstant, MassConstant
-    REAL(AR)              :: MassPNS, ShockRadius, AccretionRate, MachNumber
-    LOGICAL               :: FirstPreShockElement = .FALSE.
-    INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
-    LOGICAL               :: ApplyPerturbation
-    INTEGER               :: PerturbationOrder
-    REAL(AR)              :: PerturbationAmplitude, &
-                             rPerturbationInner, rPerturbationOuter
+    REAL(AR) :: MassPNS, ShockRadius, AccretionRate, PolytropicConstant
+    LOGICAL  :: ApplyPerturbation
+    INTEGER  :: PerturbationOrder
+    REAL(AR) :: PerturbationAmplitude
+    REAL(AR) :: rPerturbationInner
+    REAL(AR) :: rPerturbationOuter
 
-    ApplyPerturbation     = .FALSE.
-    PerturbationOrder     = 0
-    PerturbationAmplitude = Zero
-    rPerturbationInner    = Zero
-    rPerturbationOuter    = Zero
+    INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
+    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, C1, C2, C3
+    REAL(AR) :: D0, V0, P0
+    REAL(AR) :: W, dX1, Ka, Kb, Mdot
+    REAL(AR), ALLOCATABLE :: D      (:,:)
+    REAL(AR), ALLOCATABLE :: V      (:,:)
+    REAL(AR), ALLOCATABLE :: P      (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha  (:,:)
+    REAL(AR), ALLOCATABLE :: Psi    (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha3D(:,:,:,:)
+    REAL(AR), ALLOCATABLE :: Psi3D  (:,:,:,:)
+    LOGICAL               :: FirstPreShockElement = .FALSE.
+    LOGICAL               :: InitializeFromFile
+    INTEGER, PARAMETER    :: nX_LeastSquares = 5
+
+    ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
+
+    ApplyPerturbation         = .FALSE.
+    PerturbationOrder         = 0
+    PerturbationAmplitude     = Zero
+    rPerturbationInner        = Zero
+    rPerturbationOuter        = Zero
+    InitializeFromFile        = .FALSE.
+    WriteNodalData_SAS        = .FALSE.
+    NodalDataFileNameBase_SAS = 'M1.4_Rs180_Mdot0.3'
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get  ( 'Mass'                 , MassPNS               )
-      CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
-      CALL PP % get  ( 'ShockRadius'          , ShockRadius           )
-      CALL PP % get  ( 'MachNumber'           , MachNumber            )
-      CALL PP % query( 'ApplyPerturbation'    , ApplyPerturbation     )
-      CALL PP % query( 'PerturbationOrder'    , PerturbationOrder     )
-      CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
-      CALL PP % query( 'rPerturbationInner'   , rPerturbationInner    )
-      CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
+      CALL PP % get  ( 'Mass'                     , MassPNS                   )
+      CALL PP % get  ( 'AccretionRate'            , AccretionRate             )
+      CALL PP % get  ( 'ShockRadius'              , ShockRadius               )
+      CALL PP % get  ( 'PolytropicConstant'       , PolytropicConstant        )
+      CALL PP % query( 'ApplyPerturbation'        , ApplyPerturbation         )
+      CALL PP % query( 'PerturbationOrder'        , PerturbationOrder         )
+      CALL PP % query( 'PerturbationAmplitude'    , PerturbationAmplitude     )
+      CALL PP % query( 'rPerturbationInner'       , rPerturbationInner        )
+      CALL PP % query( 'rPerturbationOuter'       , rPerturbationOuter        )
+      CALL PP % query( 'InitializeFromFile'       , InitializeFromFile        )
+      CALL PP % query( 'WriteNodalData_SAS'       , WriteNodalData_SAS        )
+      CALL PP % query( 'NodalDataFileNameBase_SAS', NodalDataFileNameBase_SAS )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
-    AccretionRate      = AccretionRate      * SolarMass / Second
+    AccretionRate      = AccretionRate      * ( SolarMass / Second )
     ShockRadius        = ShockRadius        * Kilometer
+    PolytropicConstant = PolytropicConstant &
+                           * ( Erg / Centimeter**3 &
+                           / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
     rPerturbationInner = rPerturbationInner * Kilometer
     rPerturbationOuter = rPerturbationOuter * Kilometer
+
+    Mdot = AccretionRate
+    Ka   = PolytropicConstant
 
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
 
-      WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Shock radius:   ', ShockRadius / Kilometer, ' km'
+      WRITE(*,'(6x,A,L)') &
+        'InitializeFromFile:              ', &
+        InitializeFromFile
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'PNS Mass:       ', MassPNS / SolarMass, ' Msun'
+        'Shock radius:                    ', &
+        ShockRadius / Kilometer, &
+        ' km'
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Accretion Rate: ', AccretionRate / ( SolarMass / Second ), &
+        'PNS Mass:                        ', &
+        MassPNS / SolarMass, &
+        ' Msun'
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Accretion Rate:                  ', &
+        AccretionRate / ( SolarMass / Second ), &
         ' Msun/s'
 
-      WRITE(*,'(6x,A,ES9.2E3)') &
-        'Mach number:    ', MachNumber
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Polytropic Constant (pre-shock): ', &
+        Ka / ( ( Erg / Centimeter**3 ) &
+          / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) ), &
+        ' erg/cm^3 / (g/cm^3)^( Gamma )'
 
       WRITE(*,*)
 
       WRITE(*,'(6x,A,L)') &
-        'Apply Perturbation: ', ApplyPerturbation
+        'Apply Perturbation:           ', &
+        ApplyPerturbation
 
       WRITE(*,'(6x,A,I1)') &
-        'Perturbation order: ', PerturbationOrder
+        'Perturbation order:           ', &
+        PerturbationOrder
 
       WRITE(*,'(6x,A,ES9.2E3)') &
-        'Perturbation amplitude: ', PerturbationAmplitude
+        'Perturbation amplitude:       ', &
+         PerturbationAmplitude
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
+        'Inner radius of perturbation: ', &
+        rPerturbationInner / Kilometer, ' km'
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
+        'Outer radius of perturbation: ', &
+        rPerturbationOuter / Kilometer, ' km'
 
     END IF
 
@@ -1399,15 +1859,35 @@ CONTAINS
     iX_B1 = [1,1,1] - swX
     iX_E1 = nX      + swX
 
-    ALLOCATE( D(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( D      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( V      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( P      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha  (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Psi    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha3D(1:nDOFX     ,iX_B1(1):iX_E1(1), &
+                                   iX_B1(2):iX_E1(2), &
+                                   iX_B1(3):iX_E1(3)) )
+    ALLOCATE( Psi3D  (1:nDOFX     ,iX_B1(1):iX_E1(1), &
+                                   iX_B1(2):iX_E1(2), &
+                                   iX_B1(3):iX_E1(3)) )
 
     IF( InitializeFromFile )THEN
 
       CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
 
     ELSE
+
+      ! --- Make local copies of Lapse and Conformal Factor ---
+
+      CALL CombineGridData( MF_uGF, nGF, iGF_Alpha, Alpha3D )
+      CALL CombineGridData( MF_uGF, nGF, iGF_Psi  , Psi3D   )
+
+      DO iX1 = iX_B1(1), iX_E1(1)
+
+        Alpha(:,iX1) = Alpha3D(1:nNodesX(1),iX1,1,1)
+        Psi  (:,iX1) = Psi3D  (1:nNodesX(1),iX1,1,1)
+
+      END DO
 
       ! --- Locate first element with un-shocked fluid ---
 
@@ -1449,7 +1929,15 @@ CONTAINS
 
       END DO
 
-      ! --- Compute fields, pre-shock ---
+      ! --- Pre-shock Fields ---
+
+      X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
+
+      ! --- Use Newtonian values as initial guesses ---
+
+      V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
+      D0 = -Mdot / ( FourPi * X1**2 * V0 )
+      P0 = Ka * D0**( Gamma_IDEAL )
 
       DO iX1 = iX_E1(1), iX1_1, -1
 
@@ -1459,84 +1947,77 @@ CONTAINS
 
           IF( X1 .LE. ShockRadius ) CYCLE
 
-          Alpha = LapseFunction  ( X1, MassPNS )
-          Psi   = ConformalFactor( X1, MassPNS )
+          CALL NewtonRaphson_SAS &
+                 ( X1, MassPNS, Ka, Mdot, &
+                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-          V(iNodeX1,iX1) &
-            = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
-
-          D(iNodeX1,iX1) &
-            = Psi**(-6) * AccretionRate &
-                / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
-
-          IF( iNodeX1 .EQ. nNodesX(1) .AND. iX1 .EQ. iX_E1(1) )THEN
-
-            VSq = Psi**4 * V(iNodeX1,iX1)**2
-
-            P(iNodeX1,iX1) &
-              = D(iNodeX1,iX1) * VSq &
-                  / ( MachNumber**2 * Gamma_IDEAL &
-                        - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                        * VSq / SpeedOfLight**2 )
-
-            PolytropicConstant &
-              = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
-
-          END IF
-
-          P(iNodeX1,iX1) &
-            = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
-
-!!$          VSq = Psi**4 * V(iNodeX1,iX1)**2
-!!$
-!!$          P(iNodeX1,iX1) &
-!!$            = D(iNodeX1,iX1) * VSq &
-!!$                / ( Gamma_IDEAL * MachNumber**2 ) &
-!!$                / ( One - ( VSq / SpeedOfLight**2 ) &
-!!$                / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+          D0 = D(iNodeX1,iX1)
+          V0 = V(iNodeX1,iX1)
+          P0 = P(iNodeX1,iX1)
 
         END DO
 
       END DO
 
-      ! --- Apply jump conditions ---
+      ! --- Apply Jump Conditions ---
 
       D_1 = D(iNodeX1_1,iX1_1)
       V_1 = V(iNodeX1_1,iX1_1)
+      P_1 = P(iNodeX1_1,iX1_1)
 
-      CALL ApplyJumpConditions &
-             ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-               iX1_2, iNodeX1_2, X1_2, &
-               D_2, V_2, P_2, MassPNS, PolytropicConstant )
+      W = LorentzFactor( Psi(iNodeX1_1,iX1), V_1 )
+
+      C1 = D_1 * W * V_1
+      C2 = D_1 &
+             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P_1 / D_1  ) * W**2 * V_1**2 / SpeedOfLight**2 &
+             + Psi(iNodeX1_1,iX1)**( -4 ) * P_1
+      C3 = D_1 &
+             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P_1 / D_1  ) * W**2 * V_1
+
+      CALL ApplyJumpConditions_SAS &
+             ( Psi(iNodeX1_1,iX1), V_1, C1, C2, C3, D_2, V_2, P_2 )
+
+      Kb = P_2 / D_2**( Gamma_IDEAL )
 
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,*)
-        WRITE(*,'(6x,A)') 'Shock location:'
-        WRITE(*,'(8x,A)') 'Pre-shock:'
-        WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
-        WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
-        WRITE(*,'(8x,A)') 'Post-shock:'
-        WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
-        WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
+        WRITE(*,'(6x,A)') 'Jump Conditions'
+        WRITE(*,'(6x,A)') '---------------'
         WRITE(*,*)
-        WRITE(*,'(6x,A,ES13.6E3)') &
-          'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
+        WRITE(*,'(8x,A)') 'Pre-shock:'
+        WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+        WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+          D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+        WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+          V_1 / ( Kilometer / Second ), ' km/s'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+          P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+        WRITE(*,*)
+        WRITE(*,'(8x,A)') 'Post-shock:'
+        WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+        WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+          D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+        WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+          V_2 / ( Kilometer / Second ), ' km/s'
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+          P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
         WRITE(*,*)
 
       END IF
 
-      ! --- Compute fields, post-shock ---
+      ! --- Post-shock Fields ---
 
-      Alpha = LapseFunction  ( X1_1, MassPNS )
-      Psi   = ConformalFactor( X1_1, MassPNS )
-      W     = LorentzFactor( Psi, V_1 )
-
-      MassConstant = Psi**6 * Alpha * X1_1**2 * D_1 * W * V_1
-
+      D0 = D_2
       V0 = V_2
+      P0 = P_2
 
       DO iX1 = iX1_2, iX_B1(1), -1
 
@@ -1546,22 +2027,14 @@ CONTAINS
 
           IF( X1 .GT. ShockRadius ) CYCLE
 
-          Alpha = LapseFunction  ( X1, MassPNS )
-          Psi   = ConformalFactor( X1, MassPNS )
+          CALL NewtonRaphson_SAS &
+                 ( X1, MassPNS, Kb, Mdot, &
+                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-          CALL NewtonRaphson_PostShockVelocity &
-                 ( Alpha, Psi, MassConstant, PolytropicConstant, &
-                   MassPNS, AccretionRate, X1, V0  )
-
-          V(iNodeX1,iX1) = V0
-
-          W = LorentzFactor( Psi, V0 )
-
-          D(iNodeX1,iX1) &
-            = MassConstant / ( Psi**6 * Alpha * X1**2  * W * V0 )
-
-          P(iNodeX1,iX1) &
-            = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+          D0 = D(iNodeX1,iX1)
+          V0 = V(iNodeX1,iX1)
+          P0 = P(iNodeX1,iX1)
 
         END DO
 
@@ -1593,18 +2066,23 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        iX_E(1) = iX_E0(1)
+        iX_B(1) = iX_B0(1)
+
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B1(1)
+        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E1(1)
+
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
+        DO iX1 = iX_B (1), iX_E (1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNodeX = 1, nDOFX
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
 
             IF( ApplyPerturbation )THEN
 
@@ -1642,8 +2120,6 @@ CONTAINS
             uPF_K(iNodeX,iPF_E ) = P(iNodeX1,iX1) / ( Gamma_IDEAL - One )
 
           END DO
-          END DO
-          END DO
 
           CALL ComputePressureFromPrimitive &
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
@@ -1670,6 +2146,10 @@ CONTAINS
 
     END DO
 
+    DEALLOCATE( Psi3D   )
+    DEALLOCATE( Alpha3D )
+    DEALLOCATE( Psi     )
+    DEALLOCATE( Alpha   )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
@@ -1680,11 +2160,101 @@ CONTAINS
 
     END DO
 
+    CALL ComputeExtrapolationExponents( MF_uCF, nX_LeastSquares )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,I2.2)') &
+        'nX_LeastSquares: ', &
+        nX_LeastSquares
+      WRITE(*,'(6x,A,F8.6)') &
+        'ExpD:            ', &
+        ExpD
+      WRITE(*,'(6x,A,F8.6)') &
+        'ExpE:            ', &
+        ExpE
+
+    END IF
 
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
 
   ! --- Auxiliary functions/subroutines for SAS problem ---
+
+
+  SUBROUTINE ComputeExtrapolationExponents( MF_uCF, nX_LeastSquares )
+
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    INTEGER             , INTENT(in) :: nX_LeastSquares
+
+    REAL(AR) :: lnR   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnD   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnE   (nNodesX(1),1-swX(1):nX(1)+swX(1))
+    REAL(AR) :: lnD3D (nDOFX     ,1-swX(1):nX(1)+swX(1), &
+                                  1-swX(2):nX(2)+swX(2), &
+                                  1-swX(3):nX(3)+swX(3))
+    REAL(AR) :: lnE3D (nDOFX     ,1-swX(1):nX(1)+swX(1), &
+                                  1-swX(2):nX(2)+swX(2), &
+                                  1-swX(3):nX(3)+swX(3))
+    REAL(AR) :: lnR_LS(nNodesX(1),nX_LeastSquares)
+    REAL(AR) :: lnD_LS(nNodesX(1),nX_LeastSquares)
+    REAL(AR) :: lnE_LS(nNodesX(1),nX_LeastSquares)
+
+    INTEGER  :: iX1, iNodeX1, iDim
+    REAL(AR) :: n
+
+    TYPE(MeshType) :: MeshX(3)
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    ! --- Make local copies of X1, D, and tau ---
+
+    CALL CombineGridData( MF_uCF, nCF, iCF_D, lnD3D )
+    CALL CombineGridData( MF_uCF, nCF, iCF_E, lnE3D )
+
+    DO iX1 = 1-swX(1), nX(1)+swX(1)
+
+      DO iNodeX1 = 1, nNodesX(1)
+
+        lnR(iNodeX1,iX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNodeX1 ) )
+        lnD(iNodeX1,iX1) = lnD3D(iNodeX1,iX1,1,1)
+        lnE(iNodeX1,iX1) = lnE3D(iNodeX1,iX1,1,1)
+
+      END DO
+
+    END DO
+
+    lnD = LOG( lnD )
+    lnE = LOG( lnE )
+
+    lnR_LS = lnR(:,1:nX_LeastSquares)
+    lnD_LS = lnD(:,1:nX_LeastSquares)
+    lnE_LS = lnE(:,1:nX_LeastSquares)
+
+    n = DBLE( nNodesX(1) ) * DBLE( nX_LeastSquares )
+
+    ! --- Expression for exponents from:
+    !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
+
+    ExpD = -( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
+             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+
+    ExpE = -( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
+             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE ComputeExtrapolationExponents
 
 
   SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
@@ -1695,198 +2265,225 @@ CONTAINS
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
 
-    OPEN( UNIT = 100, FILE = TRIM( OutputDataFileName ) )
+    IF( amrex_parallel_ioprocessor() )THEN
 
-    READ(100,*) FMT
+      WRITE(*,*)
+      WRITE(*,'(6x,A,A)') &
+        'NodalDataFileNameBase_SAS = ', NodalDataFileNameBase_SAS
+
+    END IF
+
+    OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_D.dat' )
+    OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_V.dat' )
+    OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_P.dat' )
+
+    READ(101,*) FMT
+    READ(102,*) FMT
+    READ(103,*) FMT
 
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      READ(100,TRIM(FMT)) D(:,iX1)
-      READ(100,TRIM(FMT)) V(:,iX1)
-      READ(100,TRIM(FMT)) P(:,iX1)
+      READ(101,TRIM(FMT)) D(:,iX1)
+      READ(102,TRIM(FMT)) V(:,iX1)
+      READ(103,TRIM(FMT)) P(:,iX1)
 
     END DO
 
-    CLOSE( 100 )
+    CLOSE( 103 )
+    CLOSE( 102 )
+    CLOSE( 101 )
 
   END SUBROUTINE ReadFluidFieldsFromFile
 
 
-  SUBROUTINE ApplyJumpConditions &
-    ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-      iX1_2, iNodeX1_2, X1_2, &
-      D_2, V_2, P_2, MassPNS, PolytropicConstant )
+  SUBROUTINE NewtonRaphson_SAS &
+    ( X1, MassPNS, K, Mdot, Alpha, Psi, D0, V0, P0, D, V, P )
 
-    INTEGER,  INTENT(in)  :: iX1_1, iNodeX1_1, iX1_2, iNodeX1_2
-    REAL(AR), INTENT(in)  :: X1_1, X1_2, D_1, V_1, MassPNS
-    REAL(AR), INTENT(out) :: D_2, V_2, P_2, PolytropicConstant
+    REAL(AR), INTENT(in)  :: X1, MassPNS, K, &
+                             Mdot, Alpha, Psi, D0, V0, P0
+    REAL(AR), INTENT(out) :: D ,V ,P
 
-    REAL(AR) :: Alpha, Psi
-    REAL(AR) :: C1, C2, C3, a0, a1, a2, a3, a4
     REAL(AR) :: W
+    REAL(AR) :: Jac(3,3), invJac(3,3)
+    REAL(AR) :: f(3), uO(3), uN(3), du(3)
 
-    REAL(AR), PARAMETER :: ShockTolerance     = 0.1_AR
-    LOGICAL             :: FoundShockVelocity = .FALSE.
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITER
+    REAL(AR), PARAMETER :: Tolu = 1.0e-16_AR
+    REAL(AR), PARAMETER :: Tolf = 1.0e-16_AR
+    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
 
-    ! --- Constants from three jump conditions ---
-
-    Alpha = LapseFunction  ( X1_1, MassPNS )
-    Psi   = ConformalFactor( X1_1, MassPNS )
-
-    C1 = D_1 * V_1 / Alpha
-
-    C2 = D_1 * SpeedOfLight**2 / Alpha**2 * ( V_1 / SpeedOfLight )**2
-
-    C3 = D_1 * SpeedOfLight**2 / Alpha**2 * V_1
-
-    ! --- Five constants for post-shock fluid three-velocity ---
-
-    a4 = Psi**8 &
-          * One / ( Gamma_IDEAL - One )**2 * C3**2 / SpeedOfLight**6
-    a3 = -Two * Psi**8 &
-          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * C2 * C3 / SpeedOfLight**4
-    a2 = Psi**4 &
-          / SpeedOfLight**2 * ( Psi**4 * Gamma_IDEAL**2 &
-          / ( Gamma_IDEAL - One )**2 * C2**2 + Two * One &
-          / ( Gamma_IDEAL - One ) &
-          * C3**2 / SpeedOfLight**2 + C1**2 * SpeedOfLight**2 )
-    a1 = -Two * Psi**4 &
-          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * C2 * C3 / SpeedOfLight**2
-    a0 = One / SpeedOfLight**2 * ( C3**2 - C1**2 * SpeedOfLight**4 )
-
-    ! --- Use Newton-Raphson method to get post-shock fluid-velocity ---
-
-    V_2 = Two * V_1
-
-    ! --- Ensure that shocked velocity is obtained
-    !     instead of smooth solution ---
-
-    FoundShockVelocity = .FALSE.
-    DO WHILE( .NOT. FoundShockVelocity )
-
-      V_2 = Half * V_2
-      CALL NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V_2 )
-
-      IF( ABS( V_2 - V_1 ) / ABS( V_1 ) .GT. ShockTolerance ) &
-        FoundShockVelocity = .TRUE.
-
-    END DO
-
-    ! --- Post-shock density, velocity, pressure, and polytropic constant ---
-
-    Psi = ConformalFactor( X1_2, MassPNS )
-    W   = LorentzFactor( Psi, V_2 )
-
-    D_2 = ABS( C1 ) * SQRT( One / V_2**2 - Psi**4 / SpeedOfLight**2 )
-
-    P_2 = ( Gamma_IDEAL - One ) / Gamma_IDEAL &
-            * ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) / ( W**2 * V_2 )
-
-    PolytropicConstant = P_2 / D_2**( Gamma_IDEAL )
-
-  END SUBROUTINE ApplyJumpConditions
-
-
-  SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
-
-    REAL(AR), INTENT(in   ) :: a0, a1, a2, a3, a4
-    REAL(AR), INTENT(inout) :: V
-
-    REAL(AR) :: f, df, dV
-    LOGICAL  :: CONVERGED
-    INTEGER  :: ITERATION
-
-    INTEGER,  PARAMETER :: MAX_ITER  = 10
-    REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
+    uO(1) = One
+    uO(2) = One
+    uO(3) = One
 
     CONVERGED = .FALSE.
-    ITERATION = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+    ITER      = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
 
-      ITERATION = ITERATION + 1
+      ITER = ITER + 1
 
-      f  = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
-      df = Four * a4 * V**3 + Three * a3 * V**2 + Two * a2 * V + a1
+      W = LorentzFactor( Psi, V0 * uO(2) )
 
-      dV = -f / df
-      V = V + dV
+      f(1) &
+        = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+            * uO(1) * W * uO(2) + One
+      f(2) &
+        = Alpha * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                      * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) * W &
+            - One
+      f(3) &
+        = P0 * D0**( -Gamma_IDEAL ) / K * uO(3) * uO(1)**( -Gamma_IDEAL ) - One
 
-      IF( ABS( dV / V ) .LT. TOLERANCE ) &
-        CONVERGED = .TRUE.
+      Jac(1,1) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+                   * W * uO(2)
+      Jac(1,2) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+                   * uO(1) * W**3
+      Jac(1,3) = Zero
+      Jac(2,1) = -Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1)**2 * W
+      Jac(2,2) = Alpha * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) &
+                   * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
+      Jac(2,3) = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) / uO(1) * W
+      Jac(3,1) = -P0 * D0**( -Gamma_IDEAL ) / K &
+                   * Gamma_IDEAL * uO(3) * uO(1)**( -Gamma_IDEAL - One )
+      Jac(3,2) = Zero
+      Jac(3,3) = P0 * D0**( -Gamma_IDEAL ) / K &
+                   * uO(1)**( -Gamma_IDEAL )
+
+      InvJac = Inv3x3( Jac )
+
+      uN = uO - MATMUL( InvJac, f )
+
+      du = uN - uO
+
+      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
+
+      uO = uN
 
     END DO
 
-  END SUBROUTINE NewtonRaphson_JumpConditions
+    D = uN(1) * D0
+    V = uN(2) * V0
+    P = uN(3) * P0
+
+  END SUBROUTINE NewtonRaphson_SAS
 
 
-  SUBROUTINE NewtonRaphson_PostShockVelocity &
-    ( Alpha, Psi, MassConstant, PolytropicConstant, &
-      MassPNS, AccretionRate, X1, V )
+  SUBROUTINE ApplyJumpConditions_SAS( Psi, V_1, C1, C2, C3, D_2, V_2, P_2 )
 
-    REAL(AR), INTENT(in   ) :: Alpha, Psi, MassConstant, &
-                               PolytropicConstant, MassPNS, AccretionRate, X1
-    REAL(AR), INTENT(inout) :: V
+    REAL(AR), INTENT(in)  :: Psi, V_1, C1, C2, C3
+    REAL(AR), INTENT(out) :: D_2, V_2, P_2
 
-    REAL(AR) :: f, df, dV, W
-    INTEGER  :: ITERATION
-    LOGICAL  :: CONVERGED
+    REAL(AR) :: A, B, C, D, E
+    REAL(AR) :: dx, xa, xb, xc, fa, fb, fc, W
 
-    INTEGER,  PARAMETER :: MAX_ITER  = 20
-    REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
+    INTEGER             :: ITER
+    INTEGER,  PARAMETER :: MAX_ITER = 1000
+    REAL(AR), PARAMETER :: TolChi = 1.0e-16_AR
 
+    LOGICAL :: CONVERGED
+
+    A = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 - One
+    B = -Two * SpeedOfLight**( 3 ) * C2 * C3 / C1**2 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * Psi**4
+    C = SpeedOfLight**( -2 ) * ( C2 / C1 )**2 &
+          * ( Gamma_IDEAL / ( Gamma_IDEAL - One ) )**2 * Psi**8 &
+          + Two * SpeedOfLight**( -4 ) * ( C3 / C1 )**2 &
+          / ( Gamma_IDEAL - One ) * Psi**4 + Psi**4
+    D = -Two * SpeedOfLight**( -3 ) * C2 * C3 / C1**2 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * Psi**8
+    E = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 &
+          / ( Gamma_IDEAL - One )**2 * Psi**8
+
+    ! --- Solve with bisection ---
+
+    ! Add 1 km/s to exclude smooth solution
+    xa = ( V_1 + One * Kilometer / Second ) / SpeedOfLight
+
+    xb = 1.0e-10_AR * xa
+
+    fa = A * xa**( -2 ) + B * xa**( -1 ) &
+             + C + D * xa + E * xa**2
+    fb = A * xb**( -2 ) + B * xb**( -1 ) &
+             + C + D * xb + E * xb**2
+
+    dx = xb - xa
+
+    ITER      = 0
     CONVERGED = .FALSE.
-    ITERATION = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
 
-      ITERATION = ITERATION + 1
+      ITER = ITER + 1
 
-      W = LorentzFactor( Psi, V )
+      dx = Half * dx
 
-      f  = Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-             * PolytropicConstant / SpeedOfLight**2 * ( MassConstant &
-             / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
-             - One / ( Alpha * W ) + One
+      xc = xa + dx
 
-      df = -Gamma_IDEAL * PolytropicConstant / SpeedOfLight**2 &
-             * ( MassConstant &
-                 / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
-                 * ( Psi**4 * V / SpeedOfLight**2 * W**2 + One / V ) &
-                 + W / Alpha * Psi**4 * V / SpeedOfLight**2
+      fc = A * xc**( -2 ) + B * xc**( -1 ) + C + D * xc + E * xc**2
 
-      dV = -f / df
-      V = V + dV
+      IF( fa * fc .LT. Zero )THEN
 
-      IF( ABS( dV / V ) .LT. TOLERANCE ) &
+        xb = xc
+        fb = fc
+
+      ELSE IF( fa * fc .GT. Zero )THEN
+
+        xa = xc
+        fa = fc
+
+      ELSE
+
         CONVERGED = .TRUE.
+
+      END IF
+
+      IF( ABS( dx / xa ) .LT. TolChi ) CONVERGED = .TRUE.
 
     END DO
 
-  END SUBROUTINE NewtonRaphson_PostShockVelocity
+    V_2 = xc * SpeedOfLight
+
+    W = LorentzFactor( Psi, V_2 )
+
+    D_2 = SpeedOfLight**( -1 ) * ABS( C1 ) * SQRT( xc**( -2 ) - Psi**4 )
+    P_2 = ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) &
+            / ( Gamma_IDEAL / ( Gamma_IDEAL - One ) * W**2 * V_2 )
+
+  END SUBROUTINE ApplyJumpConditions_SAS
 
 
-  REAL(AR) FUNCTION LapseFunction( R, M )
+  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
+  FUNCTION Inv3x3( A ) RESULT( invA )
 
-    REAL(AR), INTENT(in) :: R, M
+    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
 
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
+    REAL(AR), INTENT(in) :: A   (3,3)
+    REAL(AR)             :: invA(3,3)
+    REAL(AR)             :: InvDet
 
-    LapseFunction = ABS( ( MAX( ABS( R ), SqrtTiny ) - Half * M ) &
-                       / ( MAX( ABS( R ), SqrtTiny ) + Half * M ) )
+    ! --- Calculate the inverse of the determinant of the matrix ---
+
+    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
+                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
+                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
+
+    ! --- Calculate the inverse of the matrix ---
+
+    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
+    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
+    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
+    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
+    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
+    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
+    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
+    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
+    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
 
     RETURN
-  END FUNCTION LapseFunction
-
-
-  REAL(AR) FUNCTION ConformalFactor( R, M )
-
-    REAL(AR), INTENT(in) :: R, M
-
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
-
-    ConformalFactor = One + Half * M / MAX( ABS( R ), SqrtTiny )
-
-    RETURN
-  END FUNCTION ConformalFactor
+  END FUNCTION Inv3x3
 
 
   REAL(AR) FUNCTION LorentzFactor( Psi, V )
@@ -1946,7 +2543,7 @@ CONTAINS
     P = Pressure( Vs, DR, VR, PR, D, Vmin )
     Fmin = PostShockVelocity( Vs, DR, VR, PR, D, Vmin, P )
 
-    D = Density( Vs, DR, VR, Vmax )
+    D = Density ( Vs, DR, VR, Vmax )
     P = Pressure( Vs, DR, VR, PR, D, Vmax )
     Fmax = PostShockVelocity( Vs, DR, VR, PR, D, Vmax, P )
 

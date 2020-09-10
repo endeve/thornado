@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, TwoPi
+    DP, Zero, Half, One, Pi, TwoPi
   USE UnitsModule, ONLY: &
     Gram, Centimeter, &
     Kilometer, Erg, Second, Kelvin, &
@@ -76,6 +76,12 @@ CONTAINS
                ( RiemannProblemName_Option &
                    = RiemannProblemName_Option )
 
+      CASE( 'RiemannProblemCylindrical' )
+
+        CALL InitializeFields_RiemannProblemCylindrical &
+               ( RiemannProblemName_Option &
+                   = RiemannProblemName_Option )
+
       CASE( 'Implosion' )
 
         CALL InitializeFields_Implosion
@@ -90,6 +96,10 @@ CONTAINS
                ( ProgenitorFileName_Option &
                    = ProgenitorFileName_Option )
 
+      CASE( 'ShockEntropyWave' )
+
+        CALL InitiaizeFields_InitializeShockEntropyWaveInteraction1D
+
     END SELECT
 
   END SUBROUTINE InitializeFields
@@ -101,9 +111,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       AdvectionProfile_Option
 
-    REAL(DP), PARAMETER :: D_0 = 1.0d12 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: Amp = 1.0d11 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: L   = 1.0d02 * Kilometer
+    REAL(DP), PARAMETER :: D_0    = 1.6608d3 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Amp    = 3.00d3   * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: L      = 1.0d02   * Kilometer
+    REAL(DP), PARAMETER :: Ye_0   = 0.0125_DP
+    REAL(DP), PARAMETER :: Amp_Ye = 0.030_DP
 
     CHARACTER(32) :: AdvectionProfile
     INTEGER       :: iX1, iX2, iX3
@@ -146,6 +158,145 @@ CONTAINS
               = 1.0d-2 * D_0 * SpeedOfLight**2
             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
               = 0.3_DP
+
+          CASE( 'QuarticSineWave' )
+
+            ! SIN^4 profile modified from Suresh and Huynh (1997),
+            ! JCP 136, 83-99.
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+              = D_0 + Amp * SIN( Pi * X1 / L )**4
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.1_DP * SpeedOfLight
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP * Kilometer / Second
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP * Kilometer / Second
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+              = 1.0d-2 * D_0 * SpeedOfLight**2
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+              = 0.3_DP
+
+          CASE( 'DiscontinuousMultiWave' )
+
+            ! Discontinuous profile with multiple types of waves
+            ! from Suresh and Huynh (1997), JCP 136, 83-99.
+
+            IF( ( X1 .GE. -0.8_DP * L ) .AND. ( X1 .LE. -0.6_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp &
+                          * EXP( ( -LOG(2.0_DP) / ( 9.0d-4 ) ) &
+                                 * ( ( X1 / L ) + 7.0d-1 )**2 )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE IF( ( X1 .GE. -0.4_DP * L ) .AND. ( X1 .LE. -0.2_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE IF( ( X1 .GE. 0.0_DP * L ) .AND. ( X1 .LE. 0.2_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp &
+                          * ( 1.0_DP &
+                                - ABS( 10.0_DP * ( ( X1 / L) - 0.1_DP ) ) )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE IF( ( X1 .GE. 0.4_DP * L ) .AND. ( X1 .LE. 0.6_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp &
+                        * SQRT( 1.0_DP - 1.0d2 * ( ( X1 / L ) - 0.5_DP )**2 )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            END IF
+
+          CASE( 'TopHat' )
+
+            IF( ( X1 .GE. -0.4_DP * L ) .AND. ( X1 .LE. 0.4_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.5d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = Ye_0 + Amp_Ye
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.5d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = Ye_0
+
+            END IF
 
         END SELECT
 
@@ -224,20 +375,20 @@ CONTAINS
 
             IF( X1 <= Zero )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0d15 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0d12 * Gram / Centimeter**3
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 4.18d35 * Erg / Centimeter**3
-              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.00d32 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
             ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.25d14 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.25d11 * Gram / Centimeter**3
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 4.5d34 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.00d31 * Erg / Centimeter**3
               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
 
             END IF
@@ -317,7 +468,7 @@ CONTAINS
 
           CASE( 'SphericalSod' )
 
-            IF( X1 <= One * Kilometer )THEN
+            IF( X1 <= 5.0_DP * Kilometer )THEN
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.00d12 * Gram / Centimeter**3
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
@@ -332,8 +483,8 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d30 * Erg / Centimeter**3
-              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
             END IF
 
@@ -366,6 +517,184 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+  SUBROUTINE InitiaizeFields_InitializeShockEntropyWaveInteraction1D
+
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1
+    REAL(DP)      :: X1
+    REAL(DP)      :: X_D, Amplitude, Wavenumber
+
+    X_D        = - 4.0_DP * Kilometer
+    Amplitude  = + 0.2d12
+    Wavenumber = + 5.0_DP / Kilometer
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A6,A)') &
+      '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A7,A6,ES10.3E2)') &
+      '', 'X_D = ', X_D
+    WRITE(*,*)
+    WRITE(*,'(A7,A13,ES10.3E2)') '', 'Amplitude  = ', Amplitude
+    WRITE(*,'(A7,A13,ES10.3E2)') '', 'Wavenumber = ', Wavenumber
+    WRITE(*,*)
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+  
+        DO iNodeX = 1, nDOFX
+  
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+  
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      
+            IF( X1 <= X_D )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 3.60632d12 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 7.425d4 * Kilometer / Second !2.629369d4
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 10.333333d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.5_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = & 
+                ( 1.00d12 + Amplitude * SIN( Wavenumber * X1 ) ) * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.00d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.5_DP
+
+            END IF
+    
+          CALL ComputeTemperatureFromPressure &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
+  
+          CALL ComputeThermodynamicStates_Primitive &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+  
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+  
+        END DO
+  
+      END DO
+      END DO
+      END DO
+
+  END SUBROUTINE InitiaizeFields_InitializeShockEntropyWaveInteraction1D
+
+
+  SUBROUTINE InitializeFields_RiemannProblemCylindrical &
+    ( RiemannProblemName_Option )
+
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      RiemannProblemName_Option
+
+    CHARACTER(32) :: RiemannProblemName
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP)      :: X1, X2
+
+    RiemannProblemName = 'CylindricalSod'
+    IF( PRESENT( RiemannProblemName_Option ) ) &
+       RiemannProblemName = TRIM( RiemannProblemName_Option )
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        SELECT CASE ( TRIM( RiemannProblemName ) )
+
+          CASE( 'CylindricalSod' )
+
+            IF( SQRT( X1**2 + X2**2 ) <= 5.0_DP * Kilometer )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.00d12 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d32 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.25d11 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
+
+            END IF
+
+        END SELECT
+
+      END DO
+
+      CALL ComputeTemperatureFromPressure &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+      CALL ComputeThermodynamicStates_Primitive &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+      CALL ComputeConserved_Euler_NonRelativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblemCylindrical
 
 
   SUBROUTINE InitializeFields_Implosion
@@ -703,6 +1032,5 @@ CONTAINS
     RETURN
 
   END FUNCTION Interpolate1D
-
 
 END MODULE InitializationModule

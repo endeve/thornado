@@ -102,6 +102,19 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   Euler_ErrorModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 
+Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  UnitsModule.o \
+  TimersModule_Euler.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.f90
+
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o \
@@ -181,8 +194,24 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   TimersModule_Euler.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 
+Euler_SlopeLimiterModule_Relativistic_TABLE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_DiscontinuityDetectionModule.o \
+  TimersModule_Euler.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.F90
+
 Euler_SlopeLimiterModule.o: \
   KindModule.o \
+  Euler_BoundaryConditionsModule.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
@@ -200,6 +229,7 @@ Euler_dgDiscretizationModule.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
+  Euler_DiscontinuityDetectionModule.o \
   EquationOfStateModule.o \
   Euler_dgDiscretizationModule.F90
 
@@ -242,3 +272,14 @@ Euler_TallyModule.o: \
   Euler_TallyModule_NonRelativistic_TABLE.o \
   Euler_TallyModule_Relativistic_IDEAL.o \
   Euler_TallyModule.F90
+
+Euler_PerturbationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_PerturbationModule.f90

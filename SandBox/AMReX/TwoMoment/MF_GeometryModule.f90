@@ -70,7 +70,8 @@ CONTAINS
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
-
+print*, iX_B1
+print*, iX_E1
         CALL AMReX2thornado_Euler &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &

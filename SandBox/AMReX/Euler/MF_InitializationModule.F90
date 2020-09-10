@@ -2,12 +2,12 @@ MODULE MF_InitializationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,                         ONLY: &
     amrex_multifab
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,                                   ONLY: &
+  USE InputParsingModule,                            ONLY: &
     nLevels
   USE MF_InitializationModule_NonRelativistic_TABLE, ONLY: &
     MF_InitializeFields_NonRelativistic_TABLE
@@ -29,18 +29,13 @@ CONTAINS
 
   SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF )
 
-    CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL MF_InitializeFields_NonRelativistic_TABLE &
-           ( ProgramName, MF_uGF, MF_uCF )
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL MF_InitializeFields_NonRelativistic_IDEAL &
            ( ProgramName, MF_uGF, MF_uCF )
 
 #elif defined HYDRO_RELATIVISTIC

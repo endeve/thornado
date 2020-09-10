@@ -132,29 +132,38 @@ MODULE FluidFieldsModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta2
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
 
-  INTEGER, PUBLIC, PARAMETER :: iDF_TCI = 01 ! Troubled-Cell Indicator
-  INTEGER, PUBLIC, PARAMETER :: iDF_Sh  = 02 ! Shock Detector
-  INTEGER, PUBLIC, PARAMETER :: iDF_T1  = 03 ! Theta 1
-  INTEGER, PUBLIC, PARAMETER :: iDF_T2  = 04 ! Theta 2
-  INTEGER, PUBLIC, PARAMETER :: iDF_T3  = 05 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: iDF_E   = 06 ! Minimum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: nDF     = 06 ! n Diagnostic Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDF_TCI   = 01 ! Troubled-Cell Indicator
+  INTEGER, PUBLIC, PARAMETER :: iDF_Sh_X1 = 02 ! Shock Detector (X1)
+  INTEGER, PUBLIC, PARAMETER :: iDF_Sh_X2 = 03 ! Shock Detector (X2)
+  INTEGER, PUBLIC, PARAMETER :: iDF_Sh_X3 = 04 ! Shock Detector (X3)
+  INTEGER, PUBLIC, PARAMETER :: iDF_T1    = 05 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDF_T2    = 06 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDF_T3    = 07 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: iDF_MinE  = 08 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iDF_MaxE  = 09 ! Maximum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: nDF       = 09 ! n Diagnostic Fluid Fields
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     namesDF = [ 'TCI                             ', &
-                'Shock                           ', &
+                'Shock (X1)                      ', &
+                'Shock (X2)                      ', &
+                'Shock (X3)                      ', &
                 'Theta 1                         ', &
                 'Theta 2                         ', &
                 'Theta 3                         ', &
-                'Min E                           ' ]
+                'Min E                           ', &
+                'Max E                           ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     ShortNamesDF = [ 'DF_TCI    ', &
-                     'DF_Sh     ', &
+                     'DF_Sh_X1  ', &
+                     'DF_Sh_X2  ', &
+                     'DF_Sh_X3  ', &
                      'DF_T1     ', &
                      'DF_T2     ', &
                      'DF_T3     ', &
-                     'DF_E      ' ]
+                     'DF_MinE   ', &
+                     'DF_MaxE   ' ]
 
   REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
 
@@ -164,6 +173,10 @@ MODULE FluidFieldsModule
   PUBLIC :: DestroyFluidFields
   PUBLIC :: ResetFluidFields_Diagnostic
   PUBLIC :: SetUnitsFluidFields
+  PUBLIC :: DescribeFluidFields_Conserved
+  PUBLIC :: DescribeFluidFields_Primitive
+  PUBLIC :: DescribeFluidFields_Auxiliary
+  PUBLIC :: DescribeFluidFields_Diagnostic
 
 CONTAINS
 
@@ -205,16 +218,7 @@ CONTAINS
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iCF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Conserved)'
-      WRITE(*,*)
-      DO iCF = 1, nCF
-        WRITE(*,'(A5,A32)') '', TRIM( namesCF(iCF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Conserved( Verbose )
 
     ALLOCATE( uCF &
                 (1:nDOFX, &
@@ -226,20 +230,31 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Conserved
 
 
+  SUBROUTINE DescribeFluidFields_Conserved( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iCF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Conserved)'
+      WRITE(*,*)
+      DO iCF = 1, nCF
+        WRITE(*,'(A5,A32)') '', TRIM( namesCF(iCF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Conserved
+
+
   SUBROUTINE CreateFluidFields_Primitive( nX, swX )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iPF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Primitive)'
-      WRITE(*,*)
-      DO iPF = 1, nPF
-        WRITE(*,'(A5,A32)') '', TRIM( namesPF(iPF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Primitive( Verbose )
 
     ALLOCATE( uPF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -250,20 +265,31 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Primitive
 
 
+  SUBROUTINE DescribeFluidFields_Primitive( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iPF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Primitive)'
+      WRITE(*,*)
+      DO iPF = 1, nPF
+        WRITE(*,'(A5,A32)') '', TRIM( namesPF(iPF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Primitive
+
+
   SUBROUTINE CreateFluidFields_Auxiliary( nX, swX )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iAF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Auxiliary)'
-      WRITE(*,*)
-      DO iAF = 1, nAF
-        WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Auxiliary( Verbose )
 
     ALLOCATE( uAF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -274,20 +300,31 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Auxiliary
 
 
+  SUBROUTINE DescribeFluidFields_Auxiliary( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iAF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Auxiliary)'
+      WRITE(*,*)
+      DO iAF = 1, nAF
+        WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Auxiliary
+
+
   SUBROUTINE CreateFluidFields_Diagnostic( nX, swX )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iDF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Diagnostic)'
-      WRITE(*,*)
-      DO iDF = 1, nDF
-        WRITE(*,'(A5,A32)') '', TRIM( namesDF(iDF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Diagnostic( Verbose )
 
     ALLOCATE( uDF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -296,6 +333,26 @@ CONTAINS
                   1:nDF) )
 
   END SUBROUTINE CreateFluidFields_Diagnostic
+
+
+  SUBROUTINE DescribeFluidFields_Diagnostic( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iDF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Diagnostic)'
+      WRITE(*,*)
+      DO iDF = 1, nDF
+        WRITE(*,'(A5,A32)') '', TRIM( namesDF(iDF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Diagnostic
 
 
   SUBROUTINE DestroyFluidFields
@@ -315,11 +372,13 @@ CONTAINS
                                    1-swX(3):nX(3)+swX(3), &
                                    1:nDF)
 
-    uDF(:,:,:,:,iDF_TCI) = Zero
-    uDF(:,:,:,:,iDF_Sh)  = Zero
-    uDF(:,:,:,:,iDF_T1)  = One
-    uDF(:,:,:,:,iDF_T2)  = One
-    uDF(:,:,:,:,iDF_T3)  = One
+    uDF(:,:,:,:,iDF_TCI)   = Zero
+    uDF(:,:,:,:,iDF_Sh_X1) = Zero
+    uDF(:,:,:,:,iDF_Sh_X2) = Zero
+    uDF(:,:,:,:,iDF_Sh_X3) = Zero
+    uDF(:,:,:,:,iDF_T1)    = One
+    uDF(:,:,:,:,iDF_T2)    = One
+    uDF(:,:,:,:,iDF_T3)    = One
 
   END SUBROUTINE ResetFluidFields_Diagnostic
 
@@ -423,12 +482,15 @@ CONTAINS
       unitsAF(iAF_Cs) = Kilometer / Second
 
       ! --- Diagnostic ---
-      unitsDF(iDF_TCI) = One
-      unitsDF(iDF_Sh)  = One
-      unitsDF(iDF_T1)  = One
-      unitsDF(iDF_T2)  = One
-      unitsDF(iDF_T3)  = One
-      unitsDF(iDF_E)   = Erg / Gram
+      unitsDF(iDF_TCI)   = One
+      unitsDF(iDF_Sh_X1) = One
+      unitsDF(iDF_Sh_X2) = One
+      unitsDF(iDF_Sh_X3) = One
+      unitsDF(iDF_T1)    = One
+      unitsDF(iDF_T2)    = One
+      unitsDF(iDF_T3)    = One
+      unitsDF(iDF_MinE)  = Erg / Gram
+      unitsDF(iDF_MaxE)  = Erg / Gram
 
     ELSE
 

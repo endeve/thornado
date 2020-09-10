@@ -14,6 +14,9 @@ PROGRAM ApplicationDriver
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE MeshModule, ONLY: &
+    MeshX, &
+    CreateMesh_Custom
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -73,6 +76,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32)  :: CoordinateSystem
   CHARACTER(128) :: EosTableName
   CHARACTER(32)  :: ProgenitorFile
+  LOGICAL        :: CustomRadialGrid
   LOGICAL        :: wrt
   LOGICAL        :: UseSlopeLimiter
   LOGICAL        :: UseCharacteristicLimiting
@@ -82,50 +86,53 @@ PROGRAM ApplicationDriver
   INTEGER        :: iCycle, iCycleD
   INTEGER        :: RestartFileNumber
   INTEGER        :: nX(3), bcX(3), nNodes, nStages
+  INTEGER        :: nEquidistantElements
   REAL(DP)       :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)       :: xL(3), xR(3), zoomX(3)
+  REAL(DP)       :: xL(3), xR(3), zoomX(3), dxEquidistant
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'Advection'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
   ProgenitorFile = '../Progenitors/WH07_15M_Sun.h5'
 
+  CustomRadialGrid = .FALSE.
+
   SelfGravity = .FALSE.
 
-  RestartFileNumber = -1
+  RestartFileNumber = -1 ! 603
 
-  t = 0.0_DP
+  t = 0.0_DP ! 301.5_DP
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'SineWave'
+      AdvectionProfile = 'TopHat'
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 08, 01, 01 ]
-      xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
-      xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
+      nX = [ 256, 01, 01 ]
+      xL = [ -1.0d2, 0.0d0, 0.0d0 ] * Kilometer
+      xR = [  1.0d2, 1.0d2, 1.0d2 ] * Kilometer
       zoomX = One
 
       bcX = [ 1, 1, 1 ]
 
-      nNodes  = 3
-      nStages = 3
+      nNodes  = 2
+      nStages = 2
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .FALSE.
+      UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 1.0d-2
-      UsePositivityLimiter      = .FALSE.
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.0d-3
+      UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
       t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
@@ -151,14 +158,14 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
 
-      UseTroubledCellIndicator  = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-2
       UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
-      t_end   = 1.25d-2 * Millisecond
+      t_end   = 2.5d-2 * Millisecond
       dt_wrt  = 1.25d-4 * Millisecond
 
    CASE( 'RiemannProblemSpherical' )
@@ -191,6 +198,37 @@ PROGRAM ApplicationDriver
       iCycleD = 10
       t_end   = 5.0d-1 * Millisecond
       dt_wrt  = 2.5d-2 * Millisecond
+
+    CASE( 'RiemannProblemCylindrical' )
+
+      RiemannProblemName = 'CylindricalSod'
+
+      CoordinateSystem = 'CYLINDRICAL'
+
+      nX = [ 100, 100, 1 ]
+      xL = [    0.0_DP * Kilometer,-10.0d0 * Kilometer, 0.0_DP * Kilometer ]
+      xR = [   10.0_DP * Kilometer, 10.0d0 * Kilometer, TwoPi ]
+      zoomX = One
+
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 3
+      nStages = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.01_DP
+
+      UsePositivityLimiter      = .TRUE.
+
+      iCycleD = 10
+      t_end   = 2.5d-2 * Millisecond
+      dt_wrt  = 1.25d-4 * Millisecond
 
     CASE( 'Jet' )
 
@@ -257,6 +295,10 @@ PROGRAM ApplicationDriver
       xR = [ 8.0d3 * Kilometer, Pi,      TwoPi ]
       zoomX = [ 1.020059256924853_DP, 1.0_DP, 1.0_DP ]
 
+      CustomRadialGrid     = .FALSE.
+      nEquidistantElements = 100
+      dxEquidistant        = 0.5_DP * Kilometer
+
       bcX = [30, 0, 0]
 
       nNodes  = 2
@@ -266,25 +308,55 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
       UsePositivityLimiter      = .TRUE.
 
-      UseTroubledCellIndicator  = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 0.01_DP
 
       SelfGravity = .TRUE.
 
       iCycleD = 10
-      t_end   = 4.0d2  * Millisecond
+      t_end   = 301.5d0  * Millisecond
       dt_wrt  = 5.0d-1 * Millisecond
+
+    CASE( 'ShockEntropyWave' )
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 256, 1, 1 ]
+      xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ + 5.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
+      zoomX = One
+
+      bcX = [ 2, 0, 0 ]
+
+      nNodes  = 3
+      nStages = 3
+
+      BetaTVD = 2.0_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.5d-0
+      UsePositivityLimiter      = .TRUE.
+
+      iCycleD = 10
+      t_end   = 7.5d-2 * Millisecond
+      dt_wrt  = 1.25d-4 * Millisecond
 
     CASE DEFAULT
 
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  Advection'
       WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     '  RiemannProblemSpherical'
+      WRITE(*,'(A)')     '  RiemannProblemCylindrical'
       WRITE(*,'(A)')     '  Jet'
       WRITE(*,'(A)')     '  Implosion'
       WRITE(*,'(A)')     '  GravitationalCollapse'
@@ -299,7 +371,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 0 ], &
+             = [ 1, 0, 0 ], & ! 1 1 0
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -316,6 +388,14 @@ PROGRAM ApplicationDriver
              = .TRUE., &
            BasicInitialization_Option &
              = .TRUE. )
+
+  IF( CustomRadialGrid )THEN
+
+    CALL CreateMesh_Custom &
+           ( MeshX(1), nX(1), nNodes, 1, xL(1), xR(1), &
+             nEquidistantElements, dxEquidistant, Verbose_Option = .TRUE. )
+
+  END IF
 
   CALL InitializeReferenceElementX
 
@@ -468,7 +548,7 @@ PROGRAM ApplicationDriver
       wrt = .FALSE.
 
     END IF
-
+    !STOP ! HACKZ
   END DO
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
@@ -511,5 +591,22 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
+
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git info'
+  WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git describe --tags:'
+  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
+  WRITE(*,*)
 
 END PROGRAM ApplicationDriver

@@ -1,4 +1,4 @@
-PROGRAM main
+PROGRAM ApplicationDriver
 
   ! --- AMReX Modules ---
 
@@ -10,14 +10,10 @@ PROGRAM main
 
   ! --- thornado Modules ---
 
-  USE MeshModule,                       ONLY: &
-    MeshX, &
-    DestroyMesh
   USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
-    Millisecond, &
     UnitsDisplay
   USE TimersModule_Euler,               ONLY: &
     TimeIt_Euler,           &
@@ -29,17 +25,13 @@ PROGRAM main
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
-  USE MF_Euler_SlopeLimiterModule,      ONLY: &
-    MF_ApplySlopeLimiter_Euler
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    MF_ApplyPositivityLimiter_Euler
   USE MF_Euler_dgDiscretizationModule,  ONLY: &
     MF_ComputeIncrement_Euler
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_UpdateFluid_SSPRK
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
-  USE MyAmrDataModule,                  ONLY: &
+  USE MF_FieldsModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
@@ -49,24 +41,21 @@ PROGRAM main
     InitializeProgram, &
     chk,               &
     wrt
-  USE MyAmrModule,                      ONLY: &
-    nLevels,         &
-    StepNo,          &
-    t,               &
-    dt,              &
-    t_end,           &
-    CFL,             &
-    t_wrt,           &
-    dt_wrt,          &
-    t_chk,           &
-    dt_chk,          &
-    iCycleD,         &
-    iCycleW,         &
-    iCycleChk,       &
-    WriteOutputData, &
+  USE InputParsingModule,               ONLY: &
+    nLevels,   &
+    StepNo,    &
+    t,         &
+    dt,        &
+    t_end,     &
+    CFL,       &
+    t_wrt,     &
+    dt_wrt,    &
+    t_chk,     &
+    dt_chk,    &
+    iCycleD,   &
+    iCycleW,   &
+    iCycleChk, &
     GEOM
-  USE MF_UtilitiesModule,               ONLY: &
-    WriteRawDataToFile
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
     InitializeTimers_AMReX_Euler,  &
@@ -166,6 +155,18 @@ PROGRAM main
                MF_uGF % P, &
                MF_uCF % P )
 
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+      CALL FinalizeTimers_Euler &
+             ( Verbose_Option = amrex_parallel_ioprocessor(), &
+               SuppressApplicationDriver_Option = .TRUE., &
+               WriteAtIntermediateTime_Option = .FALSE. )
+
+      CALL FinalizeTimers_AMReX_Euler &
+             ( WriteAtIntermediateTime_Option = .FALSE. )
+
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
       chk = .FALSE.
 
     END IF
@@ -219,9 +220,6 @@ PROGRAM main
 
   CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
-  IF( WriteOutputData ) &
-    CALL WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
-
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
@@ -248,6 +246,27 @@ PROGRAM main
 
   CALL FinalizeTimers_AMReX_Euler
 
-  CALL FinalizeProgram( GEOM, MeshX )
+  IF( amrex_parallel_ioprocessor() )THEN
 
-END PROGRAM main
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git info'
+    WRITE(*,'(2x,A)') '--------'
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git branch:'
+    CALL EXECUTE_COMMAND_LINE( 'git branch' )
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git describe --tags:'
+    CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+    CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'date:'
+    CALL EXECUTE_COMMAND_LINE( 'date' )
+    WRITE(*,*)
+
+  END IF
+
+  CALL FinalizeProgram( GEOM )
+
+END PROGRAM ApplicationDriver

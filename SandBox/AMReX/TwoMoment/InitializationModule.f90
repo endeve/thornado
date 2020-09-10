@@ -104,7 +104,8 @@ MODULE InitializationModule
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile
-
+  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
+    InitializePositivityLimiter_TwoMoment
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
@@ -151,6 +152,9 @@ MODULE InitializationModule
     Chi,                       &
     Sigma,                     &
     EquationOfState,           &
+    Min_1,                     &
+    Min_2,                     &
+    UsePositivityLimiter,      &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -167,6 +171,8 @@ MODULE InitializationModule
   PRIVATE
 
   PUBLIC :: InitializeProgram
+
+  LOGICAL, PUBLIC :: wrt, chk
 
   REAL(AR), PARAMETER :: Zero = 0.0_AR
   REAL(AR), PARAMETER :: One  = 1.0_AR
@@ -259,6 +265,10 @@ CONTAINS
 
     END IF
 
+    wrt = .FALSE.
+    chk = .FALSE.
+
+
      DO iDim = 1, 3
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
@@ -326,6 +336,12 @@ CONTAINS
 
     CALL InitializeClosure_TwoMoment
 
+    CALL InitializePositivityLimiter_TwoMoment &
+         ( Min_1_Option = Min_1, &
+           Min_2_Option = Min_2, &
+           UsePositivityLimiter_Option &
+             = UsePositivityLimiter, &
+           Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 

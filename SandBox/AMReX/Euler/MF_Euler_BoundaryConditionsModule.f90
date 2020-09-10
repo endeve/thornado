@@ -2,24 +2,28 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,              ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,               ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,          ONLY: &
     amrex_geometry
 
   ! --- thornado Modules ---
 
   USE Euler_BoundaryConditionsModule, ONLY: &
+    iApplyBC_Euler_Both,  &
+    iApplyBC_Euler_Inner, &
+    iApplyBC_Euler_Outer, &
+    iApplyBC_Euler_None,  &
     ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,             ONLY: &
     DEBUG
-  USE TimersModule_AMReX_Euler, ONLY: &
+  USE TimersModule_AMReX_Euler,       ONLY: &
     TimersStart_AMReX_Euler,            &
     TimersStop_AMReX_Euler,             &
     Timer_AMReX_Euler_ConstructEdgeMap, &
@@ -38,12 +42,6 @@ MODULE MF_Euler_BoundaryConditionsModule
     PROCEDURE :: Euler_GetBC => EdgeMap_Euler_GetBC
   END TYPE EdgeMap
 
-  ! --- Hack to get iApplyBC_Euler_XXX. DO NOT CHANGE THESE VALUES ---
-  INTEGER, PARAMETER :: iApplyBC_Euler_Both  = 0
-  INTEGER, PARAMETER :: iApplyBC_Euler_Inner = 1
-  INTEGER, PARAMETER :: iApplyBC_Euler_Outer = 2
-  INTEGER, PARAMETER :: iApplyBC_Euler_None  = 3
-
 
 CONTAINS
 
@@ -51,11 +49,11 @@ CONTAINS
   SUBROUTINE MF_ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-    INTEGER,       INTENT(in   ) :: &
+    INTEGER,       INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(AR),      INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    TYPE(EdgeMap), INTENT(in   ) :: &
+    TYPE(EdgeMap), INTENT(in)    :: &
       Edge_Map
 
     INTEGER :: iApplyBC(3)
@@ -72,8 +70,8 @@ CONTAINS
 
   SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
 
-    TYPE(amrex_geometry), INTENT(in   ) :: GEOM
-    TYPE(amrex_box),      INTENT(in   ) :: BX
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM
+    TYPE(amrex_box),      INTENT(in)    :: BX
     TYPE(EdgeMap),        INTENT(inout) :: Edge_Map
 
     INTEGER :: iDim

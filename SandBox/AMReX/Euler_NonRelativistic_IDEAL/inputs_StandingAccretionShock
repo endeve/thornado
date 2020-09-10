@@ -31,7 +31,7 @@ thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for c
 
 geometry.coord_sys   = 2             # SPHERICAL (r,theta/pi,phi/pi)
 geometry.prob_lo     = 0.2 0.0  0.0  # Lower domain size
-geometry.prob_hi     = 2.0 3.141592653589793 6.283185307179586 # Upper domain size
+geometry.prob_hi     = 2.0 3.1415926535897931 6.2831853071795862 # Upper domain size
 geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell            = 256 064 01 # Number of cells in each dimension
@@ -57,4 +57,4 @@ PL.Min_1                = 1.0e-12
 PL.Min_2                = 1.0e-12
 
 # Equation of state parameters
-EoS.Gamma = 1.333333333333333 # Ideal Gas EoS Gamma
+EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma

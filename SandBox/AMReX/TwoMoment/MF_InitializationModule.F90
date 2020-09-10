@@ -93,10 +93,7 @@ MODULE MF_InitializationModule
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_TwoMoment 
-  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
-    uOP, &
-    iOP_Sigma 
+    ComputeConserved_TwoMoment
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, &
@@ -298,7 +295,6 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-    
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
                 = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
@@ -577,7 +573,39 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR)                      :: Ones(nDOFE), W, Third
+    REAL(AR)                      :: Ones(nDOFE), W, Third, E, Mu_0, S
+    CHARACTER(len=40) :: name1
+    CHARACTER(len=1):: nds
+    CHARACTER(len=2)::nxn1
+    CHARACTER(len=3)::nxn2
+!    IF ( nDOFX == 1) THEN
+!      nds="1"
+!    ELSE IF( nDOFX == 2) THEN
+!      nds="2"
+!    ELSE
+!      nds="3"
+!    END IF 
+!
+!    IF ( nX(1) == 32) THEN
+!      nxn1="32"
+!    ELSE IF( nX(1) == 64) THEN
+!      nxn1="64"
+!    ELSE IF (nX(1) == 128) THEN
+!      nxn2="128"
+!    ELSE
+!      nxn2="256"
+!    END IF 
+!
+!    
+!
+!    print*, name1
+!    IF (nX(1)==32 .OR. nX(1)==64) THEN
+!      name1='X'//nds//nxn1//'.txt'
+!    ELSE
+!      name1='X'//nds//nxn2//'.txt'
+!    END IF
+!    name1=trim(name1)
+!
 
     uCR_K = Zero
     uPF_K = Zero
@@ -591,7 +619,10 @@ CONTAINS
   
     W = 1.0_AR - ( V_0(1)*V_0(1) + V_0(2)*V_0(2) + V_0(3)*V_0(3) )
     W = 1.0_AR / SQRT( W )
-   
+  
+    Mu_0 = 0.8_AR
+
+ 
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -620,7 +651,7 @@ CONTAINS
 
         lo_F = LBOUND( uCF )
         hi_F = UBOUND( uCF )
-
+   !open(1, file = name1, status = 'new') 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = BX % lo(1), BX % hi(1)         
@@ -633,10 +664,10 @@ CONTAINS
             iNodeX1 = NodeNumberTableX(1,iNodeX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
+print*, X1    
             uPF_K(iNodeX,iPF_D ) = 1.0_AR
-            uPF_K(iNodeX,iPF_V1) = V_0(1)
 
+            
             IF( X1 .LT. X_0 )THEN
               uPF_K(iNodeX,iPF_V1) &
                 = 0.0_AR
@@ -644,17 +675,18 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) &
                 = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
             ELSEIF( X1 .GE. X_1 .AND. X1 .LT. X_2 )THEN
-              uPF_K(iNodeX,iPF_V1) &
+             uPF_K(iNodeX,iPF_V1) &
                 = V_0(1)
             ELSEIF( X1 .GE. X_2 .AND. X1 .LT. X_3 )THEN
               uPF_K(iNodeX,iPF_V1) &
                 = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
             ELSE
               uPF_K(iNodeX,iPF_V1) &
-                = 0.0_AR
+               = 0.0_AR 
             END IF
 
-
+            W = 1.0_AR / SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1)**2) 
+      !write(1,*) X1
             uPF_K(iNodeX,iPF_V2) = V_0(2)
             uPF_K(iNodeX,iPF_V3) = V_0(3)
             uPF_K(iNodeX,iPF_E ) = 0.1_AR
@@ -683,7 +715,6 @@ CONTAINS
                  uGF_K(:,iGF_Gm_dd_22), &
                  uGF_K(:,iGF_Gm_dd_33), &
                  uAF_K(:,iAF_P)      )
-
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )   
       
@@ -692,17 +723,28 @@ CONTAINS
             DO iS = 1, nSpecies
             DO iZ1 = 1, nE          
 
+              iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-    
+ 
+              E = NodeCoordinate( MeshE, iZ1, iNodeE )
+              S = SQRT(1.0_AR+ uPF_K(iNodeX,iPF_V1))/SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1))
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                =  1.0d-8 
-            
+                 =1d-8
+                 != 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
+                  != S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
+                 ! = 0.5_AR
+                  ! = 0.5_AR * ( 1.0_AR - Mu_0 ) / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = 0.0_AR
+                 != 0.999_AR * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 =0.0_AR 
+                 != W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 != W * 0.5_AR
+                 ! = 0.5_AR * ( 1.0_AR + Mu_0 ) * uPR_K(iNodeZ,iZ1,iPR_D,iS)
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
               uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
@@ -726,8 +768,6 @@ CONTAINS
                      uGF_K(iNodeX,iGF_Gm_dd_33), &
                      0.0_AR, 0.0_AR, 0.0_AR,     &                     
                      1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
-
-              
             END DO
             END DO
 !Reshape here instead of up top look at Hydro example
@@ -746,9 +786,6 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
-    CALL SetInnerBoundary_StreamingDopplerShift( MF_uGF, MF_uCR, MF_uCF )
-!going to need to change this for paralellization
 
   END SUBROUTINE InitializeFields_StreamingDopplerShift
 
@@ -795,7 +832,6 @@ CONTAINS
 
     Ones=1.0_AR
 
-   
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -828,7 +864,6 @@ CONTAINS
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = iX_B1(1), iX_B1(1)         
-          
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
@@ -886,7 +921,7 @@ CONTAINS
                 =  1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = 0.999_AR * uPR_K(iNodeZ,iZ1,iPR_I1 ,iS)
+                = 0.999_AR * uPR_K(iNodeZ,iZ1,iPR_D ,iS)
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
               uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &

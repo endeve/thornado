@@ -1,0 +1,53 @@
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
+
+thornado.ProgramName = "CylindricalSod_TABLE"
+
+thornado.t_end     = 2.5e-2   # Final time
+thornado.dt_wrt    = 1.25e-3   # Time increment to write plot-file
+thornado.dt_chk    = 1.25e-3   # Time increment to write checkpoint-file
+thornado.nNodes    = 3        # Number of DG nodes in each active dimension
+thornado.nStages   = 3        # Number of SSP-RK stages for time integration
+thornado.CFL       = 0.5      # CFL number
+thornado.bcX       = 03 03 00 # Boundary conditions
+thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = -0010     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
+thornado.UsePhysicalUnits = 1
+thornado.PerturbType = "None"
+thornado.SolveGravity = 0
+
+geometry.coord_sys   = 1              # CYLINDRICAL
+geometry.prob_lo     = 0.0  -10.0 0.0 # Lower domain size
+geometry.prob_hi     = 10.0  10.0 6.2831853071795862 # Upper domain size
+geometry.is_periodic = 00 00 01       # Periodicity. 0 (no), 1 (yes)
+
+amr.n_cell            = 100 200 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 1
+amr.max_grid_size_y   = 1
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.max_level         = 0
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 0
+SL.SlopeTolerance            = 1.0e-6
+SL.BetaTVD                   = 1.75e0
+SL.BetaTVB                   = 0.0e0
+SL.LimiterThresholdParameter = 0.03e0
+SL.UseConservativeCorrection = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-12
+PL.Min_2                = 1.0e-12
+
+# Equation of State parameters
+EoS.EosTableName = "wl-EOS-SFHo-25-50-100.h5"
+EoS.EquationOfState = "TABLE"

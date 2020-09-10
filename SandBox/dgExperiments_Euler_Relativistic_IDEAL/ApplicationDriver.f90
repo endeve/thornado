@@ -1,7 +1,12 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, Pi, TwoPi
+    DP,   &
+    Zero, &
+    One,  &
+    Two,  &
+    Pi,   &
+    TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -15,51 +20,75 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1, &
-    nDimsX, nDOFX
+    iX_B0,  &
+    iX_B1,  &
+    iX_E0,  &
+    iX_E1,  &
+    nDimsX, &
+    nDOFX
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
-    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
+    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
-    FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
+    FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF
+    ReadFieldsHDF,  &
+    WriteAccretionShockDiagnosticsHDF
   USE FluidFieldsModule, ONLY: &
-    nCF, nPF, nAF, &
-    uCF, uPF, uAF, &
-    uDF
+    uCF, &
+    uPF, &
+    uAF, &
+    uDF, &
+    iPF_D
   USE GeometryFieldsModule, ONLY: &
-    nGF, uGF
+    uGF
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+    InitializeGravitySolver_CFA_Poseidon, &
+    FinalizeGravitySolver_CFA_Poseidon,   &
+    SolveGravity_CFA_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK, &
+    FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
-    Kilometer, SolarMass, Second, Millisecond
+    Kilometer,   &
+    SolarMass,   &
+    Second,      &
+    Millisecond, &
+    Centimeter,  &
+    Gram,        &
+    Erg,         &
+    UnitsDisplay
   USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
-    FinalizeTally_Euler_Relativistic_IDEAL, &
+    FinalizeTally_Euler_Relativistic_IDEAL,   &
     ComputeTally_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler, &
-    InitializeTimers_Euler, FinalizeTimers_Euler, &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimeIt_Euler,            &
+    InitializeTimers_Euler,  &
+    FinalizeTimers_Euler,    &
+    TimersStart_Euler,       &
+    TimersStop_Euler,        &
     Timer_Euler_InputOutput, &
-    Timer_Euler_Initialize, &
+    Timer_Euler_Initialize,  &
     Timer_Euler_Finalize
+  USE AccretionShockDiagnosticsModule, ONLY: &
+    ComputeAccretionShockDiagnostics
+  USE Poseidon_UtilitiesModule, ONLY: &
+    ComputeSourceTerms_Poseidon
 
   IMPLICIT NONE
 
@@ -71,14 +100,15 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
-  LOGICAL       :: SuppressTally = .TRUE.
+  LOGICAL       :: SuppressTally = .FALSE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: SelfGravity
   LOGICAL       :: UseConservativeCorrection
-  INTEGER       :: iCycle, iCycleD, iCycleW = 0
+  INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   INTEGER       :: RestartFileNumber
@@ -88,6 +118,8 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
+  REAL(DP)      :: Mass = Zero
+  REAL(DP)      :: ZoomX(3)
 
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
@@ -95,40 +127,49 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Vmax, LorentzFactor
 
   ! --- Standing accretion shock ---
-  REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
-  REAL(DP)              :: MassPNS, RadiusPNS, ShockRadius, &
-                           AccretionRate, MachNumber
-  LOGICAL               :: ApplyPerturbation
-  INTEGER               :: PerturbationOrder
-  REAL(DP)              :: PerturbationAmplitude, &
-                           rPerturbationInner, rPerturbationOuter
+  REAL(DP) :: MassPNS, RadiusPNS, ShockRadius, &
+              AccretionRate, PolytropicConstant
+  LOGICAL  :: ApplyPerturbation
+  INTEGER  :: PerturbationOrder
+  REAL(DP) :: PerturbationAmplitude, &
+              rPerturbationInner, rPerturbationOuter
+  REAL(DP) :: Power(0:2)
 
-  LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
+  ! --- Yahil Collapse ---
+  REAL(DP) :: CentralDensity, CentralPressure, CoreRadius, CollapseTime
+
+  LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
-  RestartFileNumber = -1
-
-  t = 0.0_DP
+  REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-!  ProgramName = 'Advection'
+  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'StaticTOV'
+!  ProgramName = 'YahilCollapse'
+
+  swX               = [ 0, 0, 0 ]
+  RestartFileNumber = -1
+  t                 = 0.0_DP
+  ZoomX             = 1.0_DP
+  SelfGravity       = .FALSE.
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'TopHat'
+      AdvectionProfile = 'SineWave'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -136,13 +177,14 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 64, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX  = [ 64, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
     CASE( 'Advection2D' )
 
-      AdvectionProfile = 'SineWaveX1'
+      AdvectionProfile = 'SineWaveX1X2'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -150,9 +192,10 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 32, 32, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX  = [ 32, 32, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
 
     CASE( 'RiemannProblem' )
 
@@ -169,12 +212,12 @@ PROGRAM ApplicationDriver
         CASE( 'IsolatedShock' )
 
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.1_DP
+          t_end = 2.0e1_DP
           bcX   = [ 2, 0, 0 ]
 
-        CASE( 'Contact' )
+        CASE( 'IsolatedContact' )
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.2d0
+          t_end = 2.0e1_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )
@@ -204,7 +247,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
           WRITE(*,'(A)')     '  IsolatedShock'
-          WRITE(*,'(A)')     '  Contact'
+          WRITE(*,'(A)')     '  IsolatedContact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
           WRITE(*,'(A)')     '  PerturbedShockTube'
@@ -217,6 +260,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -243,6 +287,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 64, 64, 1 ]
+      swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -253,14 +298,13 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 5.0_DP / 3.0_DP
-
-      nX = [ 128, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 2.0_DP, Pi, TwoPi ]
-
+      t_end = 5.0d-1
       bcX = [ 2, 0, 0 ]
 
-      t_end = 5.0d-1
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 2.0_DP, Pi, TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -272,14 +316,13 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 4.0_DP / 3.0_DP
-
-      nX = [ 256, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.2_DP, Pi, TwoPi ]
-
+      t_end = 1.0d0
       bcX = [ 3, 0, 0 ]
 
-      t_end = 1.0d0
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.2_DP, Pi, TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -288,40 +331,84 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'CARTESIAN'
 
        Gamma = 4.0d0 / 3.0d0
+       t_end = 1.0d-1
+       bcX = [ 1, 1, 0 ]
 
        nX = [ 16, 32, 1 ]
+      swX = [ 1, 1, 0 ]
        xL = [ -0.5d0, -1.0d0, 0.0d0 ]
        xR = [  0.5d0,  1.0d0, 1.0d0 ]
 
-       bcX = [ 1, 1, 0 ]
-
-       t_end = 1.0d-1
-
     CASE( 'StandingAccretionShock' )
 
-      CoordinateSystem = 'SPHERICAL'
+      Gamma = 4.0e0_DP / 3.0e0_DP
+      t_end = 3.0d2 * Millisecond
+      bcX = [ 11, 0, 0 ]
 
-      MassPNS       = 1.4_DP * SolarMass
-      RadiusPNS     = 40.0_DP * Kilometer
-      ShockRadius   = 180.0_DP * Kilometer
-      AccretionRate = 0.3_DP * SolarMass / Second
-      MachNumber    = 10.0_DP
-
+      MassPNS            = 1.4_DP    * SolarMass
+      RadiusPNS          = 40.0_DP   * Kilometer
+      ShockRadius        = 180.0_DP  * Kilometer
+      AccretionRate      = 0.3_DP    * ( SolarMass / Second )
+      PolytropicConstant = 2.0e14_DP * ( Erg / Centimeter**3 &
+                                         / ( Gram / Centimeter**3 )**( Gamma ) )
       ApplyPerturbation     = .TRUE.
-      PerturbationOrder     = 1
-      PerturbationAmplitude = 0.1_DP
+      PerturbationOrder     = 0
+      PerturbationAmplitude = 0.04_DP
       rPerturbationInner    = 260.0_DP * Kilometer
       rPerturbationOuter    = 280.0_DP * Kilometer
 
-      Gamma = 4.0d0 / 3.0d0
+      nX  = [ 960, 1, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
-      nX = [ 128, 16, 1 ]
-      xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
-      xR = [ Two * ShockRadius, Pi, TwoPi ]
+      CoordinateSystem = 'SPHERICAL'
 
-      bcX = [ 11, 0, 0 ]
+      WriteGF = .TRUE.
 
-      t_end = 3.0d2 * Millisecond
+      ActivateUnits = .TRUE.
+
+      Mass = MassPNS
+
+    CASE( 'StaticTOV' )
+
+       SelfGravity = .TRUE.
+
+       CoordinateSystem = 'SPHERICAL'
+
+       Gamma = 2.0_DP
+       t_end = 1.0e1_DP * Millisecond
+       bcX   = [ 30, 0, 0 ]
+
+       nX = [ 128                 , 1   , 1     ]
+      swX = [ 1                   , 0   , 0     ]
+       xL = [ Zero                , Zero, Zero  ]
+       xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
+
+      WriteGF = .TRUE.
+
+      ActivateUnits = .TRUE.
+
+    CASE( 'YahilCollapse' )
+
+      SelfGravity = .TRUE.
+
+      CoordinateSystem = 'SPHERICAL'
+
+      CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
+      CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
+      CoreRadius      = 1.0e5_DP  * Kilometer
+      CollapseTime    = 1.50e2_DP * Millisecond
+
+      Gamma = 1.30_DP
+      t_end = CollapseTime - 0.5_DP * Millisecond
+      bcX = [ 30, 0, 0 ]
+
+      nX    = [ 256                 , 1     , 1      ]
+      swX   = [ 1                   , 0     , 0      ]
+      xL    = [ Zero                , Zero  , Zero   ]
+      xR    = [ CoreRadius          , Pi    , TwoPi  ]
+      ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
 
       WriteGF = .TRUE.
 
@@ -340,40 +427,46 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  SedovTaylorBlastWave'
       WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
       WRITE(*,'(A)')     '  StandingAccretionShock'
+      WRITE(*,'(A)')     '  StaticTOV'
+      WRITE(*,'(A)')     '  YahilCollapse'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
   END SELECT
 
-  nNodes = 3
+  ! --- DG ---
+
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
-  BetaTVD = 1.75d0
-  BetaTVB = 0.0d0
+  ! --- Time Stepping ---
 
-  UseSlopeLimiter           = .TRUE.
-  SlopeTolerance            = 1.0d-6
-  UseCharacteristicLimiting = .TRUE.
-
-  UseTroubledCellIndicator  = .FALSE.
-
-  SlopeLimiterMethod        = 'TVD'
-
-  LimiterThresholdParameter = 0.0_DP
-
-  UseConservativeCorrection = .FALSE.
-
-  UsePositivityLimiter = .TRUE.
-  Min_1 = 1.0d-13
-  Min_2 = 1.0d-13
-
-  nStagesSSPRK = nNodes
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
-  ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
-  CFL = 0.5_DP
+  CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
+
+  ! --- Slope Limiter ---
+
+  UseSlopeLimiter           = .TRUE.
+  SlopeLimiterMethod        = 'TVD'
+  BetaTVD                   = 1.75d0
+  BetaTVB                   = 0.0d0
+  SlopeTolerance            = 1.0d-6
+  UseCharacteristicLimiting = .TRUE.
+  UseTroubledCellIndicator  = .TRUE.
+  LimiterThresholdParameter = 0.015_DP
+  UseConservativeCorrection = .TRUE.
+
+  ! --- Positivity Limiter ---
+
+  UsePositivityLimiter = .TRUE.
+  Min_1                = 1.0d-13
+  Min_2                = 1.0d-13
+
+  ! === End of User Input ===
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -381,13 +474,15 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = swX, &
            bcX_Option &
              = bcX, &
            xL_Option &
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -401,8 +496,20 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = MassPNS )
+  IF( SelfGravity )THEN
+
+    ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3),1:6) )
+
+    CALL InitializeGravitySolver_CFA_Poseidon
+
+  ELSE
+
+    CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
+
+  END IF
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -448,21 +555,27 @@ PROGRAM ApplicationDriver
            MassPNS_Option               = MassPNS, &
            ShockRadius_Option           = ShockRadius, &
            AccretionRate_Option         = AccretionRate, &
-           MachNumber_Option            = MachNumber, &
+           PolytropicConstant_Option    = PolytropicConstant, &
            ApplyPerturbation_Option     = ApplyPerturbation, &
            PerturbationOrder_Option     = PerturbationOrder, &
            PerturbationAmplitude_Option = PerturbationAmplitude, &
            rPerturbationInner_Option    = rPerturbationInner, &
-           rPerturbationOuter_Option    = rPerturbationOuter )
+           rPerturbationOuter_Option    = rPerturbationOuter, &
+           CentralDensity_Option        = CentralDensity, &
+           CentralPressure_Option       = CentralPressure, &
+           CoreRadius_Option            = CoreRadius, &
+           CollapseTime_Option          = CollapseTime )
 
   IF( RestartFileNumber .GE. 0 )THEN
 
-    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
   END IF
 
   iCycleD = 10
-!!$  iCycleW = 10; dt_wrt = -1.0d0
+!!$  iCycleW = 1; dt_wrt = -1.0d0
   dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
@@ -473,6 +586,16 @@ PROGRAM ApplicationDriver
 
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+  IF( SelfGravity )THEN
+
+    CALL ComputeSourceTerms_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+    CALL SolveGravity_CFA_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+  END IF
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -501,10 +624,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           SuppressTally_Option = SuppressTally )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF, uCF, SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -535,25 +656,30 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
-      IF( ProgramName .EQ. 'StandingAccretionShock' )THEN
-
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', &
-          'dt = ', dt / Millisecond, ' ms'
-
-      ELSE
-
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
-
-      END IF
+      WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+        'Cycle: ', iCycle, ' t = ', t / UnitsDisplay % TimeUnit, &
+        TRIM( UnitsDisplay % TimeLabel ), &
+        ' dt = ', dt /  UnitsDisplay % TimeUnit, &
+        TRIM( UnitsDisplay % TimeLabel )
 
     END IF
 
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-    CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
+    IF( SelfGravity )THEN
+
+      CALL UpdateFluid_SSPRK &
+             ( t, dt, uGF, uCF, uDF, &
+               ComputeIncrement_Euler_DG_Explicit, &
+               SolveGravity_CFA_Poseidon )
+
+    ELSE
+
+      CALL UpdateFluid_SSPRK &
+             ( t, dt, uGF, uCF, uDF, &
+               ComputeIncrement_Euler_DG_Explicit )
+
+    END IF
 
     IF( .NOT. OPTIMIZE )THEN
 
@@ -590,14 +716,32 @@ PROGRAM ApplicationDriver
         CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
         CALL ComputeTally_Euler_Relativistic_IDEAL &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
         wrt = .FALSE.
 
       END IF
+    END IF
+
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
+    END IF
+
+    IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) ) EXIT
+
     END IF
 
   END DO
@@ -614,6 +758,16 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+    IF( SelfGravity )THEN
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+    END IF
+
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -622,10 +776,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
@@ -641,6 +792,14 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
+  IF( SelfGravity )THEN
+
+    DEALLOCATE( U_Poseidon )
+
+    CALL FinalizeGravitySolver_CFA_Poseidon
+
+  END IF
+
   CALL FinalizeEquationOfState
 
   CALL FinalizeProgram
@@ -648,5 +807,22 @@ PROGRAM ApplicationDriver
   CALL TimersStop_Euler( Timer_Euler_Finalize )
 
   CALL FinalizeTimers_Euler
+
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git info'
+  WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git describe --tags:'
+  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
+  WRITE(*,*)
 
 END PROGRAM ApplicationDriver

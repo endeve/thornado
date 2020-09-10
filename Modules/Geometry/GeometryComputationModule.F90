@@ -25,6 +25,8 @@ MODULE GeometryComputationModule
 
   PUBLIC :: ComputeGeometryX
   PUBLIC :: ComputeGeometryX_FromScaleFactors
+  PUBLIC :: LapseFunction
+  PUBLIC :: ConformalFactor
 
 
 CONTAINS
@@ -221,9 +223,9 @@ CONTAINS
     XC = 0.0_DP
     dX = 0.0_DP
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
       XC(1) = MeshX(1) % Center(iX1)
       dX(1) = MeshX(1) % Width (iX1)
@@ -238,11 +240,21 @@ CONTAINS
 
         xG_q = XC + dX * xL_q
 
+        ! --- Compute Lapse Function and Conformal Factor ---
+
+        G_L(iNodeX,iGF_Alpha) &
+          = One
+        G_L(iNodeX,iGF_Psi) &
+          = One
+
         ! --- Set Geometry in Lobatto Points ---
 
-        G_L(iNodeX,iGF_h_1) = One
-        G_L(iNodeX,iGF_h_2) = One
-        G_L(iNodeX,iGF_h_3) = xG_q(1)
+        G_L(iNodeX,iGF_h_1) &
+          = G_L(iNodeX,iGF_Psi)**2
+        G_L(iNodeX,iGF_h_2) &
+          = G_L(iNodeX,iGF_Psi)**2
+        G_L(iNodeX,iGF_h_3) &
+          = G_L(iNodeX,iGF_Psi)**2 * xG_q(1)
 
       END DO
 
@@ -259,6 +271,14 @@ CONTAINS
                G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
 
       CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
 
     END DO
     END DO

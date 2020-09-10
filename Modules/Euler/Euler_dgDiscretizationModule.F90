@@ -44,7 +44,7 @@ MODULE Euler_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, &
-    iDF_Sh
+    iDF_Sh_X1, iDF_Sh_X2, iDF_Sh_X3
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -58,6 +58,8 @@ MODULE Euler_dgDiscretizationModule
     NumericalFlux_Euler_X1,      &
     NumericalFlux_Euler_X2,      &
     NumericalFlux_Euler_X3
+  USE Euler_DiscontinuityDetectionModule, ONLY: &
+    DetectShocks_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -82,7 +84,7 @@ CONTAINS
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout)         :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    REAL(DP), INTENT(in)            :: &
+    REAL(DP), INTENT(inout)         :: &
       D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(out)           :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
@@ -101,9 +103,15 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+      CALL DetectShocks_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    END IF
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
@@ -517,20 +525,22 @@ CONTAINS
 
         NumericalFlux(iNodeX_X1,:) &
           = NumericalFlux_Euler_X1 &
-              ( uCF_L    (iNodeX_X1,:),              &
-                uCF_R    (iNodeX_X1,:),              &
-                Flux_X1_L(iNodeX_X1,:),              &
-                Flux_X1_R(iNodeX_X1,:),              &
-                AlphaPls, AlphaMns, AlphaMdl,        &
-                G_F      (iNodeX_X1,iGF_Gm_dd_11),   &
-                uPF_L    (iNodeX_X1,iPF_V1),         &
-                uPF_R    (iNodeX_X1,iPF_V1),         &
-                P_L      (iNodeX_X1),                &
-                P_R      (iNodeX_X1),                &
-                G_F      (iNodeX_X1,iGF_Alpha),      &
-                G_F      (iNodeX_X1,iGF_Beta_1),     &
-                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh) ), &
-                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh) ) )
+              ( uCF_L    (iNodeX_X1,:),                 &
+                uCF_R    (iNodeX_X1,:),                 &
+                Flux_X1_L(iNodeX_X1,:),                 &
+                Flux_X1_R(iNodeX_X1,:),                 &
+                AlphaPls, AlphaMns, AlphaMdl,           &
+                G_F      (iNodeX_X1,iGF_Gm_dd_11),      &
+                uPF_L    (iNodeX_X1,iPF_V1),            &
+                uPF_R    (iNodeX_X1,iPF_V1),            &
+                P_L      (iNodeX_X1),                   &
+                P_R      (iNodeX_X1),                   &
+                G_F      (iNodeX_X1,iGF_Alpha),         &
+                G_F      (iNodeX_X1,iGF_Beta_1),        &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X3) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X3) ) )
 
       END DO
 
@@ -940,20 +950,22 @@ CONTAINS
 
         NumericalFlux(iNodeX_X2,:) &
           = NumericalFlux_Euler_X2 &
-              ( uCF_L    (iNodeX_X2,:),              &
-                uCF_R    (iNodeX_X2,:),              &
-                Flux_X2_L(iNodeX_X2,:),              &
-                Flux_X2_R(iNodeX_X2,:),              &
-                AlphaPls, AlphaMns, AlphaMdl,        &
-                G_F      (iNodeX_X2,iGF_Gm_dd_22),   &
-                uPF_L    (iNodeX_X2,iPF_V2),         &
-                uPF_R    (iNodeX_X2,iPF_V2),         &
-                P_L      (iNodeX_X2),                &
-                P_R      (iNodeX_X2),                &
-                G_F      (iNodeX_X2,iGF_Alpha),      &
-                G_F      (iNodeX_X2,iGF_Beta_2),     &
-                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh) ), &
-                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh) ) )
+              ( uCF_L    (iNodeX_X2,:),                 &
+                uCF_R    (iNodeX_X2,:),                 &
+                Flux_X2_L(iNodeX_X2,:),                 &
+                Flux_X2_R(iNodeX_X2,:),                 &
+                AlphaPls, AlphaMns, AlphaMdl,           &
+                G_F      (iNodeX_X2,iGF_Gm_dd_22),      &
+                uPF_L    (iNodeX_X2,iPF_V2),            &
+                uPF_R    (iNodeX_X2,iPF_V2),            &
+                P_L      (iNodeX_X2),                   &
+                P_R      (iNodeX_X2),                   &
+                G_F      (iNodeX_X2,iGF_Alpha),         &
+                G_F      (iNodeX_X2,iGF_Beta_2),        &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X3) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X3) ) )
 
       END DO
 
@@ -1362,20 +1374,22 @@ CONTAINS
 
         NumericalFlux(iNodeX_X3,:) &
           = NumericalFlux_Euler_X3 &
-              ( uCF_L    (iNodeX_X3,:),              &
-                uCF_R    (iNodeX_X3,:),              &
-                Flux_X3_L(iNodeX_X3,:),              &
-                Flux_X3_R(iNodeX_X3,:),              &
-                AlphaPls, AlphaMns, AlphaMdl,        &
-                G_F      (iNodeX_X3,iGF_Gm_dd_33),   &
-                uPF_L    (iNodeX_X3,iPF_V3),         &
-                uPF_R    (iNodeX_X3,iPF_V3),         &
-                P_L      (iNodeX_X3),                &
-                P_R      (iNodeX_X3),                &
-                G_F      (iNodeX_X3,iGF_Alpha),      &
-                G_F      (iNodeX_X3,iGF_Beta_3),     &
-                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh) ), &
-                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh) ) )
+              ( uCF_L    (iNodeX_X3,:),                 &
+                uCF_R    (iNodeX_X3,:),                 &
+                Flux_X3_L(iNodeX_X3,:),                 &
+                Flux_X3_R(iNodeX_X3,:),                 &
+                AlphaPls, AlphaMns, AlphaMdl,           &
+                G_F      (iNodeX_X3,iGF_Gm_dd_33),      &
+                uPF_L    (iNodeX_X3,iPF_V3),            &
+                uPF_R    (iNodeX_X3,iPF_V3),            &
+                P_L      (iNodeX_X3),                   &
+                P_R      (iNodeX_X3),                   &
+                G_F      (iNodeX_X3,iGF_Alpha),         &
+                G_F      (iNodeX_X3,iGF_Beta_3),        &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X2) ) )
 
       END DO
 
@@ -1445,14 +1459,14 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-#if defined HYDRO_NONRELATIVISTIC
-
-    CALL ComputeIncrement_Geometry_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-
-#elif defined HYDRO_RELATIVISTIC
+#if defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+#else
+
+    CALL ComputeIncrement_Geometry_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
 #endif
@@ -1690,6 +1704,7 @@ CONTAINS
                 db1dX2(nDOFX), db2dX2(nDOFX), db3dX2(nDOFX), &
                 db1dX3(nDOFX), db2dX3(nDOFX), db3dX3(nDOFX)
     REAL(DP) :: dadx1(nDOFX), dadx2(nDOFX), dadx3(nDOFX)
+    REAL(DP) :: Term1(nDOFX), Term2(nDOFX), Term3(nDOFX)
     REAL(DP) :: Stress(nDOFX,3)
     REAL(DP) :: uCF_K(nDOFX,nCF), uPF_K(nDOFX,nPF), G_K(nDOFX,nGF)
     REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF), &
@@ -1720,6 +1735,9 @@ CONTAINS
     db1dX3 = Zero
     db2dX3 = Zero
     db3dX3 = Zero
+    Term1  = Zero
+    Term2  = Zero
+    Term3  = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -2483,7 +2501,7 @@ CONTAINS
 
       END IF
 
-      ! --- Compute energy increment (missing time-dependent metric term) ---
+      ! --- Compute energy increment ---
 
       dU(:,iX1,iX2,iX3,iCF_E) &
         = dU(:,iX1,iX2,iX3,iCF_E) &
@@ -2512,6 +2530,37 @@ CONTAINS
                 + uCF_K(:,iCF_S2) / G_K(:,iGF_Gm_dd_22) * dadx2 &
                 + uCF_K(:,iCF_S3) / G_K(:,iGF_Gm_dd_33) * dadx3 )
 
+      ! --- Time-dependent metric term ---
+
+      Term1 = G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
+                * ( db1dx1 + db2dx2 + db3dx3 )
+
+      Term2 = G_K(:,iGF_Alpha) &
+                * ( ( G_K(:,iGF_Beta_1) &
+                        * (   G_K(:,iGF_h_2) * G_K(:,iGF_h_3) * dh1dx1 &
+                            + G_K(:,iGF_h_1) * G_K(:,iGF_h_3) * dh2dx1 &
+                            + G_K(:,iGF_h_1) * G_K(:,iGF_h_2) * dh3dx1 ) ) &
+                +   ( G_K(:,iGF_Beta_2) &
+                      * (   G_K(:,iGF_h_2) * G_K(:,iGF_h_3) * dh1dx2 &
+                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_3) * dh2dx2 &
+                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_2) * dh3dx2 ) ) &
+                +   ( G_K(:,iGF_Beta_3) &
+                      * (   G_K(:,iGF_h_2) * G_K(:,iGF_h_3) * dh1dx3 &
+                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_3) * dh2dx3 &
+                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_2) * dh3dx3 ) ) )
+
+      Term3 = G_K(:,iGF_SqrtGm) * ( G_K(:,iGF_Beta_1) * dadx1 &
+                                      + G_K(:,iGF_Beta_2) * dadx2 &
+                                      + G_K(:,iGF_Beta_3) * dadx3 )
+
+      DO iCF = 1, nCF
+
+        dU(:,iX1,iX2,iX3,iCF) &
+          = dU(:,iX1,iX2,iX3,iCF) / ( G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) ) &
+              * ( Term1 + Term2 + Term3 )
+
+      END DO
+
     END DO
     END DO
     END DO
@@ -2530,14 +2579,14 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-#if defined HYDRO_NONRELATIVISTIC
-
-    CALL ComputeIncrement_Gravity_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-
-#elif defined HYDRO_RELATIVISTIC
+#if defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Gravity_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+#else
+
+    CALL ComputeIncrement_Gravity_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
 #endif

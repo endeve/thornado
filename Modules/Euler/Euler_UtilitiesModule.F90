@@ -1,7 +1,7 @@
 MODULE Euler_UtilitiesModule
 
   USE KindModule,           ONLY: &
-    DP
+    DP, Half
   USE ProgramHeaderModule,  ONLY: &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
@@ -374,25 +374,43 @@ CONTAINS
 
   FUNCTION NumericalFlux_Euler_X1 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, &
-      vL, vR, pL, pR, Lapse, Shift_X1, ShockL, ShockR )
+      vL, vR, pL, pR, Lapse, Shift_X1,  &
+      ShockL_X2, ShockR_X2, ShockL_X3, ShockR_X3 )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm11, ShockL, ShockR
+                            aP, aM, aC, Gm11, &
+                            ShockL_X2, ShockR_X2, ShockL_X3, ShockR_X3
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_X1
 
     REAL(DP) :: NumericalFlux_Euler_X1(nCF)
 
+    LOGICAL :: ShockPresent
+
+    ShockPresent = ShockL_X2 .GT. Half &
+                     .OR. ShockR_X2 .GT. Half &
+                     .OR. ShockL_X3 .GT. Half &
+                     .OR. ShockR_X3 .GT. Half
+
 #if defined HYDRO_RIEMANN_SOLVER_HYBRID
 
-    IF( ShockL .GT. Half .OR. ShockR .GT. Half )THEN
+    IF( ShockPresent )THEN
 
       NumericalFlux_Euler_X1 &
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
+!!$      NumericalFlux_Euler_X1 &
+!!$        = NumericalFlux_Euler_HLLC_X1 &
+!!$            ( uL, uR, fL, fR, aP, aM, &
+!!$              aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
+
     ELSE
+
+!!$      NumericalFlux_Euler_X1 &
+!!$        = NumericalFlux_Euler_HLL &
+!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X1 &
         = NumericalFlux_Euler_HLLC_X1 &
@@ -421,25 +439,43 @@ CONTAINS
 
   FUNCTION NumericalFlux_Euler_X2 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, &
-      vL, vR, pL, pR, Lapse, Shift_X2, ShockL, ShockR )
+      vL, vR, pL, pR, Lapse, Shift_X2,  &
+      ShockL_X1, ShockR_X1, ShockL_X3, ShockR_X3 )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm22, ShockL, ShockR
+                            aP, aM, aC, Gm22, &
+                            ShockL_X1, ShockR_X1, ShockL_X3, ShockR_X3
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_X2
 
     REAL(DP) :: NumericalFlux_Euler_X2(nCF)
 
+    LOGICAL :: ShockPresent
+
+    ShockPresent = ShockL_X1 .GT. Half &
+                     .OR. ShockR_X1 .GT. Half &
+                     .OR. ShockL_X3 .GT. Half &
+                     .OR. ShockR_X3 .GT. Half
+
 #if defined HYDRO_RIEMANN_SOLVER_HYBRID
 
-    IF( ShockL .GT. Half .OR. ShockR .GT. Half )THEN
+    IF( ShockPresent )THEN
 
       NumericalFlux_Euler_X2 &
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
+!!$      NumericalFlux_Euler_X2 &
+!!$        = NumericalFlux_Euler_HLLC_X2 &
+!!$            ( uL, uR, fL, fR, aP, aM, &
+!!$              aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
+
     ELSE
+
+!!$      NumericalFlux_Euler_X2 &
+!!$        = NumericalFlux_Euler_HLL &
+!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X2 &
         = NumericalFlux_Euler_HLLC_X2 &
@@ -468,25 +504,43 @@ CONTAINS
 
   FUNCTION NumericalFlux_Euler_X3 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33, &
-      vL, vR, pL, pR, Lapse, Shift_X3, ShockL, ShockR )
+      vL, vR, pL, pR, Lapse, Shift_X3,  &
+      ShockL_X1, ShockR_X1, ShockL_X2, ShockR_X2 )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm33, ShockL, ShockR
+                            aP, aM, aC, Gm33, &
+                            ShockL_X1, ShockR_X1, ShockL_X2, ShockR_X2
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_X3
 
     REAL(DP) :: NumericalFlux_Euler_X3(nCF)
 
+    LOGICAL :: ShockPresent
+
+    ShockPresent = ShockL_X1 .GT. Half &
+                     .OR. ShockR_X1 .GT. Half &
+                     .OR. ShockL_X2 .GT. Half &
+                     .OR. ShockR_X2 .GT. Half
+
 #if defined HYDRO_RIEMANN_SOLVER_HYBRID
 
-    IF( ShockL .GT. Half .OR. ShockR .GT. Half )THEN
+    IF( ShockPresent )THEN
 
       NumericalFlux_Euler_X3 &
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
+!!$      NumericalFlux_Euler_X3 &
+!!$        = NumericalFlux_Euler_HLLC_X3 &
+!!$            ( uL, uR, fL, fR, aP, aM, &
+!!$              aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
+
     ELSE
+
+!!$      NumericalFlux_Euler_X3 &
+!!$        = NumericalFlux_Euler_HLL &
+!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X3 &
         = NumericalFlux_Euler_HLLC_X3 &

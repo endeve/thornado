@@ -5,7 +5,7 @@ MODULE InitializationModule
   USE amrex_fort_module,      ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_amr_module,       ONLY: &
+  USE amrex_init_module,      ONLY: &
     amrex_init
   USE amrex_amrcore_module,   ONLY: &
     amrex_amrcore_init
@@ -59,14 +59,19 @@ MODULE InitializationModule
     MinY, &
     MaxY
   USE GeometryFieldsModule,             ONLY: &
-    nGF,                    &
-    SetUnitsGeometryFields, &
+    nGF,                     &
+    DescribeGeometryFields,  &
+    SetUnitsGeometryFields,  &
     CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
-    nCF, &
-    nPF, &
-    nAF, &
-    nDF, &
+    nCF,                            &
+    nPF,                            &
+    nAF,                            &
+    nDF,                            &
+    DescribeFluidFields_Primitive,  &
+    DescribeFluidFields_Conserved,  &
+    DescribeFluidFields_Auxiliary,  &
+    DescribeFluidFields_Diagnostic, &
     SetUnitsFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
@@ -100,13 +105,13 @@ MODULE InitializationModule
     MF_InitializeFields
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_InitializeFluid_SSPRK
-  USE MyAmrDataModule,                  ONLY: &
+  USE MF_FieldsModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
     MF_uDF
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,               ONLY: &
     t_end,                     &
     t,                         &
     dt,                        &
@@ -147,7 +152,7 @@ MODULE InitializationModule
     BA,                        &
     DM,                        &
     GEOM,                      &
-    MyAmrInit
+    InitializeParameters
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler,      &
     TimersStop_AMReX_Euler,       &
@@ -174,7 +179,10 @@ CONTAINS
     INTEGER               :: iLevel, iDim
     TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
+
+    LOGICAL               :: SolveGravity
     REAL(AR)              :: Mass
+
 
     ! --- Initialize AMReX ---
 
@@ -186,7 +194,7 @@ CONTAINS
 
     ! --- Parse parameter file ---
 
-    CALL MyAmrInit
+    CALL InitializeParameters
 
     IF( iRestart .LT. 0 )THEN
 
@@ -308,6 +316,11 @@ CONTAINS
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
+    SolveGravity = .FALSE.
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'SolveGravity', SolveGravity )
+    CALL amrex_parmparse_destroy( PP )
+
     Mass = Zero
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % query( 'Mass', Mass )
@@ -323,9 +336,49 @@ CONTAINS
 #else
 
       CALL MF_ComputeGeometryX( MF_uGF, Zero )
-      CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+
+      IF( SolveGravity ) THEN
+
+        CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+
+      END IF
 
 #endif
+
+    CALL SetUnitsGeometryFields
+
+    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
+
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL InitializeSlopeLimiter_Euler &
+           ( BetaTVD_Option &
+               = BetaTVD, &
+             BetaTVB_Option &
+               = BetaTVB, &
+             SlopeTolerance_Option &
+               = SlopeTolerance, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             UseCharacteristicLimiting_Option &
+               = UseCharacteristicLimiting, &
+             UseTroubledCellIndicator_Option &
+               = UseTroubledCellIndicator, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
+             LimiterThresholdParameter_Option &
+               = LimiterThresholdParameter, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
 
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
@@ -358,28 +411,6 @@ CONTAINS
 
     END IF
 
-    CALL InitializeSlopeLimiter_Euler &
-           ( BetaTVD_Option &
-               = BetaTVD, &
-             BetaTVB_Option &
-               = BetaTVB, &
-             SlopeTolerance_Option &
-               = SlopeTolerance, &
-             UseSlopeLimiter_Option &
-               = UseSlopeLimiter, &
-             UseCharacteristicLimiting_Option &
-               = UseCharacteristicLimiting, &
-             UseTroubledCellIndicator_Option &
-               = UseTroubledCellIndicator, &
-             SlopeLimiterMethod_Option &
-               = SlopeLimiterMethod, &
-             LimiterThresholdParameter_Option &
-               = LimiterThresholdParameter, &
-             UseConservativeCorrection_Option &
-               = UseConservativeCorrection, &
-             Verbose_Option &
-               = amrex_parallel_ioprocessor() )
-
     CALL MF_InitializeFluid_SSPRK &
            ( nStages, BA, DM, &
              Verbose_Option = amrex_parallel_ioprocessor() )
@@ -387,11 +418,6 @@ CONTAINS
     IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
-
-    CALL SetUnitsGeometryFields
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
@@ -403,7 +429,7 @@ CONTAINS
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 
-      CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
+      CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

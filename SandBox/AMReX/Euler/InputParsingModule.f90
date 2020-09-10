@@ -1,13 +1,14 @@
-MODULE MyAmrModule
+MODULE InputParsingModule
 
   ! --- AMReX Modules ---
 
   USE amrex_fort_module,      ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_base_module,      ONLY: &
-    amrex_init,        &
-    amrex_initialized, &
+  USE amrex_init_module,      ONLY: &
+    amrex_init, &
+    amrex_initialized
+  USE amrex_parallel_module,  ONLY: &
     amrex_parallel_ioprocessor
   USE amrex_amr_module,       ONLY: &
     amrex_amrcore_init, &
@@ -25,26 +26,26 @@ MODULE MyAmrModule
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,  ONLY: &
+  USE ProgramHeaderModule,    ONLY: &
     nDOFX,  &
     nDimsX, &
     InitializeProgramHeader
-  USE FluidFieldsModule,    ONLY: &
+  USE FluidFieldsModule,      ONLY: &
     nCF, &
     nPF, &
     nAF
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,   ONLY: &
     nGF
-  USE UnitsModule,          ONLY: &
+  USE UnitsModule,            ONLY: &
     ActivateUnitsDisplay, &
     DescribeUnitsDisplay, &
     UnitsDisplay
 
   ! --- Local Modules ---
 
-  USE MyAmrDataModule, ONLY: &
-    InitializeDataAMReX, &
-    FinalizeDataAMReX
+  USE MF_FieldsModule,        ONLY: &
+    CreateFields_MF, &
+    DestroyFields_MF
 
   IMPLICIT NONE
 
@@ -58,11 +59,10 @@ MODULE MyAmrModule
   REAL(AR)         , ALLOCATABLE :: xL(:), xR(:)
   CHARACTER(LEN=:) , ALLOCATABLE :: ProgramName
   CHARACTER(LEN=:) , ALLOCATABLE :: PlotFileBaseName
-  CHARACTER(LEN=:) , ALLOCATABLE :: OutputDataFileName
+  CHARACTER(LEN=:) , ALLOCATABLE :: NodalDataFileNameBase
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL          , SAVE        :: UsePhysicalUnits
-  LOGICAL          , SAVE        :: InitializeFromFile
-  LOGICAL          , SAVE        :: WriteOutputData
+  LOGICAL          , SAVE        :: WriteNodalData
   LOGICAL          , SAVE        :: DEBUG
 
   ! --- Slope limiter ---
@@ -102,7 +102,7 @@ MODULE MyAmrModule
 CONTAINS
 
 
-  SUBROUTINE MyAmrInit
+  SUBROUTINE InitializeParameters
 
     REAL(AR), PARAMETER :: Zero = 0.0_AR
     REAL(AR), PARAMETER :: One  = 1.0_AR
@@ -121,31 +121,27 @@ CONTAINS
       CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
-    UsePhysicalUnits   = .FALSE.
-    PlotFileBaseName   = 'thornado'
-    WriteOutputData    = .FALSE.
-    InitializeFromFile = .FALSE.
-    OutputDataFileName = 'OutputData.dat'
+    UsePhysicalUnits      = .FALSE.
+    PlotFileBaseName      = 'thornado'
+    NodalDataFileNameBase = 'NodalData'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get   ( 'dt_wrt'            , dt_wrt             )
-      CALL PP % get   ( 'dt_chk'            , dt_chk             )
-      CALL PP % get   ( 't_end'             , t_end              )
-      CALL PP % get   ( 'nNodes'            , nNodes             )
-      CALL PP % get   ( 'nStages'           , nStages            )
-      CALL PP % get   ( 'CFL'               , CFL                )
-      CALL PP % get   ( 'ProgramName'       , ProgramName        )
-      CALL PP % getarr( 'bcX'               , bcX                )
-      CALL PP % getarr( 'swX'               , swX                )
-      CALL PP % get   ( 'iCycleD'           , iCycleD            )
-      CALL PP % get   ( 'iCycleW'           , iCycleW            )
-      CALL PP % get   ( 'iCycleChk'         , iCycleChk          )
-      CALL PP % get   ( 'iRestart'          , iRestart           )
-      CALL PP % query ( 'UsePhysicalUnits'  , UsePhysicalUnits   )
-      CALL PP % query ( 'PlotFileBaseName'  , PlotFileBaseName   )
-      CALL PP % query ( 'WriteOutputData'   , WriteOutputData    )
-      CALL PP % query ( 'InitializeFromFile', InitializeFromFile )
-      CALL PP % query ( 'OutputDataFileName', OutputDataFileName )
+      CALL PP % get   ( 'dt_wrt'               , dt_wrt                )
+      CALL PP % get   ( 'dt_chk'               , dt_chk                )
+      CALL PP % get   ( 't_end'                , t_end                 )
+      CALL PP % get   ( 'nNodes'               , nNodes                )
+      CALL PP % get   ( 'nStages'              , nStages               )
+      CALL PP % get   ( 'CFL'                  , CFL                   )
+      CALL PP % get   ( 'ProgramName'          , ProgramName           )
+      CALL PP % getarr( 'bcX'                  , bcX                   )
+      CALL PP % getarr( 'swX'                  , swX                   )
+      CALL PP % get   ( 'iCycleD'              , iCycleD               )
+      CALL PP % get   ( 'iCycleW'              , iCycleW               )
+      CALL PP % get   ( 'iCycleChk'            , iCycleChk             )
+      CALL PP % get   ( 'iRestart'             , iRestart              )
+      CALL PP % query ( 'UsePhysicalUnits'     , UsePhysicalUnits      )
+      CALL PP % query ( 'PlotFileBaseName'     , PlotFileBaseName      )
+      CALL PP % query ( 'NodalDataFileNameBase', NodalDataFileNameBase )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
@@ -194,9 +190,6 @@ CONTAINS
     IF( UsePhysicalUnits )THEN
 
       CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
-
-      IF( amrex_parallel_ioprocessor() ) &
-        CALL DescribeUnitsDisplay
 
       t_end  = t_end  * UnitsDisplay % TimeUnit
       dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
@@ -284,6 +277,9 @@ CONTAINS
              bcX_Option         = bcX,                 &
              Verbose_Option     = amrex_parallel_ioprocessor() )
 
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
+
     IF( nDimsX .NE. amrex_spacedim )THEN
 
       WRITE(*,'(A)') 'ERROR'
@@ -303,14 +299,14 @@ CONTAINS
     ALLOCATE( t(0:nLevels-1) )
     t = 0.0e0_AR
 
-    CALL InitializeDataAMReX( nLevels )
+    CALL CreateFields_MF( nLevels )
 
-  END SUBROUTINE MyAmrInit
+  END SUBROUTINE InitializeParameters
 
 
-  SUBROUTINE MyAmrFinalize
+  SUBROUTINE FinalizeParameters
 
-    CALL FinalizeDataAMReX( nLevels )
+    CALL DestroyFields_MF( nLevels )
 
     DEALLOCATE( GEOM )
     DEALLOCATE( DM   )
@@ -320,7 +316,7 @@ CONTAINS
     DEALLOCATE( dt     )
     DEALLOCATE( StepNo )
 
-  END SUBROUTINE MyAmrFinalize
+  END SUBROUTINE FinalizeParameters
 
 
-END MODULE MyAmrModule
+END MODULE InputParsingModule

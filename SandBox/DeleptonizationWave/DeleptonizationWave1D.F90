@@ -99,7 +99,7 @@ PROGRAM DeleptonizationWave1D
 
   INCLUDE 'mpif.h'
 
-  CHARACTER(32) :: ProfileName
+  CHARACTER(64) :: ProfileName
   LOGICAL       :: wrt
   INTEGER       :: iCycle, iCycleD, iCycleT
   INTEGER       :: nE, nX(3), nNodes, nSpecies
@@ -121,7 +121,7 @@ PROGRAM DeleptonizationWave1D
   eR = 3.0d2 * MeV
   ZoomE = 1.158291374972257_DP
 
-  ProfileName = 'input_thornado_VX_100ms.dat'
+  ProfileName = 'input_thornado_VX_250ms.dat'
 
 
   t       = 0.0_DP

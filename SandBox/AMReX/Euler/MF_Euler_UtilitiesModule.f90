@@ -2,44 +2,44 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,        ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,         ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,    ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,    ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,   ONLY: &
+  USE ProgramHeaderModule,      ONLY: &
     nDOFX, &
     swX
-  USE GeometryFieldsModule,  ONLY: &
+  USE GeometryFieldsModule,     ONLY: &
     nGF
-  USE FluidFieldsModule,     ONLY: &
+  USE FluidFieldsModule,        ONLY: &
     nCF, &
     nPF, &
     nAF
-  USE Euler_UtilitiesModule, ONLY: &
+  USE Euler_UtilitiesModule,    ONLY: &
     ComputeTimeStep_Euler, &
     ComputeFromConserved_Euler
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,    ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,       ONLY: &
     nLevels
   USE MF_UtilitiesModule,       ONLY: &
-    AMReX2thornado, &
-    thornado2AMReX
+    amrex2thornado_Euler, &
+    thornado2amrex_Euler
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler,        &
     TimersStop_AMReX_Euler,         &
@@ -58,7 +58,7 @@ CONTAINS
 
   SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: &
+    TYPE(amrex_multifab), INTENT(in)    :: &
       MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
       MF_uPF(0:nLevels-1), MF_uAF(0:nLevels-1)
@@ -114,13 +114,13 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nAF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
-        CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
-        CALL AMReX2thornado( nPF, iX_B1, iX_E1, uPF, P )
+        CALL amrex2thornado_Euler( nPF, iX_B1, iX_E1, uPF, P )
 
-        CALL AMReX2thornado( nAF, iX_B1, iX_E1, uAF, A )
+        CALL amrex2thornado_Euler( nAF, iX_B1, iX_E1, uAF, A )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -129,9 +129,9 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nPF, iX_B1, iX_E1, uPF, P )
+        CALL thornado2amrex_Euler( nPF, iX_B1, iX_E1, uPF, P )
 
-        CALL thornado2AMReX( nAF, iX_B1, iX_E1, uAF, A )
+        CALL thornado2amrex_Euler( nAF, iX_B1, iX_E1, uAF, A )
 
         DEALLOCATE( A )
 
@@ -202,9 +202,9 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
-        CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
