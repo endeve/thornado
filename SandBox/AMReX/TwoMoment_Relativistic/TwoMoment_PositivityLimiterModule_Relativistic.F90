@@ -279,7 +279,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -296,6 +296,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      Verbose_Option
 
     LOGICAL  :: RecomputePointValues
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP, iP_X
@@ -423,11 +425,19 @@ CONTAINS
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
-
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    END IF
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
-    PRINT*, "      ApplyPositivityLimiter_TwoMoment"
+
+    IF (Verbose) THEN
+
+      PRINT*, "      ApplyPositivityLimiter_TwoMoment"
+
+    END IF
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
