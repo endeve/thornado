@@ -76,6 +76,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment, &
+    ComputeConserved_TwoMoment, &
     Flux_X1, &
     Flux_E, &
     Source_E, &
@@ -327,6 +328,8 @@ CONTAINS
     INTEGER  :: nZ(4), nZ_X1(4), nV_X1, nV, nX_X1
     INTEGER  :: nIterations
     REAL(DP) :: uPF_L(nPF), uPF_R(nPF)
+    REAL(DP) :: uCR_X1_L(nCR)
+    REAL(DP) :: uCR_X1_R(nCR)
     REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
     REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
     REAL(DP) :: uPR_K(nPR), Flux_K(nCR)
@@ -646,6 +649,24 @@ CONTAINS
                 GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
+
+        CALL ComputeConserved_TwoMoment &
+                (uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                 uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                 uCR_X1_L(iCR_N ), uCR_X1_L(iCR_G1), &
+                 uCR_X1_L(iCR_G2), uCR_X1_L(iCR_G3), &
+                 V_u(1,iNodeX,iZ3,iZ4,iZ2), &
+                 V_u(2,iNodeX,iZ3,iZ4,iZ2), &
+                 V_u(3,iNodeX,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
+                 0.0_DP,0.0_DP,0.0_DP,                  &
+                 GX_F(iNodeX,iGF_Alpha   ,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
+
         ! --- Right State Primitive ---
 
         CALL ComputePrimitive_TwoMoment &
@@ -683,14 +704,32 @@ CONTAINS
                 GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
+
+        CALL ComputeConserved_TwoMoment &
+                (uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                 uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                 uCR_X1_R(iCR_N ), uCR_X1_R(iCR_G1), &
+                 uCR_X1_R(iCR_G2), uCR_X1_R(iCR_G3), &
+                 V_u(1,iNodeX,iZ3,iZ4,iZ2), &
+                 V_u(2,iNodeX,iZ3,iZ4,iZ2), &
+                 V_u(3,iNodeX,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
+                 0.0_DP,0.0_DP,0.0_DP,                  &
+                 GX_F(iNodeX,iGF_Alpha   ,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
+                 GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
+
         ! --- Numerical Flux ---
 
         DO iCR = 1, nCR
 
           NumericalFlux(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
             = NumericalFlux_LLF &
-                ( uCR_L(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2), &
-                  uCR_R(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2), &
+                ( uCR_X1_L(iCR), &
+                  uCR_X1_R(iCR), &
                   Flux_L(iCR), Flux_R(iCR), One )
 
           NumericalFlux(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
@@ -759,6 +798,7 @@ CONTAINS
     END DO
     END DO
 
+ 
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -830,8 +870,6 @@ CONTAINS
              Flux_q, nDOFZ, One, dU_X1, nDOFZ )
 
 
-    open(1, file = "dU_X_1_rel01.txt", status = 'unknown') 
-    open(2, file = "dU_X_2_rel01.txt", status = 'unknown') 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -845,16 +883,6 @@ CONTAINS
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_X1(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2)
 
-    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 1) THEN
-
-         write(1,*) dU_X1(iNodeZ,1,iZ1,iZ3,iZ4,iS,iZ2)
-
-    END IF
-    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 2) THEN
-
-         write(2,*) dU_X1(iNodeZ,2,iZ1,iZ3,iZ4,iS,iZ2)
-
-    END IF
       END DO
 
     END DO
@@ -1177,7 +1205,6 @@ CONTAINS
 
     ! --- Numerical Flux ---
 
-   ! open(5, file = "Num001.txt", status = 'unknown') 
     DO iZ1 = iZ_B0(1), iZ_E1(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1315,11 +1342,6 @@ CONTAINS
                              C, Alpha )
           DO iCR = 1, nCR
 
-           ! NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-            !  = NumericalFlux_LLF &
-             !     ( uCR_L(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1),  &
-              !      uCR_R(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1), &
-               !     Flux_L(iCR), Flux_R(iCR), Alpha )
 
             NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
               = NumericalFlux_LLF &
@@ -1327,9 +1349,6 @@ CONTAINS
                     W * uPR_R(iCR), &
                     Flux_L(iCR), Flux_R(iCR), Alpha )
 
-          IF (iZ1 .EQ. 13 .AND. iCR .EQ. 1) THEN
-    !         print*, NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1)
-          END IF
             NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
               = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
                   * EdgeEnergyCubed * Weights_E(iNode) &
@@ -1544,8 +1563,6 @@ CONTAINS
     END DO
     END DO
 
-    open(3, file = "dU_E_1_rel01.txt", status = 'unknown') 
-    open(4, file = "dU_E_2_rel01.txt", status = 'unknown') 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1559,16 +1576,6 @@ CONTAINS
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_E(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1)
 
-    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 1) THEN
-
-         write(3,*) dU_E(iNodeZ,1,iZ2,iZ3,iZ4,iS,iZ1)
-
-    END IF
-    IF (iZ1 .EQ. 13 .AND. iCR .EQ. 2) THEN
-
-         write(4,*) dU_E(iNodeZ,2,iZ2,iZ3,iZ4,iS,iZ1)
-
-    END IF
       END DO
 
     END DO
@@ -1580,7 +1587,6 @@ CONTAINS
 
     END ASSOCIATE ! dZ1, etc    END ASSOCIATE ! dZ1, etc..
 
-STOP
   END SUBROUTINE ComputeIncrement_ObserverCorrections 
 
 
@@ -2197,43 +2203,12 @@ STOP
 
     END ASSOCIATE
 
- !  open(1, file = name2, status = 'new') 
- 
-!   open(2, file = name1, status = 'new') 
-V0=-0.05
-pi3 = 3.1415926535897932384626433832795028841971_DP / 3.0_DP
-pi23 = 2.0_DP * 3.1415926535897932384626433832795028841971_DP / 3.0_DP
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
       DO iNodeX = 1, nDOFX
 
-!        iNodeX1 = NodeNumberTableX(1,iNodeX)
-!
-!        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
-!        IF( X1 .GT. 2.0_DP .AND. X1 .LT. 3.5_DP) THEN
-!          sine = SIN( pi23 - pi3 * X1 )
-!          cose = COS( pi23 - pi3 * X1 )
-!          dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
-!          = (pi23*V0**2*sine**3*cose)/(1.0_DP-V0**2*sine**4)**(3.0_DP/2.0_DP)
-!          dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
-!          = -(1.0_DP/V0)*pi23*sine*cose/(((1/V0**2)-sine**4)*(1.0_DP-V0**2*sine**4)**(1.0/2.0))
-!        ELSE IF ( X1 .GT. 6.5_DP .AND. X1 .LT. 8.0_DP ) THEN
-!          sine = SIN( pi23 - pi3 * X1 )
-!          cose = COS( pi23 - pi3 * X1 )
-!          dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
-!          = (pi23*V0**2*sine**3*cose)/(1.0_DP-V0**2*sine**4)**(3.0_DP/2.0_DP)
-!          dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
-!          = -(1.0_DP/V0)*pi23*sine*cose/(((1/V0**2)-sine**4)*(1.0_DP-V0**2*sine**4)**(1.0/2.0))
-!
-!
-!        ELSE 
-!
-!          dU_dX1(iNodeX,0,iZ2,iZ3,iZ4) = 0.0_DP
-!          dU_dX1(iNodeX,1,iZ2,iZ3,iZ4) = 0.0_DP
-!
-!        END IF
         dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
           = -GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
