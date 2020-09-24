@@ -976,25 +976,49 @@ CONTAINS
       U_d(1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
-      dU_dX0 &
+      dU_d_dX0 &
         (nDOFX,0:3, &
          iZ_B0(2):iZ_E0(2), &
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
-      dU_dX1 &
+      dU_d_dX1 &
         (nDOFX,0:3, &
          iZ_B0(2):iZ_E0(2), &
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
-      dU_dX2 &
+      dU_d_dX2 &
         (nDOFX,0:3, &
          iZ_B0(2):iZ_E0(2), &
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
-      dU_dX3 &
+      dU_d_dX3 &
+        (nDOFX,0:3, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU_u_dX0 &
+        (nDOFX,0:3, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU_u_dX1 &
+        (nDOFX,0:3, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU_u_dX2 &
+        (nDOFX,0:3, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU_u_dX3 &
         (nDOFX,0:3, &
          iZ_B0(2):iZ_E0(2), &
          iZ_B0(3):iZ_E0(3), &
@@ -1078,19 +1102,19 @@ CONTAINS
     END IF
 
     CALL ComputeWeakDerivatives_X0 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX0, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_d_dX0, dU_u_dX0, &
              Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX1, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_d_dX1, dU_u_dX1, &
              Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX2, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_d_dX2, dU_u_dX2, &
              Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_dX3, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_d_dX3, dU_u_dX3, &
              Verbose_Option = Verbose )
 
     CALL ComputeFourVelocity &
@@ -1249,10 +1273,10 @@ CONTAINS
                     uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
                     uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4), &
                     U_u(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX0(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX1(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX3(iNode,:,iZ2,iZ3,iZ4) )
+                    dU_d_dX0(iNode,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX1(iNode,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX2(iNode,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX3(iNode,:,iZ2,iZ3,iZ4) )
         ! --- Right State Primitive ---
 
         CALL ComputePrimitive_TwoMoment &
@@ -1290,10 +1314,10 @@ CONTAINS
                     uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
                     uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4), &
                     U_u(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX0(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX1(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_dX3(iNode,:,iZ2,iZ3,iZ4) )
+                    dU_d_dX0(iNode,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX1(iNode,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX2(iNode,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX3(iNode,:,iZ2,iZ3,iZ4) )
 
         ! --- Numerical Flux ---
 
@@ -1335,10 +1359,14 @@ CONTAINS
                              uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
                              uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
                              U_u(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_dX0(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_dX1(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_dX2(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_dX3(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_d_dX0(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_d_dX1(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_d_dX2(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_d_dX3(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_u_dX0(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_u_dX1(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_u_dX2(iNode,:,iZ2,iZ3,iZ4), &
+                             dU_u_dX3(iNode,:,iZ2,iZ3,iZ4), &
                              C, Alpha )
           DO iCR = 1, nCR
 
@@ -1433,10 +1461,10 @@ CONTAINS
                     uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
                     uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4), &
                     U_u(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX0(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
+                    dU_d_dX0(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
 
         DO iCR = 1, nCR
 
@@ -1522,10 +1550,10 @@ CONTAINS
                     uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4), &
                     U_u(iNodeX,:,iZ2,iZ3,iZ4), &
                     U_d(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX0(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
+                    dU_d_dX0(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dU_d_dX3(iNodeX,:,iZ2,iZ3,iZ4) )
 
         ! --- iCR_G1 ---
 
@@ -1724,7 +1752,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeWeakDerivatives_X0 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_dX0, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_d_dX0, dU_u_dX0, Verbose_Option  )
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -1733,18 +1761,23 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       uCF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(out) :: &
-      dU_dX0 &
+      dU_d_dX0 &
+         (1:nDOFX,0:3, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+    REAL(DP), INTENT(out) :: &
+      dU_u_dX0 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
-    dU_dX0 = Zero
+    dU_d_dX0 = Zero
+    dU_u_dX0 = Zero
 
   END SUBROUTINE ComputeWeakDerivatives_X0 
 
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_dX1, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_d_dX1, dU_u_dX1, Verbose_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -1755,7 +1788,11 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       uCF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(out) :: &
-      dU_dX1 &
+      dU_d_dX1 &
+         (1:nDOFX,0:3, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+    REAL(DP), INTENT(out) :: &
+      dU_u_dX1 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -1812,7 +1849,8 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
-      dU_dX1 = Zero
+      dU_d_dX1 = Zero
+      dU_u_dX1 = Zero
       RETURN
     END IF
 
@@ -2209,26 +2247,36 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX
 
-        dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
+        dU_d_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
           = -GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) * dWV_u_dX1(iNodeX,2,iZ3,iZ4,iZ2) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) * dWV_u_dX1(iNodeX,3,iZ3,iZ4,iZ2) 
 
 
-        dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
+        dU_d_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
           = dWV_d_dX1(iNodeX,1,iZ3,iZ4,iZ2)
 
-
-
-
-
-        dU_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+        dU_d_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
           = dWV_d_dX1(iNodeX,2,iZ3,iZ4,iZ2)
 
-        dU_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+        dU_d_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
           = dWV_d_dX1(iNodeX,3,iZ3,iZ4,iZ2)
 
+        dU_u_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
+          = 1.0_DP / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2)
+
+        dU_u_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2)
+ 
+        dU_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX1(iNodeX,2,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2)
+ 
+        dU_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX1(iNodeX,3,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX1(iNodeX,iZ3,iZ4,iZ2) 
       END DO
 
     END DO
@@ -2238,7 +2286,7 @@ CONTAINS
   END SUBROUTINE ComputeWeakDerivatives_X1
 
   SUBROUTINE ComputeWeakDerivatives_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_dX2, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_d_dX2, dU_u_dX2, Verbose_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -2257,7 +2305,11 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCF)
     REAL(DP), INTENT(out) :: &
-      dU_dX2 &
+      dU_d_dX2 &
+         (1:nDOFX,0:3, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(out) :: &
+      dU_u_dX2 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -2333,7 +2385,8 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
-      dU_dX2 = Zero
+      dU_d_dX2 = Zero
+      dU_u_dX2 = Zero
       RETURN
     END IF
 
@@ -2737,21 +2790,35 @@ CONTAINS
 
 
 
-        dU_dX2(iNodeX,0,iZ2,iZ3,iZ4)  &
+        dU_d_dX2(iNodeX,0,iZ2,iZ3,iZ4)  &
           = -GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX2(iNodeX,iZ2,iZ4,iZ3) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * dWV_u_dX2(iNodeX,1,iZ2,iZ4,iZ3) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) * dWV_u_dX2(iNodeX,2,iZ2,iZ4,iZ3) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) * dWV_u_dX2(iNodeX,3,iZ2,iZ4,iZ3) 
 
-        dU_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
+        dU_d_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
           = dWV_d_dX2(iNodeX,1,iZ2,iZ4,iZ3)
 
-        dU_dX2(iNodeX,2,iZ2,iZ3,iZ4) &
+        dU_d_dX2(iNodeX,2,iZ2,iZ3,iZ4) &
           = dWV_d_dX2(iNodeX,2,iZ2,iZ4,iZ3)
 
-        dU_dX2(iNodeX,3,iZ2,iZ3,iZ4) &
+        dU_d_dX2(iNodeX,3,iZ2,iZ3,iZ4) &
           = dWV_d_dX2(iNodeX,3,iZ2,iZ4,iZ3)
 
+        dU_u_dX2(iNodeX,0,iZ2,iZ3,iZ4)  &
+          = 1.0_DP / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX2(iNodeX,iZ3,iZ4,iZ2)
+
+        dU_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX2(iNodeX,1,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX2(iNodeX,iZ3,iZ4,iZ2)
+ 
+        dU_u_dX2(iNodeX,2,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX2(iNodeX,2,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX2(iNodeX,iZ3,iZ4,iZ2)
+ 
+        dU_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX2(iNodeX,3,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX2(iNodeX,iZ3,iZ4,iZ2) 
       END DO
 
     END DO
@@ -2762,7 +2829,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeWeakDerivatives_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_dX3, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_d_dX3, dU_u_dX3, Verbose_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -2781,7 +2848,11 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCF)
     REAL(DP), INTENT(out) :: &
-      dU_dX3 &
+      dU_d_dX3 &
+         (1:nDOFX,0:3, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(out) :: &
+      dU_u_dX3 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -2857,7 +2928,8 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
-      dU_dX3 = Zero
+      dU_d_dX3 = Zero
+      dU_u_dX3 = Zero
       RETURN
     END IF
 
@@ -3262,20 +3334,37 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
 
-        dU_dX3(iNodeX,0,iZ2,iZ3,iZ4)  &
+        dU_d_dX3(iNodeX,0,iZ2,iZ3,iZ4)  &
           = -GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX3(iNodeX,iZ2,iZ3,iZ4) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) * dWV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) * dWV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
             + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) * dWV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) 
 
-        dU_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
+        dU_d_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
           = dWV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4)
 
-        dU_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
+        dU_d_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
           = dWV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4)
 
-        dU_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
+        dU_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
           = dWV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4)
+
+
+        dU_u_dX3(iNodeX,0,iZ2,iZ3,iZ4)  &
+          = 1.0_DP / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX3(iNodeX,iZ3,iZ4,iZ2)
+
+        dU_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX3(iNodeX,1,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_1) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX3(iNodeX,iZ3,iZ4,iZ2)
+ 
+        dU_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX3(iNodeX,2,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_2) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX3(iNodeX,iZ3,iZ4,iZ2)
+ 
+        dU_u_dX3(iNodeX,3,iZ2,iZ3,iZ4)  &
+          = dWV_d_dX3(iNodeX,3,iZ3,iZ4,iZ2) &
+          - GX(iNodeX,iZ2,iZ3,iZ4,iGF_Beta_3) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha) * dW_dX3(iNodeX,iZ3,iZ4,iZ2) 
+
       END DO
 
     END DO
@@ -3286,76 +3375,147 @@ CONTAINS
   END SUBROUTINE ComputeWeakDerivatives_X3
 
   SUBROUTINE ComputeAlpha( V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                           U_u, dU_dX0, dU_dX1, dU_dX2, dU_dX3, C, Alpha )
+                           U_u, dU_d_dX0, dU_d_dX1, dU_d_dX2, dU_d_dX3, &
+                           dU_u_dX0, dU_u_dX1, dU_u_dX2, dU_u_dX3, C, Alpha )
 
     REAL(DP), INTENT(in)  :: V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), INTENT(in)  :: U_u(4), dU_dX0(4), dU_dX1(4), dU_dX2(4), dU_dX3(4), C     
+    REAL(DP), INTENT(in)  :: U_u(4), dU_d_dX0(4), dU_d_dX1(4), dU_d_dX2(4), dU_d_dX3(4)
+    REAL(DP), INTENT(in)  :: dU_u_dX0(4), dU_u_dX1(4), dU_u_dX2(4), dU_u_dX3(4), C     
     REAL(DP), INTENT(out) :: Alpha
 
 
-    REAL(DP) :: dU_dX(4,4), l_mu(4), W, Vsq
-    INTEGER  :: mu, nu   
+    REAL(DP) :: dU_d_dX(4,4), dU_u_dX(4,4), W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11)
+    INTEGER  :: mu, nu, INFO   
  
     Vsq =  V_u_1**2 * Gm_dd_11 + V_u_2**2 * Gm_dd_22 + V_u_3**2 * Gm_dd_33 
  
     W = 1.0_DP / SQRT( 1.0_DP - Vsq )
 
-    dU_dX(1,1) = dU_dX0(1)
-    dU_dX(1,2) = dU_dX0(2)
-    dU_dX(1,3) = dU_dX0(3)
-    dU_dX(1,4) = dU_dX0(4)
+    dU_d_dX(1,1) = dU_d_dX0(1)
+    dU_d_dX(1,2) = dU_d_dX0(2)
+    dU_d_dX(1,3) = dU_d_dX0(3)
+    dU_d_dX(1,4) = dU_d_dX0(4)
 
-    dU_dX(2,1) = dU_dX1(1)
-    dU_dX(2,2) = dU_dX1(2)
-    dU_dX(2,3) = dU_dX1(3)
-    dU_dX(2,4) = dU_dX1(4)
+    dU_d_dX(2,1) = dU_d_dX1(1)
+    dU_d_dX(2,2) = dU_d_dX1(2)
+    dU_d_dX(2,3) = dU_d_dX1(3)
+    dU_d_dX(2,4) = dU_d_dX1(4)
 
-    dU_dX(3,1) = dU_dX2(1)
-    dU_dX(3,2) = dU_dX2(2)
-    dU_dX(3,3) = dU_dX2(3)
-    dU_dX(3,4) = dU_dX2(4)
+    dU_d_dX(3,1) = dU_d_dX2(1)
+    dU_d_dX(3,2) = dU_d_dX2(2)
+    dU_d_dX(3,3) = dU_d_dX2(3)
+    dU_d_dX(3,4) = dU_d_dX2(4)
 
-    dU_dX(4,1) = dU_dX3(1)
-    dU_dX(4,2) = dU_dX3(2)
-    dU_dX(4,3) = dU_dX3(3)
-    dU_dX(4,4) = dU_dX3(4)
+    dU_d_dX(4,1) = dU_d_dX3(1)
+    dU_d_dX(4,2) = dU_d_dX3(2)
+    dU_d_dX(4,3) = dU_d_dX3(3)
+    dU_d_dX(4,4) = dU_d_dX3(4)
 
-    l_mu(1) = W * V_u_1 + W * V_u_2 + W * V_u_3  
-    IF (Vsq .NE. 0.0_DP) THEN
+    dU_u_dX(1,1) = dU_u_dX0(1)
+    dU_u_dX(1,2) = dU_u_dX0(2)
+    dU_u_dX(1,3) = dU_u_dX0(3)
+    dU_u_dX(1,4) = dU_u_dX0(4)
 
-      l_mu(2) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_1**2 / Vsq ) &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq 
+    dU_u_dX(2,1) = dU_u_dX1(1)
+    dU_u_dX(2,2) = dU_u_dX1(2)
+    dU_u_dX(2,3) = dU_u_dX1(3)
+    dU_u_dX(2,4) = dU_u_dX1(4)
 
-      l_mu(3) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_2**2 / Vsq ) &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
-              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
+    dU_u_dX(3,1) = dU_u_dX2(1)
+    dU_u_dX(3,2) = dU_u_dX2(2)
+    dU_u_dX(3,3) = dU_u_dX2(3)
+    dU_u_dX(3,4) = dU_u_dX2(4)
 
-      l_mu(4) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_3**2 / Vsq ) &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq &
-              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
-    ELSE
+    dU_u_dX(4,1) = dU_u_dX3(1)
+    dU_u_dX(4,2) = dU_u_dX3(2)
+    dU_u_dX(4,3) = dU_u_dX3(3)
+    dU_u_dX(4,4) = dU_u_dX3(4)
 
-      l_mu(2) = 0.0_DP
-      l_mu(3) = 0.0_DP
-      l_mu(4) = 0.0_DP
 
-    END IF
 
-    Alpha = 0.0_DP
- 
 
+    A(1,1) =  dU_d_dX(1,1) + dU_d_dX(1,1)
+    A(1,2) =  dU_d_dX(1,2) + dU_d_dX(2,1)
+    A(1,3) =  dU_d_dX(1,3) + dU_d_dX(3,1)
+    A(1,4) =  dU_d_dX(1,4) + dU_d_dX(4,1)
+
+    A(2,1) =  dU_d_dX(2,1) + dU_d_dX(1,2)
+    A(2,2) =  dU_d_dX(2,2) + dU_d_dX(2,2)
+    A(2,3) =  dU_d_dX(2,3) + dU_d_dX(3,2)
+    A(2,4) =  dU_d_dX(2,4) + dU_d_dX(4,2)
+
+    A(3,1) =  dU_d_dX(3,1) + dU_d_dX(1,3)
+    A(3,2) =  dU_d_dX(3,2) + dU_d_dX(2,3)
+    A(3,3) =  dU_d_dX(3,3) + dU_d_dX(3,3)
+    A(3,4) =  dU_d_dX(3,4) + dU_d_dX(4,3)
+
+    A(4,1) =  dU_d_dX(4,1) + dU_d_dX(1,4)
+    A(4,2) =  dU_d_dX(4,2) + dU_d_dX(2,4)
+    A(4,3) =  dU_d_dX(4,3) + dU_d_dX(3,4)
+    A(4,4) =  dU_d_dX(4,4) + dU_d_dX(4,4)
+
+    A = 0.5_DP * A
+  
+    CALL DSYEV( 'N', 'U', 4, A, 4, Lambda, WORK, 11, INFO )
+
+    Alpha_Eig = MAXVAL( ABS( Lambda ) ) / W
+
+    Alpha_A = 0.0_DP
 
     DO mu = 1, 4 
     DO nu = 1, 4
 
-     ! Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
-       Alpha = Alpha + 0.5_DP * ( U_u(mu) + l_mu(mu) ) * ( dU_dX(mu,nu) + dU_dX(nu,mu) ) &
-             * ( U_u(nu) + l_mu(nu))
+      Alpha_A = Alpha_A + U_u(nu) * dU_d_dX(nu,mu) * U_u(nu) * dU_u_dX(nu,mu)
+
     END DO
     END DO
- 
-    Alpha = C * ABS( Alpha ) / W
+
+    Alpha_A = SQRT(Alpha_A) / W
+
+    Alpha = Alpha_Eig + Alpha_A
+
+!    l_mu(1) = W * V_u_1 + W * V_u_2 + W * V_u_3  
+!    IF (Vsq .NE. 0.0_DP) THEN
+!
+!      l_mu(2) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_1**2 / Vsq ) &
+!              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
+!              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq 
+!
+!      l_mu(3) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_2**2 / Vsq ) &
+!              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
+!              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
+!
+!      l_mu(4) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_3**2 / Vsq ) &
+!              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq &
+!              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
+!    ELSE
+!
+!      l_mu(2) = 0.0_DP
+!      l_mu(3) = 0.0_DP
+!      l_mu(4) = 0.0_DP
+!
+!    END IF
+!
+!    Alpha = 0.0_DP
+! 
+!
+!
+!    DO mu = 1, 4 
+!    DO nu = 1, 4
+!
+!     ! Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
+!       Alpha = Alpha + 0.5_DP * ( U_u(mu) + l_mu(mu) ) * ( dU_dX(mu,nu) + dU_dX(nu,mu) ) &
+!             * ( U_u(nu) + l_mu(nu))
+!    END DO
+!    END DO
+! 
+!    Alpha = C * ABS( Alpha ) / W
+!
+
+
+
+
+
 
   END SUBROUTINE ComputeAlpha
 
