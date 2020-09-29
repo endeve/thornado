@@ -503,25 +503,25 @@ CONTAINS
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
                   DO iNode = 1, nDOF
 
-                    iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+                    iNodeE = MOD( (iNode-1)        , nDOFE ) + 1
 
 
-                    E = NodeCoordinate( MeshE, iZ1, iNodeE )
-           !         print*, E
+                   E = NodeCoordinate( MeshE, iZ1, iNodeE )
                     ! --- Inner Boundary ---
                     U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)  &
-                    !  = 0.5_DP * ( 1.0_DP - Mu_0 ) / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
-                       =   1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
+                      != 0.5_DP * ( 1.0_DP - Mu_0 ) / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                      =   1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                     ! =   1.0_DP / ( EXP( E )- 1.0_DP )
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G1,iS)  &
-                    !  = 0.5_DP * ( 1.0_DP + Mu_0 ) * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS) 
-                       = U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
+                      != 0.5_DP * ( 1.0_DP + Mu_0 ) * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS) 
+                       = 0.999_DP * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G2,iS) &
                       = 0.0_DP
 
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G3,iS) &
                       = 0.0_DP
 
-
+                    !print*,iNode, iZ1, iZ_B0(2)-iZ2, U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
 
 
                     ! --- Outer Boundary ---
