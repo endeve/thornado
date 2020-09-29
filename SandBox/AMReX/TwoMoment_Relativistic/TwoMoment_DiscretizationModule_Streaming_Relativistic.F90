@@ -1394,6 +1394,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
     ! --- Surface Contributions ---
 
     ! --- Contributions from Left Face ---
@@ -3384,8 +3385,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Alpha
 
 
-    REAL(DP) :: dU_d_dX(4,4), dU_u_dX(4,4), W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11)
-    INTEGER  :: mu, nu, INFO   
+    REAL(DP) :: dU_d_dX(4,4), dU_u_dX(4,4), W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11), l_mu(4)
+    INTEGER  :: mu, nu, INFO, B  
  
     Vsq =  V_u_1**2 * Gm_dd_11 + V_u_2**2 * Gm_dd_22 + V_u_3**2 * Gm_dd_33 
  
@@ -3431,8 +3432,9 @@ CONTAINS
     dU_u_dX(4,3) = dU_u_dX3(3)
     dU_u_dX(4,4) = dU_u_dX3(4)
 
+    B = 0
 
-
+IF (B==0) THEN
 
     A(1,1) =  dU_d_dX(1,1) + dU_d_dX(1,1)
     A(1,2) =  dU_d_dX(1,2) + dU_d_dX(2,1)
@@ -3470,49 +3472,53 @@ CONTAINS
     END DO
     END DO
 
-    Alpha_A = SQRT(Alpha_A) / W
+    Alpha_A = SQRT(ABS(Alpha_A)) / W
 
-    Alpha = Alpha_Eig + Alpha_A
+    Alpha = C * ( Alpha_Eig + Alpha_A )
 
-!    l_mu(1) = W * V_u_1 + W * V_u_2 + W * V_u_3  
-!    IF (Vsq .NE. 0.0_DP) THEN
-!
-!      l_mu(2) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_1**2 / Vsq ) &
-!              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
-!              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq 
-!
-!      l_mu(3) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_2**2 / Vsq ) &
-!              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
-!              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
-!
-!      l_mu(4) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_3**2 / Vsq ) &
-!              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq &
-!              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
-!    ELSE
-!
-!      l_mu(2) = 0.0_DP
-!      l_mu(3) = 0.0_DP
-!      l_mu(4) = 0.0_DP
-!
-!    END IF
-!
-!    Alpha = 0.0_DP
-! 
-!
-!
-!    DO mu = 1, 4 
-!    DO nu = 1, 4
-!
-!     ! Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
-!       Alpha = Alpha + 0.5_DP * ( U_u(mu) + l_mu(mu) ) * ( dU_dX(mu,nu) + dU_dX(nu,mu) ) &
-!             * ( U_u(nu) + l_mu(nu))
-!    END DO
-!    END DO
-! 
-!    Alpha = C * ABS( Alpha ) / W
-!
+END IF
 
 
+IF (B==1) THEN
+
+    l_mu(1) = W * V_u_1 + W * V_u_2 + W * V_u_3  
+    IF (Vsq .NE. 0.0_DP) THEN
+
+      l_mu(2) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_1**2 / Vsq ) &
+              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
+              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq 
+
+      l_mu(3) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_2**2 / Vsq ) &
+              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
+              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
+
+      l_mu(4) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_3**2 / Vsq ) &
+              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq &
+              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
+    ELSE
+
+      l_mu(2) = 0.0_DP
+      l_mu(3) = 0.0_DP
+      l_mu(4) = 0.0_DP
+
+    END IF
+
+    Alpha = 0.0_DP
+ 
+
+
+    DO mu = 1, 4 
+    DO nu = 1, 4
+
+      ! Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
+       Alpha = Alpha + 0.5_DP * ( U_u(mu) + l_mu(mu) ) * ( dU_d_dX(mu,nu) + dU_d_dX(nu,mu) ) &
+             * ( U_u(nu) + l_mu(nu))
+    END DO
+    END DO
+ 
+    Alpha = C * ABS( Alpha ) / W
+
+END IF
 
 
 
