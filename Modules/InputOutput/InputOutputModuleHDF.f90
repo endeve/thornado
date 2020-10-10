@@ -3,7 +3,10 @@ MODULE InputOutputModuleHDF
   USE KindModule, ONLY: &
     DP
   USE UnitsModule, ONLY: &
-    UnitsDisplay
+    UnitsDisplay, &
+    Erg,          &
+    Centimeter,   &
+    Second
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nE, nNodesE, nDOFE, &
@@ -60,14 +63,20 @@ MODULE InputOutputModuleHDF
 
   ! --- Accretion Shock Diagnostics ---
   CHARACTER(25), PARAMETER :: &
-    BaseName = 'AccretionShockDiagnostics'
+    BaseNameAS = 'AccretionShockDiagnostics'
   INTEGER :: FileNumber_AS = 0
+
+  ! --- Source Term Diagnostics ---
+  CHARACTER(21), PARAMETER :: &
+    BaseNameST = 'SourceTermDiagnostics'
+  INTEGER :: FileNumber_ST = 1
 
   INTEGER :: HDFERR
 
   PUBLIC :: WriteFieldsHDF
   PUBLIC :: ReadFieldsHDF
   PUBLIC :: WriteAccretionShockDiagnosticsHDF
+  PUBLIC :: WriteSourceTermDiagnosticsHDF
 
 CONTAINS
 
@@ -826,7 +835,7 @@ CONTAINS
 
     FileName &
       = OutputDirectory // '/' // &
-        BaseName // '_' // &
+        BaseNameAS // '_' // &
         FileNumberString // '.h5'
 
     CALL H5OPEN_F( HDFERR )
@@ -874,6 +883,136 @@ CONTAINS
     FileNumber_AS = FileNumber_AS + 1
 
   END SUBROUTINE WriteAccretionShockDiagnosticsHDF
+
+
+  SUBROUTINE WriteSourceTermDiagnosticsHDF( Time, SourceTerm )
+
+    REAL(DP), INTENT(in) :: Time
+    REAL(DP), INTENT(in) :: SourceTerm(:,:,:,:,:)
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: DatasetName
+    INTEGER(HID_T) :: FILE_ID
+    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
+
+    WRITE( FileNumberString, FMT='(I6.6)' ) FileNumber_ST
+
+    FileName &
+      = OutputDirectory // '/' // &
+        BaseNameST // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthX1Unit, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthX2Unit, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthX3Unit, DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
+
+    ! --- Write Source Term Diagnostic Variables ---
+
+    GroupName = 'Source Term Diagnostic Variables'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    ! --- Pressure Tensor times Gradient of Shift Vector ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Pressure times GradShift'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Christoffel Symbol ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Christoffel Symbol'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),2), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Pressure Tensor times DivGridVolume ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Pressure times DivGridVolume'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),3), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Lapse Gradient ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Lapse Gradient'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),4), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Grid Volume Divergence---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Grid Volume Divergence'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),5), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Additional diagnostics go here ---
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+    FileNumber_ST = FileNumber_ST + 1
+
+  END SUBROUTINE WriteSourceTermDiagnosticsHDF
 
 
   SUBROUTINE CreateGroupHDF( FileName, GroupName, FILE_ID )
