@@ -28,6 +28,8 @@ MODULE InitializationModule_Relativistic
   USE MeshModule,                         ONLY: &
     MeshX, &
     NodeCoordinate
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+    SolveGravity_CFA_Poseidon
   USE GeometryFieldsModule,               ONLY: &
     nGF,          &
     uGF,          &
@@ -92,6 +94,8 @@ MODULE InitializationModule_Relativistic
     GetQuadrature
   USE PolynomialBasisModule_Lagrange,     ONLY: &
     LagrangeP
+  USE Poseidon_UtilitiesModule,           ONLY: &
+    ComputeSourceTerms_Poseidon
 
   IMPLICIT NONE
   PRIVATE
@@ -202,6 +206,8 @@ CONTAINS
     IF( PRESENT( rPerturbationOuter_Option ) ) &
       rPerturbationOuter = rPerturbationOuter_Option
 
+    IF( PRESENT( D0_Option ) ) &
+      D0 = D0_Option
     IF( PRESENT( CentralDensity_Option ) ) &
       CentralDensity = CentralDensity_Option
     IF( PRESENT( CentralPressure_Option ) ) &
@@ -1619,7 +1625,6 @@ CONTAINS
       P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
     WRITE(*,*)
 
-
     ! --- Post-shock Fields ---
 
     D0 = D_2
@@ -2016,7 +2021,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: CoreRadius
     REAL(DP), INTENT(in) :: CollapseTime
 
-    LOGICAL, PARAMETER :: ReadFromFile = .FALSE.
+    LOGICAL, PARAMETER :: ReadFromFile = .TRUE.
 
     REAL(DP) :: PolytropicConstant, dXdr, drhodD, dvdV, dmdM, TotalEnclosedMass
 
@@ -2042,12 +2047,15 @@ CONTAINS
     ELSE
 
       CALL InitializeFields_YahilCollapse_FromScratch &
-             ( dXdr, drhodD, dvdV, &
-               PolytropicConstant, CoreRadius, D0, TotalEnclosedMass )
+             ( dXdr, drhodD, dvdV, dmdM, &
+               PolytropicConstant, CoreRadius, D0, CollapseTime, &
+               TotalEnclosedMass )
 
     END IF
 
     WRITE(*,*)
+    WRITE(*,'(6x,A,L)') &
+      'ReadFromFile:        ', ReadFromFile
     WRITE(*,'(6x,A,F5.3)') &
       'Adiabatic Gamma:     ', &
       Gamma_IDEAL
@@ -2077,10 +2085,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: TotalEnclosedMass
 
     CHARACTER(LEN=64)     :: FileName
-    INTEGER               :: nLines
+    INTEGER               :: nLines, ITER
     INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
-    REAL(DP)              :: R, XX
-    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
+    REAL(DP)              :: R, XX, dAlpha, dPsi
+    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:), &
+                             SourceTerms_Poseidon(:,:,:,:,:)
+    LOGICAL               :: CONVERGED
 
     FileName = 'YahilHomologousCollapse_Gm_130.dat'
 
@@ -2169,25 +2179,93 @@ CONTAINS
     DEALLOCATE( D )
     DEALLOCATE( X )
 
+    ! --- Iterate to incorporate gravity in initial conditions ---
+
+    ALLOCATE( SourceTerms_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3),6) )
+
+    CONVERGED = .FALSE.
+    ITER = 0
+
+    DO WHILE( .NOT. CONVERGED )
+
+      ITER = ITER + 1
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
+
+      dAlpha = MINVAL( uGF(:,:,:,:,iGF_Alpha) )
+      dPsi   = MAXVAL( uGF(:,:,:,:,iGF_Psi  ) )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+
+      dAlpha = ABS( dAlpha - MINVAL( uGF(:,:,:,:,iGF_Alpha) ) ) &
+                 / MINVAL( uGF(:,:,:,:,iGF_Alpha) )
+      dPsi   = ABS( dPsi   - MAXVAL( uGF(:,:,:,:,iGF_Psi)   ) ) &
+                 / MAXVAL( uGF(:,:,:,:,iGF_Psi)   )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E1(1)
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+
+      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. 10 )THEN
+
+        WRITE(*,*) 'Could not initialize fields. Exiting...'
+        STOP
+
+      END IF
+
+    END DO
+
+    DEALLOCATE( SourceTerms_Poseidon )
+
   END SUBROUTINE InitializeFields_YahilCollapse_FromFile
 
 
   SUBROUTINE InitializeFields_YahilCollapse_FromScratch &
-    ( dXdr, drhodD, dvdV, PolytropicConstant, &
-      CoreRadius, D0, TotalEnclosedMass )
+    ( dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
+      CoreRadius, D0, CollapseTime, TotalEnclosedMass )
 
-    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, PolytropicConstant, &
-                             CoreRadius, D0
+    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
+                             CoreRadius, D0, CollapseTime
     REAL(DP), INTENT(out) :: TotalEnclosedMass
 
-    INTEGER               :: N, iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
-    REAL(DP)              :: dr, dX, XX, R
-    REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), Numer(:), Denom(:)
+    INTEGER               :: N, iX1, iX2, iX3, iNodeX, iNodeX1, iX_L, ITER
+    REAL(DP)              :: dr, dX, XX, R, dAlpha, dPsi
+    REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), &
+                             Numer(:), Denom(:), SourceTerms_Poseidon(:,:,:,:,:)
+    LOGICAL               :: CONVERGED
+
+    LOGICAL, PARAMETER :: WriteToFile  = .FALSE.
+    INTEGER, PARAMETER :: NX = 2048
+    CHARACTER(LEN=64)  :: FileName
+    REAL(DP)           :: FileX(NX), FileD(NX), FileV(NX), FileM(NX), dLogX
+    INTEGER            :: iLine
 
     dr = 1.0e-2_DP * Kilometer
-    N = ( 1.1_DP * CoreRadius ) / dr ! Extra elements needed for ghost cells
-
     dX = dXdr * dr
+
+    N = 1.1_DP * CoreRadius * dXdr / dX
 
     ALLOCATE( Numer(N) )
     ALLOCATE( Denom(N) )
@@ -2197,7 +2275,7 @@ CONTAINS
     ALLOCATE( V(N) )
     ALLOCATE( M(N) )
 
-    X    (1) = SqrtTiny
+    X    (1) = 1.0e-5_DP
     D    (1) = D0
     U    (1) = Zero
     M    (1) = Zero
@@ -2261,6 +2339,63 @@ CONTAINS
     END DO
     END DO
 
+    IF( WriteToFile )THEN
+
+      FileX(1 ) = X(1)
+      FileX(NX) = X(N)
+
+      dLogX = ( LOG10( FileX(NX) ) - LOG10( FileX(1) ) ) / DBLE( NX - 1 )
+
+      DO iLine = 2, NX
+
+        FileX(iLine) &
+          = 10.0_DP**( LOG10( FileX(iLine-1) ) + dLogX )
+
+      END DO
+
+      FileD(1)  = D(1)
+      FileV(1)  = V(1)
+      FileM(1)  = M(1)
+      FileD(NX) = D(N)
+      FileV(NX) = V(N)
+      FileM(NX) = M(N)
+      DO iLine = 2, NX-1
+
+        iX_L = Locate( FileX(iLine), X, N )
+
+        FileD(iLine) &
+          = Interpolate1D_Linear( FileX(iLine), X(iX_L), X(iX_L+1), &
+                                                D(iX_L), D(iX_L+1) )
+
+        FileV(iLine) &
+          = Interpolate1D_Linear( FileX(iLine), X(iX_L), X(iX_L+1), &
+                                                V(iX_L), V(iX_L+1) )
+
+        FileM(iLine) &
+          = Interpolate1D_Linear( FileX(iLine), X(iX_L), X(iX_L+1), &
+                                                M(iX_L), M(iX_L+1) )
+
+      END DO
+
+      WRITE( FileName, '(A,F4.2,A,ES10.3E3,A)' ) &
+        'YahilHomologousCollapse_Gm', Gamma_IDEAL, '_t', &
+                 CollapseTime / Millisecond, 'ms.dat'
+
+      OPEN( 100, FILE = TRIM( FileName ) )
+
+      WRITE( 100, '(A)' ) '# X D V M'
+
+      DO iLine = 1, NX
+
+        WRITE( 100, '(ES24.16E3,1x,ES24.16E3,1x,ES24.16E3,1x,ES24.16E3)' ) &
+          FileX(iLine), FileD(iLine), FileV(iLine), FileM(iLine)
+
+      END DO
+
+      CLOSE( 100 )
+
+    END IF
+
     DEALLOCATE( M )
     DEALLOCATE( V )
     DEALLOCATE( U )
@@ -2268,6 +2403,66 @@ CONTAINS
     DEALLOCATE( X )
     DEALLOCATE( Denom )
     DEALLOCATE( Numer )
+
+    ! --- Iterate to incorporate gravity in initial conditions ---
+
+    ALLOCATE( SourceTerms_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3),6) )
+
+    CONVERGED = .FALSE.
+    ITER = 0
+
+    DO WHILE( .NOT. CONVERGED )
+
+      ITER = ITER + 1
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
+
+      dAlpha = MINVAL( uGF(:,:,:,:,iGF_Alpha) )
+      dPsi   = MAXVAL( uGF(:,:,:,:,iGF_Psi  ) )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+
+      dAlpha = ABS( dAlpha - MINVAL( uGF(:,:,:,:,iGF_Alpha) ) ) &
+                 / MINVAL( uGF(:,:,:,:,iGF_Alpha) )
+      dPsi   = ABS( dPsi   - MAXVAL( uGF(:,:,:,:,iGF_Psi)   ) ) &
+                 / MAXVAL( uGF(:,:,:,:,iGF_Psi)   )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E1(1)
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+
+      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. 10 )THEN
+
+        WRITE(*,*) 'Could not initialize fields. Exiting...'
+        STOP
+
+      END IF
+
+    END DO
+
+    DEALLOCATE( SourceTerms_Poseidon )
 
   END SUBROUTINE InitializeFields_YahilCollapse_FromScratch
 
@@ -2280,7 +2475,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: dX
     REAL(DP), INTENT(inout) :: X(:), D(:), U(:), M(:), Numer(:), Denom(:)
 
-    REAL(DP)            :: dDdX, dMdX, XC, &
+    REAL(DP)            :: dDdX, dMdX, XC, X0, &
                            NumerC, DenomC, NumerPrime, DenomPrime
     INTEGER             :: iX1
     LOGICAL             :: WriteToFile, FirstTime
@@ -2328,7 +2523,8 @@ CONTAINS
         DenomC = Denom(iX1)
 
         DenomPrime = ( Denom(iX1) - Denom(iX1-1) ) / dX
-        NumerPrime = -NumerC / ( DenomC / DenomPrime )
+        X0 = XC - DenomC / DenomPrime;
+        NumerPrime = NumerC / ( DenomC / DenomPrime )
 
         FirstTime = .FALSE.
 
