@@ -269,7 +269,62 @@ CONTAINS
 
   SUBROUTINE ReadGeometryFieldsHDF( Time )
 
-    REAL(DP), INTENT(in) :: Time
+    REAL(DP), INTENT(out) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: GroupName
+    INTEGER(HID_T) :: FILE_ID
+    INTEGER        :: iGF
+    REAL(DP)       :: Dataset1D(1)
+    REAL(DP)       :: Dataset3D(nX(1)*nNodesX(1), &
+                                nX(2)*nNodesX(2), &
+                                nX(3)*nNodesX(3))
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        GeometrySuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Read Time ---
+
+    DatasetName = '/Time'
+
+    CALL ReadDataset1DHDF( Dataset1D, DatasetName, FILE_ID )
+
+    Time = Dataset1D(1) * U % TimeUnit
+
+    END ASSOCIATE
+
+    ! --- Read Geometry Variables ---
+
+    GroupName = 'Geometry Fields'
+
+    DO iGF = 1, nGF
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesGF(iGF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uGF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iGF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsGF(iGF)
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE ReadGeometryFieldsHDF
 
