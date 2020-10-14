@@ -23,6 +23,7 @@ MODULE InputOutputModuleHDF
     Field3D, &
     FromField3D, &
     Field4D, &
+    FromField4D, &
     Opacity4D
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, namesGF, unitsGF
@@ -158,7 +159,7 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       ReadGF_Option, ReadFF_Option, ReadRF_Option
 
-    LOGICAL :: ReadGF, ReadFF, ReadRF
+    LOGICAL  :: ReadGF, ReadFF, ReadRF
 
     FileNumber = ReadFileNumber
 
@@ -692,7 +693,95 @@ CONTAINS
 
   SUBROUTINE ReadRadiationFieldsHDF( Time )
 
-    REAL(DP), INTENT(in) :: Time
+    REAL(DP), INTENT(out) :: Time
+
+    CHARACTER(2)   :: String2
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: GroupNameSpecies
+    INTEGER(HID_T) :: FILE_ID
+    INTEGER        :: iS, iRF
+    REAL(DP)       :: Dataset1D(1)
+    REAL(DP)       :: Dataset4D(nE   *nNodesE,    &
+                                nX(1)*nNodesX(1), &
+                                nX(2)*nNodesX(2), &
+                                nX(3)*nNodesX(3))
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        RadiationSuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Read Time ---
+
+    DatasetName = '/Time'
+
+    CALL ReadDataset1DHDF( Dataset1D, DatasetName, FILE_ID )
+
+    Time = Dataset1D(1) * U % TimeUnit
+
+    END ASSOCIATE
+
+    ! --- Read Radiation Variables ---
+
+    DO iS = 1, nSpecies
+
+      WRITE( String2, FMT='(i2.2)') iS
+
+      GroupNameSpecies = 'Radiation Fields/' // 'Species_' // String2
+
+      ! --- Conserved ---
+
+      GroupName = TRIM( GroupNameSpecies ) // '/Conserved'
+
+      DO iRF = 1, nCR
+
+        DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCR(iRF) )
+
+        CALL ReadDataset4DHDF( Dataset4D, DatasetName, FILE_ID )
+
+        uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iRF,iS) &
+          = FromField4D &
+              ( Dataset4D, [ nE, nX(1), nX(2), nX(3) ], &
+                [ nNodesE, nNodesX(1), nNodesX(2), nNodesX(3) ], &
+                nDOF, NodeNumberTable )
+
+      END DO
+
+      ! --- Primitive ---
+
+      GroupName = TRIM( GroupNameSpecies ) // '/Primitive'
+
+      DO iRF = 1, nPR
+
+        DatasetName = TRIM( GroupName ) // '/' // TRIM( namesPR(iRF) )
+
+        CALL ReadDataset4DHDF( Dataset4D, DatasetName, FILE_ID )
+
+        uPR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iRF,iS) &
+          = FromField4D &
+              ( Dataset4D, [ nE, nX(1), nX(2), nX(3) ], &
+                [ nNodesE, nNodesX(1), nNodesX(2), nNodesX(3) ], &
+                nDOF, NodeNumberTable )
+
+      END DO
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE ReadRadiationFieldsHDF
 
@@ -1161,6 +1250,26 @@ CONTAINS
     call H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset4DHDF
+
+
+  SUBROUTINE ReadDataset4DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(out) :: Dataset(:,:,:,:)
+    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
+    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
+
+    INTEGER(HID_T) :: DATASET_ID
+    INTEGER(HID_T) :: DATASIZE(4)
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
+
+    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE ReadDataset4DHDF
 
 
 END MODULE InputOutputModuleHDF
