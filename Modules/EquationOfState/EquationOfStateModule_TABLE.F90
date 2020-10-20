@@ -987,11 +987,31 @@ CONTAINS
 
     IF ( ANY( Error(:) > 0 ) ) THEN
       DO iP = 1, nP
-        IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
+        IF ( Error(iP) > 0 ) THEN
+          PRINT*, &
+          'Error in thornado ComputeThermodynamicStates_Auxiliary_TABLE_Vector'
+          PRINT*, &
+          'Called ComputeTemperatureFromSpecificInternalEnergy_TABLE wt '
+          WRITE(*,'(A,4ES12.3)') &
+          'D(iP), Em(iP), Y(iP), T(iP) ', &
+           D(iP) / UnitD, Em(iP) / UnitE, Y(iP), T(iP) / UnitT
+          CALL DescribeEOSInversionError( Error(iP) )
+
+          IF( Error(iP) == 13 ) THEN ! 13 - Unable to Find Any Root
+            WRITE(*,'(A,ES12.3,A)') '  Enforce T = MinT =', MinT / UnitT, ' K'
+            T(iP) = MinT * (1.0_DP + 1.0e-6) ! Using the min T in Eos table
+            CALL ComputeDependentVariable_TABLE &
+                   ( D(iP), T(iP), Y(iP), Em(iP), Es_T, OS_E, Units_V = UnitE )
+            WRITE(*,'(A,ES12.3,A)') &
+            '   and corresponding Em =', Em(iP) / UnitE, 'Erg / Gram'
+            Error(iP) = 0 ! Erase the error flag is able to find Em
+          END IF
+
+        END IF
       END DO
-      STOP
     END IF
 
+    IF( ANY( Error(:) > 0 ) ) STOP
 #endif
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector
