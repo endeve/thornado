@@ -98,7 +98,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: GX_N(:,:)
   REAL(DP), ALLOCATABLE :: dF_N(:,:)
   REAL(DP), ALLOCATABLE :: Chi(:,:,:)
-  REAL(DP), ALLOCATABLE :: Sig(:,:,:)
+  REAL(DP), ALLOCATABLE :: Sig_0(:,:,:)
+  REAL(DP), ALLOCATABLE :: Sig_1(:,:,:)
   REAL(DP), ALLOCATABLE :: fEQ(:,:,:)
   REAL(DP), ALLOCATABLE :: Chi_NES(:,:,:)
   REAL(DP), ALLOCATABLE :: Eta_NES(:,:,:)
@@ -346,13 +347,22 @@ CONTAINS
 
     DO iS = 1, nSpecies
 
+      ! iMoment = 1
       CALL ComputeNeutrinoOpacities_ES_Points &
              ( 1, nE_G, 1, nX_G, &
                E_N (:), &
                PF_N(:,iPF_D ), &
                AF_N(:,iAF_T ), &
                AF_N(:,iAF_Ye), &
-               iS, 1, Sig(:,:,iS) )
+               iS, 1, Sig_0(:,:,iS) )
+      ! iMoment = 2
+      CALL ComputeNeutrinoOpacities_ES_Points &
+             ( 1, nE_G, 1, nX_G, &
+               E_N (:), &
+               PF_N(:,iPF_D ), &
+               AF_N(:,iAF_T ), &
+               AF_N(:,iAF_Ye), &
+               iS, 2, Sig_1(:,:,iS) )
 
     END DO
 
@@ -413,7 +423,8 @@ CONTAINS
                AF_N(:,iAF_T ), &
                AF_N(:,iAF_Ye), &
                AF_N(:,iAF_E ), &
-               nIterations(:) )
+               nIterations(:), &
+               1.0d-7 )
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 
@@ -542,7 +553,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( Chi_T, Eta_T, Eta, Kappa ) &
     !$ACC PRESENT( Chi, Chi_NES, Chi_Pair, Eta_NES, Eta_Pair, &
-    !$ACC          Sig, fEQ, CR_N, dR_N )
+    !$ACC          Sig_0, Sig_1, fEQ, CR_N, dR_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
@@ -550,7 +561,7 @@ CONTAINS
         DO iN_E = 1, nE_G
 
           Chi_T = Chi(iN_E,iN_X,iS) + Chi_NES(iN_E,iN_X,iS) + Chi_Pair(iN_E,iN_X,iS)
-          Kappa = Chi_T + Sig(iN_E,iN_X,iS)
+          Kappa = Chi_T + Sig_0(iN_E,iN_X,iS) - Sig_1(iN_E, iN_X,iS) / 3.0_DP
 
           Eta   = Chi(iN_E,iN_X,iS) * fEQ(iN_E,iN_X,iS)
           Eta_T = Eta + Eta_NES(iN_E,iN_X,iS) + Eta_Pair(iN_E,iN_X,iS)
@@ -751,7 +762,8 @@ CONTAINS
     ALLOCATE( dF_N(nX_G,nGF) )
 
     ALLOCATE( Chi     (nE_G,nX_G,nSpecies) )
-    ALLOCATE( Sig     (nE_G,nX_G,nSpecies) )
+    ALLOCATE( Sig_0     (nE_G,nX_G,nSpecies) )
+    ALLOCATE( Sig_1     (nE_G,nX_G,nSpecies) )
     ALLOCATE( fEQ     (nE_G,nX_G,nSpecies) )
     ALLOCATE( Chi_NES (nE_G,nX_G,nSpecies) )
     ALLOCATE( Eta_NES (nE_G,nX_G,nSpecies) )
@@ -776,13 +788,13 @@ CONTAINS
     !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$OMP          nIterations, nIterations_Inner, nIterations_Outer ) &
     !$OMP MAP( alloc: CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
-    !$OMP             Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    !$OMP             Chi, Sig_0, Sig_1, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$ACC         nIterations, nIterations_Inner, nIterations_Outer ) &
     !$ACC CREATE( CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
-    !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    !$ACC         Chi, Sig_0, Sig_1, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
   END SUBROUTINE InitializeCollisions_New
@@ -797,13 +809,13 @@ CONTAINS
     !$OMP MAP( from: nIterations, nIterations_Inner, nIterations_Outer ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$OMP               CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
-    !$OMP               Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    !$OMP               Chi, Sig_0, Sig_1, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT( nIterations, nIterations_Inner, nIterations_Outer ) &
     !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$ACC         CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
-    !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    !$ACC         Chi, Sig_0, Sig_1, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
     IF( TallyNonlinearSolver )THEN
@@ -926,7 +938,7 @@ CONTAINS
     END IF
 
     DEALLOCATE( CF_N, PF_N, AF_N, GX_N, dF_N )
-    DEALLOCATE( Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    DEALLOCATE( Chi, Sig_0, Sig_1, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
     DEALLOCATE( CR_N, dR_N )
     DEALLOCATE( nIterations, nIterations_Inner, nIterations_Outer )
 
