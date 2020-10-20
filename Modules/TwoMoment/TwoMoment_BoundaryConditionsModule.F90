@@ -422,7 +422,7 @@ CONTAINS
       END DO
       END DO
 
-    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+    CASE ( 32,30 ) ! Reflecting (Inner), Homogeneous (Outer)
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
