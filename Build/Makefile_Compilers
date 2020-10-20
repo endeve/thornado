@@ -3,28 +3,28 @@ OPENMP_titan_pgi     = -mp
 OPENMP_summitdev_gcc = -fopenmp
 OPENMP_summitdev_pgi = -mp
 OPENMP_summitdev_xl  = -qsmp=omp:noauto
-	OPENMP_summit_gcc    = -fopenmp
-	OPENMP_summit_pgi    = -mp
+OPENMP_summit_gcc    = -fopenmp
+OPENMP_summit_pgi    = -mp
 OPENMP_summit_xl     = -qsmp=omp:noauto
-	OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
-	OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
-	ifeq ($(USE_OMP),TRUE)
-	OPENMP               = $(OPENMP_$(MACHINE))
-    else ifeq ($(USE_OMP_OL),TRUE)
+OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
+OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
+ifeq ($(USE_OMP),TRUE)
+    OPENMP               = $(OPENMP_$(MACHINE))
+else ifeq ($(USE_OMP_OL),TRUE)
     OPENMP               = $(OPENMP_OL_$(MACHINE))
 endif
 
 OPENACC_titan_gnu    = -fopenacc
 OPENACC_titan_pgi    = -acc -ta=tesla:cc35,cuda9.1,ptxinfo -Minfo=accel
-	OPENACC_summitdev_gcc= -fopenacc
+OPENACC_summitdev_gcc= -fopenacc
 OPENACC_summitdev_pgi= -acc -ta=tesla:cc60,cuda9.2,ptxinfo -Minfo=accel
-	OPENACC_summitdev_xl =
-	OPENACC_summit_gcc   = -fopenacc
+OPENACC_summitdev_xl =
+OPENACC_summit_gcc   = -fopenacc
 OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
-	OPENACC_summit_xl    =
-	ifeq ($(USE_OACC),TRUE)
-	OPENACC              = $(OPENACC_$(MACHINE))
-    endif
+OPENACC_summit_xl    =
+ifeq ($(USE_OACC),TRUE)
+    OPENACC              = $(OPENACC_$(MACHINE))
+endif
 
 C_titan_gnu          = CC -std=c++11 $(OPENMP)
 C_titan_pgi          = CC --c++11 $(OPENMP)
@@ -150,11 +150,11 @@ DEBUG_mcarpe21     = -g
 DEBUG_summitdev_gcc= -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
 DEBUG_summitdev_pgi= -O0 -Mbounds -Mnoopenmp -Ktrap=fp
 DEBUG_summitdev_xl = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
-	DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
-	DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp
-	DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
-	DEBUG_acf_gnu      = -g -fbacktrace -ffpe-trap=invalid,zero -fbounds-check
-	DEBUG              = $(DEBUG_$(MACHINE))
+DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
+DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp
+DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
+DEBUG_acf_gnu      = -g -fbacktrace -ffpe-trap=invalid,zero -fbounds-check
+DEBUG              = $(DEBUG_$(MACHINE))
 
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
@@ -431,10 +431,10 @@ MDEFS_acf_gnu      =
 MDEFS              = $(MDEFS_$(MACHINE))
 
 ifeq ($(USE_GPU),TRUE)
-       INCLUDE      += $(INCLUDE_CUDA)
-          LIBRARIES    += $(LIBRARIES_CUDA)
-	     ifeq ($(USE_MAGMA),TRUE)
-	           INCLUDE   += $(INCLUDE_MAGMA)
-		         LIBRARIES += $(LIBRARIES_MAGMA)
-			    endif
-			endif
+    INCLUDE      += $(INCLUDE_CUDA)
+    LIBRARIES    += $(LIBRARIES_CUDA)
+    ifeq ($(USE_MAGMA),TRUE)
+        INCLUDE   += $(INCLUDE_MAGMA)
+        LIBRARIES += $(LIBRARIES_MAGMA)
+    endif
+endif
