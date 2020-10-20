@@ -1,7 +1,7 @@
 #ifdef THORNADO_DEBUG
 #define THORNADO_DEBUG_POSITIVITYLIMITER
 #endif
-MODULE TwoMoment_PositivityLimiterModule
+MODULE TwoMoment_PositivityLimiterModule_Old
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
@@ -111,7 +111,7 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
+      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter_TwoMoment'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter 
@@ -583,4 +583,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE TwoMoment_PositivityLimiterModule
+END MODULE TwoMoment_PositivityLimiterModule_Old
