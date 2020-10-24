@@ -344,7 +344,7 @@ CONTAINS
 
       END DO
 
-      IF( Min_K < Min_1 .OR. Max_K > Max_K )THEN
+      IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
 
         Theta_1 &
           = MIN( One, &
@@ -383,8 +383,8 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      Gamma_Min = Min_2
       Theta_2   = One
+      Gamma_Min = Min_2
 
       DO iP = 1, nPT
 
@@ -397,7 +397,7 @@ CONTAINS
 
         Gamma_Min = MIN( Gamma, Gamma_Min )
 
-        IF( Gamma_Min < Min_2 )THEN
+        IF( Gamma < Min_2 )THEN
 
           CALL SolveTheta_Bisection &
                  ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
