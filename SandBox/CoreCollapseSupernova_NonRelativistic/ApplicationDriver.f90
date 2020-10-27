@@ -57,9 +57,9 @@ PROGRAM ApplicationDriver
   INTEGER       :: RestartFileNumber
   INTEGER       :: nNodes, nSpecies
   INTEGER       :: nX(3), bcX(3), nE, bcE
-  INTEGER       :: iCycle, iCycleD
+  INTEGER       :: iCycle, iCycleD, nEquidistantX
   REAL(DP)      :: xL(3), xR(3), eL, eR
-  REAL(DP)      :: zoomX(3), zoomE, CFL, RampFactor
+  REAL(DP)      :: dEquidistantX, zoomE, CFL, RampFactor
   REAL(DP)      :: t, t_wrt, t_end, dt, dt_wrt
   REAL(DP)      :: dt_Fluid, dt_Neutrinos
   REAL(DP)      :: dt_Initial, dt_Ramp
@@ -76,23 +76,24 @@ PROGRAM ApplicationDriver
 
   ProgenitorFileName = '../Progenitors/WH07_15M_Sun.h5'
 
-  RestartFileNumber = 244
+  RestartFileNumber = - 1
 
   ! --- Evolution Parameters ---
 
-  t_end   = 3.00d+2 * Millisecond
-  dt_wrt  = 1.00d-1 * Millisecond
+  t_end   = 2.37d+2 * Millisecond
+  dt_wrt  = 1.00d-0 * Millisecond
   wrt     = .FALSE.
   iCycleD = 10
 
   ! --- Position Space Grid Parameters ---
 
-  nX  = [ 128, 1, 1 ]
+  nX  = [ 200, 1, 1 ]
   xL  = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ]
   xR  = [ 8.0d3 * Kilometer, Pi   , TwoPi ]
   bcX = [ 30, 0, 0 ]
 
-  zoomX = [ 1.047527505714380_DP, 1.0_DP, 1.0_DP ]
+  nEquidistantX = 50
+  dEquidistantX = 1.0d0 * Kilometer
 
   ! --- Energy Space Grid Parameters ---
 
@@ -105,7 +106,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Step Control ---
 
-  RampTimeStep = .FALSE.
+  RampTimeStep = .TRUE.
   RampFactor   = 1.1_DP
   dt_Initial   = 1.0d-6 * Millisecond
 
@@ -165,6 +166,13 @@ PROGRAM ApplicationDriver
              ReadGF_Option = .TRUE., &
              ReadFF_Option = .TRUE., &
              ReadRF_Option = .TRUE. )
+
+    ! --- Solve for Gravitational Potential (To Fill Geometry Ghost Cells) ---
+
+    CALL SolveGravity_Newtonian_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+             uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
   END IF
 
@@ -276,6 +284,9 @@ CONTAINS
 
     USE ProgramInitializationModule, ONLY: &
       InitializeProgram
+    USE MeshModule, ONLY: &
+      MeshX, &
+      CreateMesh_Custom
     USE ReferenceElementModuleX, ONLY: &
       InitializeReferenceElementX
     USE ReferenceElementModuleX_Lagrange, ONLY: &
@@ -325,8 +336,6 @@ CONTAINS
                = xL, &
              xR_Option &
                = xR, &
-             zoomX_Option &
-               = zoomX, &
              nE_Option &
                = nE, &
              swE_Option &
@@ -349,6 +358,10 @@ CONTAINS
                = nSpecies, &
              BasicInitialization_Option &
                = .TRUE. )
+
+    CALL CreateMesh_Custom &
+           ( MeshX(1), nX(1), nNodes, 1, xL(1), xR(1), &
+             nEquidistantX, dEquidistantX, Verbose_Option = .TRUE. )
 
     ! --- Position Space Reference Element and Geometry ---
 
