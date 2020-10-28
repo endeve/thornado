@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two
+    DP, Zero, One, Two, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -79,6 +79,7 @@ PROGRAM ApplicationDriver
   IMPLICIT NONE
 
   CHARACTER(2)  :: Direction
+  CHARACTER(32) :: Spectrum
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
@@ -87,14 +88,14 @@ PROGRAM ApplicationDriver
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
-  REAL(DP)      :: eL, eR, xL(3), xR(3)
+  REAL(DP)      :: eL, eR, xL(3), xR(3), ZoomE = One
   REAL(DP)      :: t, dt, t_end, V_0(3)
   REAL(DP)      :: D_0, Chi, Sigma
   REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'TransparentShock'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -197,11 +198,13 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
+      Spectrum = 'Bose-Einstein'
+
       Direction = 'X' ! --- (X,Y, or Z)
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        nX  = [ 32, 1, 1 ]
+        nX  = [ 64, 1, 1 ]
         xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
@@ -236,10 +239,11 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      nE  = 16
-      eL  = 0.0d0
-      eR  = 5.0d1
-      bcE = 10
+      nE    = 40
+      eL    = 0.0d0
+      eR    = 5.0d1
+      bcE   = 10
+      zoomE = 1.1_DP
 
       nNodes = 2
 
@@ -530,6 +534,8 @@ PROGRAM ApplicationDriver
              = eL, &
            eR_Option &
              = eR, &
+           zoomE_Option &
+             = zoomE, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -600,8 +606,8 @@ PROGRAM ApplicationDriver
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = EPSILON( One ), &
-           Min_2_Option = EPSILON( One ), &
+         ( Min_1_Option = SqrtTiny, &
+           Min_2_Option = SqrtTiny, &
            UsePositivityLimiter_Option &
              = UsePositivityLimiter, &
            Verbose_Option = .TRUE. )
@@ -619,7 +625,7 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( V_0, LengthScale, Direction )
+  CALL InitializeFields( V_0, LengthScale, Direction, Spectrum )
 
   ! --- Apply Slope Limiter to Initial Data ---
 
