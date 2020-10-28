@@ -41,11 +41,12 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( V_0, LengthScale, Direction )
+  SUBROUTINE InitializeFields( V_0, LengthScale, Direction, Spectrum )
 
-    REAL(DP),     INTENT(in) :: V_0(3)
-    REAL(DP),     INTENT(in) :: LengthScale
-    CHARACTER(2), INTENT(in) :: Direction
+    REAL(DP),      INTENT(in) :: V_0(3)
+    REAL(DP),      INTENT(in) :: LengthScale
+    CHARACTER(2),  INTENT(in) :: Direction
+    CHARACTER(32), INTENT(in) :: Spectrum
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -68,7 +69,7 @@ CONTAINS
       CASE( 'StreamingDopplerShift' )
 
         CALL InitializeFields_StreamingDopplerShift &
-               ( V_0, Direction )
+               ( V_0, Direction, Spectrum )
 
       CASE( 'TransparentTurbulence' )
 
@@ -457,10 +458,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_StreamingDopplerShift &
-    ( V_0, Direction )
+    ( V_0, Direction, Spectrum )
 
-    REAL(DP),     INTENT(in) :: V_0(3)
-    CHARACTER(2), INTENT(in) :: Direction
+    REAL(DP),      INTENT(in) :: V_0(3)
+    CHARACTER(2),  INTENT(in) :: Direction
+    CHARACTER(32), INTENT(in) :: Spectrum
 
     REAL(DP), PARAMETER :: X_0 = 2.0_DP
     REAL(DP), PARAMETER :: X_1 = 3.5_DP
@@ -595,10 +597,14 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-8
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = 1.0d-40
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = Zero
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = Zero
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = Zero
         
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
@@ -624,14 +630,15 @@ CONTAINS
     END DO
     END DO
 
-    CALL SetInnerBoundary_StreamingDopplerShift( Direction )
+    CALL SetInnerBoundary_StreamingDopplerShift( Direction, Spectrum )
 
   END SUBROUTINE InitializeFields_StreamingDopplerShift
 
 
-  SUBROUTINE SetInnerBoundary_StreamingDopplerShift( Direction )
+  SUBROUTINE SetInnerBoundary_StreamingDopplerShift( Direction, Spectrum )
 
-    CHARACTER(2), INTENT(in) :: Direction
+    CHARACTER(2),  INTENT(in) :: Direction
+    CHARACTER(32), INTENT(in) :: Spectrum
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeE
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
@@ -718,8 +725,24 @@ CONTAINS
 
         E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
-          = One / ( EXP( E / Three - Three ) + One )
+        SELECT CASE( TRIM( Spectrum ) )
+
+          CASE( 'Fermi-Dirac' )
+
+            uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+              = One / ( EXP( E / Three - Three ) + One )
+
+          CASE( 'Bose-Einstein' )
+
+            uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+              = One / ( EXP( E ) - One )
+
+          CASE DEFAULT
+
+            uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+              = One / ( EXP( E / Three - Three ) + One )
+
+          END SELECT
 
         IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
