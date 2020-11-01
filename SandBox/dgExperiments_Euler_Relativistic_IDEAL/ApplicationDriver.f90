@@ -43,8 +43,7 @@ PROGRAM ApplicationDriver
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF,  &
-    WriteAccretionShockDiagnosticsHDF
+    ReadFieldsHDF
   USE FluidFieldsModule, ONLY: &
     uCF, &
     uPF, &
@@ -85,8 +84,6 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize,  &
     Timer_Euler_Finalize
-  USE AccretionShockDiagnosticsModule, ONLY: &
-    ComputeAccretionShockDiagnostics
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
 
@@ -126,15 +123,6 @@ PROGRAM ApplicationDriver
   INTEGER  :: nDetCells
   REAL(DP) :: Vmax, LorentzFactor
 
-  ! --- Standing accretion shock ---
-  REAL(DP) :: MassPNS, RadiusPNS, ShockRadius, &
-              AccretionRate, PolytropicConstant
-  LOGICAL  :: ApplyPerturbation
-  INTEGER  :: PerturbationOrder
-  REAL(DP) :: PerturbationAmplitude, &
-              rPerturbationInner, rPerturbationOuter
-  REAL(DP) :: Power(0:2)
-
   ! --- Yahil Collapse ---
   REAL(DP) :: D0, CentralDensity, CentralPressure, CoreRadius, CollapseTime
 
@@ -156,7 +144,6 @@ PROGRAM ApplicationDriver
 !!$  ProgramName = 'RiemannProblemSpherical'
 !!$  ProgramName = 'SedovTaylorBlastWave'
 !!$  ProgramName = 'KelvinHelmholtzInstability'
-!!$  ProgramName = 'StandingAccretionShock'
 !!$  ProgramName = 'StaticTOV'
 !!$  ProgramName = 'YahilCollapse'
 
@@ -340,37 +327,6 @@ PROGRAM ApplicationDriver
        xL = [ -0.5d0, -1.0d0, 0.0d0 ]
        xR = [  0.5d0,  1.0d0, 1.0d0 ]
 
-    CASE( 'StandingAccretionShock' )
-
-      Gamma = 4.0e0_DP / 3.0e0_DP
-      t_end = 3.0d2 * Millisecond
-      bcX = [ 11, 0, 0 ]
-
-      MassPNS            = 1.4_DP    * SolarMass
-      RadiusPNS          = 40.0_DP   * Kilometer
-      ShockRadius        = 180.0_DP  * Kilometer
-      AccretionRate      = 0.3_DP    * ( SolarMass / Second )
-      PolytropicConstant = 2.0e14_DP * ( Erg / Centimeter**3 &
-                                         / ( Gram / Centimeter**3 )**( Gamma ) )
-      ApplyPerturbation     = .TRUE.
-      PerturbationOrder     = 0
-      PerturbationAmplitude = 0.04_DP
-      rPerturbationInner    = 260.0_DP * Kilometer
-      rPerturbationOuter    = 280.0_DP * Kilometer
-
-      nX  = [ 960, 1, 1 ]
-      swX = [ 1, 1, 0 ]
-      xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
-
-      CoordinateSystem = 'SPHERICAL'
-
-      WriteGF = .TRUE.
-
-      ActivateUnits = .TRUE.
-
-      Mass = MassPNS
-
     CASE( 'StaticTOV' )
 
        SelfGravity = .TRUE.
@@ -430,7 +386,6 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  RiemannProblemSpherical'
       WRITE(*,'(A)')     '  SedovTaylorBlastWave'
       WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
-      WRITE(*,'(A)')     '  StandingAccretionShock'
       WRITE(*,'(A)')     '  StaticTOV'
       WRITE(*,'(A)')     '  YahilCollapse'
       WRITE(*,'(A)')     'Stopping...'
@@ -554,22 +509,13 @@ PROGRAM ApplicationDriver
              = TRIM( AdvectionProfile ), &
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ), &
-           nDetCells_Option             = nDetCells, &
-           Eblast_Option                = Eblast, &
-           MassPNS_Option               = MassPNS, &
-           ShockRadius_Option           = ShockRadius, &
-           AccretionRate_Option         = AccretionRate, &
-           PolytropicConstant_Option    = PolytropicConstant, &
-           ApplyPerturbation_Option     = ApplyPerturbation, &
-           PerturbationOrder_Option     = PerturbationOrder, &
-           PerturbationAmplitude_Option = PerturbationAmplitude, &
-           rPerturbationInner_Option    = rPerturbationInner, &
-           rPerturbationOuter_Option    = rPerturbationOuter, &
-           D0_Option                    = D0, &
-           CentralDensity_Option        = CentralDensity, &
-           CentralPressure_Option       = CentralPressure, &
-           CoreRadius_Option            = CoreRadius, &
-           CollapseTime_Option          = CollapseTime )
+           nDetCells_Option       = nDetCells, &
+           Eblast_Option          = Eblast, &
+           D0_Option              = D0, &
+           CentralDensity_Option  = CentralDensity, &
+           CentralPressure_Option = CentralPressure, &
+           CoreRadius_Option      = CoreRadius, &
+           CollapseTime_Option    = CollapseTime )
 
   IF( RestartFileNumber .GE. 0 )THEN
 
@@ -726,18 +672,6 @@ PROGRAM ApplicationDriver
         wrt = .FALSE.
 
       END IF
-    END IF
-
-    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-      CALL ComputeAccretionShockDiagnostics &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-
-      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-
     END IF
 
     IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
