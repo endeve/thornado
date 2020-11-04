@@ -70,7 +70,7 @@ MODULE InputOutputModuleHDF
   ! --- Source Term Diagnostics ---
   CHARACTER(21), PARAMETER :: &
     BaseNameST = 'SourceTermDiagnostics'
-  INTEGER :: FileNumber_ST = 1
+  INTEGER :: FileNumber_ST = 0
 
   INTEGER :: HDFERR
 
@@ -1146,6 +1146,28 @@ CONTAINS
                ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),5), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Square of Extrinsic Curvature ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Square of Kij'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),6), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( Centimeter**( -2 ) ), &
+             DatasetName, FILE_ID )
+
+    ! --- Gradient of Conformal Factor ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'GradPsi'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),7), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( Centimeter**( -1 ) ), &
              DatasetName, FILE_ID )
 
     ! --- Additional diagnostics go here ---
