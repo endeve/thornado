@@ -56,4 +56,5 @@ GravitySolutionModule_CFA_Poseidon.o: \
   GeometryComputationModule.o \
   GeometryFieldsModule.o \
   UnitsModule.o \
+  TimersModule_Euler.o \
   GravitySolutionModule_CFA_Poseidon.F90
