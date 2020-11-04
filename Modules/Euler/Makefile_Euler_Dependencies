@@ -120,6 +120,7 @@ Euler_PositivityLimiterModule.o: \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule.F90
 
 Euler_BoundaryConditionsModule.o: \
@@ -215,6 +216,7 @@ Euler_SlopeLimiterModule.o: \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_SlopeLimiterModule.F90
 
 Euler_dgDiscretizationModule.o: \

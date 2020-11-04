@@ -6,6 +6,7 @@ MODULE Euler_PositivityLimiterModule
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL
+  USE Euler_PositivityLimiterModule_Relativistic_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -29,14 +30,27 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option, Max_2_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_3_Option, Max_3_Option
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL InitializePositivityLimiter_Euler_Relativistic_TABLE &
+           ( UsePositivityLimiter_Option, Verbose_Option, &
+             Min_1_Option, Min_2_Option, Min_3_Option, &
+             Max_1_Option, Max_2_Option, Max_3_Option )
+
+#else
 
     CALL InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option, Verbose_Option, &
              Min_1_Option, Min_2_Option, Min_3_Option, &
              Max_1_Option, Max_2_Option, Max_3_Option )
 
-#elif defined HYDRO_RELATIVISTIC
+#endif
+
+#else
+
+#ifdef HYDRO_RELATIVISTIC
 
     CALL InitializePositivityLimiter_Euler_Relativistic_IDEAL &
            ( UsePositivityLimiter_Option, Verbose_Option, &
@@ -50,22 +64,36 @@ CONTAINS
 
 #endif
 
+#endif
+
   END SUBROUTINE InitializePositivityLimiter_Euler
 
 
   SUBROUTINE FinalizePositivityLimiter_Euler
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL FinalizePositivityLimiter_Euler_Relativistic_TABLE
+
+#else
 
     CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
-#elif defined HYDRO_RELATIVISTIC
+#endif
+
+#else
+
+#ifdef HYDRO_RELATIVISTIC
 
     CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
 #else
 
     CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
+
+#endif
 
 #endif
 
@@ -84,12 +112,23 @@ CONTAINS
     REAL(DP), INTENT(inout), OPTIONAL :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+#else
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-#elif defined HYDRO_RELATIVISTIC
+#endif
+
+#else
+
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
@@ -98,6 +137,8 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+#endif
 
 #endif
 

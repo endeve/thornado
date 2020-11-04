@@ -47,7 +47,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
     iPF_Ne
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputePressureFromPrimitive_TABLE, &
-    ComputeTemperatureFromPressure_TABLE
+    ComputeTemperatureFromPressure_TABLE, &
+    ComputeSpecificInternalEnergy_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE UnitsModule, ONLY: &
@@ -196,7 +197,8 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF, iP
     REAL(DP) :: G_q(nDOFX,nGF), U_q(nDOFX,nCF), &
                 U_K(nCF), q(nPT), SSq(nPT), &
-                Ye(nPT), Pressure(nPT), Temperature(nPT)
+                Ye(nPT), Pressure(nPT), Temperature(nPT), &
+                Eps(nPT), Min_E(nPT), Max_E(nPT)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -251,12 +253,27 @@ CONTAINS
       CALL ComputeTemperatureFromPressure_TABLE &
              ( P_PP(:,iPF_D), Pressure, Ye, Temperature )
 
+      CALL ComputeSpecificInternalEnergy_TABLE &
+             ( P_PP(:,iPF_D), Temperature, Ye, Eps )
+
+      DO iP = 1, nPT
+
+        CALL ComputeSpecificInternalEnergy_TABLE &
+               ( P_PP(iP,iPF_D), Min_T, Ye(iP), Min_E(iP) )
+
+        CALL ComputeSpecificInternalEnergy_TABLE &
+               ( P_PP(iP,iPF_D), Max_T, Ye(iP), Max_E(iP) )
+
+      END DO
+
       IF(        ANY( P_PP(:,iPF_D) .LT. Min_D  ) &
             .OR. ANY( P_PP(:,iPF_D) .GT. Max_D  ) &
             .OR. ANY( Temperature   .LT. Min_T  ) &
             .OR. ANY( Temperature   .GT. Max_T  ) &
             .OR. ANY( Ye            .LT. Min_Ye ) &
-            .OR. ANY( Ye            .GT. Max_Ye ) )THEN
+            .OR. ANY( Ye            .GT. Max_Ye ) &
+            .OR. ANY( Eps           .LT. MINVAL( Min_E ) ) &
+            .OR. ANY( Eps           .GT. MAXVAL( Max_E ) ) )THEN
 
 
         DO iCF = 1, nCF
