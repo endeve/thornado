@@ -3,10 +3,32 @@ MODULE Euler_PositivityLimiterModule
   USE KindModule, ONLY: &
     DP
 
-  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
-  USE Euler_PositivityLimiterModule_NonRelativistic_TABLE
-  USE Euler_PositivityLimiterModule_Relativistic_IDEAL
+#ifdef MICROPHYSICS_WEAKLIB
+
+#ifdef HYDRO_RELATIVISTIC
+
   USE Euler_PositivityLimiterModule_Relativistic_TABLE
+
+#else
+
+  USE Euler_PositivityLimiterModule_NonRelativistic_TABLE
+
+#endif
+
+#else
+
+#ifdef HYDRO_RELATIVISTIC
+
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL
+
+#else
+
+  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
+
+#endif
+
+#endif
+
 
   IMPLICIT NONE
   PRIVATE
