@@ -1,9 +1,14 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP,   &
+    Zero, &
+    One
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1, &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
@@ -12,10 +17,13 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
     Timer_Euler_UpdateFluid
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
+  USE Euler_dgDiscretizationModule, ONLY: &
+    WriteSourceTerms
 
   IMPLICIT NONE
   PRIVATE
@@ -31,6 +39,8 @@ MODULE TimeSteppingModule_SSPRK
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
+
+  LOGICAL, PUBLIC :: WriteSourceTerms2
 
   INTERFACE
     SUBROUTINE FluidIncrement &
@@ -72,6 +82,8 @@ CONTAINS
     INTEGER, INTENT(in) :: nStages
 
     INTEGER :: i
+
+WriteSourceTerms2 = .FALSE.
 
     nStages_SSPRK = nStages
 
@@ -191,7 +203,7 @@ CONTAINS
     ! --- E, S, S^1, S^2, S^3 ---
     REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),7)
+                                 iX_B0(3):iX_E0(3),6)
 
     LOGICAL :: SolveGravity
     LOGICAL :: DEBUG = .FALSE.
@@ -241,6 +253,11 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
 
         END IF
+
+        WriteSourceTerms = .FALSE.
+
+        IF( WriteSourceTerms2 .AND. iS .EQ. nStages_SSPRK ) &
+          WriteSourceTerms = .TRUE.
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &

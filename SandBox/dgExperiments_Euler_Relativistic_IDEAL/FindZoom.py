@@ -3,7 +3,7 @@ from scipy.optimize import bisect
 
 eta = 0.5 / 1.0e5
 
-N = 128
+N = 256
 
 def f( z ):
     return eta * ( z**N - 1.0 ) - ( z - 1.0 )

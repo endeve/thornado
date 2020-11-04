@@ -48,8 +48,7 @@ PROGRAM ApplicationDriver
     uCF, &
     uPF, &
     uAF, &
-    uDF, &
-    iPF_D
+    uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
@@ -61,7 +60,8 @@ PROGRAM ApplicationDriver
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
-    UpdateFluid_SSPRK
+    UpdateFluid_SSPRK, &
+    WriteSourceTerms2
   USE UnitsModule, ONLY: &
     Kilometer,   &
     SolarMass,   &
@@ -86,6 +86,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_Finalize
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
+  USE Euler_dgDiscretizationModule, ONLY: &
+    Time
 
   IMPLICIT NONE
 
@@ -96,8 +98,6 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
-  LOGICAL       :: OPTIMIZE = .FALSE.
-  LOGICAL       :: SuppressTally = .FALSE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -112,7 +112,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
-  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
+  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, t_wrt2, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
@@ -122,9 +122,6 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Eblast
   INTEGER  :: nDetCells
   REAL(DP) :: Vmax, LorentzFactor
-
-  ! --- Yahil Collapse ---
-  REAL(DP) :: D0, CentralDensity, CentralPressure, CoreRadius, CollapseTime
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
@@ -144,8 +141,6 @@ PROGRAM ApplicationDriver
 !!$  ProgramName = 'RiemannProblemSpherical'
 !!$  ProgramName = 'SedovTaylorBlastWave'
 !!$  ProgramName = 'KelvinHelmholtzInstability'
-!!$  ProgramName = 'StaticTOV'
-!!$  ProgramName = 'YahilCollapse'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -327,53 +322,6 @@ PROGRAM ApplicationDriver
        xL = [ -0.5d0, -1.0d0, 0.0d0 ]
        xR = [  0.5d0,  1.0d0, 1.0d0 ]
 
-    CASE( 'StaticTOV' )
-
-       SelfGravity = .TRUE.
-
-       CoordinateSystem = 'SPHERICAL'
-
-       Gamma = 2.0_DP
-       t_end = 1.0e1_DP * Millisecond
-       bcX   = [ 30, 0, 0 ]
-
-       nX = [ 128                 , 1   , 1     ]
-      swX = [ 1                   , 0   , 0     ]
-       xL = [ Zero                , Zero, Zero  ]
-       xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
-
-      WriteGF = .TRUE.
-
-      ActivateUnits = .TRUE.
-
-    CASE( 'YahilCollapse' )
-
-      SelfGravity = .TRUE.
-
-      CoordinateSystem = 'SPHERICAL'
-
-      CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
-      CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
-      CoreRadius      = 1.0e5_DP  * Kilometer
-      CollapseTime    = 1.50e2_DP * Millisecond
-
-      ! --- These values come from Table 2 in the Yahil paper ---
-      Gamma = 1.30_DP
-      D0    = 1.75_DP
-
-      t_end = CollapseTime - 0.5_DP * Millisecond
-      bcX = [ 30, 0, 0 ]
-
-      nX    = [ 128                 , 1     , 1      ]
-      swX   = [ 1                   , 0     , 0      ]
-      xL    = [ Zero                , Zero  , Zero   ]
-      xR    = [ CoreRadius          , Pi    , TwoPi  ]
-      ZoomX = [ 1.071835456828339_DP, 1.0_DP, 1.0_DP ]
-
-      WriteGF = .TRUE.
-
-      ActivateUnits = .TRUE.
-
     CASE DEFAULT
 
       WRITE(*,*)
@@ -386,8 +334,6 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  RiemannProblemSpherical'
       WRITE(*,'(A)')     '  SedovTaylorBlastWave'
       WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
-      WRITE(*,'(A)')     '  StaticTOV'
-      WRITE(*,'(A)')     '  YahilCollapse'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -395,13 +341,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -409,7 +355,7 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  UseSlopeLimiter           = .TRUE.
+  UseSlopeLimiter           = .FALSE.
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75d0
   BetaTVB                   = 0.0d0
@@ -421,7 +367,7 @@ PROGRAM ApplicationDriver
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
   Min_1                = 1.0d-13
   Min_2                = 1.0d-13
 
@@ -509,15 +455,34 @@ PROGRAM ApplicationDriver
              = TRIM( AdvectionProfile ), &
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ), &
-           nDetCells_Option       = nDetCells, &
-           Eblast_Option          = Eblast, &
-           D0_Option              = D0, &
-           CentralDensity_Option  = CentralDensity, &
-           CentralPressure_Option = CentralPressure, &
-           CoreRadius_Option      = CoreRadius, &
-           CollapseTime_Option    = CollapseTime )
+           nDetCells_Option = nDetCells, &
+           Eblast_Option    = Eblast )
 
-  IF( RestartFileNumber .GE. 0 )THEN
+  IF( RestartFileNumber .LT. 0 )THEN
+
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+    IF( SelfGravity )THEN
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+
+    END IF
+
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+    CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
+  ELSE
 
     CALL ReadFieldsHDF &
            ( RestartFileNumber, t, &
@@ -527,44 +492,11 @@ PROGRAM ApplicationDriver
 
   iCycleD = 10
 !!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  dt_wrt = 0.1_DP * Millisecond; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
-
-  CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-  CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-  IF( SelfGravity )THEN
-
-    CALL ComputeSourceTerms_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-
-    CALL SolveGravity_CFA_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
-
-  END IF
-
-  CALL TimersStop_Euler( Timer_Euler_Initialize )
-
-  IF( .NOT. OPTIMIZE .AND. RestartFileNumber .LT. 0 )THEN
-
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
-    CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-    CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-  END IF
-
-  CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Begin evolution'
@@ -572,11 +504,11 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   t_wrt = t + dt_wrt
+  t_wrt2 = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF, uCF, SuppressTally_Option = SuppressTally )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -603,8 +535,6 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
     IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
       WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
@@ -615,14 +545,22 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
     IF( SelfGravity )THEN
+
+      IF( t + dt .GT. t_wrt2 )THEN
+
+        t_wrt2 = t_wrt2 + dt_wrt
+        WriteSourceTerms2 = .TRUE.
+        Time = t
+
+      END IF
 
       CALL UpdateFluid_SSPRK &
              ( t, dt, uGF, uCF, uDF, &
                ComputeIncrement_Euler_DG_Explicit, &
                SolveGravity_CFA_Poseidon )
+
+      WriteSourceTerms2 = .FALSE.
 
     ELSE
 
@@ -632,54 +570,38 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    IF( .NOT. OPTIMIZE )THEN
+    IF( iCycleW .GT. 0 )THEN
 
-      CALL TimersStart_Euler( Timer_Euler_InputOutput )
+      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
 
-      IF( iCycleW .GT. 0 )THEN
+    ELSE
 
-        IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
-          wrt = .TRUE.
+      IF( t + dt .GT. t_wrt )THEN
 
-      ELSE
-
-        IF( t + dt .GT. t_wrt )THEN
-
-          t_wrt = t_wrt + dt_wrt
-          wrt   = .TRUE.
-
-        END IF
+        t_wrt = t_wrt + dt_wrt
+        wrt   = .TRUE.
 
       END IF
 
-      CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-      IF( wrt )THEN
-
-        CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
-        CALL ComputeFromConserved_Euler_Relativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-        CALL WriteFieldsHDF &
-               ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-        CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-        CALL ComputeTally_Euler_Relativistic_IDEAL &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
-
-        wrt = .FALSE.
-
-      END IF
     END IF
 
-    IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
+    IF( wrt )THEN
+
+      CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-      IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) ) EXIT
+      CALL WriteFieldsHDF &
+             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
+      CALL ComputeTally_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+
+      wrt = .FALSE.
+
+      CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     END IF
 
@@ -690,34 +612,26 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
   WRITE(*,*)
 
-  IF( .NOT. OPTIMIZE )THEN
+  CALL TimersStart_Euler( Timer_Euler_Finalize )
 
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
+  CALL ComputeFromConserved_Euler_Relativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-    CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+  IF( SelfGravity )THEN
 
-    IF( SelfGravity )THEN
+    CALL ComputeSourceTerms_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 
-      CALL ComputeSourceTerms_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-
-      CALL SolveGravity_CFA_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
-
-    END IF
-
-    CALL WriteFieldsHDF &
-           ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
+    CALL SolveGravity_CFA_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   END IF
 
+  CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
   CALL ComputeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
-
-  CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL FinalizeTally_Euler_Relativistic_IDEAL
 
