@@ -44,13 +44,13 @@ PROGRAM ApplicationDriver
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF,  &
-    WriteAccretionShockDiagnosticsHDF
+    WriteSourceTermDiagnosticsHDF
   USE FluidFieldsModule, ONLY: &
-    uCF, &
-    uPF, &
-    uAF, &
-    uDF, &
-    iPF_D
+    uCF,   &
+    uPF,   &
+    iPF_D, &
+    uAF,   &
+    uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
@@ -66,8 +66,6 @@ PROGRAM ApplicationDriver
     WriteSourceTerms2
   USE UnitsModule, ONLY: &
     Kilometer,   &
-    SolarMass,   &
-    Second,      &
     Millisecond, &
     Centimeter,  &
     Gram,        &
@@ -117,9 +115,11 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: ZoomX(3)
 
-  ! --- Yahil Collapse ---
-  REAL(DP) :: D0, CentralDensity, CentralPressure, CoreRadius, CollapseTime
-  LOGICAL  :: ReadFromFile
+  LOGICAL :: Skip10 = .FALSE.
+  LOGICAL :: Skip11 = .FALSE.
+  LOGICAL :: Skip12 = .FALSE.
+  LOGICAL :: Skip13 = .FALSE.
+  LOGICAL :: Skip14 = .FALSE.
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .TRUE.
@@ -127,6 +127,15 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Timer_Evolution
 
   REAL(DP), ALLOCATABLE :: SourceTerms_Poseidon(:,:,:,:,:)
+
+  REAL(DP) :: CentralDensity
+  REAL(DP) :: CentralPressure
+  REAL(DP) :: CoreRadius
+  REAL(DP) :: CollapseTime
+  REAL(DP) :: D0
+  LOGICAL  :: ReadFromFile
+
+  REAL(DP), ALLOCATABLE :: Sources(:,:,:,:,:)
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -155,13 +164,11 @@ PROGRAM ApplicationDriver
   t_end = CollapseTime - 0.5_DP * Millisecond
   bcX = [ 30, 0, 0 ]
 
-  nX    = [ 128                 , 1     , 1      ]
+  nX    = [ 256                 , 1     , 1      ]
   swX   = [ 1                   , 0     , 0      ]
   xL    = [ Zero                , Zero  , Zero   ]
   xR    = [ CoreRadius          , Pi    , TwoPi  ]
-  ZoomX = [ 1.071835456828339_DP, 1.0_DP, 1.0_DP ]
-
-  ActivateUnits = .TRUE.
+  ZoomX = [ 1.033358317557642_DP, 1.0_DP, 1.0_DP ]
 
   ! --- DG ---
 
@@ -171,7 +178,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -229,6 +236,11 @@ PROGRAM ApplicationDriver
                                          iX_B0(2):iX_E0(2), &
                                          iX_B0(3):iX_E0(3),1:6) )
 
+  ALLOCATE( Sources(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:6) )
+  Sources = 0.0_DP
+
   CALL InitializeGravitySolver_CFA_Poseidon
 
   CALL InitializeEquationOfState &
@@ -266,14 +278,36 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
   CALL InitializeFields_Relativistic &
-         ( ReadFromFile_Option          = ReadFromFile, &
-           D0_Option                    = D0, &
-           CentralDensity_Option        = CentralDensity, &
-           CentralPressure_Option       = CentralPressure, &
-           CoreRadius_Option            = CoreRadius, &
-           CollapseTime_Option          = CollapseTime )
+         ( ReadFromFile_Option    = ReadFromFile,    &
+           D0_Option              = D0,              &
+           CentralDensity_Option  = CentralDensity,  &
+           CentralPressure_Option = CentralPressure, &
+           CoreRadius_Option      = CoreRadius,      &
+           CollapseTime_Option    = CollapseTime )
 
-  IF( RestartFileNumber .GE. 0 )THEN
+  IF( RestartFileNumber .LT. 0 )THEN
+
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+    CALL ComputeSourceTerms_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
+
+    CALL SolveGravity_CFA_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+    CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
+    CALL WriteSourceTermDiagnosticsHDF( 0.0_DP, Sources )
+
+  ELSE
 
     CALL ReadFieldsHDF &
            ( RestartFileNumber, t, &
@@ -288,36 +322,6 @@ PROGRAM ApplicationDriver
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
-
-  CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-  CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-  CALL ComputeSourceTerms_Poseidon &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-
-  CALL SolveGravity_CFA_Poseidon &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
-
-  CALL TimersStop_Euler( Timer_Euler_Initialize )
-
-  IF( RestartFileNumber .LT. 0 )THEN
-
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
-    CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-    CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-  END IF
-
-  CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Begin evolution'
@@ -356,8 +360,6 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
     IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
       WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
@@ -367,8 +369,6 @@ PROGRAM ApplicationDriver
         TRIM( UnitsDisplay % TimeLabel )
 
     END IF
-
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     IF( t + dt .GT. t_wrt2 )THEN
 
@@ -384,8 +384,6 @@ PROGRAM ApplicationDriver
              SolveGravity_CFA_Poseidon )
 
     WriteSourceTerms2 = .FALSE.
-
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
     IF( iCycleW .GT. 0 )THEN
 
@@ -403,8 +401,6 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
     IF( wrt )THEN
 
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
@@ -415,23 +411,96 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-      CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
       CALL ComputeTally_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
       wrt = .FALSE.
 
-    END IF
-
-    IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
-
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-      IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) ) EXIT
+      CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     END IF
+
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+    IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) )THEN
+
+      CALL WriteFieldsHDF &
+             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
+      CALL WriteSourceTermDiagnosticsHDF( t, Sources )
+
+      CALL ComputeTally_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+
+      EXIT
+
+   END IF
+
+!!$   IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e14_DP * Gram / Centimeter**3 ) &
+!!$         .AND. .NOT. Skip14 )THEN
+!!$
+!!$      CALL WriteFieldsHDF &
+!!$             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$
+!!$      CALL ComputeTally_Euler_Relativistic_IDEAL &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$
+!!$      Skip14 = .TRUE.
+!!$
+!!$    END IF
+!!$
+!!$   IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e13_DP * Gram / Centimeter**3 ) &
+!!$         .AND. .NOT. Skip13 )THEN
+!!$
+!!$      CALL WriteFieldsHDF &
+!!$             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$
+!!$      CALL ComputeTally_Euler_Relativistic_IDEAL &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$
+!!$      Skip13 = .TRUE.
+!!$
+!!$    END IF
+!!$
+!!$   IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e12_DP * Gram / Centimeter**3 ) &
+!!$         .AND. .NOT. Skip12 )THEN
+!!$
+!!$      CALL WriteFieldsHDF &
+!!$             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$
+!!$      CALL ComputeTally_Euler_Relativistic_IDEAL &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$
+!!$      Skip12 = .TRUE.
+!!$
+!!$    END IF
+!!$
+!!$   IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e11_DP * Gram / Centimeter**3 ) &
+!!$         .AND. .NOT. Skip11 )THEN
+!!$
+!!$      CALL WriteFieldsHDF &
+!!$             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$
+!!$      CALL ComputeTally_Euler_Relativistic_IDEAL &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$
+!!$      Skip11 = .TRUE.
+!!$
+!!$    END IF
+!!$
+!!$   IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e10_DP * Gram / Centimeter**3 ) &
+!!$         .AND. .NOT. Skip10 )THEN
+!!$
+!!$      CALL WriteFieldsHDF &
+!!$             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$
+!!$      CALL ComputeTally_Euler_Relativistic_IDEAL &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$
+!!$      Skip10 = .TRUE.
+!!$
+!!$    END IF
 
   END DO
 
@@ -440,7 +509,7 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
   WRITE(*,*)
 
-  CALL TimersStart_Euler( Timer_Euler_InputOutput )
+  CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -454,12 +523,10 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL TimersStop_Euler( Timer_Euler_InputOutput )
+  CALL WriteSourceTermDiagnosticsHDF( t, Sources )
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
-
-  CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL FinalizeTally_Euler_Relativistic_IDEAL
 
@@ -472,6 +539,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
+
+  DEALLOCATE( Sources )
 
   DEALLOCATE( SourceTerms_Poseidon )
 
