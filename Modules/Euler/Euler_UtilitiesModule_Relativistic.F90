@@ -56,7 +56,8 @@ MODULE Euler_UtilitiesModule_Relativistic
   USE TimersModule_Euler,ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
-    Timer_Euler_ComputeTimeStep
+    Timer_Euler_ComputeTimeStep, &
+    Timer_Euler_ComputePrimitive
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -108,6 +109,8 @@ CONTAINS
     REAL(DP) :: S, q, r, k, z0
     REAL(DP) :: W, eps, p, h
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
     S = SQRT( CF_S1**2 / GF_Gm11 + CF_S2**2 / GF_Gm22 + CF_S3**2 / GF_Gm33 )
 
     ! --- Eq. C2 ---
@@ -137,6 +140,8 @@ CONTAINS
     PF_V2 = ( CF_S2 / GF_Gm22 ) / ( CF_D * W * h )
     PF_V3 = ( CF_S3 / GF_Gm33 ) / ( CF_D * W * h )
     PF_E  = CF_D * ( eps + p / PF_D ) / W - p
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -1078,7 +1083,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: z, D, Ne, q, r, k
 
-    REAL(DP) :: Wt, rhot, epst, pt, at, Ye
+    REAL(DP) :: Wt, rhot, epst, pt, at, Ye, ht
 
     ! --- Eq. C15 ---
 
@@ -1098,9 +1103,13 @@ CONTAINS
 
     at = pt / ( rhot * ( One + epst ) )
 
-    ! --- Eq. C24 ---
+    ! --- Eq. C21 ---
 
-    FunZ = z - k / ( ( Wt - z * k ) * ( One + at ) )
+    ht = ( One + epst ) * ( One + at )
+
+    ! --- Eq. C22 ---
+
+    FunZ = z - r / ht
 
     RETURN
   END FUNCTION FunZ
