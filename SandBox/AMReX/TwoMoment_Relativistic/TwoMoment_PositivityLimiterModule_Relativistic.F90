@@ -300,7 +300,7 @@ CONTAINS
       Verbose_Option
 
     LOGICAL  :: RecomputePointValues
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP, iP_X, n, m
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP, iP_X, n, m, Change
     INTEGER  :: iX_B0(3), iX_E0(3)
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
@@ -660,6 +660,8 @@ CONTAINS
     END DO
     END DO
 
+    Change = 0 
+print*, "Cell Average"
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -677,9 +679,13 @@ CONTAINS
                                  V3_P(iP,iZ2,iZ3,iZ4), &
                                  G_11_P(iP,iZ2,iZ3,iZ4), &
                                  G_22_P(iP,iZ2,iZ3,iZ4), &
-                                 G_33_P(iP,iZ2,iZ3,iZ4), iZ1, iZ2 )
+                                 G_33_P(iP,iZ2,iZ3,iZ4), &
+                                 iZ1, iZ2, Min_1, Min_2 )
 
       END DO
+
+
+
     END DO
     END DO
     END DO
@@ -788,36 +794,41 @@ print*, n, m
     END DO
     END DO
 
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G3_Q, G3_P )
+!print*, "Point Values"
 !    DO iS = 1, nSpecies
 !    DO iZ4 = iZ_B0(4), iZ_E0(4)
 !    DO iZ3 = iZ_B0(3), iZ_E0(3)
 !    DO iZ2 = iZ_B0(2), iZ_E0(2)
 !    DO iZ1 = iZ_B0(1), iZ_E0(1)
 !
-!      DO iNodeZ = 1, nDOFZ
+!      DO iP = 1, nPT
 !
-!        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
-!
-!        CALL CheckRealizability( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
-!                                 U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1 ,iS), &
-!                                 U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2 ,iS), &
-!                                 U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3 ,iS), & 
-!                                 V1_Q(iNodeX,iZ2,iZ3,iZ4), &
-!                                 V2_Q(iNodeX,iZ2,iZ3,iZ4), &
-!                                 V3_Q(iNodeX,iZ2,iZ3,iZ4), &
-!                                 G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
-!                                 G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
-!                                 G_33_Q(iNodeX,iZ2,iZ3,iZ4), iZ1, iZ2 )
-!
+!        CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
+!        CALL CheckRealizability( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                                 G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                                 G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                                 G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+!                                 V1_P(iP_X,iZ2,iZ3,iZ4), &
+!                                 V2_P(iP_X,iZ2,iZ3,iZ4), &
+!                                 V3_P(iP_X,iZ2,iZ3,iZ4), &
+!                                 G_11_P(iP_X,iZ2,iZ3,iZ4), &
+!                                 G_22_P(iP_X,iZ2,iZ3,iZ4), &
+!                                 G_33_P(iP_X,iZ2,iZ3,iZ4), &
+!                                 iZ1, iZ2, Min_1, Min_2 )
 !
 !      END DO
 !
-!    END DO
-!    END DO
-!    END DO
-!    END DO
-!    END DO
 !
+!
+!    END DO
+!    END DO
+!    END DO
+!    END DO
+!    END DO
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
   SUBROUTINE ComputePointValuesX( iX_B0, iX_E0, U_Q, U_P )
@@ -1022,36 +1033,39 @@ print*, n, m
 
   END SUBROUTINE
 
-  SUBROUTINE CheckRealizability(N, G1, G2, G3, V1, V2, V3, G_11, G_22, G_33, iZ1, iZ2)
+  SUBROUTINE CheckRealizability(N, G1, G2, G3, V1, V2, V3, G_11, G_22, G_33, iZ1, iZ2, Min_1,Min_2)
 
 
-    REAL(DP), INTENT(in)  :: N, G1, G2, G3
+    REAL(DP), INTENT(inout)  :: N, G1, G2, G3
     REAL(DP), INTENT(in)  :: V1, V2, V3, G_11, G_22, G_33
     INTEGER, INTENT(in)   :: iZ1, iZ2
+    REAL(DP), INTENT(in)  :: Min_1, Min_2
 
-    REAL(DP) :: GammaOut
+    REAL(DP) :: GammaOut, W
 
     GammaOut = GammaFun( N, G1, G2, G3, V1, V2, V3, &
                     G_11, G_22, G_33 )
 
-    IF ( N .LT. 0.0_DP ) THEN
-     print*, "N Unrealizable"
-     print*, iZ1,iZ2, V1
-     print*, "N = ", N
-     print*, "G1 = ", G1
-     print*, "G2 = ", G2
-     print*, "G3 = ", G3
+    IF ( N .LT. Min_1 ) THEN
+  !   print*, "N Unrealizable"
+  !   print*, iZ1,iZ2, V1
+  !   print*, "N = ", N
+  !   print*, "G1 = ", G1
+  !   print*, "G2 = ", G2
+  !   print*, "G3 = ", G3
     END IF
 
 
-    IF ( GammaOut .LT. 0.0_DP ) THEN
-     print*, "N - G Unrealizable"
-     print*, iZ1,iZ2, V1
-     print*, "N = ", N
-     print*, "G1 = ", G1
-     print*, "G2 = ", G2
-     print*, "G3 = ", G3
-     print*, "Gamma", GammaOut
+    IF ( GammaOut .LT. Min_2 ) THEN
+      W = 1.0_DP / ( 1.0_DP - ( G_11 * V1**2 + G_22 * V2**2 + G_33 * V3**2 ) )
+ !    print*, "N - G Unrealizable"
+ !    print*, iZ1,iZ2, V1
+ !    print*, "N = ", N
+ !    print*, "G1 = ", G1
+ !    print*, "G2 = ", G2
+ !    print*, "G3 = ", G3
+ !    print*, "Gamma", GammaOut
+     G1 = 0.999_DP * ( N - Min_2 ) / W
     END IF
 
   END SUBROUTINE CheckRealizability
