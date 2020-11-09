@@ -1,7 +1,8 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, SqrtTiny
+    DP, Zero, One, Two, &
+    Pi, TwoPi, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -88,14 +89,15 @@ PROGRAM ApplicationDriver
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
-  REAL(DP)      :: eL, eR, xL(3), xR(3), ZoomE = One
+  REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
+  REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, t_end, V_0(3)
   REAL(DP)      :: D_0, Chi, Sigma
   REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'StreamingDopplerShift'
+  ProgramName = 'RadiatingSphere'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -204,7 +206,7 @@ PROGRAM ApplicationDriver
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        nX  = [ 64, 1, 1 ]
+        nX  = [ 100, 1, 1 ]
         xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
@@ -239,17 +241,17 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      nE    = 40
+      nE    = 16
       eL    = 0.0d0
       eR    = 5.0d1
       bcE   = 10
-      zoomE = 1.1_DP
+      zoomE = 1.2_DP
 
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 2.5d+1
+      t_end   = 2.0d-0
       iCycleD = 1
       iCycleW = 100
       maxCycles = 1000000
@@ -440,6 +442,39 @@ PROGRAM ApplicationDriver
 
       UsePositivityLimiter = .TRUE.
 
+    CASE( 'RadiatingSphere' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX    = [ 200, 1, 1 ]
+      xL    = [ 1.0d1, Zero,  Zero ]
+      xR    = [ 1.0d4,   Pi, TwoPi ]
+      bcX   = [ 12, 1, 1 ]
+      ZoomX = [ 1.024333847373375_DP, One, One ]
+
+      nE    = 16
+      eL    = 0.0d0
+      eR    = 3.0d2
+      bcE   = 10
+      ZoomE = 1.310262775587271_DP
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'SSPRK2'
+
+      t_end = 2.0d4
+      iCycleD = 1
+      iCycleW = 2000
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .TRUE.
+
     CASE( 'GaussianDiffusion' )
 
       nX  = [ 48, 32, 1 ]
@@ -524,6 +559,8 @@ PROGRAM ApplicationDriver
              = xL, &
            xR_Option &
              = xR, &
+           zoomX_Option &
+             = zoomX, &
            nE_Option &
              = nE, &
            swE_Option &
