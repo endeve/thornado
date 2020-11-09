@@ -1,16 +1,20 @@
-include ../../../Build/Makefile_Build
+THORNADO_DIR ?= ../../../
+include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-all: ApplicationDriver #ComputePrimitiveTest #SlopeLimiterDiagnostics
+DEFINES += -DTHORNADO_DEBUG
+
+.DEFAULT_GOAL := all
+
+all: ApplicationDriver ComputePrimitiveTest SlopeLimiterDiagnostics
 
 ApplicationDriver: \
 	$(thornado) \
-	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o \

@@ -105,6 +105,11 @@ CONTAINS
 
 
   PURE INTEGER FUNCTION NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
 
     INTEGER, INTENT(in) :: iNodeX1, iNodeX2, iNodeX3
 

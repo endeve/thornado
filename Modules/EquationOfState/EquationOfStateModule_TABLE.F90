@@ -446,6 +446,12 @@ CONTAINS
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
     ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm
 
@@ -658,6 +664,12 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar( D, Ev, Ne, P )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P
 
@@ -695,6 +707,12 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar &
     ( D, Em, Y, P )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Em, Y
     REAL(DP), INTENT(out) :: P
@@ -741,6 +759,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar( D, Ev, Ne, Cs )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: Cs
