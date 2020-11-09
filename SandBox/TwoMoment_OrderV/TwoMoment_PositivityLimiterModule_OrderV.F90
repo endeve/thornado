@@ -198,69 +198,113 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      GE (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+      GE (1:nDOFE, &
+          iZ_B1(1):iZ_E1(1), &
+          1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
-                  iZ_B1(4):iZ_E1(4),1:nGF)
+      GX (1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nGF)
     REAL(DP), INTENT(in) :: &
-      U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
-                  iZ_B1(4):iZ_E1(4),1:nCF)
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCF)
     REAL(DP), INTENT(inout) :: &
-      U_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR, &
+          1:nSpecies)
 
     LOGICAL  :: RecomputePointValues
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
-    REAL(DP) :: Tau_Q(nDOFZ, &
-                      iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: N_Q(nDOFZ, &
-                    iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                    nSpecies), &
-                N_P(nPT  , &
-                    iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                    nSpecies), &
-                N_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                    nSpecies)
-    REAL(DP) :: G1_Q(nDOFZ, &
-                       iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                       iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                       nSpecies), &
-                G1_P(nPT  , &
-                       iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                       iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                       nSpecies), &
-                G1_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                       iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                       nSpecies)
-    REAL(DP) :: G2_Q(nDOFZ, &
-                     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                     nSpecies), &
-                G2_P(nPT  , &
-                     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                     nSpecies), &
-                G2_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                     nSpecies)
-    REAL(DP) :: G3_Q(nDOFZ, &
-                     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                     nSpecies), &
-                G3_P(nPT  , &
-                     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                     nSpecies), &
-                G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-                     nSpecies)
+    REAL(DP) :: &
+      Tau_Q(nDOFZ, &
+            iZ_B0(1):iZ_E0(1), &
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      N_Q(nDOFZ, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies), &
+      N_P(nPT, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies), &
+      N_K(iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies)
+    REAL(DP) :: &
+      G1_Q(nDOFZ, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies), &
+      G1_P(nPT, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies), &
+      G1_K(iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP) :: &
+      G2_Q(nDOFZ, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies), &
+      G2_P(nPT, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies), &
+      G2_K(iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP) :: &
+      G3_Q(nDOFZ, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies), &
+      G3_P(nPT, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies), &
+      G3_K(iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           nSpecies)
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
