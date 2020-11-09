@@ -72,6 +72,8 @@ MODULE ProgramHeaderModule
   PUBLIC :: DescribeProgramHeader
   PUBLIC :: DescribeProgramHeaderX
 
+!$ACC DECLARE CREATE( nNodesX )
+
 CONTAINS
 
 
@@ -220,6 +222,21 @@ CONTAINS
     IF( reinitializeZ )THEN
       CALL InitializeProgramHeaderZ
     END IF
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( nNodesX )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( nNodesX )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: nX, nNodesX, swX, bcX, xL, xR, zoomX )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( nX, swX, bcX, xL, xR, zoomX )
+#endif
 
   END SUBROUTINE InitializeProgramHeaderX
 
