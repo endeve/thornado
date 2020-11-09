@@ -42,6 +42,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Vector
   END INTERFACE ComputeAuxiliary_Fluid_IDEAL
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( Gamma_IDEAL )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( Gamma_IDEAL )
+#endif
 
 CONTAINS
 
@@ -56,11 +61,23 @@ CONTAINS
       Gamma_IDEAL = 5.0_DP / 3.0_DP
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( Gamma_IDEAL )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( Gamma_IDEAL )
+#endif
+
   END SUBROUTINE InitializeEquationOfState_IDEAL
 
 
   SUBROUTINE FinalizeEquationOfState_IDEAL
-
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Gamma_IDEAL )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Gamma_IDEAL )
+#endif
   END SUBROUTINE FinalizeEquationOfState_IDEAL
 
 
@@ -87,6 +104,11 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromPrimitive_IDEAL_Scalar( D, Ev, Ne, P )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P
@@ -108,6 +130,11 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar &
     ( D, Em, Y, P )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Em, Y
     REAL(DP), INTENT(out) :: P
@@ -139,8 +166,12 @@ CONTAINS
 
 #ifdef HYDRO_RELATIVISTIC
 
-
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: Cs
@@ -161,9 +192,7 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
 
-
 #else
-
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
 
@@ -184,9 +213,7 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
 
-
 #endif
-
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
