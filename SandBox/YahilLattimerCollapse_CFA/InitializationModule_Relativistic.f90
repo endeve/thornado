@@ -231,9 +231,9 @@ CONTAINS
       END DO
       END DO
 
-      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-12_DP ) CONVERGED = .TRUE.
 
-      IF( ITER .EQ. 10 )THEN
+      IF( ITER .EQ. 20 )THEN
 
         WRITE(*,*) 'Could not initialize fields. Exiting...'
         STOP

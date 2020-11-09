@@ -17,8 +17,8 @@ MODULE TwoMoment_TimeSteppingModule_Relativistic
 !!$    DetectTroubledCells_TwoMoment
 !!$  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
 !!$    ApplySlopeLimiter_TwoMoment
-!!$  USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
-!!$    ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
+    ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
 !!$  USE TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
@@ -98,8 +98,8 @@ CONTAINS
 !!$          CALL ApplySLopeLimiter_TwoMoment &
 !!$                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
 
-!!$          CALL ApplyPositivityLimiter_TwoMoment &
-!!$                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
+          CALL ApplyPositivityLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
 
         END IF
 

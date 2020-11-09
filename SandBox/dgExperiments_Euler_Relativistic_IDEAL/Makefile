@@ -7,14 +7,12 @@ ApplicationDriver: \
 	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
-	AccretionShockDiagnosticsModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
-	AccretionShockDiagnosticsModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 

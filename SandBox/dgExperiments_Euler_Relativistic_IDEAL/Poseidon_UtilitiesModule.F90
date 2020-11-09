@@ -35,6 +35,8 @@ MODULE Poseidon_UtilitiesModule
     ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule_IDEAL, ONLY: &
     ComputePressureFromPrimitive_IDEAL
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputePressureFromPrimitive_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -86,8 +88,17 @@ CONTAINS
                 uGF(:,iGF_Gm_dd_22), &
                 uGF(:,iGF_Gm_dd_33) )
 
+#ifdef MICROPHYSICS_WEAKLIB
+
+       CALL ComputePressureFromPrimitive_TABLE &
+              ( uPF(:,iPF_D), uPF(:,iPF_E), uPF(:,iPF_Ne), Pressure )
+
+#else
+
        CALL ComputePressureFromPrimitive_IDEAL &
               ( uPF(:,iPF_D), uPF(:,iPF_E), uPF(:,iPF_Ne), Pressure )
+
+#endif
 
        Sources(:,iX1,iX2,iX3,1) &
          = U(:,iX1,iX2,iX3,iCF_E) + U(:,iX1,iX2,iX3,iCF_D)

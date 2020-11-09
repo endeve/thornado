@@ -19,6 +19,7 @@ Euler_UtilitiesModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
+  UnitsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
@@ -107,6 +108,7 @@ Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
+  GeometryComputationModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.o \
@@ -120,6 +122,7 @@ Euler_PositivityLimiterModule.o: \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule.F90
 
 Euler_BoundaryConditionsModule.o: \
@@ -206,6 +209,7 @@ Euler_SlopeLimiterModule_Relativistic_TABLE.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_DiscontinuityDetectionModule.o \
+  UnitsModule.o \
   TimersModule_Euler.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.F90
 
@@ -215,6 +219,7 @@ Euler_SlopeLimiterModule.o: \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_SlopeLimiterModule.F90
 
 Euler_dgDiscretizationModule.o: \
@@ -266,11 +271,23 @@ Euler_TallyModule_Relativistic_IDEAL.o: \
   Euler_UtilitiesModule_Relativistic.o \
   Euler_TallyModule_Relativistic_IDEAL.f90
 
+Euler_TallyModule_Relativistic_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_TallyModule_Relativistic_TABLE.f90
+
 Euler_TallyModule.o: \
   KindModule.o \
   Euler_TallyModule_NonRelativistic_IDEAL.o \
   Euler_TallyModule_NonRelativistic_TABLE.o \
   Euler_TallyModule_Relativistic_IDEAL.o \
+  Euler_TallyModule_Relativistic_TABLE.o \
   Euler_TallyModule.F90
 
 Euler_PerturbationModule.o: \

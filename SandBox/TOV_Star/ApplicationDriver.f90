@@ -64,12 +64,7 @@ PROGRAM ApplicationDriver
     WriteSourceTerms2
   USE UnitsModule, ONLY: &
     Kilometer,   &
-    SolarMass,   &
-    Second,      &
     Millisecond, &
-    Centimeter,  &
-    Gram,        &
-    Erg,         &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
@@ -94,16 +89,14 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: AdvectionProfile
-  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
+  LOGICAL       :: SelfGravity
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
-  LOGICAL       :: SelfGravity
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
@@ -118,13 +111,8 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Mass = Zero
   REAL(DP)      :: ZoomX(3)
 
-  ! --- Sedov--Taylor blast wave ---
-  REAL(DP) :: Eblast
-  INTEGER  :: nDetCells
-  REAL(DP) :: Vmax, LorentzFactor
-
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
-  LOGICAL  :: ActivateUnits = .FALSE.
+  LOGICAL  :: ActivateUnits = .TRUE.
 
   REAL(DP) :: Timer_Evolution
 
@@ -134,210 +122,26 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'Advection'
-!!$  ProgramName = 'Advection2D'
-!!$  ProgramName = 'RiemannProblem'
-!!$  ProgramName = 'RiemannProblem2D'
-!!$  ProgramName = 'RiemannProblemSpherical'
-!!$  ProgramName = 'SedovTaylorBlastWave'
-!!$  ProgramName = 'KelvinHelmholtzInstability'
+!!$  ProgramName = 'StaticTOV'
+!!$  SelfGravity = .FALSE.
 
-  swX               = [ 0, 0, 0 ]
+  ProgramName = 'DynamicTOV'
+  SelfGravity = .TRUE.
+
   RestartFileNumber = -1
   t                 = 0.0_DP
   ZoomX             = 1.0_DP
-  SelfGravity       = .FALSE.
 
-  SELECT CASE ( TRIM( ProgramName ) )
+  CoordinateSystem = 'SPHERICAL'
 
-    CASE( 'Advection' )
+  Gamma = 2.0_DP
+  t_end = 1.0e1_DP * Millisecond
+  bcX   = [ 30, 0, 0 ]
 
-      AdvectionProfile = 'SineWave'
-
-      Gamma = 5.0_DP / 3.0_DP
-      t_end = 10.0_DP
-      bcX = [ 1, 0, 0 ]
-
-      CoordinateSystem = 'CARTESIAN'
-
-      nX  = [ 64, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-
-    CASE( 'Advection2D' )
-
-      AdvectionProfile = 'SineWaveX1X2'
-
-      Gamma = 5.0_DP / 3.0_DP
-      t_end = 10.0_DP
-      bcX = [ 1, 1, 0 ]
-
-      CoordinateSystem = 'CARTESIAN'
-
-      nX  = [ 32, 32, 1 ]
-      swX = [ 1, 1, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
-
-    CASE( 'RiemannProblem' )
-
-      RiemannProblemName = 'Sod'
-
-      SELECT CASE ( TRIM( RiemannProblemName ) )
-
-        CASE( 'Sod' )
-
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.2d0
-          bcX   = [ 2, 0, 0 ]
-
-        CASE( 'IsolatedShock' )
-
-          Gamma = 4.0_DP / 3.0_DP
-          t_end = 2.0e1_DP
-          bcX   = [ 2, 0, 0 ]
-
-        CASE( 'IsolatedContact' )
-          Gamma = 4.0_DP / 3.0_DP
-          t_end = 2.0e1_DP
-          bcX   = [ 2, 0, 0 ]
-
-        CASE( 'MBProblem1' )
-          Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.4d0
-          bcX   = [ 2, 0, 0 ]
-
-        CASE( 'MBProblem4' )
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
-          bcX   = [ 2, 0, 0 ]
-
-        CASE( 'PerturbedShockTube' )
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.35d0
-          bcX   = [ 2, 0, 0 ]
-
-        CASE( 'ShockReflection' )
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.75d0
-          bcX   = [ 23, 0, 0 ]
-
-        CASE DEFAULT
-
-          WRITE(*,*)
-          WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
-          WRITE(*,'(A)')     'Valid choices:'
-          WRITE(*,'(A)')     '  Sod'
-          WRITE(*,'(A)')     '  IsolatedShock'
-          WRITE(*,'(A)')     '  IsolatedContact'
-          WRITE(*,'(A)')     '  MBProblem1'
-          WRITE(*,'(A)')     '  MBProblem4'
-          WRITE(*,'(A)')     '  PerturbedShockTube'
-          WRITE(*,'(A)')     '  ShockReflection'
-          WRITE(*,'(A)')     'Stopping...'
-          STOP
-
-      END SELECT
-
-      CoordinateSystem = 'CARTESIAN'
-
-      nX  = [ 128, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-
-    CASE( 'RiemannProblem2D' )
-
-      RiemannProblemName = 'IsolatedShock'
-
-      SELECT CASE ( TRIM( RiemannProblemName ) )
-
-        CASE( 'DzB2002' )
-
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
-          bcX   = [ 2, 2, 0 ]
-
-        CASE( 'IsolatedShock' )
-
-          Gamma = 4.0_DP / 3.0_DP
-          t_end = 25.0_DP
-          bcX   = [ 2, 2, 0 ]
-
-      END SELECT
-
-      CoordinateSystem = 'CARTESIAN'
-
-      nX  = [ 64, 64, 1 ]
-      swX = [ 1, 1, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-
-    CASE( 'RiemannProblemSpherical' )
-
-      RiemannProblemName = 'SphericalSod'
-
-      CoordinateSystem = 'SPHERICAL'
-
-      Gamma = 5.0_DP / 3.0_DP
-      t_end = 5.0d-1
-      bcX = [ 2, 0, 0 ]
-
-      nX  = [ 256, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 2.0_DP, Pi, TwoPi ]
-
-      WriteGF = .TRUE.
-
-    CASE( 'SedovTaylorBlastWave' )
-
-      nDetCells = 1
-      Eblast    = 1.0d-3
-
-      CoordinateSystem = 'SPHERICAL'
-
-      Gamma = 4.0_DP / 3.0_DP
-      t_end = 1.0d0
-      bcX = [ 3, 0, 0 ]
-
-      nX  = [ 256, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.2_DP, Pi, TwoPi ]
-
-      WriteGF = .TRUE.
-
-    CASE( 'KelvinHelmholtzInstability' )
-
-       CoordinateSystem = 'CARTESIAN'
-
-       Gamma = 4.0d0 / 3.0d0
-       t_end = 1.0d-1
-       bcX = [ 1, 1, 0 ]
-
-       nX = [ 16, 32, 1 ]
-      swX = [ 1, 1, 0 ]
-       xL = [ -0.5d0, -1.0d0, 0.0d0 ]
-       xR = [  0.5d0,  1.0d0, 1.0d0 ]
-
-    CASE DEFAULT
-
-      WRITE(*,*)
-      WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
-      WRITE(*,'(A)')     'Valid choices:'
-      WRITE(*,'(A)')     '  Advection'
-      WRITE(*,'(A)')     '  Advection2D'
-      WRITE(*,'(A)')     '  RiemannProblem'
-      WRITE(*,'(A)')     '  RiemannProblem2D'
-      WRITE(*,'(A)')     '  RiemannProblemSpherical'
-      WRITE(*,'(A)')     '  SedovTaylorBlastWave'
-      WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
-      WRITE(*,'(A)')     'Stopping...'
-      STOP
-
-  END SELECT
+  nX  = [ 128                , 1   , 1     ]
+  swX = [ 1                  , 0   , 0     ]
+  xL  = [ Zero               , Zero, Zero  ]
+  xR  = [ 10.0_DP * Kilometer,  Pi , TwoPi ]
 
   ! --- DG ---
 
@@ -347,7 +151,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -367,7 +171,7 @@ PROGRAM ApplicationDriver
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .FALSE.
+  UsePositivityLimiter = .TRUE.
   Min_1                = 1.0d-13
   Min_2                = 1.0d-13
 
@@ -409,11 +213,6 @@ PROGRAM ApplicationDriver
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
-  ELSE
-
-    CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
-
   END IF
 
   CALL InitializeEquationOfState &
@@ -450,13 +249,7 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
-  CALL InitializeFields_Relativistic &
-         ( AdvectionProfile_Option &
-             = TRIM( AdvectionProfile ), &
-           RiemannProblemName_Option &
-             = TRIM( RiemannProblemName ), &
-           nDetCells_Option = nDetCells, &
-           Eblast_Option    = Eblast )
+  CALL InitializeFields_Relativistic
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -508,7 +301,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 

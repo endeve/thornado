@@ -1,12 +1,9 @@
 MODULE Euler_UtilitiesModule
 
-  USE KindModule,           ONLY: &
-    DP, Half
-  USE ProgramHeaderModule,  ONLY: &
-    nDOFX
-  USE GeometryFieldsModule, ONLY: &
-    nGF
-  USE FluidFieldsModule,    ONLY: &
+  USE KindModule, ONLY: &
+    DP, &
+    Half
+  USE FluidFieldsModule, ONLY: &
     nCF
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB

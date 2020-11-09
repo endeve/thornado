@@ -13,4 +13,4 @@ b = 1.8
 
 zoom = bisect( f, a, b, xtol = 1.0e-16 )
 
-print( '{:.15e}'.format( zoom ) )
+print( '{:.15f}'.format( zoom ) )

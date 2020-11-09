@@ -234,7 +234,6 @@ CONTAINS
         FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
 
       END IF
-      !this may be the problem converting abck and forth from upper to lower and back
 
      
       D     = UVEC(1)
@@ -244,7 +243,6 @@ CONTAINS
             - I_d_1 * B_d_2 * V_u_1 / ( alp *Gm_dd_22 ) - I_d_3 * B_d_2 * V_u_3 / ( Gm_dd_22 * alp )
       I_d_3 = UVEC(4); I_u_3 = ( 1.0_DP - B_d_3 * V_u_3 / alp ) * I_d_3 / Gm_dd_33  &
             - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
-
     END DO
 
     IF( PRESENT( nIterations_Option ) )THEN

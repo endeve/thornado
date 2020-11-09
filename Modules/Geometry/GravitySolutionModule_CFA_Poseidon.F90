@@ -43,6 +43,10 @@ MODULE GravitySolutionModule_CFA_Poseidon
     iGF_Gm_dd_33
   USE UnitsModule, ONLY: &
     SolarMass,centimeter,gram,second,erg,kilometer
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
+    Timer_GravitySolver
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -141,6 +145,8 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iNodeX, iNodeX1, iNodeX2, iNodeX3
     REAL(DP) :: X1, X2, X3
 
+    CALL TimersStart_Euler( Timer_GravitySolver )
+
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     ! Set Source Values !
@@ -172,8 +178,8 @@ CONTAINS
     INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ]
     OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ]
 
-    INNER_BC_VALUES = [ Zero       , Zero  , Zero, Zero, Zero ]
-    OUTER_BC_VALUES = [ AlphaPsi_BC, Psi_BC, Zero, Zero, Zero ]
+    INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
+    OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
 
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
@@ -237,6 +243,8 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, GravitationalMass )
 
 #endif
+
+    CALL TimersStop_Euler( Timer_GravitySolver )
 
   END SUBROUTINE SolveGravity_CFA_Poseidon
 

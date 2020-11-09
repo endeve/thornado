@@ -166,7 +166,7 @@ OPTIMIZE_kristopher   = -O2 -framework Accelerate
 OPTIMIZE_ranchu       = -O2
 OPTIMIZE_ranchuair    = -O2
 #OPTIMIZE_ranchuair    = -O2 -framework Accelerate
-OPTIMIZE_sjdunham     = -O2
+OPTIMIZE_sjdunham     = -O2 -fallow-argument-mismatch
 OPTIMIZE_jrober       = -O2 -framework Accelerate
 OPTIMIZE_accre        = -O2
 OPTIMIZE_zelledge     = -O2
@@ -269,7 +269,11 @@ INCLUDE_MAGMA_summit_pgi       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_xl        = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA                  = $(INCLUDE_MAGMA_$(MACHINE))
 
-INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON)
+INCLUDE_PETSC_jrober           = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
+INCLUDE_PETSC_sjdunham         = -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include
+INCLUDE_PETSC                  = $(INCLUDE_PETSC_$(MACHINE))
+
+INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON) $(INCLUDE_PETSC)
 
 LIBRARIES_HDF5_mac_gnu         = -L/usr/local/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.10.5/lib -lhdf5_fortran -lhdf5
@@ -362,7 +366,11 @@ LIBRARIES_MAGMA_summit_pgi     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_xl      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 
-LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON)
+LIBRARIES_PETSC_jrober         = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
+LIBRARIES_PETSC_sjdunham       = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
+LIBRARIES_PETSC                = $(LIBRARIES_PETSC_$(MACHINE))
+
+LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON) $(LIBRARIES_PETSC)
 
 MDEFS_titan_gnu                   =
 MDEFS_titan_pgi                   =

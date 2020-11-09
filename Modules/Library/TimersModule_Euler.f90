@@ -22,7 +22,9 @@ MODULE TimersModule_Euler
   ! --- DG discretization ---
   REAL(DP), PUBLIC :: Timer_Euler_Increment
   REAL(DP), PUBLIC :: Timer_Euler_dgDiscretization
-  REAL(DP), PUBLIC :: Timer_Euler_Divergence
+  REAL(DP), PUBLIC :: Timer_Euler_Divergence_X1
+  REAL(DP), PUBLIC :: Timer_Euler_Divergence_X2
+  REAL(DP), PUBLIC :: Timer_Euler_Divergence_X3
   REAL(DP), PUBLIC :: Timer_Euler_Geometry
   REAL(DP), PUBLIC :: Timer_Euler_Gravity
   REAL(DP), PUBLIC :: Timer_Euler_SurfaceTerm
@@ -39,6 +41,9 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_TroubledCellIndicator
   REAL(DP), PUBLIC :: Timer_Euler_ShockDetector
   REAL(DP), PUBLIC :: Timer_Euler_CharacteristicDecomposition
+
+  ! --- Gravity solver ---
+  REAL(DP), PUBLIC :: Timer_GravitySolver
 
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
@@ -63,7 +68,9 @@ CONTAINS
     Timer_Euler_Finalize        = Zero
 
     Timer_Euler_dgDiscretization = Zero
-    Timer_Euler_Divergence       = Zero
+    Timer_Euler_Divergence_X1    = Zero
+    Timer_Euler_Divergence_X2    = Zero
+    Timer_Euler_Divergence_X3    = Zero
     Timer_Euler_Geometry         = Zero
     Timer_Euler_Gravity          = Zero
     Timer_Euler_SurfaceTerm      = Zero
@@ -79,6 +86,8 @@ CONTAINS
     Timer_Euler_CharacteristicDecomposition = Zero
     Timer_Euler_TroubledCellIndicator       = Zero
     Timer_Euler_ShockDetector               = Zero
+
+    Timer_GravitySolver = Zero
 
     CALL TimersStart_Euler( Timer_Euler_Program )
 
@@ -189,6 +198,17 @@ CONTAINS
         100.0_DP &
           * Timer_Euler_Finalize / Timer_Euler_Program, ' %'
 
+      WRITE(*,*)
+      WRITE(*,TRIM(Label_Level1)) 'Gravity Solver'
+      WRITE(*,TRIM(Label_Level1)) '--------------'
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeAD)) &
+        'GravitySolver: ', &
+        Timer_GravitySolver, ' s = ', &
+        100.0_DP &
+          * Timer_GravitySolver / Timer_Euler_Program, ' %'
+
     END IF
 
     IF( Verbose )THEN
@@ -197,89 +217,79 @@ CONTAINS
       WRITE(*,TRIM(Label_Level1)) 'DG discretization'
       WRITE(*,TRIM(Label_Level1)) '---------------- '
       WRITE(*,*)
-      TotalTime = Timer_Euler_Divergence &
+      TotalTime = Timer_Euler_Divergence_X1 &
+                    + Timer_Euler_Divergence_X2 &
+                    + Timer_Euler_Divergence_X3 &
                     + Timer_Euler_Geometry &
                     + Timer_Euler_Gravity
 
-      WRITE(*,'(49x,A)') '%DG'
       WRITE(*,TRIM(OverallTimeDG)) &
         'Timers-DG = ', Timer_Euler_dgDiscretization, ' s = ', &
-        100.0_DP * TotalTime / Timer_Euler_Program, ' % === ', &
-        100.0_DP * TotalTime / Timer_Euler_dgDiscretization
+        100.0_DP * TotalTime / Timer_Euler_Program, ' %'
       WRITE(*,*)
 
-      WRITE(*,'(51x,A)') '%DG'
       WRITE(*,TRIM(TimeDG)) &
-        'Divergence: ', &
-        Timer_Euler_Divergence, ' s = ', &
+        'Divergence (X1): ', &
+        Timer_Euler_Divergence_X1, ' s = ', &
         100.0_DP &
-          * Timer_Euler_Divergence / Timer_Euler_Program, ' % === ', &
-        100.0_DP &
-          * Timer_Euler_Divergence / Timer_Euler_dgDiscretization, ' %'
+          * Timer_Euler_Divergence_X1 / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeDG)) &
-        'Geometry:   ', &
+        'Divergence (X2): ', &
+        Timer_Euler_Divergence_X2, ' s = ', &
+        100.0_DP &
+          * Timer_Euler_Divergence_X2 / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeDG)) &
+        'Divergence (X3): ', &
+        Timer_Euler_Divergence_X3, ' s = ', &
+        100.0_DP &
+          * Timer_Euler_Divergence_X3 / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeDG)) &
+        'Geometry:        ', &
         Timer_Euler_Geometry, ' s = ', &
         100.0_DP &
-          * Timer_Euler_Geometry / Timer_Euler_Program, ' % === ', &
-        100.0_DP &
-          * Timer_Euler_Geometry / Timer_Euler_dgDiscretization, ' %'
+          * Timer_Euler_Geometry / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeDG)) &
-        'Gravity:    ', &
+        'Gravity:         ', &
         Timer_Euler_Gravity, ' s = ', &
         100.0_DP &
-          * Timer_Euler_Gravity / Timer_Euler_Program, ' % === ', &
-        100.0_DP &
-          * Timer_Euler_Gravity / Timer_Euler_dgDiscretization, ' %'
+          * Timer_Euler_Gravity / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level2)) 'DG discretization-auxiliary'
       WRITE(*,TRIM(Label_Level2)) '---------------------------'
 
-      WRITE(*,'(58x,A)') '%DG'
       WRITE(*,TRIM(TimeAux)) &
         'Surface Term:      ', &
         Timer_Euler_SurfaceTerm, ' s = ', &
         100.0_DP &
-          * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' % === ', &
-        100.0_DP * Timer_Euler_SurfaceTerm / Timer_Euler_Divergence, ' %'
+          * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeAux)) &
         'Numerical Flux:    ', &
         Timer_Euler_NumericalFlux, ' s = ', &
         100.0_DP &
-          * Timer_Euler_NumericalFlux / Timer_Euler_Program, ' % === ', &
-        100.0_DP * Timer_Euler_NumericalFlux / Timer_Euler_Divergence, ' %'
+          * Timer_Euler_NumericalFlux / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeAux)) &
         'Volume Term:       ', &
         Timer_Euler_VolumeTerm, ' s = ', &
         100.0_DP &
-          * Timer_Euler_VolumeTerm / Timer_Euler_Program, ' % === ', &
-        100.0_DP * Timer_Euler_VolumeTerm / Timer_Euler_Divergence, ' %'
-
-      WRITE(*,TRIM(TimeAux)) &
-        'Compute Primitive: ', &
-        Timer_Euler_ComputePrimitive, ' s = ', &
-        100.0_DP &
-          * Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' % === ', &
-        100.0_DP * Timer_Euler_ComputePrimitive &
-                    / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm ), ' %'
+          * Timer_Euler_VolumeTerm / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level2)) 'CPU-specific'
       WRITE(*,TRIM(Label_Level2)) '------------'
       TotalTime = Timer_Euler_MatrixVectorMultiply
 
-      WRITE(*,'(63x,A)') '%DG'
       WRITE(*,TRIM(TimeCPU)) &
         'Matrix-Vector Multiply: ', &
         Timer_Euler_MatrixVectorMultiply, ' s = ', &
         100.0_DP &
-          * Timer_Euler_MatrixVectorMultiply / Timer_Euler_Program, ' % === ', &
-        100.0_DP * Timer_Euler_ComputePrimitive &
-                    / Timer_Euler_dgDiscretization, ' %'
+          * Timer_Euler_MatrixVectorMultiply / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'Limiter-specific'
@@ -325,12 +335,23 @@ CONTAINS
         100.0_DP &
           * Timer_Euler_CharacteristicDecomposition / Timer_Euler_Program, ' %'
 
+      WRITE(*,*)
+      WRITE(*,TRIM(Label_Level1)) 'Misc'
+      WRITE(*,TRIM(Label_Level1)) '----'
+      WRITE(*,*)
+      WRITE(*,TRIM(TimeAux)) &
+        'Compute Primitive: ', &
+        Timer_Euler_ComputePrimitive, ' s = ', &
+        100.0_DP &
+          * Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' %'
+
     END IF
 
     IF( WriteAtIntermediateTime ) &
       CALL TimersStart_Euler( Timer_Euler_Program )
 
     RETURN
+
   END SUBROUTINE FinalizeTimers_Euler
 
 

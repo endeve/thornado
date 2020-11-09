@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import bisect
 
-eta = 0.5 / 1.0e5
+eta = 0.75 / 1.0e5
 
 N = 256
 
@@ -13,4 +13,4 @@ b = 1.8
 
 zoom = bisect( f, a, b, xtol = 1.0e-16 )
 
-print( '{:.15e}'.format( zoom ) )
+print( '{:.15f}'.format( zoom ) )

@@ -15,6 +15,7 @@ ApplicationDriver: \
 	Euler_BoundaryConditionsModule_Relativistic.o \
 	TwoMoment_UtilitiesModule_Relativistic.o \
 	TwoMoment_DiscretizationModule_Streaming_Relativistic.o \
+        TwoMoment_PositivityLimiterModule_Relativistic.o \
 	TwoMoment_TimeSteppingModule_Relativistic.o \
 	InitializationModule.o \
 	ApplicationDriver.o
@@ -23,6 +24,7 @@ ApplicationDriver: \
 	Euler_BoundaryConditionsModule_Relativistic.o \
 	TwoMoment_UtilitiesModule_Relativistic.o \
 	TwoMoment_DiscretizationModule_Streaming_Relativistic.o \
+        TwoMoment_PositivityLimiterModule_Relativistic.o \
 	TwoMoment_TimeSteppingModule_Relativistic.o \
 	InitializationModule.o \
 	ApplicationDriver.o \
@@ -59,4 +61,22 @@ TwoMoment_TimeSteppingModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  TwoMoment_PositivityLimiterModule_Relativistic.o \
   TwoMoment_TimeSteppingModule_Relativistic.F90
+
+TwoMoment_PositivityLimiterModule_Relativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule_Lagrange.o \
+  ReferenceElementModuleX_Lagrange.o \
+  LinearAlgebraModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  TwoMoment_PositivityLimiterModule_Relativistic.F90
+
+

@@ -199,7 +199,6 @@ CONTAINS
     END DO
 
 
-
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              Verbose_Option = Verbose )
@@ -239,45 +238,6 @@ CONTAINS
     END DO
     END DO
 
-!    DO iS  = 1, nSpecies
-!    DO iZ4 = iZ_B0(4), iZ_E0(4)
-!    DO iZ3 = iZ_B0(3), iZ_E0(3)
-!    DO iZ2 = iZ_B0(2), iZ_E0(2)
-!    DO iZ1 = iZ_B0(1), iZ_E0(1)
-!
-!      DO iNodeX = 1, nDOFX
-!      DO iNodeE = 1, nDOFE
-!
-!        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-!
-!
-!        CALL ComputePrimitive_Euler_Relativistic &
-!               ( U_F(iNodeX,iZ2,iZ3,iZ4, iCF_D), &
-!                 U_F(iNodeX,iZ2,iZ3,iZ4, iCF_S1), &
-!                 U_F(iNodeX,iZ2,iZ3,iZ4, iCF_S2), &
-!                 U_F(iNodeX,iZ2,iZ3,iZ4, iCF_S3), &
-!                 U_F(iNodeX,iZ2,iZ3,iZ4, iCF_E), &
-!                 U_F(iNodeX,iZ2,iZ3,iZ4, iCF_Ne), &
-!                 PD, V1, V2, V3, PE, PNe, &
-!                 GX(iNodeX,iZ2,iZ3,iZ4, iGF_Gm_dd_11), &
-!                 GX(iNodeX,iZ2,iZ3,iZ4, iGF_Gm_dd_22), &
-!                 GX(iNodeX,iZ2,iZ3,iZ4, iGF_Gm_dd_33) ) 
-!     W =SQRT( 1.0_DP - V1**2 )
-!    
-!     IF(W * dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) .NE. 0.0_DP)THEN 
-!     print*, iZ1, iZ2
-!     print*, "W * dU_R(N) ",  W * dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
-!     print*, "dU_R(G1) ", dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
-!     print*, "W* dU_R(N) - dU_R(G1)", W * dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)-  dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
-!END IF
-!      END DO
-!      END DO
-!
-!    END DO
-!    END DO
-!    END DO
-!    END DO
-!    END DO
     END ASSOCIATE ! dZ1, etc.
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
@@ -575,7 +535,6 @@ CONTAINS
 
         uCR_K(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-
       END DO
 
     END DO
@@ -584,7 +543,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Interpolate Radiation Fields ---
 
     ! --- Interpolate Left State ---
@@ -1384,7 +1342,9 @@ CONTAINS
                   * NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1)
           END DO
 
+
         END IF
+
 
 
       END DO
@@ -1604,7 +1564,6 @@ CONTAINS
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_E(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1)
-
       END DO
 
     END DO
@@ -3611,7 +3570,7 @@ END IF
        !   CYCLE
        ! END IF
       IF (uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) <= 0.0_DP) THEN
-         uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) = 1.d-8
+        ! uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) = 1.d-8
       END IF 
       IF((W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) )) .LT. 0.0_DP) THEN
          print*, iZ1, iZ2, W
@@ -3621,9 +3580,9 @@ END IF
          print*, "G3 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS) 
          print*, "WN-ABS(G1) ", W *uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS)) 
          n = n+1
-         uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) &
-           = SIGN( W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
-                       uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) )
+      !   uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) &
+       !    = SIGN( W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+        !               uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) )
       END IF
         CALL ComputePrimitive_TwoMoment &
                ( uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS), &

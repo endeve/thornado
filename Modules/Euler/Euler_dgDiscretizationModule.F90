@@ -1,50 +1,93 @@
 MODULE Euler_dgDiscretizationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, SqrtTiny, Half, One, Pi, TwoPi
+    DP,       &
+    Zero,     &
+    SqrtTiny, &
+    Third,    &
+    Half,     &
+    One,      &
+    Three,    &
+    Pi,       &
+    TwoPi
   USE TimersModule_Euler,  ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler, &
+    TimersStart_Euler,            &
+    TimersStop_Euler,             &
     Timer_Euler_dgDiscretization, &
-    Timer_Euler_Divergence, &
-    Timer_Euler_Geometry, &
-    Timer_Euler_Gravity, &
-    Timer_Euler_SurfaceTerm, &
-    Timer_Euler_NumericalFlux, &
-    Timer_Euler_VolumeTerm, &
-    Timer_Euler_Increment, &
-    Timer_Euler_ComputePrimitive, &
+    Timer_Euler_Divergence_X1,    &
+    Timer_Euler_Divergence_X2,    &
+    Timer_Euler_Divergence_X3,    &
+    Timer_Euler_Geometry,         &
+    Timer_Euler_Gravity,          &
+    Timer_Euler_SurfaceTerm,      &
+    Timer_Euler_NumericalFlux,    &
+    Timer_Euler_VolumeTerm,       &
+    Timer_Euler_Increment,        &
     Timer_Euler_MatrixVectorMultiply
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX
+    nDOFX, &
+    nDimsX, &
+    nNodesX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
   USE ReferenceElementModuleX, ONLY: &
-    nDOFX_X1, WeightsX_X1, &
-    nDOFX_X2, WeightsX_X2, &
-    nDOFX_X3, WeightsX_X3, &
-    WeightsX_q,            &
+    nDOFX_X1,    &
+    nDOFX_X2,    &
+    nDOFX_X3,    &
+    WeightsX_X1, &
+    WeightsX_X2, &
+    WeightsX_X3, &
+    WeightsX_q,  &
     NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
-    dLXdX1_q, LX_X1_Dn, LX_X1_Up, &
-    dLXdX2_q, LX_X2_Dn, LX_X2_Up, &
-    dLXdX3_q, LX_X3_Dn, LX_X3_Up
+    dLXdX1_q, &
+    dLXdX2_q, &
+    dLXdX3_q, &
+    LX_X1_Dn, &
+    LX_X1_Up, &
+    LX_X2_Dn, &
+    LX_X2_Up, &
+    LX_X3_Dn, &
+    LX_X3_Up
   USE GeometryFieldsModule, ONLY: &
-    nGF,                                      &
-    iGF_h_1,      iGF_h_2,      iGF_h_3,      &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
-    iGF_SqrtGm,                               &
-    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, &
-    iGF_Phi_N,                                &
+    nGF,          &
+    iGF_h_1,      &
+    iGF_h_2,      &
+    iGF_h_3,      &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm,   &
+    iGF_Alpha,    &
+    iGF_Psi,      &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3,   &
+    iGF_Phi_N,    &
     CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, &
-    iDF_Sh_X1, iDF_Sh_X2, iDF_Sh_X3
+    nCF,       &
+    iCF_D,     &
+    iCF_S1,    &
+    iCF_S2,    &
+    iCF_S3,    &
+    iCF_E,     &
+    iCF_Ne,    &
+    nPF,       &
+    iPF_D,     &
+    iPF_V1,    &
+    iPF_V2,    &
+    iPF_V3,    &
+    iPF_E,     &
+    iPF_Ne,    &
+    nAF,       &
+    iAF_P,     &
+    iDF_Sh_X1, &
+    iDF_Sh_X2, &
+    iDF_Sh_X3
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -63,6 +106,8 @@ MODULE Euler_dgDiscretizationModule
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
+  USE InputOutputModuleHDF, ONLY: &
+    WriteSourceTermDiagnosticsHDF
 
   IMPLICIT NONE
   PRIVATE
@@ -70,6 +115,9 @@ MODULE Euler_dgDiscretizationModule
   INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_Euler_DG_Explicit
+
+  LOGICAL,  PUBLIC :: WriteSourceTerms
+  REAL(DP), PUBLIC :: Time
 
 
 CONTAINS
@@ -113,8 +161,6 @@ CONTAINS
 
     END IF
 
-    CALL TimersStart_Euler( Timer_Euler_Divergence )
-
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
@@ -123,8 +169,6 @@ CONTAINS
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
-
-    CALL TimersStop_Euler( Timer_Euler_Divergence )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -150,19 +194,11 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_Increment )
 
-    CALL TimersStart_Euler( Timer_Euler_Geometry )
-
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    CALL TimersStop_Euler( Timer_Euler_Geometry )
-
-    CALL TimersStart_Euler( Timer_Euler_Gravity )
-
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-
-    CALL TimersStop_Euler( Timer_Euler_Gravity )
 
     CALL TimersStop_Euler( Timer_Euler_dgDiscretization )
 
@@ -200,6 +236,8 @@ CONTAINS
 
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
+    CALL TimersStart_Euler( Timer_Euler_Divergence_X1 )
+
     !$OMP PARALLEL DO PRIVATE &
     !$OMP& ( iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, dX2, dX3, &
     !$OMP&   uCF_P, uCF_K, uCF_L, uCF_R, uPF_K, uPF_L, uPF_R, P_K, &
@@ -234,8 +272,6 @@ CONTAINS
 
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
-        CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -252,8 +288,6 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
-
-        CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -366,8 +400,6 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -384,8 +416,6 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-
-      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -428,8 +458,6 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -446,8 +474,6 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-
-      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R  )
@@ -597,6 +623,8 @@ CONTAINS
     END DO
     !$OMP END PARALLEL DO
 
+    CALL TimersStop_Euler( Timer_Euler_Divergence_X1 )
+
   END SUBROUTINE ComputeIncrement_Divergence_X1
 
 
@@ -631,6 +659,8 @@ CONTAINS
 
     IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
 
+    CALL TimersStart_Euler( Timer_Euler_Divergence_X2 )
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2) + 1
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -660,8 +690,6 @@ CONTAINS
 
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
-        CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -678,8 +706,6 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
-
-        CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -791,8 +817,6 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -809,8 +833,6 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-
-      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -853,8 +875,6 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -871,8 +891,6 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-
-      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
@@ -1021,6 +1039,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop_Euler( Timer_Euler_Divergence_X2 )
+
   END SUBROUTINE ComputeIncrement_Divergence_X2
 
 
@@ -1055,6 +1075,8 @@ CONTAINS
 
     IF( iX_E0(3) .EQ. iX_B0(3) ) RETURN
 
+    CALL TimersStart_Euler( Timer_Euler_Divergence_X3 )
+
     DO iX3 = iX_B0(3), iX_E0(3) + 1
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -1084,8 +1106,6 @@ CONTAINS
 
       IF( iX3 .LT. iX_E0(3) + 1 )THEN
 
-        CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -1102,8 +1122,6 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
-
-        CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -1215,8 +1233,6 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -1233,8 +1249,6 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-
-      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -1277,8 +1291,6 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -1295,8 +1307,6 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-
-      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
@@ -1445,6 +1455,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop_Euler( Timer_Euler_Divergence_X3 )
+
   END SUBROUTINE ComputeIncrement_Divergence_X3
 
 
@@ -1459,6 +1471,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
+    CALL TimersStart_Euler( Timer_Euler_Geometry )
+
 #if defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
@@ -1470,6 +1484,8 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
 #endif
+
+    CALL TimersStop_Euler( Timer_Euler_Geometry )
 
   END SUBROUTINE ComputeIncrement_Geometry
 
@@ -1692,9 +1708,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-    ! --- This subroutine currently assumes a stationary spacetime ---
-
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iDim, jDim
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX), &
@@ -1704,7 +1718,6 @@ CONTAINS
                 db1dX2(nDOFX), db2dX2(nDOFX), db3dX2(nDOFX), &
                 db1dX3(nDOFX), db2dX3(nDOFX), db3dX3(nDOFX)
     REAL(DP) :: dadx1(nDOFX), dadx2(nDOFX), dadx3(nDOFX)
-    REAL(DP) :: Term1(nDOFX), Term2(nDOFX), Term3(nDOFX)
     REAL(DP) :: Stress(nDOFX,3)
     REAL(DP) :: uCF_K(nDOFX,nCF), uPF_K(nDOFX,nPF), G_K(nDOFX,nGF)
     REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF), &
@@ -1713,6 +1726,25 @@ CONTAINS
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
                 G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
+
+    REAL(DP) :: EnergyDensitySourceTerms(nDOFX,iX_B0(1):iX_E0(1), &
+                                               iX_B0(2):iX_E0(2), &
+                                               iX_B0(3):iX_E0(3),7)
+
+    REAL(DP) :: DivGridVolume      (nDOFX)
+    REAL(DP) :: PressureTensorTrace(nDOFX)
+    REAL(DP) :: PressureTensor     (nDOFX,3,3)
+    REAL(DP) :: Xij                (nDOFX,3,3)
+    REAL(DP) :: Christoffel3D_X1   (nDOFX,3,3)
+    REAL(DP) :: Christoffel3D_X2   (nDOFX,3,3)
+    REAL(DP) :: Christoffel3D_X3   (nDOFX,3,3)
+    REAL(DP) :: Christoffel_X1     (nDOFX,3,3)
+    REAL(DP) :: Christoffel_X2     (nDOFX,3,3)
+    REAL(DP) :: Christoffel_X3     (nDOFX,3,3)
+
+    REAL(DP) :: GradPsi (nDOFX)
+    REAL(DP) :: GradPsiF(nDOFX)
+    REAL(DP) :: X1     (nDOFX)
 
     dadx1  = Zero
     dadx2  = Zero
@@ -1735,9 +1767,9 @@ CONTAINS
     db1dX3 = Zero
     db2dX3 = Zero
     db3dX3 = Zero
-    Term1  = Zero
-    Term2  = Zero
-    Term3  = Zero
+    PressureTensor = Zero
+
+    GradPsi = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1803,6 +1835,42 @@ CONTAINS
       CALL ComputePressureFromPrimitive &
              ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
 
+      ! --- Compute P^{ij} ---
+
+      DO iNodeX = 1, nDOFX
+
+        PressureTensor(:,1,1) &
+          = ( uPF_K(:,iPF_V1) * uCF_K(:,iCF_S1) + P_K ) / G_K(:,iGF_Gm_dd_11)
+
+        PressureTensor(:,1,2) &
+          = uPF_K(:,iPF_V1) * uCF_K(:,iCF_S2) / G_K(:,iGF_Gm_dd_22)
+
+        PressureTensor(:,1,3) &
+          = uPF_K(:,iPF_V1) * uCF_K(:,iCF_S3) / G_K(:,iGF_Gm_dd_33)
+
+        PressureTensor(:,2,1) &
+          = uPF_K(:,iPF_V2) * uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11)
+
+        PressureTensor(:,2,2) &
+          = ( uPF_K(:,iPF_V2) * uCF_K(:,iCF_S2) + P_K ) / G_K(:,iGF_Gm_dd_22)
+
+        PressureTensor(:,2,3) &
+          = uPF_K(:,iPF_V2) * uCF_K(:,iCF_S3) / G_K(:,iGF_Gm_dd_33)
+
+        PressureTensor(:,3,1) &
+          = uPF_K(:,iPF_V3) * uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11)
+
+        PressureTensor(:,3,2) &
+          = uPF_K(:,iPF_V3) * uCF_K(:,iCF_S2) / G_K(:,iGF_Gm_dd_22)
+
+        PressureTensor(:,3,3) &
+          = ( uPF_K(:,iPF_V3) * uCF_K(:,iCF_S3) + P_K ) / G_K(:,iGF_Gm_dd_33)
+
+      END DO
+
+      ! --- Redundant calculation. Will modify code so this can be
+      !     removed later ---
+
       DO iNodeX = 1, nDOFX
 
         Stress(iNodeX,:) &
@@ -1819,216 +1887,109 @@ CONTAINS
 
       ! --- Scale factor derivatives wrt X1 ---
 
-      ! --- Scale factor face states (average of left and right states) ---
+      ! --- Interpolation ---
 
-      DO iGF = iGF_h_1, iGF_h_3
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_h_1), G_K(:,iGF_h_1), G_N_X1(:,iGF_h_1), &
+               G_X1_Dn(:,iGF_h_1), G_X1_Up(:,iGF_h_1) )
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+      G_X1_Dn(:,iGF_h_1) = MAX( G_X1_Dn(:,iGF_h_1), SqrtTiny )
+      G_X1_Up(:,iGF_h_1) = MAX( G_X1_Up(:,iGF_h_1), SqrtTiny )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-                 G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_h_2), G_K(:,iGF_h_2), G_N_X1(:,iGF_h_2), &
+               G_X1_Dn(:,iGF_h_2), G_X1_Up(:,iGF_h_2) )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-                 G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+      G_X1_Dn(:,iGF_h_2) = MAX( G_X1_Dn(:,iGF_h_2), SqrtTiny )
+      G_X1_Up(:,iGF_h_2) = MAX( G_X1_Up(:,iGF_h_2), SqrtTiny )
 
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_h_3), G_K(:,iGF_h_3), G_N_X1(:,iGF_h_3), &
+               G_X1_Dn(:,iGF_h_3), G_X1_Up(:,iGF_h_3) )
 
-        G_X1_Dn(:,iGF) = MAX( G_X1_Dn(:,iGF), SqrtTiny )
+      G_X1_Dn(:,iGF_h_3) = MAX( G_X1_Dn(:,iGF_h_3), SqrtTiny )
+      G_X1_Up(:,iGF_h_3) = MAX( G_X1_Up(:,iGF_h_3), SqrtTiny )
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+      ! --- Differentiation ---
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-                 G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_h_1), G_X1_Dn(:,iGF_h_1), G_K(:,iGF_h_1), &
+               dh1dX1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-                 G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_h_2), G_X1_Dn(:,iGF_h_2), G_K(:,iGF_h_2), &
+               dh2dX1 )
 
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        G_X1_Up(:,iGF) = MAX( G_X1_Up(:,iGF), SqrtTiny )
-
-      END DO
-
-      ! --- dh1dx1 ---
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_h_1), 1, One,  dh1dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      dh1dx1 = dh1dx1 / ( WeightsX_q * dX1 )
-
-      ! --- dh2dx1 ---
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_h_2), 1, One,  dh2dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      dh2dx1 = dh2dx1 / ( WeightsX_q * dX1 )
-
-      ! --- dh3dx1 ---
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_h_3), 1, One,  dh3dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      dh3dx1 = dh3dx1 / ( WeightsX_q * dX1 )
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_h_3), G_X1_Dn(:,iGF_h_3), G_K(:,iGF_h_3), &
+               dh3dX1 )
 
       ! --- Shift vector derivative wrt X1 ---
 
-      ! --- Shift vector face states (average of left and right states) ---
+      ! --- Interpolation ---
 
-      DO iGF = iGF_Beta_1, iGF_Beta_3
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_Beta_1), G_K(:,iGF_Beta_1), G_N_X1(:,iGF_Beta_1), &
+               G_X1_Dn(:,iGF_Beta_1), G_X1_Up(:,iGF_Beta_1) )
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_Beta_2), G_K(:,iGF_Beta_2), G_N_X1(:,iGF_Beta_2), &
+               G_X1_Dn(:,iGF_Beta_2), G_X1_Up(:,iGF_Beta_2) )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-                 G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_Beta_3), G_K(:,iGF_Beta_3), G_N_X1(:,iGF_Beta_3), &
+               G_X1_Dn(:,iGF_Beta_3), G_X1_Up(:,iGF_Beta_3) )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-                 G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+      ! --- Differentiation ---
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-                 G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Beta_1), G_X1_Dn(:,iGF_Beta_1), &
+               G_K(:,iGF_Beta_1), &
+               db1dX1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-                 G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Beta_2), G_X1_Dn(:,iGF_Beta_2), &
+               G_K(:,iGF_Beta_2), &
+               db2dX1 )
 
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      END DO
-
-      ! --- db1dx1 ---
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_Beta_1), 1, Zero, db1dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_Beta_1), 1, One,  db1dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_Beta_1), 1, One,  db1dX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      db1dx1 = db1dx1 / ( WeightsX_q * dX1 )
-
-      ! --- db2dx1 ---
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_Beta_2), 1, Zero, db2dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_Beta_2), 1, One,  db2dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_Beta_2), 1, One,  db2dX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      db2dx1 = db2dx1 / ( WeightsX_q * dX1 )
-
-      ! --- db3dx1 ---
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_Beta_3), 1, Zero, db3dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_Beta_3), 1, One,  db3dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_Beta_3), 1, One,  db3dX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      db3dx1 = db3dx1 / ( WeightsX_q * dX1 )
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Beta_3), G_X1_Dn(:,iGF_Beta_3), &
+               G_K(:,iGF_Beta_3), &
+               db3dX1 )
 
       ! --- Lapse function derivative wrt X1 ---
 
-      ! --- Lapse function face states (average of left and right states) ---
+      ! --- Interpolation ---
 
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               G_P_X1(:,iGF_Alpha), 1, Zero, G_X1_Dn(:,iGF_Alpha), 1 )
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               G_K   (:,iGF_Alpha), 1, Half, G_X1_Dn(:,iGF_Alpha), 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_Alpha), G_K(:,iGF_Alpha), G_N_X1(:,iGF_Alpha), &
+               G_X1_Dn(:,iGF_Alpha), G_X1_Up(:,iGF_Alpha) )
 
       G_X1_Dn(:,iGF_Alpha) = MAX( G_X1_Dn(:,iGF_Alpha), SqrtTiny )
-
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               G_K   (:,iGF_Alpha), 1, Zero, G_X1_Up(:,iGF_Alpha), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               G_N_X1(:,iGF_Alpha), 1, Half, G_X1_Up(:,iGF_Alpha), 1 )
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
       G_X1_Up(:,iGF_Alpha) = MAX( G_X1_Up(:,iGF_Alpha), SqrtTiny )
 
-      ! --- dadx1 ---
+      ! --- Diffentiation ---
 
-      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+      CALL ComputeDerivative &
+             ( nDOFX_X1,dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Alpha), G_X1_Dn(:,iGF_Alpha), &
+               G_K(:,iGF_Alpha), &
+               dadX1 )
 
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Up(:,iGF_Alpha), 1, Zero, dadX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1 * G_X1_Dn(:,iGF_Alpha), 1, One,  dadX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX1, 1 )
-
-      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-      dadx1 = dadx1 / ( WeightsX_q * dX1 )
+      ! --- Momentum density source term (S1) ---
 
       dU(:,iX1,iX2,iX3,iCF_S1) &
         = dU(:,iX1,iX2,iX3,iCF_S1)                                &
@@ -2045,218 +2006,113 @@ CONTAINS
 
         ! --- Scale factor derivatives wrt X2 ---
 
-        ! --- Scale factor face states (average of left and right states) ---
+        ! --- Interpolation ---
 
-        DO iGF = iGF_h_1, iGF_h_3
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_h_1), G_K(:,iGF_h_1), G_N_X2(:,iGF_h_1), &
+                 G_X2_Dn(:,iGF_h_1), G_X2_Up(:,iGF_h_1) )
 
-          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        G_X2_Dn(:,iGF_h_1) = MAX( G_X2_Dn(:,iGF_h_1), SqrtTiny )
+        G_X2_Up(:,iGF_h_1) = MAX( G_X2_Up(:,iGF_h_1), SqrtTiny )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                   G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_h_2), G_K(:,iGF_h_2), G_N_X2(:,iGF_h_2), &
+                 G_X2_Dn(:,iGF_h_2), G_X2_Up(:,iGF_h_2) )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                   G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
+        G_X2_Dn(:,iGF_h_2) = MAX( G_X2_Dn(:,iGF_h_2), SqrtTiny )
+        G_X2_Up(:,iGF_h_2) = MAX( G_X2_Up(:,iGF_h_2), SqrtTiny )
 
-          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_h_3), G_K(:,iGF_h_3), G_N_X2(:,iGF_h_3), &
+                 G_X2_Dn(:,iGF_h_3), G_X2_Up(:,iGF_h_3) )
 
-          G_X2_Dn(:,iGF) = MAX( G_X2_Dn(:,iGF), SqrtTiny )
+        G_X2_Dn(:,iGF_h_3) = MAX( G_X2_Dn(:,iGF_h_3), SqrtTiny )
+        G_X2_Up(:,iGF_h_3) = MAX( G_X2_Up(:,iGF_h_3), SqrtTiny )
 
-          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        ! --- Differentiation ---
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                   G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_h_1), G_X1_Dn(:,iGF_h_1), G_K(:,iGF_h_1), &
+                 dh1dX2 )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                   G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_h_2), G_X1_Dn(:,iGF_h_2), G_K(:,iGF_h_2), &
+                 dh2dX2 )
 
-          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-          G_X2_Up(:,iGF) = MAX( G_X2_Up(:,iGF), SqrtTiny )
-
-        END DO
-
-        ! --- dh1dx2 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_h_1), 1, Zero, dh1dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_h_1), 1, One,  dh1dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dh1dx2 = dh1dx2 / ( WeightsX_q * dX2 )
-
-        ! --- dh2dx2 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_h_2), 1, Zero, dh2dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_h_2), 1, One,  dh2dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dh2dx2 = dh2dx2 / ( WeightsX_q * dX2 )
-
-        ! --- dh3dx2 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_h_3), 1, One,  dh3dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dh3dx2 = dh3dx2 / ( WeightsX_q * dX2 )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_h_3), G_X1_Dn(:,iGF_h_3), G_K(:,iGF_h_3), &
+                 dh3dX2 )
 
         ! --- Shift vector derivatives wrt X2 ---
 
-        ! --- Shift vector face states (average of left and right states) ---
+        ! --- Interpolation ---
 
-        DO iGF = iGF_Beta_1, iGF_Beta_3
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_Beta_1), G_K(:,iGF_Beta_1), &
+                 G_N_X2(:,iGF_Beta_1), &
+                 G_X2_Dn(:,iGF_Beta_1), G_X2_Up(:,iGF_Beta_1) )
 
-          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_Beta_2), G_K(:,iGF_Beta_2), &
+                 G_N_X2(:,iGF_Beta_2), &
+                 G_X2_Dn(:,iGF_Beta_2), G_X2_Up(:,iGF_Beta_2) )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                   G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_Beta_3), G_K(:,iGF_Beta_3), &
+                 G_N_X2(:,iGF_Beta_3), &
+                 G_X2_Dn(:,iGF_Beta_3), G_X2_Up(:,iGF_Beta_3) )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                   G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
+        ! --- Differentiation ---
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                   G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_Beta_1), G_X1_Dn(:,iGF_Beta_1), &
+                 G_K(:,iGF_Beta_1), &
+                 db1dX2 )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                   G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_Beta_2), G_X1_Dn(:,iGF_Beta_2), &
+                 G_K(:,iGF_Beta_2), &
+                 db2dX2 )
 
-          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        END DO
-
-        ! --- db1dx2 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_Beta_1), 1, Zero, db1dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_Beta_1), 1, One,  db1dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Beta_1), 1, One,  db1dX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        db1dx2 = db1dx2 / ( WeightsX_q * dX2 )
-
-        ! --- db2dx2 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_Beta_2), 1, Zero, db2dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_Beta_2), 1, One,  db2dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Beta_2), 1, One,  db2dX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        db2dx2 = db2dx2 / ( WeightsX_q * dX2 )
-
-        ! --- db3dx2 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_Beta_3), 1, Zero, db3dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_Beta_3), 1, One,  db3dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Beta_3), 1, One,  db3dX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        db3dx2 = db3dx2 / ( WeightsX_q * dX2 )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_Beta_3), G_X1_Dn(:,iGF_Beta_3), &
+                 G_K(:,iGF_Beta_3), &
+                 db3dX2 )
 
         ! --- Lapse function derivative wrt X2 ---
 
-        ! --- Face states (average of left and right states) ---
+        ! --- Interpolation ---
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                 G_P_X2(:,iGF_Alpha), 1, Zero, G_X2_Dn(:,iGF_Alpha), 1 )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                 G_K   (:,iGF_Alpha), 1, Half, G_X2_Dn(:,iGF_Alpha), 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_Alpha), G_K(:,iGF_Alpha), &
+                 G_N_X2(:,iGF_Alpha), &
+                 G_X2_Dn(:,iGF_Alpha), G_X2_Up(:,iGF_Alpha) )
 
         G_X2_Dn(:,iGF_Alpha) = MAX( G_X2_Dn(:,iGF_Alpha), SqrtTiny )
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                 G_K   (:,iGF_Alpha), 1, Zero, G_X2_Up(:,iGF_Alpha), 1 )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                 G_N_X2(:,iGF_Alpha), 1, Half, G_X2_Up(:,iGF_Alpha), 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
         G_X2_Up(:,iGF_Alpha) = MAX( G_X2_Up(:,iGF_Alpha), SqrtTiny )
 
-        ! --- dadx2 ---
+        ! --- Differentiation ---
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_Alpha), G_X1_Dn(:,iGF_Alpha), &
+                 G_K(:,iGF_Alpha), &
+                 dadX2 )
 
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Up(:,iGF_Alpha), 1, Zero, dadX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                    WeightsX_X2 * G_X2_Dn(:,iGF_Alpha), 1, One,  dadX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX2, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dadx2 = dadx2 / ( WeightsX_q * dX2 )
+        ! --- Momentum density source term (S2) ---
 
         dU(:,iX1,iX2,iX3,iCF_S2) &
           = dU(:,iX1,iX2,iX3,iCF_S2)                                &
@@ -2275,218 +2131,112 @@ CONTAINS
 
         ! --- Scale factor derivatives wrt X3 ---
 
-        ! --- Scale factor face states (average of left and right states) ---
+        ! --- Interpolation ---
 
-        DO iGF = iGF_h_1, iGF_h_3
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_h_1), G_K(:,iGF_h_1), G_N_X3(:,iGF_h_1), &
+                 G_X3_Dn(:,iGF_h_1), G_X3_Up(:,iGF_h_1) )
 
-          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        G_X3_Dn(:,iGF_h_1) = MAX( G_X3_Dn(:,iGF_h_1), SqrtTiny )
+        G_X3_Up(:,iGF_h_1) = MAX( G_X3_Up(:,iGF_h_1), SqrtTiny )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                   G_P_X3(:,iGF), 1, Zero, G_X3_Dn(:,iGF), 1 )
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_h_2), G_K(:,iGF_h_2), G_N_X3(:,iGF_h_2), &
+                 G_X3_Dn(:,iGF_h_2), G_X3_Up(:,iGF_h_2) )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                   G_K   (:,iGF), 1, Half, G_X3_Dn(:,iGF), 1 )
+        G_X3_Dn(:,iGF_h_2) = MAX( G_X3_Dn(:,iGF_h_2), SqrtTiny )
+        G_X3_Up(:,iGF_h_2) = MAX( G_X3_Up(:,iGF_h_2), SqrtTiny )
 
-          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_h_3), G_K(:,iGF_h_3), G_N_X3(:,iGF_h_3), &
+                 G_X3_Dn(:,iGF_h_3), G_X3_Up(:,iGF_h_3) )
 
-          G_X3_Dn(:,iGF) = MAX( G_X3_Dn(:,iGF), SqrtTiny )
+        G_X3_Dn(:,iGF_h_3) = MAX( G_X3_Dn(:,iGF_h_3), SqrtTiny )
+        G_X3_Up(:,iGF_h_3) = MAX( G_X3_Up(:,iGF_h_3), SqrtTiny )
 
-          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        ! --- Differentiation ---
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                   G_K   (:,iGF), 1, Zero, G_X3_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_h_1), G_X3_Dn(:,iGF_h_1), G_K(:,iGF_h_1), &
+                 dh1dX3 )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                   G_N_X3(:,iGF), 1, Half, G_X3_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_h_2), G_X3_Dn(:,iGF_h_2), G_K(:,iGF_h_2), &
+                 dh2dX3 )
 
-          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-          G_X3_Up(:,iGF) = MAX( G_X3_Up(:,iGF), SqrtTiny )
-
-        END DO
-
-        ! --- dh1dx3 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_h_1), 1, Zero, dh1dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Dn(:,iGF_h_1), 1, One,  dh1dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dh1dx3 = dh1dx3 / ( WeightsX_q * dX3 )
-
-        ! --- dh2dx3 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_h_2), 1, Zero, dh2dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Dn(:,iGF_h_2), 1, One,  dh2dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dh2dx3 = dh2dx3 / ( WeightsX_q * dX3 )
-
-        ! --- dh3dx3 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_h_3), 1, Zero, dh3dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                  WeightsX_X3 * G_X3_Dn(:,iGF_h_3), 1, One,  dh3dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dh3dx3 = dh3dx3 / ( WeightsX_q * dX3 )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_h_3), G_X3_Dn(:,iGF_h_3), G_K(:,iGF_h_3), &
+                 dh3dX3 )
 
         ! --- Shift vector derivatives wrt X3 ---
 
-        ! --- Shift vector face states (average of left and right states) ---
+        ! --- Interpolation ---
 
-        DO iGF = iGF_Beta_1, iGF_Beta_3
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_Beta_1), G_K(:,iGF_Beta_1), &
+                 G_N_X3(:,iGF_Beta_1), &
+                 G_X3_Dn(:,iGF_Beta_1), G_X3_Up(:,iGF_Beta_1) )
 
-          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_Beta_2), G_K(:,iGF_Beta_2), &
+                 G_N_X3(:,iGF_Beta_2), &
+                 G_X3_Dn(:,iGF_Beta_2), G_X3_Up(:,iGF_Beta_2) )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                   G_P_X3(:,iGF), 1, Zero, G_X3_Dn(:,iGF), 1 )
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_Beta_3), G_K(:,iGF_Beta_3), &
+                 G_N_X3(:,iGF_Beta_3), &
+                 G_X3_Dn(:,iGF_Beta_3), G_X3_Up(:,iGF_Beta_3) )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                   G_K   (:,iGF), 1, Half, G_X3_Dn(:,iGF), 1 )
+        ! --- Differentiation ---
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                   G_K   (:,iGF), 1, Zero, G_X3_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_Beta_1), G_X3_Dn(:,iGF_Beta_1), &
+                 G_K(:,iGF_Beta_1), &
+                 db1dX3 )
 
-          CALL DGEMV &
-                 ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                   G_N_X3(:,iGF), 1, Half, G_X3_Up(:,iGF), 1 )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_Beta_2), G_X3_Dn(:,iGF_Beta_2), &
+                 G_K(:,iGF_Beta_2), &
+                 db2dX3 )
 
-          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        END DO
-
-        ! --- db1dx3 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_Beta_1), 1, Zero, db1dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Dn(:,iGF_Beta_1), 1, One,  db1dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Beta_1), 1, One,  db1dX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        db1dx3 = db1dx3 / ( WeightsX_q * dX3 )
-
-        ! --- db2dx3 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_Beta_2), 1, Zero, db2dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Dn(:,iGF_Beta_2), 1, One,  db2dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Beta_2), 1, One,  db2dX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        db2dx3 = db2dx3 / ( WeightsX_q * dX3 )
-
-        ! --- db3dx3 ---
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_Beta_3), 1, Zero, db3dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Dn(:,iGF_Beta_3), 1, One,  db3dX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Beta_3), 1, One,  db3dX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        db3dx3 = db3dx3 / ( WeightsX_q * dX3 )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_Beta_3), G_X3_Dn(:,iGF_Beta_3), &
+                 G_K(:,iGF_Beta_3), &
+                 db3dX3 )
 
         ! --- Lapse function derivative wrt X3 ---
 
-        ! --- Lapse function face states (average of left and right states) ---
+        ! -- Interpolation ---
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                 G_P_X3(:,iGF_Alpha), 1, Zero, G_X3_Dn(:,iGF_Alpha), 1 )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                 G_K   (:,iGF_Alpha), 1, Half, G_X3_Dn(:,iGF_Alpha), 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_Alpha), G_K(:,iGF_Alpha), G_N_X3(:,iGF_Alpha), &
+                 G_X3_Dn(:,iGF_Alpha), G_X3_Up(:,iGF_Alpha) )
 
         G_X3_Dn(:,iGF_Alpha) = MAX( G_X3_Dn(:,iGF_Alpha), SqrtTiny )
-
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                 G_K   (:,iGF_Alpha), 1, Zero, G_X3_Up(:,iGF_Alpha), 1 )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                 G_N_X3(:,iGF_Alpha), 1, Half, G_X3_Up(:,iGF_Alpha), 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
         G_X3_Up(:,iGF_Alpha) = MAX( G_X3_Up(:,iGF_Alpha), SqrtTiny )
 
-        ! --- dadx3 ---
+        ! --- Differentiation ---
 
-        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_Alpha), G_X3_Dn(:,iGF_Alpha), &
+                 G_K(:,iGF_Beta_3), &
+                 dadX3 )
 
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Up(:,iGF_Alpha), 1, Zero, dadX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                    WeightsX_X3 * G_X3_Dn(:,iGF_Alpha), 1, One,  dadX3, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
-                    WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX3, 1 )
-
-        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
-
-        dadx3 = dadx3 / ( WeightsX_q * dX3 )
+        ! --- Momentum density source term (S3) ---
 
         dU(:,iX1,iX2,iX3,iCF_S3) &
           = dU(:,iX1,iX2,iX3,iCF_S3)                                &
@@ -2501,71 +2251,287 @@ CONTAINS
 
       END IF
 
+      ! --- Compute divergence of grid volume ---
+
+      ! --- Interpolate SqrtGm to faces (do this with scale factors instead?)---
+
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_SqrtGm), G_K(:,iGF_SqrtGm), &
+               G_N_X1(:,iGF_SqrtGm), &
+               G_X1_Dn(:,iGF_SqrtGm), G_X1_Up(:,iGF_SqrtGm) )
+
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Alpha) * G_X1_Up(:,iGF_SqrtGm) &
+                 * G_X1_Up(:,iGF_Beta_1), &
+               G_X1_Dn(:,iGF_Alpha) * G_X1_Dn(:,iGF_SqrtGm) &
+                 * G_X1_Dn(:,iGF_Beta_1), &
+               G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) * G_K(:,iGF_Beta_1), &
+               DivGridVolume, &
+               Alpha_Option = One, Beta_Option = Zero )
+
+      IF( nDimsX .GT. 1 )THEN
+
+        CALL InterpolateToFace &
+               ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
+                 G_P_X2(:,iGF_SqrtGm), G_K(:,iGF_SqrtGm), &
+                 G_N_X2(:,iGF_SqrtGm), &
+                 G_X2_Dn(:,iGF_SqrtGm), G_X2_Up(:,iGF_SqrtGm) )
+
+        CALL ComputeDerivative &
+               ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
+                 G_X2_Up(:,iGF_Alpha) * G_X2_Up(:,iGF_SqrtGm) &
+                   * G_X2_Up(:,iGF_Beta_2), &
+                 G_X2_Dn(:,iGF_Alpha) * G_X2_Dn(:,iGF_SqrtGm) &
+                   * G_X2_Dn(:,iGF_Beta_2), &
+                 G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) * G_K(:,iGF_Beta_2), &
+                 DivGridVolume, &
+                 Alpha_Option = One, Beta_Option = One )
+
+      END IF
+
+      IF( nDimsX .GT. 2 )THEN
+
+        CALL InterpolateToFace &
+               ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
+                 G_P_X3(:,iGF_SqrtGm), G_K(:,iGF_SqrtGm), &
+                 G_N_X3(:,iGF_SqrtGm), &
+                 G_X3_Dn(:,iGF_SqrtGm), G_X3_Up(:,iGF_SqrtGm) )
+
+        CALL ComputeDerivative &
+               ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
+                 G_X3_Up(:,iGF_Alpha) * G_X3_Up(:,iGF_SqrtGm) &
+                   * G_X3_Up(:,iGF_Beta_3), &
+                 G_X3_Dn(:,iGF_Alpha) * G_X3_Dn(:,iGF_SqrtGm) &
+                   * G_X3_Dn(:,iGF_Beta_3), &
+                 G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) * G_K(:,iGF_Beta_3), &
+                 DivGridVolume, &
+                 Alpha_Option = One, Beta_Option = One )
+
+      END IF
+
+      DivGridVolume &
+        = One / ( G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) ) * DivGridVolume
+
       ! --- Compute energy increment ---
+
+      ! --- Extrinsic curvature term ---
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,1) &
+        =   PressureTensor(:,1,1) * db1dX1 &
+          + PressureTensor(:,1,2) * db2dX1 &
+          + PressureTensor(:,1,3) * db3dX1 &
+          + PressureTensor(:,2,1) * db1dX2 &
+          + PressureTensor(:,2,2) * db2dX2 &
+          + PressureTensor(:,2,3) * db3dX2 &
+          + PressureTensor(:,3,1) * db1dX1 &
+          + PressureTensor(:,3,2) * db2dX3 &
+          + PressureTensor(:,3,3) * db3dX3
+
+      ! --- Need to add Christoffel symbol term ---
+
+      Christoffel3D_X1(:,1,1) = One / G_K(:,iGF_h_1) * dh1dX1
+      Christoffel3D_X1(:,1,2) = One / G_K(:,iGF_h_1) * dh1dX2
+      Christoffel3D_X1(:,1,3) = One / G_K(:,iGF_h_1) * dh1dX3
+      Christoffel3D_X1(:,2,1) = Christoffel3D_X1(:,1,2)
+      Christoffel3D_X1(:,2,2) = -G_K(:,iGF_h_2) / G_K(:,iGF_h_1)**2 * dh2dX1
+      Christoffel3D_X1(:,2,3) = Zero
+      Christoffel3D_X1(:,3,1) = Christoffel3D_X1(:,1,3)
+      Christoffel3D_X1(:,3,2) = Christoffel3D_X1(:,2,3)
+      Christoffel3D_X1(:,3,3) = -G_K(:,iGF_h_3) / G_K(:,iGF_h_1)**2 * dh3dX1
+
+      Christoffel3D_X2(:,1,1) = -G_K(:,iGF_h_1) / G_K(:,iGF_h_2)**2 * dh1dX2
+      Christoffel3D_X2(:,1,2) = One / G_K(:,iGF_h_2) * dh2dX1
+      Christoffel3D_X2(:,1,3) = Zero
+      Christoffel3D_X2(:,2,1) = Christoffel3D_X2(:,1,2)
+      Christoffel3D_X2(:,2,2) = One / G_K(:,iGF_h_2) * dh2dX2
+      Christoffel3D_X2(:,2,3) = One / G_K(:,iGF_h_2) * dh2dX3
+      Christoffel3D_X2(:,3,1) = Christoffel3D_X2(:,1,3)
+      Christoffel3D_X2(:,3,2) = Christoffel3D_X2(:,2,3)
+      Christoffel3D_X2(:,3,3) = -G_K(:,iGF_h_3) / G_K(:,iGF_h_2)**2 * dh3dX2
+
+      Christoffel3D_X3(:,1,1) = -G_K(:,iGF_h_1) / G_K(:,iGF_h_3)**2 * dh1dX3
+      Christoffel3D_X3(:,1,2) = Zero
+      Christoffel3D_X3(:,1,3) = One / G_K(:,iGF_h_3) * dh3dX1
+      Christoffel3D_X3(:,2,1) = Christoffel3D_X3(:,1,2)
+      Christoffel3D_X3(:,2,2) = -G_K(:,iGF_h_2) / G_K(:,iGF_h_3)**2 * dh2dX3
+      Christoffel3D_X3(:,2,3) = One / G_K(:,iGF_h_3) * dh3dX2
+      Christoffel3D_X3(:,3,1) = Christoffel3D_X3(:,1,3)
+      Christoffel3D_X3(:,3,2) = Christoffel3D_X3(:,2,3)
+      Christoffel3D_X3(:,3,3) = One / G_K(:,iGF_h_3) * dh3dX3
+
+      Xij(:,1,1) &
+        = G_K(:,iGF_Alpha)**( -2 ) &
+            * ( G_K(:,iGF_Gm_dd_11) * db1dX1 &
+                  + G_K(:,iGF_h_1) * (   G_K(:,iGF_Beta_1) * dh1dX1   &
+                                       + G_K(:,iGF_Beta_2) * dh1dX2   &
+                                       + G_K(:,iGF_Beta_3) * dh1dX3 ) &
+                  - Third * G_K(:,iGF_Gm_dd_11) * DivGridVolume )
+
+      Xij(:,1,2) &
+        = Half * G_K(:,iGF_Alpha)**( -2 ) &
+            * ( G_K(:,iGF_Gm_dd_11) * db1dX2 + G_K(:,iGF_Gm_dd_22) * db2dX1  )
+
+      Xij(:,1,3) &
+        = Half * G_K(:,iGF_Alpha)**( -2 ) &
+            * ( G_K(:,iGF_Gm_dd_11) * db1dX3 + G_K(:,iGF_Gm_dd_33) * db3dX1  )
+
+      Xij(:,2,1) = Xij(:,1,2)
+
+      Xij(:,2,2) &
+        = G_K(:,iGF_Alpha)**( -2 ) &
+            * ( G_K(:,iGF_Gm_dd_22) * db2dX2 &
+                  + G_K(:,iGF_h_2) * (   G_K(:,iGF_Beta_1) * dh2dX1   &
+                                       + G_K(:,iGF_Beta_2) * dh2dX2   &
+                                       + G_K(:,iGF_Beta_3) * dh2dX3 ) &
+                  - Third * G_K(:,iGF_Gm_dd_22) * DivGridVolume )
+
+      Xij(:,2,3) &
+        = Half * G_K(:,iGF_Alpha)**( -2 ) &
+            * ( G_K(:,iGF_Gm_dd_22) * db2dX3 + G_K(:,iGF_Gm_dd_33) * db3dX2  )
+
+      Xij(:,3,1) = Xij(:,1,3)
+
+      Xij(:,3,2) = Xij(:,2,3)
+
+      Xij(:,3,3) &
+        = G_K(:,iGF_Alpha)**( -2 ) &
+            * ( G_K(:,iGF_Gm_dd_33) * db3dX3 &
+                  + G_K(:,iGF_h_3) * (   G_K(:,iGF_Beta_1) * dh3dX1   &
+                                       + G_K(:,iGF_Beta_2) * dh3dX2   &
+                                       + G_K(:,iGF_Beta_3) * dh3dX3 ) &
+                  - Third * G_K(:,iGF_Gm_dd_33) * DivGridVolume )
+
+      DO iDim = 1, 3
+
+        DO jDim = 1, 3
+
+          Christoffel_X1(:,iDim,jDim) &
+            = G_K(:,iGF_Beta_1) * Xij(:,iDim,jDim) &
+                + Christoffel3D_X1(:,iDim,jDim)
+
+          Christoffel_X2(:,iDim,jDim) &
+            = G_K(:,iGF_Beta_2) * Xij(:,iDim,jDim) &
+                + Christoffel3D_X2(:,iDim,jDim)
+
+          Christoffel_X3(:,iDim,jDim) &
+            = G_K(:,iGF_Beta_3) * Xij(:,iDim,jDim) &
+                + Christoffel3D_X3(:,iDim,jDim)
+
+        END DO
+
+      END DO
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,2) = Zero
+
+      DO iNodeX = 1, nDOFX
+
+        PressureTensor(iNodeX,:,1) &
+          = G_K(iNodeX,iGF_Gm_dd_11) * PressureTensor(iNodeX,:,1)
+        PressureTensor(iNodeX,:,2) &
+          = G_K(iNodeX,iGF_Gm_dd_22) * PressureTensor(iNodeX,:,2)
+        PressureTensor(iNodeX,:,3) &
+          = G_K(iNodeX,iGF_Gm_dd_33) * PressureTensor(iNodeX,:,3)
+
+      END DO
+
+      ! Get gradient of conformal factor on upper face
+
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1(:,iGF_Psi), G_K(:,iGF_Psi), G_N_X1(:,iGF_Psi), &
+               G_X1_Dn(:,iGF_Psi), G_X1_Up(:,iGF_Psi) )
+
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Psi), &
+               G_X1_Dn(:,iGF_Psi), &
+               G_K(:,iGF_Psi),     &
+               GradPsi,            &
+               Alpha_Option = One, Beta_Option = Zero )
+
+      GradPsiF = Zero
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               GradPsi, 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
+
+      DO iDim = 1, 3
+
+        EnergyDensitySourceTerms(:,iX1,iX2,iX3,2) &
+        = EnergyDensitySourceTerms(:,iX1,iX2,iX3,2) &
+            + PressureTensor(:,iDim,1) &
+                * (   Christoffel_X1(:,iDim,1) * G_K(:,iGF_Beta_1)   &
+                    + Christoffel_X1(:,iDim,2) * G_K(:,iGF_Beta_2)   &
+                    + Christoffel_X1(:,iDim,3) * G_K(:,iGF_Beta_3) ) &
+            + PressureTensor(:,iDim,2) &
+                * (   Christoffel_X2(:,iDim,1) * G_K(:,iGF_Beta_1)   &
+                    + Christoffel_X2(:,iDim,2) * G_K(:,iGF_Beta_2)   &
+                    + Christoffel_X2(:,iDim,3) * G_K(:,iGF_Beta_3) ) &
+            + PressureTensor(:,iDim,3) &
+                * (   Christoffel_X3(:,iDim,1) * G_K(:,iGF_Beta_1)   &
+                    + Christoffel_X3(:,iDim,2) * G_K(:,iGF_Beta_2)   &
+                    + Christoffel_X3(:,iDim,3) * G_K(:,iGF_Beta_3) )
+
+      END DO
+
+      PressureTensorTrace &
+        =   uCF_K(:,iCF_S1) * uPF_K(:,iPF_V1) &
+          + uCF_K(:,iCF_S2) * uPF_K(:,iPF_V2) &
+          + uCF_K(:,iCF_S3) * uPF_K(:,iPF_V3) + Three * P_K
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,3) &
+        = -Third * PressureTensorTrace * DivGridVolume
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,4) &
+        = -(   uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) * dadx1 &
+             + uCF_K(:,iCF_S2) / G_K(:,iGF_Gm_dd_22) * dadx2 &
+             + uCF_K(:,iCF_S3) / G_K(:,iGF_Gm_dd_33) * dadx3 )
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,5) &
+        = -uCF_K(:,iCF_E) * DivGridVolume
+
+      DO iNodeX = 1, nNodesX(1)
+
+        X1(iNodeX) = NodeCoordinate( MeshX(1), iX1, iNodeX )
+
+      END DO
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,6) &
+        = G_K(:,iGF_Psi)**12 / G_K(:,iGF_Alpha)**2 * 2.0_DP / 3.0_DP &
+            * ( db1dX1**2 - 2.0_DP / X1 * db1dX1 * G_K(:,iGF_Beta_1) &
+                  + 1.0_DP / X1**2 * G_K(:,iGF_Beta_1)**2 )
+
+      EnergyDensitySourceTerms(:,iX1,iX2,iX3,7) &
+        = GradPsiF
+
+      ! --- Add to increments ---
 
       dU(:,iX1,iX2,iX3,iCF_E) &
         = dU(:,iX1,iX2,iX3,iCF_E) &
-            + Stress(:,1) / G_K(:,iGF_h_1) &
-                * ( G_K(:,iGF_h_1) * db1dX1 &
-                    + G_K(:,iGF_Beta_1) * dh1dX1 &
-                    + G_K(:,iGF_Beta_2) * dh1dX2 &
-                    + G_K(:,iGF_Beta_3) * dh1dX3 ) &
-                    + uCF_K(:,iCF_S2) * uPF_K(:,iPF_V1) * db2dX1 &
-                    + uCF_K(:,iCF_S3) * uPF_K(:,iPF_V1) * db3dX1 &
-            + Stress(:,2) / G_K(:,iGF_h_2) &
-                * ( G_K(:,iGF_h_2) * db2dX2 &
-                    + G_K(:,iGF_Beta_1) * dh2dX1 &
-                    + G_K(:,iGF_Beta_2) * dh2dX2 &
-                    + G_K(:,iGF_Beta_3) * dh2dX3 &
-                    + uCF_K(:,iCF_S1) * uPF_K(:,iPF_V2) * db1dX2 &
-                    + uCF_K(:,iCF_S3) * uPF_K(:,iPF_V2) * db3dX2 ) &
-            + Stress(:,3) / G_K(:,iGF_h_3) &
-                * ( G_K(:,iGF_h_3) * db3dX3 &
-                    + G_K(:,iGF_Beta_1) * dh3dX1 &
-                    + G_K(:,iGF_Beta_2) * dh3dX2 &
-                    + G_K(:,iGF_Beta_3) * dh3dX3 &
-                    + uCF_K(:,iCF_S1) * uPF_K(:,iPF_V3) * db1dX3 &
-                    + uCF_K(:,iCF_S2) * uPF_K(:,iPF_V3) * db2dX3 ) &
-            - (   uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) * dadx1 &
-                + uCF_K(:,iCF_S2) / G_K(:,iGF_Gm_dd_22) * dadx2 &
-                + uCF_K(:,iCF_S3) / G_K(:,iGF_Gm_dd_33) * dadx3 )
-
-      ! --- Time-dependent metric term ---
-
-      Term1 = G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
-                * ( db1dx1 + db2dx2 + db3dx3 )
-
-      Term2 = G_K(:,iGF_Alpha) &
-                * ( ( G_K(:,iGF_Beta_1) &
-                        * (   G_K(:,iGF_h_2) * G_K(:,iGF_h_3) * dh1dx1 &
-                            + G_K(:,iGF_h_1) * G_K(:,iGF_h_3) * dh2dx1 &
-                            + G_K(:,iGF_h_1) * G_K(:,iGF_h_2) * dh3dx1 ) ) &
-                +   ( G_K(:,iGF_Beta_2) &
-                      * (   G_K(:,iGF_h_2) * G_K(:,iGF_h_3) * dh1dx2 &
-                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_3) * dh2dx2 &
-                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_2) * dh3dx2 ) ) &
-                +   ( G_K(:,iGF_Beta_3) &
-                      * (   G_K(:,iGF_h_2) * G_K(:,iGF_h_3) * dh1dx3 &
-                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_3) * dh2dx3 &
-                          + G_K(:,iGF_h_1) * G_K(:,iGF_h_2) * dh3dx3 ) ) )
-
-      Term3 = G_K(:,iGF_SqrtGm) * ( G_K(:,iGF_Beta_1) * dadx1 &
-                                      + G_K(:,iGF_Beta_2) * dadx2 &
-                                      + G_K(:,iGF_Beta_3) * dadx3 )
+            + EnergyDensitySourceTerms(:,iX1,iX2,iX3,1) &
+            + EnergyDensitySourceTerms(:,iX1,iX2,iX3,2) &
+            + EnergyDensitySourceTerms(:,iX1,iX2,iX3,3) &
+            + EnergyDensitySourceTerms(:,iX1,iX2,iX3,4)
 
       DO iCF = 1, nCF
 
         dU(:,iX1,iX2,iX3,iCF) &
           = dU(:,iX1,iX2,iX3,iCF) &
-              - U(:,iX1,iX2,iX3,iCF) &
-              / ( G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) ) &
-              * ( Term1 + Term2 + Term3 )
+              - U(:,iX1,iX2,iX3,iCF) * DivGridVolume
 
       END DO
 
     END DO
     END DO
     END DO
+
+    IF( WriteSourceTerms )THEN
+
+      CALL WriteSourceTermDiagnosticsHDF( Time, EnergyDensitySourceTerms )
+
+    END IF
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic
 
@@ -2581,6 +2547,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
+    CALL TimersStart_Euler( Timer_Euler_Gravity )
+
 #if defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Gravity_Relativistic &
@@ -2592,6 +2560,8 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
 #endif
+
+    CALL TimersStop_Euler( Timer_Euler_Gravity )
 
   END SUBROUTINE ComputeIncrement_Gravity
 
@@ -2696,6 +2666,85 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
   END SUBROUTINE ComputeIncrement_Gravity_Relativistic
+
+
+  SUBROUTINE InterpolateToFace &
+    ( nDOFX_X, LX_Up, LX_Dn, &
+      InterpolantP, InterpolantK, InterpolantN, &
+      Answer_Dn, Answer_Up )
+
+    INTEGER,  INTENT(in)  :: nDOFX_X
+    REAL(DP), INTENT(in)  :: LX_Up(:,:)
+    REAL(DP), INTENT(in)  :: LX_Dn(:,:)
+    REAL(DP), INTENT(in)  :: InterpolantP(:), InterpolantK(:), InterpolantN(:)
+    REAL(DP), INTENT(out) :: Answer_Dn(:), Answer_Up(:)
+
+    CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
+    CALL DGEMV &
+           ( 'N', nDOFX_X, nDOFX, One,  LX_Up, nDOFX_X, &
+             InterpolantP, 1, Zero, Answer_Dn, 1 )
+
+    CALL DGEMV &
+           ( 'N', nDOFX_X, nDOFX, Half, LX_Dn, nDOFX_X, &
+             InterpolantK, 1, Half, Answer_Dn, 1 )
+
+    CALL DGEMV &
+           ( 'N', nDOFX_X, nDOFX, One,  LX_Up, nDOFX_X, &
+             InterpolantK, 1, Zero, Answer_Up, 1 )
+
+    CALL DGEMV &
+           ( 'N', nDOFX_X, nDOFX, Half, LX_Dn, nDOFX_X, &
+             InterpolantN, 1, Half, Answer_Up, 1 )
+
+    CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+
+  END SUBROUTINE InterpolateToFace
+
+
+  SUBROUTINE ComputeDerivative &
+    ( nDOFX_X, dX, LX_Up, LX_Dn, dLX, WeightsX_X, &
+      UpperFaceValues, LowerFaceValues, VolumeValues, &
+      Answer, Alpha_Option, Beta_Option )
+
+    INTEGER,  INTENT(in)  :: nDOFX_X
+    REAL(DP), INTENT(in)  :: dX
+    REAL(DP), INTENT(in)  :: LX_Up(:,:)
+    REAL(DP), INTENT(in)  :: LX_Dn(:,:)
+    REAL(DP), INTENT(in)  :: dLX  (:,:)
+    REAL(DP), INTENT(in)  :: WeightsX_X(:)
+    REAL(DP), INTENT(in)  :: UpperFaceValues(:)
+    REAL(DP), INTENT(in)  :: LowerFaceValues(:)
+    REAL(DP), INTENT(in)  :: VolumeValues   (:)
+    REAL(DP), INTENT(out) :: Answer(:)
+    REAL(DP), INTENT(in), OPTIONAL :: Alpha_Option, Beta_Option
+
+    REAL(DP) :: Alpha, Beta
+
+    Alpha = One
+    IF( PRESENT( Alpha_Option ) ) Alpha = Alpha_Option
+
+    Beta = Zero
+    IF( PRESENT( Beta_Option ) ) Beta = Beta_Option
+
+    Answer = Zero
+
+    CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
+    CALL DGEMV( 'T', nDOFX_X, nDOFX, + Alpha, LX_Up, nDOFX_X, &
+                WeightsX_X * UpperFaceValues, 1, Beta, Answer, 1 )
+
+    CALL DGEMV( 'T', nDOFX_X, nDOFX, - Alpha, LX_Dn, nDOFX_X, &
+                WeightsX_X * LowerFaceValues, 1, One , Answer, 1 )
+
+    CALL DGEMV( 'T', nDOFX,    nDOFX, - Alpha, dLX, nDOFX,    &
+                WeightsX_q  * VolumeValues  , 1, One , Answer, 1 )
+
+    CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
+
+    Answer = Answer / ( WeightsX_q * dX )
+
+  END SUBROUTINE ComputeDerivative
 
 
 END MODULE Euler_dgDiscretizationModule
