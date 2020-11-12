@@ -102,7 +102,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
-  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, t_wrt2, CFL
+  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
@@ -176,7 +176,7 @@ PROGRAM ApplicationDriver
         CASE( 'Sod' )
 
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.2d0
+          t_end = 0.4_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'IsolatedShock' )
@@ -192,22 +192,22 @@ PROGRAM ApplicationDriver
 
         CASE( 'MBProblem1' )
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.4d0
+          t_end = 0.4_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem4' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
+          t_end = 0.4_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'PerturbedShockTube' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.35d0
+          t_end = 0.35_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'ShockReflection' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.75d0
+          t_end = 0.75_DP
           bcX   = [ 23, 0, 0 ]
 
         CASE DEFAULT
@@ -243,13 +243,13 @@ PROGRAM ApplicationDriver
         CASE( 'DzB2002' )
 
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
+          t_end = 0.4_DP
           bcX   = [ 2, 2, 0 ]
 
         CASE( 'IsolatedShock' )
 
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 25.0_DP
+          t_end = 2.5e1_DP
           bcX   = [ 2, 2, 0 ]
 
       END SELECT
@@ -268,7 +268,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 5.0_DP / 3.0_DP
-      t_end = 5.0d-1
+      t_end = 0.5_DP
       bcX = [ 2, 0, 0 ]
 
       nX  = [ 256, 1, 1 ]
@@ -281,12 +281,12 @@ PROGRAM ApplicationDriver
     CASE( 'SedovTaylorBlastWave' )
 
       nDetCells = 1
-      Eblast    = 1.0d-3
+      Eblast    = 1.0e-3_DP
 
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 4.0_DP / 3.0_DP
-      t_end = 1.0d0
+      t_end = 1.0_DP
       bcX = [ 3, 0, 0 ]
 
       nX  = [ 256, 1, 1 ]
@@ -301,13 +301,13 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'CARTESIAN'
 
        Gamma = 4.0d0 / 3.0d0
-       t_end = 1.0d-1
+       t_end = 0.1_DP
        bcX = [ 1, 1, 0 ]
 
        nX = [ 16, 32, 1 ]
       swX = [ 1, 1, 0 ]
-       xL = [ -0.5d0, -1.0d0, 0.0d0 ]
-       xR = [  0.5d0,  1.0d0, 1.0d0 ]
+       xL = [ -0.5_DP, -1.0_DP, 0.0_DP ]
+       xR = [  0.5_DP,  1.0_DP, 1.0_DP ]
 
     CASE DEFAULT
 
@@ -328,13 +328,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -457,8 +457,7 @@ PROGRAM ApplicationDriver
 
   iCycleD = 10
 !!$  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
-  dt_wrt = 0.1_DP * Millisecond; iCycleW = -1
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -469,7 +468,6 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   t_wrt = t + dt_wrt
-  t_wrt2 = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
@@ -509,6 +507,9 @@ PROGRAM ApplicationDriver
         TRIM( UnitsDisplay % TimeLabel )
 
     END IF
+
+    CALL UpdateFluid_SSPRK &
+           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
 
     IF( t + dt .GT. t_wrt )THEN
 
