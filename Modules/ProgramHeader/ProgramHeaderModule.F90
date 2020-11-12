@@ -72,7 +72,11 @@ MODULE ProgramHeaderModule
   PUBLIC :: DescribeProgramHeader
   PUBLIC :: DescribeProgramHeaderX
 
-!$ACC DECLARE CREATE( nNodesX )
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( nNodesX )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( nNodesX )
+#endif
 
 CONTAINS
 
