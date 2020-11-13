@@ -204,7 +204,7 @@ Evaluating the left-hand side of Eq.~\eqref{eq:refinementProjection_CC} gives
   Evaluating the right-hand side of Eq.~\eqref{eq:refinementProjection_CC} gives
   \sd{Why isn't this integrated over $\vect{\xi}$?}
   \footnote{I found  $\int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\xi})\,\ell_{k}(\vect{\eta}(\vect{\xi}))\,\sqrt{\gamma}\,d\vect{\xi}\,U_{k}$}
+  =|\vect{k}_{(j)}|\sum_{m=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\xi}^{(j)})\,\ell_{m}(\vect{\eta}(\vect{\xi}^{(j)}))\,\sqrt{\gamma}\,d\vect{\xi}^{(j)}\,U_{m}$}
   \begin{equation}
   \int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
   =|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma}\,d\vect{\eta}\,U_{k}.
@@ -238,10 +238,10 @@ Evaluating the left-hand side of Eq.~\eqref{eq:coarseningProjection_CC} gives
 Evaluating the right-hand side of Eq.~\eqref{eq:coarseningProjection_CC} gives
   \sd{Why isn't this integrated over $\vect{\xi}$?}
 \footnote{I found $\int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\eta}(\vect{\xi}))\,\ell_{k}^{\left(j\right)}(\vect{\xi})\,\sqrt{\gamma}\,d\vect{\xi}\,u_{k}^{(j)}$}
+  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{m=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\eta}(\vect{\xi}^{\left(j\right)}))\,\ell_{k}^{\left(j\right)}(\vect{\xi}^{\left(j\right)})\,\sqrt{\gamma}\,d\vect{\xi}^{\left(j\right)}\,u_{m}^{(j)}$}
 \begin{equation}
   \int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\xi}(\vect{\eta}))\,\ell_{k}(\vect{\eta})\,\sqrt{\gamma}\,d\vect{\eta}\,u_{k}^{(j)}.
+  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\xi}(\vect{\eta}))\,\ell_{k}^{\left(j\right)}(\vect{\eta})\,\sqrt{\gamma}\,d\vect{\eta}\,u_{k}^{(j)}.
 \end{equation}
 Thus,
 \begin{equation}
