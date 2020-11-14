@@ -101,8 +101,13 @@ MODULE Euler_dgDiscretizationModule
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
+
+#ifndef USE_AMREX_TRUE
+
   USE InputOutputModuleHDF, ONLY: &
     WriteSourceTermDiagnosticsHDF
+
+#endif
 
   IMPLICIT NONE
   PRIVATE
@@ -2430,11 +2435,15 @@ CONTAINS
     END DO
     END DO
 
+#ifndef USE_AMREX_TRUE
+
     IF( WriteSourceTerms )THEN
 
       CALL WriteSourceTermDiagnosticsHDF( Time, EnergyDensitySourceTerms )
 
     END IF
+
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic
 
