@@ -1616,7 +1616,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iDim, jDim
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iDim, jDim, iNodeX1
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX), &
@@ -1652,7 +1652,7 @@ CONTAINS
 
     REAL(DP) :: GradPsi (nDOFX)
     REAL(DP) :: GradPsiF(nDOFX)
-    REAL(DP) :: X1     (nDOFX)
+    REAL(DP) :: X1      (nDOFX)
 
     dadx1  = Zero
     dadx2  = Zero
@@ -2400,9 +2400,10 @@ CONTAINS
       EnergyDensitySourceTerms(:,iX1,iX2,iX3,5) &
         = -uCF_K(:,iCF_E) * DivGridVolume
 
-      DO iNodeX = 1, nNodesX(1)
+      DO iNodeX = 1, nDOFX
 
-        X1(iNodeX) = NodeCoordinate( MeshX(1), iX1, iNodeX )
+        iNodeX1    = NodeNumberTableX(1,iNodeX)
+        X1(iNodeX) = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
       END DO
 
