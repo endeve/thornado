@@ -32,6 +32,7 @@ f90EXE_sources  += QuadratureModule.f90
 F90EXE_sources  += ReferenceElementModule.F90
 F90EXE_sources  += ReferenceElementModuleX.F90
 F90EXE_sources  += ReferenceElementModuleX_Lagrange.F90
+F90EXE_sources  += LinearAlgebraModule.F90
 f90EXE_sources  += TimersModule_Euler.f90
 f90EXE_sources  += LagrangePolynomialsModule.f90
 f90EXE_sources  += PolynomialBasisMappingModule.f90
