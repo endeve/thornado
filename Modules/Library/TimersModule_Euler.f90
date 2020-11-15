@@ -155,7 +155,7 @@ CONTAINS
                     + Timer_Euler_InputOutput &
                     + Timer_Euler_Finalize
 
-      WRITE(*,TRIM(TimeL1)) &
+      WRITE(*,'(10x,A,ES13.6E3,A,F7.3,A)') &
         'Timers = ', TotalTime, ' s = ', &
         100.0_DP * TotalTime / Timer_Euler_Program, ' %'
       WRITE(*,*)
