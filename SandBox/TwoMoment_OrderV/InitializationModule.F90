@@ -1619,10 +1619,11 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RadiatingSphere
 
-    INTEGER  :: iNodeX, iX1, iX2, iX3
-    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    INTEGER  :: iNodeX1
-    REAL(DP) :: X1, V_Max = 0.05_DP
+    CHARACTER(32) :: Profile = 'Collapse'
+    INTEGER       :: iNodeX, iX1, iX2, iX3
+    INTEGER       :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER       :: iNodeX1
+    REAL(DP)      :: X1, Theta, V_Max = 0.30_DP
 
     ! --- Fluid Fields ---
 
@@ -1638,22 +1639,36 @@ CONTAINS
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One
 
-        IF( X1 <= 135.0_DP )THEN
+        SELECT CASE( TRIM( Profile ) )
+
+        CASE( 'Shock' )
+
+          IF( X1 <= 135.0_DP )THEN
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = Zero
+
+          ELSEIF( X1 > 135.0_DP .AND. X1 <= 150.0_DP )THEN
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = - V_Max * ( X1 - 135.0_DP ) / 15.0_DP
+
+          ELSEIF( X1 > 150.0_DP )THEN
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = - V_Max * ( 150.0_DP / X1 )**2
+
+          END IF
+
+        CASE( 'Collapse' )
+
+          Theta = Half * ( One + TANH( ( X1 - 2.0d2 ) / 3.0d1 ) )
 
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = Zero
+            = - ( One - Theta ) * V_Max * ( X1 - 1.0d1 ) / ( 2.0d2 - 1.0d1 ) &
+              - Theta * V_Max * ( 2.0d2 / X1 )**2
 
-        ELSEIF( X1 > 135.0_DP .AND. X1 <= 150.0_DP )THEN
-
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = - V_Max * ( X1 - 135.0_DP ) / 15.0_DP
-
-        ELSEIF( X1 > 150.0_DP )THEN
-
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = - V_Max * ( 150.0_DP / X1 )**2
-
-        END IF
+        END SELECT
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
