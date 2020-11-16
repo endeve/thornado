@@ -137,7 +137,7 @@ PROGRAM ApplicationDriver
 
   Gamma = 4.0e0_DP / 3.0e0_DP
   t_end = 3.0e2_DP * Millisecond
-  bcX = [ 11, 0, 0 ]
+  bcX = [ 100, 0, 0 ]
 
   MassPNS            = 1.4_DP    * SolarMass
   RadiusPNS          = 40.0_DP   * Kilometer

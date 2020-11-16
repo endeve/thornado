@@ -95,13 +95,17 @@ CONTAINS
 
     ! --- Standing Accretion Shock (Defaults) ---
 
-    REAL(DP) :: MassPNS               = 1.4_DP   * SolarMass
-    REAL(DP) :: ShockRadius           = 180.0_DP * Kilometer
-    REAL(DP) :: AccretionRate         = 0.3_DP   * ( SolarMass / Second )
-    REAL(DP) :: PolytropicConstant    = 2.0e14_DP &
-                                          * ( Erg / Centimeter**3 &
-                                          / ( Gram / Centimeter**3 ) &
-                                          **( Four / Three ) ) ! Hard-coded
+    REAL(DP)           :: &
+      MassPNS = 1.4_DP * SolarMass
+    REAL(DP)           :: &
+      ShockRadius = 180.0_DP * Kilometer
+    REAL(DP)           :: &
+      AccretionRate = 0.3_DP * ( SolarMass / Second )
+    REAL(DP),PARAMETER :: &
+      PolytropicConstant2 = 2.0e14_DP &
+                              * ( ( Erg / Centimeter**3 ) &
+                              / ( Gram / Centimeter**3 )**( Four / Three ) )
+    REAL(DP) :: PolytropicConstant    = PolytropicConstant2
     LOGICAL  :: ApplyPerturbation     = .FALSE.
     INTEGER  :: PerturbationOrder     = 0
     REAL(DP) :: PerturbationAmplitude = 0.0_DP
@@ -482,6 +486,12 @@ CONTAINS
                - SUM( lnR ) * SUM( lnE ) ) &
              / ( nX_LeastSquares * nNodesX(1) * SUM( lnR**2 ) &
                - SUM( lnR )**2 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( ExpD, ExpE )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE   ( ExpD, ExpE )
+#endif
 
     WRITE(*,'(6x,A,I2.2)') &
       'nX_LeastSquares: ', &

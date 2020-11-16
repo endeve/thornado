@@ -270,7 +270,7 @@ CONTAINS
 
         CALL MF_U(iLevel) &
                % COPY( MF_uCF(iLevel), 1, 1, &
-                       MF_uCF(iLevel) % nComp(), swX(1) )
+                       MF_uCF(iLevel) % nComp(), swX )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 

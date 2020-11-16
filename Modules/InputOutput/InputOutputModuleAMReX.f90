@@ -448,14 +448,11 @@ CONTAINS
 
     END IF
 
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
              ( MF_plt(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
       CALL MF_plt(iLevel) % setVal( Zero )
-
-      CALL amrex_mfiter_build( MFI, MF_plt(iLevel), tiling = .TRUE. )
 
       iOS = 0
 
