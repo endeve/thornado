@@ -494,7 +494,7 @@ CONTAINS
   SUBROUTINE ComputePressureFromPrimitive_Scalar &
     ( D, Ev, Ne, P )
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET DECLARE
+    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
@@ -540,7 +540,7 @@ CONTAINS
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar &
     ( D, Em, Y, P )
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET DECLARE
+    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
@@ -623,7 +623,7 @@ CONTAINS
   SUBROUTINE ComputeSoundSpeedFromPrimitive_Scalar &
     ( D, Ev, Ne, Cs )
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET DECLARE
+    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
