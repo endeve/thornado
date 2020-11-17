@@ -6,7 +6,7 @@ DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver ComputePrimitiveTest SlopeLimiterDiagnostics
+all: ApplicationDriver #ComputePrimitiveTest SlopeLimiterDiagnostics
 
 ApplicationDriver: \
 	$(thornado) \
@@ -43,8 +43,6 @@ clean:
 
 clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
-	rm -rf ApplicationDriver_$(MACHINE).dSYM
 	rm -f  ComputePrimitiveTest_$(MACHINE)
-	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
 	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
-	rm -rf SlopeLimiterDiagnostics_$(MACHINE).dSYM
+	rm -rf *.dSYM
