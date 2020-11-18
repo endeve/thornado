@@ -71,6 +71,7 @@ CONTAINS
 
 
   SUBROUTINE FinalizeEquationOfState_IDEAL
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: Gamma_IDEAL )
@@ -104,6 +105,7 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromPrimitive_IDEAL_Scalar( D, Ev, Ne, P )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -130,6 +132,7 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar &
     ( D, Em, Y, P )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -167,6 +170,7 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -195,6 +199,12 @@ CONTAINS
 #else
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: Cs
