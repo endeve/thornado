@@ -64,6 +64,7 @@ ApplicationDriver: \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o
@@ -76,6 +77,7 @@ ApplicationDriver: \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o \
@@ -168,6 +170,15 @@ TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   TwoMoment_DiscretizationModule_Collisions_OrderV.F90
+
+TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.F90
 
 TwoMoment_TimeSteppingModule_OrderV.o: \
   KindModule.o \
