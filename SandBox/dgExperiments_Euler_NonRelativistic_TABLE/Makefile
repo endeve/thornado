@@ -3,10 +3,15 @@ MICROPHYSICS   = WEAKLIB
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
+#DEFINES += $(PP)-DTHORNADO_DEBUG
+
+.DEFAULT_GOAL := all
 
 all: ApplicationDriver
 
