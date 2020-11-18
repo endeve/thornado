@@ -460,10 +460,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: G, U, iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3 )
+    !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE(       G, U, iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3 )
+    !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CopyOut )
