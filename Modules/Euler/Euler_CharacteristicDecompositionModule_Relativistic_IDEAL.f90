@@ -1,39 +1,39 @@
 MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
 
-  USE KindModule,                         ONLY: &
-    DP,   &
+  USE KindModule, ONLY: &
+    DP, &
     Zero, &
-    One,  &
+    One, &
     Two
-  USE GeometryFieldsModule,               ONLY: &
-    nGF,          &
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm,   &
-    iGF_Alpha,    &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
+    iGF_SqrtGm, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
     iGF_Beta_3
-  USE FluidFieldsModule,                  ONLY: &
-    nCF,    &
-    iCF_D,  &
+  USE FluidFieldsModule, ONLY: &
+    nCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
     Eigenvalues_Euler_Relativistic
-  USE EquationOfStateModule_IDEAL,        ONLY: &
+  USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE EquationOfStateModule,              ONLY: &
+  USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
-  USE TimersModule_Euler,                 ONLY: &
+  USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
+    TimersStop_Euler, &
     Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE

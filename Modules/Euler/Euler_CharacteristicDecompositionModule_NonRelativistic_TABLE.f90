@@ -1,17 +1,26 @@
 MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, &
+    Zero, &
+    Half, &
+    One
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
   USE UnitsModule, ONLY: &
-    AtomicMassUnit, Gram, Centimeter, MeV
+    Gram, &
+    Centimeter
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -19,7 +28,8 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
     ComputeAuxiliary_Fluid_TABLE, &
     ComputePressure_TABLE
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE
