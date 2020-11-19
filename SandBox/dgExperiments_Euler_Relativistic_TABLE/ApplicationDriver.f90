@@ -61,10 +61,10 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
-  USE Euler_TallyModule_Relativistic_TABLE, ONLY: &
-    InitializeTally_Euler_Relativistic_TABLE, &
-    FinalizeTally_Euler_Relativistic_TABLE,   &
-    ComputeTally_Euler_Relativistic_TABLE
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    InitializeTally_Euler_Relativistic, &
+    FinalizeTally_Euler_Relativistic,   &
+    ComputeTally_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler,            &
     InitializeTimers_Euler,  &
@@ -317,7 +317,7 @@ PROGRAM ApplicationDriver
   t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
-  CALL InitializeTally_Euler_Relativistic_TABLE &
+  CALL InitializeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
@@ -385,7 +385,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-      CALL ComputeTally_Euler_Relativistic_TABLE &
+      CALL ComputeTally_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
       wrt = .FALSE.
@@ -409,10 +409,10 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL ComputeTally_Euler_Relativistic_TABLE &
+  CALL ComputeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
-  CALL FinalizeTally_Euler_Relativistic_TABLE
+  CALL FinalizeTally_Euler_Relativistic
 
   CALL FinalizeSlopeLimiter_Euler_Relativistic_TABLE
 

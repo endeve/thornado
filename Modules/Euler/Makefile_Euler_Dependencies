@@ -245,7 +245,7 @@ Euler_dgDiscretizationModule.o: \
   EquationOfStateModule.o \
   Euler_dgDiscretizationModule.F90
 
-Euler_TallyModule_NonRelativistic_IDEAL.o: \
+Euler_TallyModule_NonRelativistic.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
@@ -254,20 +254,9 @@ Euler_TallyModule_NonRelativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
-  Euler_TallyModule_NonRelativistic_IDEAL.f90
+  Euler_TallyModule_NonRelativistic.f90
 
-Euler_TallyModule_NonRelativistic_TABLE.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  Euler_TallyModule_NonRelativistic_TABLE.f90
-
-Euler_TallyModule_Relativistic_IDEAL.o: \
+Euler_TallyModule_Relativistic.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
@@ -276,25 +265,12 @@ Euler_TallyModule_Relativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
-  Euler_TallyModule_Relativistic_IDEAL.f90
-
-Euler_TallyModule_Relativistic_TABLE.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  Euler_TallyModule_Relativistic_TABLE.f90
+  Euler_TallyModule_Relativistic.f90
 
 Euler_TallyModule.o: \
   KindModule.o \
-  Euler_TallyModule_NonRelativistic_IDEAL.o \
-  Euler_TallyModule_NonRelativistic_TABLE.o \
-  Euler_TallyModule_Relativistic_IDEAL.o \
-  Euler_TallyModule_Relativistic_TABLE.o \
+  Euler_TallyModule_NonRelativistic.o \
+  Euler_TallyModule_Relativistic.o \
   Euler_TallyModule.F90
 
 Euler_PerturbationModule.o: \

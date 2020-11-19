@@ -68,10 +68,10 @@ PROGRAM ApplicationDriver
     Gram,        &
     Erg,         &
     UnitsDisplay
-  USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
-    InitializeTally_Euler_Relativistic_IDEAL, &
-    FinalizeTally_Euler_Relativistic_IDEAL,   &
-    ComputeTally_Euler_Relativistic_IDEAL
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    InitializeTally_Euler_Relativistic, &
+    FinalizeTally_Euler_Relativistic,   &
+    ComputeTally_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler,            &
     InitializeTimers_Euler,  &
@@ -308,7 +308,7 @@ PROGRAM ApplicationDriver
   t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
-  CALL InitializeTally_Euler_Relativistic_IDEAL &
+  CALL InitializeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
@@ -376,7 +376,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-      CALL ComputeTally_Euler_Relativistic_IDEAL &
+      CALL ComputeTally_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
       wrt = .FALSE.
@@ -408,10 +408,10 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL ComputeTally_Euler_Relativistic_IDEAL &
+  CALL ComputeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
-  CALL FinalizeTally_Euler_Relativistic_IDEAL
+  CALL FinalizeTally_Euler_Relativistic
 
   CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 

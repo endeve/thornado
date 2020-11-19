@@ -1,4 +1,4 @@
-MODULE Euler_TallyModule_NonRelativistic_TABLE
+MODULE Euler_TallyModule_NonRelativistic
 
   USE KindModule, ONLY: &
     DP, &
@@ -38,9 +38,9 @@ MODULE Euler_TallyModule_NonRelativistic_TABLE
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeTally_Euler_NonRelativistic_TABLE
-  PUBLIC :: FinalizeTally_Euler_NonRelativistic_TABLE
-  PUBLIC :: ComputeTally_Euler_NonRelativistic_TABLE
+  PUBLIC :: InitializeTally_Euler_NonRelativistic
+  PUBLIC :: FinalizeTally_Euler_NonRelativistic
+  PUBLIC :: ComputeTally_Euler_NonRelativistic
 
   LOGICAL               :: SuppressTally
   CHARACTER(256)        :: TallyFileName
@@ -50,10 +50,11 @@ MODULE Euler_TallyModule_NonRelativistic_TABLE
   INTEGER               :: iTally_E_g
   REAL(DP), ALLOCATABLE :: EulerTally(:,:)
 
+
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_NonRelativistic_TABLE &
+  SUBROUTINE InitializeTally_Euler_NonRelativistic &
     ( iX_B0, iX_E0, G, U, SuppressTally_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -89,26 +90,26 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-    CALL ComputeTally_Euler_NonRelativistic_TABLE &
+    CALL ComputeTally_Euler_NonRelativistic &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 0, DisplayTally_Option = .FALSE. )
 
-    CALL ComputeTally_Euler_NonRelativistic_TABLE &
+    CALL ComputeTally_Euler_NonRelativistic &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  END SUBROUTINE InitializeTally_Euler_NonRelativistic_TABLE
+  END SUBROUTINE InitializeTally_Euler_NonRelativistic
 
 
-  SUBROUTINE FinalizeTally_Euler_NonRelativistic_TABLE
+  SUBROUTINE FinalizeTally_Euler_NonRelativistic
 
     IF( .NOT. SuppressTally ) &
       DEALLOCATE( EulerTally )
 
-  END SUBROUTINE FinalizeTally_Euler_NonRelativistic_TABLE
+  END SUBROUTINE FinalizeTally_Euler_NonRelativistic
 
 
-  SUBROUTINE ComputeTally_Euler_NonRelativistic_TABLE &
+  SUBROUTINE ComputeTally_Euler_NonRelativistic &
     ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
     INTEGER,  INTENT(in) :: &
@@ -227,7 +228,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeTally_Euler_NonRelativistic_TABLE
+  END SUBROUTINE ComputeTally_Euler_NonRelativistic
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -258,4 +259,4 @@ CONTAINS
   END SUBROUTINE WriteTally_Euler
 
 
-END MODULE Euler_TallyModule_NonRelativistic_TABLE
+END MODULE Euler_TallyModule_NonRelativistic
