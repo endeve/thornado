@@ -1,7 +1,7 @@
 MODULE Euler_TallyModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
     Two,  &
     Pi
@@ -17,27 +17,25 @@ MODULE Euler_TallyModule_Relativistic_IDEAL
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm,   &
+    iGF_SqrtGm, &
     iGF_Psi
   USE FluidFieldsModule, ONLY: &
-    nCF,    &
-    iCF_D,  &
+    nCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E,  &
     iCF_Ne, &
-    nPF,    &
-    iPF_D,  &
+    nPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
-  USE EquationOfStateModule, ONLY: &
-    ComputePressureFromPrimitive
 
   IMPLICIT NONE
   PRIVATE
