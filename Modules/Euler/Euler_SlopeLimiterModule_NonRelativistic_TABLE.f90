@@ -1,17 +1,27 @@
 MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, &
+    Zero, &
+    One
   USE UnitsModule, ONLY: &
     AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nNodes, nNodesX, bcX
+    nDOFX, &
+    nDimsX, &
+    nNodes, &
+    nNodesX, &
+    bcX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UtilitiesModule, ONLY: &
-    MinModB, NodeNumberX
+    MinModB, &
+    NodeNumberX
   USE PolynomialBasisModule_Legendre, ONLY: &
-    P_X1, P_X2, P_X3, IndPX_Q
+    P_X1, &
+    P_X2, &
+    P_X3, &
+    IndPX_Q
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
@@ -24,7 +34,9 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_E, iCF_Ne, &
+    nCF, &
+    iCF_D, &
+    iCF_Ne, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_Euler,  &
@@ -38,7 +50,8 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     FinalizeTroubledCellIndicator_Euler, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_SlopeLimiter
 
   IMPLICIT NONE

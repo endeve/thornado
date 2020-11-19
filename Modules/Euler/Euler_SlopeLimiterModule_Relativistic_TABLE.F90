@@ -1,19 +1,18 @@
 MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
+    One, &
     Two
   USE ProgramHeaderModule, ONLY: &
-    nDOFX,   &
-    nDimsX,  &
-    nNodes,  &
+    nDOFX, &
+    nDimsX, &
+    nNodes, &
     nNodesX, &
     bcX
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q, &
-    NodeNumberTableX
+    WeightsX_q
   USE UtilitiesModule, ONLY: &
     MinModB, &
     NodeNumberX
@@ -28,30 +27,30 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF,          &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Alpha,    &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
-    iGF_Beta_3,   &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF,    &
-    iCF_D,  &
+    nCF, &
+    iCF_D, &
     iCF_Ne, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyInnerBC_Euler,  &
-    ApplyOuterBC_Euler,  &
+    ApplyInnerBC_Euler, &
+    ApplyOuterBC_Euler, &
     iApplyBC_Euler_Both, &
     ApplyBoundaryConditions_Euler
 !!$  USE Euler_CharacteristicDecompositionModule_Relativistic_TABLE, ONLY: &
 !!$    ComputeCharacteristicDecomposition_Euler_Relativistic_TABLE
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
-    FinalizeTroubledCellIndicator_Euler,   &
+    FinalizeTroubledCellIndicator_Euler, &
     DetectTroubledCells_Euler
   USE UnitsModule, ONLY: &
     AtomicMassUnit
