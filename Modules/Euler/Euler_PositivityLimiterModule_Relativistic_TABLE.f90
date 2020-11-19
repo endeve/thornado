@@ -1,7 +1,7 @@
 MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
     One
   USE ProgramHeaderModule, ONLY: &
@@ -9,8 +9,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
-    nDOFX_X1,   &
-    nDOFX_X2,   &
+    nDOFX_X1, &
+    nDOFX_X2, &
     nDOFX_X3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, &
@@ -22,28 +22,28 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
-    nGF,          &
-    iGF_h_1,      &
-    iGF_h_2,      &
-    iGF_h_3,      &
+    nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF,    &
-    iCF_D,  &
+    nCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    nPF,    &
-    iPF_D,  &
+    nPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputePressureFromPrimitive_TABLE, &
@@ -52,13 +52,13 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE UnitsModule, ONLY: &
-    Gram,       &
+    Gram, &
     Centimeter, &
-    Kelvin,     &
+    Kelvin, &
     AtomicMassUnit
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
+    TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE

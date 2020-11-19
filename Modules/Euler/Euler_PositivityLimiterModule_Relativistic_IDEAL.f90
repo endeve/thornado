@@ -2,15 +2,15 @@
 !> Qin et al., (2016), JCP, 315, 323
 MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
-  USE KindModule,                       ONLY: &
-    DP,   &
+  USE KindModule, ONLY: &
+    DP, &
     Zero, &
     Half, &
     One
-  USE ProgramHeaderModule,              ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
-  USE ReferenceElementModuleX,          ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
     nDOFX_X3, &
@@ -22,29 +22,29 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     LX_X2_Up, &
     LX_X3_Dn, &
     LX_X3_Up
-  USE GeometryFieldsModule,             ONLY: &
-    nGF,          &
-    iGF_h_1,      &
-    iGF_h_2,      &
-    iGF_h_3,      &
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm
-  USE GeometryComputationModule,        ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
-  USE FluidFieldsModule,                ONLY: &
-    nCF,    &
-    iCF_D,  &
+  USE FluidFieldsModule, ONLY: &
+    nCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E
-  USE TimersModule_Euler,               ONLY: &
+  USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
+    TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
-  USE Euler_ErrorModule,                ONLY: &
+  USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
   IMPLICIT NONE
