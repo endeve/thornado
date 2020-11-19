@@ -22,9 +22,7 @@ MODULE Euler_UtilitiesModule_Relativistic
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_Alpha, &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
-    iGF_Beta_3
+    iGF_Beta_1
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
