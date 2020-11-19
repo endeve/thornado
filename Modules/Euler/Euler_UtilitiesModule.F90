@@ -263,7 +263,7 @@ CONTAINS
 
   REAL(DP) FUNCTION AlphaMiddle_Euler &
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
-      Gmii, aP, aM, Lapse, Shift_Xi )
+      Gmii, aP, aM, Lapse, Shift_Xi, iErr_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -279,14 +279,23 @@ CONTAINS
                             Gmii, aP, aM
 
     ! --- Only needed for relativistic code ---
+
     REAL(DP), INTENT(in) :: Lapse, Shift_Xi
+    INTEGER,  INTENT(inout), OPTIONAL :: iErr_Option
+
+    INTEGER :: iErr
+
+     iErr = 0
+     IF( PRESENT( iErr_Option ) ) &
+       iErr = iErr_Option
 
 #ifdef HYDRO_RELATIVISTIC
 
     AlphaMiddle_Euler = AlphaMiddle_Euler_Relativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
-                            Gmii, aP, aM, Lapse, Shift_Xi )
+                            Gmii, aP, aM, Lapse, Shift_Xi, &
+                            iErr_Option = iErr )
 
 #else
 
@@ -296,6 +305,9 @@ CONTAINS
                             Gmii, aP, aM )
 
 #endif
+
+    IF( PRESENT( iErr_Option ) ) &
+      iErr_Option = iErr
 
     RETURN
   END FUNCTION AlphaMiddle_Euler
