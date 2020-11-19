@@ -1,15 +1,12 @@
 MODULE Euler_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP,    &
+    DP, &
     Three, &
     Four
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, &
-    WeightsX_q
   USE ProgramHeaderModule, ONLY: &
     bcX, &
     swX, &
@@ -18,18 +15,18 @@ MODULE Euler_BoundaryConditionsModule
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE FluidFieldsModule, ONLY: &
-    nCF,    &
-    iCF_D,  &
+    nCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler,              &
-    TimersStop_Euler,               &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_BoundaryConditions, &
-    Timer_Euler_CopyIn,             &
+    Timer_Euler_CopyIn, &
     Timer_Euler_CopyOut
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
@@ -65,6 +62,7 @@ CONTAINS
 
 
   LOGICAL FUNCTION ApplyInnerBC_Euler( iApplyBC )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -82,6 +80,7 @@ CONTAINS
 
 
   LOGICAL FUNCTION ApplyOuterBC_Euler( iApplyBC )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -176,6 +175,7 @@ CONTAINS
 #ifndef USE_AMREX_TRUE
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -204,7 +204,9 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
+
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
@@ -235,6 +237,7 @@ CONTAINS
     CASE ( 2 ) ! Homogeneous
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -263,6 +266,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -293,6 +297,7 @@ CONTAINS
     CASE ( 3 ) ! Reflecting
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -343,6 +348,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -446,6 +452,7 @@ CONTAINS
     CASE ( 31 ) ! Reflecting (Inner), Homogeneous (Outer)
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -496,6 +503,7 @@ CONTAINS
       END IF
 
      ! --- Outer Boundary ---
+
      IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -526,6 +534,7 @@ CONTAINS
     CASE ( 11 ) ! Custom BCs for Accretion Problem
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         ASSOCIATE( X1_C  => MeshX(1) % Center, &
@@ -586,6 +595,7 @@ CONTAINS
     CASE ( 100 ) ! Custom BCs for Relativistic SAS Problem
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         ASSOCIATE( X1_C  => MeshX(1) % Center, &
@@ -646,6 +656,7 @@ CONTAINS
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
      ! --- Outer Boundary ---
+
      IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -702,6 +713,7 @@ CONTAINS
 #ifndef USE_AMREX_TRUE
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -730,6 +742,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -762,6 +775,7 @@ CONTAINS
     CASE ( 2 ) ! Homogeneous
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -790,6 +804,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -820,6 +835,7 @@ CONTAINS
     CASE ( 3 ) ! Reflecting
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -870,6 +886,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -973,6 +990,7 @@ CONTAINS
     CASE ( 31 ) ! Reflecting (Inner), Homogeneous (Outer)
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1023,6 +1041,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1056,6 +1075,7 @@ CONTAINS
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1088,7 +1108,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      CALL DescribeError_Euler( 06 ) 
+      CALL DescribeError_Euler( 06 )
 
     END SELECT
 
@@ -1115,6 +1135,7 @@ CONTAINS
 #ifndef USE_AMREX_TRUE
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1143,6 +1164,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1175,6 +1197,7 @@ CONTAINS
     CASE ( 2 ) ! Homogeneous
 
       ! --- Inner Boundary ---
+
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1204,6 +1227,7 @@ CONTAINS
       END IF
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -1234,6 +1258,7 @@ CONTAINS
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
       ! --- Outer Boundary ---
+
       IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)

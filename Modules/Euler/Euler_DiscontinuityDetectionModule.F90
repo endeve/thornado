@@ -47,7 +47,6 @@ MODULE Euler_DiscontinuityDetectionModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    iAF_P, &
     iDF_TCI, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &

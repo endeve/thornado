@@ -1,12 +1,17 @@
 MODULE Euler_PerturbationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Pi, TwoPi, FourPi
+    DP, &
+    Zero, &
+    Half, &
+    One, &
+    Pi, &
+    FourPi
   USE UnitsModule, ONLY: &
-    Gram, Centimeter, Kilometer, &
-    Second
+    Gram, &
+    Centimeter, &
+    Kilometer
   USE ProgramHeaderModule, ONLY: &
-    ProgramName,  &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -14,12 +19,31 @@ MODULE Euler_PerturbationModule
     MeshX, &
     NodeCoordinate
   Use GeometryFieldsModule, ONLY: &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_E, &
-    iAF_Gm, iAF_Cs
+    nPF, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
+    nAF, &
+    iAF_P, &
+    iAF_T, &
+    iAF_Ye, &
+    iAF_S, &
+    iAF_E, &
+    iAF_Gm, &
+    iAF_Cs
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic, &
     ComputeConserved_Euler_NonRelativistic, &

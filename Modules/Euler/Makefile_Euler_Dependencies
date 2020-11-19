@@ -28,11 +28,11 @@ Euler_UtilitiesModule_Relativistic.o: \
   EquationOfStateModule.o \
   UnitsModule.o \
   TimersModule_Euler.o \
-  Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
   KindModule.o \
+  FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   Euler_UtilitiesModule_Relativistic.o \
   Euler_UtilitiesModule.F90
@@ -135,10 +135,10 @@ Euler_PositivityLimiterModule.o: \
 Euler_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
-  ReferenceElementModuleX.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
+  TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_BoundaryConditionsModule.F90
 
@@ -146,7 +146,7 @@ Euler_DiscontinuityDetectionModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
-  MeshModule.o \
+  LinearAlgebraModule.o \
   PolynomialBasisModule_Lagrange.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \

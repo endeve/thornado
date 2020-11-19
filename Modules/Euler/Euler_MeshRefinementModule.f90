@@ -1,26 +1,26 @@
 MODULE Euler_MeshRefinementModule
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
+    One, &
     Half
   USE ProgramHeaderModule, ONLY: &
-    nDimsX,  &
+    nDimsX, &
     nNodesX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    NodesX1,   &
-    NodesX2,   &
-    NodesX3,   &
+    NodesX1, &
+    NodesX2, &
+    NodesX3, &
     WeightsX1, &
     WeightsX2, &
     WeightsX3, &
     WeightsX_q
   USE PolynomialBasisModule_Lagrange, ONLY: &
     IndLX_Q, &
-    L_X1,    &
-    L_X2,    &
+    L_X1, &
+    L_X2, &
     L_X3
 
   IMPLICIT NONE
