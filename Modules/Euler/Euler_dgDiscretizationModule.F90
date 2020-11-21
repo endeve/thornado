@@ -1799,24 +1799,33 @@ CONTAINS
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_h_1), G_K(:,iGF_h_1), G_N_X1(:,iGF_h_1), &
-               G_X1_Dn(:,iGF_h_1), G_X1_Up(:,iGF_h_1) )
+               G_P_X1 (:,iGF_h_1), &
+               G_K    (:,iGF_h_1), &
+               G_N_X1 (:,iGF_h_1), &
+               G_X1_Dn(:,iGF_h_1), &
+               G_X1_Up(:,iGF_h_1) )
 
       G_X1_Dn(:,iGF_h_1) = MAX( G_X1_Dn(:,iGF_h_1), SqrtTiny )
       G_X1_Up(:,iGF_h_1) = MAX( G_X1_Up(:,iGF_h_1), SqrtTiny )
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_h_2), G_K(:,iGF_h_2), G_N_X1(:,iGF_h_2), &
-               G_X1_Dn(:,iGF_h_2), G_X1_Up(:,iGF_h_2) )
+               G_P_X1 (:,iGF_h_2), &
+               G_K    (:,iGF_h_2), &
+               G_N_X1 (:,iGF_h_2), &
+               G_X1_Dn(:,iGF_h_2), &
+               G_X1_Up(:,iGF_h_2) )
 
       G_X1_Dn(:,iGF_h_2) = MAX( G_X1_Dn(:,iGF_h_2), SqrtTiny )
       G_X1_Up(:,iGF_h_2) = MAX( G_X1_Up(:,iGF_h_2), SqrtTiny )
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_h_3), G_K(:,iGF_h_3), G_N_X1(:,iGF_h_3), &
-               G_X1_Dn(:,iGF_h_3), G_X1_Up(:,iGF_h_3) )
+               G_P_X1 (:,iGF_h_3), &
+               G_K    (:,iGF_h_3), &
+               G_N_X1 (:,iGF_h_3), &
+               G_X1_Dn(:,iGF_h_3), &
+               G_X1_Up(:,iGF_h_3) )
 
       G_X1_Dn(:,iGF_h_3) = MAX( G_X1_Dn(:,iGF_h_3), SqrtTiny )
       G_X1_Up(:,iGF_h_3) = MAX( G_X1_Up(:,iGF_h_3), SqrtTiny )
@@ -1825,17 +1834,23 @@ CONTAINS
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_h_1), G_X1_Dn(:,iGF_h_1), G_K(:,iGF_h_1), &
+               G_X1_Up(:,iGF_h_1), &
+               G_X1_Dn(:,iGF_h_1), &
+               G_K    (:,iGF_h_1), &
                dh1dX1 )
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_h_2), G_X1_Dn(:,iGF_h_2), G_K(:,iGF_h_2), &
+               G_X1_Up(:,iGF_h_2), &
+               G_X1_Dn(:,iGF_h_2), &
+               G_K    (:,iGF_h_2), &
                dh2dX1 )
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_h_3), G_X1_Dn(:,iGF_h_3), G_K(:,iGF_h_3), &
+               G_X1_Up(:,iGF_h_3), &
+               G_X1_Dn(:,iGF_h_3), &
+               G_K    (:,iGF_h_3), &
                dh3dX1 )
 
       ! --- Shift vector derivative wrt X1 ---
@@ -1844,37 +1859,49 @@ CONTAINS
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_Beta_1), G_K(:,iGF_Beta_1), G_N_X1(:,iGF_Beta_1), &
-               G_X1_Dn(:,iGF_Beta_1), G_X1_Up(:,iGF_Beta_1) )
+               G_P_X1 (:,iGF_Beta_1), &
+               G_K    (:,iGF_Beta_1), &
+               G_N_X1 (:,iGF_Beta_1), &
+               G_X1_Dn(:,iGF_Beta_1), &
+               G_X1_Up(:,iGF_Beta_1) )
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_Beta_2), G_K(:,iGF_Beta_2), G_N_X1(:,iGF_Beta_2), &
-               G_X1_Dn(:,iGF_Beta_2), G_X1_Up(:,iGF_Beta_2) )
+               G_P_X1 (:,iGF_Beta_2), &
+               G_K    (:,iGF_Beta_2), &
+               G_N_X1 (:,iGF_Beta_2), &
+               G_X1_Dn(:,iGF_Beta_2), &
+               G_X1_Up(:,iGF_Beta_2) )
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_Beta_3), G_K(:,iGF_Beta_3), G_N_X1(:,iGF_Beta_3), &
-               G_X1_Dn(:,iGF_Beta_3), G_X1_Up(:,iGF_Beta_3) )
+               G_P_X1 (:,iGF_Beta_3), &
+               G_K    (:,iGF_Beta_3), &
+               G_N_X1 (:,iGF_Beta_3), &
+               G_X1_Dn(:,iGF_Beta_3), &
+               G_X1_Up(:,iGF_Beta_3) )
 
       ! --- Differentiation ---
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_Beta_1), G_X1_Dn(:,iGF_Beta_1), &
-               G_K(:,iGF_Beta_1), &
+               G_X1_Up(:,iGF_Beta_1), &
+               G_X1_Dn(:,iGF_Beta_1), &
+               G_K    (:,iGF_Beta_1), &
                db1dX1 )
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_Beta_2), G_X1_Dn(:,iGF_Beta_2), &
-               G_K(:,iGF_Beta_2), &
+               G_X1_Up(:,iGF_Beta_2), &
+               G_X1_Dn(:,iGF_Beta_2), &
+               G_K    (:,iGF_Beta_2), &
                db2dX1 )
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_Beta_3), G_X1_Dn(:,iGF_Beta_3), &
-               G_K(:,iGF_Beta_3), &
+               G_X1_Up(:,iGF_Beta_3), &
+               G_X1_Dn(:,iGF_Beta_3), &
+               G_K    (:,iGF_Beta_3), &
                db3dX1 )
 
       ! --- Lapse function derivative wrt X1 ---
@@ -1883,8 +1910,11 @@ CONTAINS
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_Alpha), G_K(:,iGF_Alpha), G_N_X1(:,iGF_Alpha), &
-               G_X1_Dn(:,iGF_Alpha), G_X1_Up(:,iGF_Alpha) )
+               G_P_X1 (:,iGF_Alpha), &
+               G_K    (:,iGF_Alpha), &
+               G_N_X1 (:,iGF_Alpha), &
+               G_X1_Dn(:,iGF_Alpha), &
+               G_X1_Up(:,iGF_Alpha) )
 
       G_X1_Dn(:,iGF_Alpha) = MAX( G_X1_Dn(:,iGF_Alpha), SqrtTiny )
       G_X1_Up(:,iGF_Alpha) = MAX( G_X1_Up(:,iGF_Alpha), SqrtTiny )
@@ -1893,8 +1923,9 @@ CONTAINS
 
       CALL ComputeDerivative &
              ( nDOFX_X1,dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-               G_X1_Up(:,iGF_Alpha), G_X1_Dn(:,iGF_Alpha), &
-               G_K(:,iGF_Alpha), &
+               G_X1_Up(:,iGF_Alpha), &
+               G_X1_Dn(:,iGF_Alpha), &
+               G_K    (:,iGF_Alpha), &
                dadX1 )
 
       ! --- Momentum density source term (S1) ---
@@ -1918,24 +1949,33 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_h_1), G_K(:,iGF_h_1), G_N_X2(:,iGF_h_1), &
-                 G_X2_Dn(:,iGF_h_1), G_X2_Up(:,iGF_h_1) )
+                 G_P_X2 (:,iGF_h_1), &
+                 G_K    (:,iGF_h_1), &
+                 G_N_X2 (:,iGF_h_1), &
+                 G_X2_Dn(:,iGF_h_1), &
+                 G_X2_Up(:,iGF_h_1) )
 
         G_X2_Dn(:,iGF_h_1) = MAX( G_X2_Dn(:,iGF_h_1), SqrtTiny )
         G_X2_Up(:,iGF_h_1) = MAX( G_X2_Up(:,iGF_h_1), SqrtTiny )
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_h_2), G_K(:,iGF_h_2), G_N_X2(:,iGF_h_2), &
-                 G_X2_Dn(:,iGF_h_2), G_X2_Up(:,iGF_h_2) )
+                 G_P_X2 (:,iGF_h_2), &
+                 G_K    (:,iGF_h_2), &
+                 G_N_X2 (:,iGF_h_2), &
+                 G_X2_Dn(:,iGF_h_2), &
+                 G_X2_Up(:,iGF_h_2) )
 
         G_X2_Dn(:,iGF_h_2) = MAX( G_X2_Dn(:,iGF_h_2), SqrtTiny )
         G_X2_Up(:,iGF_h_2) = MAX( G_X2_Up(:,iGF_h_2), SqrtTiny )
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_h_3), G_K(:,iGF_h_3), G_N_X2(:,iGF_h_3), &
-                 G_X2_Dn(:,iGF_h_3), G_X2_Up(:,iGF_h_3) )
+                 G_P_X2 (:,iGF_h_3), &
+                 G_K    (:,iGF_h_3), &
+                 G_N_X2 (:,iGF_h_3), &
+                 G_X2_Dn(:,iGF_h_3), &
+                 G_X2_Up(:,iGF_h_3) )
 
         G_X2_Dn(:,iGF_h_3) = MAX( G_X2_Dn(:,iGF_h_3), SqrtTiny )
         G_X2_Up(:,iGF_h_3) = MAX( G_X2_Up(:,iGF_h_3), SqrtTiny )
@@ -1944,17 +1984,23 @@ CONTAINS
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_h_1), G_X1_Dn(:,iGF_h_1), G_K(:,iGF_h_1), &
+                 G_X2_Up(:,iGF_h_1), &
+                 G_X2_Dn(:,iGF_h_1), &
+                 G_K    (:,iGF_h_1), &
                  dh1dX2 )
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_h_2), G_X1_Dn(:,iGF_h_2), G_K(:,iGF_h_2), &
+                 G_X2_Up(:,iGF_h_2), &
+                 G_X2_Dn(:,iGF_h_2), &
+                 G_K    (:,iGF_h_2), &
                  dh2dX2 )
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_h_3), G_X1_Dn(:,iGF_h_3), G_K(:,iGF_h_3), &
+                 G_X2_Up(:,iGF_h_3), &
+                 G_X2_Dn(:,iGF_h_3), &
+                 G_K    (:,iGF_h_3), &
                  dh3dX2 )
 
         ! --- Shift vector derivatives wrt X2 ---
@@ -1963,40 +2009,49 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_Beta_1), G_K(:,iGF_Beta_1), &
-                 G_N_X2(:,iGF_Beta_1), &
-                 G_X2_Dn(:,iGF_Beta_1), G_X2_Up(:,iGF_Beta_1) )
+                 G_P_X2 (:,iGF_Beta_1), &
+                 G_K    (:,iGF_Beta_1), &
+                 G_N_X2 (:,iGF_Beta_1), &
+                 G_X2_Dn(:,iGF_Beta_1), &
+                 G_X2_Up(:,iGF_Beta_1) )
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_Beta_2), G_K(:,iGF_Beta_2), &
-                 G_N_X2(:,iGF_Beta_2), &
-                 G_X2_Dn(:,iGF_Beta_2), G_X2_Up(:,iGF_Beta_2) )
+                 G_P_X2 (:,iGF_Beta_2), &
+                 G_K    (:,iGF_Beta_2), &
+                 G_N_X2 (:,iGF_Beta_2), &
+                 G_X2_Dn(:,iGF_Beta_2), &
+                 G_X2_Up(:,iGF_Beta_2) )
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_Beta_3), G_K(:,iGF_Beta_3), &
-                 G_N_X2(:,iGF_Beta_3), &
-                 G_X2_Dn(:,iGF_Beta_3), G_X2_Up(:,iGF_Beta_3) )
+                 G_P_X2 (:,iGF_Beta_3), &
+                 G_K    (:,iGF_Beta_3), &
+                 G_N_X2 (:,iGF_Beta_3), &
+                 G_X2_Dn(:,iGF_Beta_3), &
+                 G_X2_Up(:,iGF_Beta_3) )
 
         ! --- Differentiation ---
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_Beta_1), G_X1_Dn(:,iGF_Beta_1), &
-                 G_K(:,iGF_Beta_1), &
+                 G_X2_Up(:,iGF_Beta_1), &
+                 G_X2_Dn(:,iGF_Beta_1), &
+                 G_K    (:,iGF_Beta_1), &
                  db1dX2 )
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_Beta_2), G_X1_Dn(:,iGF_Beta_2), &
-                 G_K(:,iGF_Beta_2), &
+                 G_X2_Up(:,iGF_Beta_2), &
+                 G_X2_Dn(:,iGF_Beta_2), &
+                 G_K    (:,iGF_Beta_2), &
                  db2dX2 )
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_Beta_3), G_X1_Dn(:,iGF_Beta_3), &
-                 G_K(:,iGF_Beta_3), &
+                 G_X2_Up(:,iGF_Beta_3), &
+                 G_X2_Dn(:,iGF_Beta_3), &
+                 G_K    (:,iGF_Beta_3), &
                  db3dX2 )
 
         ! --- Lapse function derivative wrt X2 ---
@@ -2005,9 +2060,11 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_Alpha), G_K(:,iGF_Alpha), &
-                 G_N_X2(:,iGF_Alpha), &
-                 G_X2_Dn(:,iGF_Alpha), G_X2_Up(:,iGF_Alpha) )
+                 G_P_X2 (:,iGF_Alpha), &
+                 G_K    (:,iGF_Alpha), &
+                 G_N_X2 (:,iGF_Alpha), &
+                 G_X2_Dn(:,iGF_Alpha), &
+                 G_X2_Up(:,iGF_Alpha) )
 
         G_X2_Dn(:,iGF_Alpha) = MAX( G_X2_Dn(:,iGF_Alpha), SqrtTiny )
         G_X2_Up(:,iGF_Alpha) = MAX( G_X2_Up(:,iGF_Alpha), SqrtTiny )
@@ -2016,8 +2073,9 @@ CONTAINS
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
-                 G_X2_Up(:,iGF_Alpha), G_X1_Dn(:,iGF_Alpha), &
-                 G_K(:,iGF_Alpha), &
+                 G_X2_Up(:,iGF_Alpha), &
+                 G_X2_Dn(:,iGF_Alpha), &
+                 G_K    (:,iGF_Alpha), &
                  dadX2 )
 
         ! --- Momentum density source term (S2) ---
@@ -2043,24 +2101,33 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_h_1), G_K(:,iGF_h_1), G_N_X3(:,iGF_h_1), &
-                 G_X3_Dn(:,iGF_h_1), G_X3_Up(:,iGF_h_1) )
+                 G_P_X3 (:,iGF_h_1), &
+                 G_K    (:,iGF_h_1), &
+                 G_N_X3 (:,iGF_h_1), &
+                 G_X3_Dn(:,iGF_h_1), &
+                 G_X3_Up(:,iGF_h_1) )
 
         G_X3_Dn(:,iGF_h_1) = MAX( G_X3_Dn(:,iGF_h_1), SqrtTiny )
         G_X3_Up(:,iGF_h_1) = MAX( G_X3_Up(:,iGF_h_1), SqrtTiny )
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_h_2), G_K(:,iGF_h_2), G_N_X3(:,iGF_h_2), &
-                 G_X3_Dn(:,iGF_h_2), G_X3_Up(:,iGF_h_2) )
+                 G_P_X3 (:,iGF_h_2), &
+                 G_K    (:,iGF_h_2), &
+                 G_N_X3 (:,iGF_h_2), &
+                 G_X3_Dn(:,iGF_h_2), &
+                 G_X3_Up(:,iGF_h_2) )
 
         G_X3_Dn(:,iGF_h_2) = MAX( G_X3_Dn(:,iGF_h_2), SqrtTiny )
         G_X3_Up(:,iGF_h_2) = MAX( G_X3_Up(:,iGF_h_2), SqrtTiny )
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_h_3), G_K(:,iGF_h_3), G_N_X3(:,iGF_h_3), &
-                 G_X3_Dn(:,iGF_h_3), G_X3_Up(:,iGF_h_3) )
+                 G_P_X3 (:,iGF_h_3), &
+                 G_K    (:,iGF_h_3), &
+                 G_N_X3 (:,iGF_h_3), &
+                 G_X3_Dn(:,iGF_h_3), &
+                 G_X3_Up(:,iGF_h_3) )
 
         G_X3_Dn(:,iGF_h_3) = MAX( G_X3_Dn(:,iGF_h_3), SqrtTiny )
         G_X3_Up(:,iGF_h_3) = MAX( G_X3_Up(:,iGF_h_3), SqrtTiny )
@@ -2069,17 +2136,23 @@ CONTAINS
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_h_1), G_X3_Dn(:,iGF_h_1), G_K(:,iGF_h_1), &
+                 G_X3_Up(:,iGF_h_1), &
+                 G_X3_Dn(:,iGF_h_1), &
+                 G_K    (:,iGF_h_1), &
                  dh1dX3 )
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_h_2), G_X3_Dn(:,iGF_h_2), G_K(:,iGF_h_2), &
+                 G_X3_Up(:,iGF_h_2), &
+                 G_X3_Dn(:,iGF_h_2), &
+                 G_K    (:,iGF_h_2), &
                  dh2dX3 )
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_h_3), G_X3_Dn(:,iGF_h_3), G_K(:,iGF_h_3), &
+                 G_X3_Up(:,iGF_h_3), &
+                 G_X3_Dn(:,iGF_h_3), &
+                 G_K    (:,iGF_h_3), &
                  dh3dX3 )
 
         ! --- Shift vector derivatives wrt X3 ---
@@ -2088,40 +2161,49 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_Beta_1), G_K(:,iGF_Beta_1), &
-                 G_N_X3(:,iGF_Beta_1), &
-                 G_X3_Dn(:,iGF_Beta_1), G_X3_Up(:,iGF_Beta_1) )
+                 G_P_X3 (:,iGF_Beta_1), &
+                 G_K    (:,iGF_Beta_1), &
+                 G_N_X3 (:,iGF_Beta_1), &
+                 G_X3_Dn(:,iGF_Beta_1), &
+                 G_X3_Up(:,iGF_Beta_1) )
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_Beta_2), G_K(:,iGF_Beta_2), &
-                 G_N_X3(:,iGF_Beta_2), &
-                 G_X3_Dn(:,iGF_Beta_2), G_X3_Up(:,iGF_Beta_2) )
+                 G_P_X3 (:,iGF_Beta_2), &
+                 G_K    (:,iGF_Beta_2), &
+                 G_N_X3 (:,iGF_Beta_2), &
+                 G_X3_Dn(:,iGF_Beta_2), &
+                 G_X3_Up(:,iGF_Beta_2) )
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_Beta_3), G_K(:,iGF_Beta_3), &
-                 G_N_X3(:,iGF_Beta_3), &
-                 G_X3_Dn(:,iGF_Beta_3), G_X3_Up(:,iGF_Beta_3) )
+                 G_P_X3 (:,iGF_Beta_3), &
+                 G_K    (:,iGF_Beta_3), &
+                 G_N_X3 (:,iGF_Beta_3), &
+                 G_X3_Dn(:,iGF_Beta_3), &
+                 G_X3_Up(:,iGF_Beta_3) )
 
         ! --- Differentiation ---
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_Beta_1), G_X3_Dn(:,iGF_Beta_1), &
-                 G_K(:,iGF_Beta_1), &
+                 G_X3_Up(:,iGF_Beta_1), &
+                 G_X3_Dn(:,iGF_Beta_1), &
+                 G_K    (:,iGF_Beta_1), &
                  db1dX3 )
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_Beta_2), G_X3_Dn(:,iGF_Beta_2), &
-                 G_K(:,iGF_Beta_2), &
+                 G_X3_Up(:,iGF_Beta_2), &
+                 G_X3_Dn(:,iGF_Beta_2), &
+                 G_K    (:,iGF_Beta_2), &
                  db2dX3 )
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_Beta_3), G_X3_Dn(:,iGF_Beta_3), &
-                 G_K(:,iGF_Beta_3), &
+                 G_X3_Up(:,iGF_Beta_3), &
+                 G_X3_Dn(:,iGF_Beta_3), &
+                 G_K    (:,iGF_Beta_3), &
                  db3dX3 )
 
         ! --- Lapse function derivative wrt X3 ---
@@ -2130,8 +2212,11 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_Alpha), G_K(:,iGF_Alpha), G_N_X3(:,iGF_Alpha), &
-                 G_X3_Dn(:,iGF_Alpha), G_X3_Up(:,iGF_Alpha) )
+                 G_P_X3 (:,iGF_Alpha), &
+                 G_K    (:,iGF_Alpha), &
+                 G_N_X3 (:,iGF_Alpha), &
+                 G_X3_Dn(:,iGF_Alpha), &
+                 G_X3_Up(:,iGF_Alpha) )
 
         G_X3_Dn(:,iGF_Alpha) = MAX( G_X3_Dn(:,iGF_Alpha), SqrtTiny )
         G_X3_Up(:,iGF_Alpha) = MAX( G_X3_Up(:,iGF_Alpha), SqrtTiny )
@@ -2140,8 +2225,9 @@ CONTAINS
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
-                 G_X3_Up(:,iGF_Alpha), G_X3_Dn(:,iGF_Alpha), &
-                 G_K(:,iGF_Beta_3), &
+                 G_X3_Up(:,iGF_Alpha), &
+                 G_X3_Dn(:,iGF_Alpha), &
+                 G_K    (:,iGF_Alpha), &
                  dadX3 )
 
         ! --- Momentum density source term (S3) ---
@@ -2165,9 +2251,11 @@ CONTAINS
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_SqrtGm), G_K(:,iGF_SqrtGm), &
-               G_N_X1(:,iGF_SqrtGm), &
-               G_X1_Dn(:,iGF_SqrtGm), G_X1_Up(:,iGF_SqrtGm) )
+               G_P_X1 (:,iGF_SqrtGm), &
+               G_K    (:,iGF_SqrtGm), &
+               G_N_X1 (:,iGF_SqrtGm), &
+               G_X1_Dn(:,iGF_SqrtGm), &
+               G_X1_Up(:,iGF_SqrtGm) )
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
@@ -2175,7 +2263,8 @@ CONTAINS
                  * G_X1_Up(:,iGF_Beta_1), &
                G_X1_Dn(:,iGF_Alpha) * G_X1_Dn(:,iGF_SqrtGm) &
                  * G_X1_Dn(:,iGF_Beta_1), &
-               G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) * G_K(:,iGF_Beta_1), &
+               G_K    (:,iGF_Alpha) * G_K    (:,iGF_SqrtGm) &
+                 * G_K    (:,iGF_Beta_1), &
                DivGridVolume, &
                Alpha_Option = One, Beta_Option = Zero )
 
@@ -2183,9 +2272,11 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X2, LX_X2_Up, LX_X2_Dn, &
-                 G_P_X2(:,iGF_SqrtGm), G_K(:,iGF_SqrtGm), &
-                 G_N_X2(:,iGF_SqrtGm), &
-                 G_X2_Dn(:,iGF_SqrtGm), G_X2_Up(:,iGF_SqrtGm) )
+                 G_P_X2 (:,iGF_SqrtGm), &
+                 G_K    (:,iGF_SqrtGm), &
+                 G_N_X2 (:,iGF_SqrtGm), &
+                 G_X2_Dn(:,iGF_SqrtGm), &
+                 G_X2_Up(:,iGF_SqrtGm) )
 
         CALL ComputeDerivative &
                ( nDOFX_X2, dX2, LX_X2_Up, LX_X2_Dn, dLXdX2_q, WeightsX_X2, &
@@ -2193,7 +2284,8 @@ CONTAINS
                    * G_X2_Up(:,iGF_Beta_2), &
                  G_X2_Dn(:,iGF_Alpha) * G_X2_Dn(:,iGF_SqrtGm) &
                    * G_X2_Dn(:,iGF_Beta_2), &
-                 G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) * G_K(:,iGF_Beta_2), &
+                 G_K    (:,iGF_Alpha) * G_K    (:,iGF_SqrtGm) &
+                   * G_K    (:,iGF_Beta_2), &
                  DivGridVolume, &
                  Alpha_Option = One, Beta_Option = One )
 
@@ -2203,9 +2295,11 @@ CONTAINS
 
         CALL InterpolateToFace &
                ( nDOFX_X3, LX_X3_Up, LX_X3_Dn, &
-                 G_P_X3(:,iGF_SqrtGm), G_K(:,iGF_SqrtGm), &
-                 G_N_X3(:,iGF_SqrtGm), &
-                 G_X3_Dn(:,iGF_SqrtGm), G_X3_Up(:,iGF_SqrtGm) )
+                 G_P_X3 (:,iGF_SqrtGm), &
+                 G_K    (:,iGF_SqrtGm), &
+                 G_N_X3 (:,iGF_SqrtGm), &
+                 G_X3_Dn(:,iGF_SqrtGm), &
+                 G_X3_Up(:,iGF_SqrtGm) )
 
         CALL ComputeDerivative &
                ( nDOFX_X3, dX3, LX_X3_Up, LX_X3_Dn, dLXdX3_q, WeightsX_X3, &
@@ -2213,7 +2307,8 @@ CONTAINS
                    * G_X3_Up(:,iGF_Beta_3), &
                  G_X3_Dn(:,iGF_Alpha) * G_X3_Dn(:,iGF_SqrtGm) &
                    * G_X3_Dn(:,iGF_Beta_3), &
-                 G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) * G_K(:,iGF_Beta_3), &
+                 G_K    (:,iGF_Alpha) * G_K    (:,iGF_SqrtGm) &
+                   * G_K    (:,iGF_Beta_3), &
                  DivGridVolume, &
                  Alpha_Option = One, Beta_Option = One )
 
@@ -2348,14 +2443,17 @@ CONTAINS
 
       CALL InterpolateToFace &
              ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-               G_P_X1(:,iGF_Psi), G_K(:,iGF_Psi), G_N_X1(:,iGF_Psi), &
-               G_X1_Dn(:,iGF_Psi), G_X1_Up(:,iGF_Psi) )
+               G_P_X1 (:,iGF_Psi), &
+               G_K    (:,iGF_Psi), &
+               G_N_X1 (:,iGF_Psi), &
+               G_X1_Dn(:,iGF_Psi), &
+               G_X1_Up(:,iGF_Psi) )
 
       CALL ComputeDerivative &
              ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
                G_X1_Up(:,iGF_Psi), &
                G_X1_Dn(:,iGF_Psi), &
-               G_K(:,iGF_Psi),     &
+               G_K    (:,iGF_Psi), &
                GradPsi,            &
                Alpha_Option = One, Beta_Option = Zero )
 
