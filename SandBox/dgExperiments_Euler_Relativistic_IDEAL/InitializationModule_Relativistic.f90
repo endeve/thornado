@@ -1202,7 +1202,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_SedovTaylorBlastWave
 
 
-  ! --- Relativistic 2D Kelvin-Helmholtz instability a la
+  ! --- Relativistic Kelvin-Helmholtz instability a la
   !     Beckwith & Stone (2011), ApjS, 193, 6 (typo in Eq. (63)) ---
   SUBROUTINE InitializeFields_KelvinHelmholtzInstability
 
@@ -1210,17 +1210,25 @@ CONTAINS
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
     REAL(DP) :: X1, X2
     REAL(DP) :: rho0, rho1
-    REAL(DP) :: Vshear, a, X2_Offset, sigma, A0
+    REAL(DP) :: Vshear, a, X2_Offset, sigma, A0, Vz
 
-    rho0 = 0.505d0
-    rho1 = 0.495d0
+    INTEGER, ALLOCATABLE :: Seed(:)
+    INTEGER              :: SeedNum = 1
 
-    Vshear    = 0.5d0
-    a         = 0.01d0
-    X2_Offset = 0.5d0
-    sigma     = 0.1d0
+    CALL RANDOM_SEED( SIZE = SeedNum )
+    ALLOCATE( Seed(SeedNum) )
+    Seed(1) = 1
+    CALL RANDOM_SEED( PUT = Seed )
 
-    A0 = 0.1d0
+    rho0 = 0.505_DP
+    rho1 = 0.495_DP
+
+    Vshear    = 0.5_DP
+    a         = 0.01_DP
+    X2_Offset = 0.5_DP
+    sigma     = 0.1_DP
+
+    A0 = 0.1_DP
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1235,7 +1243,9 @@ CONTAINS
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
         ! --- Top ---
-        IF( X2 .GT. 0.0d0 )THEN
+
+        IF( X2 .GT. Zero )THEN
+
           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
             = rho0 + rho1 * TANH( ( X2 - X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
@@ -1243,24 +1253,37 @@ CONTAINS
 
           ! --- This is where the typo is. The following expression is
           !     taken from Radice & Rezzolla, 2012, AA, 547, A26, Eq. (48) ---
+
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-            = A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
+            = A0 * Vshear * SIN( TwoPi * X1 ) &
                 * EXP( -( ( X2 - X2_Offset ) / sigma )**2 )
 
         ! --- Bottom ---
+
         ELSE
+
           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
             = rho0 - rho1 * TANH( ( X2 + X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
             = -Vshear     * TANH( ( X2 + X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-            = -A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
+            = -A0 * Vshear * SIN( TwoPi * X1 ) &
                 * EXP( -( ( X2 + X2_Offset ) / sigma )**2 )
 
-         END IF
+        END IF
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-        uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d0
+        IF( nDimsX .EQ. 2 )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+
+        ELSE
+
+          CALL RANDOM_NUMBER( Vz )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.01_DP * Vz
+
+        END IF
+
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P) = One
         uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
           = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
@@ -1282,6 +1305,7 @@ CONTAINS
     END DO
     END DO
 
+    DEALLOCATE( Seed )
 
   END SUBROUTINE InitializeFields_KelvinHelmholtzInstability
 
