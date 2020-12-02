@@ -203,9 +203,9 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nDF) )
 
-        ALLOCATE( dU(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nCF) )
+        ALLOCATE( dU(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF) )
 
         CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
@@ -232,7 +232,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2amrex_Euler( nCF, iX_B0, iX_E0, duCF, dU )
+        CALL thornado2amrex_Euler( nCF, iX_B1, iX_E1, duCF, dU )
 
         CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF , D )
 

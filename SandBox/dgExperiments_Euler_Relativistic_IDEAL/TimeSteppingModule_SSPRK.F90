@@ -49,7 +49,7 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(inout)        :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
@@ -94,9 +94,9 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
   END SUBROUTINE InitializeFluid_SSPRK
@@ -249,7 +249,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     INTEGER :: iCF, iX1, iX2, iX3
 
