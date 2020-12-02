@@ -483,6 +483,14 @@ PROGRAM ApplicationDriver
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
+!!$#if defined(THORNADO_OMP_OL)
+!!$  !$OMP TARGET ENTER DATA &
+!!$  !$OMP MAP( to: uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
+!!$#elif defined(THORNADO_OACC)
+!!$  !$ACC ENTER DATA &
+!!$  !$ACC COPYIN(  uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
+!!$#endif
+
   iCycle = 0
   DO WHILE ( t < t_end )
 
@@ -531,6 +539,14 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
+!!$#if defined(THORNADO_OMP_OL)
+!!$      !$OMP TARGET EXIT DATA &
+!!$      !$OMP MAP( from: uGF, uCF )
+!!$#elif defined(THORNADO_OACC)
+!!$      !$ACC EXIT DATA &
+!!$      !$ACC COPYOUT(   uGF, uCF )
+!!$#endif
+
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
@@ -550,6 +566,14 @@ PROGRAM ApplicationDriver
     END IF
     !STOP ! HACKZ
   END DO
+
+!!$#if defined(THORNADO_OMP_OL)
+!!$      !$OMP TARGET EXIT DATA &
+!!$      !$OMP MAP( from: uGF, uCF )
+!!$#elif defined(THORNADO_OACC)
+!!$      !$ACC EXIT DATA &
+!!$      !$ACC COPYOUT(   uGF, uCF )
+!!$#endif
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
