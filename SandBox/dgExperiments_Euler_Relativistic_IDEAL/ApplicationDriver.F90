@@ -1,11 +1,11 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
-    Two,  &
-    Pi,   &
+    One, &
+    Two, &
+    Pi, &
     TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
@@ -20,23 +20,22 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE ProgramHeaderModule, ONLY: &
-    iX_B0,  &
-    iX_B1,  &
-    iX_E0,  &
-    iX_E1,  &
-    nDimsX, &
-    nDOFX
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDimsX
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
-    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
+    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
-    FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
+    FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
@@ -55,30 +54,25 @@ PROGRAM ApplicationDriver
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK,   &
+    FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
-    Kilometer,   &
-    SolarMass,   &
-    Second,      &
-    Millisecond, &
-    Centimeter,  &
-    Gram,        &
-    Erg,         &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic, ONLY: &
     InitializeTally_Euler_Relativistic, &
-    FinalizeTally_Euler_Relativistic,   &
+    FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler,            &
-    InitializeTimers_Euler,  &
-    FinalizeTimers_Euler,    &
-    TimersStart_Euler,       &
-    TimersStop_Euler,        &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_InputOutput, &
-    Timer_Euler_Initialize,  &
+    Timer_Euler_Initialize, &
     Timer_Euler_Finalize
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -99,6 +93,7 @@ PROGRAM ApplicationDriver
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   INTEGER       :: RestartFileNumber
+  INTEGER       :: iErr = 0
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
@@ -107,6 +102,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
   REAL(DP)      :: ZoomX(3)
+  REAL(DP)      :: Timer_Evolution
 
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
@@ -115,8 +111,6 @@ PROGRAM ApplicationDriver
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
-
-  REAL(DP) :: Timer_Evolution
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -176,7 +170,7 @@ PROGRAM ApplicationDriver
         CASE( 'Sod' )
 
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4_DP
+          t_end = 0.2_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'IsolatedShock' )
@@ -249,7 +243,7 @@ PROGRAM ApplicationDriver
         CASE( 'IsolatedShock' )
 
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 2.5e1_DP
+          t_end = 25.0_DP
           bcX   = [ 2, 2, 0 ]
 
       END SELECT
@@ -276,8 +270,6 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 2.0_DP, Pi, TwoPi ]
 
-      WriteGF = .TRUE.
-
     CASE( 'SedovTaylorBlastWave' )
 
       nDetCells = 1
@@ -294,20 +286,18 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.2_DP, Pi, TwoPi ]
 
-      WriteGF = .TRUE.
-
     CASE( 'KelvinHelmholtzInstability' )
 
        CoordinateSystem = 'CARTESIAN'
 
-       Gamma = 4.0d0 / 3.0d0
+       Gamma = 4.0_DP / 3.0_DP
        t_end = 0.1_DP
-       bcX = [ 1, 1, 0 ]
+       bcX = [ 1, 1, 1 ]
 
-       nX = [ 16, 32, 1 ]
-      swX = [ 1, 1, 0 ]
-       xL = [ -0.5_DP, -1.0_DP, 0.0_DP ]
-       xR = [  0.5_DP,  1.0_DP, 1.0_DP ]
+       nX = [ 16, 32, 16 ]
+      swX = [ 1, 1, 1 ]
+       xL = [ -0.5_DP, -1.0_DP, -0.5_DP ]
+       xR = [  0.5_DP,  1.0_DP,  0.5_DP ]
 
     CASE DEFAULT
 
@@ -344,19 +334,19 @@ PROGRAM ApplicationDriver
 
   UseSlopeLimiter           = .FALSE.
   SlopeLimiterMethod        = 'TVD'
-  BetaTVD                   = 1.75d0
-  BetaTVB                   = 0.0d0
-  SlopeTolerance            = 1.0d-6
-  UseCharacteristicLimiting = .TRUE.
-  UseTroubledCellIndicator  = .TRUE.
+  BetaTVD                   = 1.75_DP
+  BetaTVB                   = 0.0_DP
+  SlopeTolerance            = 1.0e-6_DP
+  UseCharacteristicLimiting = .FALSE.
+  UseTroubledCellIndicator  = .FALSE.
   LimiterThresholdParameter = 0.015_DP
-  UseConservativeCorrection = .TRUE.
+  UseConservativeCorrection = .FALSE.
 
   ! --- Positivity Limiter ---
 
   UsePositivityLimiter = .FALSE.
-  Min_1                = 1.0d-13
-  Min_2                = 1.0d-13
+  Min_1                = 1.0e-13_DP
+  Min_2                = 1.0e-13_DP
 
   ! === End of User Input ===
 
@@ -442,7 +432,10 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
+             iErr_Option = iErr )
+
+    CALL DescribeError_Euler( iErr )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -456,8 +449,8 @@ PROGRAM ApplicationDriver
   END IF
 
   iCycleD = 10
-!!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+!!$  iCycleW = 1; dt_wrt = -1.0_DP
+  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -485,7 +478,9 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCF, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt )
+             dt, iErr_Option = iErr )
+
+    CALL DescribeError_Euler( iErr )
 
     IF( t + dt .LT. t_end )THEN
 
@@ -509,12 +504,22 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, &
+             ComputeIncrement_Euler_DG_Explicit )
 
-    IF( t + dt .GT. t_wrt )THEN
+    IF( iCycleW .GT. 0 )THEN
 
-      t_wrt = t_wrt + dt_wrt
-      wrt   = .TRUE.
+      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
+
+    ELSE
+
+      IF( t + dt .GT. t_wrt )THEN
+
+        t_wrt = t_wrt + dt_wrt
+        wrt   = .TRUE.
+
+      END IF
 
     END IF
 
@@ -523,7 +528,10 @@ PROGRAM ApplicationDriver
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
       CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
+               iErr_Option = iErr )
+
+      CALL DescribeError_Euler( iErr )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -547,7 +555,10 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
+           iErr_Option = iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -557,17 +568,17 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeTally_Euler_Relativistic
 
+  CALL FinalizeFluid_SSPRK
+
   CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
   CALL FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
-  CALL FinalizeFluid_SSPRK
-
-  CALL FinalizeReferenceElementX
+  CALL FinalizeEquationOfState
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  CALL FinalizeEquationOfState
+  CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
 
