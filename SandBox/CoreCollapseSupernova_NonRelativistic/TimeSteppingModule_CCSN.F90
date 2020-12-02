@@ -203,9 +203,7 @@ CONTAINS
 
           CALL ComputeIncrement_Euler_DG_Explicit &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF, &
-                   StageData(iS) % dU_EX &
-                     (1:nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
-                      iX_B0(3):iX_E0(3),1:nCF) )
+                   StageData(iS) % dU_EX )
 
         END IF
 
