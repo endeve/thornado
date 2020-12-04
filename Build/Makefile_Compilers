@@ -131,7 +131,7 @@ FLINKER              = $(FLINKER_$(MACHINE)) $(OPENMP) $(OPENACC)
 FLAGS_DEBUG        = $(DEBUG)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
-DEBUG_endeve       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_endeve       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
 DEBUG_bbarker      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_icer         = -g -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
@@ -163,7 +163,7 @@ DEBUG              = $(DEBUG_$(MACHINE))
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
-OPTIMIZE_endeve       = -O2 -framework Accelerate
+OPTIMIZE_endeve       = -O2 -framework Accelerate -fallow-argument-mismatch
 OPTIMIZE_bbarker      = -O2 -framework Accelerate
 OPTIMIZE_icer         = -O2
 OPTIMIZE_juliana      = -O2
