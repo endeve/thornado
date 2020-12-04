@@ -7,11 +7,10 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
     nDOFZ, nNodesZ, &
     nDOFE, nNodesE, &
     nDOFX, nNodesX
-  USE TimersModule, ONLY: &
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
-    Timer_PL_Points, &
-    Timer_PL_CellAverage
+    Timer_PositivityLimiter
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -463,8 +462,6 @@ CONTAINS
 
   SUBROUTINE FinalizePositivityLimiter_TwoMoment
 
-    PRINT*, "FinalizePositivityLimiter_TwoMoment"
-
     DEALLOCATE( InterpMat_Z )
     DEALLOCATE( InterpMat_X )
     DEALLOCATE( PointZ2X )
@@ -620,7 +617,7 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
-    PRINT*, "      ApplyPositivityLimiter_TwoMoment"
+    CALL TimersStart( Timer_PositivityLimiter )
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -695,23 +692,15 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_PL_Points )
-
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G3_Q, G3_P )
 
-    CALL TimersStop( Timer_PL_Points )
-
-    CALL TimersStart( Timer_PL_CellAverage )
-
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, N_Q , N_K  )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G1_Q, G1_K )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G2_Q, G2_K )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G3_Q, G3_K )
-
-    CALL TimersStop( Timer_PL_CellAverage )
 
     ! --- Ensure Bounded Density ---
 
@@ -859,6 +848,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
