@@ -109,8 +109,6 @@ CONTAINS
 
         ! --- Implicit Solve ---
 
-        PRINT*, "    IMPLICIT: ", iS
-
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), &
                  GE, GX, UF, Ui, StageData(iS) % dU_IM )
@@ -122,8 +120,6 @@ CONTAINS
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
         ! --- Explicit Solve ---
-
-        PRINT*, "    EXPLICIT: ", iS
 
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
@@ -137,8 +133,6 @@ CONTAINS
 
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
         ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
-
-      PRINT*, "    ASSEMBLY:"
 
       Ui = U0
 
