@@ -512,7 +512,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+        !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
@@ -665,7 +665,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+        !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
