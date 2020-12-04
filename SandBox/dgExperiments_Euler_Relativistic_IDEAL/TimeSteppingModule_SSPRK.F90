@@ -1,7 +1,7 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
     One
   USE ProgramHeaderModule, ONLY: &
@@ -18,7 +18,7 @@ MODULE TimeSteppingModule_SSPRK
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
+    TimersStop_Euler, &
     Timer_Euler_UpdateFluid
 
   IMPLICIT NONE
@@ -40,21 +40,20 @@ MODULE TimeSteppingModule_SSPRK
     SUBROUTINE FluidIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
       USE KindModule, ONLY: DP
-      INTEGER,  INTENT(in)           :: &
+      INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)           :: &
+      REAL(DP), INTENT(in)    :: &
         G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(inout)        :: &
+      REAL(DP), INTENT(inout) :: &
         U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(inout)        :: &
+      REAL(DP), INTENT(inout) :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
-      LOGICAL,  INTENT(in), OPTIONAL :: &
+      REAL(DP), INTENT(out)   :: &
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      LOGICAL, INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
-
 
 CONTAINS
 
@@ -94,15 +93,33 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: U_SSPRK, D_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE(     U_SSPRK, D_SSPRK )
+#endif
 
   END SUBROUTINE InitializeFluid_SSPRK
 
 
   SUBROUTINE FinalizeFluid_SSPRK
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: U_SSPRK, D_SSPRK, &
+    !$OMP               a_SSPRK, w_SSPRK, c_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       U_SSPRK, D_SSPRK, &
+    !$ACC               a_SSPRK, w_SSPRK, c_SSPRK )
+#endif
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
@@ -146,6 +163,14 @@ CONTAINS
       c_SSPRK(iS) = SUM( a_SSPRK(iS,1:iS-1) )
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: a_SSPRK, w_SSPRK, c_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  a_SSPRK, w_SSPRK, c_SSPRK )
+#endif
+
   END SUBROUTINE InitializeSSPRK
 
 
@@ -164,12 +189,11 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE UpdateFluid_SSPRK &
-    ( t, dt, G, U, D, ComputeIncrement_Fluid )
+  SUBROUTINE UpdateFluid_SSPRK( t, dt, G, U, D, ComputeIncrement_Fluid )
 
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in) :: &
       t, dt
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -177,25 +201,49 @@ CONTAINS
       D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
-
     LOGICAL :: DEBUG = .FALSE.
 
-    INTEGER :: iS, jS, iX1, iX2, iX3
+    INTEGER :: iNodeX, iX1, iX2, iX3, iCF
+    INTEGER :: iS, jS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    U_SSPRK = Zero ! --- State
-    D_SSPRK = Zero ! --- Increment
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+#endif
 
     DO iS = 1, nStages_SSPRK
 
-      U_SSPRK = U
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U_SSPRK, U )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+      DO iCF = 1, nCF
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNodeX = 1, nDOFX
+
+        U_SSPRK(iNodeX,iX1,iX2,iX3,iCF) = U(iNodeX,iX1,iX2,iX3,iCF)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
       DO jS = 1, iS - 1
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
-          IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
           CALL AddIncrement_Fluid &
                  ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
 
@@ -237,6 +285,14 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(   U )
+#endif
+
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
@@ -249,24 +305,32 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER :: iCF, iX1, iX2, iX3
+    INTEGER :: iCF, iX1, iX2, iX3, iNX
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U, D )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iCF = 1, nCF
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = alpha * U(iNX,iX1,iX2,iX3,iCF) &
+            + beta * D(iNX,iX1,iX2,iX3,iCF)
 
-        U(:,iX1,iX2,iX3,iCF) &
-          = alpha * U(:,iX1,iX2,iX3,iCF) &
-              + beta * D(:,iX1,iX2,iX3,iCF)
-
-      END DO
-      END DO
-      END DO
-
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE AddIncrement_Fluid

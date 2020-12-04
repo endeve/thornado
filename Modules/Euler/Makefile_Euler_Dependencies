@@ -243,6 +243,7 @@ Euler_dgDiscretizationModule.o: \
   Euler_UtilitiesModule.o \
   Euler_DiscontinuityDetectionModule.o \
   EquationOfStateModule.o \
+  Euler_ErrorModule.o \
   Euler_dgDiscretizationModule.F90
 
 Euler_TallyModule_NonRelativistic.o: \

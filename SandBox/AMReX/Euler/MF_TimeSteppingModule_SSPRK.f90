@@ -134,12 +134,12 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( MF_D(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, 0 )
+               ( MF_D(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
       END DO
 
@@ -306,7 +306,7 @@ CONTAINS
             CALL MF_U(iLevel) &
                    % LinComb( One, MF_U(iLevel), 1, &
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), 0 )
+                              1, MF_U(iLevel) % nComp(), 1 )
 
         END DO
 
@@ -339,7 +339,7 @@ CONTAINS
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iLevel,iS), 1, &
-                            1, MF_uCF(iLevel) % nComp(), 0 )
+                            1, MF_uCF(iLevel) % nComp(), 1 )
 
       END DO
 
