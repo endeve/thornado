@@ -7,17 +7,24 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     nDOFX, &
     nDOFE, &
     nDOFZ
-  USE TimersModule, ONLY: &
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
-    Timer_Explicit, &
-    Timer_Ex_Permute, &
-    Timer_Ex_Interpolate, &
-    Timer_Ex_Flux, &
-    Timer_Ex_Increment, &
-    Timer_Ex_In, &
-    Timer_Ex_Div, &
-    Timer_Ex_Geometry
+    Timer_Streaming, &
+    Timer_Streaming_Permute, &
+    Timer_Streaming_LinearAlgebra, &
+    Timer_Streaming_BCs, &
+    Timer_Streaming_Zero, &
+    Timer_Streaming_Divergence_X1, &
+    Timer_Streaming_Divergence_X2, &
+    Timer_Streaming_Divergence_X3, &
+    Timer_Streaming_ObserverCorrections, &
+    Timer_Streaming_Derivatives_X1, &
+    Timer_Streaming_Derivatives_X2, &
+    Timer_Streaming_Derivatives_X3, &
+    Timer_Streaming_InverseMassMatrix, &
+    Timer_Streaming_NumericalFlux, &
+    Timer_Streaming_Sources
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
@@ -141,18 +148,12 @@ CONTAINS
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
 
-    CALL TimersStart( Timer_Explicit )
-
-    PRINT*, "      ComputeIncrement_TwoMoment_Explicit (Start)"
+    CALL TimersStart( Timer_Streaming )
 
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
 
-    ASSOCIATE &
-      ( dZ1 => MeshE    % Width, &
-        dZ2 => MeshX(1) % Width, &
-        dZ3 => MeshX(2) % Width, &
-        dZ4 => MeshX(3) % Width )
+    CALL TimersStart( Timer_Streaming_BCs )
 
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
@@ -160,6 +161,17 @@ CONTAINS
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
+    CALL TimersStop( Timer_Streaming_BCs )
+
+    CALL TimersStart( Timer_Streaming_Zero )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -180,32 +192,54 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_In ) ! --- Hijacked Timer
+    CALL TimersStop( Timer_Streaming_Zero )
+
+    CALL TimersStart( Timer_Streaming_Divergence_X1 )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
-    CALL TimersStop( Timer_Ex_In )
+    CALL TimersStop( Timer_Streaming_Divergence_X1 )
 
-    CALL TimersStart( Timer_Ex_Div  ) ! --- Hijacked Timer
+    CALL TimersStart( Timer_Streaming_Divergence_X2 )
 
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
-    CALL TimersStop( Timer_Ex_Div )
+    CALL TimersStop( Timer_Streaming_Divergence_X2 )
 
-    CALL TimersStart( Timer_Ex_Geometry  ) ! --- Hijacked Timer
+    CALL TimersStart( Timer_Streaming_Divergence_X3 )
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
-    CALL TimersStop( Timer_Ex_Geometry )
+    CALL TimersStop( Timer_Streaming_Divergence_X3 )
+
+    CALL TimersStart( Timer_Streaming_ObserverCorrections )
 
     CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
+    CALL TimersStop( Timer_Streaming_ObserverCorrections )
+
     ! --- Multiply Inverse Mass Matrix ---
 
+    CALL TimersStart( Timer_Streaming_InverseMassMatrix )
+
+    ASSOCIATE &
+      ( dZ1 => MeshE    % Width, &
+        dZ2 => MeshX(1) % Width, &
+        dZ3 => MeshX(2) % Width, &
+        dZ4 => MeshX(3) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -236,9 +270,9 @@ CONTAINS
 
     END ASSOCIATE ! dZ1, etc.
 
-    PRINT*, "      ComputeIncrement_TwoMoment_Explicit (End)"
+    CALL TimersStop( Timer_Streaming_InverseMassMatrix )
 
-    CALL TimersStop( Timer_Explicit )
+    CALL TimersStop( Timer_Streaming )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
@@ -374,8 +408,6 @@ CONTAINS
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
-    PRINT*, "      ComputeIncrement_Divergence_X1"
-
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nZ_X1 = nZ + [0,1,0,0]    ! Number of X3 Faces per Phase Space Dimension
     nV    = nCR * nSpecies * PRODUCT( nZ )
@@ -387,10 +419,17 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Geometry Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ2 = iZ_B1(2), iZ_E1(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -407,13 +446,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -429,12 +468,19 @@ CONTAINS
              GX_K(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX, Half, &
              GX_F(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Recompute Geometry from Scale Factors ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ2  = iZ_B0(2), iZ_E1(2)
     DO iZ4  = iZ_B0(4), iZ_E0(4)
     DO iZ3  = iZ_B0(3), iZ_E0(3)
@@ -458,17 +504,24 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Fluid Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ2 = iZ_B1(2), iZ_E1(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-      DO iCF = 1, nCF
+      DO iCF    = 1, nCF
       DO iNodeX = 1, nDOFX
 
         uCF_K(iNodeX,iCF,iZ3,iZ4,iZ2) = U_F(iNodeX,iZ2,iZ3,iZ4,iCF)
@@ -480,9 +533,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -500,10 +553,18 @@ CONTAINS
              uCF_K(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX, Zero, &
              uCF_R(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Face Velocity Components ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uPF_L, uPF_R )
+#endif
     DO iZ2  = iZ_B0(2), iZ_E1(2)
     DO iZ4  = iZ_B0(4), iZ_E0(4)
     DO iZ3  = iZ_B0(3), iZ_E0(3)
@@ -559,10 +620,17 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Radiation Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iZ2 = iZ_B1(2), iZ_E1(2)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -584,9 +652,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
 
@@ -604,12 +672,21 @@ CONTAINS
              uCR_K(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ), nDOFZ, Zero, &
              uCR_R(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ), nDOF_X1 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
     ! --- Numerical Flux ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X1_L, &
+    !$OMP&                 uPR_R, Flux_R, uCR_X1_R, iCR, nIterations )
+#endif
     DO iZ2 = iZ_B0(2), iZ_E1(2)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -738,9 +815,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Surface Contributions ---
 
@@ -758,7 +835,7 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), &
              nDOF_X1, One,  dU_X1, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     !--------------------
     ! --- Volume Term ---
@@ -766,6 +843,13 @@ CONTAINS
 
     ! --- Compute Primitive Fluid in Spatial Elements ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -795,8 +879,16 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, nIterations )
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -853,9 +945,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Volume Contributions ---
 
@@ -863,10 +955,15 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nV, nDOFZ, One, dLdX1_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_X1, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Increment )
+#if   defined( THORNADO_OMP_OL )
 
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -888,8 +985,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Ex_Increment )
 
     END ASSOCIATE ! dZ1, etc.
 
@@ -1027,8 +1122,6 @@ CONTAINS
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) ) RETURN
 
-    PRINT*, "      ComputeIncrement_Divergence_X2"
-
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nZ_X2 = nZ + [0,0,1,0]    ! Number of X2 Faces per Phase Space Dimension
     nV    = nCR * nSpecies * PRODUCT( nZ )
@@ -1042,8 +1135,15 @@ CONTAINS
 
     ! --- Permute Geometry Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ3 = iZ_B1(3), iZ_E1(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1060,13 +1160,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -1082,12 +1182,19 @@ CONTAINS
              GX_K(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX, Half, &
              GX_F(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Recompute Geometry from Scale Factors ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ3  = iZ_B0(3), iZ_E1(3)
     DO iZ4  = iZ_B0(4), iZ_E0(4)
     DO iZ2  = iZ_B0(2), iZ_E0(2)
@@ -1111,12 +1218,19 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Fluid Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ3 = iZ_B1(3), iZ_E1(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1133,9 +1247,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -1153,10 +1267,18 @@ CONTAINS
              uCF_K(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX, Zero, &
              uCF_R(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Face Velocity Components ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uPF_L, uPF_R )
+#endif
     DO iZ3 = iZ_B0(3), iZ_E1(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1214,10 +1336,17 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Radiation Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iZ3 = iZ_B1(3), iZ_E1(3)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1239,9 +1368,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
 
@@ -1259,12 +1388,21 @@ CONTAINS
              uCR_K(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)  ), nDOFZ, Zero, &
              uCR_R(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)  ), nDOF_X2 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
     ! --- Numerical Flux ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X2_L, &
+    !$OMP&                 uPR_R, Flux_R, uCR_X2_R, iCR, nIterations )
+#endif
     DO iZ3 = iZ_B0(3), iZ_E1(3)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1393,9 +1531,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Surface Contributions ---
 
@@ -1413,7 +1551,7 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)+1), &
              nDOF_X2, One,  dU_X2, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     !--------------------
     ! --- Volume Term ---
@@ -1421,6 +1559,13 @@ CONTAINS
 
     ! --- Compute Primitive Fluid in Spatial Elements ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1450,8 +1595,16 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, nIterations )
+#endif
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1508,20 +1661,25 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
-
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
     ! --- Volume Contributions ---
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFZ, nV, nDOFZ, One, dLdX2_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_X2, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Increment )
+#if   defined( THORNADO_OMP_OL )
 
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1543,8 +1701,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Ex_Increment )
 
     END ASSOCIATE ! dZ1, etc.
 
@@ -1682,8 +1838,6 @@ CONTAINS
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) ) RETURN
 
-    PRINT*, "      ComputeIncrement_Divergence_X3"
-
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nZ_X3 = nZ + [0,0,0,1]    ! Number of X3 Faces per Phase Space Dimension
     nV    = nCR * nSpecies * PRODUCT( nZ )
@@ -1697,8 +1851,15 @@ CONTAINS
 
     ! --- Permute Geometry Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ4 = iZ_B1(4), iZ_E1(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1715,13 +1876,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -1737,12 +1898,19 @@ CONTAINS
              GX_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX, Half, &
              GX_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Recompute Geometry from Scale Factors ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ4  = iZ_B0(4), iZ_E1(4)
     DO iZ3  = iZ_B0(3), iZ_E0(3)
     DO iZ2  = iZ_B0(2), iZ_E0(2)
@@ -1766,12 +1934,19 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Fluid Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ4 = iZ_B1(4), iZ_E1(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1788,9 +1963,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -1808,10 +1983,18 @@ CONTAINS
              uCF_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX, Zero, &
              uCF_R(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Face Velocity Components ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uPF_L, uPF_R )
+#endif
     DO iZ4 = iZ_B0(4), iZ_E1(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1869,10 +2052,17 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Radiation Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iZ4 = iZ_B1(4), iZ_E1(4)
     DO iS  = 1, nSpecies
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1894,9 +2084,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
 
@@ -1914,12 +2104,21 @@ CONTAINS
              uCR_K(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)  ), nDOFZ, Zero, &
              uCR_R(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)  ), nDOF_X3 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
     ! --- Numerical Flux ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X3_L, &
+    !$OMP&                 uPR_R, Flux_R, uCR_X3_R, iCR, nIterations )
+#endif
     DO iZ4 = iZ_B0(4), iZ_E1(4)
     DO iS  = 1, nSpecies
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -2048,9 +2247,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Surface Contributions ---
 
@@ -2068,7 +2267,7 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)+1), &
              nDOF_X3, One,  dU_X3, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     !--------------------
     ! --- Volume Term ---
@@ -2076,6 +2275,13 @@ CONTAINS
 
     ! --- Compute Primitive Fluid in Spatial Elements ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2105,8 +2311,16 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, nIterations )
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iS  = 1, nSpecies
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -2163,9 +2377,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Volume Contributions ---
 
@@ -2173,10 +2387,15 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nV, nDOFZ, One, dLdX3_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_X3, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Increment )
+#if   defined( THORNADO_OMP_OL )
 
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2198,8 +2417,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Ex_Increment )
 
     END ASSOCIATE ! dZ1, etc.
 
@@ -2362,8 +2579,6 @@ CONTAINS
 
     IF( iZ_E0(1) .EQ. iZ_B0(1) ) RETURN
 
-    PRINT*, "      ComputeIncrement_ObserverCorrections"
-
     CALL ComputeWeakDerivatives_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, &
              dV_u_dX1, dV_d_dX1, dGm_dd_dX1 )
@@ -2387,10 +2602,17 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Geometry Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2409,6 +2631,13 @@ CONTAINS
 
     ! --- Permute Fluid Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2427,6 +2656,13 @@ CONTAINS
 
     ! --- Permute Radiation Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iZ1 = iZ_B1(1), iZ_E1(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2448,10 +2684,17 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     ! --- Compute Primitive Fluid ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2481,7 +2724,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
 
@@ -2499,12 +2742,21 @@ CONTAINS
              uCR_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOFZ, Zero, &
              uCR_R(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOF_E )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
     ! --- Numerical Flux ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( uPR_L, Flux_L, uPR_R, Flux_R, EdgeEnergyCubed, &
+    !$OMP&         A, Lambda, Alpha, iCR, WORK, INFO )
+#endif
     DO iZ1 = iZ_B0(1), iZ_E1(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2656,9 +2908,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Surface Contributions ---
 
@@ -2676,14 +2928,22 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
              nDOF_E, One,  dU_E, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     !--------------------
     ! --- Volume Term ---
     !--------------------
 
-    CALL TimersStart( Timer_Ex_Flux )
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, EdgeEnergyCubed )
+#endif
     DO iZ1 = iZ_B0(1), iZ_E0(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2759,9 +3019,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Flux )
+    CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Volume Contributions ---
 
@@ -2769,12 +3029,22 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nV, nDOFZ, One, dLdE_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_E, nDOFZ )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     !--------------------------------------------------
     !--- Volume Sources (Number Flux Equation Only) ---
     !--------------------------------------------------
 
+    CALL TimersStart( Timer_Streaming_Sources )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 )
+#endif
     DO iZ1 = iZ_B0(1), iZ_E0(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2905,8 +3175,15 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Increment )
+    CALL TimersStop( Timer_Streaming_Sources )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2928,8 +3205,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Ex_Increment )
 
     END ASSOCIATE ! dZ1, etc.
 
@@ -3058,7 +3333,7 @@ CONTAINS
       RETURN
     END IF
 
-    PRINT*, "      ComputeWeakDerivatives_X1"
+    CALL TimersStart( Timer_Streaming_Derivatives_X1 )
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_X1 = nK + [0,1,0,0]    ! Number of X1 Faces per Phase Space Dimension
@@ -3067,8 +3342,15 @@ CONTAINS
 
     ! --- Permute Geometry Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ2 = iZ_B1(2), iZ_E1(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -3085,13 +3367,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -3107,12 +3389,19 @@ CONTAINS
              GX_K(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX, Half, &
              GX_F(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Metric Components from Scale Factors ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E1(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -3139,7 +3428,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
@@ -3151,10 +3442,19 @@ CONTAINS
              h_d_F(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)+1), nDOFX_X1, One,  &
              dh_d_dX1, nDOFX )
 
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
     ! --- Permute Fluid Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ2 = iZ_B1(2), iZ_E1(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -3171,11 +3471,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Left State ---
 
@@ -3191,8 +3491,16 @@ CONTAINS
              uCF_K(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX, Zero, &
              uCF_R(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uPF_L, uPF_R )
+#endif
     DO iZ2 = iZ_B0(2), iZ_E1(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -3269,6 +3577,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
              V_u_X1(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1, Zero, &
@@ -3289,10 +3599,20 @@ CONTAINS
              V_d_X1(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)+1), nDOFX_X1, One,  &
              dV_d_dX1, nDOFX )
 
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
     ! -------------------
     ! --- Volume Term ---
     ! -------------------
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uPF_K )
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -3352,6 +3672,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX, - One, dLXdX1_q, nDOFX, &
              h_d_K, nDOFX, One, dh_d_dX1, nDOFX )
@@ -3364,8 +3686,17 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nX, nDOFX, - One, dLXdX1_q, nDOFX, &
              V_d_K, nDOFX, One, dV_d_dX1, nDOFX )
 
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
     ASSOCIATE( dZ2 => MeshX(1) % Width )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -3396,6 +3727,13 @@ CONTAINS
 
     ! >>> Could Combine the following two loops <<<
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -3420,6 +3758,13 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -3439,6 +3784,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_Streaming_Derivatives_X1 )
 
   END SUBROUTINE ComputeWeakDerivatives_X1
 
@@ -3565,7 +3912,7 @@ CONTAINS
       RETURN
     END IF
 
-    PRINT*, "      ComputeWeakDerivatives_X2"
+    CALL TimersStart( Timer_Streaming_Derivatives_X2 )
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_X2 = nK + [0,0,1,0]    ! Number of X2 Faces per Phase Space Dimension
@@ -3574,7 +3921,7 @@ CONTAINS
 
     ! --- Permute Geometry Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     DO iZ3 = iZ_B1(3), iZ_E1(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -3592,13 +3939,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -3614,9 +3961,9 @@ CONTAINS
              GX_K(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX, Half, &
              GX_F(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Compute Metric Components from Scale Factors ---
 
@@ -3646,7 +3993,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
@@ -3658,9 +4007,11 @@ CONTAINS
              h_d_F(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)+1), nDOFX_X2, One,  &
              dh_d_dX2, nDOFX )
 
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
     ! --- Permute Fluid Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     DO iZ3 = iZ_B1(3), iZ_E1(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -3678,11 +4029,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Left State ---
 
@@ -3698,7 +4049,7 @@ CONTAINS
              uCF_K(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX, Zero, &
              uCF_R(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     DO iZ3 = iZ_B0(3), iZ_E1(3)
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -3776,6 +4127,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
              V_u_F(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2, Zero, &
@@ -3795,6 +4148,8 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
              V_d_F(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)+1), nDOFX_X2, One,  &
              dV_d_dX2, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! -------------------
     ! --- Volume Term ---
@@ -3859,6 +4214,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX, - One, dLXdX2_q, nDOFX, &
              h_d_K, nDOFX, One, dh_d_dX2, nDOFX )
@@ -3870,6 +4227,8 @@ CONTAINS
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX, - One, dLXdX2_q, nDOFX, &
              V_d_K, nDOFX, One, dV_d_dX2, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ASSOCIATE( dZ3 => MeshX(2) % Width )
 
@@ -3946,6 +4305,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_Streaming_Derivatives_X2 )
 
   END SUBROUTINE ComputeWeakDerivatives_X2
 
@@ -4072,7 +4433,7 @@ CONTAINS
       RETURN
     END IF
 
-    PRINT*, "      ComputeWeakDerivatives_X3"
+    CALL TimersStart( Timer_Streaming_Derivatives_X3 )
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_X3 = nK + [0,0,0,1]    ! Number of X2 Faces per Phase Space Dimension
@@ -4081,7 +4442,7 @@ CONTAINS
 
     ! --- Permute Geometry Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     DO iZ4 = iZ_B1(4), iZ_E1(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -4099,13 +4460,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -4121,9 +4482,9 @@ CONTAINS
              GX_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX, Half, &
              GX_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Compute Metric Components from Scale Factors ---
 
@@ -4153,7 +4514,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
@@ -4165,9 +4528,11 @@ CONTAINS
              h_d_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)+1), nDOFX_X3, One,  &
              dh_d_dX3, nDOFX )
 
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
     ! --- Permute Fluid Fields ---
 
-    CALL TimersStart( Timer_Ex_Permute )
+    CALL TimersStart( Timer_Streaming_Permute )
 
     DO iZ4 = iZ_B1(4), iZ_E1(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -4185,9 +4550,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Permute )
+    CALL TimersStop( Timer_Streaming_Permute )
 
-    CALL TimersStart( Timer_Ex_Interpolate )
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -4205,7 +4570,7 @@ CONTAINS
              uCF_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX, Zero, &
              uCF_R(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
-    CALL TimersStop( Timer_Ex_Interpolate )
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Face Velocity Components ---
 
@@ -4287,6 +4652,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
              V_u_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3, Zero, &
@@ -4306,6 +4673,8 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nX, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
              V_d_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)+1), nDOFX_X3, One,  &
              dV_d_dX3, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! -------------------
     ! --- Volume Term ---
@@ -4370,6 +4739,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX, - One, dLXdX3_q, nDOFX, &
              h_d_K, nDOFX, One, dh_d_dX3, nDOFX )
@@ -4381,6 +4752,8 @@ CONTAINS
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nX, nDOFX, - One, dLXdX3_q, nDOFX, &
              V_d_K, nDOFX, One, dV_d_dX3, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ASSOCIATE( dZ4 => MeshX(3) % Width )
 
@@ -4457,6 +4830,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_Streaming_Derivatives_X3 )
 
   END SUBROUTINE ComputeWeakDerivatives_X3
 
