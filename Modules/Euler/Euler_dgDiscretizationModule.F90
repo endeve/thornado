@@ -4298,8 +4298,6 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1, dX2, dX3
-
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic_GPU
 
 
