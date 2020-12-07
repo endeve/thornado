@@ -1093,13 +1093,24 @@ CONTAINS
 
     CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
 
+    ! --- Lapse Gradient ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Lapse Gradient'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(1:nDOFX,1,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
     ! --- Pressure Tensor times Gradient of Shift Vector ---
 
     DatasetName = TRIM( GroupName ) // '/' // 'Pressure times GradShift'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1), nX, nNodesX, &
+               ( SourceTerm(1:nDOFX,2,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1110,7 +1121,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),2), nX, nNodesX, &
+               ( SourceTerm(1:nDOFX,3,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1121,18 +1132,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),3), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
-                   / ( ( Erg / Centimeter**3 ) / Second ), &
-             DatasetName, FILE_ID )
-
-    ! --- Lapse Gradient ---
-
-    DatasetName = TRIM( GroupName ) // '/' // 'Lapse Gradient'
-
-    CALL WriteDataset3DHDF &
-           ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),4), nX, nNodesX, &
+               ( SourceTerm(1:nDOFX,4,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1143,18 +1143,18 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),5), nX, nNodesX, &
+               ( SourceTerm(1:nDOFX,5,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
-    ! --- Square of Extrinsic Curvature ---
+    ! --- Square of Extrinsic Curvature (1D) ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Square of Kij'
+    DatasetName = TRIM( GroupName ) // '/' // 'Square of Kij (1D)'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),6), nX, nNodesX, &
+               ( SourceTerm(1:nDOFX,6,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( Centimeter**( -2 ) ), &
              DatasetName, FILE_ID )
@@ -1165,7 +1165,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),7), nX, nNodesX, &
+               ( SourceTerm(1:nDOFX,7,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( Centimeter**( -1 ) ), &
              DatasetName, FILE_ID )
