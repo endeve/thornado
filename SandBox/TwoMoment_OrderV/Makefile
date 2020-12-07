@@ -57,6 +57,7 @@ TimeStepper: \
 
 ApplicationDriver: \
 	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMoment_TroubledCellIndicatorModule.o \
 	TwoMoment_SlopeLimiterModule_OrderV.o \
@@ -70,6 +71,7 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMoment_TroubledCellIndicatorModule.o \
 	TwoMoment_SlopeLimiterModule_OrderV.o \
@@ -131,6 +133,10 @@ ApplicationDriver.o: \
 InitializationModule.o: \
   KindModule.o \
   InitializationModule.F90
+
+TwoMoment_TimersModule_OrderV.o: \
+  KindModule.o \
+  TwoMoment_TimersModule_OrderV.F90
 
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \

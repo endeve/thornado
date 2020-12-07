@@ -7,37 +7,6 @@ PROGRAM ApplicationDriver
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
-  USE ProgramInitializationModule, ONLY: &
-    InitializeProgram, &
-    FinalizeProgram
-  USE TimersModule, ONLY: &
-    InitializeTimers, &
-    FinalizeTimers
-  USE ReferenceElementModuleX, ONLY: &
-    InitializeReferenceElementX, &
-    FinalizeReferenceElementX
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-    InitializeReferenceElementX_Lagrange, &
-    FinalizeReferenceElementX_Lagrange
-  USE ReferenceElementModuleE, ONLY: &
-    InitializeReferenceElementE, &
-    FinalizeReferenceElementE
-  USE ReferenceElementModuleE_Lagrange, ONLY: &
-    InitializeReferenceElementE_Lagrange, &
-    FinalizeReferenceElementE_Lagrange
-  USE ReferenceElementModuleZ, ONLY: &
-    InitializeReferenceElementZ, &
-    FinalizeReferenceElementZ
-  USE ReferenceElementModule, ONLY: &
-    InitializeReferenceElement, &
-    FinalizeReferenceElement
-  USE ReferenceElementModule_Lagrange, ONLY: &
-    InitializeReferenceElement_Lagrange, &
-    FinalizeReferenceElement_Lagrange
-  USE GeometryComputationModule, ONLY: &
-    ComputeGeometryX
-  USE GeometryComputationModuleE, ONLY: &
-    ComputeGeometryE
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -48,31 +17,15 @@ PROGRAM ApplicationDriver
     uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState, &
-    FinalizeEquationOfState
-  USE TwoMoment_ClosureModule, ONLY: &
-    InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
-  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
-    InitializeTroubledCellIndicator_TwoMoment, &
-    FinalizeTroubledCellIndicator_TwoMoment
+    ComputeFromConserved_TwoMoment  
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
-    InitializeSlopeLimiter_TwoMoment, &
-    FinalizeSlopeLimiter_TwoMoment, &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
-    InitializePositivityLimiter_TwoMoment, &
-    FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_OpacityModule_OrderV, ONLY: &
-    CreateOpacities, &
-    SetOpacities, &
-    DestroyOpacities
+    SetOpacities
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
-    Initialize_IMEX_RK, &
-    Finalize_IMEX_RK, &
     Update_IMEX_RK
   USE InitializationModule, ONLY: &
     InitializeFields
@@ -97,7 +50,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RadiatingSphere'
+  ProgramName = 'SineWaveStreaming'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -105,7 +58,7 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 2, 4, 16 ]
+      nX  = [ 16, 16, 16 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -115,24 +68,24 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 0
 
-      nNodes = 3
+      nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'SSPRK2'
 
       t_end   = 1.0d-0
       iCycleD = 1
       iCycleW = 50
       maxCycles = 10000
 
-      V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
 
-      Direction = 'Z'
+      Direction = 'X'
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
+      UseSlopeLimiter = .TRUE.
 
       UsePositivityLimiter = .FALSE.
 
@@ -462,7 +415,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end = 2.0d4
+      t_end = 1.0d+1
       iCycleD = 1
       iCycleW = 2000
       maxCycles = 1000000
@@ -546,119 +499,11 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  CALL InitializeProgram &
-         ( ProgramName_Option &
-             = TRIM( ProgramName ), &
-           nX_Option &
-             = nX, &
-           swX_Option &
-             = [ 1, 1, 1 ], &
-           bcX_Option &
-             = bcX, &
-           xL_Option &
-             = xL, &
-           xR_Option &
-             = xR, &
-           zoomX_Option &
-             = zoomX, &
-           nE_Option &
-             = nE, &
-           swE_Option &
-             = 1, &
-           bcE_Option &
-             = bcE, &
-           eL_Option &
-             = eL, &
-           eR_Option &
-             = eR, &
-           zoomE_Option &
-             = zoomE, &
-           nNodes_Option &
-             = nNodes, &
-           CoordinateSystem_Option &
-             = TRIM( CoordinateSystem ), &
-           BasicInitialization_Option &
-             = .TRUE. )
+  ! --- Auxiliary Initialization ---
 
-  ! --- Initialize Timers ---
-
-  CALL InitializeTimers
-
-  ! --- Position Space Reference Element and Geometry ---
-
-  CALL InitializeReferenceElementX
-
-  CALL InitializeReferenceElementX_Lagrange
-
-  CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-  ! --- Energy Space Reference Element and Geometry ---
-
-  CALL InitializeReferenceElementE
-
-  CALL InitializeReferenceElementE_Lagrange
-
-  CALL ComputeGeometryE &
-         ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
-
-  ! --- Phase Space Reference Element ---
-
-  CALL InitializeReferenceElementZ
-
-  CALL InitializeReferenceElement
-
-  CALL InitializeReferenceElement_Lagrange
-
-  ! --- Initialize Equation of State ---
-
-  CALL InitializeEquationOfState &
-         ( EquationOfState_Option = 'IDEAL', &
-           Gamma_IDEAL_Option = 4.0_DP / 3.0_DP, &
-           Verbose_Option = .TRUE. )
-
-  ! --- Initialize Moment Closure ---
-
-  CALL InitializeClosure_TwoMoment
-
-  ! --- Initialize Troubled Cell Indicator ---
-
-  CALL InitializeTroubledCellIndicator_TwoMoment &
-         ( UseTroubledCellIndicator_Option &
-             = .FALSE., &
-           C_TCI_Option &
-             = 0.1_DP, &
-           Verbose_Option &
-             = .TRUE. )
-
-  ! --- Initialize Slope Limiter ---
-
-  CALL InitializeSlopeLimiter_TwoMoment &
-         ( BetaTVD_Option = 2.0_DP, &
-           UseSlopeLimiter_Option &
-             = UseSlopeLimiter, &
-           Verbose_Option &
-             = .TRUE. )
-
-  ! --- Initialize Positivity Limiter ---
-
-  CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = SqrtTiny, &
-           Min_2_Option = SqrtTiny, &
-           UsePositivityLimiter_Option &
-             = UsePositivityLimiter, &
-           Verbose_Option = .TRUE. )
-
-  ! --- Initialize Opacities ---
-
-  CALL CreateOpacities &
-         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = .TRUE. )
+  CALL InitializeDriver
 
   CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
-
-  ! --- Initialize Time Stepper ---
-
-  CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
 
   ! --- Set Initial Condition ---
 
@@ -739,36 +584,235 @@ PROGRAM ApplicationDriver
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
-  ! --- Finalize ---
+  ! --- Auxiliary Finalization ---
 
-  CALL FinalizeTroubledCellIndicator_TwoMoment
+  CALL FinalizeDriver
 
-  CALL FinalizeSlopeLimiter_TwoMoment
+CONTAINS
 
-  CALL FinalizePositivityLimiter_TwoMoment
 
-  CALL DestroyOpacities
+  SUBROUTINE InitializeDriver
 
-  CALL Finalize_IMEX_RK
+    USE TwoMoment_TimersModule_OrderV, ONLY: &
+      InitializeTimers
+    USE ProgramInitializationModule, ONLY: &
+      InitializeProgram
+    USE ReferenceElementModuleX, ONLY: &
+      InitializeReferenceElementX
+    USE ReferenceElementModuleX_Lagrange, ONLY: &
+      InitializeReferenceElementX_Lagrange
+    USE GeometryComputationModule, ONLY: &
+      ComputeGeometryX
+    USE ReferenceElementModuleE, ONLY: &
+      InitializeReferenceElementE
+    USE ReferenceElementModuleE_Lagrange, ONLY: &
+      InitializeReferenceElementE_Lagrange
+    USE GeometryComputationModuleE, ONLY: &
+      ComputeGeometryE
+    USE ReferenceElementModuleZ, ONLY: &
+      InitializeReferenceElementZ
+    USE ReferenceElementModule, ONLY: &
+      InitializeReferenceElement
+    USE ReferenceElementModule_Lagrange, ONLY: &
+      InitializeReferenceElement_Lagrange
+    USE ReferenceElementModule_Lagrange, ONLY: &
+      InitializeReferenceElement_Lagrange
+    USE EquationOfStateModule, ONLY: &
+      InitializeEquationOfState
+    USE TwoMoment_ClosureModule, ONLY: &
+      InitializeClosure_TwoMoment
+    USE TwoMoment_OpacityModule_OrderV, ONLY: &
+      CreateOpacities
+    USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+      InitializeTroubledCellIndicator_TwoMoment
+    USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+      InitializeSlopeLimiter_TwoMoment
+    USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+      InitializePositivityLimiter_TwoMoment
+    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+      Initialize_IMEX_RK
 
-  CALL FinalizeEquationOfState
+    CALL InitializeTimers
 
-  CALL FinalizeTimers
+    CALL InitializeProgram &
+           ( ProgramName_Option &
+               = TRIM( ProgramName ), &
+             nX_Option &
+               = nX, &
+             swX_Option &
+               = [ 1, 1, 1 ], &
+             bcX_Option &
+               = bcX, &
+             xL_Option &
+               = xL, &
+             xR_Option &
+               = xR, &
+             zoomX_Option &
+               = zoomX, &
+             nE_Option &
+               = nE, &
+             swE_Option &
+               = 1, &
+             bcE_Option &
+               = bcE, &
+             eL_Option &
+               = eL, &
+             eR_Option &
+               = eR, &
+             zoomE_Option &
+               = zoomE, &
+             nNodes_Option &
+               = nNodes, &
+             CoordinateSystem_Option &
+               = TRIM( CoordinateSystem ), &
+             BasicInitialization_Option &
+               = .TRUE. )
 
-  CALL FinalizeReferenceElementX
+    ! --- Position Space Reference Element and Geometry ---
 
-  CALL FinalizeReferenceElementX_Lagrange
+    CALL InitializeReferenceElementX
 
-  CALL FinalizeReferenceElementE
+    CALL InitializeReferenceElementX_Lagrange
 
-  CALL FinalizeReferenceElementE_Lagrange
+    CALL ComputeGeometryX &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
-  CALL FinalizeReferenceElementZ
+    ! --- Energy Space Reference Element and Geometry ---
 
-  CALL FinalizeReferenceElement
+    CALL InitializeReferenceElementE
 
-  CALL FinalizeReferenceElement_Lagrange
+    CALL InitializeReferenceElementE_Lagrange
 
-  CALL FinalizeProgram
+    CALL ComputeGeometryE &
+           ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
+
+    ! --- Phase Space Reference Element ---
+
+    CALL InitializeReferenceElementZ
+
+    CALL InitializeReferenceElement
+
+    CALL InitializeReferenceElement_Lagrange
+
+    ! --- Initialize Equation of State ---
+
+    CALL InitializeEquationOfState &
+           ( EquationOfState_Option = 'IDEAL', &
+             Gamma_IDEAL_Option = 4.0_DP / 3.0_DP, &
+             Verbose_Option = .TRUE. )
+
+    ! --- Initialize Moment Closure ---
+
+    CALL InitializeClosure_TwoMoment
+
+    ! --- Initialize Opacities ---
+
+    CALL CreateOpacities &
+           ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = .TRUE. )
+
+    ! --- Initialize Troubled Cell Indicator ---
+
+    CALL InitializeTroubledCellIndicator_TwoMoment &
+           ( UseTroubledCellIndicator_Option &
+               = .FALSE., &
+             C_TCI_Option &
+               = 0.1_DP, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Initialize Slope Limiter ---
+
+    CALL InitializeSlopeLimiter_TwoMoment &
+           ( BetaTVD_Option &
+               = 2.0_DP, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Initialize Positivity Limiter ---
+
+    CALL InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option &
+               = SqrtTiny, &
+             Min_2_Option &
+               = SqrtTiny, &
+             UsePositivityLimiter_Option &
+               = UsePositivityLimiter, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Initialize Time Stepper ---
+
+    CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
+
+  END SUBROUTINE InitializeDriver
+
+
+  SUBROUTINE FinalizeDriver
+
+    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+      Finalize_IMEX_RK
+    USE TwoMoment_OpacityModule_OrderV, ONLY: &
+      DestroyOpacities
+    USE EquationOfStateModule, ONLY: &
+      FinalizeEquationOfState
+    USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+      FinalizeTroubledCellIndicator_TwoMoment
+    USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+      FinalizeSlopeLimiter_TwoMoment
+    USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+      FinalizePositivityLimiter_TwoMoment
+    USE ReferenceElementModuleX, ONLY: &
+      FinalizeReferenceElementX
+    USE ReferenceElementModuleX_Lagrange, ONLY: &
+      FinalizeReferenceElementX_Lagrange
+    USE ReferenceElementModuleE, ONLY: &
+      FinalizeReferenceElementE
+    USE ReferenceElementModuleE_Lagrange, ONLY: &
+      FinalizeReferenceElementE_Lagrange
+    USE ReferenceElementModuleZ, ONLY: &
+      FinalizeReferenceElementZ
+    USE ReferenceElementModule, ONLY: &
+      FinalizeReferenceElement
+    USE ReferenceElementModule_Lagrange, ONLY: &
+      FinalizeReferenceElement_Lagrange
+    USE ProgramInitializationModule, ONLY: &
+      FinalizeProgram
+    USE TwoMoment_TimersModule_OrderV, ONLY: &
+      FinalizeTimers
+
+    CALL Finalize_IMEX_RK
+
+    CALL DestroyOpacities
+
+    CALL FinalizeEquationOfState
+
+    CALL FinalizeTroubledCellIndicator_TwoMoment
+
+    CALL FinalizeSlopeLimiter_TwoMoment
+
+    CALL FinalizePositivityLimiter_TwoMoment
+
+    CALL FinalizeReferenceElementX
+
+    CALL FinalizeReferenceElementX_Lagrange
+
+    CALL FinalizeReferenceElementE
+
+    CALL FinalizeReferenceElementE_Lagrange
+
+    CALL FinalizeReferenceElementZ
+
+    CALL FinalizeReferenceElement
+
+    CALL FinalizeReferenceElement_Lagrange
+
+    CALL FinalizeProgram
+
+    CALL FinalizeTimers
+
+  END SUBROUTINE FinalizeDriver
+
 
 END PROGRAM ApplicationDriver

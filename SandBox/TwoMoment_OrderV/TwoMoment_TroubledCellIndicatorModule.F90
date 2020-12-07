@@ -4,6 +4,10 @@ MODULE TwoMoment_TroubledCellIndicatorModule
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFE, nDOFX, nDimsX
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_TCI
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
   USE ReferenceElementModuleX, ONLY: &
@@ -206,7 +210,7 @@ CONTAINS
 
     IF( .NOT. UseTroubledCellIndicator ) RETURN
 
-    PRINT*, "      DetectTroubledCells_TwoMoment (Start)"
+    CALL TimersStart( Timer_TCI )
 
     IF( PRESENT( SuppressBC_Option ) )THEN
       SuppressBC = SuppressBC_Option
@@ -376,7 +380,7 @@ CONTAINS
     END DO
     END DO
 
-    PRINT*, "      DetectTroubledCells_TwoMoment (Stop)"
+    CALL TimersStop( Timer_TCI )
 
   END SUBROUTINE DetectTroubledCells_TwoMoment
 
