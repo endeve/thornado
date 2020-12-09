@@ -3860,7 +3860,9 @@ CONTAINS
 
     END IF
 
-    ! --- Time-independent Contributions ---
+    END ASSOCIATE ! dX1, dX2, dX3
+
+    ! --- Contributions from time-independent metric ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -4015,19 +4017,13 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1, dX2, dX3
-
 #ifndef GRAVITY_SOLVER_POSEIDON_CFA
 
     RETURN
 
 #endif
 
-    ASSOCIATE( dX1 => MeshX(1) % Width, &
-               dX2 => MeshX(2) % Width, &
-               dX3 => MeshX(3) % Width )
-
-    ! --- Time-dependent Contributions ---
+    ! --- Contributions from time-dependent metric ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -4301,8 +4297,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    END ASSOCIATE ! dX1, dX2, dX3
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic_GPU
 
