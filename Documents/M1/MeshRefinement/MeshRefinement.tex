@@ -188,65 +188,71 @@ The introduction of curvilinear coordinates doesn't change any of the preliminar
 
 \subsection{Refinement}
 
-The refinement
-section does change, in that when demanding equality of the cell averages, the metric determinant
+As with Cartesian coordinates, the representation of the variable $U$ on the fine element
+$\vect{k}_{\left(j\right)}$ is obtained from solving the minimization problem,
+\begin{equation}
+  \min_{\vect{u}^{(j)}}\int_{\vect{k}_{(j)}}\big(\,U_{h}(\vect{x})-u_{h}^{(j)}(\vect{x})\,\big)^{2}\,
+  \sqrt{\gamma_{h}}\,d\vect{x},
+\end{equation}
+where $\sqrt{\gamma_{h}}$ is the numerical approximation to the metric determinant $\sqrt{\gamma}$.
+
+When demanding equality of the cell averages, the metric determinant
 must be taken into account, i.e., Eq.~\eqref{eq:refinementProjection} becomes
 \begin{equation}
-  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =\int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x},\quad i=1,\ldots,M.
+  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =\int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x},\quad i=1,\ldots,M.
   \label{eq:refinementProjection_CC}
 \end{equation}
 Evaluating the left-hand side of Eq.~\eqref{eq:refinementProjection_CC} gives
 \begin{equation}
-  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
+  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
   =|\vect{k}_{(j)}|\,w_{i}\,u_{i}^{(j)}\,\sqrt{\gamma_{i}}.
   \end{equation}
   Evaluating the right-hand side of Eq.~\eqref{eq:refinementProjection_CC} gives
-  \sd{Why isn't this integrated over $\vect{\xi}$?}
-  \footnote{I found  $\int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =|\vect{k}_{(j)}|\sum_{m=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\xi}^{(j)})\,\ell_{m}(\vect{\eta}(\vect{\xi}^{(j)}))\,\sqrt{\gamma}\,d\vect{\xi}^{(j)}\,U_{m}$}
   \begin{equation}
-  \int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma}\,d\vect{\eta}\,U_{k}.
+  \int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma_{h}}\,d\vect{\eta}\,U_{k}.
 \end{equation}
-Defining the projection matrix, $P^{\left(j\right)}_{\gamma}$, with components
+Defining the projection matrix, $P^{\left(j\right)}_{\gamma_{h}}$, with components
 \begin{equation}
-P^{\left(j\right)}_{ik,\gamma}
-=\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma}\,d\vect{\eta},
+P^{\left(j\right)}_{ik,\gamma_{h}}
+=\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma_{h}}\,d\vect{\eta},
 \end{equation}
-and the diagonal matrix $\mathcal{D}_{\gamma}
+and the diagonal matrix $\mathcal{D}_{\gamma_{h}}
 =\mbox{diag}(\sqrt{\gamma_{1}}\,w_{1},\ldots,\sqrt{\gamma_{M}}\,w_{M})$, the components of the expansion in the refined element $\vect{k}_{(j)}$ are obtained from the matrix-vector product
 \begin{equation}
-  \mathcal{D}_{\gamma}\,\vect{u}^{(j)} = \mathcal{P}^{(j)}_{\gamma}\,\vect{U}.
+  \mathcal{D}_{\gamma_{h}}\,\vect{u}^{(j)} = \mathcal{P}^{(j)}_{\gamma_{h}}\,\vect{U}.
 \end{equation}
-Since $\gamma=\gamma\left(t\right)$, $\mathcal{P}^{\left(j\right)}_{\gamma}$ and $\cD_{\gamma}$
+Since $\gamma_{h}=\gamma_{h}\left(t\right)$, $\mathcal{P}^{\left(j\right)}_{\gamma_{h}}$
+and $\cD_{\gamma_{h}}$
 must be computed at each time step.
 
 \subsection{Coarsening}
 
+The minimization problem in this case is
+\begin{equation}
+  \min_{\vect{U}}\int_{\vect{K}}\big(\,U_{h}(\vect{x})-u_{h}(\vect{x})\,\big)^{2}\,\sqrt{\gamma_{h}}\,d\vect{x}.
+\end{equation}
 As with refinement, Eq.~\eqref{eq:coarseningProjection} becomes
 \begin{equation}
-  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =\int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}.
+  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =\int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}.
   \label{eq:coarseningProjection_CC}
 \end{equation}
 Evaluating the left-hand side of Eq.~\eqref{eq:coarseningProjection_CC} gives
 \begin{equation}
-  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
+  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
   =|\vect{K}|\,w_{i}\,U_{i}\,\sqrt{\gamma_{i}}.
 \end{equation}
 Evaluating the right-hand side of Eq.~\eqref{eq:coarseningProjection_CC} gives
-  \sd{Why isn't this integrated over $\vect{\xi}$?}
-\footnote{I found $\int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{m=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\eta}(\vect{\xi}^{\left(j\right)}))\,\ell_{k}^{\left(j\right)}(\vect{\xi}^{\left(j\right)})\,\sqrt{\gamma}\,d\vect{\xi}^{\left(j\right)}\,u_{m}^{(j)}$}
 \begin{equation}
-  \int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma}\,d\vect{x}
-  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\xi}(\vect{\eta}))\,\ell_{k}^{\left(j\right)}(\vect{\eta})\,\sqrt{\gamma}\,d\vect{\eta}\,u_{k}^{(j)}.
+  \int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\xi}(\vect{\eta}))\,\ell_{k}^{\left(j\right)}(\vect{\eta})\,\sqrt{\gamma_{h}}\,d\vect{\eta}\,u_{k}^{(j)}.
 \end{equation}
 Thus,
 \begin{equation}
-  \mathcal{D}_{\gamma}\,\vect{U}=\sum_{j=1}^{N}\f{|\vect{k}_{(j)}|}{|\vect{K}|}
-  \big(\mathcal{P}_{\gamma}^{(j)}\big)^{\trans}\,\vect{u}^{(j)}.
+  \mathcal{D}_{\gamma_{h}}\,\vect{U}=\sum_{j=1}^{N}\f{|\vect{k}_{(j)}|}{|\vect{K}|}
+  \big(\mathcal{P}_{\gamma_{h}}^{(j)}\big)^{\trans}\,\vect{u}^{(j)}.
 \end{equation}
 For a refinement factor of $2$, $|\vect{k}_{(j)}|/|\vect{K}|=2^{-d}$.
 
