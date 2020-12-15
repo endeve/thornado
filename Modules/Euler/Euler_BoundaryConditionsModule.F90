@@ -7,6 +7,9 @@ MODULE Euler_BoundaryConditionsModule
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX, &
+    WeightsX_q
   USE ProgramHeaderModule, ONLY: &
     bcX, &
     swX, &
@@ -57,6 +60,7 @@ MODULE Euler_BoundaryConditionsModule
   !$ACC   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
   !$ACC   ExpD, ExpE )
 #endif
+
 
 CONTAINS
 
@@ -512,7 +516,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
@@ -572,7 +576,9 @@ CONTAINS
             D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
 
-            R_q = NodeCoordinate( X1_C( iX1 ), dX1( iX1 ), eta_q( iNodeX1 ) )
+            R_q = NodeCoordinate &
+                    ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &
+                      eta_q( iNodeX1 ) )
 
             U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
               = D_0 * ( R_0 / R_q )**3
@@ -633,7 +639,9 @@ CONTAINS
             D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
 
-            R_q = NodeCoordinate( X1_C( iX1 ), dX1( iX1 ), eta_q( iNodeX1 ) )
+            R_q = NodeCoordinate &
+                    ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &
+                      eta_q( iNodeX1 ) )
 
             U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
               = D_0 * ( R_0 / R_q )**( ExpD )
@@ -665,7 +673,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
