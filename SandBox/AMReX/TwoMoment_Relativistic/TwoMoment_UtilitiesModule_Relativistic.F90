@@ -278,7 +278,6 @@ CONTAINS
       PRINT*, "  I_u_2 = ", I_u_2
       PRINT*, "  I_u_3 = ", I_u_3
       PRINT*
-
     END IF
 
   END SUBROUTINE ComputePrimitive_TwoMoment

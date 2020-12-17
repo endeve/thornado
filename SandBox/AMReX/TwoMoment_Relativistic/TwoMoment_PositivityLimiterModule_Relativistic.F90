@@ -388,6 +388,13 @@ CONTAINS
                 NE_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+
+
+
+
+
+
     REAL(DP) :: DP_Q(nDOFX  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
@@ -406,6 +413,7 @@ CONTAINS
                  NEP_Q(nDOFX  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
     REAL(DP) :: DP_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
@@ -424,6 +432,9 @@ CONTAINS
                  NEP_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+
+
     REAL(DP) :: G_11_Q(nDOFX, &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
@@ -442,6 +453,7 @@ CONTAINS
                 G_33_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) )THEN
@@ -631,6 +643,10 @@ CONTAINS
     CALL ComputePointValuesX( iX_B0, iX_E0, G_22_Q , G_22_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, G_33_Q , G_33_P  )
 
+!
+
+
+
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -654,12 +670,12 @@ CONTAINS
                  G_22_P(iP,iZ2,iZ3,iZ4), &
                  G_33_P(iP,iZ2,iZ3,iZ4) )
 
+
       END DO
 
     END DO
     END DO
     END DO
-
     Change = 0 
 print*, "Cell Average"
     DO iS = 1, nSpecies
@@ -691,7 +707,6 @@ print*, "Cell Average"
     END DO
     END DO
     END DO
-
 
 n=0
 m=0
@@ -777,6 +792,9 @@ n=n+1
     END DO
     END DO
 print*, n, m
+
+
+
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -794,11 +812,12 @@ print*, n, m
     END DO
     END DO
 
-    CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
-    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
-    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
-    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G3_Q, G3_P )
-!print*, "Point Values"
+
+!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
+!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
+!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
+!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G3_Q, G3_P )
+!!print*, "Point Values"
 !    DO iS = 1, nSpecies
 !    DO iZ4 = iZ_B0(4), iZ_E0(4)
 !    DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -839,7 +858,7 @@ print*, n, m
       U_Q(nDOFX,iX_B0(1):iX_E0(1), &
                 iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
-      U_P(nDOFX,iX_B0(1):iX_E0(1), &
+      U_P(nPT_X,iX_B0(1):iX_E0(1), &
                 iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
     CALL MatrixMatrixMultiply &
@@ -1047,28 +1066,31 @@ print*, n, m
                     G_11, G_22, G_33 )
 
     IF ( N .LT. Min_1 ) THEN
-  !   print*, "N Unrealizable"
-  !   print*, iZ1,iZ2, V1
-  !   print*, "N = ", N
-  !   print*, "G1 = ", G1
-  !   print*, "G2 = ", G2
-  !   print*, "G3 = ", G3
+!     print*, "N Unrealizable"
+!     print*, iZ1,iZ2, V1
+!     print*, "N = ", N
+!     print*, "G1 = ", G1
+!     print*, "G2 = ", G2
+!     print*, "G3 = ", G3
     END IF
 
 
     IF ( GammaOut .LT. Min_2 ) THEN
       W = 1.0_DP / ( 1.0_DP - ( G_11 * V1**2 + G_22 * V2**2 + G_33 * V3**2 ) )
- !    print*, "N - G Unrealizable"
- !    print*, iZ1,iZ2, V1
- !    print*, "N = ", N
- !    print*, "G1 = ", G1
- !    print*, "G2 = ", G2
- !    print*, "G3 = ", G3
- !    print*, "Gamma", GammaOut
-     G1 = 0.999_DP * ( N - Min_2 ) / W
+    ! print*, "N - G Unrealizable"
+    ! print*, iZ1,iZ2, V1
+    ! print*, "N = ", N
+    ! print*, "G1 = ", G1
+    ! print*, "G2 = ", G2
+    ! print*, "G3 = ", G3
+    ! print*, "Gamma", GammaOut
+     G1 = 0.999_DP * W * ( N - Min_2 ) 
     END IF
 
   END SUBROUTINE CheckRealizability
+
+
+
 
 
 END MODULE TwoMoment_PositivityLimiterModule_Relativistic
