@@ -72,6 +72,8 @@ MODULE MF_UtilitiesModule
     ComputePrimitive_TwoMoment
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
+  USE GeometryFieldsModuleE,     ONLY: &
+    nGE, uGE
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, &

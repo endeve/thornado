@@ -142,14 +142,12 @@ CONTAINS
       
         CALL amrex_mfiter_destroy( MFI )
       END DO
-      END DO
+
+
 
 !check this END DO too
   DO iLevel = 0, nLevels-1 
 
-    DO iS = 1, nStages
-     
-      U = uCR
 
       DO jS = 1, iS - 1
 
