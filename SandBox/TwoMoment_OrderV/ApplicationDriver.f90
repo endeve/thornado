@@ -23,6 +23,8 @@ PROGRAM ApplicationDriver
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
   USE TwoMoment_OpacityModule_OrderV, ONLY: &
     SetOpacities
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
@@ -50,7 +52,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'SineWaveDiffusion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -58,7 +60,7 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 16, 16, 16 ]
+      nX  = [ 8, 8, 8 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -91,10 +93,10 @@ PROGRAM ApplicationDriver
 
     CASE( 'SineWaveDiffusion' )
 
-      nX  = [ 16, 1, 1 ]
+      nX  = [ 16, 8, 8 ]
       xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 1 ]
 
       nE  = 1
       eL  = 0.0_DP
@@ -105,7 +107,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 2.0d1
+      t_end   = 1.0d0
       iCycleD = 10
       iCycleW = 10
       maxCycles = 1000000
@@ -529,9 +531,8 @@ PROGRAM ApplicationDriver
 
   ! --- Evolve ---
 
-  t = 0.0_DP
-  dt = 0.3_DP * MINVAL( (xR-xL) / DBLE(nX) ) &
-       / ( Two * DBLE(nNodes-1) + One )
+  t  = 0.0_DP
+  dt = 0.3_DP * MINVAL( (xR-xL) / DBLE(nX) ) / ( Two * DBLE(nNodes-1) + One )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -556,7 +557,8 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL Update_IMEX_RK( dt, uGE, uGF, uCF, uCR )
+    CALL Update_IMEX_RK &
+           ( dt, uGE, uGF, uCF, uCR, ComputeIncrement_TwoMoment_Implicit )
 
     t = t + dt
 
