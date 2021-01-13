@@ -42,9 +42,6 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
 
-  USE UtilitiesModule, ONLY: &
-    WriteMatrix
-
   IMPLICIT NONE
   PRIVATE
 
