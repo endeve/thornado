@@ -448,6 +448,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL WriteNeutrinoSphereRadii( E_Nu, R_Nu )
+
     DO iS = 1, nSpecies
     DO iR = 1, nR
     DO iE = 1, nE
@@ -651,6 +653,28 @@ CONTAINS
     DEALLOCATE( Data )
 
   END SUBROUTINE ReadFluidProfile
+
+
+  SUBROUTINE WriteNeutrinoSphereRadii( E_Nu, R_Nu )
+
+    REAL(DP), INTENT(in) :: E_Nu(:), R_Nu(:,:)
+
+    INTEGER :: FileUnit, i
+
+    OPEN( NEWUNIT = FileUnit, FILE = 'NeutrinoSphereRadii.dat' )
+
+    WRITE( FileUnit, '(3(A20,x))' ) 'E_Nu [MeV]', 'R_Nu_1 [km]', 'R_Nu_2 [km]'
+
+    DO i = 1, SIZE( E_Nu )
+
+      WRITE( FileUnit, '(3(ES20.12,x))' ) &
+        E_Nu(i) / MeV, R_Nu(i,1) / Kilometer, R_Nu(i,2) / Kilometer
+
+    END DO
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteNeutrinoSphereRadii
 
 
 END MODULE InitializationModule
