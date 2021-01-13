@@ -26,9 +26,13 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux
   REAL(DP), PUBLIC :: Timer_Streaming_Sources
   REAL(DP), PUBLIC :: Timer_Collisions
+  REAL(DP), PUBLIC :: Timer_Collisions_Permute
+  REAL(DP), PUBLIC :: Timer_Collisions_PrimitiveFluid
+  REAL(DP), PUBLIC :: Timer_Collisions_Solve
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_SlopeLimiter
   REAL(DP), PUBLIC :: Timer_PositivityLimiter
+  REAL(DP), PUBLIC :: Timer_TimeStepper
 
   PUBLIC :: InitializeTimers
   PUBLIC :: FinalizeTimers
@@ -60,12 +64,17 @@ CONTAINS
     Timer_Streaming_Sources             = Zero
 
     Timer_Collisions                    = Zero
+    Timer_Collisions_Permute            = Zero
+    Timer_Collisions_PrimitiveFluid     = Zero
+    Timer_Collisions_Solve              = Zero
 
     Timer_TCI                           = Zero
 
     Timer_SlopeLimiter                  = Zero
 
     Timer_PositivityLimiter             = Zero
+
+    Timer_TimeStepper                   = Zero
 
     CALL TimersStart( Timer_Total )
 
@@ -122,11 +131,19 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Collisions                       :', Timer_Collisions                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_Permute               :', Timer_Collisions_Permute            , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_PrimitiveFluid        :', Timer_Collisions_PrimitiveFluid     , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_Solve                 :', Timer_Collisions_Solve              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_SlopeLimiter                     :', Timer_SlopeLimiter                  , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_PositivityLimiter                :', Timer_PositivityLimiter             , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_TimeStepper                      :', Timer_TimeStepper                   , ' s'
 
     WRITE(*,*)
 
