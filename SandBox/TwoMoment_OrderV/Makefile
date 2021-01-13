@@ -1,15 +1,21 @@
 MOMENT_CLOSURE = MINERBO
-#MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+#MICROPHYSICS   = WEAKLIB
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
+
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
 .DEFAULT_GOAL := all
 
-all: TwoMomentClosure PrimitiveConserved TimeStepper ApplicationDriver
+all: TwoMomentClosure PrimitiveConserved TimeStepper \
+     ApplicationDriver ApplicationDriverNeutrinos
 
 TwoMomentClosure: \
 	$(thornado) \
@@ -65,7 +71,6 @@ ApplicationDriver: \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o
@@ -79,10 +84,39 @@ ApplicationDriver: \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o \
+	$(LIBRARIES)
+
+ApplicationDriverNeutrinos: \
+	$(weaklib) \
+	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
+	TwoMoment_PositivityLimiterModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+	TwoMoment_TimeSteppingModule_OrderV.o \
+	ApplicationDriverNeutrinos.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriverNeutrinos_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
+	TwoMoment_PositivityLimiterModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+	TwoMoment_TimeSteppingModule_OrderV.o \
+	ApplicationDriverNeutrinos.o \
 	$(LIBRARIES)
 
 clean:
@@ -97,6 +131,8 @@ clobber: clean
 	rm -rf TimeStepper_$(MACHINE).dSYM
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
+	rm -f  ApplicationDriverNeutrinos_$(MACHINE)
+	rm -rf ApplicationDriverNeutrinos_$(MACHINE).dSYM
 
 TwoMomentClosure.o: \
   KindModule.o \
@@ -130,6 +166,9 @@ ApplicationDriver.o: \
   KindModule.o \
   ApplicationDriver.f90
 
+ApplicationDriverNeutrinos.o: \
+  ApplicationDriverNeutrinos.f90
+
 InitializationModule.o: \
   KindModule.o \
   InitializationModule.F90
@@ -145,14 +184,44 @@ TwoMoment_UtilitiesModule.o: \
 
 TwoMoment_TroubledCellIndicatorModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  RadiationFieldsModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_TroubledCellIndicatorModule.F90
 
 TwoMoment_SlopeLimiterModule_OrderV.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  LinearAlgebraModule.o \
+  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_SlopeLimiterModule_OrderV.F90
 
 TwoMoment_PositivityLimiterModule_OrderV.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  LinearAlgebraModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
   TwoMoment_PositivityLimiterModule_OrderV.F90
 
 TwoMoment_OpacityModule_OrderV.o: \

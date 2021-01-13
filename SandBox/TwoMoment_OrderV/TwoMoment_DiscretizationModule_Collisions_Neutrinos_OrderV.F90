@@ -51,15 +51,15 @@ CONTAINS
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       dt
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       GE  (1:nDOFE, &
            iZ_B1(1):iZ_E1(1), &
            1:nGE)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       GX  (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
