@@ -617,8 +617,6 @@ CONTAINS
       InitializeReferenceElement
     USE ReferenceElementModule_Lagrange, ONLY: &
       InitializeReferenceElement_Lagrange
-    USE ReferenceElementModule_Lagrange, ONLY: &
-      InitializeReferenceElement_Lagrange
     USE EquationOfStateModule, ONLY: &
       InitializeEquationOfState
     USE TwoMoment_ClosureModule, ONLY: &
