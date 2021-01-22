@@ -1099,7 +1099,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(1,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1110,7 +1110,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,2,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(2,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1121,7 +1121,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,3,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(3,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1132,7 +1132,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,4,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(4,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1143,7 +1143,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,5,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(5,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
@@ -1154,7 +1154,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,6,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(6,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( Centimeter**( -2 ) ), &
              DatasetName, FILE_ID )
@@ -1165,7 +1165,7 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,7,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+               ( SourceTerm(7,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( Centimeter**( -1 ) ), &
              DatasetName, FILE_ID )
