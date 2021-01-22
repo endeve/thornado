@@ -82,7 +82,7 @@ DeleptonizationWave.o: \
   InputOutputModuleHDF.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
-  DeleptonizationWave.f90
+  DeleptonizationWave.F90
 
 DeleptonizationWave1D.o: \
   KindModule.o \
@@ -110,7 +110,7 @@ DeleptonizationWave1D.o: \
   Euler_UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
-  DeleptonizationWave1D.f90
+  DeleptonizationWave1D.F90
 
 InitializationModule.o: \
   KindModule.o \
