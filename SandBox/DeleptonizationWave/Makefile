@@ -115,6 +115,7 @@ DeleptonizationWave1D.o: \
 InitializationModule.o: \
   KindModule.o \
   UnitsModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModule.o \
@@ -123,6 +124,7 @@ InitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
   TwoMoment_UtilitiesModule.o \
   InitializationModule.f90
 
