@@ -236,10 +236,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nX, nNodesX, swX, bcX, xL, xR, zoomX )
+    !$OMP MAP( to: nX, nNodesX, swX, bcX, xL, xR, zoomX, &
+    !$OMP          iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( nX, swX, bcX, xL, xR, zoomX )
+    !$ACC COPYIN( nX, swX, bcX, xL, xR, zoomX, &
+    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderX
