@@ -8,7 +8,10 @@ module OpenMPModule
   ! Interface to OpenACC routines
   !-------------------------------------------------------------------------------------------------
   use, intrinsic :: iso_c_binding
-  use omp_lib
+  use omp_lib, only: &
+    omp_set_default_device, &
+    omp_get_default_device, &
+    omp_is_initial_device
   implicit none
 
   interface
