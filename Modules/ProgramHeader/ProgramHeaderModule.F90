@@ -227,21 +227,14 @@ CONTAINS
       CALL InitializeProgramHeaderZ
     END IF
 
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( nNodesX )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: nX, swX, bcX, xL, xR, zoomX )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE( nNodesX )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nX, nNodesX, swX, bcX, xL, xR, zoomX, &
-    !$OMP          iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-#elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( nX, swX, bcX, xL, xR, zoomX, &
-    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+    !$ACC COPYIN( nX, swX, bcX, xL, xR, zoomX )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderX
@@ -344,10 +337,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
+    !$OMP MAP( to: nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
+    !$OMP          iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
+    !$ACC COPYIN( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
+    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderZ
