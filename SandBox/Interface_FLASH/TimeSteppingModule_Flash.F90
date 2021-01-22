@@ -688,6 +688,17 @@ CONTAINS
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
     INTEGER :: jNodeZ2, iNodeZ, jNodeZ, iNodeE
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
+    !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
         DO iZ4 = iZ_B0(4), iZ_E0(4)
