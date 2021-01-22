@@ -76,7 +76,7 @@ PROGRAM DeleptonizationWave1D
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE
-  USE TimeSteppingModule_Castro, ONLY: &
+  USE TimeSteppingModule_Flash, ONLY: &
     Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
     InitializeFields_DeleptonizationWave

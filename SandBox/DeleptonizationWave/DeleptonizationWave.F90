@@ -72,7 +72,7 @@ PROGRAM DeleptonizationWave
     DestroyNeutrinoOpacities
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeNeutrinoOpacities
-  USE TimeSteppingModule_Castro, ONLY: &
+  USE TimeSteppingModule_Flash, ONLY: &
     Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
     InitializeFields_DeleptonizationWave
