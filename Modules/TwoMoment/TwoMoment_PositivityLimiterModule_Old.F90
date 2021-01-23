@@ -262,14 +262,17 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
+      ! --- Copy Data ---
+
       U_q(1:nDOF,1:nCR) = U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS)
 
       DO iNodeX = 1, nDOFX
         DO iNodeE = 1, nDOFE
           iNode = iNodeE+(iNodeX-1)*nDOFE
+          ! --- Compute Tau and Geometry factor ---
           Tau_q(iNode) = &
             GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) * GE(iNodeE,iZ1,iGE_Ep2)
-          GX_q(iNode,1:nGF) = GX(iNodeX,iZ2,iZ3,iZ4,1:nGF) 
+          GX_q(iNode,1:nGF) = GX(iNodeX,iZ2,iZ3,iZ4,1:nGF)
         END DO ! iNodeE
       END DO ! iNodeX
 
@@ -277,8 +280,9 @@ CONTAINS
 
       NegativeStates = .FALSE.
 
-      CALL ComputePointValues( nCR, U_q, U_PP )
+      ! --- Point Values ---
 
+      CALL ComputePointValues( nCR, U_q, U_PP )
       CALL ComputePointValues( nGF, GX_q, GX_PP )
       CALL ComputeGeometryX_FromScaleFactors( GX_PP )
 
@@ -296,8 +300,6 @@ CONTAINS
 
         !U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
         !U_K(iCR_N) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR_N), 1 )
-        CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q, 1, Zero, U_K(iCR_N), 1 )
-
         CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q*Tau_q, 1, Zero, U_K(iCR_N), 1 )
         U_K(iCR_N) = U_K(iCR_N) / Tau_K 
 
@@ -341,6 +343,7 @@ CONTAINS
       IF( ANY( Gamma(:) < Min_2 ) )THEN
 
         IF( Debug ) WRITE(*,*) 'Positivity trigger 1129 Gamma'
+
         ! --- Cell Average ---
 
         !DO iCR = 1, nCR
@@ -363,6 +366,7 @@ CONTAINS
           END IF
 
         END DO
+
         Theta_2 = Theta_Eps * Theta_2
 
         ! --- Limit Towards Cell Average ---
@@ -390,6 +394,8 @@ CONTAINS
         END IF
       END IF
 #endif
+
+      ! --- Update If Needed ---
 
       IF( NegativeStates(2) )THEN
 
