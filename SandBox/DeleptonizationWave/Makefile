@@ -12,7 +12,7 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
 VPATH += $(THORNADO_DIR)/SandBox/DeleptonizationWave
-VPATH += $(THORNADO_DIR)/SandBox/Interface_CASTRO
+VPATH += $(THORNADO_DIR)/SandBox/Interface_FLASH
 
 #DEFINES += $(PP)-DTHORNADO_DEBUG
 
@@ -24,13 +24,13 @@ DeleptonizationWave: \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Castro.o \
+	TimeSteppingModule_Flash.o \
 	DeleptonizationWave.o
 	$(FLINKER) $(FLAGS) -o DeleptonizationWave_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Castro.o \
+	TimeSteppingModule_Flash.o \
 	DeleptonizationWave.o \
 	$(LIBRARIES)
 
@@ -38,13 +38,13 @@ DeleptonizationWave1D: \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Castro.o \
+	TimeSteppingModule_Flash.o \
 	DeleptonizationWave1D.o
 	$(FLINKER) $(FLAGS) -o DeleptonizationWave1D_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Castro.o \
+	TimeSteppingModule_Flash.o \
 	DeleptonizationWave1D.o \
 	$(LIBRARIES)
 
@@ -77,12 +77,12 @@ DeleptonizationWave.o: \
   OpacityModule_TABLE.o \
   NeutrinoOpacitiesModule.o \
   NeutrinoOpacitiesComputationModule.o \
-  TimeSteppingModule_Castro.o \
+  TimeSteppingModule_Flash.o \
   InitializationModule.o \
   InputOutputModuleHDF.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
-  DeleptonizationWave.f90
+  DeleptonizationWave.F90
 
 DeleptonizationWave1D.o: \
   KindModule.o \
@@ -104,17 +104,18 @@ DeleptonizationWave1D.o: \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
-  TimeSteppingModule_Castro.o \
+  TimeSteppingModule_Flash.o \
   InitializationModule.o \
   InputOutputModuleHDF.o \
   Euler_UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
-  DeleptonizationWave1D.f90
+  DeleptonizationWave1D.F90
 
 InitializationModule.o: \
   KindModule.o \
   UnitsModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModule.o \
@@ -123,10 +124,11 @@ InitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
   TwoMoment_UtilitiesModule.o \
   InitializationModule.f90
 
-TimeSteppingModule_Castro.o: \
+TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   TimersModule.o \
@@ -138,4 +140,4 @@ TimeSteppingModule_Castro.o: \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
-  TimeSteppingModule_Castro.F90
+  TimeSteppingModule_Flash.F90

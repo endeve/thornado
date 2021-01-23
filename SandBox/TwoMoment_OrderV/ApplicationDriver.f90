@@ -52,7 +52,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveDiffusion'
+  ProgramName = 'SineWaveStreaming'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -76,10 +76,10 @@ PROGRAM ApplicationDriver
 
       t_end   = 1.0d-0
       iCycleD = 1
-      iCycleW = 50
+      iCycleW = 100
       maxCycles = 10000
 
-      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       Direction = 'X'
 
@@ -87,7 +87,7 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .TRUE.
+      UseSlopeLimiter = .FALSE.
 
       UsePositivityLimiter = .FALSE.
 
@@ -615,8 +615,6 @@ CONTAINS
       InitializeReferenceElementZ
     USE ReferenceElementModule, ONLY: &
       InitializeReferenceElement
-    USE ReferenceElementModule_Lagrange, ONLY: &
-      InitializeReferenceElement_Lagrange
     USE ReferenceElementModule_Lagrange, ONLY: &
       InitializeReferenceElement_Lagrange
     USE EquationOfStateModule, ONLY: &

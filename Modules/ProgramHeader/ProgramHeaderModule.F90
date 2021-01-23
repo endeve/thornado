@@ -73,9 +73,17 @@ MODULE ProgramHeaderModule
   PUBLIC :: DescribeProgramHeaderX
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( nNodesX )
+  !$OMP DECLARE &
+  !$OMP TARGET( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+  !$OMP         nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
+  !$OMP         iX_B0, iX_E0, iX_B1, iX_E1, &
+  !$OMP         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( nNodesX )
+  !$ACC DECLARE &
+  !$ACC CREATE( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+  !$ACC         nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
+  !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, &
+  !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
 CONTAINS
@@ -227,19 +235,14 @@ CONTAINS
       CALL InitializeProgramHeaderZ
     END IF
 
-
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( nNodesX )
+    !$OMP TARGET UPDATE &
+    !$OMP TO( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+    !$OMP     iX_B0, iX_E0, iX_B1, iX_E1 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( nNodesX )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nX, nNodesX, swX, bcX, xL, xR, zoomX )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( nX, swX, bcX, xL, xR, zoomX )
+    !$ACC UPDATE &
+    !$ACC DEVICE( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderX
@@ -341,11 +344,13 @@ CONTAINS
     nDOF  = nNodes**nDims
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
+    !$OMP TARGET UPDATE &
+    !$OMP TO( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
+    !$OMP     iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
+    !$ACC UPDATE &
+    !$ACC DEVICE( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
+    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderZ

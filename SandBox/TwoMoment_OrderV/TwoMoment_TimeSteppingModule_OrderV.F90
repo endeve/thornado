@@ -311,6 +311,15 @@ CONTAINS
         a_EX(3,1:3) = [ 0.25_DP, 0.25_DP, 0.00_DP ]
         w_EX(1:3)   = [ 1.00_DP, 1.00_DP, 4.00_DP ] / 6.0_DP
 
+      CASE ( 'BackwardEuler' )
+
+        nStages = 1
+
+        CALL AllocateButcherTables
+
+        a_IM(1,1) = 1.0_DP
+        w_IM(1)   = 1.0_DP
+
       CASE ( 'IMEX_ARS_111' )
 
         nStages = 2
@@ -357,6 +366,7 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'SSPRK1'
         WRITE(*,'(A6,A)') '', 'SSPRK2'
         WRITE(*,'(A6,A)') '', 'SSPRK3'
+        WRITE(*,'(A6,A)') '', 'BackwardEuler'
         WRITE(*,'(A6,A)') '', 'IMEX_ARS_111'
         WRITE(*,'(A6,A)') '', 'IMEX_PDARS'
         WRITE(*,*)

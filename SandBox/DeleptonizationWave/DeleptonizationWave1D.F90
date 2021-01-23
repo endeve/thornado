@@ -1,7 +1,8 @@
-PROGRAM DeleptonizationWave
+PROGRAM DeleptonizationWave1D
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, Third, Zero
+    DP, SqrtTiny, Half, Zero, &
+    Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -47,8 +48,13 @@ PROGRAM DeleptonizationWave
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange, &
     FinalizeReferenceElement_Lagrange
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
-    uGF
+    uGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
@@ -56,77 +62,87 @@ PROGRAM DeleptonizationWave
   USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE FluidFieldsModule, ONLY: &
-    uCF, &
-    uPF, iPF_D, &
-    uAF, iAF_T, iAF_Ye
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Me, &
+    iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, iAF_Xh, iAF_Gm
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR
   USE EquationOfStateModule_TABLE, ONLY: &
     InitializeEquationOfState_TABLE, &
-    FinalizeEquationOfState_TABLE
+    FinalizeEquationOfState_TABLE, &
+    ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ApplyEquationOfState_TABLE
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE
-  USE NeutrinoOpacitiesModule, ONLY: &
-    CreateNeutrinoOpacities, &
-    DestroyNeutrinoOpacities
-  USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeNeutrinoOpacities
-  USE TimeSteppingModule_Castro, ONLY: &
+  USE TimeSteppingModule_Flash, ONLY: &
     Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
     InitializeFields_DeleptonizationWave
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
+  USE Euler_UtilitiesModule, ONLY: &
+    ComputePrimitive_Euler
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
-    ApplyPositivityLimiter_TwoMoment, &
-    TallyPositivityLimiter_TwoMoment
+    ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    InitializeNonlinearSolverTally, &
+    FinalizeNonlinearSolverTally, &
+    WriteNonlinearSolverTally
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
-  LOGICAL  :: wrt
-  INTEGER  :: iCycle, iCycleD
-  INTEGER  :: nE, nX(3), nNodes, nSpecies
-  REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
-  REAL(DP) :: eL, eR, ZoomE
-  REAL(DP) :: xL(3), xR(3)
+  CHARACTER(64) :: ProfileName
+  LOGICAL       :: wrt
+  INTEGER       :: iCycle, iCycleD, iCycleT
+  INTEGER       :: nE, nX(3), nNodes, nSpecies
+  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt
+  REAL(DP)      :: eL, eR, ZoomE
+  REAL(DP)      :: xL(3), xR(3), ZoomX(3)
 
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 12, 12, 12 ]
-  xL = [ - 0.0d2, - 0.0d2, - 0.0d2 ] * Kilometer
-  xR = [ + 1.0d2, + 1.0d2, + 1.0d2 ] * Kilometer
+  nX = [ 128, 1, 1 ]
+  xL = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
+  xR = [ 3.0d2 * Kilometer, Pi    , TwoPi  ]
+  ZoomX = [ 1.011986923647337_DP, 1.0_DP, 1.0_DP ]
 
   nE = 16
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
-  ZoomE = 1.183081754893913_DP
+  ZoomE = 1.158291374972257_DP
+
+  ProfileName = 'input_thornado_VX_100ms.dat'
 
   t       = 0.0_DP
-  t_end   = 1.0d-2 * Millisecond
-  dt_wrt  = 1.0d-2 * Millisecond
+  t_end   = 1.0d+1 * Millisecond
+  dt_wrt  = 1.0d-1 * Millisecond
   iCycleD = 1
+  iCycleT = 10
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'DeleptonizationWave', &
+             = 'DeleptonizationWave1D', &
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 01, 01, 01 ], &
+             = [ 01, 1, 1 ], &
            bcX_Option &
-             = [ 32, 32, 32 ], &
+             = [ 32, 0, 0 ], &
            xL_Option &
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nE_Option &
              = nE, &
            eL_Option &
@@ -138,7 +154,7 @@ PROGRAM DeleptonizationWave
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = 'SPHERICAL', &
            ActivateUnits_Option &
              = .TRUE., &
            nSpecies_Option &
@@ -183,9 +199,7 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Equation of State ---
 
   CALL InitializeEquationOfState_TABLE &
-         ( EquationOfStateTableName_Option &
-             = 'EquationOfStateTable.h5', &
-           Verbose_Option = .TRUE. )
+         ( EquationOfStateTableName_Option = 'EquationOfStateTable.h5' )
 
   ! --- Initialize Opacities ---
 
@@ -200,10 +214,6 @@ PROGRAM DeleptonizationWave
              = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
            Verbose_Option = .TRUE. )
 
-  ! --- Create Neutrino Opacities ---
-
-  CALL CreateNeutrinoOpacities( nZ, nNodesZ, nSpecies )
-
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
@@ -211,24 +221,25 @@ PROGRAM DeleptonizationWave
            Max_1_Option = 1.0d0 - EPSILON(1.0d0), &
            Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
-             = .TRUE., &
-           UsePositivityLimiterTally_Option &
              = .TRUE. )
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields_DeleptonizationWave
+  CALL InitializeFields_DeleptonizationWave( ProfileName )
 
   ! --- Write Initial Condition Before Limiter ---
 
   CALL TimersStart( Timer_InputOutput )
 
+  CALL ComputeFromConserved_Fluid
+
+  CALL ComputeFromConserved_Radiation
+
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
-           WriteRF_Option = .TRUE., &
-           WriteOP_Option = .TRUE. )
+           WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
 
@@ -244,33 +255,30 @@ PROGRAM DeleptonizationWave
   Timer_PL_Theta_2        = Zero
   Timer_PL_Out            = Zero
 
-  CALL TallyPositivityLimiter_TwoMoment( 0.0_DP )
-
-  CALL ComputeNeutrinoOpacities &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-           uPF(:,:,:,:,iPF_D), &
-           uAF(:,:,:,:,iAF_T), &
-           uAF(:,:,:,:,iAF_Ye) )
-
   ! --- Write Initial Condition After Limiter ---
 
   CALL TimersStart( Timer_InputOutput )
+
+  CALL ComputeFromConserved_Fluid
+
+  CALL ComputeFromConserved_Radiation
 
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
-           WriteRF_Option = .TRUE., &
-           WriteOP_Option = .TRUE. )
+           WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
 
   CALL TimersStop( Timer_Initialize )
 
+  CALL InitializeNonlinearSolverTally
+
   ! --- Evolve ---
 
-  t_wrt   = dt_wrt
-  wrt     = .FALSE.
+  t_wrt = dt_wrt
+  wrt   = .FALSE.
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -291,7 +299,7 @@ PROGRAM DeleptonizationWave
 
     iCycle = iCycle + 1
 
-    dt = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    dt = Half * MINVAL( MeshX(1) % Width(iX_B0(1):iX_E0(1)) ) &
            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
     IF( t + dt > t_end )THEN
@@ -330,8 +338,6 @@ PROGRAM DeleptonizationWave
 
     CALL TimersStop( Timer_Evolve )
 
-    CALL TallyPositivityLimiter_TwoMoment( t )
-
     IF( wrt )THEN
 
 #if defined(THORNADO_OMP_OL)
@@ -342,16 +348,25 @@ PROGRAM DeleptonizationWave
 
       CALL TimersStart( Timer_InputOutput )
 
+      CALL ComputeFromConserved_Fluid
+
+      CALL ComputeFromConserved_Radiation
+
       CALL WriteFieldsHDF &
              ( Time = t, &
                WriteGF_Option = .TRUE., &
                WriteFF_Option = .TRUE., &
-               WriteRF_Option = .TRUE., &
-               WriteOP_Option = .TRUE. )
+               WriteRF_Option = .TRUE. )
 
       CALL TimersStop( Timer_InputOutput )
 
       wrt = .FALSE.
+
+    END IF
+
+    IF( MOD( iCycle, iCycleT ) == 0 )THEN
+
+      CALL WriteNonlinearSolverTally( t )
 
     END IF
 
@@ -371,12 +386,15 @@ PROGRAM DeleptonizationWave
 
   CALL TimersStart( Timer_InputOutput )
 
+  CALL ComputeFromConserved_Fluid
+
+  CALL ComputeFromConserved_Radiation
+
   CALL WriteFieldsHDF &
          ( Time = t, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
-           WriteRF_Option = .TRUE., &
-           WriteOP_Option = .TRUE. )
+           WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
 
@@ -388,6 +406,8 @@ PROGRAM DeleptonizationWave
   ! --- Finalize ---
 
   CALL FinalizeTimers
+
+  CALL FinalizeNonlinearSolverTally
 
   CALL FinalizeReferenceElementX
 
@@ -405,10 +425,72 @@ PROGRAM DeleptonizationWave
 
   CALL FinalizeOpacities_TABLE
 
-  CALL DestroyNeutrinoOpacities
-
   CALL FinalizePositivityLimiter_TwoMoment
 
   CALL FinalizeProgram
 
-END PROGRAM DeleptonizationWave
+CONTAINS
+
+
+  SUBROUTINE ComputeFromConserved_Fluid
+
+    INTEGER :: iX1, iX2, iX3
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      CALL ComputePrimitive_Euler &
+             ( uCF(:,iX1,iX2,iX3,iCF_D ), &
+               uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), &
+               uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), &
+               uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_D ), &
+               uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), &
+               uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uAF(:,iX1,iX2,iX3,iAF_T ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye) )
+
+      CALL ApplyEquationOfState_TABLE &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
+               uAF(:,iX1,iX2,iX3,iAF_T ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), &
+               uAF(:,iX1,iX2,iX3,iAF_P ), &
+               uAF(:,iX1,iX2,iX3,iAF_S ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_Me), &
+               uAF(:,iX1,iX2,iX3,iAF_Mp), &
+               uAF(:,iX1,iX2,iX3,iAF_Mn), &
+               uAF(:,iX1,iX2,iX3,iAF_Xp), &
+               uAF(:,iX1,iX2,iX3,iAF_Xn), &
+               uAF(:,iX1,iX2,iX3,iAF_Xa), &
+               uAF(:,iX1,iX2,iX3,iAF_Xh), &
+               uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeFromConserved_Fluid
+
+
+  SUBROUTINE ComputeFromConserved_Radiation
+
+  END SUBROUTINE ComputeFromConserved_Radiation
+
+
+END PROGRAM DeleptonizationWave1D

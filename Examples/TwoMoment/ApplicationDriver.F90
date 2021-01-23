@@ -34,7 +34,7 @@ PROGRAM DeleptonizationWave
     uCF, uPF, uAF
   USE RadiationFieldsModule, ONLY: &
     uCR  
-  USE TimeSteppingModule_Castro, ONLY: &
+  USE TimeSteppingModule_Flash, ONLY: &
     Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
     InitializeFields, &

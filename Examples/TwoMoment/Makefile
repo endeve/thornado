@@ -12,7 +12,7 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
 VPATH += $(THORNADO_DIR)/Examples/TwoMoment
-VPATH += $(THORNADO_DIR)/SandBox/Interface_CASTRO
+VPATH += $(THORNADO_DIR)/SandBox/Interface_FLASH
 
 #DEFINES += $(PP)-DTHORNADO_DEBUG
 
@@ -24,13 +24,13 @@ ApplicationDriver: \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Castro.o \
+	TimeSteppingModule_Flash.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Castro.o \
+	TimeSteppingModule_Flash.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
@@ -61,7 +61,7 @@ ApplicationDriver.o: \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
   NeutrinoOpacitiesComputationModule.o \
-  TimeSteppingModule_Castro.o \
+  TimeSteppingModule_Flash.o \
   InitializationModule.o \
   InputOutputModuleHDF.o \
   TwoMoment_ClosureModule.o \
@@ -81,7 +81,7 @@ InitializationModule.o: \
   EquationOfStateModule_TABLE.o \
   InitializationModule.F90
 
-TimeSteppingModule_Castro.o: \
+TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   TimersModule.o \
@@ -93,4 +93,4 @@ TimeSteppingModule_Castro.o: \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
-  TimeSteppingModule_Castro.F90
+  TimeSteppingModule_Flash.F90
