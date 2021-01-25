@@ -231,6 +231,15 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
 
+    P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
+    Gm = Gamma_IDEAL
+    Em = Ev / D
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+
+    T = 0.0_DP
+    Y = 0.0_DP
+    S = 0.0_DP
+
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar
 
 
@@ -240,10 +249,14 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: P(:), T (:), Y (:), S(:), Em(:), Gm(:), Cs(:)
 
-    P (:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
-    Gm(:) = Gamma_IDEAL
-    Em(:) = Ev(:) / D(:)
-    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D(:), Ev(:), Ne(:), Cs(:) )
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeAuxiliary_Fluid_IDEAL_Scalar &
+             ( D(i), Ev(i), Ne(i), P(i), T(i), Y(i), S(i), Em(i), Gm(i), Cs(i) )
+
+    END DO
 
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Vector
 
