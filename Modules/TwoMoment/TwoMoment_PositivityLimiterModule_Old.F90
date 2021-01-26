@@ -336,9 +336,12 @@ CONTAINS
 
       Gamma(1:nPT) = GammaFun &
                      ( U_PP(1:nPT,iCR_N ), &
-                       U_PP(1:nPT,iCR_G1) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_11)), &
-                       U_PP(1:nPT,iCR_G2) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_22)), &
-                       U_PP(1:nPT,iCR_G3) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_33)) )
+                       U_PP(1:nPT,iCR_G1), &
+                       U_PP(1:nPT,iCR_G2), &
+                       U_PP(1:nPT,iCR_G3), &
+                       GX_PP(1:nPT,iGF_Gm_dd_11), &
+                       GX_PP(1:nPT,iGF_Gm_dd_22), &
+                       GX_PP(1:nPT,iGF_Gm_dd_33) )
 
       IF( ANY( Gamma(:) < Min_2 ) )THEN
 
@@ -359,7 +362,11 @@ CONTAINS
           IF( Gamma(iP) < Min_2 ) THEN
 
             CALL SolveTheta_Bisection &
-                   ( U_PP(iP,1:nCR), U_K(1:nCR), Min_2, Theta_P )
+                   ( U_PP(iP,1:nCR), U_K(1:nCR), &
+                     GX_PP(iP,iGF_Gm_dd_11), &
+                     GX_PP(iP,iGF_Gm_dd_22), &
+                     GX_PP(iP,iGF_Gm_dd_33), &
+                     Min_2, Theta_P )
 
             Theta_2 = MIN( Theta_2, Theta_P )
 
@@ -459,30 +466,23 @@ CONTAINS
   END SUBROUTINE ComputePointValues
 
 
-  SUBROUTINE ComputeGamma( N, U, Gamma )
+  PURE REAL(DP) ELEMENTAL FUNCTION GammaFun &
+    ( N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    INTEGER,  INTENT(in)  :: N
-    REAL(DP), INTENT(in)  :: U(N,nCR)
-    REAL(DP), INTENT(out) :: Gamma(N)
+    REAL(DP), INTENT(in) :: N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    Gamma = GammaFun( U(:,iCR_N), U(:,iCR_G1), U(:,iCR_G2), U(:,iCR_G3) )
-
-  END SUBROUTINE ComputeGamma
-
-
-  PURE REAL(DP) ELEMENTAL FUNCTION GammaFun( N, G1, G2, G3 )
-
-    REAL(DP), INTENT(in) :: N, G1, G2, G3
-
-    GammaFun = ( One - Theta_FD * N ) * N - SQRT( G1**2 + G2**2 + G3**2 )
+    GammaFun = ( One - Theta_FD * N ) * N &
+               - SQRT( G1**2 / Gm_dd_11 + G2**2 / Gm_dd_22 + G3**2 / Gm_dd_33 )
 
     RETURN
   END FUNCTION GammaFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinGamma, Theta_P )
+  SUBROUTINE SolveTheta_Bisection &
+    ( U_Q, U_K, Gm_dd_11, Gm_dd_22, Gm_dd_33, MinGamma, Theta_P )
 
     REAL(DP), INTENT(in)  :: U_Q(nCR), U_K(nCR), MinGamma
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -498,7 +498,8 @@ CONTAINS
             ( x_a * U_Q(iCR_N)  + ( One - x_a ) * U_K(iCR_N),   &
               x_a * U_Q(iCR_G1) + ( One - x_a ) * U_K(iCR_G1),  &
               x_a * U_Q(iCR_G2) + ( One - x_a ) * U_K(iCR_G2),  &
-              x_a * U_Q(iCR_G3) + ( One - x_a ) * U_K(iCR_G3) ) &
+              x_a * U_Q(iCR_G3) + ( One - x_a ) * U_K(iCR_G3),  &
+              Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
           - MinGamma
 
     x_b = One
@@ -506,7 +507,8 @@ CONTAINS
             ( x_b * U_Q(iCR_N)  + ( One - x_b ) * U_K(iCR_N),   &
               x_b * U_Q(iCR_G1) + ( One - x_b ) * U_K(iCR_G1),  &
               x_b * U_Q(iCR_G2) + ( One - x_b ) * U_K(iCR_G2),  &
-              x_b * U_Q(iCR_G3) + ( One - x_b ) * U_K(iCR_G3) ) &
+              x_b * U_Q(iCR_G3) + ( One - x_b ) * U_K(iCR_G3),  &
+              Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
           - MinGamma
 
     IF( .NOT. f_a * f_b < 0 )THEN
@@ -550,7 +552,8 @@ CONTAINS
               ( x_c * U_Q(iCR_N)  + ( One - x_c ) * U_K(iCR_N),   &
                 x_c * U_Q(iCR_G1) + ( One - x_c ) * U_K(iCR_G1),  &
                 x_c * U_Q(iCR_G2) + ( One - x_c ) * U_K(iCR_G2),  &
-                x_c * U_Q(iCR_G3) + ( One - x_c ) * U_K(iCR_G3) ) &
+                x_c * U_Q(iCR_G3) + ( One - x_c ) * U_K(iCR_G3),  &
+                Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
             - MinGamma
 
       IF( f_a * f_c < Zero )THEN
