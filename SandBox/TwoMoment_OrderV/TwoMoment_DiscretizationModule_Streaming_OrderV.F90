@@ -163,10 +163,18 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_BCs )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dU_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dU_R )
+#endif
+
     CALL TimersStart( Timer_Streaming_Zero )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -193,6 +201,12 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_Zero )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( dU_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE HOST( dU_R )
+#endif
 
     CALL TimersStart( Timer_Streaming_Divergence_X1 )
 
@@ -408,6 +422,13 @@ CONTAINS
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GE, GX, U_F, U_R, dU_R )
+#elif defined( THORNADO_OACC   )
+
+#endif
+
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nZ_X1 = nZ + [0,1,0,0]    ! Number of X3 Faces per Phase Space Dimension
     nV    = nCR * nSpecies * PRODUCT( nZ )
@@ -419,12 +440,21 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+#if   defined( THORNADO_OMP_OL   )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, uPF_K, V_u, &
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+#elif defined( THORNADO_OMP_OACC )
+
+#endif
+
     CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -475,7 +505,7 @@ CONTAINS
     ! --- Recompute Geometry from Scale Factors ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -511,7 +541,7 @@ CONTAINS
     ! --- Permute Fluid Fields ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -558,7 +588,8 @@ CONTAINS
     ! --- Compute Face Velocity Components ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uPF_L, uPF_R )
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -625,7 +656,7 @@ CONTAINS
     ! --- Permute Radiation Fields ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -679,13 +710,15 @@ CONTAINS
     ! --- Numerical Flux ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X1_L, &
+    !$OMP          iCR   , uPR_R, Flux_R, uCR_X1_R, nIterations )
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X1_L, &
-    !$OMP&                 uPR_R, Flux_R, uCR_X1_R, iCR, nIterations )
+    !$OMP&         iCR   , uPR_R, Flux_R, uCR_X1_R, nIterations )
 #endif
     DO iZ2 = iZ_B0(2), iZ_E1(2)
     DO iS  = 1, nSpecies
@@ -844,7 +877,7 @@ CONTAINS
     ! --- Compute Primitive Fluid in Spatial Elements ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -882,7 +915,8 @@ CONTAINS
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, nIterations )
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -958,7 +992,7 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
@@ -985,6 +1019,21 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( dU_R )
+#elif defined( THORNADO_OACC   )
+
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, uPF_K, V_u, &
+    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+#elif defined( THORNADO_OACC   )
+
+#endif
 
     END ASSOCIATE ! dZ1, etc.
 
@@ -4839,6 +4888,12 @@ CONTAINS
   FUNCTION FaceVelocity_X1 &
     ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: V1_L, V2_L, V3_L
     REAL(DP), INTENT(in) :: V1_R, V2_R, V3_R
     REAL(DP)             :: FaceVelocity_X1(1:3)
@@ -4856,6 +4911,12 @@ CONTAINS
   FUNCTION FaceVelocity_X2 &
     ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: V1_L, V2_L, V3_L
     REAL(DP), INTENT(in) :: V1_R, V2_R, V3_R
     REAL(DP)             :: FaceVelocity_X2(1:3)
@@ -4872,6 +4933,12 @@ CONTAINS
 
   FUNCTION FaceVelocity_X3 &
     ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: V1_L, V2_L, V3_L
     REAL(DP), INTENT(in) :: V1_R, V2_R, V3_R

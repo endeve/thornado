@@ -179,7 +179,13 @@ TwoMoment_TimersModule_OrderV.o: \
 
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
+  LinearAlgebraModule.o \
   TwoMoment_UtilitiesModule.F90
 
 TwoMoment_TroubledCellIndicatorModule.o: \

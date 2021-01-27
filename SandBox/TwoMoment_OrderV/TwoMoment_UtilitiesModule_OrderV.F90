@@ -22,6 +22,9 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     FluxFactor, &
     EddingtonFactor, &
     HeatFluxFactor
+  USE LinearAlgebraModule, ONLY: &
+    MatrixVectorMultiply, &
+    LinearLeastSquares
 
   IMPLICIT NONE
   PRIVATE
@@ -46,6 +49,12 @@ CONTAINS
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(out) :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
@@ -68,7 +77,7 @@ CONTAINS
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
-    REAL(DP) :: LMAT(4,4), DET, Alpha(M)
+    REAL(DP) :: LMAT(4,4), DET, Alpha(M), Tau(MAX(4,M))
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
 
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
@@ -125,7 +134,9 @@ CONTAINS
 
       LMAT = LMAT / DET
 
-      CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+!!$      CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+      CALL MatrixVectorMultiply &
+             ( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
 
@@ -144,8 +155,12 @@ CONTAINS
         AMAT(:,1:mk-1) &
           = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
 
-        CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
-                    WORK, LWORK, INFO )
+!!$        CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
+!!$                    WORK, LWORK, INFO )
+
+        CALL LinearLeastSquares &
+               ( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
+                 Tau(1:MIN(4,mk-1)), WORK, LWORK, INFO )
 
         Alpha(1:mk-1) = BVEC(1:mk-1)
         Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
@@ -225,6 +240,12 @@ CONTAINS
   SUBROUTINE ComputeConserved_TwoMoment &
     ( D, I_u_1, I_u_2, I_u_3, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(out) :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
@@ -486,6 +507,12 @@ CONTAINS
   FUNCTION Flux_X1 &
     ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X1(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
@@ -895,6 +922,12 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_LLF( u_L, u_R, Flux_L, Flux_R, alpha )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: NumericalFlux_LLF
     REAL(DP), INTENT(in) :: u_L, u_R, flux_L, flux_R, alpha
