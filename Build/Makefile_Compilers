@@ -10,7 +10,7 @@ OPENMP_corigpu_pgi   = -mp
 OPENMP_poplar_cce    = -homp
 OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
-OPENMP_OL_corigpu_pgi= -mp=gpu
+OPENMP_OL_corigpu_pgi= -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENMP_OL_poplar_cce = -homp
 ifeq ($(USE_OMP),TRUE)
     OPENMP               = $(OPENMP_$(MACHINE))
@@ -218,7 +218,7 @@ INCLUDE_HDF5_icer              = -I/opt/software/HDF5/1.10.4-foss-2019a/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
 INCLUDE_HDF5_kristopher        = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_ranchu            = -I/usr/local/hdf5/include
-INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.12.0/include
+INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_sjdunham          = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_jrober            = -I/usr/local/hdf5/include
 INCLUDE_HDF5_accre             = -I/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/HDF5/1.10.1/include
@@ -314,7 +314,7 @@ LIBRARIES_HDF5_icer            = -L/opt/software/HDF5/1.10.4-foss-2019a/lib -lhd
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_kristopher      = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_ranchu          = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_ranchuair       = -L/usr/local/Cellar/hdf5/1.12.0/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_ranchuair       = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sjdunham        = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_jrober          = -L/usr/local/hdf5/lib  -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_zelledge        = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5

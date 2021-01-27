@@ -196,7 +196,7 @@ CONTAINS
   END FUNCTION on_device
 
   TYPE(C_PTR) FUNCTION dev_ptr_int( a )
-    INTEGER, INTENT(IN) :: a
+    INTEGER, TARGET, INTENT(IN) :: a
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET DATA USE_DEVICE_PTR( a )
 #elif defined(THORNADO_OACC)
@@ -211,7 +211,7 @@ CONTAINS
   END FUNCTION dev_ptr_int
 
   TYPE(C_PTR) FUNCTION dev_ptr_dp( a )
-    REAL(DP), INTENT(IN) :: a
+    REAL(DP), TARGET, INTENT(IN) :: a
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET DATA USE_DEVICE_PTR( a )
 #elif defined(THORNADO_OACC)
@@ -226,7 +226,7 @@ CONTAINS
   END FUNCTION dev_ptr_dp
 
   TYPE(C_PTR) FUNCTION dev_ptr_cptr( a )
-    TYPE(C_PTR), INTENT(IN) :: a
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET DATA USE_DEVICE_PTR( a )
 #elif defined(THORNADO_OACC)
