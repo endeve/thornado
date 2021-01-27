@@ -26,6 +26,7 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux
   REAL(DP), PUBLIC :: Timer_Streaming_Sources
   REAL(DP), PUBLIC :: Timer_Collisions
+  REAL(DP), PUBLIC :: Timer_Collisions_Zero
   REAL(DP), PUBLIC :: Timer_Collisions_Permute
   REAL(DP), PUBLIC :: Timer_Collisions_PrimitiveFluid
   REAL(DP), PUBLIC :: Timer_Collisions_Solve
@@ -64,6 +65,7 @@ CONTAINS
     Timer_Streaming_Sources             = Zero
 
     Timer_Collisions                    = Zero
+    Timer_Collisions_Zero               = Zero
     Timer_Collisions_Permute            = Zero
     Timer_Collisions_PrimitiveFluid     = Zero
     Timer_Collisions_Solve              = Zero
@@ -130,6 +132,8 @@ CONTAINS
       '    Timer_Streaming_LinearAlgebra        :', Timer_Streaming_LinearAlgebra       , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Collisions                       :', Timer_Collisions                    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_Zero                  :', Timer_Collisions_Zero               , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Collisions_Permute               :', Timer_Collisions_Permute            , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &

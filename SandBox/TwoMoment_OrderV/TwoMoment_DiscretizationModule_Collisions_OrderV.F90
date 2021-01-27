@@ -22,6 +22,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     TimersStart, &
     TimersStop, &
     Timer_Collisions, &
+    Timer_Collisions_Zero, &
     Timer_Collisions_Permute, &
     Timer_Collisions_PrimitiveFluid, &
     Timer_Collisions_Solve
@@ -103,8 +104,24 @@ CONTAINS
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$OMP MAP( alloc: dU_F, dU_R )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$ACC CREATE( dU_F, dU_R )
+#endif
+
+    CALL TimersStart( Timer_Collisions_Zero )
+
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( dU_F, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -123,6 +140,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_Collisions_Zero )
 
 #if   defined( THORNADO_OMP_OL )
 #elif defined( THORNADO_OACC   )
