@@ -50,6 +50,7 @@ DeleptonizationWave1D: \
 
 clean:
 	rm -f *.o *.mod *.ld
+	rm -f *.cub *.ptx
 
 clobber: clean
 	rm -f DeleptonizationWave_$(MACHINE)
