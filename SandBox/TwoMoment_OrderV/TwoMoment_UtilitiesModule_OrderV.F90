@@ -22,9 +22,6 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     FluxFactor, &
     EddingtonFactor, &
     HeatFluxFactor
-  USE LinearAlgebraModule, ONLY: &
-    MatrixVectorMultiply, &
-    LinearLeastSquares
 
   IMPLICIT NONE
   PRIVATE
@@ -64,21 +61,19 @@ CONTAINS
     ! --- Parameters ---
 
     INTEGER,  PARAMETER :: M = 2
-    INTEGER,  PARAMETER :: LWORK = 2 * M
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
 
     ! --- Local Variables ---
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: i, k, mk, INFO
+    INTEGER  :: i, j, k, mk
     REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
-    REAL(DP) :: LMAT(4,4), DET, Alpha(M), Tau(MAX(4,M))
-    REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
+    REAL(DP) :: LMAT(4,4), DET, Alpha(M)
 
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
@@ -134,9 +129,17 @@ CONTAINS
 
       LMAT = LMAT / DET
 
-!!$      CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
-      CALL MatrixVectorMultiply &
-             ( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+      ! --- Multiply LMAT and CVEC to form GVEC ---
+
+      GVEC(:,mk) = Zero
+
+      DO j = 1, 4
+      DO i = 1, 4
+
+        GVEC(i,mk) = GVEC(i,mk) + LMAT(i,j) * CVEC(j)
+
+      END DO
+      END DO
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
 
@@ -150,20 +153,7 @@ CONTAINS
 
         ! --- Anderson Accelerated Fixed-Point ---
 
-        BVEC = - FVEC(:,mk)
-
-        AMAT(:,1:mk-1) &
-          = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
-
-!!$        CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
-!!$                    WORK, LWORK, INFO )
-
-        CALL LinearLeastSquares &
-               ( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
-                 Tau(1:MIN(4,mk-1)), WORK, LWORK, INFO )
-
-        Alpha(1:mk-1) = BVEC(1:mk-1)
-        Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
+        CALL SolveAlpha_LS( M, mk, FVEC, Alpha )
 
         GVECm = Zero
         DO i = 1, mk
@@ -186,8 +176,7 @@ CONTAINS
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
 
-        GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-        FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+        CALL ShiftVectors( M, mk, FVEC, GVEC )
 
       END IF
 
@@ -235,6 +224,111 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputePrimitive_TwoMoment
+
+
+  SUBROUTINE SolveAlpha_LS( M, mk, FVEC, Alpha )
+
+    INTEGER,  INTENT(in)    :: M, mk
+    REAL(DP), INTENT(inout) :: FVEC(4,M), Alpha(M)
+
+    INTEGER  :: i
+    REAL(DP) :: BVEC(4), AMAT(4,M)
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
+
+    BVEC = - FVEC(:,mk)
+
+    DO i = 1, mk - 1
+
+      AMAT(:,i) = FVEC(:,i) - FVEC(:,mk)
+
+    END DO
+
+    IF( mk == 2 )THEN
+
+      AA11 = Zero
+      AB1  = Zero
+
+      DO i = 1, 4
+
+        AA11 = AA11 + AMAT(i,1) * AMAT(i,1)
+        AB1  = AB1  + AMAT(i,1) * BVEC(i)
+
+      END DO
+
+      BVEC(1) = AB1 / AA11
+
+    ELSEIF( mk == 3 )THEN
+
+      AA11 = Zero
+      AA12 = Zero
+      AA22 = Zero
+      AB1  = Zero
+      AB2  = Zero
+
+      DO i = 1, 4
+
+        AA11 = AA11 + AMAT(i,1) * AMAT(i,1)
+        AA12 = AA12 + AMAT(i,1) * AMAT(i,2)
+        AA22 = AA22 + AMAT(i,2) * AMAT(i,2)
+        AB1  = AB1  + AMAT(i,1) * BVEC(i)
+        AB2  = AB2  + AMAT(i,2) * BVEC(i)
+
+      END DO
+
+      DET_AA = AA11 * AA22 - AA12 * AA12
+
+      BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+      BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+    ELSEIF( mk > 3 )THEN
+
+      PRINT*, "mk > 3"
+
+      STOP
+
+    END IF
+
+    SUM1 = Zero
+    DO i = 1, mk - 1
+
+      Alpha(i) = BVEC(i)
+
+      SUM1 = SUM1 + BVEC(i)
+
+    END DO
+
+    Alpha(mk) = One - SUM1
+
+  END SUBROUTINE SolveAlpha_LS
+
+
+  SUBROUTINE ShiftVectors( M, mk, FVEC, GVEC )
+
+    INTEGER,  INTENT(in)    :: M, mk
+    REAL(DP), INTENT(inout) :: FVEC(4,M), GVEC(4,M)
+
+    INTEGER  :: i, j
+    REAL(DP) :: FTMP(4,M), GTMP(4,M)
+
+    DO j = 1, mk - 1
+    DO i = 1, 4
+
+      FTMP(i,j) = FVEC(i,j+1)
+      GTMP(i,j) = GVEC(i,j+1)
+
+    END DO
+    END DO
+
+    DO j = 1, mk - 1
+    DO i = 1, 4
+
+      FVEC(i,j) = FTMP(i,j)
+      GVEC(i,j) = GTMP(i,j)
+
+    END DO
+    END DO
+
+  END SUBROUTINE ShiftVectors
 
 
   SUBROUTINE ComputeConserved_TwoMoment &

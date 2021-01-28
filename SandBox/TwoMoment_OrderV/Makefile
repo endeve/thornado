@@ -185,7 +185,6 @@ TwoMoment_UtilitiesModule.o: \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
-  LinearAlgebraModule.o \
   TwoMoment_UtilitiesModule.F90
 
 TwoMoment_TroubledCellIndicatorModule.o: \
