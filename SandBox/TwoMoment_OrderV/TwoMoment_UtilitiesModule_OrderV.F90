@@ -228,6 +228,12 @@ CONTAINS
 
   SUBROUTINE SolveAlpha_LS( M, mk, FVEC, Alpha )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     INTEGER,  INTENT(in)    :: M, mk
     REAL(DP), INTENT(inout) :: FVEC(4,M), Alpha(M)
 
@@ -304,6 +310,12 @@ CONTAINS
 
   SUBROUTINE ShiftVectors( M, mk, FVEC, GVEC )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     INTEGER,  INTENT(in)    :: M, mk
     REAL(DP), INTENT(inout) :: FVEC(4,M), GVEC(4,M)
 
@@ -336,9 +348,9 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP DECLARE TARGET
+!!$    !$OMP DECLARE TARGET
 #elif defined( THORNADO_OACC   )
-    !$ACC ROUTINE SEQ
+!!$    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
@@ -770,6 +782,12 @@ CONTAINS
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
