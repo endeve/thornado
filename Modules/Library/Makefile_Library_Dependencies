@@ -141,4 +141,4 @@ SubcellReconstructionModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   PolynomialBasisModuleX_Lagrange.o \
-  SubcellReconstructionModule.f90
+  SubcellReconstructionModule.F90
