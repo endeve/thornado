@@ -10,7 +10,7 @@ OPENMP_corigpu_pgi   = -mp
 OPENMP_poplar_cce    = -homp
 OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
-OPENMP_OL_corigpu_pgi= -mp=gpu
+OPENMP_OL_corigpu_pgi= -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENMP_OL_poplar_cce = -homp
 ifeq ($(USE_OMP),TRUE)
     OPENMP               = $(OPENMP_$(MACHINE))
