@@ -690,6 +690,52 @@ CONTAINS
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
 
+  FUNCTION EddingtonTensorComponents_dd &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP)              :: &
+      EddingtonTensorComponents_dd(3,3)
+
+    INTEGER  :: i, j
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_d(3), Gm_dd(3,3)
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
+    h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
+    h_d(3) = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    Gm_dd = Zero
+    Gm_dd(1,1) = Gm_dd_11
+    Gm_dd(2,2) = Gm_dd_22
+    Gm_dd(3,3) = Gm_dd_33
+
+    DO j = 1, 3
+    DO i = 1, 3
+
+      EddingtonTensorComponents_dd(i,j) &
+        = a * Gm_dd(i,j) + b * h_d(i) * h_d(j)
+
+    END DO
+    END DO
+
+    RETURN
+  END FUNCTION EddingtonTensorComponents_dd
+
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
