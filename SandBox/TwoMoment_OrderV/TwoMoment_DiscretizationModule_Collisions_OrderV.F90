@@ -106,13 +106,29 @@ CONTAINS
 
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$OMP MAP( alloc: dU_F, dU_R )
+    !!$OMP TARGET ENTER DATA &
+    !!$OMP MAP( to: GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !!$OMP MAP( alloc: dU_F, dU_R )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
     !$ACC CREATE( dU_F, dU_R )
+#endif
+
+
+
+!PRINT*
+!PRINT*, " BEFORE "
+!PRINT*, "  uOP = ", uOP(1,1,2,1,2,1,1)
+!PRINT*, "  OP_N = ", OP_N(:,1,1,1)
+!PRINT*, "  dU_F = ", dU_F(:,2,1,1,1)
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iZ_B1, iZ_E1 ) &
+    !$OMP MAP( alloc: dU_F, dU_R )
+#elif defined(THORNADO_OACC)
 #endif
 
     CALL TimersStart( Timer_Collisions_Zero )
@@ -141,10 +157,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Collisions_Zero )
+
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( dU_R, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -168,11 +187,34 @@ CONTAINS
     END DO
     END DO
 
+
+    CALL TimersStop( Timer_Collisions_Zero )
+
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: dU_F, dU_R ) &
+    !$OMP MAP( release: iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OACC)
+#endif
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GX, U_F, U_R, uOP, iZ_B1, iZ_E1 ) &
+    !$OMP MAP( alloc: GX_N, CF_N, CR_N, OP_N)
+#elif defined(THORNADO_OACC)
+#endif
+
+
     CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Arrange Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
 #elif defined( THORNADO_OACC   )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
@@ -194,6 +236,8 @@ CONTAINS
     ! --- Arrange Fluid Fields ---
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
 #elif defined( THORNADO_OACC   )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
@@ -215,6 +259,8 @@ CONTAINS
     ! --- Arrange Radiation Fields ---
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeE, iNodeZ, iNodeX, iX1, iX2, iX3, iE )
 #elif defined( THORNADO_OACC   )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(4) &
@@ -245,6 +291,8 @@ CONTAINS
     ! --- Arrange Opacities ---
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeE, iNodeZ, iNodeX, iX1, iX2, iX3, iE )
 #elif defined( THORNADO_OACC   )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(4) &
@@ -274,9 +322,36 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_Permute )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: GX_N, CF_N, CR_N, OP_N ) &
+    !$OMP MAP( release: GX, U_F, U_R, uOP, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OACC)
+#endif
+
+
+
+!PRINT*
+!PRINT*, " AFTER "
+!PRINT*, "  uOP = ", uOP(1,1,2,1,2,1,1)
+!PRINT*, "  OP_N = ", OP_N(:,1,1,1)
+!PRINT*, "  dU_F = ", dU_F(:,2,1,1,1)
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: CF_N, GX_N ) &
+    !$OMP MAP( alloc: PF_N)
+#elif defined(THORNADO_OACC)
+#endif
+
+
     CALL TimersStart( Timer_Collisions_PrimitiveFluid )
 
+
+
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD
@@ -304,10 +379,28 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_PrimitiveFluid )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: PF_N ) &
+    !$OMP MAP( release: CF_N, GX_N )
+#elif defined(THORNADO_OACC)
+#endif
+
+
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: CR_N, PF_N, GX_N, OP_N ) & 
+    !$OMP MAP( alloc: dCR_N )
+#elif defined(THORNADO_OACC)
+#endif
+
+
     CALL TimersStart( Timer_Collisions_Solve )
 
 #if   defined( THORNADO_OMP_OL )
-#elif defined( THORNADO_OACC   )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -341,11 +434,30 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_Solve )
 
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: dCR_N ) &
+    !$OMP MAP( release: CR_N, PF_N, GX_N, OP_N )
+
+#elif defined(THORNADO_OACC)
+#endif
+
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dCR_N, dU_R )
+#elif defined(THORNADO_OACC)
+#endif
+
+
     CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Revert Radiation Increment ---
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeE, iNodeX, iN_X, iN_E )
 #elif defined( THORNADO_OACC   )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(7) &
@@ -384,6 +496,15 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_Permute )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: dU_R ) &
+    !$OMP MAP( release: dCR_N )
+#elif defined(THORNADO_OACC)
+#endif
+
+
+
     CALL FinalizeCollisions
 
     CALL TimersStop( Timer_Collisions )
@@ -413,7 +534,7 @@ CONTAINS
     ! --- Local Variables ---
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: i, k, mk, INFO
+    INTEGER  :: i, j, k, mk, INFO
     REAL(DP) :: D, I_d_1, I_d_2, I_d_3, Kappa
     REAL(DP) ::    I_u_1, I_u_2, I_u_3
     REAL(DP) :: A_d_1, A_d_2, A_d_3
@@ -490,7 +611,17 @@ CONTAINS
 
       LMAT = LMAT / DET
 
-      CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+      !CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+
+      GVEC(:,mk) = Zero
+
+      DO j = 1, 4
+      DO i = 1, 4
+
+        GVEC(i,mk) = GVEC(i,mk) + LMAT(i,j) * CVEC(j)
+
+      END DO
+      END DO
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
 
@@ -504,16 +635,18 @@ CONTAINS
 
         ! --- Anderson Accelerated Fixed-Point ---
 
-        BVEC = - FVEC(:,mk)
+        !BVEC = - FVEC(:,mk)
 
-        AMAT(:,1:mk-1) &
-          = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
+        !AMAT(:,1:mk-1) &
+        !  = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
 
-        CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
-                    WORK, LWORK, INFO )
+        !CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
+        !            WORK, LWORK, INFO )
 
-        Alpha(1:mk-1) = BVEC(1:mk-1)
-        Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
+        !Alpha(1:mk-1) = BVEC(1:mk-1)
+        !Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
+
+        CALL SolveAlpha_LS( M, mk, FVEC, Alpha )
 
         GVECm = Zero
         DO i = 1, mk
@@ -536,8 +669,9 @@ CONTAINS
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
 
-        GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-        FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+        !GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
+        !FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+        CALL ShiftVectors( M, mk, FVEC, GVEC )
 
       END IF
 
@@ -585,6 +719,110 @@ CONTAINS
 
   END SUBROUTINE ComputeIncrement_FixedPoint
 
+
+  SUBROUTINE SolveAlpha_LS( M, mk, FVEC, Alpha )
+
+    INTEGER,  INTENT(in)    :: M, mk
+    REAL(DP), INTENT(inout) :: FVEC(4,M), Alpha(M)
+
+    INTEGER  :: i
+    REAL(DP) :: BVEC(4), AMAT(4,M)
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
+
+    BVEC = - FVEC(:,mk)
+
+    DO i = 1, mk - 1
+
+      AMAT(:,i) = FVEC(:,i) - FVEC(:,mk)
+
+    END DO
+
+    IF( mk == 2 )THEN
+
+      AA11 = Zero
+      AB1  = Zero
+
+      DO i = 1, 4
+
+        AA11 = AA11 + AMAT(i,1) * AMAT(i,1)
+        AB1  = AB1  + AMAT(i,1) * BVEC(i)
+
+      END DO
+
+      BVEC(1) = AB1 / AA11
+
+    ELSEIF( mk == 3 )THEN
+
+      AA11 = Zero
+      AA12 = Zero
+      AA22 = Zero
+      AB1  = Zero
+      AB2  = Zero
+
+      DO i = 1, 4
+
+        AA11 = AA11 + AMAT(i,1) * AMAT(i,1)
+        AA12 = AA12 + AMAT(i,1) * AMAT(i,2)
+        AA22 = AA22 + AMAT(i,2) * AMAT(i,2)
+        AB1  = AB1  + AMAT(i,1) * BVEC(i)
+        AB2  = AB2  + AMAT(i,2) * BVEC(i)
+
+      END DO
+
+      DET_AA = AA11 * AA22 - AA12 * AA12
+
+      BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+      BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+    ELSEIF( mk > 3 )THEN
+
+      PRINT*, "mk > 3"
+
+      STOP
+
+    END IF
+
+    SUM1 = Zero
+    DO i = 1, mk - 1
+
+      Alpha(i) = BVEC(i)
+
+      SUM1 = SUM1 + BVEC(i)
+
+    END DO
+
+    Alpha(mk) = One - SUM1
+
+  END SUBROUTINE SolveAlpha_LS
+
+
+  SUBROUTINE ShiftVectors( M, mk, FVEC, GVEC )
+
+    INTEGER,  INTENT(in)    :: M, mk
+    REAL(DP), INTENT(inout) :: FVEC(4,M), GVEC(4,M)
+
+    INTEGER  :: i, j
+    REAL(DP) :: FTMP(4,M), GTMP(4,M)
+
+    DO j = 1, mk - 1
+    DO i = 1, 4
+
+      FTMP(i,j) = FVEC(i,j+1)
+      GTMP(i,j) = GVEC(i,j+1)
+
+    END DO
+    END DO
+
+    DO j = 1, mk - 1
+    DO i = 1, 4
+
+      FVEC(i,j) = FTMP(i,j)
+      GVEC(i,j) = GTMP(i,j)
+
+    END DO
+    END DO
+
+  END SUBROUTINE ShiftVectors
 
   SUBROUTINE InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
