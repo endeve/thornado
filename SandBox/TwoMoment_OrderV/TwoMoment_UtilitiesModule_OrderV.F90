@@ -68,8 +68,7 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: i, j, k, mk
-    REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3, k_dd(3,3)
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
@@ -97,13 +96,12 @@ CONTAINS
 
       UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
 
-      CALL ComputeEddingtonTensorComponents_dd &
-             ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+      k_dd = EddingtonTensorComponents_dd &
+               ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-      A_d_1 = V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13
-      A_d_2 = V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23
-      A_d_3 = V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33
+      A_d_1 = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+      A_d_2 = V_u_1 * k_dd(1,2) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+      A_d_3 = V_u_1 * k_dd(1,3) + V_u_2 * k_dd(2,3) + V_u_3 * k_dd(3,3)
 
       DET = One - ( V_u_1 * A_d_1 + V_u_2 * A_d_2 + V_u_3 * A_d_3 )
 
@@ -153,7 +151,7 @@ CONTAINS
 
         ! --- Anderson Accelerated Fixed-Point ---
 
-        CALL SolveAlpha_LS( M, mk, FVEC, Alpha )
+        Alpha = Alpha_LS( M, mk, FVEC )
 
         GVECm = Zero
         DO i = 1, mk
@@ -176,7 +174,8 @@ CONTAINS
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
 
-        CALL ShiftVectors( M, mk, FVEC, GVEC )
+        FVEC = ShiftVec( M, mk, FVEC )
+        GVEC = ShiftVec( M, mk, GVEC )
 
       END IF
 
@@ -193,40 +192,40 @@ CONTAINS
 
     END IF
 
-    IF( k == MaxIterations )THEN
-
-      PRINT*
-      PRINT*, "ComputePrimitive_TwoMoment"
-      PRINT*
-      PRINT*, "  N     = ", N
-      PRINT*, "  G_d_1 = ", G_d_1
-      PRINT*, "  G_d_2 = ", G_d_2
-      PRINT*, "  G_d_3 = ", G_d_3
-      PRINT*
-      PRINT*, "  V_u_1 = ", V_u_1
-      PRINT*, "  V_u_2 = ", V_u_2
-      PRINT*, "  V_u_3 = ", V_u_3
-      PRINT*
-
-      PRINT*, "  Converged with k = ", k
-
-      PRINT*
-      PRINT*, "  FVECm = ", FVECm
-      PRINT*
-
-      PRINT*
-      PRINT*, "  D     = ", D
-      PRINT*, "  I_u_1 = ", I_u_1
-      PRINT*, "  I_u_2 = ", I_u_2
-      PRINT*, "  I_u_3 = ", I_u_3
-      PRINT*
-
-    END IF
+!    IF( k == MaxIterations )THEN
+!
+!      PRINT*
+!      PRINT*, "ComputePrimitive_TwoMoment"
+!      PRINT*
+!      PRINT*, "  N     = ", N
+!      PRINT*, "  G_d_1 = ", G_d_1
+!      PRINT*, "  G_d_2 = ", G_d_2
+!      PRINT*, "  G_d_3 = ", G_d_3
+!      PRINT*
+!      PRINT*, "  V_u_1 = ", V_u_1
+!      PRINT*, "  V_u_2 = ", V_u_2
+!      PRINT*, "  V_u_3 = ", V_u_3
+!      PRINT*
+!
+!      PRINT*, "  Converged with k = ", k
+!
+!      PRINT*
+!      PRINT*, "  FVECm = ", FVECm
+!      PRINT*
+!
+!      PRINT*
+!      PRINT*, "  D     = ", D
+!      PRINT*, "  I_u_1 = ", I_u_1
+!      PRINT*, "  I_u_2 = ", I_u_2
+!      PRINT*, "  I_u_3 = ", I_u_3
+!      PRINT*
+!
+!    END IF
 
   END SUBROUTINE ComputePrimitive_TwoMoment
 
 
-  SUBROUTINE SolveAlpha_LS( M, mk, FVEC, Alpha )
+  FUNCTION Alpha_LS( M, mk, FVEC )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
@@ -234,8 +233,9 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    INTEGER,  INTENT(in)    :: M, mk
-    REAL(DP), INTENT(inout) :: FVEC(4,M), Alpha(M)
+    INTEGER,  INTENT(in) :: M, mk
+    REAL(DP), INTENT(in) :: FVEC(4,M)
+    REAL(DP)             :: Alpha_LS(M)
 
     INTEGER  :: i
     REAL(DP) :: BVEC(4), AMAT(4,M)
@@ -288,27 +288,26 @@ CONTAINS
 
     ELSEIF( mk > 3 )THEN
 
-      PRINT*, "mk > 3"
-
-      STOP
+      ! --- Not Implemented ---
 
     END IF
 
     SUM1 = Zero
     DO i = 1, mk - 1
 
-      Alpha(i) = BVEC(i)
+      Alpha_LS(i) = BVEC(i)
 
       SUM1 = SUM1 + BVEC(i)
 
     END DO
 
-    Alpha(mk) = One - SUM1
+    Alpha_LS(mk) = One - SUM1
 
-  END SUBROUTINE SolveAlpha_LS
+    RETURN
+  END FUNCTION Alpha_LS
 
 
-  SUBROUTINE ShiftVectors( M, mk, FVEC, GVEC )
+  FUNCTION ShiftVec( M, mk, Vec )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
@@ -316,17 +315,17 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    INTEGER,  INTENT(in)    :: M, mk
-    REAL(DP), INTENT(inout) :: FVEC(4,M), GVEC(4,M)
+    INTEGER,  INTENT(in) :: M, mk
+    REAL(DP), INTENT(in) :: Vec(4,M)
+    REAL(DP)             :: ShiftVec(4,M)
 
     INTEGER  :: i, j
-    REAL(DP) :: FTMP(4,M), GTMP(4,M)
+    REAL(DP) :: VecTMP(4,M)
 
     DO j = 1, mk - 1
     DO i = 1, 4
 
-      FTMP(i,j) = FVEC(i,j+1)
-      GTMP(i,j) = GVEC(i,j+1)
+      VecTMP(i,j) = Vec(i,j+1)
 
     END DO
     END DO
@@ -334,13 +333,13 @@ CONTAINS
     DO j = 1, mk - 1
     DO i = 1, 4
 
-      FVEC(i,j) = FTMP(i,j)
-      GVEC(i,j) = GTMP(i,j)
+      ShiftVec(i,j) = VecTMP(i,j)
 
     END DO
     END DO
 
-  END SUBROUTINE ShiftVectors
+    RETURN
+  END FUNCTION ShiftVec
 
 
   SUBROUTINE ComputeConserved_TwoMoment &
@@ -348,9 +347,9 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL )
-!!$    !$OMP DECLARE TARGET
+    !$OMP DECLARE TARGET
 #elif defined( THORNADO_OACC   )
-!!$    !$ACC ROUTINE SEQ
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
@@ -358,11 +357,10 @@ CONTAINS
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: k_dd(3,3)
 
-    CALL ComputeEddingtonTensorComponents_dd &
-           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+    k_dd = EddingtonTensorComponents_dd &
+             ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     ! --- Conserved Number Density ---
 
@@ -373,23 +371,23 @@ CONTAINS
     ! --- Conserved Number Flux Density (1) ---
 
     G_d_1 = Gm_dd_11 * I_u_1 &
-              + (   V_u_1 * k_dd_11 &
-                  + V_u_2 * k_dd_12 &
-                  + V_u_3 * k_dd_13 ) * D
+              + (   V_u_1 * k_dd(1,1) &
+                  + V_u_2 * k_dd(1,2) &
+                  + V_u_3 * k_dd(1,3) ) * D
 
     ! --- Conserved Number Flux Density (2) ---
 
     G_d_2 = Gm_dd_22 * I_u_2 &
-              + (   V_u_1 * k_dd_12 &
-                  + V_u_2 * k_dd_22 &
-                  + V_u_3 * k_dd_23 ) * D
+              + (   V_u_1 * k_dd(1,2) &
+                  + V_u_2 * k_dd(2,2) &
+                  + V_u_3 * k_dd(2,3) ) * D
 
     ! --- Conserved Number Flux Density (3) ---
 
     G_d_3 = Gm_dd_33 * I_u_3 &
-              + (   V_u_1 * k_dd_13 &
-                  + V_u_2 * k_dd_23 &
-                  + V_u_3 * k_dd_33 ) * D
+              + (   V_u_1 * k_dd(1,3) &
+                  + V_u_2 * k_dd(2,3) &
+                  + V_u_3 * k_dd(3,3) ) * D
 
   END SUBROUTINE ComputeConserved_TwoMoment
 
@@ -821,6 +819,53 @@ CONTAINS
     k_dd_23 = b * h_d_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
+
+
+  FUNCTION EddingtonTensorComponents_dd &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP)              :: &
+      EddingtonTensorComponents_dd(3,3)
+
+    INTEGER  :: i, j
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_d(3), Gm_dd(3,3)
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
+    h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
+    h_d(3) = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    Gm_dd = Zero
+    Gm_dd(1,1) = Gm_dd_11
+    Gm_dd(2,2) = Gm_dd_22
+    Gm_dd(3,3) = Gm_dd_33
+
+    DO j = 1, 3
+    DO i = 1, 3
+
+      EddingtonTensorComponents_dd(i,j) &
+        = a * Gm_dd(i,j) + b * h_d(i) * h_d(j)
+
+    END DO
+    END DO
+
+    RETURN
+  END FUNCTION EddingtonTensorComponents_dd
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &

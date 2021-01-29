@@ -169,8 +169,7 @@ CONTAINS
     !$OMP MAP( alloc: dU_R )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$ACC CREATE( dU_R )
+    !$ACC COPYIN( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 #endif
 
     CALL TimersStart( Timer_Streaming_Zero )
@@ -205,18 +204,18 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_Zero )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( dU_R )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( dU_R )
-#endif
-
     CALL TimersStart( Timer_Streaming_Divergence_X1 )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
     CALL TimersStop( Timer_Streaming_Divergence_X1 )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE HOST( dU_R )
+#endif
 
     CALL TimersStart( Timer_Streaming_Divergence_X2 )
 
@@ -294,7 +293,7 @@ CONTAINS
 
 #if defined( THORNADO_OACC )
     !$ACC EXIT DATA &
-    !$ACC DELETE( dU_R )
+    !$ACC DELETE( GE, GX, U_F, U_R, dU_R )
 #endif
 
     CALL TimersStop( Timer_Streaming )
@@ -437,8 +436,7 @@ CONTAINS
 !!$    !$OMP TARGET ENTER DATA &
 !!$    !$OMP MAP( to: GE, GX, U_F, U_R, dU_R )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( GE, GX, U_F, U_R )
+
 #endif
 
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
@@ -493,10 +491,6 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_Permute )
-
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE HOST( GX_K )
-#endif
 
     !---------------------
     ! --- Surface Term ---
@@ -557,10 +551,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_Permute )
 
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE HOST( GX_F )
-#endif
-
     CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Fluid Fields ---
@@ -610,10 +600,6 @@ CONTAINS
              uCF_R(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE HOST( uCF_K )
-#endif
 
     ! --- Compute Face Velocity Components ---
 
@@ -683,10 +669,6 @@ CONTAINS
     END DO
     END DO
 
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE HOST( V_u )
-#endif
-
     CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Radiation Fields ---
@@ -742,10 +724,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE HOST( uCR_K, uCR_L, uCR_R )
-#endif
-
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
     ! --- Numerical Flux ---
@@ -755,7 +733,11 @@ CONTAINS
 !!$    !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X1_L, &
 !!$    !$OMP          iCR   , uPR_R, Flux_R, uCR_X1_R, nIterations )
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X1_L, &
+    !$ACC          iCR   , uPR_R, Flux_R, uCR_X1_R, nIterations ) &
+    !$ACC PRESENT( GE, GX_F, V_u, uCR_L, uCR_R, dZ1, dZ3, dZ4, Weights_X1, &
+    !$ACC          NumericalFlux, iZ_B0, iZ_E0, iZ_E1 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, uPR_L, Flux_L, uCR_X1_L, &
@@ -891,10 +873,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE DEVICE( NumericalFlux )
-#endif
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Surface Contributions ---
@@ -958,10 +936,6 @@ CONTAINS
     END DO
     END DO
 
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE HOST( uPF_K )
-#endif
-
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
@@ -970,8 +944,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, nIterations ) &
-    !$ACC PRESENT( GX_K, uPF_K, uCR_K, dZ1, dZ3, dZ4, Weights_q, Flux_q, &
-    !$ACC          iZ_B0, iZ_E0 )
+    !$ACC PRESENT( GE, GX_K, uPF_K, uCR_K, dZ1, dZ3, dZ4, Weights_q, &
+    !$ACC          Flux_q, iZ_B0, iZ_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, uPR_K, Flux_K, iCR, nIterations )
@@ -1034,10 +1008,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_NumericalFlux )
 
-#if defined( THORNADO_OACC )
-    !$ACC UPDATE DEVICE( Flux_q )
-#endif
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Volume Contributions ---
@@ -1089,10 +1059,9 @@ CONTAINS
 !!$    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE( GE, GX, U_F, U_R, dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC DELETE( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, uPF_K, V_u, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 ) &
-    !$ACC COPYOUT( dU_R )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
