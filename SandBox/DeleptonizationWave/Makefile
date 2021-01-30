@@ -127,7 +127,7 @@ InitializationModule.o: \
   EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesComputationModule.o \
   TwoMoment_UtilitiesModule.o \
-  InitializationModule.f90
+  InitializationModule.F90
 
 TimeSteppingModule_Flash.o: \
   KindModule.o \

@@ -13,7 +13,7 @@ RadiationFieldsModule.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
-  RadiationFieldsModule.f90
+  RadiationFieldsModule.F90
 
 RadiationFieldsUtilitiesModule.o: \
   KindModule.o \
