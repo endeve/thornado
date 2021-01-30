@@ -53,6 +53,12 @@ CONTAINS
 
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( G )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( G )
+#endif
+
   END SUBROUTINE ComputeGeometryE
 
 
