@@ -625,12 +625,12 @@ CONTAINS
 
       EigVals_L &
         = Eigenvalues_Euler &
-            ( uPF_L(iPF_V1),                             &
-              Cs_L,                                      &
+            ( uPF_L(iPF_V1),                          &
+              Cs_L,                                   &
               G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              uPF_L(iPF_V1),                             &
-              uPF_L(iPF_V2),                             &
-              uPF_L(iPF_V3),                             &
+              uPF_L(iPF_V1),                          &
+              uPF_L(iPF_V2),                          &
+              uPF_L(iPF_V3),                          &
               G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
               G_F  (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
               G_F  (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
@@ -639,13 +639,13 @@ CONTAINS
 
       Flux_X1_L &
         = Flux_X1_Euler &
-            ( uPF_L(iPF_D ),                           &
-              uPF_L(iPF_V1),                           &
-              uPF_L(iPF_V2),                           &
-              uPF_L(iPF_V3),                           &
-              uPF_L(iPF_E ),                           &
-              uPF_L(iPF_Ne),                           &
-              P_L,                                     &
+            ( uPF_L(iPF_D ),                        &
+              uPF_L(iPF_V1),                        &
+              uPF_L(iPF_V2),                        &
+              uPF_L(iPF_V3),                        &
+              uPF_L(iPF_E ),                        &
+              uPF_L(iPF_Ne),                        &
+              P_L,                                  &
               G_F(iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
               G_F(iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
               G_F(iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
@@ -672,12 +672,12 @@ CONTAINS
 
       EigVals_R &
         = Eigenvalues_Euler &
-            ( uPF_R(iPF_V1),                             &
-              Cs_R,                                      &
+            ( uPF_R(iPF_V1),                          &
+              Cs_R,                                   &
               G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              uPF_R(iPF_V1),                             &
-              uPF_R(iPF_V2),                             &
-              uPF_R(iPF_V3),                             &
+              uPF_R(iPF_V1),                          &
+              uPF_R(iPF_V2),                          &
+              uPF_R(iPF_V3),                          &
               G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
               G_F  (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
               G_F  (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
@@ -686,13 +686,13 @@ CONTAINS
 
       Flux_X1_R &
         = Flux_X1_Euler &
-            ( uPF_R(iPF_D ),                           &
-              uPF_R(iPF_V1),                           &
-              uPF_R(iPF_V2),                           &
-              uPF_R(iPF_V3),                           &
-              uPF_R(iPF_E ),                           &
-              uPF_R(iPF_Ne),                           &
-              P_R,                                     &
+            ( uPF_R(iPF_D ),                        &
+              uPF_R(iPF_V1),                        &
+              uPF_R(iPF_V2),                        &
+              uPF_R(iPF_V3),                        &
+              uPF_R(iPF_E ),                        &
+              uPF_R(iPF_Ne),                        &
+              P_R,                                  &
               G_F(iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
               G_F(iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
               G_F(iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
@@ -718,10 +718,10 @@ CONTAINS
 
       Flux_X1_F &
         = NumericalFlux_Euler_X1 &
-            ( uCF_L, uCF_R, Flux_X1_L, Flux_X1_R,          &
-              AlphaPls, AlphaMns, AlphaMdl,                &
+            ( uCF_L, uCF_R, Flux_X1_L, Flux_X1_R,       &
+              AlphaPls, AlphaMns, AlphaMdl,             &
               G_F    (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              uPF_L(iPF_V1), uPF_R(iPF_V1), P_L, P_R,      &
+              uPF_L(iPF_V1), uPF_R(iPF_V1), P_L, P_R,   &
               G_F    (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
               G_F    (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
               uDF_F_L(iNX_X1,1           ,iX2,iX3,iX1), &
@@ -732,7 +732,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         NumericalFlux    (iNX_X1,iCF       ,iX2,iX3,iX1) &
-          = Flux_X1_F(iCF)                                  &
+          = Flux_X1_F(iCF)                               &
               * G_F      (iNX_X1,iGF_Alpha ,iX2,iX3,iX1) &
               * G_F      (iNX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
               * dX2(iX2) * dX3(iX3) * WeightsX_X1(iNX_X1)
@@ -798,12 +798,12 @@ CONTAINS
                uCF_K(iNX,iCF_S3,iX2,iX3,iX1),     &
                uCF_K(iNX,iCF_E ,iX2,iX3,iX1),     &
                uCF_K(iNX,iCF_Ne,iX2,iX3,iX1),     &
-               uPF_K(iPF_D ),                        &
-               uPF_K(iPF_V1),                        &
-               uPF_K(iPF_V2),                        &
-               uPF_K(iPF_V3),                        &
-               uPF_K(iPF_E ),                        &
-               uPF_K(iPF_Ne),                        &
+               uPF_K(iPF_D ),                     &
+               uPF_K(iPF_V1),                     &
+               uPF_K(iPF_V2),                     &
+               uPF_K(iPF_V3),                     &
+               uPF_K(iPF_E ),                     &
+               uPF_K(iPF_Ne),                     &
                G_K(iNX,iGF_Gm_dd_11,iX2,iX3,iX1), &
                G_K(iNX,iGF_Gm_dd_22,iX2,iX3,iX1), &
                G_K(iNX,iGF_Gm_dd_33,iX2,iX3,iX1), &
@@ -814,13 +814,13 @@ CONTAINS
 
       Flux_X1_K(1:nCF) &
         = Flux_X1_Euler &
-          ( uPF_K(iPF_D ),                        &
-            uPF_K(iPF_V1),                        &
-            uPF_K(iPF_V2),                        &
-            uPF_K(iPF_V3),                        &
-            uPF_K(iPF_E ),                        &
-            uPF_K(iPF_Ne),                        &
-            P_K,                                  &
+          ( uPF_K(iPF_D ),                     &
+            uPF_K(iPF_V1),                     &
+            uPF_K(iPF_V2),                     &
+            uPF_K(iPF_V3),                     &
+            uPF_K(iPF_E ),                     &
+            uPF_K(iPF_Ne),                     &
+            P_K,                               &
             G_K(iNX,iGF_Gm_dd_11,iX2,iX3,iX1), &
             G_K(iNX,iGF_Gm_dd_22,iX2,iX3,iX1), &
             G_K(iNX,iGF_Gm_dd_33,iX2,iX3,iX1), &
@@ -1330,12 +1330,12 @@ CONTAINS
 
       EigVals_L = &
         Eigenvalues_Euler &
-          ( uPF_L(iPF_V2),                             &
-            Cs_L,                                      &
+          ( uPF_L(iPF_V2),                          &
+            Cs_L,                                   &
             G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-            uPF_L(iPF_V1),                             &
-            uPF_L(iPF_V2),                             &
-            uPF_L(iPF_V3),                             &
+            uPF_L(iPF_V1),                          &
+            uPF_L(iPF_V2),                          &
+            uPF_L(iPF_V3),                          &
             G_F  (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
             G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
             G_F  (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
@@ -1344,13 +1344,13 @@ CONTAINS
 
       Flux_X2_L &
         = Flux_X2_Euler &
-            ( uPF_L(iPF_D ),                           &
-              uPF_L(iPF_V1),                           &
-              uPF_L(iPF_V2),                           &
-              uPF_L(iPF_V3),                           &
-              uPF_L(iPF_E ),                           &
-              uPF_L(iPF_Ne),                           &
-              P_L,                                     &
+            ( uPF_L(iPF_D ),                        &
+              uPF_L(iPF_V1),                        &
+              uPF_L(iPF_V2),                        &
+              uPF_L(iPF_V3),                        &
+              uPF_L(iPF_E ),                        &
+              uPF_L(iPF_Ne),                        &
+              P_L,                                  &
               G_F(iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
               G_F(iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
               G_F(iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
@@ -1377,12 +1377,12 @@ CONTAINS
 
       EigVals_R &
         = Eigenvalues_Euler &
-            ( uPF_R(iPF_V2),                             &
-              Cs_R,                                      &
+            ( uPF_R(iPF_V2),                          &
+              Cs_R,                                   &
               G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              uPF_R(iPF_V1),                             &
-              uPF_R(iPF_V2),                             &
-              uPF_R(iPF_V3),                             &
+              uPF_R(iPF_V1),                          &
+              uPF_R(iPF_V2),                          &
+              uPF_R(iPF_V3),                          &
               G_F  (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
               G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
               G_F  (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
@@ -1391,13 +1391,13 @@ CONTAINS
 
       Flux_X2_R &
         = Flux_X2_Euler &
-            ( uPF_R(iPF_D ),                           &
-              uPF_R(iPF_V1),                           &
-              uPF_R(iPF_V2),                           &
-              uPF_R(iPF_V3),                           &
-              uPF_R(iPF_E ),                           &
-              uPF_R(iPF_Ne),                           &
-              P_R,                                     &
+            ( uPF_R(iPF_D ),                        &
+              uPF_R(iPF_V1),                        &
+              uPF_R(iPF_V2),                        &
+              uPF_R(iPF_V3),                        &
+              uPF_R(iPF_E ),                        &
+              uPF_R(iPF_Ne),                        &
+              P_R,                                  &
               G_F(iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
               G_F(iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
               G_F(iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
@@ -1423,10 +1423,10 @@ CONTAINS
 
       Flux_X2_F &
         = NumericalFlux_Euler_X2 &
-            ( uCF_L, uCF_R, Flux_X2_L, Flux_X2_R,          &
-              AlphaPls, AlphaMns, AlphaMdl,                &
+            ( uCF_L, uCF_R, Flux_X2_L, Flux_X2_R,       &
+              AlphaPls, AlphaMns, AlphaMdl,             &
               G_F    (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              uPF_L(iPF_V2), uPF_R(iPF_V2), P_L, P_R,      &
+              uPF_L(iPF_V2), uPF_R(iPF_V2), P_L, P_R,   &
               G_F    (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
               G_F    (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
               uDF_F_L(iNX_X2,1           ,iX1,iX3,iX2), &
@@ -1437,7 +1437,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         NumericalFlux    (iNX_X2,iCF       ,iX1,iX3,iX2) &
-          = Flux_X2_F(iCF)                                  &
+          = Flux_X2_F(iCF)                               &
               * G_F      (iNX_X2,iGF_Alpha ,iX1,iX3,iX2) &
               * G_F      (iNX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
               * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX_X2)
@@ -1503,12 +1503,12 @@ CONTAINS
                uCF_K(iNX,iCF_S3,iX1,iX3,iX2),     &
                uCF_K(iNX,iCF_E ,iX1,iX3,iX2),     &
                uCF_K(iNX,iCF_Ne,iX1,iX3,iX2),     &
-               uPF_K(iPF_D ),                        &
-               uPF_K(iPF_V1),                        &
-               uPF_K(iPF_V2),                        &
-               uPF_K(iPF_V3),                        &
-               uPF_K(iPF_E ),                        &
-               uPF_K(iPF_Ne),                        &
+               uPF_K(iPF_D ),                     &
+               uPF_K(iPF_V1),                     &
+               uPF_K(iPF_V2),                     &
+               uPF_K(iPF_V3),                     &
+               uPF_K(iPF_E ),                     &
+               uPF_K(iPF_Ne),                     &
                G_K(iNX,iGF_Gm_dd_11,iX1,iX3,iX2), &
                G_K(iNX,iGF_Gm_dd_22,iX1,iX3,iX2), &
                G_K(iNX,iGF_Gm_dd_33,iX1,iX3,iX2), &
@@ -1519,13 +1519,13 @@ CONTAINS
 
       Flux_X2_K &
         = Flux_X2_Euler &
-          ( uPF_K(iPF_D ),                        &
-            uPF_K(iPF_V1),                        &
-            uPF_K(iPF_V2),                        &
-            uPF_K(iPF_V3),                        &
-            uPF_K(iPF_E ),                        &
-            uPF_K(iPF_Ne),                        &
-            P_K,                                  &
+          ( uPF_K(iPF_D ),                     &
+            uPF_K(iPF_V1),                     &
+            uPF_K(iPF_V2),                     &
+            uPF_K(iPF_V3),                     &
+            uPF_K(iPF_E ),                     &
+            uPF_K(iPF_Ne),                     &
+            P_K,                               &
             G_K(iNX,iGF_Gm_dd_11,iX1,iX3,iX2), &
             G_K(iNX,iGF_Gm_dd_22,iX1,iX3,iX2), &
             G_K(iNX,iGF_Gm_dd_33,iX1,iX3,iX2), &
@@ -2035,12 +2035,12 @@ CONTAINS
 
       EigVals_L &
         = Eigenvalues_Euler &
-            ( uPF_L(iPF_V3),                             &
-              Cs_L,                                      &
+            ( uPF_L(iPF_V3),                          &
+              Cs_L,                                   &
               G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              uPF_L(iPF_V1),                             &
-              uPF_L(iPF_V2),                             &
-              uPF_L(iPF_V3),                             &
+              uPF_L(iPF_V1),                          &
+              uPF_L(iPF_V2),                          &
+              uPF_L(iPF_V3),                          &
               G_F  (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
               G_F  (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
               G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
@@ -2049,13 +2049,13 @@ CONTAINS
 
       Flux_X3_L &
         = Flux_X3_Euler &
-            ( uPF_L(iPF_D ),                           &
-              uPF_L(iPF_V1),                           &
-              uPF_L(iPF_V2),                           &
-              uPF_L(iPF_V3),                           &
-              uPF_L(iPF_E ),                           &
-              uPF_L(iPF_Ne),                           &
-              P_L,                                     &
+            ( uPF_L(iPF_D ),                        &
+              uPF_L(iPF_V1),                        &
+              uPF_L(iPF_V2),                        &
+              uPF_L(iPF_V3),                        &
+              uPF_L(iPF_E ),                        &
+              uPF_L(iPF_Ne),                        &
+              P_L,                                  &
               G_F(iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
               G_F(iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
               G_F(iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
@@ -2082,12 +2082,12 @@ CONTAINS
 
       EigVals_R &
         = Eigenvalues_Euler &
-            ( uPF_R(iPF_V3),                             &
-              Cs_R,                                      &
+            ( uPF_R(iPF_V3),                          &
+              Cs_R,                                   &
               G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              uPF_R(iPF_V1),                             &
-              uPF_R(iPF_V2),                             &
-              uPF_R(iPF_V3),                             &
+              uPF_R(iPF_V1),                          &
+              uPF_R(iPF_V2),                          &
+              uPF_R(iPF_V3),                          &
               G_F  (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
               G_F  (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
               G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
@@ -2096,13 +2096,13 @@ CONTAINS
 
       Flux_X3_R &
         = Flux_X3_Euler &
-            ( uPF_R(iPF_D ),                           &
-              uPF_R(iPF_V1),                           &
-              uPF_R(iPF_V2),                           &
-              uPF_R(iPF_V3),                           &
-              uPF_R(iPF_E ),                           &
-              uPF_R(iPF_Ne),                           &
-              P_R,                                     &
+            ( uPF_R(iPF_D ),                        &
+              uPF_R(iPF_V1),                        &
+              uPF_R(iPF_V2),                        &
+              uPF_R(iPF_V3),                        &
+              uPF_R(iPF_E ),                        &
+              uPF_R(iPF_Ne),                        &
+              P_R,                                  &
               G_F(iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
               G_F(iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
               G_F(iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
@@ -2128,10 +2128,10 @@ CONTAINS
 
       Flux_X3_F &
         = NumericalFlux_Euler_X3 &
-            ( uCF_L, uCF_R, Flux_X3_L, Flux_X3_R,          &
-              AlphaPls, AlphaMns, AlphaMdl,                &
+            ( uCF_L, uCF_R, Flux_X3_L, Flux_X3_R,       &
+              AlphaPls, AlphaMns, AlphaMdl,             &
               G_F    (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              uPF_L(iPF_V3), uPF_R(iPF_V3), P_L, P_R,      &
+              uPF_L(iPF_V3), uPF_R(iPF_V3), P_L, P_R,   &
               G_F    (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
               G_F    (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
               uDF_F_L(iNX_X3,1           ,iX1,iX2,iX3), &
@@ -2142,7 +2142,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         NumericalFlux    (iNX_X3,iCF       ,iX1,iX2,iX3) &
-          = Flux_X3_F(iCF)                                  &
+          = Flux_X3_F(iCF)                               &
               * G_F      (iNX_X3,iGF_Alpha ,iX1,iX2,iX3) &
               * G_F      (iNX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
               * dX1(iX1) * dX2(iX2) * WeightsX_X3(iNX_X3)
@@ -2208,12 +2208,12 @@ CONTAINS
                uCF_K(iNX,iCF_S3,iX1,iX2,iX3),     &
                uCF_K(iNX,iCF_E ,iX1,iX2,iX3),     &
                uCF_K(iNX,iCF_Ne,iX1,iX2,iX3),     &
-               uPF_K(iPF_D ),                        &
-               uPF_K(iPF_V1),                        &
-               uPF_K(iPF_V2),                        &
-               uPF_K(iPF_V3),                        &
-               uPF_K(iPF_E ),                        &
-               uPF_K(iPF_Ne),                        &
+               uPF_K(iPF_D ),                     &
+               uPF_K(iPF_V1),                     &
+               uPF_K(iPF_V2),                     &
+               uPF_K(iPF_V3),                     &
+               uPF_K(iPF_E ),                     &
+               uPF_K(iPF_Ne),                     &
                G_K(iNX,iGF_Gm_dd_11,iX1,iX2,iX3), &
                G_K(iNX,iGF_Gm_dd_22,iX1,iX2,iX3), &
                G_K(iNX,iGF_Gm_dd_33,iX1,iX2,iX3), &
@@ -2224,13 +2224,13 @@ CONTAINS
 
       Flux_X3_K &
         = Flux_X3_Euler &
-          ( uPF_K(iPF_D ),                        &
-            uPF_K(iPF_V1),                        &
-            uPF_K(iPF_V2),                        &
-            uPF_K(iPF_V3),                        &
-            uPF_K(iPF_E ),                        &
-            uPF_K(iPF_Ne),                        &
-            P_K,                                  &
+          ( uPF_K(iPF_D ),                     &
+            uPF_K(iPF_V1),                     &
+            uPF_K(iPF_V2),                     &
+            uPF_K(iPF_V3),                     &
+            uPF_K(iPF_E ),                     &
+            uPF_K(iPF_Ne),                     &
+            P_K,                               &
             G_K(iNX,iGF_Gm_dd_11,iX1,iX2,iX3), &
             G_K(iNX,iGF_Gm_dd_22,iX1,iX2,iX3), &
             G_K(iNX,iGF_Gm_dd_33,iX1,iX2,iX3), &

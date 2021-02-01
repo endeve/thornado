@@ -110,7 +110,6 @@ CONTAINS
     REAL(DP) :: TotalTime
 
     CHARACTER(6)  :: Label_Level1 = '(8x,A)'
-    CHARACTER(7)  :: Label_Level2 = '(10x,A)'
 
     CHARACTER(64) :: TimeL1 = '(10x,A,ES13.6E3,A,F6.3,A)'
     CHARACTER(64) :: TimeL2 = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
