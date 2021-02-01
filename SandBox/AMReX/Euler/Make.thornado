@@ -105,7 +105,7 @@ f90EXE_sources  += InputOutputModuleAMReX.f90
 # thornado/Modules/Geometry
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
-f90EXE_sources  += GeometryFieldsModule.f90
+F90EXE_sources  += GeometryFieldsModule.F90
 F90EXE_sources  += GeometryComputationModule.F90
 f90EXE_sources  += GravitySolutionModule_Newtonian_PointMass.f90
 
