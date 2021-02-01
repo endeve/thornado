@@ -47,7 +47,7 @@ CONTAINS
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-      iErr_Option )
+      iErr )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -62,13 +62,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
     INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
-    IF( PRESENT( iErr_Option ) ) &
-      iErr = iErr_Option
+      iErr
 
 #ifdef HYDRO_RELATIVISTIC
 
@@ -76,7 +70,7 @@ CONTAINS
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-             iErr_Option = iErr )
+             iErr )
 
 #else
 
@@ -86,9 +80,6 @@ CONTAINS
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -97,7 +88,7 @@ CONTAINS
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-      iErr_Option )
+      iErr )
 
     REAL(DP), INTENT(in)  :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
@@ -106,13 +97,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
     INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
-    IF( PRESENT( iErr_Option ) ) &
-      iErr = iErr_Option
+      iErr(:)
 
 #ifdef HYDRO_RELATIVISTIC
 
@@ -120,7 +105,7 @@ CONTAINS
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-             iErr_Option = iErr )
+             iErr )
 
 #else
 
@@ -130,9 +115,6 @@ CONTAINS
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
   END SUBROUTINE ComputePrimitive_Vector
 
@@ -263,7 +245,7 @@ CONTAINS
 
   REAL(DP) FUNCTION AlphaMiddle_Euler &
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
-      Gmii, aP, aM, Lapse, Shift_Xi, iErr_Option )
+      Gmii, aP, aM, Lapse, Shift_Xi, iErr )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -280,14 +262,8 @@ CONTAINS
 
     ! --- Only needed for relativistic code ---
 
-    REAL(DP), INTENT(in) :: Lapse, Shift_Xi
-    INTEGER,  INTENT(inout), OPTIONAL :: iErr_Option
-
-    INTEGER :: iErr
-
-     iErr = 0
-     IF( PRESENT( iErr_Option ) ) &
-       iErr = iErr_Option
+    REAL(DP), INTENT(in)    :: Lapse, Shift_Xi
+    INTEGER,  INTENT(inout) :: iErr
 
 #ifdef HYDRO_RELATIVISTIC
 
@@ -295,7 +271,7 @@ CONTAINS
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
                             Gmii, aP, aM, Lapse, Shift_Xi, &
-                            iErr_Option = iErr )
+                            iErr )
 
 #else
 
@@ -305,9 +281,6 @@ CONTAINS
                             Gmii, aP, aM )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
     RETURN
   END FUNCTION AlphaMiddle_Euler

@@ -67,7 +67,6 @@ ApplicationDriver.o: \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
-  Euler_ErrorModule.o \
   ApplicationDriver.F90
 
 InitializationModule_Relativistic.o: \
