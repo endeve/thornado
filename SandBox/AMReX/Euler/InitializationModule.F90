@@ -89,6 +89,8 @@ MODULE InitializationModule
   USE UnitsModule,                      ONLY: &
     SolarMass, &
     UnitsDisplay
+  USE TimersModule_Euler,               ONLY: &
+    InitializeTimers_Euler
 
   ! --- Local modules ---
 
@@ -154,6 +156,7 @@ MODULE InitializationModule
     GEOM,                      &
     InitializeParameters
   USE TimersModule_AMReX_Euler, ONLY: &
+    InitializeTimers_AMReX_Euler,  &
     TimersStart_AMReX_Euler,      &
     TimersStop_AMReX_Euler,       &
     Timer_AMReX_Euler_Initialize, &
@@ -183,12 +186,15 @@ CONTAINS
     LOGICAL               :: SolveGravity
     REAL(AR)              :: Mass
 
-
     ! --- Initialize AMReX ---
 
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
+
+    CALL InitializeTimers_AMReX_Euler
+
+    CALL InitializeTimers_Euler
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
