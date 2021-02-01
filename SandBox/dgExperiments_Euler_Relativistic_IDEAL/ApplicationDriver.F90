@@ -227,7 +227,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'IsolatedShock'
+      RiemannProblemName = 'DzB2002'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -247,7 +247,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 64, 1 ]
+      nX  = [ 32, 32, 1 ]
       swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
@@ -412,6 +412,9 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
+  uCF = 0.0_DP ! Without this, crashes when copying data in TimeStepper
+  uDF = 0.0_DP ! Without this, crashes in IO
+
   CALL InitializeFields_Relativistic &
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ), &
@@ -538,7 +541,8 @@ PROGRAM ApplicationDriver
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
+  WRITE(*,'(A,I8.8,A,ES10.3E3,A)') &
+    'Finished ', iCycle, ' cycles in ', Timer_Evolution, ' s'
   WRITE(*,*)
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
