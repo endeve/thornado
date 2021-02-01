@@ -423,6 +423,12 @@ PROGRAM ApplicationDriver
            nDetCells_Option = nDetCells, &
            Eblast_Option    = Eblast )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE TO( uCF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE DEVICE(    uCF )
+#endif
+
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
