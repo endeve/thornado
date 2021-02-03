@@ -240,9 +240,6 @@ CONTAINS
 
     ! --- Multiply Inverse Mass Matrix ---
 
-    PRINT*, "Before Multiply Inverse Mass Matrix"
-    PRINT*, "MIN/MAX dU_R  = ", MINVAL( dU_R ), MAXVAL( dU_R )
-
     CALL TimersStart( Timer_Streaming_InverseMassMatrix )
 
     ASSOCIATE &
