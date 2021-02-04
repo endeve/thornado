@@ -199,6 +199,20 @@ ApplicationDriver.o: \
   TwoMoment_OpacityModule_OrderV.o \
   TwoMoment_TimeSteppingModule_OrderV.o \
   InitializationModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  ProgramInitializationModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryComputationModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  GeometryComputationModuleE.o \
+  ReferenceElementModuleZ.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  EquationOfStateModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
   ApplicationDriver.f90
 
 ApplicationDriverNeutrinos.o: \
