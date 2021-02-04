@@ -136,15 +136,12 @@ clobber: clean
 
 TwoMomentClosure.o: \
   KindModule.o \
+  UtilitiesModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
   TwoMomentClosure.f90
 
 PrimitiveConserved.o: \
-  KindModule.o \
-  ProgramInitializationModule.o \
-  ReferenceElementModuleX.o \
-  PrimitiveConserved.f90
-
-TimeStepper.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ProgramInitializationModule.o \
@@ -158,26 +155,79 @@ TimeStepper.o: \
   GeometryComputationModuleE.o \
   GeometryFieldsModule.o \
   GeometryFieldsModuleE.o \
+  RadiationFieldsModule.o \
+  InputOutputModuleHDF.o \
+  UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  PrimitiveConserved.f90
+
+TimeStepper.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ProgramInitializationModule.o \
+  TimersModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  GeometryComputationModule.o \
+  GeometryComputationModuleE.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
   TwoMoment_TimeSteppingModule_OrderV.o \
   TimeStepper.f90
 
 ApplicationDriver.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  InputOutputModuleHDF.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+  TwoMoment_OpacityModule_OrderV.o \
+  TwoMoment_TimeSteppingModule_OrderV.o \
+  InitializationModule.o \
   ApplicationDriver.f90
 
 ApplicationDriverNeutrinos.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
   ApplicationDriverNeutrinos.f90
 
 InitializationModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleZ.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_OpacityModule_OrderV.o \
   InitializationModule.F90
 
 TwoMoment_TimersModule_OrderV.o: \
   KindModule.o \
   TwoMoment_TimersModule_OrderV.F90
 
-TwoMoment_UtilitiesModule.o: \
+TwoMoment_UtilitiesModule_OrderV.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
@@ -185,7 +235,7 @@ TwoMoment_UtilitiesModule.o: \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_UtilitiesModule.F90
+  TwoMoment_UtilitiesModule_OrderV.F90
 
 TwoMoment_TroubledCellIndicatorModule.o: \
   KindModule.o \
@@ -231,15 +281,30 @@ TwoMoment_PositivityLimiterModule_OrderV.o: \
 
 TwoMoment_OpacityModule_OrderV.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  RadiationFieldsModule.o \
   TwoMoment_OpacityModule_OrderV.F90
 
 TwoMoment_DiscretizationModule_Streaming_OrderV.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  MeshModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
   TwoMoment_DiscretizationModule_Streaming_OrderV.F90
 
 TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
@@ -248,7 +313,11 @@ TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_OpacityModule_OrderV.o \
   TwoMoment_DiscretizationModule_Collisions_OrderV.F90
 
 TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
@@ -258,6 +327,8 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  EquationOfStateModule_TABLE.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.F90
 
 TwoMoment_TimeSteppingModule_OrderV.o: \
@@ -267,6 +338,9 @@ TwoMoment_TimeSteppingModule_OrderV.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
   TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
   TwoMoment_TimeSteppingModule_OrderV.F90
