@@ -233,7 +233,7 @@ InitializationModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
   TwoMoment_OpacityModule_OrderV.o \
   InitializationModule.F90
 
