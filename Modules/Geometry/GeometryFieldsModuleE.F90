@@ -61,13 +61,31 @@ CONTAINS
     uGE(:,:,iGE_Ep2) = 0.0_DP
     uGE(:,:,iGE_Ep3) = 0.0_DP
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: uGE )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( uGE )
+#endif
+
   END SUBROUTINE CreateGeometryFieldsE
 
 
   SUBROUTINE DestroyGeometryFieldsE
 
     IF (ALLOCATED( uGE )) THEN
-       DEALLOCATE( uGE )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: uGE )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( uGE )
+#endif
+
+      DEALLOCATE( uGE )
+
     END IF
 
   END SUBROUTINE DestroyGeometryFieldsE

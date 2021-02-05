@@ -35,7 +35,7 @@ MODULE MF_AccretionShockDiagnosticsModule
   USE TimersModule_AMReX_Euler,        ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
-    Timer_AMReX_Euler_DataTransfer
+    Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
@@ -84,7 +84,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
@@ -94,19 +94,23 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nAF ) )
 
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
         CALL amrex2thornado_Euler( nPF, iX_B1, iX_E1, uPF, P )
 
         CALL amrex2thornado_Euler( nAF, iX_B1, iX_E1, uAF, A )
-
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL ComputeAccretionShockDiagnostics &
                ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, &
                  Power_Legendre(iLevel,0:nLegModes-1) )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
         DEALLOCATE( A )
 
         DEALLOCATE( P )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 

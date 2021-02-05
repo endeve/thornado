@@ -41,12 +41,13 @@ MODULE TimersModule_AMReX_Euler
 
   ! --- AMReX-specific ---
   REAL(AR), PUBLIC :: Timer_AMReX_Euler_DataTransfer;     INTEGER :: iT_DT  = 8
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_InteriorBC;       INTEGER :: iT_IBC = 9
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_CopyMultiFab;     INTEGER :: iT_CMF = 10
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap; INTEGER :: iT_CEM = 11
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_GetBC;            INTEGER :: iT_GBC = 12
+  REAL(AR), PUBLIC :: Timer_AMReX_Euler_Allocate;         INTEGER :: iT_AL  = 9
+  REAL(AR), PUBLIC :: Timer_AMReX_Euler_InteriorBC;       INTEGER :: iT_IBC = 10
+  REAL(AR), PUBLIC :: Timer_AMReX_Euler_CopyMultiFab;     INTEGER :: iT_CMF = 11
+  REAL(AR), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap; INTEGER :: iT_CEM = 12
+  REAL(AR), PUBLIC :: Timer_AMReX_Euler_GetBC;            INTEGER :: iT_GBC = 13
 
-  INTEGER :: nTimers = 12
+  INTEGER :: nTimers = 13
 
   INTEGER :: nProcs
 
@@ -73,6 +74,7 @@ CONTAINS
     Timer_AMReX_Euler_Finalize         = Zero
 
     Timer_AMReX_Euler_DataTransfer     = Zero
+    Timer_AMReX_Euler_Allocate         = Zero
     Timer_AMReX_Euler_InteriorBC       = Zero
     Timer_AMReX_Euler_CopyMultiFab     = Zero
     Timer_AMReX_Euler_ConstructEdgeMap = Zero
@@ -93,9 +95,9 @@ CONTAINS
                 TimerMax(nTimers), TimerAve(nTimers)
 
     CHARACTER(32) :: &
-      OutFMT = '(8x,A,ES13.6E3,A5,F7.3,A2)'
+      OutFMT = '(8x,A,ES13.6E3,A,F7.3,A)'
     CHARACTER(64) :: &
-      OutMMA = '(10x,A6,ES13.6E3,A4,A6,ES13.6E3,A4,A6,ES13.6E3,A2)'
+      OutMMA = '(10x,A,ES13.6E3,A,A,ES13.6E3,A,A,ES13.6E3,A)'
     INTEGER       :: iT
 
     LOGICAL :: WriteAtIntermediateTime
@@ -118,6 +120,7 @@ CONTAINS
     Timer(iT_F  ) = Timer_AMReX_Euler_Finalize
 
     Timer(iT_DT ) = Timer_AMReX_Euler_DataTransfer
+    Timer(iT_AL ) = Timer_AMReX_Euler_Allocate
     Timer(iT_IBC) = Timer_AMReX_Euler_InteriorBC
     Timer(iT_CMF) = Timer_AMReX_Euler_CopyMultiFab
     Timer(iT_CEM) = Timer_AMReX_Euler_ConstructEdgeMap
@@ -169,7 +172,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_CTS
@@ -180,7 +182,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_UF
@@ -191,7 +192,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_IO
@@ -202,7 +202,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_F
@@ -213,7 +212,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       WRITE(*,*)
@@ -229,7 +227,16 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
+      WRITE(*,*)
 
+      iT = iT_AL
+      WRITE(*,TRIM(OutFMT)) &
+        'Allocate/Deallocate:          ', TimerSum(iT), ' s = ', &
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
+      WRITE(*,TRIM(OutMMA)) &
+        'Min = ', TimerMin(iT), ' s, ', &
+        'Max = ', TimerMax(iT), ' s, ', &
+        'Ave = ', TimerAve(iT), ' s'
       WRITE(*,*)
 
       iT = iT_IBC
@@ -240,7 +247,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_CMF
@@ -251,7 +257,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_CEM
@@ -262,7 +267,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
       iT = iT_GBC
@@ -273,7 +277,6 @@ CONTAINS
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
         'Ave = ', TimerAve(iT), ' s'
-
       WRITE(*,*)
 
     END IF

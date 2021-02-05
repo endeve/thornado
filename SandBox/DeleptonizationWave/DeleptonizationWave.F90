@@ -72,7 +72,7 @@ PROGRAM DeleptonizationWave
     DestroyNeutrinoOpacities
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeNeutrinoOpacities
-  USE TimeSteppingModule_Castro, ONLY: &
+  USE TimeSteppingModule_Flash, ONLY: &
     Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
     InitializeFields_DeleptonizationWave
@@ -278,14 +278,6 @@ PROGRAM DeleptonizationWave
     ' to t = ', t_end / Millisecond
   WRITE(*,*)
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET ENTER DATA &
-  !$OMP MAP( to: uCF, uCR, uGE, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC ENTER DATA &
-  !$ACC COPYIN( uCF, uCR, uGE, uGF )
-#endif
-
   iCycle = 0
   DO WHILE( t < t_end )
 
@@ -358,13 +350,9 @@ PROGRAM DeleptonizationWave
   END DO
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET EXIT DATA &
-  !$OMP MAP( from: uCF, uCR ) &
-  !$OMP MAP( release: uGE, uGF )
+  !$OMP TARGET UPDATE FROM( uCF, uCR )
 #elif defined(THORNADO_OACC)
-  !$ACC EXIT DATA &
-  !$ACC COPYOUT( uCF, uCR ) &
-  !$ACC DELETE( uGE, uGF )
+  !$ACC UPDATE HOST( uCF, uCR )
 #endif
 
   ! --- Write Final Solution ---

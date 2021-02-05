@@ -248,27 +248,11 @@ contains
 
     call InitializeMeshRefinement_TwoMoment
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: uGE )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( uGE )
-#endif
-
   end subroutine InitThornado
 
   subroutine FreeThornado(write_timers)
 
     logical, intent(in) :: write_timers
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uGE )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( uGE )
-#endif
 
     call DestroyMesh( MeshE )
 

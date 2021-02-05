@@ -28,6 +28,7 @@ Euler_UtilitiesModule_Relativistic.o: \
   EquationOfStateModule.o \
   UnitsModule.o \
   TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
@@ -135,6 +136,7 @@ Euler_PositivityLimiterModule.o: \
 Euler_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
+  ReferenceElementModuleX.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
@@ -152,7 +154,9 @@ Euler_DiscontinuityDetectionModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
+  UtilitiesModule.o \
   TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_DiscontinuityDetectionModule.F90
 
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
@@ -231,18 +235,18 @@ Euler_SlopeLimiterModule.o: \
 
 Euler_dgDiscretizationModule.o: \
   KindModule.o \
-  TimersModule_Euler.o \
   ProgramHeaderModule.o \
-  MeshModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
+  MeshModule.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.o \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
   Euler_DiscontinuityDetectionModule.o \
   EquationOfStateModule.o \
+  TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_dgDiscretizationModule.F90
 

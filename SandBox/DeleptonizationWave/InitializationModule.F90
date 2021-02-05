@@ -85,6 +85,12 @@ CONTAINS
 
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uCF, uCR )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uCF, uCR )
+#endif
+
   END SUBROUTINE InitializeFields_DeleptonizationWave
 
 

@@ -73,7 +73,7 @@ CONTAINS
     LOGICAL  :: DEBUG_X2 = .FALSE.
     LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
-    INTEGER  :: i
+    INTEGER  :: i, iErr
 
     CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
@@ -89,7 +89,7 @@ CONTAINS
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne,                                           &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
+             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), iErr )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
@@ -629,6 +629,8 @@ CONTAINS
 
     REAL(DP) :: Vui(3), Vdj(3), Vdk(3)
 
+    INTEGER :: iErr
+
     Gmdd11         = G(iGF_Gm_dd_11)
     Gmdd22         = G(iGF_Gm_dd_22)
     Gmdd33         = G(iGF_Gm_dd_33)
@@ -640,7 +642,7 @@ CONTAINS
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne, &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
+             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), iErr )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 

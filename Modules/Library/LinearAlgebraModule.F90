@@ -7,7 +7,8 @@ MODULE LinearAlgebraModule
     One
   USE DeviceModule, ONLY: &
     mydevice, &
-    device_is_present
+    device_is_present, &
+    dev_ptr
 
 #if defined(THORNADO_LA_CUBLAS)
   USE CudaModule, ONLY: &
@@ -153,19 +154,9 @@ CONTAINS
       itransa = itrans_from_char( transa )
       itransb = itrans_from_char( transb )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dc = C_LOC( pc )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dc = dev_ptr( pc(1,1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgeam &
@@ -335,19 +326,9 @@ CONTAINS
       itransa = itrans_from_char( transa )
       itransb = itrans_from_char( transb )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dc = C_LOC( pc )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dc = dev_ptr( pc(1,1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemm_v2 &
@@ -433,19 +414,9 @@ CONTAINS
       itransa = itrans_from_char( transa )
       itransb = itrans_from_char( transb )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dc = C_LOC( pc )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dc = dev_ptr( pc(1,1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemmStridedBatched &
@@ -537,40 +508,26 @@ CONTAINS
       !$ACC CREATE( da, db, dipiv, da_array, db_array, dipiv_array )
 #endif
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pipiv, pinfo )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pipiv, pinfo )
-#endif
-      dinfo = C_LOC( pinfo )
+      dinfo = dev_ptr( pinfo(1) )
       DO i = 1, batchcount
         osa = (i-1) * n + 1
         osb = (i-1) * nrhs + 1
-        da(i) = C_LOC( pa(1,osa) )
-        db(i) = C_LOC( pb(1,osb) )
-        dipiv(i) = C_LOC( pipiv(osa) )
+        da(i) = dev_ptr( pa(1,osa) )
+        db(i) = dev_ptr( pb(1,osb) )
+        dipiv(i) = dev_ptr( pipiv(osa) )
       END DO
 #if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
       !$OMP TARGET UPDATE TO( da, db, dipiv )
 #elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
       !$ACC UPDATE DEVICE( da, db, dipiv )
 #endif
 
+      da_array = dev_ptr( da(1) )
+      db_array = dev_ptr( db(1) )
+      dipiv_array = dev_ptr( dipiv(1) )
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( da, db, dipiv )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( da, db, dipiv )
-#endif
-      da_array = C_LOC( da )
-      db_array = C_LOC( db )
-      dipiv_array = C_LOC( dipiv )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
       !$OMP TARGET UPDATE TO( da_array, db_array, dipiv )
 #elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
       !$ACC UPDATE DEVICE( da_array, db_array, dipiv )
 #endif
 
@@ -672,19 +629,9 @@ CONTAINS
 
       itrans = itrans_from_char( trans )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, px, py )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, px, py )
-#endif
-      da = C_LOC( pa )
-      dx = C_LOC( px )
-      dy = C_LOC( py )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      dx = dev_ptr( px(1) )
+      dy = dev_ptr( py(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemv_v2 &
@@ -752,19 +699,9 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pc, px )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pc, px )
-#endif
-      da = C_LOC( pa )
-      dc = C_LOC( pc )
-      dx = C_LOC( px )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      dc = dev_ptr( pc(1,1) )
+      dx = dev_ptr( px(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDdgmm &
@@ -844,18 +781,8 @@ CONTAINS
     hb = C_LOC( pb )
     hwork = C_LOC( pwork )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb )
-#elif defined(THORNADO_OACC)
-    !$ACC HOST_DATA USE_DEVICE( pa, pb )
-#endif
-    da = C_LOC( pa )
-    db = C_LOC( pb )
-#if defined(THORNADO_OMP_OL)
-    !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-    !$ACC END HOST_DATA
-#endif
+    da = dev_ptr( pa(1,1) )
+    db = dev_ptr( pb(1,1) )
 
     itrans = itrans_from_char( trans )
 
@@ -927,21 +854,11 @@ CONTAINS
 
       itrans = itrans_from_char( trans )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, ptau, pwork, pinfo )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, ptau, pwork, pinfo )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dtau = C_LOC( ptau )
-      dwork = C_LOC( pwork )
-      dinfo = C_LOC( pinfo )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dtau = dev_ptr( ptau(1) )
+      dwork = dev_ptr( pwork(1) )
+      dinfo = dev_ptr( pinfo )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cusolverDnDgeqrf &
@@ -1023,17 +940,7 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( px )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( px )
-#endif
-      dx = C_LOC( px )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      dx = dev_ptr( px(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
@@ -1125,18 +1032,8 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( px, py )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( px, py )
-#endif
-      dx = C_LOC( px )
-      dy = C_LOC( py )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      dx = dev_ptr( px(1) )
+      dy = dev_ptr( py(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
@@ -1194,19 +1091,9 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pxval, pxind, py )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pxval, pxind, py )
-#endif
-      dxval = C_LOC( pxval )
-      dxind = C_LOC( pxind )
-      dy = C_LOC( py )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      dxval = dev_ptr( pxval(1) )
+      dxind = dev_ptr( pxind(1) )
+      dy = dev_ptr( py(1) )
 
 #if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
       ierr = cusparseDgthr( cusparse_handle, nnz, dy, dxval, dxind, CUSPARSE_INDEX_BASE_ONE )

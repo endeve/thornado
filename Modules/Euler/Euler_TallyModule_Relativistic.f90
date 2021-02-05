@@ -115,7 +115,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       Time
 
-    INTEGER  :: iCF, iX1, iX2, iX3
+    INTEGER  :: iCF, iX1, iX2, iX3, iErr(nDOFX)
     REAL(DP) :: P(nDOFX,nPF), d3X
 
     IF( SuppressTally ) RETURN
@@ -151,7 +151,8 @@ CONTAINS
                P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               iErr )
 
       ! --- Baryonic Mass ---
 
