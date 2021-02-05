@@ -26,7 +26,11 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: InitializeComputePrimitive_TwoMoment
+  PUBLIC :: FinalizeComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment
+  PUBLIC :: ComputePrimitive_TwoMoment_Scalar
+  PUBLIC :: ComputePrimitive_TwoMoment_Vector
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: Flux_E
@@ -39,10 +43,70 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: ComputeHeatFluxTensorComponents_udd
   PUBLIC :: NumericalFlux_LLF
 
+  INTERFACE ComputePrimitive_TwoMoment
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Vector
+  END INTERFACE ComputePrimitive_TwoMoment
+
 CONTAINS
 
+  SUBROUTINE InitializeComputePrimitive_TwoMoment
+  END SUBROUTINE InitializeComputePrimitive_TwoMoment
 
-  SUBROUTINE ComputePrimitive_TwoMoment &
+  SUBROUTINE FinalizeComputePrimitive_TwoMoment
+  END SUBROUTINE FinalizeComputePrimitive_TwoMoment
+
+  SUBROUTINE ComputePrimitive_TwoMoment_Vector &
+    ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
+
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:,:), INTENT(out) :: nIterations
+
+    ! --- Parameters ---
+
+    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+
+    ! --- Local Variables ---
+
+    INTEGER :: nE, nX
+    INTEGER :: iE, iX
+
+    nX = SIZE( N, 1 )
+    nE = SIZE( N, 2 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, &
+    !$ACC          V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+
+    DO iE = 1, nE
+      DO iX = 1, nX
+
+        CALL ComputePrimitive_TwoMoment_Scalar &
+               ( N(iX,iE), G_d_1(iX,iE), G_d_2(iX,iE), G_d_3(iX,iE), &
+                 D(iX,iE), I_u_1(iX,iE), I_u_2(iX,iE), I_u_3(iX,iE), &
+                 V_u_1(iX), V_u_2(iX), V_u_3(iX), &
+                 Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
+                 nIterations(iX,iE) )
+
+      END DO
+    END DO
+
+
+  END SUBROUTINE ComputePrimitive_TwoMoment_Vector
+
+  SUBROUTINE ComputePrimitive_TwoMoment_Scalar &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option )
 
@@ -222,7 +286,7 @@ CONTAINS
 !
 !    END IF
 
-  END SUBROUTINE ComputePrimitive_TwoMoment
+  END SUBROUTINE ComputePrimitive_TwoMoment_Scalar
 
 
   FUNCTION Alpha_LS( M, mk, FVEC )
