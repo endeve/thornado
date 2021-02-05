@@ -518,10 +518,10 @@ CONTAINS
 #endif
     DO iK_X = 1, nK_X
 
-      iZ2    = MOD( (iF_X1-1) / ( nDOFX * nZ(3) * nZ(4) ), nZ(2) ) + iZ_B0(2)
-      iZ4    = MOD( (iF_X1-1) / ( nDOFX * nZ(3)         ), nZ(4) ) + iZ_B0(4)
-      iZ3    = MOD( (iF_X1-1) / ( nDOFX                 ), nZ(3) ) + iZ_B0(3)
-      iNodeX = MOD( (iF_X1-1)                            , nDOFX ) + 1
+      iZ2    = MOD( (iK_X-1) / ( nDOFX * nZ(3) * nZ(4) ), nZ(2) ) + iZ_B0(2)
+      iZ4    = MOD( (iK_X-1) / ( nDOFX * nZ(3)         ), nZ(4) ) + iZ_B0(4)
+      iZ3    = MOD( (iK_X-1) / ( nDOFX                 ), nZ(3) ) + iZ_B0(3)
+      iNodeX = MOD( (iK_X-1)                            , nDOFX ) + 1
 
       Gm_dd_11_K(iK_X) = GX_K(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2)
       Gm_dd_22_K(iK_X) = GX_K(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2)
