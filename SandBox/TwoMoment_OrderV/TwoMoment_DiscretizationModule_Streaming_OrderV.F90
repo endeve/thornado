@@ -351,98 +351,103 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
+
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X1, iNodeX_X1
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
     INTEGER  :: nZ(4), nZ_X1(4), nV_X1, nV, nX_X1
-    INTEGER  :: nIterations
-    REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
-    REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
-    REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
-    REAL(DP) :: uPR_K(nPR), Flux_K(nCR)
-    REAL(DP) :: uCR_X1_L(nCR)
-    REAL(DP) :: uCR_X1_R(nCR)
+    INTEGER  :: iK_E, iK_X, iF_E, iF_X1
+    INTEGER  :: nK_E, nK_X, nF_E, nF_X1
+
+    REAL(DP) :: uPF_L(nPF), nPR_L(nPR), Flux_L(nCR), uCR_X1_L(nCR)
+    REAL(DP) :: uPF_R(nPF), nPR_R(nPR), Flux_R(nCR), uCR_X1_R(nCR)
+    REAL(DP) :: uPF_K(nPF), uPR_K(nPR), Flux_K(nCR)
+
+    ! --- Geometry Fields ---
+
     REAL(DP) :: &
-      GX_K(nDOFX,nGF, &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           iZ_B1(2):iZ_E1(2))
+      GX_K (nDOFX,nGF, &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
+            iZ_B0(2)-1:iZ_E0(2)+1)
     REAL(DP) :: &
-      GX_F(nDOFX_X1,nGF, &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           iZ_B0(2):iZ_E1(2))
+      GX_F (nDOFX_X1,nGF, &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
+            iZ_B0(2)  :iZ_E0(2)+1)
+
+    ! --- Conserved Fluid Fields ---
+
     REAL(DP) :: &
       uCF_K(nDOFX,nCF, &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            iZ_B1(2):iZ_E1(2))
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
+            iZ_B0(2)-1:iZ_E0(2)+1)
     REAL(DP) :: &
       uCF_L(nDOFX_X1,nCF, &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            iZ_B0(2):iZ_E1(2))
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
+            iZ_B0(2)  :iZ_E0(2)+1)
     REAL(DP) :: &
       uCF_R(nDOFX_X1,nCF, &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            iZ_B0(2):iZ_E1(2))
-    REAL(DP) :: &
-      V_u(nDOFX_X1, &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          iZ_B0(2):iZ_E1(2), &
-          3)
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
+            iZ_B0(2)  :iZ_E0(2)+1)
+
+    ! --- Conserved Radiation Fields ---
+
     REAL(DP) :: &
       uCR_K(nDOFZ,nCR, &
-            iZ_B0(1):iZ_E0(1), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
+            iZ_B0(1)  :iZ_E0(1)  , &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
             nSpecies, &
-            iZ_B1(2):iZ_E1(2))
+            iZ_B0(2)-1:iZ_E0(2)+1)
     REAL(DP) :: &
       uCR_L(nDOFZ_X1,nCR, &
-            iZ_B0(1):iZ_E0(1), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
+            iZ_B0(1)  :iZ_E0(1)  , &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
             nSpecies, &
-            iZ_B0(2):iZ_E1(2))
+            iZ_B0(2)  :iZ_E0(2)+1)
     REAL(DP) :: &
       uCR_R(nDOFZ_X1,nCR, &
-            iZ_B0(1):iZ_E0(1), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
+            iZ_B0(1)  :iZ_E0(1)  , &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
             nSpecies, &
-            iZ_B0(2):iZ_E1(2))
+            iZ_B0(2)  :iZ_E0(2)+1)
+
+    ! --- Fluxes ---
+
     REAL(DP) :: &
-      NumericalFlux &
-        (nDOFZ_X1,nCR, &
-         iZ_B0(1):iZ_E0(1), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies, &
-         iZ_B0(2):iZ_E1(2))
+      NumericalFlux(nDOFZ_X1,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(2)  :iZ_E0(2)+1)
     REAL(DP) :: &
-      Flux_q(nDOFZ,nCR, &
-             iZ_B0(1):iZ_E0(1), &
-             iZ_B0(3):iZ_E0(3), &
-             iZ_B0(4):iZ_E0(4), &
-             nSpecies, &
-             iZ_B0(2):iZ_E0(2))
+      Flux_q       (nDOFZ,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(2)  :iZ_E0(2))
+
+    ! --- X1 Increment ---
+
     REAL(DP) :: &
       dU_X1(nDOFZ,nCR, &
-            iZ_B0(1):iZ_E0(1), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
+            iZ_B0(1)  :iZ_E0(1)  , &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  , &
             nSpecies, &
-            iZ_B0(2):iZ_E0(2))
-
-    INTEGER :: iK_E, iK_X, iF_E, iF_X1
-    INTEGER :: nK_E, nK_X, nF_E, nF_X1
+            iZ_B0(2)  :iZ_E0(2)  )
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
-    nZ_X1 = nZ + [0,1,0,0]    ! Number of X3 Faces per Phase Space Dimension
+    nZ_X1 = nZ + [0,1,0,0]    ! Number of X1 Faces per Phase Space Dimension
     nV    = nCR * nSpecies * PRODUCT( nZ )
     nV_X1 = nCR * nSpecies * PRODUCT( nZ_X1 )
     nX_X1 = PRODUCT( nZ_X1(2:4) ) ! Number of X1 Faces in Position Space
@@ -484,7 +489,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
-    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)-1
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
@@ -560,7 +565,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
-    DO iZ2  = iZ_B0(2), iZ_E1(2)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)+1
     DO iZ4  = iZ_B0(4), iZ_E0(4)
     DO iZ3  = iZ_B0(3), iZ_E0(3)
 
@@ -621,7 +626,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
-    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
@@ -739,7 +744,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
-    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
