@@ -432,7 +432,7 @@ CONTAINS
                     iZ_B0(3)  :iZ_E0(3)  , &
                     iZ_B0(4)  :iZ_E0(4)  , &
                     nSpecies, &
-                    iZ_B0(2)  :iZ_E0(2))
+                    iZ_B0(2)  :iZ_E0(2)  )
 
     ! --- X1 Increment ---
 
@@ -489,7 +489,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
-    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)-1
+    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
