@@ -1310,6 +1310,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_Permute )
 
+
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )

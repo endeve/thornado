@@ -22,6 +22,12 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     FluxFactor, &
     EddingtonFactor, &
     HeatFluxFactor
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Streaming_NumericalFlux_LMAT, &
+    Timer_Streaming_NumericalFlux_LS, &
+    Timer_Streaming_NumericalFlux_Shift
 
   IMPLICIT NONE
   PRIVATE
@@ -58,13 +64,13 @@ CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment_Vector &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option )
 
     REAL(DP), DIMENSION(:,:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
     REAL(DP), DIMENSION(:,:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), DIMENSION(:),   INTENT(in)  :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:),   INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    INTEGER,  DIMENSION(:,:), INTENT(out) :: nIterations
+    INTEGER,  DIMENSION(:,:), INTENT(out), OPTIONAL :: nIterations_Option
 
     ! --- Parameters ---
 
@@ -78,15 +84,15 @@ CONTAINS
     INTEGER  :: iE, iX, iZ
     INTEGER  :: k, Mk, iM, i, j
 
+    REAL(DP) :: FTMP(4,M), GTMP(4,M)
     REAL(DP) :: k_dd(3,3), SUM1, DET
     REAL(DP) :: A_d_1, A_d_2, A_d_3
-
-    REAL(DP) :: Fnorm_D, Fnorm_I1, Fnorm_I2, Fnorm_I3
     LOGICAL  :: CONVERGED
 
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: LMAT, AMAT, FVEC, GVEC
     REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, BVEC, FVECm, GVECm, Alpha
     LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
+    INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
 
     nX = SIZE( N, 1 )
     nE = SIZE( N, 2 )
@@ -105,9 +111,33 @@ CONTAINS
     ALLOCATE( Alpha(M,nZ) )
 
     ALLOCATE( ITERATE(nZ) )
+    ALLOCATE( nIterations(nZ) )
 
     ITERATE = .TRUE.
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: ITERATE ) &
+    !$OMP MAP( alloc: LMAT, AMAT, FVEC, GVEC, CVEC, UVEC, &
+    !$OMP             BVEC, FVECm, GVECm, Alpha, nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( ITERATE ) &
+    !$ACC CREATE( LMAT, AMAT, FVEC, GVEC, CVEC, UVEC, &
+    !$ACC         BVEC, FVECm, GVECm, Alpha, nIterations )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iE, iX )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iE, iX ) &
+    !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iE, iX )
+#endif
     DO iZ = 1, nZ
       iE = MOD( (iZ-1) / nX, nE ) + 1
       iX = MOD( (iZ-1)     , nX ) + 1
@@ -119,6 +149,14 @@ CONTAINS
 
     ! --- Initial Guess ---
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( D, I_u_1, I_u_2, I_u_3, N )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(2)
+#endif
     DO iE = 1, nE
       DO iX = 1, nX
         D    (iX,iE) = N(iX,iE)
@@ -134,6 +172,18 @@ CONTAINS
       k = k + 1
       Mk = MIN( M, k )
 
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( iE, iX )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRIVATE( iE, iX ) &
+      !$ACC PRESENT( ITERATE, UVEC, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( iE, iX )
+#endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
           iE = MOD( (iZ-1) / nX, nE ) + 1
@@ -145,7 +195,20 @@ CONTAINS
         END IF
       END DO
 
+      CALL TimersStart( Timer_Streaming_NumericalFlux_LMAT )
 
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( iE, iX, A_d_1, A_d_2, A_d_3, k_dd, DET )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRIVATE( iE, iX, A_d_1, A_d_2, A_d_3, k_dd, DET ) &
+      !$ACC PRESENT( ITERATE, LMAT, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( iE, iX, A_d_1, A_d_2, A_d_3, k_dd, DET )
+#endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
           iE = MOD( (iZ-1) / nX, nE ) + 1
@@ -201,7 +264,21 @@ CONTAINS
         END IF
       END DO
 
+      CALL TimersStop( Timer_Streaming_NumericalFlux_LMAT )
 
+      CALL TimersStart( Timer_Streaming_NumericalFlux_LS )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PRIVATE( SUM1 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRIVATE( SUM1 ) &
+      !$ACC PRESENT( ITERATE, LMAT, CVEC, GVECm, FVECm, GVEC, FVEC, UVEC )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( SUM1 )
+#endif
       DO iZ = 1, nZ
         DO i = 1, 4
           IF ( ITERATE(iZ) ) THEN
@@ -222,6 +299,18 @@ CONTAINS
       IF ( Mk > 1 ) THEN
         CALL Alpha_LS_Vector &
                ( ITERATE, M, Mk, FVECm, FVEC, AMAT, BVEC, Alpha )
+
+#if   defined( THORNADO_OMP_OL )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( SUM1 )
+#elif defined( THORNADO_OACC   )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+        !$ACC PRIVATE( SUM1 ) &
+        !$ACC PRESENT( ITERATE, GVECm, FVECm, GVEC, UVEC, Alpha )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(2) &
+        !$OMP PRIVATE( SUM1 )
+#endif
         DO iZ = 1, nZ
           DO i = 1, 4
             IF ( ITERATE(iZ) ) THEN
@@ -236,6 +325,15 @@ CONTAINS
         END DO
       END IF
 
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRESENT( ITERATE, GVECm, UVEC )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
       DO iZ = 1, nZ
         DO i = 1, 4
           IF ( ITERATE(iZ) ) THEN
@@ -244,7 +342,21 @@ CONTAINS
         END DO
       END DO
 
+      CALL TimersStop( Timer_Streaming_NumericalFlux_LS )
 
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PRIVATE( iZ )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRIVATE( iZ ) &
+      !$ACC PRESENT( ITERATE, UVEC, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(2) &
+      !$OMP PRIVATE( iZ )
+#endif
       DO iE = 1, nE
         DO iX = 1, nX
           iZ = iX + ( iE - 1 ) * nX
@@ -258,44 +370,106 @@ CONTAINS
       END DO
 
 
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( CONVERGED )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRIVATE( CONVERGED ) &
+      !$ACC PRESENT( ITERATE, CVEC, FVECm, nIterations )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( CONVERGED )
+#endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
-          iE = MOD( (iZ-1) / nX, nE ) + 1
-          iX = MOD( (iZ-1)     , nX ) + 1
 
-          Fnorm_D  = ABS( FVECm(iPR_D ,iZ) )
-          Fnorm_I1 = ABS( FVECm(iPR_I1,iZ) )
-          Fnorm_I2 = ABS( FVECm(iPR_I2,iZ) )
-          Fnorm_I3 = ABS( FVECm(iPR_I3,iZ) )
-
-          CONVERGED = Fnorm_D  <= Rtol * ABS( CVEC(iCR_N ,iZ) ) .AND. &
-                      Fnorm_I1 <= Rtol * ABS( CVEC(iCR_G1,iZ) ) .AND. &
-                      Fnorm_I2 <= Rtol * ABS( CVEC(iCR_G2,iZ) ) .AND. &
-                      Fnorm_I3 <= Rtol * ABS( CVEC(iCR_G3,iZ) )
+          CONVERGED = ALL( ABS( FVECm(:,iZ) ) <= Rtol * ABS( CVEC(:,iZ) ) )
 
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
-            nIterations(iX,iE) = k
+            nIterations(iZ) = k
           END IF
         END IF
       END DO
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE FROM( ITERATE )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE HOST( ITERATE )
+#endif
 
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_Shift )
 
       IF ( Mk == M ) THEN
+#if   defined( THORNADO_OMP_OL )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+        !$OMP PRIVATE( FTMP, GTMP )
+#elif defined( THORNADO_OACC   )
+        !$ACC PARALLEL LOOP GANG VECTOR &
+        !$ACC PRIVATE( FTMP, GTMP ) &
+        !$ACC PRESENT( ITERATE, FVEC, GVEC )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO &
+        !$OMP PRIVATE( FTMP, GTMP )
+#endif
         DO iZ = 1, nZ
           IF ( ITERATE(iZ) ) THEN
-            FVEC(:,:,iZ) = ShiftVec( M, Mk, FVEC(:,:,iZ) )
-            GVEC(:,:,iZ) = ShiftVec( M, Mk, GVEC(:,:,iZ) )
+            DO j = 1, Mk - 1
+              DO i = 1, 4
+                FTMP(i,j) = FVEC(i,j+1,iZ)
+                GTMP(i,j) = GVEC(i,j+1,iZ)
+              END DO
+            END DO
+            DO j = 1, Mk - 1
+              DO i = 1, 4
+                FVEC(i,j,iZ) = FTMP(i,j)
+                GVEC(i,j,iZ) = GTMP(i,j)
+              END DO
+            END DO
           END IF
         END DO
       END IF
 
+      CALL TimersStop( Timer_Streaming_NumericalFlux_Shift )
+
 
     END DO
 
+    IF( PRESENT( nIterations_Option ) ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PRIVATE( iZ )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRIVATE( iZ ) &
+      !$ACC PRESENT( nIterations, nIterations_Option )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(2) &
+      !$OMP PRIVATE( iZ )
+#endif
+      DO iE = 1, nE
+        DO iX = 1, nX
+          iZ = iX + ( iE - 1 ) * nX
+          nIterations_Option(iX,iE) = nIterations(iZ)
+        END DO
+      END DO
+    END IF
+
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: LMAT, AMAT, FVEC, GVEC, CVEC, UVEC, &
+    !$OMP               BVEC, FVECm, GVECm, Alpha, ITERATE, nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( LMAT, AMAT, FVEC, GVEC, CVEC, UVEC, &
+    !$ACC         BVEC, FVECm, GVECm, Alpha, ITERATE, nIterations )
+#endif
+
     DEALLOCATE( LMAT, AMAT, FVEC, GVEC )
     DEALLOCATE( CVEC, UVEC, BVEC, FVECm, GVECm, Alpha )
-    DEALLOCATE( ITERATE )
+    DEALLOCATE( ITERATE, nIterations )
 
 !#if   defined( THORNADO_OMP_OL )
 !    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -314,7 +488,7 @@ CONTAINS
 !                 D(iX,iE), I_u_1(iX,iE), I_u_2(iX,iE), I_u_3(iX,iE), &
 !                 V_u_1(iX), V_u_2(iX), V_u_3(iX), &
 !                 Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
-!                 nIterations(iX,iE), (iE==1.AND.iX==1) )
+!                 nIterations(iX,iE) )
 !
 !      END DO
 !    END DO
@@ -343,7 +517,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRESENT( MASK, B, Fm )
 #elif defined(THORNADO_OMP)
       !$OMP DO SIMD COLLAPSE(2)
 #endif
@@ -358,7 +533,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( MASK, A, F, Fm )
 #elif defined(THORNADO_OMP)
       !$OMP DO SIMD COLLAPSE(3)
 #endif
@@ -379,7 +555,8 @@ CONTAINS
         !$OMP PRIVATE( AA11, AB1 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG &
-        !$ACC PRIVATE( AA11, AB1 )
+        !$ACC PRIVATE( AA11, AB1 ) &
+        !$ACC PRESENT( MASK, A, B )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO SIMD &
         !$OMP PRIVATE( AA11, AB1 )
@@ -418,7 +595,8 @@ CONTAINS
           !$OMP PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA )
 #elif defined(THORNADO_OACC)
           !$ACC PARALLEL LOOP GANG VECTOR &
-          !$ACC PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA )
+          !$ACC PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA ) &
+          !$ACC PRESENT( MASK, A, B )
 #elif defined(THORNADO_OMP)
           !$OMP PARALLEL DO SIMD &
           !$OMP PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA )
@@ -449,7 +627,8 @@ CONTAINS
           !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #elif defined(THORNADO_OACC)
           !$ACC PARALLEL LOOP GANG &
-          !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
+          !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA ) &
+          !$ACC PRESENT( MASK, A, B )
 #elif defined(THORNADO_OMP)
           !$OMP PARALLEL DO SIMD &
           !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
@@ -510,6 +689,7 @@ CONTAINS
       !$OMP PRIVATE( SUM1 )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRESENT( MASK, Alpha, B ) &
       !$ACC PRIVATE( SUM1 )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD &
