@@ -65,7 +65,7 @@ Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   EquationOfStateModule_IDEAL.o \
   EquationOfStateModule.o \
   TimersModule_Euler.o \
-  Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
+  Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.F90
 
 Euler_CharacteristicDecompositionModule.o: \
   KindModule.o \
