@@ -335,33 +335,30 @@ CONTAINS
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
 
-    REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(2)  :iX_E0(2), &
-                                           iX_B0(3)  :iX_E0(3), &
-                                           iX_B0(1)-1:iX_E0(1)+1)
     REAL(DP) :: uCF_L        (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
     REAL(DP) :: uCF_R        (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
-
-    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(2)  :iX_E0(2), &
+    REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)-1:iX_E0(1)+1)
+
     REAL(DP) :: uPF_L        (nDOFX_X1,nPF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
     REAL(DP) :: uPF_R        (nDOFX_X1,nPF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
-
-    REAL(DP) :: uDF_K        (nDOFX,     2,iX_B0(2)  :iX_E0(2), &
+    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: uDF_L        (nDOFX_X1,  2,iX_B0(2)  :iX_E0(2), &
+
+    REAL(DP) :: uDF_L        (2           ,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: uDF_R        (nDOFX_X1,  2,iX_B0(2)  :iX_E0(2), &
+    REAL(DP) :: uDF_R        (2           ,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
 
@@ -406,17 +403,17 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3 ) &
-    !$OMP MAP( alloc: uCF_K, uCF_L, uCF_R, &
-    !$OMP             uPF_K, uPF_L, uPF_R, &
-    !$OMP             uDF_K, uDF_L, uDF_R, &
+    !$OMP MAP( alloc: uCF_L, uCF_R, uCF_K, &
+    !$OMP             uPF_L, uPF_R, uPF_K, &
+    !$OMP             uDF_L, uDF_R,        &
     !$OMP             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux, &
     !$OMP             iErr_L, iErr_R, iErr_M, iErr_V )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3 ) &
-    !$ACC CREATE(     uCF_K, uCF_L, uCF_R, &
-    !$ACC             uPF_K, uPF_L, uPF_R, &
-    !$ACC             uDF_K, uDF_L, uDF_R, &
+    !$ACC CREATE(     uCF_L, uCF_R, uCF_K, &
+    !$ACC             uPF_L, uPF_R, uPF_K, &
+    !$ACC             uDF_L, uDF_R,        &
     !$ACC             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux, &
     !$ACC             iErr_L, iErr_R, iErr_M, iErr_V )
 #endif
@@ -541,22 +538,22 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uDF_K, D )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, uDF_L, uDF_R, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
+    DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNX = 1, nDOFX
 
-      uDF_K(iNX,1,iX2,iX3,iX1) = D(iNX,iX1,iX2,iX3,iDF_Sh_X2)
-      uDF_K(iNX,2,iX2,iX3,iX1) = D(iNX,iX1,iX2,iX3,iDF_Sh_X3)
+      uDF_L(1,iX2,iX3,iX1) = D(1,iX1-1,iX2,iX3,iDF_Sh_X2)
+      uDF_L(2,iX2,iX3,iX1) = D(1,iX1-1,iX2,iX3,iDF_Sh_X3)
+      uDF_R(1,iX2,iX3,iX1) = D(1,iX1  ,iX2,iX3,iDF_Sh_X2)
+      uDF_R(2,iX2,iX3,iX1) = D(1,iX1  ,iX2,iX3,iDF_Sh_X3)
 
-    END DO
     END DO
     END DO
     END DO
@@ -574,22 +571,12 @@ CONTAINS
              uCF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
              uCF_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nDF_F, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-             uDF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
-             uDF_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X1, nCF_F, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
              uCF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
              uCF_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nDF_F, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-             uDF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
-             uDF_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -805,10 +792,10 @@ CONTAINS
               P_L, P_R,                               &
               G_F  (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
               G_F  (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
-              uDF_L(iNX_X1,1           ,iX2,iX3,iX1), &
-              uDF_R(iNX_X1,1           ,iX2,iX3,iX1), &
-              uDF_L(iNX_X1,2           ,iX2,iX3,iX1), &
-              uDF_R(iNX_X1,2           ,iX2,iX3,iX1) )
+              uDF_L(1                  ,iX2,iX3,iX1), &
+              uDF_R(1                  ,iX2,iX3,iX1), &
+              uDF_L(2                  ,iX2,iX3,iX1), &
+              uDF_R(2                  ,iX2,iX3,iX1) )
 
       DO iCF = 1, nCF
 
@@ -1002,17 +989,17 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$OMP MAP( release: dX2, dX3, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP               uCF_K, uCF_L, uCF_R, &
-    !$OMP               uPF_K, uPF_L, uPF_R, &
-    !$OMP               uDF_K, uDF_L, uDF_R, &
+    !$OMP               uCF_L, uCF_R, uCF_K, &
+    !$OMP               uPF_L, uPF_R, uPF_K, &
+    !$OMP               uDF_L, uDF_R,        &
     !$OMP               G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3, &
-    !$ACC               uCF_K, uCF_L, uCF_R, &
-    !$ACC               uPF_K, uPF_L, uPF_R, &
-    !$ACC               uDF_K, uDF_L, uDF_R, &
+    !$ACC               uCF_L, uCF_R, uCF_K, &
+    !$ACC               uPF_L, uPF_R, uPF_K, &
+    !$ACC               uDF_L, uDF_R,        &
     !$ACC               G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
 #endif
 
@@ -1143,33 +1130,30 @@ CONTAINS
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
 
-    REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
-                                           iX_B0(3)  :iX_E0(3), &
-                                           iX_B0(2)-1:iX_E0(2)+1)
     REAL(DP) :: uCF_L        (nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
     REAL(DP) :: uCF_R        (nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-
-    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)-1:iX_E0(2)+1)
+
     REAL(DP) :: uPF_L        (nDOFX_X2,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
     REAL(DP) :: uPF_R        (nDOFX_X2,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-
-    REAL(DP) :: uDF_K        (nDOFX,     2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: uDF_L        (nDOFX_X2,  2,iX_B0(1)  :iX_E0(1), &
+
+    REAL(DP) :: uDF_L        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: uDF_R        (nDOFX_X2,  2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uDF_R        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
 
@@ -1214,17 +1198,17 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3 ) &
-    !$OMP MAP( alloc: uCF_K, uCF_L, uCF_R, &
-    !$OMP             uPF_K, uPF_L, uPF_R, &
-    !$OMP             uDF_K, uDF_L, uDF_R, &
+    !$OMP MAP( alloc: uCF_L, uCF_R, uCF_K, &
+    !$OMP             uPF_L, uPF_R, uPF_K, &
+    !$OMP             uDF_L, uDF_R,        &
     !$OMP             G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux, &
     !$OMP             iErr_L, iErr_R, iErr_M, iErr_V )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3 ) &
-    !$ACC CREATE(     uCF_K, uCF_L, uCF_R, &
-    !$ACC             uDF_K, uDF_L, uDF_R, &
-    !$ACC             uPF_K, uPF_L, uPF_R, &
+    !$ACC CREATE(     uCF_L, uCF_R, uCF_K, &
+    !$ACC             uPF_L, uPF_R, uPF_K, &
+    !$ACC             uDF_L, uDF_R,        &
     !$ACC             G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux, &
     !$ACC             iErr_L, iErr_R, iErr_M, iErr_V )
 #endif
@@ -1349,22 +1333,22 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uDF_K, D )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, uDF_L, uDF_R, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+    DO iX2 = iX_B0(2), iX_E0(2) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
 
-      uDF_K(iNX,1,iX1,iX3,iX2) = D(iNX,iX1,iX2,iX3,iDF_Sh_X1)
-      uDF_K(iNX,2,iX1,iX3,iX2) = D(iNX,iX1,iX2,iX3,iDF_Sh_X3)
+      uDF_L(1,iX1,iX3,iX2) = D(1,iX1,iX2-1,iX3,iDF_Sh_X1)
+      uDF_L(2,iX1,iX3,iX2) = D(1,iX1,iX2-1,iX3,iDF_Sh_X3)
+      uDF_R(1,iX1,iX3,iX2) = D(1,iX1,iX2  ,iX3,iDF_Sh_X1)
+      uDF_R(2,iX1,iX3,iX2) = D(1,iX1,iX2  ,iX3,iDF_Sh_X3)
 
-    END DO
     END DO
     END DO
     END DO
@@ -1382,22 +1366,12 @@ CONTAINS
              uCF_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
              uCF_L(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X2, nDF_F, nDOFX, One, LX_X2_Up, nDOFX_X2, &
-             uDF_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
-             uDF_L(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X2, nCF_F, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
              uCF_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
              uCF_R(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X2, nDF_F, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
-             uDF_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
-             uDF_R(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -1613,10 +1587,10 @@ CONTAINS
               P_L, P_R,                               &
               G_F  (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
               G_F  (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
-              uDF_L(iNX_X2,1           ,iX1,iX3,iX2), &
-              uDF_R(iNX_X2,1           ,iX1,iX3,iX2), &
-              uDF_L(iNX_X2,2           ,iX1,iX3,iX2), &
-              uDF_R(iNX_X2,2           ,iX1,iX3,iX2) )
+              uDF_L(1                  ,iX1,iX3,iX2), &
+              uDF_R(1                  ,iX1,iX3,iX2), &
+              uDF_L(2                  ,iX1,iX3,iX2), &
+              uDF_R(2                  ,iX1,iX3,iX2) )
 
       DO iCF = 1, nCF
 
@@ -1810,17 +1784,17 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3, &
-    !$OMP               uCF_K, uCF_L, uCF_R, &
-    !$OMP               uPF_K, uPF_L, uPF_R, &
-    !$OMP               uDF_K, uDF_L, uDF_R, &
+    !$OMP               uCF_L, uCF_R, uCF_K, &
+    !$OMP               uPF_L, uPF_R, uPF_K, &
+    !$OMP               uDF_L, uDF_R,        &
     !$OMP               G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3, &
-    !$ACC               uCF_K, uCF_L, uCF_R, &
-    !$ACC               uPF_K, uPF_L, uPF_R, &
-    !$ACC               uDF_K, uDF_L, uDF_R, &
+    !$ACC               uCF_L, uCF_R, uCF_K, &
+    !$ACC               uPF_L, uPF_R, uPF_K, &
+    !$ACC               uDF_L, uDF_R,        &
     !$ACC               G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux )
 #endif
 
@@ -1951,33 +1925,30 @@ CONTAINS
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
 
-    REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
-                                           iX_B0(2)  :iX_E0(2), &
-                                           iX_B0(3)-1:iX_E0(3)+1)
     REAL(DP) :: uCF_L        (nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
     REAL(DP) :: uCF_R        (nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-
-    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)-1:iX_E0(3)+1)
+
     REAL(DP) :: uPF_L        (nDOFX_X3,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
     REAL(DP) :: uPF_R        (nDOFX_X3,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-
-    REAL(DP) :: uDF_K        (nDOFX,     2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: uDF_L        (nDOFX_X3,  2,iX_B0(1)  :iX_E0(1), &
+
+    REAL(DP) :: uDF_L        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: uDF_R        (nDOFX_X3,  2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uDF_R        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
 
@@ -2022,17 +1993,17 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2 ) &
-    !$OMP MAP( alloc: uCF_K, uCF_L, uCF_R, &
-    !$OMP             uPF_K, uPF_L, uPF_R, &
-    !$OMP             uDF_K, uDF_L, uDF_R, &
+    !$OMP MAP( alloc: uCF_L, uCF_R, uCF_K, &
+    !$OMP             uPF_L, uPF_R, uPF_K, &
+    !$OMP             uDF_L, uDF_R,        &
     !$OMP             G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux, &
     !$OMP             iErr_L, iErr_R, iErr_M, iErr_V )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2 ) &
-    !$ACC CREATE(     uCF_K, uCF_L, uCF_R, &
-    !$ACC             uPF_K, uPF_L, uPF_R, &
-    !$ACC             uDF_K, uDF_L, uDF_R, &
+    !$ACC CREATE(     uCF_L, uCF_R, uCF_K, &
+    !$ACC             uPF_L, uPF_R, uPF_K, &
+    !$ACC             uDF_L, uDF_R,        &
     !$ACC             G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux, &
     !$ACC             iErr_L, iErr_R, iErr_M, iErr_V )
 #endif
@@ -2157,22 +2128,22 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uDF_K, D )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, uDF_L, uDF_R, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+    DO iX3 = iX_B0(3), iX_E0(3) + 1
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
 
-      uDF_K(iNX,1,iX1,iX2,iX3) = D(iNX,iX1,iX2,iX3,iDF_Sh_X1)
-      uDF_K(iNX,2,iX1,iX2,iX3) = D(iNX,iX1,iX2,iX3,iDF_Sh_X2)
+      uDF_L(1,iX1,iX2,iX3) = D(1,iX1,iX2,iX3-1,iDF_Sh_X1)
+      uDF_L(2,iX1,iX2,iX3) = D(1,iX1,iX2,iX3-1,iDF_Sh_X2)
+      uDF_R(1,iX1,iX2,iX3) = D(1,iX1,iX2,iX3  ,iDF_Sh_X1)
+      uDF_R(2,iX1,iX2,iX3) = D(1,iX1,iX2,iX3  ,iDF_Sh_X2)
 
-    END DO
     END DO
     END DO
     END DO
@@ -2190,22 +2161,12 @@ CONTAINS
              uCF_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
              uCF_L(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
 
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X3, nDF_F, nDOFX, One, LX_X3_Up, nDOFX_X3, &
-             uDF_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
-             uDF_L(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nCF_F, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
              uCF_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
              uCF_R(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X3, nDF_F, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
-             uDF_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
-             uDF_R(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -2421,10 +2382,10 @@ CONTAINS
               P_L, P_R,   &
               G_F  (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
               G_F  (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
-              uDF_L(iNX_X3,1           ,iX1,iX2,iX3), &
-              uDF_R(iNX_X3,1           ,iX1,iX2,iX3), &
-              uDF_L(iNX_X3,2           ,iX1,iX2,iX3), &
-              uDF_R(iNX_X3,2           ,iX1,iX2,iX3) )
+              uDF_L(1                  ,iX1,iX2,iX3), &
+              uDF_R(1                  ,iX1,iX2,iX3), &
+              uDF_L(2                  ,iX1,iX2,iX3), &
+              uDF_R(2                  ,iX1,iX2,iX3) )
 
       DO iCF = 1, nCF
 
@@ -2618,17 +2579,17 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, &
-    !$OMP               uCF_K, uCF_L, uCF_R, &
-    !$OMP               uPF_K, uPF_L, uPF_R, &
-    !$OMP               uDF_K, uDF_L, uDF_R, &
+    !$OMP               uCF_L, uCF_R, uCF_K, &
+    !$OMP               uPF_L, uPF_R, uPF_K, &
+    !$OMP               uDF_L, uDF_R,        &
     !$OMP               G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, &
-    !$ACC               uCF_K, uCF_L, uCF_R, &
-    !$ACC               uDF_K, uDF_L, uDF_R, &
-    !$ACC               uPF_K, uPF_L, uPF_R, &
+    !$ACC               uCF_L, uCF_R, uCF_K, &
+    !$ACC               uPF_L, uPF_R, uPF_K, &
+    !$ACC               uDF_L, uDF_R,        &
     !$ACC               G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux )
 #endif
 
