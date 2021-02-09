@@ -30,7 +30,7 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
-    Timer_Euler_CharacteristicDecomposition
+    Timer_Euler_SL_CharDecomp
 
   IMPLICIT NONE
   PRIVATE
@@ -81,7 +81,7 @@ CONTAINS
       UseAnalytic = .TRUE.
     END IF
 
-    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
+    CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
     CALL ComputePrimitive_Euler_NonRelativistic &
            ( U(iCF_D ), U(iCF_S1), U(iCF_S2), &
@@ -187,7 +187,7 @@ CONTAINS
       CALL ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
+    CALL TimersStop_Euler( Timer_Euler_SL_CharDecomp )
 
     ! -- Begin debugging statements. ---
 

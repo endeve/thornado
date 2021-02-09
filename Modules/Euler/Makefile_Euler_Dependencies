@@ -162,6 +162,7 @@ Euler_DiscontinuityDetectionModule.o: \
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
   PolynomialBasisModule_Legendre.o \
