@@ -302,6 +302,12 @@ CONTAINS
 
   REAL(DP) PURE ELEMENTAL FUNCTION MinMod2( a, b )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: a, b
 
     IF( a * b > 0.0_DP )THEN
@@ -320,6 +326,12 @@ CONTAINS
 
   REAL(DP) PURE ELEMENTAL FUNCTION MinMod( a, b, c )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: a, b, c
 
     MinMod = MinMod2( a, MinMod2( b, c ) )
@@ -329,6 +341,12 @@ CONTAINS
 
 
   REAL(DP) PURE ELEMENTAL FUNCTION MinModB( a, b, c, dx, M )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: a, b, c, dx, M
 
