@@ -485,6 +485,13 @@ CONTAINS
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
+    ! --- Permuted Phase Space Limits ---
+
+    iZP_B0(1) = iZ_B0(1) ; iZP_E0(1) = iZ_E0(1)
+    iZP_B0(2) = iZ_B0(3) ; iZP_E0(2) = iZ_E0(3)
+    iZP_B0(3) = iZ_B0(4) ; iZP_E0(3) = iZ_E0(4)
+    iZP_B0(4) = iZ_B0(2) ; iZP_E0(4) = iZ_E0(2)
+
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
         dZ3 => MeshX(2) % Width, &
@@ -501,11 +508,6 @@ CONTAINS
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #endif
-
-    iZP_B0(1) = iZ_B0(1) ; iZP_E0(1) = iZ_E0(1)
-    iZP_B0(2) = iZ_B0(3) ; iZP_E0(2) = iZ_E0(3)
-    iZP_B0(3) = iZ_B0(4) ; iZP_E0(3) = iZ_E0(4)
-    iZP_B0(4) = iZ_B0(2) ; iZP_E0(4) = iZ_E0(2)
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X1, nDOF_X1, &
