@@ -31,9 +31,9 @@ MODULE PolynomialBasisMappingModule
   REAL(DP), DIMENSION(:,:), ALLOCATABLE         :: Kij_Z, Pij_Z
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( Kij_X, Pij_X )
+  !$OMP DECLARE TARGET( Pij_X )
 #elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( Kij_X, Pij_X )
+  !$ACC DECLARE CREATE( Pij_X )
 #endif
 
 CONTAINS
@@ -120,9 +120,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( Kij_X, Pij_X )
+    !$OMP TARGET UPDATE TO( Pij_X )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE   ( Kij_X, Pij_X )
+    !$ACC UPDATE DEVICE   ( Pij_X )
 #endif
 
   END SUBROUTINE InitializePolynomialBasisMapping

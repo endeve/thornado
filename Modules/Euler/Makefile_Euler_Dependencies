@@ -196,9 +196,11 @@ Euler_SlopeLimiterModule_NonRelativistic_TABLE.o: \
 Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
-  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  PolynomialBasisModuleX_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
   GeometryFieldsModule.o \

@@ -7,7 +7,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDimsX, &
-    nNodes, &
     nNodesX, &
     bcX
   USE LinearAlgebraModule, ONLY: &
@@ -15,25 +14,31 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
-    NodeNumberTableX
+    NodesX1, &
+    NodesX2, &
+    NodesX3, &
+    WeightsX1, &
+    WeightsX2, &
+    WeightsX3
   USE UtilitiesModule, ONLY: &
     MinModB, &
     NodeNumberX
-  USE PolynomialBasisModule_Legendre, ONLY: &
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
+    L_X1, &
+    L_X2, &
+    L_X3, &
+    IndLX_Q
+  USE PolynomialBasisModuleX_Legendre, ONLY: &
     P_X1, &
     P_X2, &
     P_X3, &
     IndPX_Q, &
     MassPX
   USE PolynomialBasisMappingModule, ONLY: &
-    MapNodalToModal_Fluid, &
-    MapModalToNodal_Fluid, &
-    Kij_X, &
     Pij_X
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -97,17 +102,18 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   ! --- Conservative Correction ---
 
   REAL(DP), ALLOCATABLE :: LegendreX(:,:)
+  REAL(DP), ALLOCATABLE :: Kij_X    (:,:)
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$OMP     UseConservativeCorrection, &
-  !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
+  !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$ACC     UseConservativeCorrection, &
-  !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
+  !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
 #endif
 
 
@@ -140,7 +146,7 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
-    INTEGER  :: i, iPol, iNX, iNX1, iNX2, iNX3
+    INTEGER  :: i, j, iPol, iNX, iNX1, iNX2, iNX3, qX1, qX2, qX3
     LOGICAL  :: Verbose, UseTroubledCellIndicator
     REAL(DP) :: LimiterThresholdParameter
 
@@ -189,6 +195,7 @@ CONTAINS
              LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A)') &
         '    INFO: Slope Limiter (Euler, Relativistic, IDEAL)'
@@ -224,6 +231,7 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
+
     END IF
 
     I_6x6 = Zero
@@ -252,16 +260,43 @@ CONTAINS
 
     END DO
 
+    ALLOCATE( Kij_X(1:nDOFX,1:nDOFX) )
+
+    Kij_X = Zero
+    DO j = 1, nDOFX
+    DO i = 1, nDOFX
+
+      DO qX3 = 1, nNodesX(3)
+      DO qX2 = 1, nNodesX(2)
+      DO qX1 = 1, nNodesX(1)
+
+        Kij_X(i,j) &
+          = Kij_X(i,j) &
+              + MassPX(i) * WeightsX1(qX1) * WeightsX2(qX2) * WeightsX3(qX3) &
+                  * P_X1(IndPX_Q(1,i)) % P( NodesX1(qX1) ) &
+                  * P_X2(IndPX_Q(2,i)) % P( NodesX2(qX2) ) &
+                  * P_X3(IndPX_Q(3,i)) % P( NodesX3(qX3) ) &
+                  * L_X1(IndLX_Q(1,j)) % P( NodesX1(qX1) ) &
+                  * L_X2(IndLX_Q(2,j)) % P( NodesX2(qX2) ) &
+                  * L_X3(IndLX_Q(3,j)) % P( NodesX3(qX3) )
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+    END DO
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
     !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
     !$OMP     UseConservativeCorrection, &
-    !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
+    !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
     !$ACC     UseConservativeCorrection, &
-    !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
+    !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
 #endif
 
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
@@ -474,12 +509,12 @@ CONTAINS
 
       SqrtGm(iNX,iX1,iX2,iX3) = SqrtGamma
 
-      U_X(iNX,iCF_D ,iX1,iX2,iX3) = U_N(iNX,iCF_D ,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_S1,iX1,iX2,iX3) = U_N(iNX,iCF_S1,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_S2,iX1,iX2,iX3) = U_N(iNX,iCF_S2,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_S3,iX1,iX2,iX3) = U_N(iNX,iCF_S3,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_E ,iX1,iX2,iX3) = U_N(iNX,iCF_E ,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_Ne,iX1,iX2,iX3) = U_N(iNX,iCF_Ne,iX1,iX2,iX3) * SqrtGamma 
+      U_X(iNX,iCF_D ,iX1,iX2,iX3) = U_N(iNX,iCF_D ,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_S1,iX1,iX2,iX3) = U_N(iNX,iCF_S1,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_S2,iX1,iX2,iX3) = U_N(iNX,iCF_S2,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_S3,iX1,iX2,iX3) = U_N(iNX,iCF_S3,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_E ,iX1,iX2,iX3) = U_N(iNX,iCF_E ,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_Ne,iX1,iX2,iX3) = U_N(iNX,iCF_Ne,iX1,iX2,iX3) * SqrtGamma
 
     END DO
     END DO
@@ -537,28 +572,6 @@ CONTAINS
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nCF_BE1, nDOFX, One, Kij_X, nDOFX, &
              U_N, nDOFX, Zero, U_M, nDOFX )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B1, iX_E1, U_M, MassPX )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iCF = 1, nCF
-    DO iNX = 1, nDOFX
-
-      U_M(iNX,iCF,iX1,iX2,iX3) = U_M(iNX,iCF,iX1,iX2,iX3) * MassPX(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     CALL TimersStop_Euler( Timer_Euler_SL_Mapping )
 
@@ -1014,12 +1027,12 @@ CONTAINS
 
       SqrtGm(iNX,iX1,iX2,iX3) = SqrtGamma
 
-      U_X(iNX,iCF_D ,iX1,iX2,iX3) = U_N(iNX,iCF_D ,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_S1,iX1,iX2,iX3) = U_N(iNX,iCF_S1,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_S2,iX1,iX2,iX3) = U_N(iNX,iCF_S2,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_S3,iX1,iX2,iX3) = U_N(iNX,iCF_S3,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_E ,iX1,iX2,iX3) = U_N(iNX,iCF_E ,iX1,iX2,iX3) * SqrtGamma 
-      U_X(iNX,iCF_Ne,iX1,iX2,iX3) = U_N(iNX,iCF_Ne,iX1,iX2,iX3) * SqrtGamma 
+      U_X(iNX,iCF_D ,iX1,iX2,iX3) = U_N(iNX,iCF_D ,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_S1,iX1,iX2,iX3) = U_N(iNX,iCF_S1,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_S2,iX1,iX2,iX3) = U_N(iNX,iCF_S2,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_S3,iX1,iX2,iX3) = U_N(iNX,iCF_S3,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_E ,iX1,iX2,iX3) = U_N(iNX,iCF_E ,iX1,iX2,iX3) * SqrtGamma
+      U_X(iNX,iCF_Ne,iX1,iX2,iX3) = U_N(iNX,iCF_Ne,iX1,iX2,iX3) * SqrtGamma
 
       G_X(iNX,1,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)
       G_X(iNX,2,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)
@@ -1090,28 +1103,6 @@ CONTAINS
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nCF_BE1, nDOFX, One, Kij_X, nDOFX, &
              U_N, nDOFX, Zero, U_M, nDOFX )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B1, iX_E1, U_M, MassPX )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iCF = 1, nCF
-    DO iNX = 1, nDOFX
-
-      U_M(iNX,iCF,iX1,iX2,iX3) = U_M(iNX,iCF,iX1,iX2,iX3) * MassPX(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     CALL TimersStop_Euler( Timer_Euler_SL_Mapping )
 
@@ -1376,7 +1367,7 @@ CONTAINS
 
             b(3,iCF,iX1,iX2,iX3) &
               = b(3,iCF,iX1,iX2,iX3) &
-                  + BetaTVD * invR_X3(iCF,jCF,iX1,iX2,iX3) & 
+                  + BetaTVD * invR_X3(iCF,jCF,iX1,iX2,iX3) &
                       * ( U_M(1,jCF,iX1,iX2,iX3  ) &
                         - U_M(1,jCF,iX1,iX2,iX3-1) )
 
@@ -1573,6 +1564,7 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
+    DEALLOCATE( Kij_X )
     DEALLOCATE( LegendreX )
 
     CALL FinalizeTroubledCellIndicator_Euler

@@ -36,12 +36,6 @@ MODULE PolynomialBasisModule_Legendre
   PUBLIC :: evalP
   PUBLIC :: evalPX
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( MassPX )
-#elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( MassPX )
-#endif
-
 CONTAINS
 
 
@@ -237,12 +231,6 @@ CONTAINS
     MassP = 1.0_DP / Mass ! Store as Inverse
 
     DEALLOCATE( Mass )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( MassPX )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE   ( MassPX )
-#endif
 
   END SUBROUTINE ComputeMassMatrices
 
