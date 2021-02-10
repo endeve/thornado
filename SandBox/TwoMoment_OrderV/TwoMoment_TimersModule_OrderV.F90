@@ -24,9 +24,10 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Streaming_Derivatives_X3
   REAL(DP), PUBLIC :: Timer_Streaming_InverseMassMatrix
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux
+  REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_InOut
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_LMAT
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_LS
-  REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_Shift
+  REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_Update
   REAL(DP), PUBLIC :: Timer_Streaming_Sources
   REAL(DP), PUBLIC :: Timer_Collisions
   REAL(DP), PUBLIC :: Timer_Collisions_Permute
@@ -64,9 +65,10 @@ CONTAINS
     Timer_Streaming_Derivatives_X3      = Zero
     Timer_Streaming_InverseMassMatrix   = Zero
     Timer_Streaming_NumericalFlux       = Zero
+    Timer_Streaming_NumericalFlux_InOut = Zero
     Timer_Streaming_NumericalFlux_LMAT  = Zero
     Timer_Streaming_NumericalFlux_LS    = Zero
-    Timer_Streaming_NumericalFlux_Shift = Zero
+    Timer_Streaming_NumericalFlux_Update= Zero
     Timer_Streaming_Sources             = Zero
 
     Timer_Collisions                    = Zero
@@ -129,11 +131,13 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_NumericalFlux        :', Timer_Streaming_NumericalFlux       , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Streaming_NumericalFlux_InOut  :', Timer_Streaming_NumericalFlux_InOut , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_NumericalFlux_LMAT   :', Timer_Streaming_NumericalFlux_LMAT  , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_NumericalFlux_LS     :', Timer_Streaming_NumericalFlux_LS    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_Streaming_NumericalFlux_Shift  :', Timer_Streaming_NumericalFlux_Shift , ' s'
+      '    Timer_Streaming_NumericalFlux_Update :', Timer_Streaming_NumericalFlux_Update, ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_Sources              :', Timer_Streaming_Sources             , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
