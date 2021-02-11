@@ -107,6 +107,14 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -137,6 +145,14 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -167,6 +183,14 @@ CONTAINS
 
     CASE ( 10 ) ! Custom
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
