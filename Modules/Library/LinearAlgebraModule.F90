@@ -1,3 +1,6 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_LA
+#endif
 MODULE LinearAlgebraModule
 
   USE, INTRINSIC :: ISO_C_BINDING
@@ -185,6 +188,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixAdd] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -193,6 +197,7 @@ CONTAINS
         WRITE(*,*) '[MatrixMatrixAdd]   B missing'
       IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
         WRITE(*,*) '[MatrixMatrixAdd]   C missing'
+#endif
 #endif
 
       IF ( alpha == 0.0_DP .AND. beta == 0.0_DP ) THEN
@@ -342,6 +347,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixMultiply] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -350,6 +356,7 @@ CONTAINS
         WRITE(*,*) '[MatrixMatrixMultiply]   B missing'
       IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
         WRITE(*,*) '[MatrixMatrixMultiply]   C missing'
+#endif
 #endif
 
       CALL DGEMM &
@@ -432,6 +439,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixMultiplyBatched] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -440,6 +448,7 @@ CONTAINS
         WRITE(*,*) '[MatrixMatrixMultiplyBatched]   B missing'
       IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
         WRITE(*,*) '[MatrixMatrixMultiplyBatched]   C missing'
+#endif
 #endif
 
       DO i = 1, batchcount
@@ -555,6 +564,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[LinearSolveBatched] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -565,6 +575,7 @@ CONTAINS
         WRITE(*,*) '[LinearSolveBatched]   ipiv missing'
       IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
         WRITE(*,*) '[LinearSolveBatched]   info missing'
+#endif
 #endif
 
       DO i = 1, batchcount
@@ -645,6 +656,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixVectorMultiply] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -653,6 +665,7 @@ CONTAINS
         WRITE(*,*) '[MatrixVectorMultiply]   x missing'
       IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
         WRITE(*,*) '[MatrixVectorMultiply]   y missing'
+#endif
 #endif
 
       CALL DGEMV &
@@ -717,6 +730,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixDiagScale] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -725,6 +739,7 @@ CONTAINS
         WRITE(*,*) '[MatrixDiagScale]   C missing'
       IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
         WRITE(*,*) '[MatrixDiagScale]   x missing'
+#endif
 #endif
 
       IF ( incx == 1 ) THEN
@@ -893,6 +908,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[LinearLeastSquares] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -905,6 +921,7 @@ CONTAINS
         WRITE(*,*) '[LinearLeastSquares]   work missing'
       IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
         WRITE(*,*) '[LinearLeastSquares]   info missing'
+#endif
 #endif
 
       CALL DGELS &
@@ -952,10 +969,12 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[VectorNorm2] Data not present on device'
       IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
         WRITE(*,*) '[VectorNorm2]   x missing'
+#endif
 #endif
 
       xnorm = DNRM2( n, x, incx )
@@ -1045,10 +1064,12 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[VectorVectorAdd] Data not present on device'
       IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
         WRITE(*,*) '[VectorVectorAdd]   x missing'
+#endif
 #endif
 
       CALL DAXPY( n, alpha, x, incx, y, incy )
@@ -1102,6 +1123,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[VectorGather] Data not present on device'
       IF ( .not. device_is_present( hxval, mydevice, sizeof_xval ) ) &
@@ -1110,6 +1132,7 @@ CONTAINS
         WRITE(*,*) '[VectorGather]   xind missing'
       IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
         WRITE(*,*) '[VectorGather]   y missing'
+#endif
 #endif
 
       DO i = 1, nnz
