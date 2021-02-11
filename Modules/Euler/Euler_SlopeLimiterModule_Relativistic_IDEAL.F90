@@ -250,9 +250,9 @@ CONTAINS
         iNX = NodeNumberX( iNX1, iNX2, iNX3 )
 
         LegendreX(iNX,iPol) &
-          = P_X1  (IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNX1) ) &
-            * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNX2) ) &
-            * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNX3) )
+          = P_X1  (IndPX_Q(1,iPol)) % P( NodesX1(iNX1) ) &
+            * P_X2(IndPX_Q(2,iPol)) % P( NodesX2(iNX2) ) &
+            * P_X3(IndPX_Q(3,iPol)) % P( NodesX3(iNX3) )
 
       END DO
       END DO
