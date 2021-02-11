@@ -175,7 +175,7 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_R(1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -189,8 +189,23 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming )
 
+    ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
+                dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP          GE, GX, U_F, U_R ) &
+    !$OMP MAP( alloc: dU_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         GE, GX, U_F, U_R ) &
+    !$ACC CREATE( dU_R )
+#endif
 
     CALL TimersStart( Timer_Streaming_BCs )
 
@@ -199,17 +214,13 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( U_F, U_R )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( U_F, U_R )
+#endif
 
     CALL TimersStop( Timer_Streaming_BCs )
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$OMP MAP( alloc: dU_R )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
-#endif
 
     CALL InitializeIncrement_TwoMoment_Explicit( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
@@ -267,7 +278,7 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_Divergence_X3 )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET UPDATE FROM( dU_R )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( dU_R )
 #endif
@@ -279,21 +290,24 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( dU_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE( dU_R )
+#endif
+
     ! --- Multiply Inverse Mass Matrix ---
 
     CALL TimersStart( Timer_Streaming_InverseMassMatrix )
 
-    ASSOCIATE &
-      ( dZ1 => MeshE    % Width, &
-        dZ2 => MeshX(1) % Width, &
-        dZ3 => MeshX(2) % Width, &
-        dZ4 => MeshX(3) % Width )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(8) &
+    !$ACC PRIVATE( iNodeZ ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, dZ1, dZ2, dZ3, dZ4, GX, GE, dU_R, Weights_q )
+#elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(8) &
     !$OMP PRIVATE( iNodeZ )
 #endif
@@ -325,16 +339,23 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dZ1, etc.
-
     CALL TimersStop( Timer_Streaming_InverseMassMatrix )
 
     CALL FinalizeIncrement_TwoMoment_Explicit
 
-#if defined( THORNADO_OACC )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: dU_R, U_R, U_F ) &
+    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               GE, GX )
+#elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( GE, GX, U_F, U_R, dU_R )
+    !$ACC COPYOUT( dU_R, U_R, U_F ) &
+    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         GE, GX, U_F, U_R, dU_R )
 #endif
+
+    END ASSOCIATE
 
     CALL TimersStop( Timer_Streaming )
 
@@ -516,6 +537,7 @@ CONTAINS
     CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Geometry Fields ---
+
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -1193,6 +1215,8 @@ CONTAINS
     ! --- Permute Geometry Fields ---
 
     CALL TimersStart( Timer_Streaming_Permute )
+
+
 
 
 #if   defined( THORNADO_OMP_OL )
@@ -5113,8 +5137,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, &
-    !$ACC          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3,  &
-    !$ACC          uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
+    !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3,  &
+    !$ACC         uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -5135,23 +5159,61 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET, INTENT(in) :: &
-      GX_K (:,iZP_B0(2):,iZP_B0(3):,iZP_B0(4)-1:,:), &
-      GX_F (:,iZP_B0(2):,iZP_B0(3):,iZP_B0(4)  :,:)
+    REAL(DP), TARGET, CONTIGUOUS, INTENT(in) :: &
+      GX_K (nDOFX, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)-1:iZP_E0(4)+1, &
+            nGF), &
+      GX_F (nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            nGF)
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET, INTENT(in) :: &
-      uCF_K(:,iZP_B0(2):,iZP_B0(3):,iZP_B0(4)-1:,:), &
-      uCF_L(:,iZP_B0(2):,iZP_B0(3):,iZP_B0(4)  :,:), &
-      uCF_R(:,iZP_B0(2):,iZP_B0(3):,iZP_B0(4)  :,:)
+    REAL(DP), TARGET, CONTIGUOUS, INTENT(in) :: &
+      uCF_K(1:nDOFX, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)-1:iZP_E0(4)+1, &
+            1:nCF), &
+      uCF_L(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCF), &
+      uCF_R(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCF)
 
     ! --- Conserved Radiation Fields ---
 
-    REAL(DP), TARGET, INTENT(in) :: &
-      uCR_K(:,iZP_B0(1):,iZP_B0(2):,iZP_B0(3):,:,iZP_B0(4)-1:,:), &
-      uCR_L(:,iZP_B0(1):,iZP_B0(2):,iZP_B0(3):,:,iZP_B0(4)  :,:), &
-      uCR_R(:,iZP_B0(1):,iZP_B0(2):,iZP_B0(3):,:,iZP_B0(4)  :,:)
+    REAL(DP), TARGET, CONTIGUOUS, INTENT(in) :: &
+      uCR_K(1:nDOFZ, &
+            iZP_B0(1)  :iZP_E0(1)  , &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            1:nSpecies, &
+            iZP_B0(4)-1:iZP_E0(4)+1, &
+            1:nCR), &
+      uCR_L(1:nDOFZ_X, &
+            iZP_B0(1)  :iZP_E0(1)  , &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            1:nSpecies, &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCR), &
+      uCR_R(1:nDOFZ_X, &
+            iZP_B0(1)  :iZP_E0(1)  , &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            1:nSpecies, &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCR)
 
     INTEGER :: iZP1, iZP2, iZP3, iZP4, iS, iNodeE
     INTEGER :: iX_K, iZ_K, iNodeX, iNodeZ
