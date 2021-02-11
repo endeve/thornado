@@ -101,6 +101,7 @@ CONTAINS
     REAL(DP) :: E(nE_LeastSquares, nDOFE), E_R, A_T(nDOFX), B_T(nDOFX)
     INTEGER :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
 
+    
     SELECT CASE ( bcZ(1) )
 
     CASE ( 0 ) ! No Boundary Condition
@@ -272,6 +273,7 @@ CONTAINS
 
           iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
+
           iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
 
        !   ! --- Inner Boundary ---
@@ -292,7 +294,6 @@ CONTAINS
       END DO
       END DO
       END DO
-
 
     CASE DEFAULT
 
