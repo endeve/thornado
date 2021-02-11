@@ -1007,6 +1007,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
+#ifdef HYDRO_RELATIVISTIC
+
     IF( ANY( iErr_L .NE. 0 ) .OR. &
         ANY( iErr_R .NE. 0 ) .OR. &
         ANY( iErr_M .NE. 0 ) .OR. &
@@ -1093,6 +1095,8 @@ CONTAINS
       END DO
 
     END IF
+
+#endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -1802,6 +1806,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
+#ifdef HYDRO_RELATIVISTIC
+
     IF( ANY( iErr_L .NE. 0 ) .OR. &
         ANY( iErr_R .NE. 0 ) .OR. &
         ANY( iErr_M .NE. 0 ) .OR. &
@@ -1888,6 +1894,8 @@ CONTAINS
       END DO
 
     END IF
+
+#endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -2597,6 +2605,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
+#ifdef HYDRO_RELATIVISTIC
+
     IF( ANY( iErr_L .NE. 0 ) .OR. &
         ANY( iErr_R .NE. 0 ) .OR. &
         ANY( iErr_M .NE. 0 ) .OR. &
@@ -2683,6 +2693,8 @@ CONTAINS
       END DO
 
     END IF
+
+#endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -5138,6 +5150,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
+#ifdef HYDRO_RELATIVISTIC
+
     IF( ANY( iErr .NE. 0 ) )THEN
 
       WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
@@ -5161,6 +5175,8 @@ CONTAINS
       END DO
 
     END IF
+
+#endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
