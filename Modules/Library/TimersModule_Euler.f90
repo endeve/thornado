@@ -46,12 +46,27 @@ MODULE TimersModule_Euler
 
   ! --- Discontinuity Detection ---
 
-  REAL(DP), PUBLIC :: Timer_Euler_DD_ShockDetector
+  ! --- Troubled-Cell Indicator
+
   REAL(DP), PUBLIC :: Timer_Euler_DD_TCI
+  REAL(DP), PUBLIC :: Timer_Euler_DD_TCI_DetectTroubledCells
+  REAL(DP), PUBLIC :: Timer_Euler_DD_TCI_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_DD_TCI_CopyOut
+  REAL(DP), PUBLIC :: Timer_Euler_DD_TCI_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_DD_TCI_Integrate
+
+  ! --- Shock Detector ---
+
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_DetectShocks
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_CopyOut
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_Integrate
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_ComputePrimitive
+  REAL(DP), PUBLIC :: Timer_Euler_DD_SD_ErrorCheck
 
   ! --- Limiter-specific ---
-
-  REAL(DP), PUBLIC :: Timer_Euler_PositivityLimiter
 
   ! --- Slope-Limiter ---
 
@@ -62,8 +77,12 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_SL_Mapping
   REAL(DP), PUBLIC :: Timer_Euler_SL_CopyIn
   REAL(DP), PUBLIC :: Timer_Euler_SL_CopyOut
-  REAL(DP), PUBLIC :: Timer_Euler_SL_Integrate
   REAL(DP), PUBLIC :: Timer_Euler_SL_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_SL_Integrate
+
+  ! --- Positivity-Limiter ---
+
+  REAL(DP), PUBLIC :: Timer_Euler_PositivityLimiter
 
   ! --- Miscellaneous ---
 
@@ -116,10 +135,21 @@ CONTAINS
     Timer_Euler_Permute     = SqrtTiny
     Timer_Euler_Interpolate = SqrtTiny
 
-    Timer_Euler_DD_ShockDetector = SqrtTiny
-    Timer_Euler_DD_TCI           = SqrtTiny
+    Timer_Euler_DD_TCI                     = SqrtTiny
+    Timer_Euler_DD_TCI_DetectTroubledCells = SqrtTiny
+    Timer_Euler_DD_TCI_CopyIn              = SqrtTiny
+    Timer_Euler_DD_TCI_CopyOut             = SqrtTiny
+    Timer_Euler_DD_TCI_Permute             = SqrtTiny
+    Timer_Euler_DD_TCI_Integrate           = SqrtTiny
 
-    Timer_Euler_PositivityLimiter = SqrtTiny
+    Timer_Euler_DD_SD                  = SqrtTiny
+    Timer_Euler_DD_SD_DetectShocks     = SqrtTiny
+    Timer_Euler_DD_SD_CopyIn           = SqrtTiny
+    Timer_Euler_DD_SD_CopyOut          = SqrtTiny
+    Timer_Euler_DD_SD_Permute          = SqrtTiny
+    Timer_Euler_DD_SD_Integrate        = SqrtTiny
+    Timer_Euler_DD_SD_ComputePrimitive = SqrtTiny
+    Timer_Euler_DD_SD_ErrorCheck       = SqrtTiny
 
     Timer_Euler_SlopeLimiter  = SqrtTiny
     Timer_Euler_SL_LimitCells = SqrtTiny
@@ -130,6 +160,8 @@ CONTAINS
     Timer_Euler_SL_CopyOut    = SqrtTiny
     Timer_Euler_SL_Integrate  = SqrtTiny
     Timer_Euler_SL_Permute    = SqrtTiny
+
+    Timer_Euler_PositivityLimiter = SqrtTiny
 
     Timer_GravitySolver            = SqrtTiny
     Timer_Euler_BoundaryConditions = SqrtTiny
@@ -148,11 +180,11 @@ CONTAINS
     LOGICAL  :: Verbose, SuppressApplicationDriver, WriteAtIntermediateTime
     REAL(DP) :: TotalTime
 
-    CHARACTER(6)  :: Label_Level1 = '(8x,A)'
+    CHARACTER(6)  :: Label_Level1 = '(6x,A)'
 
-    CHARACTER(64) :: TimeSL = '(10x,A,ES10.3E3,A,F6.3,A,F6.3,A)'
-    CHARACTER(64) :: TimeL1 = '(10x,A,ES10.3E3,A,F6.3,A)'
-    CHARACTER(64) :: TimeL2 = '(12x,A,ES10.3E3,A,F6.3,A,F6.3,A)'
+    CHARACTER(64) :: TimeL3 = '(8x,A,ES10.3E3,A,ES10.3E3,A,ES10.3E3)'
+    CHARACTER(64) :: TimeL1 = '(8x,A,ES10.3E3,A,F6.3,A)'
+    CHARACTER(64) :: TimeL2 = '(10x,A,ES10.3E3,A,F6.3,A,F6.3,A)'
 
     IF( .NOT. TimeIt_Euler ) RETURN
 
@@ -173,11 +205,11 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,'(4x,A)') 'Timers Summary (Euler)'
-      WRITE(*,'(4x,A)') '----------------------'
+      WRITE(*,'(2x,A)') 'Timers Summary (Euler)'
+      WRITE(*,'(2x,A)') '----------------------'
       WRITE(*,*)
 
-      WRITE(*,'(6x,A,ES13.6E3,A)') &
+      WRITE(*,'(4x,A,ES13.6E3,A)') &
         'Total run-time = ', Timer_Euler_Program, ' s'
 
     END IF
@@ -194,7 +226,7 @@ CONTAINS
                     + Timer_Euler_InputOutput &
                     + Timer_Euler_Finalize
 
-      WRITE(*,'(10x,A,ES13.6E3,A,F7.3,A)') &
+      WRITE(*,'(8x,A,ES13.6E3,A,F7.3,A)') &
         'Timers = ', TotalTime, ' s = ', &
         Hundred * TotalTime / Timer_Euler_Program, ' %'
       WRITE(*,*)
@@ -384,21 +416,116 @@ CONTAINS
           * Timer_Euler_PositivityLimiter / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
-      WRITE(*,TRIM(Label_Level1)) 'Discontinuity Detection'
+      WRITE(*,TRIM(Label_Level1)) 'Troubled-Cell Indicator'
       WRITE(*,TRIM(Label_Level1)) '-----------------------'
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
-        '  Shock Detector:               ', &
-        Timer_Euler_DD_ShockDetector, ' s = ', &
-        Hundred &
-          * Timer_Euler_DD_ShockDetector / Timer_Euler_Program, ' %'
+      TotalTime = Timer_Euler_DD_TCI_DetectTroubledCells &
+                    + Timer_Euler_DD_TCI_CopyIn &
+                    + Timer_Euler_DD_TCI_CopyOut &
+                    + Timer_Euler_DD_TCI_Permute &
+                    + Timer_Euler_DD_TCI_Integrate
 
-      WRITE(*,TRIM(TimeL1)) &
-        '  Troubled-Cell Indicator:      ', &
+      WRITE(*,TRIM(TimeL3)) &
+        'Troubled-Cell Indicator: ', &
         Timer_Euler_DD_TCI, ' s = ', &
-        Hundred &
-          * Timer_Euler_DD_TCI / Timer_Euler_Program, ' %'
+        Timer_Euler_DD_TCI / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_DD_TCI
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Detect Troubled Cells: ', &
+        Timer_Euler_DD_TCI_DetectTroubledCells, ' s = ', &
+        Timer_Euler_DD_TCI_DetectTroubledCells / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_TCI_DetectTroubledCells / Timer_Euler_DD_TCI
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyIn:                ', &
+        Timer_Euler_DD_TCI_CopyIn, ' s = ', &
+        Timer_Euler_DD_TCI_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_TCI_CopyIn / Timer_Euler_DD_TCI
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyOut:               ', &
+        Timer_Euler_DD_TCI_CopyOut, ' s = ', &
+        Timer_Euler_DD_TCI_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_TCI_CopyOut / Timer_Euler_DD_TCI
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Permute:               ', &
+        Timer_Euler_DD_TCI_Permute, ' s = ', &
+        Timer_Euler_DD_TCI_Permute / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_TCI_Permute / Timer_Euler_DD_TCI
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Integrate:             ', &
+        Timer_Euler_DD_TCI_Integrate, ' s = ', &
+        Timer_Euler_DD_TCI_Integrate / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_TCI_Integrate / Timer_Euler_DD_TCI
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label_Level1)) 'Shock Detector'
+      WRITE(*,TRIM(Label_Level1)) '--------------'
+      WRITE(*,*)
+
+      TotalTime = Timer_Euler_DD_SD_DetectShocks &
+                    + Timer_Euler_DD_SD_CopyIn &
+                    + Timer_Euler_DD_SD_CopyOut &
+                    + Timer_Euler_DD_SD_Permute &
+                    + Timer_Euler_DD_SD_Integrate &
+                    + Timer_Euler_DD_SD_ComputePrimitive &
+                    + Timer_Euler_DD_SD_ErrorCheck
+
+      WRITE(*,TRIM(TimeL3)) &
+        'Shock Detector: ', &
+        Timer_Euler_DD_SD, ' s = ', &
+        Timer_Euler_DD_SD / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_DD_SD
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Detect Shocks:     ', &
+        Timer_Euler_DD_SD_DetectShocks, ' s = ', &
+        Timer_Euler_DD_SD_DetectShocks / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_DetectShocks / Timer_Euler_DD_SD
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyIn:            ', &
+        Timer_Euler_DD_SD_CopyIn, ' s = ', &
+        Timer_Euler_DD_SD_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_CopyIn / Timer_Euler_DD_SD
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyOut:           ', &
+        Timer_Euler_DD_SD_CopyOut, ' s = ', &
+        Timer_Euler_DD_SD_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_CopyOut / Timer_Euler_DD_SD
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Permute:           ', &
+        Timer_Euler_DD_SD_Permute, ' s = ', &
+        Timer_Euler_DD_SD_Permute / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_Permute / Timer_Euler_DD_SD
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Integrate:         ', &
+        Timer_Euler_DD_SD_Integrate, ' s = ', &
+        Timer_Euler_DD_SD_Integrate / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_Integrate / Timer_Euler_DD_SD
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Compute Primitive: ', &
+        Timer_Euler_DD_SD_ComputePrimitive, ' s = ', &
+        Timer_Euler_DD_SD_ComputePrimitive / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_ComputePrimitive / Timer_Euler_DD_SD
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Error Check:       ', &
+        Timer_Euler_DD_SD_ErrorCheck, ' s = ', &
+        Timer_Euler_DD_SD_ErrorCheck / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DD_SD_ErrorCheck / Timer_Euler_DD_SD
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'Slope-Limiter'
@@ -414,79 +541,61 @@ CONTAINS
                     + Timer_Euler_SL_Integrate &
                     + Timer_Euler_SL_Permute
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         'Slope-Limiter: ', &
         Timer_Euler_SlopeLimiter, ' s = ', &
-        Hundred &
-          * Timer_Euler_SlopeLimiter / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * TotalTime / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SlopeLimiter / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_SlopeLimiter
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  Limit Cells:                  ', &
         Timer_Euler_SL_LimitCells, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_LimitCells / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_LimitCells / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_LimitCells / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_LimitCells / Timer_Euler_SlopeLimiter
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  Characteristic Decomposition: ', &
         Timer_Euler_SL_CharDecomp, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_CharDecomp / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_CharDecomp / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_CharDecomp / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_CharDecomp / Timer_Euler_SlopeLimiter
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  Polynomial Mapping:           ', &
         Timer_Euler_SL_Mapping, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_Mapping / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_Mapping / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_Mapping / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_Mapping / Timer_Euler_SlopeLimiter
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  Conservative Correction:      ', &
         Timer_Euler_SL_ConsCorr, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_ConsCorr / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_ConsCorr / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_ConsCorr / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_ConsCorr / Timer_Euler_SlopeLimiter
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  CopyIn:                       ', &
         Timer_Euler_SL_CopyIn, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_CopyIn / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_CopyIn / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_CopyIn / Timer_Euler_SlopeLimiter
 
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  CopyOut:                      ', &
         Timer_Euler_SL_CopyOut, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_CopyOut / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_CopyOut / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_CopyOut / Timer_Euler_SlopeLimiter
 
-      WRITE(*,TRIM(TimeSL)) &
-        '  Integrate:                    ', &
-        Timer_Euler_SL_Integrate, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_Integrate / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_Integrate / Timer_Euler_SlopeLimiter, ' %'
-
-      WRITE(*,TRIM(TimeSL)) &
+      WRITE(*,TRIM(TimeL3)) &
         '  Permute:                      ', &
         Timer_Euler_SL_Permute, ' s = ', &
-        Hundred &
-          * Timer_Euler_SL_Permute / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SL_Permute / Timer_Euler_SlopeLimiter, ' %'
+        Timer_Euler_SL_Permute / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_Permute / Timer_Euler_SlopeLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Integrate:                    ', &
+        Timer_Euler_SL_Integrate, ' s = ', &
+        Timer_Euler_SL_Integrate / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SL_Integrate / Timer_Euler_SlopeLimiter
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'Miscellaneous'
