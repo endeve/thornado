@@ -683,6 +683,7 @@ CONTAINS
 
     ! --- Compute Face Velocity Components ---
 
+
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
@@ -3260,13 +3261,13 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ2, iZ_B0, iZ_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
-    !$OMP             uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, &
+    !$OMP             uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
     !$OMP             dV_u_dX1, dV_d_dX1 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ2, iZ_B0, iZ_E0 ) &
     !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
-    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, &
+    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
     !$ACC         dV_u_dX1, dV_d_dX1 )
 #endif
 
@@ -3388,7 +3389,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U_F, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( uCF_K, uCF, iZ_B0, iZ_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
@@ -3625,8 +3626,6 @@ CONTAINS
     END DO
     END DO
 
-    ! >>> Could Combine the following two loops <<<
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( iGF_h )
@@ -3669,14 +3668,14 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ2, iZ_B0, iZ_E0, &
-    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_X1, &
-    !$OMP               uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, &
+    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
+    !$OMP               uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
     !$OMP               dV_u_dX1, dV_d_dX1 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ2, iZ_B0, iZ_E0, &
-    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_X1, &
-    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, &
+    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
+    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
     !$ACC         dV_u_dX1, dV_d_dX1 )
 #endif
 
@@ -3820,19 +3819,19 @@ CONTAINS
       RETURN
     END IF
 
-    ASSOCIATE( dZ3 => MeshX(1) % Width )
+    ASSOCIATE( dZ3 => MeshX(2) % Width )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ3, iZ_B0, iZ_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
-    !$OMP             uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, &
+    !$OMP             uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
     !$OMP             dV_u_dX2, dV_d_dX2 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ3, iZ_B0, iZ_E0 ) &
     !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
-    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, &
+    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
     !$ACC         dV_u_dX2, dV_d_dX2 )
 #endif
 
@@ -3954,7 +3953,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U_F, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( uCF_K, uCF, iZ_B0, iZ_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
@@ -4235,14 +4234,14 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ3, iZ_B0, iZ_E0, &
-    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_X2, &
-    !$OMP               uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, &
+    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
+    !$OMP               uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
     !$OMP               dV_u_dX2, dV_d_dX2 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ3, iZ_B0, iZ_E0, &
-    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_X2, &
-    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, &
+    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
+    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
     !$ACC         dV_u_dX2, dV_d_dX2 )
 #endif
 
@@ -4386,19 +4385,19 @@ CONTAINS
       RETURN
     END IF
 
-    ASSOCIATE( dZ3 => MeshX(1) % Width )
+    ASSOCIATE( dZ4 => MeshX(3) % Width )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ3, iZ_B0, iZ_E0 ) &
+    !$OMP MAP( to: dZ4, iZ_B0, iZ_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
-    !$OMP             uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, &
+    !$OMP             uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
     !$OMP             dV_u_dX3, dV_d_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ3, iZ_B0, iZ_E0 ) &
+    !$ACC COPYIN( dZ4, iZ_B0, iZ_E0 ) &
     !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
-    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, &
+    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
     !$ACC         dV_u_dX3, dV_d_dX3 )
 #endif
 
@@ -4520,7 +4519,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U_F, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( uCF_K, uCF, iZ_B0, iZ_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
@@ -4726,7 +4725,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, dZ3, &
+    !$ACC PRESENT( iZ_B0, iZ_E0, dZ4, &
     !$ACC          dh_d_dX3, dV_u_dX3, dV_d_dX3, WeightsX_q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
@@ -4740,15 +4739,15 @@ CONTAINS
 
         dh_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
           = dh_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
-              / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
+              / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
         dV_u_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
          = dV_u_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
-             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
+             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
         dV_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
          = dV_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
-             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
+             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
       END DO
       END DO
@@ -4800,15 +4799,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ3, iZ_B0, iZ_E0, &
-    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_X3, &
-    !$OMP               uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, &
+    !$OMP MAP( release: dZ4, iZ_B0, iZ_E0, &
+    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
+    !$OMP               uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
     !$OMP               dV_u_dX3, dV_d_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE( dZ3, iZ_B0, iZ_E0, &
-    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_X3, &
-    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, &
+    !$ACC DELETE( dZ4, iZ_B0, iZ_E0, &
+    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
+    !$ACC         uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
     !$ACC         dV_u_dX3, dV_d_dX3 )
 #endif
 
