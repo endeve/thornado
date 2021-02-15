@@ -2454,12 +2454,20 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
 
-    REAL(DP) :: EdgeEnergyCubed, Alpha, Beta
+    REAL(DP) :: EdgeEnergyCubed, Beta
     REAL(DP) :: A(3,3), Lambda(3)
     REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33
     REAL(DP) :: Flux_K(nCR), dFlux_K(nPR)
     REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
     REAL(DP) :: Flux_R(nCR), uPR_R(nPR)
+
+    ! --- Eigenvalues ---
+
+    REAL(DP) :: &
+      Alpha(nDOFX, &
+            iZ_B0(2)  :iZ_E0(2)  , &
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)  )
 
     ! --- Geometry Fields ---
 
@@ -2560,7 +2568,7 @@ CONTAINS
     !$OMP             dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP             dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$OMP             dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$OMP             NumericalFlux, Flux_q, dU_E )
+    !$OMP             Alpha, NumericalFlux, Flux_q, dU_E )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( xZ1, dZ1, dZ2, dZ3, dZ4, &
@@ -2569,7 +2577,7 @@ CONTAINS
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$ACC         dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC         NumericalFlux, Flux_q, dU_E )
+    !$ACC         Alpha, NumericalFlux, Flux_q, dU_E )
 #endif
 
     ! --- Calculate Weak Derivatives ---
@@ -2724,6 +2732,53 @@ CONTAINS
 
     ! --- Numerical Flux ---
 
+    ! --- Eigenvalues ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( A, Lambda )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( A, Lambda ) &
+    !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, Alpha, iZ_B0, iZ_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( A, Lambda )
+#endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        ! --- Quadratic Form Matrix ---
+
+        A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
+                                dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
+                              + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
+                                dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
+                              + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
+        A(:,2) = Half * [       dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+                              + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
+                          Two * dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
+                                dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
+                              + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
+        A(:,3) = Half * [       dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+                              + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
+                                dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
+                              + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
+                          Two * dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
+
+        !CALL DSYEV( 'N', 'U', 3, A, 3, Lambda, WORK, 8, INFO )
+        CALL EigenvaluesSymmetric3( A, Lambda )
+        Alpha(iNodeX,iZ2,iZ3,iZ4) = MAXVAL( ABS( Lambda ) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
     ! --- Left State Primitive ---
 
     CALL ComputePrimitive_TwoMoment_Vector &
@@ -2745,21 +2800,21 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
-    !$OMP          Flux_L, Flux_R, A, Lambda, Alpha EdgeEnergyCubed )
+    !$OMP          Flux_L, Flux_R, A, Lambda, EdgeEnergyCubed )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
-    !$ACC          Flux_L, Flux_R, A, Lambda, Alpha, EdgeEnergyCubed ) &
+    !$ACC          Flux_L, Flux_R, EdgeEnergyCubed ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
     !$ACC          uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          NumericalFlux, SqrtGm_K, Weights_E, xZ1, dZ2, dZ3, dZ4, &
-    !$ACC          PositionIndexZ_F, IndexTableZ_F )
+    !$ACC          Alpha, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
-    !$OMP          Flux_L, Flux_R, A, Lambda, Alpha EdgeEnergyCubed )
+    !$OMP          Flux_L, Flux_R, A, Lambda, EdgeEnergyCubed )
 #endif
     DO iZ_F = 1, nNodesZ_E
 
@@ -2830,35 +2885,12 @@ CONTAINS
 
       EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )**3
 
-      ! --- Quadratic Form Matrix ---
-
-      A(:,1) = Half * [ Two * dV_u_dX1(iNodeZ_E,1,iZ2,iZ3,iZ4), &
-                              dV_u_dX2(iNodeZ_E,1,iZ2,iZ3,iZ4)  &
-                            + dV_u_dX1(iNodeZ_E,2,iZ2,iZ3,iZ4), &
-                              dV_u_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4)  &
-                            + dV_u_dX1(iNodeZ_E,3,iZ2,iZ3,iZ4) ]
-      A(:,2) = Half * [       dV_u_dX1(iNodeZ_E,2,iZ2,iZ3,iZ4)  &
-                            + dV_u_dX2(iNodeZ_E,1,iZ2,iZ3,iZ4), &
-                        Two * dV_u_dX2(iNodeZ_E,2,iZ2,iZ3,iZ4), &
-                              dV_u_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4)  &
-                            + dV_u_dX2(iNodeZ_E,3,iZ2,iZ3,iZ4) ]
-      A(:,3) = Half * [       dV_u_dX1(iNodeZ_E,3,iZ2,iZ3,iZ4)  &
-                            + dV_u_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
-                              dV_u_dX2(iNodeZ_E,3,iZ2,iZ3,iZ4)  &
-                            + dV_u_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
-                        Two * dV_u_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) ]
-
-      ! --- Eigenvalues ---
-
-      !CALL DSYEV( 'N', 'U', 3, A, 3, Lambda, WORK, 8, INFO )
-      CALL EigenvaluesSymmetric3( A, Lambda )
-      Alpha = MAXVAL( ABS( Lambda ) )
-
       DO iCR = 1, nCR
 
         NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
           = NumericalFlux_LLF &
-              ( uPR_L(iCR), uPR_R(iCR), Flux_L(iCR), Flux_R(iCR), Alpha )
+              ( uPR_L(iCR), uPR_R(iCR), Flux_L(iCR), Flux_R(iCR), &
+                Alpha(iNodeZ_E,iZ2,iZ3,iZ4) )
 
         NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
           = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
@@ -2987,13 +3019,6 @@ CONTAINS
     !--------------------------------------------------
 
     CALL TimersStart( Timer_Streaming_Sources )
-
-    CALL ComputePrimitive_TwoMoment_Vector &
-           ( uN_K, uG1_K, uG2_K, uG3_K, &
-             uD_K, uI1_K, uI2_K, uI3_K, &
-             uV1_K, uV2_K, uV3_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             PositionIndexZ_K, nIterations_K )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -3141,7 +3166,7 @@ CONTAINS
     !$OMP               dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP               dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$OMP               dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$OMP               NumericalFlux, Flux_q, dU_E )
+    !$OMP               Alpha, NumericalFlux, Flux_q, dU_E )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( xZ1, dZ1, dZ2, dZ3, dZ4, &
@@ -3150,7 +3175,7 @@ CONTAINS
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$ACC         dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC         NumericalFlux, Flux_q, dU_E )
+    !$ACC         Alpha, NumericalFlux, Flux_q, dU_E )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
