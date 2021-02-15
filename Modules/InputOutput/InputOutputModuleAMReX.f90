@@ -277,7 +277,6 @@ CONTAINS
     LOGICAL                         :: WriteFF_C, WriteFF_P, &
                                        WriteFF_A, WriteFF_D
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
-    TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_geometry)            :: GEOM  (0:nLevels-1)
@@ -448,14 +447,11 @@ CONTAINS
 
     END IF
 
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
              ( MF_plt(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
       CALL MF_plt(iLevel) % setVal( Zero )
-
-      CALL amrex_mfiter_build( MFI, MF_plt(iLevel), tiling = .TRUE. )
 
       iOS = 0
 

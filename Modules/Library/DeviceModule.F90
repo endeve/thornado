@@ -64,6 +64,12 @@ MODULE DeviceModule
 
   INTEGER, PUBLIC :: mydevice, ndevices
 
+  INTERFACE dev_ptr
+    MODULE PROCEDURE dev_ptr_int
+    MODULE PROCEDURE dev_ptr_dp
+    MODULE PROCEDURE dev_ptr_cptr
+  END INTERFACE
+
   INTERFACE QueryOnGPU
     MODULE PROCEDURE QueryOnGPU_3D_DP_1
     MODULE PROCEDURE QueryOnGPU_3D_DP_2
@@ -85,6 +91,7 @@ MODULE DeviceModule
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
   PUBLIC :: on_device
+  PUBLIC :: dev_ptr
   PUBLIC :: QueryOnGpu
 
 CONTAINS
@@ -187,6 +194,51 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION on_device
+
+  TYPE(C_PTR) FUNCTION dev_ptr_int( a )
+    INTEGER, TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
+#endif
+    dev_ptr_int = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_int
+
+  TYPE(C_PTR) FUNCTION dev_ptr_dp( a )
+    REAL(DP), TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
+#endif
+    dev_ptr_dp = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_dp
+
+  TYPE(C_PTR) FUNCTION dev_ptr_cptr( a )
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
+#endif
+    dev_ptr_cptr = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_cptr
 
 
   FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )

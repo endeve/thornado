@@ -11,12 +11,15 @@ PROGRAM main
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
     MF_ComputeTimeStep,                &
     MF_ComputeFromConserved
+  USE MF_UtilitiesModule,     ONLY: & 
+    WriteNodalDataToFile
   USE MyAmrDataModule,                  ONLY: &
     MF_uCR, &
     MF_uPR, &
     MF_uCF, &
     MF_uGF
   USE InitializationModule,             ONLY: &
+    wrt,              &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
@@ -40,6 +43,8 @@ PROGRAM main
     iCycleChk, &
     BA,        &
     GEOM
+  USE ProgramHeaderModule,  ONLY: &
+    nDOFZ
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,      ONLY: &
     MF_Update_IMEX_RK
 
@@ -82,6 +87,25 @@ PROGRAM main
     CALL MF_Update_IMEX_RK &
            ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
             Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    IF( ALL( t + dt .GT. t_wrt ) )THEN
+      t_wrt = t_wrt + dt_wrt
+      wrt   = .TRUE.
+
+    END IF
+
+    IF( wrt )THEN
+
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
+      CALL WriteFieldsAMReX_PlotFile &
+               ( t(0), StepNo, &
+                 MF_uCR_Option = MF_uCR, &
+                 MF_uPR_Option = MF_uPR )
+      wrt = .FALSE.
+    END IF
+
+
 !    IF (t(0) .GE. n) THEN
 !
 !  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
@@ -97,6 +121,12 @@ PROGRAM main
 !
   END DO
  
+  IF (nDOFZ .GT. 1) THEN
+
+    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uCR, 'thornado_')
+
+  END IF
+
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
   CALL WriteFieldsAMReX_Checkpoint & 
@@ -108,6 +138,7 @@ PROGRAM main
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
+
 
   CALL FinalizeProgram( GEOM )
   

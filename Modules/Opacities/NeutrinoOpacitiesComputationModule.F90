@@ -506,7 +506,7 @@ CONTAINS
     !$ACC PRESENT( Me, Mp, Mn, E, T, f0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Mnu, kT ) &
+    !$OMP PRIVATE( Mnu, kT )
 #endif
     DO iX = iX_B, iX_E
       DO iE = iE_B, iE_E
@@ -610,7 +610,7 @@ CONTAINS
     !$ACC PRESENT( Me, Mp, Mn, E, T, f0_1, f0_2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Mnu, kT ) &
+    !$OMP PRIVATE( Mnu, kT )
 #endif
     DO iX = iX_B, iX_E
       DO iE = iE_B, iE_E
@@ -887,7 +887,7 @@ CONTAINS
     !$ACC PRESENT( Mnu,  dMnudT,  dMnudY, f0, df0dY, df0dU, E, T, dUdT, dUdY )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( kT ) &
+    !$OMP PRIVATE( kT )
 #endif
     DO iX = iX_B, iX_E
       DO iE = iE_B, iE_E

@@ -4,6 +4,10 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFE, nDOFX, nDimsX
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_SlopeLimiter
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
   USE UtilitiesModule, ONLY: &
@@ -148,6 +152,8 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter .OR. nDOFX == 1 ) RETURN
 
+    CALL TimersStart( Timer_SlopeLimiter )
+
     IF( PRESENT( SuppressBC_Option ) )THEN
       SuppressBC = SuppressBC_Option
     ELSE
@@ -160,9 +166,6 @@ CONTAINS
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
     END IF
-
-    PRINT*
-    PRINT*, "      ApplySlopeLimiter_TwoMoment"
 
     SELECT CASE ( TRIM( SlopeLimiterMethod ) )
 
@@ -182,6 +185,8 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
     END SELECT
+
+    CALL TimersStop( Timer_SlopeLimiter )
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
 
@@ -225,8 +230,6 @@ CONTAINS
     REAL(DP) :: &
       uCR_K(1:nCR,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-
-    PRINT*, "      ApplySlopeLimiter_TVD"
 
     iX_B0 = iZ_B0(2:4)
     iX_E0 = iZ_E0(2:4)

@@ -8,7 +8,9 @@ MODULE Euler_ErrorModule
 
   PUBLIC :: DescribeError_Euler
 
+
 CONTAINS
+
 
   SUBROUTINE DescribeError_Euler( iErr, Message_Option )
 
@@ -173,5 +175,6 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE DescribeError_Euler
+
 
 END MODULE Euler_ErrorModule

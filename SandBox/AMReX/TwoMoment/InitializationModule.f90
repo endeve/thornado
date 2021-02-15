@@ -172,6 +172,8 @@ MODULE InitializationModule
 
   PUBLIC :: InitializeProgram
 
+  LOGICAL, PUBLIC :: wrt, chk
+
   REAL(AR), PARAMETER :: Zero = 0.0_AR
   REAL(AR), PARAMETER :: One  = 1.0_AR
   REAL(AR), PARAMETER :: Two  = 2.0_AR
@@ -262,6 +264,10 @@ CONTAINS
       CALL ReadCheckpointFile( iRestart )
 
     END IF
+
+    wrt = .FALSE.
+    chk = .FALSE.
+
 
      DO iDim = 1, 3
       CALL CreateMesh &

@@ -18,7 +18,11 @@
     nSpecies, &
     nCR
   USE ProgramHeaderModule, ONLY: &
-    nDOF
+    nDOF, nDOFE, nDOFX
+  USE GeometryFieldsModuleE, ONLY: &
+    nGE
+  USE GeometryFieldsModule, ONLY: &
+    nGF
   ! --- Local Modules ---
 
   USE MyAmrModule,              ONLY: &

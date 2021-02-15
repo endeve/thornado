@@ -1,29 +1,46 @@
 MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, &
+    Zero, &
+    Half, &
+    One
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX
+    nNodesX, &
+    nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    NodesX_q, WeightsX_q, &
-    nDOFX_X1, NodesX1, &
-    nDOFX_X2, NodesX2, &
-    nDOFX_X3, NodesX3
+    WeightsX_q, &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, LX_X1_Up, &
-    LX_X2_Dn, LX_X2_Up, &
-    LX_X3_Dn, LX_X3_Up
+    LX_X1_Dn, &
+    LX_X1_Up, &
+    LX_X2_Dn, &
+    LX_X2_Up, &
+    LX_X3_Dn, &
+    LX_X3_Up
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_h_1, iGF_h_2, iGF_h_3, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE

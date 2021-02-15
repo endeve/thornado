@@ -3,7 +3,7 @@ MODULE UtilitiesModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nNodesE
+    nNodesX, nNodesE, nDimsX
 
 #if defined USE_AMREX_TRUE
 
@@ -30,6 +30,7 @@ MODULE UtilitiesModule
   PUBLIC :: WriteVector
   PUBLIC :: WriteMatrix
   PUBLIC :: WriteRank3Tensor
+  PUBLIC :: IsCornerCell
   PUBLIC :: thornado_abort
 
   INTERFACE InitializeWeights
@@ -105,6 +106,11 @@ CONTAINS
 
 
   PURE INTEGER FUNCTION NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
 
     INTEGER, INTENT(in) :: iNodeX1, iNodeX2, iNodeX3
 
@@ -296,6 +302,12 @@ CONTAINS
 
   REAL(DP) PURE ELEMENTAL FUNCTION MinMod2( a, b )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: a, b
 
     IF( a * b > 0.0_DP )THEN
@@ -314,6 +326,12 @@ CONTAINS
 
   REAL(DP) PURE ELEMENTAL FUNCTION MinMod( a, b, c )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: a, b, c
 
     MinMod = MinMod2( a, MinMod2( b, c ) )
@@ -323,6 +341,12 @@ CONTAINS
 
 
   REAL(DP) PURE ELEMENTAL FUNCTION MinModB( a, b, c, dx, M )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: a, b, c, dx, M
 
@@ -389,6 +413,96 @@ CONTAINS
     CLOSE( FUNIT )
 
   END SUBROUTINE WriteRank3Tensor
+
+
+  LOGICAL FUNCTION IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 )
+
+    INTEGER, INTENT(in) :: iX_B1(3), iX_E1(3), iX1, iX2, iX3
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    IsCornerCell = .FALSE.
+
+#ifdef USE_AMREX_TRUE
+
+    RETURN
+
+#endif
+
+    IF     ( nDimsX .EQ. 1 )THEN
+
+      RETURN
+
+    ELSE IF( nDimsX .EQ. 2 )THEN
+
+      IF( iX1 .EQ. iX_B1(1) .OR. iX1 .EQ. iX_E1(1) )THEN
+
+        IF( iX2 .EQ. iX_B1(2) .OR. iX2 .EQ. iX_E1(2) )THEN
+
+          IsCornerCell = .TRUE.
+          RETURN
+
+        END IF
+
+      END IF
+
+      IF( iX2 .EQ. iX_B1(2) .OR. iX2 .EQ. iX_E1(2) )THEN
+
+        IF( iX1 .EQ. iX_B1(1) .OR. iX1 .EQ. iX_E1(1) )THEN
+
+          IsCornerCell = .TRUE.
+          RETURN
+
+        END IF
+
+      END IF
+
+    ELSE
+
+      IF( iX1 .EQ. iX_B1(1) .OR. iX1 .EQ. iX_E1(1) )THEN
+
+        IF( iX2 .EQ. iX_B1(2) .OR. iX2 .EQ. iX_E1(2) .OR. &
+            iX3 .EQ. iX_B1(3) .OR. iX3 .EQ. iX_E1(3) )THEN
+
+          IsCornerCell = .TRUE.
+          RETURN
+
+        END IF
+
+      END IF
+
+      IF( iX2 .EQ. iX_B1(2) .OR. iX2 .EQ. iX_E1(2) )THEN
+
+        IF( iX1 .EQ. iX_B1(1) .OR. iX1 .EQ. iX_E1(1) .OR. &
+            iX3 .EQ. iX_B1(3) .OR. iX3 .EQ. iX_E1(3) )THEN
+
+          IsCornerCell = .TRUE.
+          RETURN
+
+        END IF
+
+      END IF
+
+      IF( iX3 .EQ. iX_B1(3) .OR. iX3 .EQ. iX_E1(3) )THEN
+
+        IF( iX1 .EQ. iX_B1(1) .OR. iX1 .EQ. iX_E1(1) .OR. &
+            iX2 .EQ. iX_B1(2) .OR. iX2 .EQ. iX_E1(2) )THEN
+
+          IsCornerCell = .TRUE.
+          RETURN
+
+        END IF
+
+      END IF
+
+    END IF
+
+    RETURN
+  END FUNCTION IsCornerCell
 
 
   SUBROUTINE thornado_abort

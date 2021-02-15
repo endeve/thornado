@@ -45,7 +45,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     TimersStart_AMReX_Euler,      &
     TimersStop_AMReX_Euler,       &
     Timer_AMReX_Euler_InteriorBC, &
-    Timer_AMReX_Euler_DataTransfer
+    Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
@@ -111,6 +111,8 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
@@ -122,6 +124,8 @@ CONTAINS
         ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nDF) )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
@@ -142,11 +146,15 @@ CONTAINS
 
         CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
         DEALLOCATE( D  )
 
         DEALLOCATE( U  )
 
         DEALLOCATE( G  )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 
@@ -189,7 +197,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
@@ -203,17 +211,17 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nDF) )
 
-        ALLOCATE( dU(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nCF) )
+        ALLOCATE( dU(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF) )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
         CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
-
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         ! --- Apply boundary conditions to physical boundaries ---
 
@@ -230,11 +238,11 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE. )
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
-
-        CALL thornado2amrex_Euler( nCF, iX_B0, iX_E0, duCF, dU )
+        CALL thornado2amrex_Euler( nCF, iX_B1, iX_E1, duCF, dU )
 
         CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF , D )
+
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         DEALLOCATE( dU )
 
@@ -244,7 +252,7 @@ CONTAINS
 
         DEALLOCATE( G  )
 
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 

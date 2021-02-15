@@ -295,7 +295,6 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-    
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
                 = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
@@ -665,6 +664,7 @@ CONTAINS
             iNodeX1 = NodeNumberTableX(1,iNodeX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+!print*, X1    
             uPF_K(iNodeX,iPF_D ) = 1.0_AR
 
             
@@ -685,8 +685,6 @@ CONTAINS
                = 0.0_AR 
             END IF
 
-            W = 1.0_AR / SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1)**2) 
-print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
       !write(1,*) X1
             uPF_K(iNodeX,iPF_V2) = V_0(2)
             uPF_K(iNodeX,iPF_V3) = V_0(3)
@@ -729,21 +727,24 @@ print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
+            
+              W = 1.0_AR / SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1)**2) 
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
  
-              E = NodeCoordinate( MeshE, iZ1, iNodeE ) 
+              E = NodeCoordinate( MeshE, iZ1, iNodeE )
+             !print*,E
               S = SQRT(1.0_AR+ uPF_K(iNodeX,iPF_V1))/SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1))
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                 =1d-8
-                 != 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
-                  != S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
+                 !=1d-8
+                 = 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
+                 != 1.0_AR / ( EXP( E ) - 1.0_AR )
+                 ! = S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
                  ! = 0.5_AR
                   ! = 0.5_AR * ( 1.0_AR - Mu_0 ) / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                 != 0.999_AR * uPR_K( iNodeZ, iZ1, iPR_D, iS )
-                 =0.0_AR 
-                 != W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 = 0.99_AR * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 !=0.0_AR 
                  != W * 0.5_AR
                  ! = 0.5_AR * ( 1.0_AR + Mu_0 ) * uPR_K(iNodeZ,iZ1,iPR_D,iS)
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &

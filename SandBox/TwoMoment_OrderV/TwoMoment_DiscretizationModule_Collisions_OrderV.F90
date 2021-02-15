@@ -6,13 +6,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     nDOFX, &
     nDOFE, &
     nDOFZ
-  USE TimersModule, ONLY: &
-    TimersStart, &
-    TimersStop, &
-    Timer_Implicit, &
-    Timer_Im_MapForward, &
-    Timer_Im_MapBackward, &
-    Timer_Im_CoupledAA
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
@@ -25,6 +18,13 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Collisions, &
+    Timer_Collisions_Permute, &
+    Timer_Collisions_PrimitiveFluid, &
+    Timer_Collisions_Solve
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeEddingtonTensorComponents_dd
   USE TwoMoment_OpacityModule_OrderV, ONLY: &
@@ -39,8 +39,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
   INTEGER :: iX_B0(3), iX_E0(3)
   INTEGER :: nZ(4), nE, nX(3), nE_G, nX_G
 
-  REAL(DP)              :: PF_N(nPF)
   REAL(DP), ALLOCATABLE :: GX_N(:,:)
+  REAL(DP), ALLOCATABLE :: PF_N(:,:)
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
   REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE :: dCR_N(:,:,:,:)
@@ -50,39 +50,85 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       dt
-    REAL(DP), INTENT(in)  :: &
-      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
-    REAL(DP), INTENT(in)  :: &
-      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
-                   iZ_B1(4):iZ_E1(4),1:nGF)
-    REAL(DP), INTENT(in)  :: &
-      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
-                   iZ_B1(4):iZ_E1(4),1:nCF)
-    REAL(DP), INTENT(in)  :: &
-      U_R (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-    REAL(DP), INTENT(out) :: &
-      dU_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)    :: &
+      GE  (1:nDOFE, &
+           iZ_B1(1):iZ_E1(1), &
+           1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX  (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      U_F (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      dU_F(1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      U_R (1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCR,1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU_R(1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCR,1:nSpecies)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iOP
     INTEGER :: iX1, iX2, iX3, iE
     INTEGER :: iNodeZ, iNodeX, iNodeE, iN_X, iN_E
 
-    CALL TimersStart( Timer_Implicit )
-
-    PRINT*, "      ComputeIncrement_TwoMoment_Implicit (Start)"
+    CALL TimersStart( Timer_Collisions )
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+    DO iCF = 1, nCF
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
+
+      DO iNodeX = 1, nDOFX
+
+        dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -103,10 +149,16 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart( Timer_Im_MapForward )
+    CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Arrange Geometry Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iX1, iX2, iX3, iNodeX )
+#endif
     DO iN_X = 1, nX_G
     DO iGF  = 1, nGF
 
@@ -122,6 +174,12 @@ CONTAINS
 
     ! --- Arrange Fluid Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iX1, iX2, iX3, iNodeX )
+#endif
     DO iN_X = 1, nX_G
     DO iCF  = 1, nCF
 
@@ -137,6 +195,12 @@ CONTAINS
 
     ! --- Arrange Radiation Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iE, iX1, iX2, iX3, iNodeE, iNodeX, iNodeZ )
+#endif
     DO iS   = 1, nSpecies
     DO iCR  = 1, nCR
     DO iN_X = 1, nX_G
@@ -161,6 +225,12 @@ CONTAINS
 
     ! --- Arrange Opacities ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iE, iX1, iX2, iX3, iNodeE, iNodeX, iNodeZ )
+#endif
     DO iS   = 1, nSpecies
     DO iOP  = 1, nOP
     DO iN_X = 1, nX_G
@@ -183,63 +253,85 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Im_MapForward )
+    CALL TimersStop( Timer_Collisions_Permute )
 
-    CALL TimersStart( Timer_Im_CoupledAA )
+    CALL TimersStart( Timer_Collisions_PrimitiveFluid )
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD
+#endif
     DO iN_X = 1, nX_G
 
       CALL ComputePrimitive_Euler_NonRelativistic &
-             ( CF_N(iCF_D ,iN_X), &
-               CF_N(iCF_S1,iN_X), &
-               CF_N(iCF_S2,iN_X), &
-               CF_N(iCF_S3,iN_X), &
-               CF_N(iCF_E ,iN_X), &
-               CF_N(iCF_Ne,iN_X), &
-               PF_N(iPF_D ), &
-               PF_N(iPF_V1), &
-               PF_N(iPF_V2), &
-               PF_N(iPF_V3), &
-               PF_N(iPF_E ), &
-               PF_N(iPF_Ne), &
+             ( CF_N(iCF_D       ,iN_X), &
+               CF_N(iCF_S1      ,iN_X), &
+               CF_N(iCF_S2      ,iN_X), &
+               CF_N(iCF_S3      ,iN_X), &
+               CF_N(iCF_E       ,iN_X), &
+               CF_N(iCF_Ne      ,iN_X), &
+               PF_N(iPF_D       ,iN_X), &
+               PF_N(iPF_V1      ,iN_X), &
+               PF_N(iPF_V2      ,iN_X), &
+               PF_N(iPF_V3      ,iN_X), &
+               PF_N(iPF_E       ,iN_X), &
+               PF_N(iPF_Ne      ,iN_X), &
                GX_N(iGF_Gm_dd_11,iN_X), &
                GX_N(iGF_Gm_dd_22,iN_X), &
                GX_N(iGF_Gm_dd_33,iN_X) )
 
-      DO iN_E = 1, nE_G
-      DO iS   = 1, nSpecies
-
-        CALL ComputeIncrement_FixedPoint &
-               ( dt, &
-                 CR_N(iCR_N ,iS,iN_E,iN_X), &
-                 CR_N(iCR_G1,iS,iN_E,iN_X), &
-                 CR_N(iCR_G2,iS,iN_E,iN_X), &
-                 CR_N(iCR_G3,iS,iN_E,iN_X), &
-                 PF_N(iPF_V1), &
-                 PF_N(iPF_V2), &
-                 PF_N(iPF_V3), &
-                 GX_N(iGF_Gm_dd_11,iN_X), &
-                 GX_N(iGF_Gm_dd_22,iN_X), &
-                 GX_N(iGF_Gm_dd_33,iN_X), &
-                 OP_N(iOP_D0   ,iS,iN_E,iN_X), &
-                 OP_N(iOP_Chi  ,iS,iN_E,iN_X), &
-                 OP_N(iOP_Sigma,iS,iN_E,iN_X), &
-                 dCR_N(iCR_N ,iS,iN_E,iN_X), &
-                 dCR_N(iCR_G1,iS,iN_E,iN_X), &
-                 dCR_N(iCR_G2,iS,iN_E,iN_X), &
-                 dCR_N(iCR_G3,iS,iN_E,iN_X) )
-
-      END DO
-      END DO
-
     END DO
 
-    CALL TimersStop( Timer_Im_CoupledAA )
+    CALL TimersStop( Timer_Collisions_PrimitiveFluid )
 
-    CALL TimersStart( Timer_Im_MapBackward )
+    CALL TimersStart( Timer_Collisions_Solve )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+    DO iS   = 1, nSpecies
+
+      CALL ComputeIncrement_FixedPoint &
+             ( dt, &
+               CR_N (iCR_N       ,iS,iN_E,iN_X), &
+               CR_N (iCR_G1      ,iS,iN_E,iN_X), &
+               CR_N (iCR_G2      ,iS,iN_E,iN_X), &
+               CR_N (iCR_G3      ,iS,iN_E,iN_X), &
+               PF_N (iPF_V1              ,iN_X), &
+               PF_N (iPF_V2              ,iN_X), &
+               PF_N (iPF_V3              ,iN_X), &
+               GX_N (iGF_Gm_dd_11        ,iN_X), &
+               GX_N (iGF_Gm_dd_22        ,iN_X), &
+               GX_N (iGF_Gm_dd_33        ,iN_X), &
+               OP_N (iOP_D0      ,iS,iN_E,iN_X), &
+               OP_N (iOP_Chi     ,iS,iN_E,iN_X), &
+               OP_N (iOP_Sigma   ,iS,iN_E,iN_X), &
+               dCR_N(iCR_N       ,iS,iN_E,iN_X), &
+               dCR_N(iCR_G1      ,iS,iN_E,iN_X), &
+               dCR_N(iCR_G2      ,iS,iN_E,iN_X), &
+               dCR_N(iCR_G3      ,iS,iN_E,iN_X) )
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_Collisions_Solve )
+
+    CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Revert Radiation Increment ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeE, iNodeX, iN_E, iN_X )
+#endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -271,13 +363,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Im_MapBackward )
+    CALL TimersStop( Timer_Collisions_Permute )
 
     CALL FinalizeCollisions
 
-    PRINT*, "      ComputeIncrement_TwoMoment_Implicit (End)"
-
-    CALL TimersStop( Timer_Implicit )
+    CALL TimersStop( Timer_Collisions )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
 
@@ -492,6 +582,7 @@ CONTAINS
     nX_G = nDOFX * PRODUCT( nX )
 
     ALLOCATE( GX_N(nGF,nX_G) )
+    ALLOCATE( PF_N(nPF,nX_G) )
     ALLOCATE( CF_N(nCF,nX_G) )
     ALLOCATE( CR_N (nCR,nSpecies,nE_G,nX_G) )
     ALLOCATE( dCR_N(nCR,nSpecies,nE_G,nX_G) )
@@ -502,7 +593,7 @@ CONTAINS
 
   SUBROUTINE FinalizeCollisions
 
-    DEALLOCATE( GX_N, CF_N, CR_N, dCR_N, OP_N )
+    DEALLOCATE( GX_N, PF_N, CF_N, CR_N, dCR_N, OP_N )
 
   END SUBROUTINE FinalizeCollisions
 

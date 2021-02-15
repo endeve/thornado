@@ -1,0 +1,269 @@
+\documentclass[10pt]{article}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\usepackage{../../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+\newcommand{\ee}[1]{{\color{blue} EE:~#1}}
+\newcommand{\Lo}{\textsc{L}}
+\newcommand{\Hi}{\textsc{H}}
+\newcommand{\trans}{\textsc{T}}
+\newcommand{\dx}{\Delta x}
+
+\newtheorem{define}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{prop}{Proposition}
+\newtheorem{rem}{Remark}
+\newtheorem{theorem}{Theorem}
+
+\begin{document}
+
+\title{Mesh Refinement and Derefinement of Two-Moment Radiation Fields}
+\author{Eirik Endeve et al.}
+
+\maketitle
+
+\begin{abstract}
+  We consider refinement and coarsening of polynomial representations.
+  We basically follow Schaal et al.~\cite{schaal_etal_2015}.
+\end{abstract}
+
+\tableofcontents
+
+\section{Preliminaries}
+
+\subsection{Coarse and Fine Elements}
+
+Consider the $d$-dimensional (coarse) element $\bK$
+\begin{equation}
+  \vect{K} = \big\{\,\vect{x} : x^{i} \in K^{i} := (x_{\Lo}^{i},x_{\Hi}^{i}), i = 1,\ldots,d \,\big\}.
+\end{equation}
+We also define the unit reference element $\vect{I}$
+\begin{equation}
+  \vect{I} = \big\{\,\vect{\eta} : \eta^{i} \in (-1/2,+1/2), i = 1,\ldots,d \,\big\},
+\end{equation}
+and the standard mapping $x^{i}(\eta^{i})=x_{\Lo}^{i}+\eta^{i}\,\dx^{i}$, where $\dx^{i}=x_{\Hi}^{i}-x_{\Lo}^{i}$.
+We also define $|\vect{K}|=\prod_{i=1}^{d}\dx^{i}$.
+
+The element $\vect{K}$ is to be refined into $N$ (finer) elemets $\vect{k}_{(j)}$
+\begin{equation}
+  \vect{k}_{(j)} = \big\{\,\vect{x} : x^{i} \in k_{(j)}^{i} := (x_{\Lo,(j)}^{i},x_{\Hi,(j)}^{i}), i = 1,\ldots,d\,\big\},
+\end{equation}
+where
+\begin{equation}
+  \vect{K} = \cup_{j=1}^{N}\vect{k}_{(j)}.
+\end{equation}
+We will also consider derefinement (coarsening).
+The reference element associated with $\vect{k}_{(j)}$ is denoted $\vect{i}_{(j)}$
+\begin{equation}
+  \vect{i}_{(j)} = \big\{\,\vect{\xi} : \xi^{i} \in (-1/2,+1/2), i = 1,\ldots,d \,\big\},
+\end{equation}
+with mapping $x^{i}(\xi^{i})=x_{\Lo,(j)}^{i}+\xi^{i}\,\dx_{(j)}^{i}$, where $\dx_{(j)}^{i}=x_{\Hi,(j)}^{i}-x_{\Lo,(j)}^{i}$.
+We also let $|\vect{k}_{(j)}|=\prod_{i=1}^{d}\dx_{(j)}^{i}$.
+
+\subsection{Approximation Spaces}
+
+On $\vect{K}$, we denote the approximation space by
+\begin{equation}
+  \mathbb{V}^{k} = \big\{\,v_{h} : v_{h}\big|_{\vect{K}}\in\mathbb{Q}^{k}(\vect{K})\,\big\}
+\end{equation}
+where $\mathbb{Q}^{k}$ is constructed from the tensor product of one-dimensional polynomials of degree at most $k$.
+Similarly, the approximation space on $\vect{k}_{(j)}$ is
+\begin{equation}
+  \mathbb{V}_{(j)}^{k} = \big\{\,v_{h} : v_{h}\big|_{\vect{k}_{(j)}}\in\mathbb{Q}^{k}(\vect{k}_{(j)})\,\big\}.
+\end{equation}
+
+\subsection{Polynomial Representations}
+
+On the coarse element $\vect{K}$, the physical (conserved) variable $U$ is approximated by $U_{h}$
+\begin{equation}
+  U_{h}(\vect{x}) = \sum_{i=1}^{M}U_{i}\,\ell_{i}(\vect{x}),
+\end{equation}
+where $\ell_{i}\in\mathbb{V}^{k}$.
+The vector of expansion coefficients in the coarse element $\vect{K}$ is denoted $\vect{U}=(U_{1},\ldots,U_{M})^{\trans}$.
+Similarly, in each fine element $\vect{k}_{(j)}$, the same variable is approximated by $u_{h}^{(j)}$
+\begin{equation}
+  u_{h}^{(j)}(\vect{x})=\sum_{i=1}^{M}u_{i}^{(j)}\ell_{i}^{(j)}(\vect{x}),
+\end{equation}
+where $\ell_{i}^{(j)}\in\mathbb{V}_{(j)}^{k}$.
+We denote the vector of expansion coefficients in the fine elements by $\vect{u}^{(j)}=(u_{1}^{(j)},\ldots,u_{M}^{(j)})^{\trans}$ and the basis by $\vect{\ell}^{(j)}(\vect{x})=(\ell_{1}^{(j)}(\vect{x}),\ldots,\ell_{N}^{(j)}(\vect{x}))^{\trans}$.
+
+\section{Refinement}
+
+Upon mesh refinement, the representation of the variable $U$ on the fine element $\vect{k}_{(j)}$ is obtained from solving the minimization problem
+\begin{equation}
+  \min_{\vect{u}^{(j)}}\int_{\vect{k}_{(j)}}\big(\,U_{h}(\vect{x})-u_{h}^{(j)}(\vect{x})\,\big)^{2}\,d\vect{x}.
+\end{equation}
+This gives
+\begin{equation}
+  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,d\vect{x}
+  =\int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,d\vect{x},\quad i=1,\ldots,M.
+  \label{eq:refinementProjection}
+\end{equation}
+Evaluating the left-hand side of Eq.~\eqref{eq:refinementProjection} gives
+\begin{equation}
+  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,d\vect{x}
+  =|\vect{k}_{(j)}|\,w_{i}\,u_{i}^{(j)}.
+\end{equation}
+\ee{Need to elaborate on this result.}
+Evaluating the right-hand side of Eq.~\eqref{eq:refinementProjection} gives
+\begin{equation}
+  \int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,d\vect{x}
+  =|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,d\vect{\eta}\,U_{k}.
+\end{equation}
+Defining the projection matrix $\mathcal{P}^{(j)}$, with components
+\begin{equation}
+  \mathcal{P}_{ik}^{(j)} = \int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,d\vect{\eta},
+  \label{eq:refinementProjectionMatrix}
+\end{equation}
+and the diagonal matrix $\mathcal{D}=\mbox{diag}(w_{1},\ldots,w_{M})$, the components of the expansion in the refined element $\vect{k}_{(j)}$ are obtained from the matrix-vector product
+\begin{equation}
+  \mathcal{D}\,\vect{u}^{(j)} = \mathcal{P}^{(j)}\,\vect{U}.
+\end{equation}
+The projection matrix can be computed once and stored at program startup.
+
+\section{Coarsening}
+
+In $\vect{K}$, using the fine representations, we have
+\begin{equation}
+  u_{h}(\vect{x}) = \sum_{j=1}^{N}\chi(\vect{k}_{(j)})\,u_{h}^{(j)}(\vect{x}),
+\end{equation}
+where $\chi$ is the indicator function.
+Thus, upon coarsening, the representation of the variable $U$ in the coarse element is obtained by solving the minimization problem
+\begin{equation}
+  \min_{\vect{U}}\int_{\vect{K}}\big(\,U_{h}(\vect{x})-u_{h}(\vect{x})\,\big)^{2}\,d\vect{x}.
+\end{equation}
+This gives
+\begin{equation}
+  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,d\vect{x}
+  =\int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,d\vect{x}.
+  \label{eq:coarseningProjection}
+\end{equation}
+Evaluating the left-hand side of Eq.~\eqref{eq:coarseningProjection} gives
+\begin{equation}
+  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,d\vect{x}
+  =|\vect{K}|\,w_{i}\,U_{i}.
+\end{equation}
+Evaluating the right-hand side of Eq.~\eqref{eq:coarseningProjection} gives
+\begin{equation}
+  \int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,d\vect{x}
+  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\xi}(\vect{\eta}))\,\ell_{k}(\vect{\eta})\,d\vect{\eta}\,u_{k}^{(j)}.
+\end{equation}
+Thus,
+\begin{equation}
+  \mathcal{D}\,\vect{U}=\sum_{j=1}^{N}\f{|\vect{k}_{(j)}|}{|\vect{K}|}
+  \big(\mathcal{P}^{(j)}\big)^{\trans}\,\vect{u}^{(j)}.
+\end{equation}
+For a refinement factor of $2$, $|\vect{k}_{(j)}|/|\vect{K}|=2^{-d}$.
+
+\section{Curvilinear Coordinates}
+
+\subsection{Preliminaries}
+
+The introduction of curvilinear coordinates doesn't change any of the preliminaries.
+
+\subsection{Refinement}
+
+As with Cartesian coordinates, the representation of the variable $U$ on the fine element
+$\vect{k}_{\left(j\right)}$ is obtained from solving the minimization problem,
+\begin{equation}
+  \min_{\vect{u}^{(j)}}\int_{\vect{k}_{(j)}}\big(\,U_{h}(\vect{x})-u_{h}^{(j)}(\vect{x})\,\big)^{2}\,
+  \sqrt{\gamma_{h}}\,d\vect{x},
+\end{equation}
+where $\sqrt{\gamma_{h}}$ is the numerical approximation to the metric determinant $\sqrt{\gamma}$.
+
+When demanding equality of the cell averages, the metric determinant
+must be taken into account, i.e., Eq.~\eqref{eq:refinementProjection} becomes
+\begin{equation}
+  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =\int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x},\quad i=1,\ldots,M.
+  \label{eq:refinementProjection_CC}
+\end{equation}
+Evaluating the left-hand side of Eq.~\eqref{eq:refinementProjection_CC} gives
+\begin{equation}
+  \int_{\vect{k}_{(j)}}u_{h}^{(j)}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =|\vect{k}_{(j)}|\,w_{i}\,u_{i}^{(j)}\,\sqrt{\gamma_{i}}.
+  \end{equation}
+  Evaluating the right-hand side of Eq.~\eqref{eq:refinementProjection_CC} gives
+  \begin{equation}
+  \int_{\vect{k}_{(j)}}U_{h}(\vect{x})\,\ell_{i}^{(j)}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma_{h}}\,d\vect{\eta}\,U_{k}.
+\end{equation}
+Defining the projection matrix, $P^{\left(j\right)}_{\gamma_{h}}$, with components
+\begin{equation}
+P^{\left(j\right)}_{ik,\gamma_{h}}
+=\int_{\vect{i}_{(j)}}\ell_{i}^{(j)}(\vect{\eta})\,\ell_{k}(\vect{\xi}(\vect{\eta}))\,\sqrt{\gamma_{h}}\,d\vect{\eta},
+\end{equation}
+and the diagonal matrix $\mathcal{D}_{\gamma_{h}}
+=\mbox{diag}(\sqrt{\gamma_{1}}\,w_{1},\ldots,\sqrt{\gamma_{M}}\,w_{M})$, the components of the expansion in the refined element $\vect{k}_{(j)}$ are obtained from the matrix-vector product
+\begin{equation}
+  \mathcal{D}_{\gamma_{h}}\,\vect{u}^{(j)} = \mathcal{P}^{(j)}_{\gamma_{h}}\,\vect{U}.
+\end{equation}
+Since $\gamma_{h}=\gamma_{h}\left(t\right)$, $\mathcal{P}^{\left(j\right)}_{\gamma_{h}}$
+and $\cD_{\gamma_{h}}$
+must be computed at each time step.
+
+\subsection{Coarsening}
+
+The minimization problem in this case is
+\begin{equation}
+  \min_{\vect{U}}\int_{\vect{K}}\big(\,U_{h}(\vect{x})-u_{h}(\vect{x})\,\big)^{2}\,\sqrt{\gamma_{h}}\,d\vect{x}.
+\end{equation}
+As with refinement, Eq.~\eqref{eq:coarseningProjection} becomes
+\begin{equation}
+  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =\int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}.
+  \label{eq:coarseningProjection_CC}
+\end{equation}
+Evaluating the left-hand side of Eq.~\eqref{eq:coarseningProjection_CC} gives
+\begin{equation}
+  \int_{\vect{K}}U_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =|\vect{K}|\,w_{i}\,U_{i}\,\sqrt{\gamma_{i}}.
+\end{equation}
+Evaluating the right-hand side of Eq.~\eqref{eq:coarseningProjection_CC} gives
+\begin{equation}
+  \int_{\vect{K}}u_{h}(\vect{x})\,\ell_{i}(\vect{x})\,\sqrt{\gamma_{h}}\,d\vect{x}
+  =\sum_{j=1}^{N}|\vect{k}_{(j)}|\sum_{k=1}^{M}\int_{\vect{i}_{(j)}}\ell_{i}(\vect{\xi}(\vect{\eta}))\,\ell_{k}^{\left(j\right)}(\vect{\eta})\,\sqrt{\gamma_{h}}\,d\vect{\eta}\,u_{k}^{(j)}.
+\end{equation}
+Thus,
+\begin{equation}
+  \mathcal{D}_{\gamma_{h}}\,\vect{U}=\sum_{j=1}^{N}\f{|\vect{k}_{(j)}|}{|\vect{K}|}
+  \big(\mathcal{P}_{\gamma_{h}}^{(j)}\big)^{\trans}\,\vect{u}^{(j)}.
+\end{equation}
+For a refinement factor of $2$, $|\vect{k}_{(j)}|/|\vect{K}|=2^{-d}$.
+
+\subsection{Mapping $\eta\rightarrow\xi$}
+For a 1D problem with two subcells, the mapping from the coarse reference element, coordinatized
+by $\eta$, to the fine reference element, coordinatized by $\xi$, is
+\begin{equation}
+\xi\left(\eta\right)=\frac{1}{2}\left(\eta+\frac{1}{2}\left(-1\right)^{k}\right),\hspace{1em}k=1,2.
+\end{equation}
+
+\bibliographystyle{plain}
+\bibliography{../../References/references.bib}
+
+\end{document}

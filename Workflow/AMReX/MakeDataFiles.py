@@ -1,82 +1,67 @@
 #!/usr/local/bin/python3
 
-"""
-Given a directory with 2D AMReX plot-files
-in spherical-polar coordinates, create a data
-file containing all the values of a specified
-variable for each time-step.
-"""
-
 import yt
 import numpy as np
-import subprocess
 from os import listdir
 from os.path import isfile
-from sys import argv, exit
+from sys import exit
 
-yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
+yt.funcs.mylog.setLevel(40) # Suppress initial yt output to screen
 
-# --- Get user's HOME directory ---
-HOME = subprocess.check_output( ["echo $HOME"], shell = True)
-HOME = HOME[:-1].decode( "utf-8" ) + '/'
+def MakeDataFile( Field, DataDirectory, DataFileName, TimeFileName, \
+                  PlotFileBaseName, UsePhysicalUnits, \
+                  WriteExtras = False ):
 
-############# User input #############
-DataDirectory = HOME
+    if( UsePhysicalUnits ):
+        c = 2.99792458e10
+    else:
+        c = 1.0
 
-TimeFileName     = 'MovieTime.dat'
-UsePhysicalUnits = True # Are you using physical units?
-Relativistic     = True # Are you plotting results from relativistic hydro?
+    # Get array of all plot-files
 
-PlotFileBaseName = 'thornado'
+    FileArray \
+      = np.sort(np.array( [ file for file in listdir( DataDirectory ) ] ) )
 
-WriteExtras = False # Set to true if generating data on
-                    # external machine (Summit, ACF, etc.)
+    FileList = []
 
-############# End of user input #############
+    for iFile in range( FileArray.shape[0] ):
 
-if( UsePhysicalUnits ):
-    c = 2.99792458e10
-else:
-    c = 1.0
+        sFile = FileArray[iFile]
 
-# Get array of all plot-files
-FileArray = np.sort(np.array( [ file for file in listdir( DataDirectory ) ] ) )
-FileList = []
-for iFile in range( FileArray.shape[0] ):
-    sFile = FileArray[iFile]
-    if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
-          and sFile[len(PlotFileBaseName)+1].isdigit() ):
-        FileList.append( sFile )
-FileArray = np.array( FileList )
+        if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
+              and sFile[len(PlotFileBaseName)+1].isdigit() ):
+            FileList.append( sFile )
 
-# Get some general info about the computational domain
-ds = yt.load( '{:}'.format( DataDirectory + FileArray[0] ) )
-MaxLevel = ds.index.max_level
-nX       = ds.domain_dimensions
-xL       = ds.domain_left_edge
-xH       = ds.domain_right_edge
+    FileArray = np.array( FileList )
 
-if( WriteExtras ):
+    # Get some general info about the computational domain
+    ds       = yt.load( '{:}'.format( DataDirectory + FileArray[0] ) )
+    MaxLevel = ds.index.max_level
+    nX       = ds.domain_dimensions
+    xL       = ds.domain_left_edge
+    xH       = ds.domain_right_edge
 
-    with open( 'FileArray.txt', 'w' ) as f:
-        for i in FileArray:
-            f.write( i )
+    if( WriteExtras ):
+
+        with open( 'FileArray.txt', 'w' ) as f:
+            for i in FileArray:
+                f.write( i )
+                f.write( '\n' )
+        with open( 'Numbers.txt', 'w' ) as f:
+            for i in nX:
+                f.write( str(i) )
+                f.write( ' ' )
             f.write( '\n' )
-    with open( 'Numbers.txt', 'w' ) as f:
-        for i in nX:
-            f.write( str(i) )
-            f.write( ' ' )
-        f.write( '\n' )
-        for i in xL.to_ndarray():
-            f.write( str(i) )
-            f.write( ' ' )
-        f.write( '\n' )
-        for i in xH.to_ndarray():
-            f.write( str(i) )
-            f.write( ' ' )
-        f.write( '\n' )
+            for i in xL.to_ndarray():
+                f.write( str(i) )
+                f.write( ' ' )
+            f.write( '\n' )
+            for i in xH.to_ndarray():
+                f.write( str(i) )
+                f.write( ' ' )
+            f.write( '\n' )
 
-def MakeDataFile( Field, DataFileName ):
+        exit()
 
     Overwrite = True
     if( isfile( DataFileName ) ):
@@ -106,7 +91,7 @@ def MakeDataFile( Field, DataFileName ):
                     dims            = nX * 2**MaxLevel, \
                     num_ghost_zones = nX[0] )
 
-            if( Field == 'Entropy' ):
+            if( Field == 'PolytropicConstant' ):
 
                 PF_D  \
                   = CoveringGrid['PF_D' ].to_ndarray()[:,:,0]
@@ -148,8 +133,6 @@ def MakeDataFile( Field, DataFileName ):
                   = CoveringGrid['AF_P'].to_ndarray()[:,:,0]
 
                 Data[i] = ( PF_E + AF_P ) / PF_D
-                if( Relativistic ): # Plot h/c^2
-                    Data[i] = ( c**2 + ( PF_E + AF_P ) / PF_D ) / c**2
 
             elif( Field == 'Vorticity' ):
 
@@ -188,7 +171,8 @@ def MakeDataFile( Field, DataFileName ):
             Time[i] = ds.current_time
 
         # Save multi-D array with np.savetxt. Taken from:
-        # https://stackoverflow.com/questions/3685265/how-to-write-a-multidimensional-array-to-a-text-file
+        # https://stackoverflow.com/questions/3685265/
+        # how-to-write-a-multidimensional-array-to-a-text-file
 
         with open( DataFileName, 'w' ) as FileOut:
             FileOut.write( '# Array shape: {0}\n'.format( Data.shape ) )
@@ -201,4 +185,4 @@ def MakeDataFile( Field, DataFileName ):
 
         np.savetxt( TimeFileName, Time )
 
-    return
+    return xL, xH, nX, FileArray

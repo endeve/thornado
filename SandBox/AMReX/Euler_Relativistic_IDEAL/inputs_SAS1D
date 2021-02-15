@@ -18,8 +18,9 @@ SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
-SAS.WriteNodalData_SAS         = 0
-thornado.NodalDataFileNameBase = "MPNS1.4_Rs180_Mdot0.3"
+SAS.WriteNodalData_SAS        = 0
+SAS.NodalDataFileNameBase_SAS = "MPNS1.4_Rs180_Mdot0.3"
+SAS.InitializeFromFile        = 0
 
 thornado.iRestart = -1
 
@@ -41,7 +42,7 @@ thornado.nStages = 3
 
 thornado.CFL = 0.5
 
-thornado.bcX         = 11 00 00
+thornado.bcX         = 100 00 00
 geometry.is_periodic = 0  1  1
 
 geometry.coord_sys = 2
