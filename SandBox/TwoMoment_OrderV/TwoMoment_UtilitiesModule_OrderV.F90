@@ -962,6 +962,12 @@ CONTAINS
       dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2, &
       dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3 )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP)             :: Flux_E(4), Flux_E_Old(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), INTENT(in) :: V_u_1, V_u_2, V_u_3
@@ -1224,6 +1230,12 @@ CONTAINS
   SUBROUTINE ComputeEddingtonTensorComponents_uu &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, k_uu )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(out) :: &
@@ -1394,6 +1406,12 @@ CONTAINS
 
   SUBROUTINE ComputeHeatFluxTensorComponents_uuu &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, l_uuu )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33

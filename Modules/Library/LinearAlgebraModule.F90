@@ -7,7 +7,8 @@ MODULE LinearAlgebraModule
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    One
+    One, &
+    Pi
   USE DeviceModule, ONLY: &
     mydevice, &
     device_is_present, &
@@ -81,6 +82,7 @@ MODULE LinearAlgebraModule
   PUBLIC :: LinearLeastSquares_LWORK
   PUBLIC :: LinearLeastSquares
   PUBLIC :: LinearSolveBatched
+  PUBLIC :: EigenvaluesSymmetric3
 
 CONTAINS
 
@@ -1142,6 +1144,69 @@ CONTAINS
     END IF
 
   END SUBROUTINE VectorGather
+
+
+  SUBROUTINE EigenvaluesSymmetric3( A, Lambda )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: A(3,3)
+    REAL(DP), INTENT(out) :: Lambda(3)
+
+    REAL(DP) :: B11, B22, B33
+    REAL(DP) :: B12, B13, B21, B23, B31, B32
+    REAL(DP) :: P1, P2, P, Q, R, PHI, DETB
+
+    P1 = A(1,2)**2 + A(1,3)**2 + A(2,3)**2
+
+    IF ( P1 == Zero ) THEN
+
+      Lambda(1) = A(1,1)
+      Lambda(2) = A(2,2)
+      Lambda(3) = A(3,3)
+
+    ELSE
+
+      Q = ( A(1,1) + A(2,2) + A(3,3) ) / 3.0_DP
+      P2 = 2.0_DP * P1 &
+           + ( A(1,1) - Q )**2 &
+           + ( A(2,2) - Q )**2 &
+           + ( A(3,3) - Q )**2
+      P = SQRT( P2 / 6.0_DP )
+
+      B11 = ( A(1,1) - Q ) / P
+      B22 = ( A(2,2) - Q ) / P
+      B33 = ( A(3,3) - Q ) / P
+      B12 = A(1,2) / P ; B21 = B12
+      B13 = A(1,3) / P ; B31 = B13
+      B23 = A(2,3) / P ; B32 = B23
+      DETB =   B11 * B22 * B33  &
+             - B11 * B23 * B32  &
+             - B12 * B21 * B33  &
+             + B12 * B23 * B31  &
+             + B13 * B21 * B32  &
+             - B13 * B22 * B31
+      R = DETB * 0.5_DP
+      IF ( R <= - One ) THEN
+        PHI = Pi
+      ELSE IF ( R >= One ) THEN
+        PHI = Zero
+      ELSE
+        PHI = ACOS( R ) / 3.0_DP
+      END IF
+
+      Lambda(1) = Q + 2.0_DP * P * COS( PHI )
+      Lambda(3) = Q + 2.0_DP * P * COS( PHI + ( 2.0_DP * Pi / 3.0_DP ) )
+      Lambda(2) = 3.0_DP * Q - Lambda(1) - Lambda(3)
+
+    END IF
+
+  END SUBROUTINE EigenvaluesSymmetric3
+
+
 
 
 END MODULE LinearAlgebraModule

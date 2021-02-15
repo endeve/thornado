@@ -2,7 +2,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, &
-    SqrtTiny
+    SqrtTiny, Pi
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFE, &
@@ -26,7 +26,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     Timer_Streaming_NumericalFlux, &
     Timer_Streaming_Sources
   USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply
+    MatrixMatrixMultiply, &
+    EigenvaluesSymmetric3
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
     WeightsX_q, &
@@ -2452,10 +2453,9 @@ CONTAINS
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_E
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
-    INTEGER  :: INFO
 
     REAL(DP) :: EdgeEnergyCubed, Alpha, Beta
-    REAL(DP) :: A(3,3), Lambda(3), WORK(8)
+    REAL(DP) :: A(3,3), Lambda(3)
     REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33
     REAL(DP) :: Flux_K(nCR), dFlux_K(nPR)
     REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
@@ -2743,12 +2743,23 @@ CONTAINS
              PositionIndexZ_F, nIterations_R )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
+    !$OMP          Flux_L, Flux_R, A, Lambda, Alpha EdgeEnergyCubed )
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
+    !$ACC          Flux_L, Flux_R, A, Lambda, Alpha, EdgeEnergyCubed ) &
+    !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
+    !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC          NumericalFlux, SqrtGm_K, Weights_E, xZ1, dZ2, dZ3, dZ4, &
+    !$ACC          PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, &
-    !$OMP          Flux_L, uPR_L, Flux_R, uPR_R, A, Lambda, Alpha, &
-    !$OMP          EdgeEnergyCubed, WORK, INFO )
+    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
+    !$OMP          Flux_L, Flux_R, A, Lambda, Alpha EdgeEnergyCubed )
 #endif
     DO iZ_F = 1, nNodesZ_E
 
@@ -2839,8 +2850,8 @@ CONTAINS
 
       ! --- Eigenvalues ---
 
-      CALL DSYEV( 'N', 'U', 3, A, 3, Lambda, WORK, 8, INFO )
-
+      !CALL DSYEV( 'N', 'U', 3, A, 3, Lambda, WORK, 8, INFO )
+      CALL EigenvaluesSymmetric3( A, Lambda )
       Alpha = MAXVAL( ABS( Lambda ) )
 
       DO iCR = 1, nCR
@@ -2895,10 +2906,20 @@ CONTAINS
              PositionIndexZ_K, nIterations_K )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K )
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K ) &
+    !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
+    !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          uD_K, uI1_K, uI2_K, uI3_K, &
+    !$ACC          Flux_q, GE, SqrtGm_K, Weights_q, dZ2, dZ3, dZ4, &
+    !$ACC          PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iX_K, iNodeZ, iNodeX, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, Flux_K )
+    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K )
 #endif
     DO iZ_K = 1, nNodesZ_K
 
@@ -2975,10 +2996,22 @@ CONTAINS
              PositionIndexZ_K, nIterations_K )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
+    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 )
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
+    !$ACC          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 ) &
+    !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
+    !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          uD_K, uI1_K, uI2_K, uI3_K, &
+    !$ACC          dU_E, GE, SqrtGm_K, Weights_q, dZ1, dZ2, dZ3, dZ4, &
+    !$ACC          PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iX_K, iNodeZ, iNodeX, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, Flux_K,  &
+    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
     !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 )
 #endif
     DO iZ_K = 1, nNodesZ_K
@@ -3069,7 +3102,10 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_Sources )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( dU_R, dU_E, iZ_B0, iZ_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7)
 #endif
