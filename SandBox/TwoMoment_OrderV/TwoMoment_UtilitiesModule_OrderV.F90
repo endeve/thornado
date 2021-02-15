@@ -124,7 +124,7 @@ CONTAINS
     !$OMP             FVECm, GVECm, Alpha, nIterations )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( ITERATE ) ASYNC(1) &
+    !$ACC COPYIN( ITERATE ) ASYNC &
     !$ACC CREATE( FVEC, GVEC, CVEC, UVEC, &
     !$ACC         FVECm, GVECm, Alpha, nIterations )
 #endif
@@ -134,7 +134,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
+    !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
     !$ACC PRESENT( CVEC, UVEC, N, G_d_1, G_d_2, G_d_3, &
     !$ACC          D, I_u_1, I_u_2, I_u_3, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -167,7 +167,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
@@ -258,7 +258,7 @@ CONTAINS
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
         !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) ASYNC(1) &
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) ASYNC &
         !$ACC PRIVATE( SUM1 ) &
         !$ACC PRESENT( ITERATE, GVECm, FVECm, GVEC, UVEC, Alpha )
 #elif defined( THORNADO_OMP    )
@@ -288,7 +288,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
@@ -331,8 +331,8 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET UPDATE FROM( ITERATE )
 #elif defined( THORNADO_OACC   )
-      !$ACC UPDATE HOST( ITERATE ) ASYNC(1)
-      !$ACC WAIT(1)
+      !$ACC UPDATE HOST( ITERATE ) ASYNC
+      !$ACC WAIT
 #endif
 
       CALL TimersStop( Timer_Streaming_NumericalFlux_Update )
@@ -345,7 +345,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRESENT( nIterations, nIterations_Option )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
@@ -361,7 +361,7 @@ CONTAINS
     !$OMP MAP( release: FVEC, GVEC, CVEC, UVEC, &
     !$OMP               FVECm, GVECm, Alpha, ITERATE, nIterations )
 #elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA WAIT(1) &
+    !$ACC EXIT DATA WAIT &
     !$ACC DELETE( FVEC, GVEC, CVEC, UVEC, &
     !$ACC         FVECm, GVECm, Alpha, ITERATE, nIterations )
 #endif
@@ -417,7 +417,7 @@ CONTAINS
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
         !$OMP PRIVATE( AA11, AB1, B )
 #elif defined(THORNADO_OACC)
-        !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
+        !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
         !$ACC PRIVATE( AA11, AB1, B ) &
         !$ACC PRESENT( MASK, Alpha, F, Fm )
 #elif defined(THORNADO_OMP)
@@ -452,7 +452,7 @@ CONTAINS
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
         !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B )
 #elif defined(THORNADO_OACC)
-        !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
+        !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
         !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B ) &
         !$ACC PRESENT( MASK, Alpha, F, Fm )
 #elif defined(THORNADO_OMP)
