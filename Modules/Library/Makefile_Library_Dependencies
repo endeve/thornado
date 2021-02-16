@@ -95,7 +95,8 @@ PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   QuadratureModule.o \
-  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
   PolynomialBasisModule_Lagrange.f90
 
 PolynomialBasisModule_Legendre.o: \
@@ -106,8 +107,9 @@ PolynomialBasisModule_Legendre.o: \
 ReferenceElementModuleX_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LagrangePolynomialsModule.o \
   ReferenceElementModuleX.o \
-  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModuleX_Lagrange.o \
   ReferenceElementModuleX_Lagrange.F90
 
 ReferenceElementModuleE_Lagrange.o: \

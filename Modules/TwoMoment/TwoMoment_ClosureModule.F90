@@ -409,6 +409,12 @@ CONTAINS
 
   FUNCTION HeatFluxFactor_Scalar( D, FF ) RESULT( HeatFluxFactor )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: D, FF
     REAL(DP)             :: HeatFluxFactor
 
@@ -447,6 +453,12 @@ CONTAINS
 
 
   FUNCTION HeatFluxFactor_Vector( D, FF ) RESULT( HeatFluxFactor )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: D(:), FF(:)
     REAL(DP)             :: HeatFluxFactor(SIZE(D))

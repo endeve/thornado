@@ -50,7 +50,7 @@ MODULE DeviceModule
     acc_get_device_num, &
     acc_on_device, &
     acc_is_present, &
-    acc_set_cuda_stream, &
+    acc_get_cuda_stream, &
     acc_get_default_async, &
     acc_device_host, &
     acc_device_nvidia, &
@@ -119,7 +119,12 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
     ierr = cublasCreate_v2( cublas_handle )
+
+#if defined(THORNADO_OACC)
+    stream = acc_get_cuda_stream( acc_async_default )
+#else
     ierr = cudaStreamCreate( stream )
+#endif
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
 
@@ -139,11 +144,6 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     CALL omp_set_default_device( mydevice )
-#endif
-
-#if defined(THORNADO_OACC)
-    acc_async_default = acc_get_default_async()
-    ierr = acc_set_cuda_stream( acc_async_default, stream )
 #endif
 
     RETURN
