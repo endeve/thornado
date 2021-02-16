@@ -328,16 +328,16 @@ CONTAINS
 
     CALL FinalizeIncrement_TwoMoment_Explicit
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_R, U_R, U_F ) &
     !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
     !$OMP               GE, GX )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( dU_R, U_R, U_F ) &
     !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$ACC         GE, GX, U_F, U_R, dU_R )
+    !$ACC         GE, GX )
 #endif
 
     END ASSOCIATE
