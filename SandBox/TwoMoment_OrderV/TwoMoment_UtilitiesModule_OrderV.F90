@@ -122,8 +122,8 @@ CONTAINS
     !$OMP MAP( alloc: FVEC, GVEC, CVEC, UVEC, &
     !$OMP             FVECm, GVECm, Alpha, nIterations )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( ITERATE ) ASYNC &
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( ITERATE ) &
     !$ACC CREATE( FVEC, GVEC, CVEC, UVEC, &
     !$ACC         FVECm, GVECm, Alpha, nIterations )
 #endif

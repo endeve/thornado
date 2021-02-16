@@ -166,7 +166,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgeam &
              ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
         CALL magmablas_dlacpy &
@@ -185,7 +187,9 @@ CONTAINS
         CALL magmablas_dgeadd2 &
                ( m, n, alpha, dat, m, beta, dc, ldc, magma_queue )
       END IF
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -340,11 +344,15 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemm_v2 &
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemm &
              ( itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc, magma_queue )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -431,12 +439,16 @@ CONTAINS
       ierr = cublasDgemmStridedBatched &
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
              ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount, magma_queue )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -547,13 +559,17 @@ CONTAINS
              ( cublas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
       ierr = cublasDgetrsBatched &
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
              ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
       CALL magma_dgetrs_batched &
              ( itrans, n, nrhs, da_array, lda, dipiv_array, db_array, ldb, batchcount, magma_queue )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -649,11 +665,15 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemv_v2 &
              ( cublas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -721,13 +741,17 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDdgmm &
              ( cublas_handle, CUBLAS_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dlacpy &
              ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
       CALL magmablas_dlascl2 &
              ( MagmaFull, m, n, dx, dc, ldc, magma_queue, info )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -884,7 +908,6 @@ CONTAINS
              ( cusolver_handle, &
                CUBLAS_SIDE_LEFT, CUBLAS_OP_T, &
                m, nrhs, n, da, lda, dtau, db, ldb, dwork, lwork, dinfo )
-      ierr = cudaStreamSynchronize( stream )
 
       IF ( nrhs == 1 ) THEN
 
@@ -901,11 +924,15 @@ CONTAINS
                  n, nrhs, One, da, lda, db, ldb )
 
       END IF
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -963,10 +990,14 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -1058,10 +1089,14 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
+#if defined(THORNADO_OMP_OL)
       CALL magma_queue_sync( magma_queue )
+#endif
 #endif
 
     ELSE
@@ -1120,7 +1155,9 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
       ierr = cusparseDgthr( cusparse_handle, nnz, dy, dxval, dxind, CUSPARSE_INDEX_BASE_ONE )
+#if defined(THORNADO_OMP_OL)
       ierr = cudaStreamSynchronize( stream )
+#endif
 #endif
 
     ELSE
