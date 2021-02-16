@@ -215,11 +215,6 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( U_F, U_R )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( U_F, U_R )
-#endif
 
     CALL TimersStop( Timer_Streaming_BCs )
 
@@ -279,24 +274,12 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_Divergence_X3 )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( dU_R )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( dU_R )
-#endif
-
     CALL TimersStart( Timer_Streaming_ObserverCorrections )
 
     CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE TO( dU_R )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE DEVICE( dU_R )
-#endif
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -417,13 +400,13 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_K (nDOFX, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)-1:iZ_E0(2)+1, &
             nGF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_F (nDOFX_X1, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
@@ -432,19 +415,19 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_K(nDOFX, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)-1:iZ_E0(2)+1, &
             nCF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_L(nDOFX_X1, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)+1, &
             nCF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_R(nDOFX_X1, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
@@ -453,7 +436,7 @@ CONTAINS
 
     ! --- Conserved Radiation Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_K(nDOFZ, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -461,7 +444,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(2)-1:iZ_E0(2)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_L(nDOF_X1, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -469,7 +452,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(2)  :iZ_E0(2)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_R(nDOF_X1, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -683,7 +666,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Face Velocity Components ---
-
 
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1101,13 +1083,13 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_K (nDOFX, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(3)-1:iZ_E0(3)+1, &
             nGF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_F (nDOFX_X2, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
@@ -1116,19 +1098,19 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_K(nDOFX, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(3)-1:iZ_E0(3)+1, &
             nCF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_L(nDOFX_X2, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(3)  :iZ_E0(3)+1, &
             nCF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_R(nDOFX_X2, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
@@ -1137,7 +1119,7 @@ CONTAINS
 
     ! --- Conserved Radiation Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_K(nDOFZ, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -1145,7 +1127,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(3)-1:iZ_E0(3)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_L(nDOF_X2, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -1153,7 +1135,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(3)  :iZ_E0(3)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_R(nDOF_X2, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -1782,13 +1764,13 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_K (nDOFX, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)-1:iZ_E0(4)+1, &
             nGF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_F (nDOFX_X3, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -1797,19 +1779,19 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_K(nDOFX, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)-1:iZ_E0(4)+1, &
             nCF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_L(nDOFX_X3, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)+1, &
             nCF)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_R(nDOFX_X3, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -1818,7 +1800,7 @@ CONTAINS
 
     ! --- Conserved Radiation Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_K(nDOFZ, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -1826,7 +1808,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(4)-1:iZ_E0(4)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_L(nDOF_X3, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -1834,7 +1816,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(4)  :iZ_E0(4)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_R(nDOF_X3, &
             iZ_B0(1)  :iZ_E0(1)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -2489,7 +2471,7 @@ CONTAINS
 
     ! --- Conserved Radiation Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_K(nDOFZ, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -2497,7 +2479,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(1)-1:iZ_E0(1)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_L(nDOF_E, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -2505,7 +2487,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(1)  :iZ_E0(1)+1, &
             nCR)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCR_R(nDOF_E, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)  , &
@@ -3230,27 +3212,27 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_K   (nDOFX,nGF, &
               iZ_B0(3)  :iZ_E0(3)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)-1:iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_F   (nDOFX_X1,nGF, &
               iZ_B0(3)  :iZ_E0(3)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       h_d_F  (nDOFX_X1,3, &
               iZ_B0(3)  :iZ_E0(3)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       h_d_K  (nDOFX,3, &
               iZ_B0(3)  :iZ_E0(3)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dh_d_dX1(nDOFX,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
@@ -3258,17 +3240,17 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_K(nDOFX,nCF, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)-1:iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_L(nDOFX_X1,nCF, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_R(nDOFX_X1,nCF, &
             iZ_B0(3)  :iZ_E0(3)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
@@ -3276,32 +3258,32 @@ CONTAINS
 
     ! --- Velocities ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_u_X1  (nDOFX_X1,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_d_X1  (nDOFX_X1,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_u_K   (nDOFX,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_d_K   (nDOFX,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dV_u_dX1(nDOFX,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dV_d_dX1(nDOFX,3, &
                iZ_B0(3)  :iZ_E0(3)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
@@ -3794,27 +3776,27 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_K   (nDOFX,nGF, &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(3)-1:iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_F   (nDOFX_X2,nGF, &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       h_d_F  (nDOFX_X2,3, &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       h_d_K  (nDOFX,3, &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dh_d_dX2(nDOFX,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
@@ -3822,17 +3804,17 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_K(nDOFX,nCF, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(3)-1:iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_L(nDOFX_X2,nCF, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_R(nDOFX_X2,nCF, &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(4)  :iZ_E0(4)  , &
@@ -3840,32 +3822,32 @@ CONTAINS
 
     ! --- Velocities ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_u_X2  (nDOFX_X2,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_d_X2  (nDOFX_X2,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_u_K   (nDOFX,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_d_K   (nDOFX,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dV_u_dX2(nDOFX,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dV_d_dX2(nDOFX,3, &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(4)  :iZ_E0(4)  , &
@@ -4251,8 +4233,6 @@ CONTAINS
     END DO
     END DO
 
-    ! >>> Could Combine the following two loops <<<
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( iGF_h )
@@ -4360,27 +4340,27 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_K   (nDOFX,nGF, &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(3)-1:iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       GX_F   (nDOFX_X3,nGF, &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       h_d_F  (nDOFX_X3,3, &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       h_d_K  (nDOFX,3, &
               iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
               iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dh_d_dX3(nDOFX,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
@@ -4388,17 +4368,17 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_K(nDOFX,nCF, &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)-1:iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_L(nDOFX_X3,nCF, &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
             iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       uCF_R(nDOFX_X3,nCF, &
             iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
@@ -4406,32 +4386,32 @@ CONTAINS
 
     ! --- Velocities ---
 
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_u_X3  (nDOFX_X3,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_d_X3  (nDOFX_X3,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_u_K   (nDOFX,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       V_d_K   (nDOFX,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dV_u_dX3(nDOFX,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
                iZ_B0(3)  :iZ_E0(3)  )
-    REAL(DP), TARGET :: &
+    REAL(DP) :: &
       dV_d_dX3(nDOFX,3, &
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
@@ -4816,8 +4796,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    ! >>> Could Combine the following two loops <<<
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &

@@ -26,7 +26,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     TimersStart, &
     TimersStop, &
     Timer_Streaming_NumericalFlux_InOut, &
-    Timer_Streaming_NumericalFlux_LMAT, &
+    Timer_Streaming_NumericalFlux_RHS, &
     Timer_Streaming_NumericalFlux_LS, &
     Timer_Streaming_NumericalFlux_Update
   USE LinearAlgebraModule, ONLY: &
@@ -84,8 +84,8 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    INTEGER  :: nE, nX, nZ
-    INTEGER  :: iE, iX, iZ
+    INTEGER  :: nZ
+    INTEGER  :: iX, iZ
     INTEGER  :: k, Mk, iM, i, j
 
     REAL(DP) :: FTMP(4,M), GTMP(4,M)
@@ -98,7 +98,6 @@ CONTAINS
     LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
     INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
 
-    nX = SIZE( V_u_1, 1 )
     nZ = SIZE( N, 1 )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
@@ -161,7 +160,7 @@ CONTAINS
       k = k + 1
       Mk = MIN( M, k )
 
-      CALL TimersStart( Timer_Streaming_NumericalFlux_LMAT )
+      CALL TimersStart( Timer_Streaming_NumericalFlux_RHS )
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -246,7 +245,7 @@ CONTAINS
         END IF
       END DO
 
-      CALL TimersStop( Timer_Streaming_NumericalFlux_LMAT )
+      CALL TimersStop( Timer_Streaming_NumericalFlux_RHS )
 
       CALL TimersStart( Timer_Streaming_NumericalFlux_LS )
 
@@ -282,7 +281,6 @@ CONTAINS
       CALL TimersStop( Timer_Streaming_NumericalFlux_LS )
 
       CALL TimersStart( Timer_Streaming_NumericalFlux_Update )
-
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -371,27 +369,6 @@ CONTAINS
     DEALLOCATE( ITERATE, nIterations )
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-!#elif defined( THORNADO_OACC   )
-!    !$ACC PARALLEL LOOP GANG VECTOR
-!    !$ACC PRESENT( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, &
-!    !$ACC          V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
-!#elif defined( THORNADO_OMP    )
-!    !$OMP PARALLEL DO
-!#endif
-!    DO iZ = 1, nZ
-!
-!      CALL ComputePrimitive_TwoMoment_Scalar &
-!             ( N(iZ), G_d_1(iZ), G_d_2(iZ), G_d_3(iZ), &
-!               D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
-!               V_u_1(iX), V_u_2(iX), V_u_3(iX), &
-!               Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
-!               nIterations(iZ) )
-!
-!    END DO
-
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector
 
@@ -494,15 +471,7 @@ CONTAINS
 
       ELSE IF ( Mk > 3 ) THEN
 
-        !DO iZ = 1, nZ
-        !  IF ( MASK(iZ) ) THEN
-
-        !    CALL LinearLeastSquares &
-        !      ( 'N', nP, Mk-1, 1, A(:,:,iZ), nP, &
-        !        B(:,iZ), nP, TAU(1,iZ), WORK(1,iZ), LWORK, INFO(iZ) )
-
-        !  END IF
-        !END DO
+        ! --- Not Implemented ---
 
       END IF
 

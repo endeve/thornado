@@ -25,7 +25,7 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Streaming_InverseMassMatrix
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_InOut
-  REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_LMAT
+  REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_RHS
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_LS
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux_Update
   REAL(DP), PUBLIC :: Timer_Streaming_Sources
@@ -66,7 +66,7 @@ CONTAINS
     Timer_Streaming_InverseMassMatrix   = Zero
     Timer_Streaming_NumericalFlux       = Zero
     Timer_Streaming_NumericalFlux_InOut = Zero
-    Timer_Streaming_NumericalFlux_LMAT  = Zero
+    Timer_Streaming_NumericalFlux_RHS   = Zero
     Timer_Streaming_NumericalFlux_LS    = Zero
     Timer_Streaming_NumericalFlux_Update= Zero
     Timer_Streaming_Sources             = Zero
@@ -133,7 +133,7 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_NumericalFlux_InOut  :', Timer_Streaming_NumericalFlux_InOut , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_Streaming_NumericalFlux_LMAT   :', Timer_Streaming_NumericalFlux_LMAT  , ' s'
+      '    Timer_Streaming_NumericalFlux_RHS    :', Timer_Streaming_NumericalFlux_RHS   , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_NumericalFlux_LS     :', Timer_Streaming_NumericalFlux_LS    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
