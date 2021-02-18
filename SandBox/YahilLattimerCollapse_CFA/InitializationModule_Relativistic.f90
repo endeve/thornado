@@ -1,20 +1,20 @@
 MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
-    DP,    &
-    Zero,  &
-    Half,  &
-    One,   &
-    Two,   &
+    DP, &
+    Zero, &
+    Half, &
+    One, &
+    Two, &
     Three, &
-    Four,  &
+    Four, &
     FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX,       &
-    iX_B0,       &
-    iX_B1,       &
-    iX_E0,       &
+    nDOFX, &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
     iX_E1
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -24,28 +24,28 @@ MODULE InitializationModule_Relativistic
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     SolveGravity_CFA_Poseidon
   USE GeometryFieldsModule, ONLY: &
-    uGF,          &
+    uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Alpha,    &
+    iGF_Alpha, &
     iGF_Psi
   USE FluidFieldsModule, ONLY: &
-    uPF,    &
-    iPF_D,  &
+    uPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne, &
-    uCF,    &
-    iCF_D,  &
+    uCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    uAF,    &
+    uAF, &
     iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL, &
@@ -53,15 +53,15 @@ MODULE InitializationModule_Relativistic
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE UnitsModule, ONLY: &
-    Kilometer,   &
-    SolarMass,   &
-    Gram,        &
-    Centimeter,  &
-    Erg,         &
+    Kilometer, &
+    SolarMass, &
+    Gram, &
+    Centimeter, &
+    Erg, &
     Millisecond, &
     GravitationalConstant
   USE UtilitiesModule, ONLY: &
-    Locate,      &
+    Locate, &
     Interpolate1D_Linear
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon

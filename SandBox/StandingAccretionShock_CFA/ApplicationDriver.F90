@@ -1,11 +1,11 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
-    Two,  &
-    Pi,   &
+    One, &
+    Two, &
+    Pi, &
     TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
@@ -20,37 +20,35 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE ProgramHeaderModule, ONLY: &
-    iX_B0,  &
-    iX_B1,  &
-    iX_E0,  &
-    iX_E1,  &
-    nDimsX, &
-    nDOFX
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDimsX
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
-    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
+    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
-    FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
+    FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF,  &
+    ReadFieldsHDF, &
     WriteAccretionShockDiagnosticsHDF
   USE FluidFieldsModule, ONLY: &
     uCF, &
     uPF, &
     uAF, &
-    uDF, &
-    iPF_D
+    uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE Euler_dgDiscretizationModule, ONLY: &
@@ -60,26 +58,26 @@ PROGRAM ApplicationDriver
     FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
-    Kilometer,   &
-    SolarMass,   &
-    Second,      &
+    Kilometer, &
+    SolarMass, &
+    Second, &
     Millisecond, &
-    Centimeter,  &
-    Gram,        &
-    Erg,         &
+    Centimeter, &
+    Gram, &
+    Erg, &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic, ONLY: &
     InitializeTally_Euler_Relativistic, &
-    FinalizeTally_Euler_Relativistic,   &
+    FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler,            &
-    InitializeTimers_Euler,  &
-    FinalizeTimers_Euler,    &
-    TimersStart_Euler,       &
-    TimersStop_Euler,        &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_InputOutput, &
-    Timer_Euler_Initialize,  &
+    Timer_Euler_Initialize, &
     Timer_Euler_Finalize
   USE AccretionShockDiagnosticsModule, ONLY: &
     ComputeAccretionShockDiagnostics

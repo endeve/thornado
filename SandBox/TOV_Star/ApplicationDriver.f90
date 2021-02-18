@@ -1,11 +1,11 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
-    Two,  &
-    Pi,   &
+    One, &
+    Two, &
+    Pi, &
     TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
@@ -20,23 +20,21 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE ProgramHeaderModule, ONLY: &
-    iX_B0,  &
-    iX_B1,  &
-    iX_E0,  &
-    iX_E1,  &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
     nDimsX, &
     nDOFX
-  USE GeometryComputationModule, ONLY: &
-    ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
-    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
+    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
-    FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
+    FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
@@ -53,36 +51,35 @@ PROGRAM ApplicationDriver
     uGF
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     InitializeGravitySolver_CFA_Poseidon, &
-    FinalizeGravitySolver_CFA_Poseidon,   &
+    FinalizeGravitySolver_CFA_Poseidon, &
     SolveGravity_CFA_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    Time
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK,   &
+    FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK, &
     WriteSourceTerms2
   USE UnitsModule, ONLY: &
-    Kilometer,   &
+    Kilometer, &
     Millisecond, &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic, ONLY: &
     InitializeTally_Euler_Relativistic, &
-    FinalizeTally_Euler_Relativistic,   &
+    FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler,            &
-    InitializeTimers_Euler,  &
-    FinalizeTimers_Euler,    &
-    TimersStart_Euler,       &
-    TimersStop_Euler,        &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_InputOutput, &
-    Timer_Euler_Initialize,  &
+    Timer_Euler_Initialize, &
     Timer_Euler_Finalize
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
-  USE Euler_dgDiscretizationModule, ONLY: &
-    Time
 
   IMPLICIT NONE
 
