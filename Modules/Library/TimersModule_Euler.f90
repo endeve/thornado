@@ -107,8 +107,6 @@ MODULE TimersModule_Euler
   PUBLIC :: TimersStop_Euler
   PUBLIC :: TimersWtime_Euler
 
-  REAL(DP), PARAMETER :: Hundred = 100.0_DP
-
 
 CONTAINS
 
@@ -250,7 +248,7 @@ CONTAINS
 
       WRITE(*,'(8x,A,ES13.6E3,A,F7.3,A)') &
         'Timers = ', TotalTime, ' s = ', &
-        Hundred * TotalTime / Timer_Euler_Program
+        TotalTime / Timer_Euler_Program
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
@@ -271,8 +269,7 @@ CONTAINS
       WRITE(*,TRIM(TimeL1)) &
         'Input/Output:      ', &
         Timer_Euler_InputOutput, ' s = ', &
-        Hundred &
-          * Timer_Euler_InputOutput / Timer_Euler_Program
+        Timer_Euler_InputOutput / Timer_Euler_Program
 
       WRITE(*,TRIM(TimeL1)) &
         'Finalize:          ', &
@@ -288,54 +285,66 @@ CONTAINS
       WRITE(*,TRIM(Label)) '-----------------'
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
+      TotalTime = Timer_Euler_DG_CopyIn &
+                    + Timer_Euler_Increment &
+                    + Timer_Euler_Divergence &
+                    + Timer_Euler_Geometry &
+                    + Timer_Euler_Gravity &
+                    + Timer_Euler_DG_CopyOut
+
+      WRITE(*,TRIM(TimeL2)) &
         'dgDiscretization: ', &
         Timer_Euler_DG, ' s = ', &
-        Timer_Euler_DG / Timer_Euler_Program
+        Timer_Euler_DG / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DG / TotalTime
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
+      WRITE(*,TRIM(TimeL2)) &
         '  Increment:    ', &
         Timer_Euler_Increment, ' s = ', &
-        Timer_Euler_Increment / Timer_Euler_Program
+        Timer_Euler_Increment / Timer_Euler_Program, ' = ', &
+        Timer_Euler_Increment / Timer_Euler_DG
 
-      WRITE(*,TRIM(TimeL1)) &
+      WRITE(*,TRIM(TimeL2)) &
         '  Geometry:     ', &
         Timer_Euler_Geometry, ' s = ', &
-        Timer_Euler_Geometry / Timer_Euler_Program
+        Timer_Euler_Geometry / Timer_Euler_Program, ' = ', &
+        Timer_Euler_Geometry / Timer_Euler_DG
 
-      WRITE(*,TRIM(TimeL1)) &
+      WRITE(*,TRIM(TimeL2)) &
         '  Gravity:      ', &
         Timer_Euler_Gravity, ' s = ', &
-        Timer_Euler_Gravity / Timer_Euler_Program
+        Timer_Euler_Gravity / Timer_Euler_Program, ' = ', &
+        Timer_Euler_Gravity / Timer_Euler_DG
 
-      WRITE(*,TRIM(TimeL1)) &
+      WRITE(*,TRIM(TimeL2)) &
         '  Divergence:   ', &
         Timer_Euler_Divergence, ' s = ', &
-        Timer_Euler_Divergence / Timer_Euler_Program
+        Timer_Euler_Divergence / Timer_Euler_Program, ' = ', &
+        Timer_Euler_Divergence / Timer_Euler_DG
 
       WRITE(*,*)
 
-     WRITE(*,TRIM(TimeL2)) &
-       '  Surface Term: ', &
-       Timer_Euler_SurfaceTerm, ' s = ', &
-       Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' = ', &
-       Timer_Euler_SurfaceTerm / Timer_Euler_Divergence
+      WRITE(*,TRIM(TimeL2)) &
+        '    Surface Term: ', &
+        Timer_Euler_SurfaceTerm, ' s = ', &
+        Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' = ', &
+        Timer_Euler_SurfaceTerm / Timer_Euler_Divergence
 
-     WRITE(*,TRIM(TimeL2)) &
-       '  Volume Term:  ', &
-       Timer_Euler_VolumeTerm, ' s = ', &
-       Timer_Euler_VolumeTerm / Timer_Euler_Program, ' = ', &
-       Timer_Euler_VolumeTerm / Timer_Euler_Divergence
+      WRITE(*,TRIM(TimeL2)) &
+        '    Volume Term:  ', &
+        Timer_Euler_VolumeTerm, ' s = ', &
+        Timer_Euler_VolumeTerm / Timer_Euler_Program, ' = ', &
+        Timer_Euler_VolumeTerm / Timer_Euler_Divergence
 
-     WRITE(*,*)
+      WRITE(*,*)
 
-     WRITE(*,TRIM(TimeL2)) &
-       '    ComputePrimitive: ', &
-       Timer_Euler_ComputePrimitive, ' s = ', &
-       Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' = ', &
-       Timer_Euler_ComputePrimitive &
-         / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm )
+      WRITE(*,TRIM(TimeL2)) &
+        '      ComputePrimitive: ', &
+        Timer_Euler_ComputePrimitive, ' s = ', &
+        Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' = ', &
+        Timer_Euler_ComputePrimitive &
+          / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm )
 
       WRITE(*,*)
 
@@ -373,10 +382,11 @@ CONTAINS
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
+      WRITE(*,TRIM(TimeL2)) &
         '  Error Check:  ', &
         Timer_Euler_DG_ErrorCheck, ' s = ', &
-        Timer_Euler_DG_ErrorCheck / Timer_Euler_Program
+        Timer_Euler_DG_ErrorCheck / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DG_ErrorCheck / Timer_Euler_DG
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Data Manipulation'
