@@ -59,12 +59,10 @@ Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o: \
 
 Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   KindModule.o \
-  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule_IDEAL.o \
   EquationOfStateModule.o \
-  TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.F90
 
 Euler_CharacteristicDecompositionModule.o: \

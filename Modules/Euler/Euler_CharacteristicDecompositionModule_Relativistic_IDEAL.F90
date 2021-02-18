@@ -5,16 +5,6 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     Zero, &
     One, &
     Two
-  USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
-    iGF_Alpha, &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
-    iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -31,10 +21,6 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler, &
-    Timer_Euler_SL_CharDecomp
 
   IMPLICIT NONE
   PRIVATE
@@ -80,8 +66,6 @@ CONTAINS
     LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: i, iErr
-
-!    CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
     Gmdd11         = G(1)
     Gmdd22         = G(2)
@@ -564,8 +548,6 @@ CONTAINS
 
     END SELECT
 
-!    CALL TimersStop_Euler( Timer_Euler_SL_CharDecomp )
-
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
   REAL(DP) FUNCTION absX( X )
@@ -624,7 +606,7 @@ CONTAINS
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
     INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: U(nCF), G(nGF)
+    REAL(DP), INTENT(in)  :: U(nCF), G(8)
     REAL(DP), INTENT(out) :: dFdU(nCF,nCF)
 
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, LapseFunction, ShiftVector(3), eta
@@ -637,18 +619,18 @@ CONTAINS
 
     INTEGER :: iErr
 
-    Gmdd11         = G(iGF_Gm_dd_11)
-    Gmdd22         = G(iGF_Gm_dd_22)
-    Gmdd33         = G(iGF_Gm_dd_33)
-    LapseFunction  = G(iGF_Alpha)
-    ShiftVector(1) = G(iGF_Beta_1)
-    ShiftVector(2) = G(iGF_Beta_2)
-    ShiftVector(3) = G(iGF_Beta_3)
+    Gmdd11         = G(1)
+    Gmdd22         = G(2)
+    Gmdd33         = G(3)
+    LapseFunction  = G(5)
+    ShiftVector(1) = G(6)
+    ShiftVector(2) = G(7)
+    ShiftVector(3) = G(8)
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne, &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), iErr )
+             Gmdd11, Gmdd22, Gmdd33, iErr )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
