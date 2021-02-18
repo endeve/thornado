@@ -272,8 +272,6 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_Gravity )
 
-    CALL TimersStop_Euler( Timer_Euler_DG )
-
 #ifdef THORNADO_DEBUG_EULER
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU )
@@ -299,6 +297,8 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
     END ASSOCIATE
+
+    CALL TimersStop_Euler( Timer_Euler_DG )
 
   END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
 
