@@ -83,9 +83,20 @@ MODULE TimersModule_Euler
   ! --- Positivity-Limiter ---
 
   REAL(DP), PUBLIC :: Timer_Euler_PositivityLimiter
+  REAL(DP), PUBLIC :: Timer_Euler_PL_LimitCells
+  REAL(DP), PUBLIC :: Timer_Euler_PL_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_PL_CopyOut
+  REAL(DP), PUBLIC :: Timer_Euler_PL_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_PL_Integrate
+  REAL(DP), PUBLIC :: Timer_Euler_PL_ErrorCheck
 
   ! --- Miscellaneous ---
 
+  REAL(DP), PUBLIC :: Timer_Euler_ComputeFromConserved
+  REAL(DP), PUBLIC :: Timer_Euler_CFC_ComputePrimitive
+  REAL(DP), PUBLIC :: Timer_Euler_CFC_ErrorCheck
+  REAL(DP), PUBLIC :: Timer_Euler_CFC_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_CFC_CopyOut
   REAL(DP), PUBLIC :: Timer_Euler_BoundaryConditions
   REAL(DP), PUBLIC :: Timer_GravitySolver
 
@@ -158,13 +169,25 @@ CONTAINS
     Timer_Euler_SL_Mapping    = SqrtTiny
     Timer_Euler_SL_CopyIn     = SqrtTiny
     Timer_Euler_SL_CopyOut    = SqrtTiny
-    Timer_Euler_SL_Integrate  = SqrtTiny
     Timer_Euler_SL_Permute    = SqrtTiny
+    Timer_Euler_SL_Integrate  = SqrtTiny
 
     Timer_Euler_PositivityLimiter = SqrtTiny
+    Timer_Euler_PL_LimitCells     = SqrtTiny
+    Timer_Euler_PL_CopyIn         = SqrtTiny
+    Timer_Euler_PL_CopyOut        = SqrtTiny
+    Timer_Euler_PL_Permute        = SqrtTiny
+    Timer_Euler_PL_Integrate      = SqrtTiny
+    Timer_Euler_PL_ErrorCheck     = SqrtTiny
 
     Timer_GravitySolver            = SqrtTiny
     Timer_Euler_BoundaryConditions = SqrtTiny
+
+    Timer_Euler_ComputeFromConserved = SqrtTiny
+    Timer_Euler_CFC_ComputePrimitive = SqrtTiny
+    Timer_Euler_CFC_ErrorCheck       = SqrtTiny
+    Timer_Euler_CFC_CopyIn           = SqrtTiny
+    Timer_Euler_CFC_CopyOut          = SqrtTiny
 
   END SUBROUTINE InitializeTimers_Euler
 
@@ -538,8 +561,8 @@ CONTAINS
                     + Timer_Euler_SL_Mapping &
                     + Timer_Euler_SL_CopyIn &
                     + Timer_Euler_SL_CopyOut &
-                    + Timer_Euler_SL_Integrate &
-                    + Timer_Euler_SL_Permute
+                    + Timer_Euler_SL_Permute &
+                    + Timer_Euler_SL_Integrate
 
       WRITE(*,TRIM(TimeL3)) &
         'Slope-Limiter: ', &
@@ -596,6 +619,104 @@ CONTAINS
         Timer_Euler_SL_Integrate, ' s = ', &
         Timer_Euler_SL_Integrate / Timer_Euler_Program, ' = ', &
         Timer_Euler_SL_Integrate / Timer_Euler_SlopeLimiter
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label_Level1)) 'Positivity-Limiter'
+      WRITE(*,TRIM(Label_Level1)) '------------------'
+      WRITE(*,*)
+
+      TotalTime = Timer_Euler_PL_LimitCells &
+                    + Timer_Euler_PL_CopyIn &
+                    + Timer_Euler_PL_CopyOut &
+                    + Timer_Euler_PL_Permute &
+                    + Timer_Euler_PL_Integrate &
+                    + Timer_Euler_PL_ErrorCheck
+
+      WRITE(*,TRIM(TimeL3)) &
+        'Positivity-Limiter: ', &
+        Timer_Euler_PositivityLimiter, ' s = ', &
+        Timer_Euler_PositivityLimiter / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_PositivityLimiter
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Limit Cells: ', &
+        Timer_Euler_PL_LimitCells, ' s = ', &
+        Timer_Euler_PL_LimitCells / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_LimitCells / Timer_Euler_PositivityLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyIn:      ', &
+        Timer_Euler_PL_CopyIn, ' s = ', &
+        Timer_Euler_PL_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_CopyIn / Timer_Euler_PositivityLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyOut:     ', &
+        Timer_Euler_PL_CopyOut, ' s = ', &
+        Timer_Euler_PL_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_CopyOut / Timer_Euler_PositivityLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Permute:     ', &
+        Timer_Euler_PL_Permute, ' s = ', &
+        Timer_Euler_PL_Permute / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_Permute / Timer_Euler_PositivityLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Integrate:   ', &
+        Timer_Euler_PL_Integrate, ' s = ', &
+        Timer_Euler_PL_Integrate / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_Integrate / Timer_Euler_PositivityLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Error Check: ', &
+        Timer_Euler_PL_ErrorCheck, ' s = ', &
+        Timer_Euler_PL_ErrorCheck / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_ErrorCheck / Timer_Euler_PositivityLimiter
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label_Level1)) 'ComputeFromConserved'
+      WRITE(*,TRIM(Label_Level1)) '--------------------'
+      WRITE(*,*)
+
+      TotalTime = Timer_Euler_CFC_ComputePrimitive &
+                    + Timer_Euler_CFC_ErrorCheck &
+                    + Timer_Euler_CFC_CopyIn &
+                    + Timer_Euler_CFC_CopyOut
+
+      WRITE(*,TRIM(TimeL3)) &
+        'ComputeFromConserved: ', &
+        Timer_Euler_ComputeFromConserved, ' s = ', &
+        Timer_Euler_ComputeFromConserved / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_ComputeFromConserved
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  ComputePrimitive: ', &
+        Timer_Euler_CFC_ComputePrimitive, ' s = ', &
+        Timer_Euler_CFC_ComputePrimitive / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CFC_ComputePrimitive / Timer_Euler_ComputeFromConserved
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  ErrorCheck:       ', &
+        Timer_Euler_CFC_ErrorCheck, ' s = ', &
+        Timer_Euler_CFC_ErrorCheck / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CFC_ErrorCheck / Timer_Euler_ComputeFromConserved
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyIn:           ', &
+        Timer_Euler_CFC_CopyIn, ' s = ', &
+        Timer_Euler_CFC_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CFC_CopyIn / Timer_Euler_ComputeFromConserved
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  CopyOut:          ', &
+        Timer_Euler_CFC_CopyOut, ' s = ', &
+        Timer_Euler_CFC_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CFC_CopyOut / Timer_Euler_ComputeFromConserved
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'Miscellaneous'
