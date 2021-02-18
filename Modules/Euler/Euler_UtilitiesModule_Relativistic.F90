@@ -38,6 +38,7 @@ MODULE Euler_UtilitiesModule_Relativistic
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    nAF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
@@ -56,7 +57,12 @@ MODULE Euler_UtilitiesModule_Relativistic
     TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep, &
     Timer_Euler_CopyIn, &
-    Timer_Euler_CopyOut
+    Timer_Euler_CopyOut, &
+    Timer_Euler_ComputeFromConserved, &
+    Timer_Euler_CFC_CopyIn, &
+    Timer_Euler_CFC_CopyOut, &
+    Timer_Euler_CFC_ComputePrimitive, &
+    Timer_Euler_CFC_ErrorCheck
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -276,54 +282,120 @@ CONTAINS
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iNX
+    INTEGER :: iNX, iX1, iX2, iX3, iAF
     INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3))
 
-    iErr = 0
+    CALL TimersStart_Euler( Timer_Euler_ComputeFromConserved )
 
     ! --- Update primitive variables, pressure, and sound speed ---
 
-    A = 0.0_DP
+    CALL TimersStart_Euler( Timer_Euler_CFC_CopyIn )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$OMP MAP( alloc: P, A, iErr )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$ACC CREATE(     P, A, iErr )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, A )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+    DO iAF = 1, nAF
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
+
+      A(iNX,iX1,iX2,iX3,iAF) = Zero
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_CFC_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
+
+      iErr(iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (1:nDOFX,iX1,iX2,iX3,iCF_D),         &
-               U   (1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
-               U   (1:nDOFX,iX1,iX2,iX3,iCF_S2),        &
-               U   (1:nDOFX,iX1,iX2,iX3,iCF_S3),        &
-               U   (1:nDOFX,iX1,iX2,iX3,iCF_E),         &
-               U   (1:nDOFX,iX1,iX2,iX3,iCF_Ne),        &
-               P   (1:nDOFX,iX1,iX2,iX3,iPF_D),         &
-               P   (1:nDOFX,iX1,iX2,iX3,iPF_V1),        &
-               P   (1:nDOFX,iX1,iX2,iX3,iPF_V2),        &
-               P   (1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
-               P   (1:nDOFX,iX1,iX2,iX3,iPF_E),         &
-               P   (1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
-               G   (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-               G   (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G   (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
-               iErr(1:nDOFX,iX1,iX2,iX3) )
+             ( U   (iNX,iX1,iX2,iX3,iCF_D),         &
+               U   (iNX,iX1,iX2,iX3,iCF_S1),        &
+               U   (iNX,iX1,iX2,iX3,iCF_S2),        &
+               U   (iNX,iX1,iX2,iX3,iCF_S3),        &
+               U   (iNX,iX1,iX2,iX3,iCF_E),         &
+               U   (iNX,iX1,iX2,iX3,iCF_Ne),        &
+               P   (iNX,iX1,iX2,iX3,iPF_D),         &
+               P   (iNX,iX1,iX2,iX3,iPF_V1),        &
+               P   (iNX,iX1,iX2,iX3,iPF_V2),        &
+               P   (iNX,iX1,iX2,iX3,iPF_V3),        &
+               P   (iNX,iX1,iX2,iX3,iPF_E),         &
+               P   (iNX,iX1,iX2,iX3,iPF_Ne),        &
+               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
+               iErr(iNX,iX1,iX2,iX3) )
 
       CALL ComputeAuxiliary_Fluid &
-             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
+             ( P(iNX,iX1,iX2,iX3,iPF_D ), &
+               P(iNX,iX1,iX2,iX3,iPF_E ), &
+               P(iNX,iX1,iX2,iX3,iPF_Ne), &
+               A(iNX,iX1,iX2,iX3,iAF_P ), &
+               A(iNX,iX1,iX2,iX3,iAF_T ), &
+               A(iNX,iX1,iX2,iX3,iAF_Ye), &
+               A(iNX,iX1,iX2,iX3,iAF_S ), &
+               A(iNX,iX1,iX2,iX3,iAF_E ), &
+               A(iNX,iX1,iX2,iX3,iAF_Gm), &
+               A(iNX,iX1,iX2,iX3,iAF_Cs) )
 
     END DO
     END DO
     END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_CFC_ComputePrimitive )
+
+    CALL TimersStart_Euler( Timer_Euler_CFC_CopyOut )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    P, A, iErr ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      P, A, iErr ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_CFC_CopyOut )
+
+    CALL TimersStart_Euler( Timer_Euler_CFC_ErrorCheck )
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
@@ -348,6 +420,10 @@ CONTAINS
       END DO
 
     END IF
+
+    CALL TimersStop_Euler( Timer_Euler_CFC_ErrorCheck )
+
+    CALL TimersStop_Euler( Timer_Euler_ComputeFromConserved )
 
   END SUBROUTINE ComputeFromConserved_Euler_Relativistic
 
