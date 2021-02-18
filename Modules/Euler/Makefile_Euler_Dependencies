@@ -136,7 +136,6 @@ Euler_PositivityLimiterModule.o: \
 Euler_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
-  ReferenceElementModuleX.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \

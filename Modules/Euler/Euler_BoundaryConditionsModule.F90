@@ -1,15 +1,10 @@
 MODULE Euler_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP, &
-    Three, &
-    Four
+    DP
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, &
-    WeightsX_q
   USE ProgramHeaderModule, ONLY: &
     bcX, &
     swX, &

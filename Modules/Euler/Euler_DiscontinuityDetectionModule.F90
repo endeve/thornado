@@ -24,7 +24,6 @@ MODULE Euler_DiscontinuityDetectionModule
     L_X2, &
     L_X3
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
