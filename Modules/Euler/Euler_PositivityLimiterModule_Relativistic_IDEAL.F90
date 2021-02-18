@@ -269,6 +269,10 @@ CONTAINS
                                   iX_B0(2):iX_E0(2), &
                                   iX_B0(3):iX_E0(3))
 
+    IF( nDOFX == 1 ) RETURN
+
+    IF( .NOT. UsePositivityLimiter ) RETURN
+
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     nX_K  = PRODUCT( iX_E0 - iX_B0 + 1 )
@@ -557,12 +561,12 @@ CONTAINS
 
         DO iCF = 1, nCF
         DO iNX = 1, nDOFX
-  
+
           U(iNX,iX1,iX2,iX3,iCF) &
             = U_K(iCF,iX1,iX2,iX3) &
                 + Theta_q(iX1,iX2,iX3) * ( U_Q(iNX,iCF,iX1,iX2,iX3) &
                                              - U_K(iCF,iX1,iX2,iX3) )
-  
+
         END DO
         END DO
 
@@ -570,9 +574,9 @@ CONTAINS
 
         DO iCF = 1, nCF
         DO iNX = 1, nDOFX
-  
+
           U(iNX,iX1,iX2,iX3,iCF) = U_Q(iNX,iCF,iX1,iX2,iX3)
-  
+
         END DO
         END DO
 
