@@ -1,30 +1,24 @@
 MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
-    DP,       &
+    DP, &
     SqrtTiny, &
-    Zero,     &
-    Half,     &
-    One,      &
-    Two,      &
-    Three,    &
-    Four,     &
-    Pi,       &
-    TwoPi,    &
+    Zero, &
+    One, &
+    Two, &
+    Pi, &
     FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nNodesX,     &
-    nDimsX,      &
-    nDOFX,       &
-    swX,         &
-    iX_B0,       &
-    iX_B1,       &
-    iX_E0,       &
+    nNodesX, &
+    nDOFX, &
+    swX, &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
     iX_E1
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, &
-    WeightsX_q
+    NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -33,69 +27,56 @@ MODULE InitializationModule_Relativistic
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
-    nGF,          &
-    uGF,          &
-    iGF_Phi_N,    &
-    iGF_h_1,      &
-    iGF_h_2,      &
-    iGF_h_3,      &
+    nGF, &
+    uGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
-    iGF_Beta_3,   &
-    iGF_SqrtGm,   &
-    iGF_Alpha,    &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
+    iGF_Alpha, &
     iGF_Psi
   USE FluidFieldsModule, ONLY: &
-    nPF,    &
-    uPF,    &
-    iPF_D,  &
+    uPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne, &
-    uCF,    &
-    iCF_D,  &
+    uCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    uAF,    &
+    uAF, &
     iAF_P
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
-  USE PhysicalConstantsModule, ONLY: &
-    SpeedOfLightCGS
   USE UnitsModule, ONLY: &
     GravitationalConstant, &
-    SpeedOfLight,          &
-    Kilometer,             &
-    SolarMass,             &
-    Gram,                  &
-    Centimeter,            &
-    Erg,                   &
-    Millisecond,           &
-    Second,                &
-    PlanckConstant,        &
+    SpeedOfLight, &
+    Kilometer, &
+    SolarMass, &
+    Gram, &
+    Centimeter, &
+    Erg, &
+    Second, &
+    PlanckConstant, &
     AtomicMassUnit
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
-    Locate,      &
+    Locate, &
     Interpolate1D_Linear
-  USE QuadratureModule, ONLY: &
-    GetQuadrature
-  USE PolynomialBasisModule_Lagrange, ONLY: &
-    LagrangeP
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
 

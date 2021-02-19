@@ -1,7 +1,7 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
     One
   USE ProgramHeaderModule, ONLY: &
@@ -18,7 +18,7 @@ MODULE TimeSteppingModule_SSPRK
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
+    TimersStop_Euler, &
     Timer_Euler_UpdateFluid
 
   IMPLICIT NONE

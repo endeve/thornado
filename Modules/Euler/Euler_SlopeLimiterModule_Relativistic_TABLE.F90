@@ -3,8 +3,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    One, &
-    Two
+    One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDimsX, &
@@ -51,6 +50,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
+    LimiterThreshold, &
     DetectTroubledCells_Euler
   USE UnitsModule, ONLY: &
     AtomicMassUnit
@@ -66,19 +66,15 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_TABLE
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_TABLE
 
-  REAL(DP), PUBLIC :: LimiterThreshold
-
   LOGICAL      :: UseSlopeLimiter
   LOGICAL      :: UseCharacteristicLimiting
   LOGICAL      :: UseConservativeCorrection
-  LOGICAL      :: UseTroubledCellIndicator
   CHARACTER(4) :: SlopeLimiterMethod
 
   ! --- TVD Limiter ---
 
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
 
@@ -111,8 +107,9 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
-    INTEGER :: i
-    LOGICAL :: Verbose
+    INTEGER  :: i
+    LOGICAL  :: Verbose, UseTroubledCellIndicator
+    REAL(DP) :: LimiterThresholdParameter
 
     UseSlopeLimiter = .TRUE.
     IF( PRESENT( UseSlopeLimiter_Option ) ) &
@@ -145,7 +142,6 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -155,12 +151,16 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
+
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: InitializeSlopeLimiter_Euler_Relativistic_TABLE'
+        '    INFO: Slope Limiter (Euler, Relativistic, TABLE)'
       WRITE(*,'(A)') &
-        '    -----------------------------------------------------'
+        '    ------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
@@ -193,10 +193,6 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
-    CALL InitializeTroubledCellIndicator_Euler &
-           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
-             LimiterThreshold_Option = LimiterThreshold )
-
     I_6x6 = Zero
     DO i = 1, 6
       I_6x6(i,i) = One
@@ -207,8 +203,7 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_TABLE
 
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator_Euler
+    CALL FinalizeTroubledCellIndicator_Euler
 
   END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_TABLE
 

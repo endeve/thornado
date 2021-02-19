@@ -9,6 +9,8 @@ MODULE FinalizationModule
     amrex_geometry_destroy
   USE amrex_amrcore_module,             ONLY: &
     amrex_amrcore_finalize
+  USE amrex_parallel_module,            ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -25,6 +27,8 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule,    ONLY: &
     FinalizePositivityLimiter_Euler
+  USE TimersModule_Euler,               ONLY: &
+    FinalizeTimers_Euler
 
   ! --- Local Modules ---
 
@@ -34,6 +38,7 @@ MODULE FinalizationModule
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_FinalizeFluid_SSPRK
   USE TimersModule_AMReX_Euler,         ONLY: &
+    FinalizeTimers_AMReX_Euler,    &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_Finalize
@@ -81,6 +86,12 @@ CONTAINS
     CALL FinalizeParameters
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
+    CALL FinalizeTimers_Euler &
+           ( Verbose_Option = amrex_parallel_ioprocessor(), &
+             SuppressApplicationDriver_Option = .TRUE. )
+
+    CALL FinalizeTimers_AMReX_Euler
 
     CALL amrex_amrcore_finalize
 

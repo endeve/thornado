@@ -5,8 +5,8 @@ MODULE InitializationModule
     TwoPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX,       &
-    iX_B0,       &
+    nDOFX, &
+    iX_B0, &
     iX_E0
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -14,33 +14,33 @@ MODULE InitializationModule
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    uGF,          &
+    uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     unitsPF, &
-    nPF,     &
-    uPF,     &
-    iPF_D,   &
-    iPF_V1,  &
-    iPF_V2,  &
-    iPF_V3,  &
-    iPF_E,   &
-    iPF_Ne,  &
-    uCF,     &
-    iCF_D,   &
-    iCF_S1,  &
-    iCF_S2,  &
-    iCF_S3,  &
-    iCF_E,   &
-    iCF_Ne,  &
+    nPF, &
+    uPF, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne, &
+    uCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
     unitsAF, &
-    nAF,     &
-    uAF,     &
-    iAF_P,   &
-    iAF_T,   &
-    iAF_Ye,  &
+    nAF, &
+    uAF, &
+    iAF_P, &
+    iAF_T, &
+    iAF_Ye, &
     iAF_E
   USE EquationOfStateModule, ONLY: &
     ComputeTemperatureFromPressure, &
@@ -48,10 +48,7 @@ MODULE InitializationModule
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE UnitsModule, ONLY: &
-    Gram,         &
-    Centimeter,   &
-    Kilometer,    &
-    Second,       &
+    Kilometer, &
     SpeedOfLight, &
     UnitsDisplay
 

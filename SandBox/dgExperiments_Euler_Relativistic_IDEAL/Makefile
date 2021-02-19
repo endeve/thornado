@@ -2,7 +2,7 @@ THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-#DEFINES += -DTHORNADO_DEBUG
+DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
@@ -67,7 +67,6 @@ ApplicationDriver.o: \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
-  Euler_ErrorModule.o \
   ApplicationDriver.F90
 
 InitializationModule_Relativistic.o: \

@@ -71,8 +71,6 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -93,7 +91,6 @@ PROGRAM ApplicationDriver
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   INTEGER       :: RestartFileNumber
-  INTEGER       :: iErr = 0
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
@@ -230,7 +227,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'IsolatedShock'
+      RiemannProblemName = 'DzB2002'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -250,7 +247,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 64, 1 ]
+      nX  = [ 32, 32, 1 ]
       swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
@@ -415,6 +412,9 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
+  uCF = 0.0_DP ! Without this, crashes when copying data in TimeStepper
+  uDF = 0.0_DP ! Without this, crashes in IO
+
   CALL InitializeFields_Relativistic &
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ), &
@@ -422,6 +422,12 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            nDetCells_Option = nDetCells, &
            Eblast_Option    = Eblast )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE TO( uCF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE DEVICE(    uCF )
+#endif
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -432,10 +438,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
-             iErr_Option = iErr )
-
-    CALL DescribeError_Euler( iErr )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -478,9 +481,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCF, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt, iErr_Option = iErr )
-
-    CALL DescribeError_Euler( iErr )
+             dt )
 
     IF( t + dt .LT. t_end )THEN
 
@@ -528,10 +529,7 @@ PROGRAM ApplicationDriver
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
       CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
-               iErr_Option = iErr )
-
-      CALL DescribeError_Euler( iErr )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -549,16 +547,14 @@ PROGRAM ApplicationDriver
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
+  WRITE(*,'(A,I8.8,A,ES10.3E3,A)') &
+    'Finished ', iCycle, ' cycles in ', Timer_Evolution, ' s'
   WRITE(*,*)
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
-           iErr_Option = iErr )
-
-  CALL DescribeError_Euler( iErr )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

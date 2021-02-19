@@ -277,7 +277,6 @@ CONTAINS
     LOGICAL                         :: WriteFF_C, WriteFF_P, &
                                        WriteFF_A, WriteFF_D
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
-    TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_geometry)            :: GEOM  (0:nLevels-1)

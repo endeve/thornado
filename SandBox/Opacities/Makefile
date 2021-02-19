@@ -13,7 +13,7 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
 .DEFAULT_GOAL := all
 
-all: NeutrinoOpacities
+all: NeutrinoOpacities NeutrinoOpacities_Profile
 
 NeutrinoOpacities: \
 	$(weaklib) \
@@ -23,6 +23,16 @@ NeutrinoOpacities: \
 	$(weaklib) \
 	$(thornado) \
 	NeutrinoOpacities.o \
+	$(LIBRARIES)
+
+NeutrinoOpacities_Profile: \
+	$(weaklib) \
+	$(thornado) \
+	NeutrinoOpacities_Profile.o
+	$(FLINKER) $(FLAGS) -o NeutrinoOpacities_Profile_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	NeutrinoOpacities_Profile.o \
 	$(LIBRARIES)
 
 clean:

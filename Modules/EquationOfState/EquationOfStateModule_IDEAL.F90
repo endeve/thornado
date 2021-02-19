@@ -228,6 +228,12 @@ CONTAINS
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
 

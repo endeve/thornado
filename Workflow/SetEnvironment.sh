@@ -93,6 +93,11 @@ elif [[ $THORNADO_MACHINE == jrober* ]]; then
   export PETSC_DIR=/usr/local/petsc/petsc-3.10.4
   export PETSC_ARCH=/usr/local/petsc/petsc-3.10.4/arch-darwin-c-debug
 
+elif [[ $THORNADO_MACHINE == rmurph* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == accre* ]]; then
 
   echo
@@ -246,6 +251,10 @@ elif [[ $THORNADO_MACHINE == sjdunham ]]; then
   echo
 
 elif [[ $THORNADO_MACHINE == jrober ]]; then
+
+  echo
+
+elif [[ $THORNADO_MACHINE == rmurph ]]; then
 
   echo
 

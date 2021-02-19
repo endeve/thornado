@@ -120,6 +120,14 @@ CONTAINS
     uGF(:,:,:,:,iGF_Beta_3)   = 0.0_DP
     uGF(:,:,:,:,iGF_Psi)      = 1.0_DP
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: uGF )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( uGF )
+#endif
+
   END SUBROUTINE CreateGeometryFields
 
 
@@ -148,6 +156,14 @@ CONTAINS
 
 
   SUBROUTINE DestroyGeometryFields
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: uGF )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( uGF )
+#endif
 
     DEALLOCATE( uGF )
 

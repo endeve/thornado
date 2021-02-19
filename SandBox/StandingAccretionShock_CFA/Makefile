@@ -50,7 +50,7 @@ ApplicationDriver.o: \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
   AccretionShockDiagnosticsModule.o \
-  ApplicationDriver.f90
+  ApplicationDriver.F90
 
 InitializationModule_Relativistic.o: \
   KindModule.o \

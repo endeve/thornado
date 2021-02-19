@@ -74,13 +74,13 @@ MODULE ProgramHeaderModule
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE &
-  !$OMP TARGET( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+  !$OMP TARGET( nX, nDimsX, swX, bcX, xL, xR, zoomX, nNodesX, &
   !$OMP         nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
   !$OMP         iX_B0, iX_E0, iX_B1, iX_E1, &
   !$OMP         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE &
-  !$ACC CREATE( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+  !$ACC CREATE( nX, nDimsX, swX, bcX, xL, xR, zoomX, nNodesX, &
   !$ACC         nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ, &
   !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, &
   !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
@@ -237,11 +237,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE &
-    !$OMP TO( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+    !$OMP TO( nX, nDimsX, swX, bcX, xL, xR, zoomX, nNodesX, &
     !$OMP     iX_B0, iX_E0, iX_B1, iX_E1 )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE &
-    !$ACC DEVICE( nX, swX, bcX, xL, xR, zoomX, nNodesX, &
+    !$ACC DEVICE( nX, nDimsX, swX, bcX, xL, xR, zoomX, nNodesX, &
     !$ACC         iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 

@@ -155,6 +155,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nCR, 1:nSpecies) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uCR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uCR )
+#endif
+
   END SUBROUTINE CreateRadiationFields_Conserved
 
 
@@ -213,6 +221,14 @@ CONTAINS
 
 
   SUBROUTINE DestroyRadiationFields
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: uCR )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( uCR )
+#endif
 
     DEALLOCATE( uCR, rhsCR, uPR, uAR )
     DEALLOCATE( Discontinuity )

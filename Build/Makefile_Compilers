@@ -53,6 +53,7 @@ FORTRAN_juliana      = gfortran
 FORTRAN_kristopher   = mpif90
 FORTRAN_ranchu       = mpif90
 FORTRAN_ranchuair    = mpif90
+FORTRAN_rmurph	     = mpif90 -fopenmp
 FORTRAN_sjdunham     = mpif90 -fopenmp
 FORTRAN_jrober       = /usr/local/openmpi/bin/mpif90 -fopenmp
 FORTRAN_accre        = mpif90
@@ -87,6 +88,7 @@ SUFFIX_f90_kristopher   =
 SUFFIX_f90_ranchu       =
 SUFFIX_f90_ranchuair    =
 SUFFIX_f90_sjdunham     =
+SUFFIX_f90_rmurph       =
 SUFFIX_f90_jrober       =
 SUFFIX_f90_accre        =
 SUFFIX_f90_zelledge     =
@@ -117,6 +119,7 @@ FLINKER_juliana      = gfortran
 FLINKER_kristopher   = mpif90
 FLINKER_ranchu       = mpif90
 FLINKER_ranchuair    = mpif90
+FLINKER_rmurph	     = mpif90 -fopenmp -llapack -lblas
 FLINKER_sjdunham     = mpif90 -fopenmp
 FLINKER_jrober       = /usr/local/openmpi/bin/mpif90 -fopenmp
 FLINKER_accre        = mpif90
@@ -155,6 +158,7 @@ DEBUG_dpochik      = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invali
 DEBUG_lucalin	   = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_bison        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -fcheck=all -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fdump-fortran-optimized
+DEBUG_rmurph	   = -g -ffpe-trap=invalid,zero,overflow -Wall -fcheck=all -fbacktrace
 DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
 DEBUG_jrober       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
 DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
@@ -186,6 +190,7 @@ OPTIMIZE_kristopher   = -O2 -framework Accelerate
 OPTIMIZE_ranchu       = -O2
 OPTIMIZE_ranchuair    = -O2
 #OPTIMIZE_ranchuair    = -O2 -framework Accelerate
+OPTIMIZE_rmurph	      = -O2 -framework Accelerate
 OPTIMIZE_sjdunham     = -O2 -fallow-argument-mismatch
 OPTIMIZE_jrober       = -O2 -framework Accelerate
 OPTIMIZE_accre        = -O2
@@ -220,6 +225,7 @@ INCLUDE_HDF5_kristopher        = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_ranchu            = -I/usr/local/hdf5/include
 INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_sjdunham          = -I/usr/local/Cellar/hdf5/1.12.0_1/include
+INCLUDE_HDF5_rmurph	       = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_jrober            = -I/usr/local/hdf5/include
 INCLUDE_HDF5_accre             = -I/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/HDF5/1.10.1/include
 INCLUDE_HDF5_zelledge          = -I/usr/include/hdf5/serial
@@ -316,6 +322,7 @@ LIBRARIES_HDF5_kristopher      = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fo
 LIBRARIES_HDF5_ranchu          = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_ranchuair       = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sjdunham        = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_rmurph 	       = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_jrober          = -L/usr/local/hdf5/lib  -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_zelledge        = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_dpochik         = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
@@ -435,6 +442,7 @@ PP_lucalin      = -D
 PP_bison        = -D
 PP_ranchuair    = -D
 PP_sjdunham     = -D
+PP_rmurph	= -D
 PP_jrober       = -D
 PP_accre        = -D
 PP_titan_gnu    = -D

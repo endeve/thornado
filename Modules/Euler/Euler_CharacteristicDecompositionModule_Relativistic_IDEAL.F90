@@ -5,16 +5,6 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     Zero, &
     One, &
     Two
-  USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
-    iGF_Alpha, &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
-    iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -31,10 +21,6 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler, &
-    Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE
   PRIVATE
@@ -50,8 +36,14 @@ CONTAINS
   SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
     ( iDim, G, U, R, invR )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: G(nGF), U(nCF)
+    REAL(DP), INTENT(in)  :: G(8), U(nCF)
     REAL(DP), INTENT(out) :: R(nCF,nCF), invR(nCF,nCF)
 
     ! --- Expressions for right and left eigenvector matrices from
@@ -73,23 +65,21 @@ CONTAINS
     LOGICAL  :: DEBUG_X2 = .FALSE.
     LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
-    INTEGER  :: i
+    INTEGER  :: i, iErr
 
-    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
-
-    Gmdd11         = G(iGF_Gm_dd_11)
-    Gmdd22         = G(iGF_Gm_dd_22)
-    Gmdd33         = G(iGF_Gm_dd_33)
-    DetGm          = G(iGF_SqrtGm)**2
-    LapseFunction  = G(iGF_Alpha)
-    ShiftVector(1) = G(iGF_Beta_1)
-    ShiftVector(2) = G(iGF_Beta_2)
-    ShiftVector(3) = G(iGF_Beta_3)
+    Gmdd11         = G(1)
+    Gmdd22         = G(2)
+    Gmdd33         = G(3)
+    DetGm          = G(4)**2
+    LapseFunction  = G(5)
+    ShiftVector(1) = G(6)
+    ShiftVector(2) = G(7)
+    ShiftVector(3) = G(8)
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne,                                           &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
+             Gmdd11, Gmdd22, Gmdd33, iErr )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
@@ -114,29 +104,29 @@ CONTAINS
 
     IF( DEBUG )THEN
 
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule...'
-      WRITE(*,*)
-
-      ! --- Input for python program to compute eigenvectors ---
-      WRITE(*,'(A)') '# Geometry'
-      WRITE(*,'(A,ES24.16E3)') 'Gmdd11        = ', Gmdd11
-      WRITE(*,'(A,ES24.16E3)') 'Gmdd22        = ', Gmdd22
-      WRITE(*,'(A,ES24.16E3)') 'Gmdd33        = ', Gmdd33
-      WRITE(*,'(A,ES24.16E3)') 'DetGm         = ', DetGm
-      WRITE(*,'(A,ES24.16E3)') 'ShiftVector1  = ', ShiftVector(1)
-      WRITE(*,'(A,ES24.16E3)') 'ShiftVector2  = ', ShiftVector(2)
-      WRITE(*,'(A,ES24.16E3)') 'ShiftVector3  = ', ShiftVector(3)
-      WRITE(*,'(A,ES24.16E3)') 'LapseFunction = ', LapseFunction
-      WRITE(*,*)
-      WRITE(*,'(A)') '# Fluid variables'
-      WRITE(*,'(A,ES24.16E3)') 'Gamma  = ', Gamma_IDEAL
-      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D
-      WRITE(*,'(A,ES24.16E3)') 'Vu1    = ', Vu1
-      WRITE(*,'(A,ES24.16E3)') 'Vu2    = ', Vu2
-      WRITE(*,'(A,ES24.16E3)') 'Vu3    = ', Vu3
-      WRITE(*,'(A,ES24.16E3)') 'e      = ', E
-      WRITE(*,*)
+!      WRITE(*,*)
+!      WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule...'
+!      WRITE(*,*)
+!
+!      ! --- Input for python program to compute eigenvectors ---
+!      WRITE(*,'(A)') '# Geometry'
+!      WRITE(*,'(A,ES24.16E3)') 'Gmdd11        = ', Gmdd11
+!      WRITE(*,'(A,ES24.16E3)') 'Gmdd22        = ', Gmdd22
+!      WRITE(*,'(A,ES24.16E3)') 'Gmdd33        = ', Gmdd33
+!      WRITE(*,'(A,ES24.16E3)') 'DetGm         = ', DetGm
+!      WRITE(*,'(A,ES24.16E3)') 'ShiftVector1  = ', ShiftVector(1)
+!      WRITE(*,'(A,ES24.16E3)') 'ShiftVector2  = ', ShiftVector(2)
+!      WRITE(*,'(A,ES24.16E3)') 'ShiftVector3  = ', ShiftVector(3)
+!      WRITE(*,'(A,ES24.16E3)') 'LapseFunction = ', LapseFunction
+!      WRITE(*,*)
+!      WRITE(*,'(A)') '# Fluid variables'
+!      WRITE(*,'(A,ES24.16E3)') 'Gamma  = ', Gamma_IDEAL
+!      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D
+!      WRITE(*,'(A,ES24.16E3)') 'Vu1    = ', Vu1
+!      WRITE(*,'(A,ES24.16E3)') 'Vu2    = ', Vu2
+!      WRITE(*,'(A,ES24.16E3)') 'Vu3    = ', Vu3
+!      WRITE(*,'(A,ES24.16E3)') 'e      = ', E
+!      WRITE(*,*)
 
     END IF
 
@@ -248,32 +238,32 @@ CONTAINS
 
         IF( DEBUG_X1 )THEN
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X1)'
-          WRITE(*,'(2x,A)') '-------------------------------------------'
-          WRITE(*,*)
-
-!!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
-
-          WRITE(*,'(4x,A)') 'Eigenvalues'
-          WRITE(*,'(4x,A)') '-----------'
-          DO i = 1, nCF
-            WRITE(*,'(6x,ES10.2E3)') EigVals(i)
-          END DO
-          WRITE(*,*)
-
-!!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-!!$          WRITE(*,'(4x,A)') '--------------------------'
-!!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-          WRITE(*,'(4x,A)') '-----------------'
-          LAMBDA = MATMUL( invR, R )
-          DO i = 1, nCF
-            WRITE(*,'(6x,6ES11.2E3)') &
-              absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
-              absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
-          END DO
-          WRITE(*,*)
+!           WRITE(*,*)
+!           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X1)'
+!           WRITE(*,'(2x,A)') '-------------------------------------------'
+!           WRITE(*,*)
+!
+! !!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!
+!           WRITE(*,'(4x,A)') 'Eigenvalues'
+!           WRITE(*,'(4x,A)') '-----------'
+!           DO i = 1, nCF
+!             WRITE(*,'(6x,ES10.2E3)') EigVals(i)
+!           END DO
+!           WRITE(*,*)
+!
+! !!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
+! !!$          WRITE(*,'(4x,A)') '--------------------------'
+! !!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+!           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
+!           WRITE(*,'(4x,A)') '-----------------'
+!           LAMBDA = MATMUL( invR, R )
+!           DO i = 1, nCF
+!             WRITE(*,'(6x,6ES11.2E3)') &
+!               absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
+!               absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
+!           END DO
+!           WRITE(*,*)
 
         END IF
 
@@ -383,32 +373,32 @@ CONTAINS
 
         IF( DEBUG_X2 )THEN
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X2)'
-          WRITE(*,'(2x,A)') '-------------------------------------------'
-          WRITE(*,*)
-
-!!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
-
-          WRITE(*,'(4x,A)') 'Eigenvalues'
-          WRITE(*,'(4x,A)') '-----------'
-          DO i = 1, nCF
-            WRITE(*,'(6x,ES10.2E3)') EigVals(i)
-          END DO
-          WRITE(*,*)
-
-!!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-!!$          WRITE(*,'(4x,A)') '--------------------------'
-!!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-          WRITE(*,'(4x,A)') '-----------------'
-          LAMBDA = MATMUL( invR, R )
-          DO i = 1, nCF
-            WRITE(*,'(6x,6ES11.2E3)') &
-              absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
-              absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
-          END DO
-          WRITE(*,*)
+!           WRITE(*,*)
+!           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X2)'
+!           WRITE(*,'(2x,A)') '-------------------------------------------'
+!           WRITE(*,*)
+!
+! !!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!
+!           WRITE(*,'(4x,A)') 'Eigenvalues'
+!           WRITE(*,'(4x,A)') '-----------'
+!           DO i = 1, nCF
+!             WRITE(*,'(6x,ES10.2E3)') EigVals(i)
+!           END DO
+!           WRITE(*,*)
+!
+! !!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
+! !!$          WRITE(*,'(4x,A)') '--------------------------'
+! !!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+!           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
+!           WRITE(*,'(4x,A)') '-----------------'
+!           LAMBDA = MATMUL( invR, R )
+!           DO i = 1, nCF
+!             WRITE(*,'(6x,6ES11.2E3)') &
+!               absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
+!               absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
+!           END DO
+!           WRITE(*,*)
 
         END IF
 
@@ -516,49 +506,47 @@ CONTAINS
                           Zero ]
         invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        IF( DEBUG_X3 )THEN
-
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X3)'
-          WRITE(*,'(2x,A)') '-------------------------------------------'
-          WRITE(*,*)
-
-!!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
-
-          WRITE(*,'(4x,A)') 'Eigenvalues'
-          WRITE(*,'(4x,A)') '-----------'
-          DO i = 1, nCF
-            WRITE(*,'(6x,ES10.2E3)') EigVals(i)
-          END DO
-          WRITE(*,*)
-
-!!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-!!$          WRITE(*,'(4x,A)') '--------------------------'
-!!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-          WRITE(*,'(4x,A)') '-----------------'
-          LAMBDA = MATMUL( invR, R )
-          DO i = 1, nCF
-            WRITE(*,'(6x,6ES11.2E3)') &
-              absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
-              absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
-          END DO
-          WRITE(*,*)
-
-        END IF
+!         IF( DEBUG_X3 )THEN
+!
+!           WRITE(*,*)
+!           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X3)'
+!           WRITE(*,'(2x,A)') '-------------------------------------------'
+!           WRITE(*,*)
+!
+! !!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!
+!           WRITE(*,'(4x,A)') 'Eigenvalues'
+!           WRITE(*,'(4x,A)') '-----------'
+!           DO i = 1, nCF
+!             WRITE(*,'(6x,ES10.2E3)') EigVals(i)
+!           END DO
+!           WRITE(*,*)
+!
+! !!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
+! !!$          WRITE(*,'(4x,A)') '--------------------------'
+! !!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+!           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
+!           WRITE(*,'(4x,A)') '-----------------'
+!           LAMBDA = MATMUL( invR, R )
+!           DO i = 1, nCF
+!             WRITE(*,'(6x,6ES11.2E3)') &
+!               absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
+!               absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
+!           END DO
+!           WRITE(*,*)
+!
+!         END IF
 
       CASE DEFAULT
 
-        WRITE(*,*)
-        WRITE(*,'(5x,A,I1.1)') 'Dimension = ', iDim
-        WRITE(*,'(5x,A)') &
-          'Characteristic limiting not implemented for dimension > 2'
-        WRITE(*,'(A5,A)') '', 'Stopping...'
-        STOP
+!         WRITE(*,*)
+!         WRITE(*,'(5x,A,I1.1)') 'Dimension = ', iDim
+!         WRITE(*,'(5x,A)') &
+!           'Characteristic limiting not implemented for dimension > 2'
+!         WRITE(*,'(A5,A)') '', 'Stopping...'
+!         STOP
 
     END SELECT
-
-    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
@@ -618,7 +606,7 @@ CONTAINS
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
     INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: U(nCF), G(nGF)
+    REAL(DP), INTENT(in)  :: U(nCF), G(8)
     REAL(DP), INTENT(out) :: dFdU(nCF,nCF)
 
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, LapseFunction, ShiftVector(3), eta
@@ -629,18 +617,20 @@ CONTAINS
 
     REAL(DP) :: Vui(3), Vdj(3), Vdk(3)
 
-    Gmdd11         = G(iGF_Gm_dd_11)
-    Gmdd22         = G(iGF_Gm_dd_22)
-    Gmdd33         = G(iGF_Gm_dd_33)
-    LapseFunction  = G(iGF_Alpha)
-    ShiftVector(1) = G(iGF_Beta_1)
-    ShiftVector(2) = G(iGF_Beta_2)
-    ShiftVector(3) = G(iGF_Beta_3)
+    INTEGER :: iErr
+
+    Gmdd11         = G(1)
+    Gmdd22         = G(2)
+    Gmdd33         = G(3)
+    LapseFunction  = G(5)
+    ShiftVector(1) = G(6)
+    ShiftVector(2) = G(7)
+    ShiftVector(3) = G(8)
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne, &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
+             Gmdd11, Gmdd22, Gmdd33, iErr )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
@@ -953,12 +943,12 @@ CONTAINS
 
       CASE DEFAULT
 
-        WRITE(*,*)
-        WRITE(*,'(A5,A,I2.2)') '', 'Dimension = ', iDim
-        WRITE(*,'(A5,A)') &
-          '', 'Characteristic limiting not implemented for dimension > 2'
-        WRITE(*,'(A5,A)') '', 'Stopping...'
-        STOP
+!        WRITE(*,*)
+!        WRITE(*,'(A5,A,I2.2)') '', 'Dimension = ', iDim
+!        WRITE(*,'(A5,A)') &
+!          '', 'Characteristic limiting not implemented for dimension > 2'
+!        WRITE(*,'(A5,A)') '', 'Stopping...'
+!        STOP
 
     END SELECT
 

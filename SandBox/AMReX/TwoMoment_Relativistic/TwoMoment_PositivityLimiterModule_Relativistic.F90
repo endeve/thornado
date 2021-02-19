@@ -739,7 +739,7 @@ m=0
         Gamma_Min = MIN( Gamma, Gamma_Min )
 
         IF( Gamma_Min < Min_2 )THEN
-
+print*, iZ1, iZ2
           CALL SolveTheta_Bisection &
                  ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
                    G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
@@ -792,7 +792,6 @@ n=n+1
     END DO
     END DO
 print*, n, m
-
 
 
     DO iS = 1, nSpecies
@@ -1077,13 +1076,14 @@ print*, n, m
 
     IF ( GammaOut .LT. Min_2 ) THEN
       W = 1.0_DP / ( 1.0_DP - ( G_11 * V1**2 + G_22 * V2**2 + G_33 * V3**2 ) )
-    ! print*, "N - G Unrealizable"
-    ! print*, iZ1,iZ2, V1
-    ! print*, "N = ", N
-    ! print*, "G1 = ", G1
-    ! print*, "G2 = ", G2
-    ! print*, "G3 = ", G3
-    ! print*, "Gamma", GammaOut
+    
+   !  print*, "N - G Unrealizable"
+   !  print*, iZ1,iZ2, V1
+   !  print*, "N = ", N
+   !  print*, "G1 = ", G1
+   !  print*, "G2 = ", G2
+   !  print*, "G3 = ", G3
+   !  print*, "Gamma", GammaOut
      G1 = 0.999_DP * W * ( N - Min_2 ) 
     END IF
 

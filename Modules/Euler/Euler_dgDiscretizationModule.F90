@@ -16,19 +16,6 @@ MODULE Euler_dgDiscretizationModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDimsX
-  USE TimersModule_Euler,  ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler, &
-    Timer_Euler_Divergence, &
-    Timer_Euler_Geometry, &
-    Timer_Euler_Gravity, &
-    Timer_Euler_SurfaceTerm, &
-    Timer_Euler_VolumeTerm, &
-    Timer_Euler_Increment, &
-    Timer_Euler_CopyIn, &
-    Timer_Euler_Permute, &
-    Timer_Euler_Interpolate, &
-    Timer_Euler_CopyOut
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
@@ -38,8 +25,7 @@ MODULE Euler_dgDiscretizationModule
     WeightsX_X1, &
     WeightsX_X2, &
     WeightsX_X3, &
-    WeightsX_q, &
-    NodeNumberTableX
+    WeightsX_q
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     dLXdX1_q, &
     dLXdX2_q, &
@@ -83,15 +69,10 @@ MODULE Euler_dgDiscretizationModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
-    iAF_P, &
     nDF, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &
     iDF_Sh_X3
-  USE EquationOfStateModule, ONLY: &
-    ComputePressureFromPrimitive, &
-    ComputeSoundSpeedFromPrimitive
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -107,6 +88,25 @@ MODULE Euler_dgDiscretizationModule
     NumericalFlux_Euler_X3
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive, &
+    ComputeSoundSpeedFromPrimitive
+  USE TimersModule_Euler,  ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
+    Timer_Euler_DG, &
+    Timer_Euler_Divergence, &
+    Timer_Euler_ComputePrimitive, &
+    Timer_Euler_Geometry, &
+    Timer_Euler_Gravity, &
+    Timer_Euler_SurfaceTerm, &
+    Timer_Euler_VolumeTerm, &
+    Timer_Euler_Increment, &
+    Timer_Euler_DG_CopyIn, &
+    Timer_Euler_DG_Permute, &
+    Timer_Euler_DG_Interpolate, &
+    Timer_Euler_DG_CopyOut, &
+    Timer_Euler_DG_ErrorCheck
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -147,14 +147,16 @@ CONTAINS
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
 
-    INTEGER :: iNodeX, iX1, iX2, iX3, iCF
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
     LOGICAL :: SuppressBC
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_DG )
+
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -166,7 +168,9 @@ CONTAINS
     !$ACC CREATE(     dU )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
+
+    CALL TimersStop_Euler( Timer_Euler_DG )
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
@@ -177,14 +181,14 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-!$ACC UPDATE HOST( U, D )
-
       CALL DetectShocks_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-!$ACC UPDATE DEVICE( D )
-
     END IF
+
+    CALL TimersStart_Euler( Timer_Euler_DG )
+
+    CALL TimersStart_Euler( Timer_Euler_Increment )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -198,15 +202,17 @@ CONTAINS
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      dU(iNodeX,iX1,iX2,iX3,iCF) = Zero
+      dU(iNX,iX1,iX2,iX3,iCF) = Zero
 
     END DO
     END DO
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_Increment )
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
@@ -237,11 +243,11 @@ CONTAINS
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      dU(iNodeX,iX1,iX2,iX3,iCF) &
-        = dU(iNodeX,iX1,iX2,iX3,iCF) &
-            / ( WeightsX_q(iNodeX) * G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) &
+      dU(iNX,iX1,iX2,iX3,iCF) &
+        = dU(iNX,iX1,iX2,iX3,iCF) &
+            / ( WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                   * dX1(iX1) * dX2(iX2) * dX3(iX3) )
 
     END DO
@@ -276,7 +282,7 @@ CONTAINS
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU)', MAXVAL(dU)
 #endif
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -288,9 +294,11 @@ CONTAINS
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
     END ASSOCIATE
+
+    CALL TimersStop_Euler( Timer_Euler_DG )
 
   END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
 
@@ -308,10 +316,9 @@ CONTAINS
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER  :: nK(3), nF_X1(3), nCF_K, nCF_F, nGF_F, nDF_F
-    INTEGER  :: iNodeX, iNodeX_X1, iX1, iX2, iX3, iCF, iGF, iErr = 0
+    INTEGER  :: iNX, iNX_X1, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
-    REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
-    REAL(DP) :: uCF_L(nCF), uCF_R(nCF)
+    REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
     REAL(DP) :: Flux_X1_L(nCF), Flux_X1_R(nCF)
     REAL(DP) :: Flux_X1_F(nCF), Flux_X1_K(nCF)
     REAL(DP) :: EigVals_L(nCF), EigVals_R(nCF)
@@ -325,23 +332,30 @@ CONTAINS
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
 
+    REAL(DP) :: uCF_L        (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
+                                           iX_B0(3)  :iX_E0(3), &
+                                           iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: uCF_R        (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
+                                           iX_B0(3)  :iX_E0(3), &
+                                           iX_B0(1)  :iX_E0(1)+1)
     REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: uCF_F_L      (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
-                                           iX_B0(3)  :iX_E0(3), &
-                                           iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: uCF_F_R      (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
-                                           iX_B0(3)  :iX_E0(3), &
-                                           iX_B0(1)  :iX_E0(1)+1)
 
-    REAL(DP) :: uDF_K        (nDOFX,     2,iX_B0(2)  :iX_E0(2), &
+    REAL(DP) :: uPF_L        (nDOFX_X1,nPF,iX_B0(2)  :iX_E0(2), &
+                                           iX_B0(3)  :iX_E0(3), &
+                                           iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: uPF_R        (nDOFX_X1,nPF,iX_B0(2)  :iX_E0(2), &
+                                           iX_B0(3)  :iX_E0(3), &
+                                           iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: uDF_F_L      (nDOFX_X1,  2,iX_B0(2)  :iX_E0(2), &
+
+    REAL(DP) :: uDF_L        (2           ,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: uDF_F_R      (nDOFX_X1,  2,iX_B0(2)  :iX_E0(2), &
+    REAL(DP) :: uDF_R        (2           ,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
 
@@ -357,6 +371,19 @@ CONTAINS
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
 
+    INTEGER :: iErr_L(1:nDOFX_X1,iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(1):iX_E0(1)+1 )
+    INTEGER :: iErr_R(1:nDOFX_X1,iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(1):iX_E0(1)+1 )
+    INTEGER :: iErr_M(1:nDOFX_X1,iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(1):iX_E0(1)+1 )
+    INTEGER :: iErr_V(1:nDOFX   ,iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(1):iX_E0(1) )
+
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
     nK    = iX_E0 - iX_B0 + 1      ! Number of Elements per Spatial Dimension
@@ -368,27 +395,31 @@ CONTAINS
 
     ASSOCIATE( dX2 => MeshX(2) % Width, dX3 => MeshX(3) % Width )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3 ) &
-    !$OMP MAP( alloc: uCF_K, uCF_F_L, uCF_F_R, &
-    !$OMP             uDF_K, uDF_F_L, uDF_F_R, &
-    !$OMP             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
+    !$OMP MAP( alloc: uCF_L, uCF_R, uCF_K, &
+    !$OMP             uPF_L, uPF_R, uPF_K, &
+    !$OMP             uDF_L, uDF_R,        &
+    !$OMP             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux, &
+    !$OMP             iErr_L, iErr_R, iErr_M, iErr_V )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3 ) &
-    !$ACC CREATE(     uCF_K, uCF_F_L, uCF_F_R, &
-    !$ACC             uDF_K, uDF_F_L, uDF_F_R, &
-    !$ACC             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
+    !$ACC CREATE(     uCF_L, uCF_R, uCF_K, &
+    !$ACC             uPF_L, uPF_R, uPF_K, &
+    !$ACC             uDF_L, uDF_R,        &
+    !$ACC             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux, &
+    !$ACC             iErr_L, iErr_R, iErr_M, iErr_V )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
 
     ! --- Geometry Fields in Element Nodes ---
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -402,9 +433,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iGF = 1, nGF
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      G_K(iNodeX,iGF,iX2,iX3,iX1) = G(iNodeX,iX1,iX2,iX3,iGF)
+      G_K(iNX,iGF,iX2,iX3,iX1) = G(iNX,iX1,iX2,iX3,iGF)
 
     END DO
     END DO
@@ -412,11 +443,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Face States (Average of Left and Right States) ---
 
@@ -429,13 +460,13 @@ CONTAINS
              G_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
              G_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -448,33 +479,33 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNodeX_X1 = 1, nDOFX_X1
+    DO iNX_X1 = 1, nDOFX_X1
 
-      G_F         (iNodeX_X1,iGF_h_1,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_h_1,iX2,iX3,iX1), SqrtTiny )
+      G_F         (iNX_X1,iGF_h_1,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_h_1,iX2,iX3,iX1), SqrtTiny )
 
-      G_F         (iNodeX_X1,iGF_h_2,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_h_2,iX2,iX3,iX1), SqrtTiny )
+      G_F         (iNX_X1,iGF_h_2,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_h_2,iX2,iX3,iX1), SqrtTiny )
 
-      G_F         (iNodeX_X1,iGF_h_3,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_h_3,iX2,iX3,iX1), SqrtTiny )
+      G_F         (iNX_X1,iGF_h_3,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_h_3,iX2,iX3,iX1), SqrtTiny )
 
-      G_F         (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_F         (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
 
-      G_F         (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_F         (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
 
-      G_F         (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_F         (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 
-      G_F        (iNodeX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
-        = G_F    (iNodeX_X1,iGF_h_1   ,iX2,iX3,iX1) &
-            * G_F(iNodeX_X1,iGF_h_2   ,iX2,iX3,iX1) &
-            * G_F(iNodeX_X1,iGF_h_3   ,iX2,iX3,iX1)
+      G_F        (iNX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
+        = G_F    (iNX_X1,iGF_h_1   ,iX2,iX3,iX1) &
+            * G_F(iNX_X1,iGF_h_2   ,iX2,iX3,iX1) &
+            * G_F(iNX_X1,iGF_h_3   ,iX2,iX3,iX1)
 
-      G_F         (iNodeX_X1,iGF_Alpha,iX2,iX3,iX1) &
-        = MAX( G_F(iNodeX_X1,iGF_Alpha,iX2,iX3,iX1), SqrtTiny )
+      G_F         (iNX_X1,iGF_Alpha,iX2,iX3,iX1) &
+        = MAX( G_F(iNX_X1,iGF_Alpha,iX2,iX3,iX1), SqrtTiny )
 
     END DO
     END DO
@@ -493,9 +524,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iCF = 1, nCF
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      uCF_K(iNodeX,iCF,iX2,iX3,iX1) = U(iNodeX,iX1,iX2,iX3,iCF)
+      uCF_K(iNX,iCF,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF)
 
     END DO
     END DO
@@ -504,185 +535,232 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uDF_K, D )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, uDF_L, uDF_R, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
+    DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNodeX = 1, nDOFX
 
-      uDF_K(iNodeX,1,iX2,iX3,iX1) = D(iNodeX,iX1,iX2,iX3,iDF_Sh_X2)
-      uDF_K(iNodeX,2,iX2,iX3,iX1) = D(iNodeX,iX1,iX2,iX3,iDF_Sh_X3)
+      uDF_L(1,iX2,iX3,iX1) = D(1,iX1-1,iX2,iX3,iDF_Sh_X2)
+      uDF_L(2,iX2,iX3,iX1) = D(1,iX1-1,iX2,iX3,iDF_Sh_X3)
+      uDF_R(1,iX2,iX3,iX1) = D(1,iX1  ,iX2,iX3,iDF_Sh_X2)
+      uDF_R(2,iX2,iX3,iX1) = D(1,iX1  ,iX2,iX3,iDF_Sh_X3)
 
     END DO
     END DO
     END DO
-    END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Interpolate Left State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X1, nCF_F, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-             uCF_K  (1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
-             uCF_F_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nDF_F, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-             uDF_K  (1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
-             uDF_F_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+             uCF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             uCF_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X1, nCF_F, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-             uCF_K  (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
-             uCF_F_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+             uCF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
+             uCF_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nDF_F, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-             uDF_K  (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
-             uDF_F_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Numerical Flux ---
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_F, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$ACC          iErr_L, iErr_R )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1) + 1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iNX_X1 = 1, nDOFX_X1
+
+      iErr_L(iNX_X1,iX2,iX3,iX1) = 0
+      iErr_R(iNX_X1,iX2,iX3,iX1) = 0
+
+      CALL ComputePrimitive_Euler &
+             ( uCF_L (iNX_X1,iCF_D       ,iX2,iX3,iX1), &
+               uCF_L (iNX_X1,iCF_S1      ,iX2,iX3,iX1), &
+               uCF_L (iNX_X1,iCF_S2      ,iX2,iX3,iX1), &
+               uCF_L (iNX_X1,iCF_S3      ,iX2,iX3,iX1), &
+               uCF_L (iNX_X1,iCF_E       ,iX2,iX3,iX1), &
+               uCF_L (iNX_X1,iCF_Ne      ,iX2,iX3,iX1), &
+               uPF_L (iNX_X1,iPF_D       ,iX2,iX3,iX1), &
+               uPF_L (iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+               uPF_L (iNX_X1,iPF_V2      ,iX2,iX3,iX1), &
+               uPF_L (iNX_X1,iPF_V3      ,iX2,iX3,iX1), &
+               uPF_L (iNX_X1,iPF_E       ,iX2,iX3,iX1), &
+               uPF_L (iNX_X1,iPF_Ne      ,iX2,iX3,iX1), &
+               G_F   (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+               G_F   (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+               G_F   (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+               iErr_L(iNX_X1             ,iX2,iX3,iX1) )
+
+      CALL ComputePrimitive_Euler &
+             ( uCF_R (iNX_X1,iCF_D       ,iX2,iX3,iX1), &
+               uCF_R (iNX_X1,iCF_S1      ,iX2,iX3,iX1), &
+               uCF_R (iNX_X1,iCF_S2      ,iX2,iX3,iX1), &
+               uCF_R (iNX_X1,iCF_S3      ,iX2,iX3,iX1), &
+               uCF_R (iNX_X1,iCF_E       ,iX2,iX3,iX1), &
+               uCF_R (iNX_X1,iCF_Ne      ,iX2,iX3,iX1), &
+               uPF_R (iNX_X1,iPF_D       ,iX2,iX3,iX1), &
+               uPF_R (iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+               uPF_R (iNX_X1,iPF_V2      ,iX2,iX3,iX1), &
+               uPF_R (iNX_X1,iPF_V3      ,iX2,iX3,iX1), &
+               uPF_R (iNX_X1,iPF_E       ,iX2,iX3,iX1), &
+               uPF_R (iNX_X1,iPF_Ne      ,iX2,iX3,iX1), &
+               G_F   (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+               G_F   (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+               G_F   (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+               iErr_R(iNX_X1             ,iX2,iX3,iX1) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$OMP          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$OMP          Flux_X1_F, AlphaMns, AlphaPls, AlphaMdl )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
-    !$ACC          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$ACC          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$ACC          Flux_X1_F, AlphaMns, AlphaPls, AlphaMdl ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dX2, dX3, uCF_F_L, uCF_F_R, uDF_F_L, uDF_F_R, &
-    !$ACC          NumericalFlux, G_F, WeightsX_X1 )
+    !$ACC PRESENT( iX_B0, iX_E0, dX2, dX3, &
+    !$ACC          G_F, uCF_L, uCF_R, uPF_L, uPF_R, uDF_L, uDF_R, &
+    !$ACC          NumericalFlux, WeightsX_X1, iErr_M )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$OMP          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$OMP          Flux_X1_F, AlphaMns, AlphaPls, AlphaMdl )
 #endif
     DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNodeX_X1 = 1, nDOFX_X1
+    DO iNX_X1 = 1, nDOFX_X1
+
+      iErr_M(iNX_X1,iX2,iX3,iX1) = 0
 
       DO iCF = 1, nCF
 
-        uCF_L(iCF) = uCF_F_L(iNodeX_X1,iCF,iX2,iX3,iX1)
-        uCF_R(iCF) = uCF_F_R(iNodeX_X1,iCF,iX2,iX3,iX1)
+        uCF_F_L(iCF) = uCF_L(iNX_X1,iCF,iX2,iX3,iX1)
+        uCF_F_R(iCF) = uCF_R(iNX_X1,iCF,iX2,iX3,iX1)
 
       END DO
 
       ! --- Left State Primitive, etc. ---
 
-      CALL ComputePrimitive_Euler &
-             ( uCF_L(iCF_D ), uCF_L(iCF_S1), uCF_L(iCF_S2), &
-               uCF_L(iCF_S3), uCF_L(iCF_E ), uCF_L(iCF_Ne), &
-               uPF_L(iPF_D ), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-               uPF_L(iPF_V3), uPF_L(iPF_E ), uPF_L(iPF_Ne), &
-               G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-               G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-               G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-               iErr_Option = iErr )
-
       CALL ComputePressureFromPrimitive &
-             ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
+             ( uPF_L(iNX_X1,iPF_D ,iX2,iX3,iX1), &
+               uPF_L(iNX_X1,iPF_E ,iX2,iX3,iX1), &
+               uPF_L(iNX_X1,iPF_Ne,iX2,iX3,iX1), &
+               P_L  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+             ( uPF_L(iNX_X1,iPF_D ,iX2,iX3,iX1), &
+               uPF_L(iNX_X1,iPF_E ,iX2,iX3,iX1), &
+               uPF_L(iNX_X1,iPF_Ne,iX2,iX3,iX1), &
+               Cs_L )
 
       EigVals_L &
         = Eigenvalues_Euler &
-            ( uPF_L(iPF_V1),                             &
-              Cs_L,                                      &
-              G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              uPF_L(iPF_V1),                             &
-              uPF_L(iPF_V2),                             &
-              uPF_L(iPF_V3),                             &
-              G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+            ( uPF_L(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              Cs_L,                                   &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V2      ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V3      ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1) )
 
       Flux_X1_L &
         = Flux_X1_Euler &
-            ( uPF_L(iPF_D ),                           &
-              uPF_L(iPF_V1),                           &
-              uPF_L(iPF_V2),                           &
-              uPF_L(iPF_V3),                           &
-              uPF_L(iPF_E ),                           &
-              uPF_L(iPF_Ne),                           &
-              P_L,                                     &
-              G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+            ( uPF_L(iNX_X1,iPF_D       ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V2      ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V3      ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_E       ,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_Ne      ,iX2,iX3,iX1), &
+              P_L,                                    &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1) )
 
       ! --- Right State Primitive, etc. ---
 
-      CALL ComputePrimitive_Euler &
-             ( uCF_R(iCF_D ), uCF_R(iCF_S1), uCF_R(iCF_S2), &
-               uCF_R(iCF_S3), uCF_R(iCF_E ), uCF_R(iCF_Ne), &
-               uPF_R(iPF_D ), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-               uPF_R(iPF_V3), uPF_R(iPF_E ), uPF_R(iPF_Ne), &
-               G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-               G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-               G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-               iErr_Option = iErr )
-
       CALL ComputePressureFromPrimitive &
-             ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
+             ( uPF_R(iNX_X1,iPF_D ,iX2,iX3,iX1), &
+               uPF_R(iNX_X1,iPF_E ,iX2,iX3,iX1), &
+               uPF_R(iNX_X1,iPF_Ne,iX2,iX3,iX1), &
+               P_R  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
+             ( uPF_R(iNX_X1,iPF_D ,iX2,iX3,iX1), &
+               uPF_R(iNX_X1,iPF_E ,iX2,iX3,iX1), &
+               uPF_R(iNX_X1,iPF_Ne,iX2,iX3,iX1), &
+               Cs_R )
 
       EigVals_R &
         = Eigenvalues_Euler &
-            ( uPF_R(iPF_V1),                             &
-              Cs_R,                                      &
-              G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              uPF_R(iPF_V1),                             &
-              uPF_R(iPF_V2),                             &
-              uPF_R(iPF_V3),                             &
-              G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
-              G_F  (iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+            ( uPF_R(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              Cs_R,                                   &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V2      ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V3      ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1) )
 
       Flux_X1_R &
         = Flux_X1_Euler &
-            ( uPF_R(iPF_D ),                           &
-              uPF_R(iPF_V1),                           &
-              uPF_R(iPF_V2),                           &
-              uPF_R(iPF_V3),                           &
-              uPF_R(iPF_E ),                           &
-              uPF_R(iPF_Ne),                           &
-              P_R,                                     &
-              G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+            ( uPF_R(iNX_X1,iPF_D       ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V2      ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V3      ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_E       ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_Ne      ,iX2,iX3,iX1), &
+              P_R,                                    &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1) )
 
       AlphaMns &
         = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
@@ -692,35 +770,37 @@ CONTAINS
 
       AlphaMdl &
         = AlphaMiddle_Euler &
-            ( uCF_L    (iCF_D), uCF_L    (iCF_S1), uCF_L    (iCF_E), &
+            ( uCF_F_L  (iCF_D), uCF_F_L  (iCF_S1), uCF_F_L  (iCF_E), &
               Flux_X1_L(iCF_D), Flux_X1_L(iCF_S1), Flux_X1_L(iCF_E), &
-              uCF_R    (iCF_D), uCF_R    (iCF_S1), uCF_R    (iCF_E), &
+              uCF_F_R  (iCF_D), uCF_F_R  (iCF_S1), uCF_F_R  (iCF_E), &
               Flux_X1_R(iCF_D), Flux_X1_R(iCF_S1), Flux_X1_R(iCF_E), &
-              G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), AlphaPls, AlphaMns, &
-              G_F(iNodeX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
-              G_F(iNodeX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
-              iErr_Option = iErr )
+              G_F(iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), AlphaPls, AlphaMns, &
+              G_F(iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
+              G_F(iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
+              iErr_M(iNX_X1,iX2,iX3,iX1) )
 
       Flux_X1_F &
         = NumericalFlux_Euler_X1 &
-            ( uCF_L, uCF_R, Flux_X1_L, Flux_X1_R,          &
-              AlphaPls, AlphaMns, AlphaMdl,                &
-              G_F    (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-              uPF_L(iPF_V1), uPF_R(iPF_V1), P_L, P_R,      &
-              G_F    (iNodeX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
-              G_F    (iNodeX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
-              uDF_F_L(iNodeX_X1,1           ,iX2,iX3,iX1), &
-              uDF_F_R(iNodeX_X1,1           ,iX2,iX3,iX1), &
-              uDF_F_L(iNodeX_X1,2           ,iX2,iX3,iX1), &
-              uDF_F_R(iNodeX_X1,2           ,iX2,iX3,iX1) )
+            ( uCF_F_L, uCF_F_R, Flux_X1_L, Flux_X1_R, &
+              AlphaPls, AlphaMns, AlphaMdl,           &
+              G_F  (iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+              uPF_L(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              uPF_R(iNX_X1,iPF_V1      ,iX2,iX3,iX1), &
+              P_L, P_R,                               &
+              G_F  (iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
+              G_F  (iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
+              uDF_L(1                  ,iX2,iX3,iX1), &
+              uDF_R(1                  ,iX2,iX3,iX1), &
+              uDF_L(2                  ,iX2,iX3,iX1), &
+              uDF_R(2                  ,iX2,iX3,iX1) )
 
       DO iCF = 1, nCF
 
-        NumericalFlux    (iNodeX_X1,iCF       ,iX2,iX3,iX1) &
-          = Flux_X1_F(iCF)                                  &
-              * G_F      (iNodeX_X1,iGF_Alpha ,iX2,iX3,iX1) &
-              * G_F      (iNodeX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
-              * dX2(iX2) * dX3(iX3) * WeightsX_X1(iNodeX_X1)
+        NumericalFlux    (iNX_X1,iCF       ,iX2,iX3,iX1) &
+          = Flux_X1_F(iCF)                               &
+              * G_F      (iNX_X1,iGF_Alpha ,iX2,iX3,iX1) &
+              * G_F      (iNX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
+              * dX2(iX2) * dX3(iX3) * WeightsX_X1(iNX_X1)
 
       END DO
 
@@ -729,18 +809,11 @@ CONTAINS
     END DO
     END DO
 
-    IF( iErr .NE. 0 )THEN
-
-      PRINT*, 'Surface term (X1)'
-      CALL DescribeError_Euler( iErr )
-
-    END IF
-
     CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
 
     ! --- Surface Contribution ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Contribution from Left Face ---
 
@@ -756,7 +829,7 @@ CONTAINS
              NumericalFlux(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One, &
              dU_X1, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     !--------------------
     ! --- Volume Term ---
@@ -764,67 +837,95 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_VolumeTerm )
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( uPF_K, Flux_X1_K, P_K )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRIVATE( uPF_K, Flux_X1_K, P_K ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dX2, dX3, Flux_X1_q, uCF_K, G_K, WeightsX_q )
+    !$ACC PRESENT( iX_B0, iX_E0, G_K, uCF_K, uPF_K, iErr_V )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( uPF_K, Flux_X1_K, P_K )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
+
+      iErr_V(iNX,iX2,iX3,iX1) = 0
 
       CALL ComputePrimitive_Euler &
-             ( uCF_K(iNodeX,iCF_D ,iX2,iX3,iX1),     &
-               uCF_K(iNodeX,iCF_S1,iX2,iX3,iX1),     &
-               uCF_K(iNodeX,iCF_S2,iX2,iX3,iX1),     &
-               uCF_K(iNodeX,iCF_S3,iX2,iX3,iX1),     &
-               uCF_K(iNodeX,iCF_E ,iX2,iX3,iX1),     &
-               uCF_K(iNodeX,iCF_Ne,iX2,iX3,iX1),     &
-               uPF_K(iPF_D ),                        &
-               uPF_K(iPF_V1),                        &
-               uPF_K(iPF_V2),                        &
-               uPF_K(iPF_V3),                        &
-               uPF_K(iPF_E ),                        &
-               uPF_K(iPF_Ne),                        &
-               G_K(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1), &
-               G_K(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1), &
-               G_K(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1), &
-               iErr_Option = iErr )
+             ( uCF_K (iNX,iCF_D       ,iX2,iX3,iX1), &
+               uCF_K (iNX,iCF_S1      ,iX2,iX3,iX1), &
+               uCF_K (iNX,iCF_S2      ,iX2,iX3,iX1), &
+               uCF_K (iNX,iCF_S3      ,iX2,iX3,iX1), &
+               uCF_K (iNX,iCF_E       ,iX2,iX3,iX1), &
+               uCF_K (iNX,iCF_Ne      ,iX2,iX3,iX1), &
+               uPF_K (iNX,iPF_D       ,iX2,iX3,iX1), &
+               uPF_K (iNX,iPF_V1      ,iX2,iX3,iX1), &
+               uPF_K (iNX,iPF_V2      ,iX2,iX3,iX1), &
+               uPF_K (iNX,iPF_V3      ,iX2,iX3,iX1), &
+               uPF_K (iNX,iPF_E       ,iX2,iX3,iX1), &
+               uPF_K (iNX,iPF_Ne      ,iX2,iX3,iX1), &
+               G_K   (iNX,iGF_Gm_dd_11,iX2,iX3,iX1), &
+               G_K   (iNX,iGF_Gm_dd_22,iX2,iX3,iX1), &
+               G_K   (iNX,iGF_Gm_dd_33,iX2,iX3,iX1), &
+               iErr_V(iNX             ,iX2,iX3,iX1) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Flux_X1_K, P_K )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( Flux_X1_K, P_K ) &
+    !$ACC PRESENT( iX_B0, iX_E0, dX2, dX3, &
+    !$ACC          G_K, uCF_K, uPF_K, Flux_X1_q, WeightsX_q )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Flux_X1_K, P_K )
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iNX = 1, nDOFX
 
       CALL ComputePressureFromPrimitive &
-             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
+             ( uPF_K(iNX,iPF_D ,iX2,iX3,iX1), &
+               uPF_K(iNX,iPF_E ,iX2,iX3,iX1), &
+               uPF_K(iNX,iPF_Ne,iX2,iX3,iX1), &
+               P_K )
 
       Flux_X1_K(1:nCF) &
         = Flux_X1_Euler &
-          ( uPF_K(iPF_D ),                        &
-            uPF_K(iPF_V1),                        &
-            uPF_K(iPF_V2),                        &
-            uPF_K(iPF_V3),                        &
-            uPF_K(iPF_E ),                        &
-            uPF_K(iPF_Ne),                        &
-            P_K,                                  &
-            G_K(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1), &
-            G_K(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1), &
-            G_K(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1), &
-            G_K(iNodeX,iGF_Alpha,   iX2,iX3,iX1), &
-            G_K(iNodeX,iGF_Beta_1,  iX2,iX3,iX1) )
+          ( uPF_K(iNX,iPF_D       ,iX2,iX3,iX1), &
+            uPF_K(iNX,iPF_V1      ,iX2,iX3,iX1), &
+            uPF_K(iNX,iPF_V2      ,iX2,iX3,iX1), &
+            uPF_K(iNX,iPF_V3      ,iX2,iX3,iX1), &
+            uPF_K(iNX,iPF_E       ,iX2,iX3,iX1), &
+            uPF_K(iNX,iPF_Ne      ,iX2,iX3,iX1), &
+            P_K,                                 &
+            G_K  (iNX,iGF_Gm_dd_11,iX2,iX3,iX1), &
+            G_K  (iNX,iGF_Gm_dd_22,iX2,iX3,iX1), &
+            G_K  (iNX,iGF_Gm_dd_33,iX2,iX3,iX1), &
+            G_K  (iNX,iGF_Alpha   ,iX2,iX3,iX1), &
+            G_K  (iNX,iGF_Beta_1  ,iX2,iX3,iX1) )
 
       DO iCF = 1, nCF
 
-        Flux_X1_q(iNodeX,iCF,iX2,iX3,iX1) = Flux_X1_K(iCF)
+        Flux_X1_q(iNX,iCF,iX2,iX3,iX1) = Flux_X1_K(iCF)
 
-        Flux_X1_q    (iNodeX,iCF       ,iX2,iX3,iX1) &
-          = Flux_X1_q(iNodeX,iCF       ,iX2,iX3,iX1) &
-              * G_K  (iNodeX,iGF_Alpha ,iX2,iX3,iX1) &
-              * G_K  (iNodeX,iGF_SqrtGm,iX2,iX3,iX1) &
-              * dX2(iX2) * dX3(iX3) * WeightsX_q(iNodeX)
+        Flux_X1_q    (iNX,iCF       ,iX2,iX3,iX1) &
+          = Flux_X1_q(iNX,iCF       ,iX2,iX3,iX1) &
+              * G_K  (iNX,iGF_Alpha ,iX2,iX3,iX1) &
+              * G_K  (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+              * dX2(iX2) * dX3(iX3) * WeightsX_q(iNX)
 
       END DO
 
@@ -833,24 +934,17 @@ CONTAINS
     END DO
     END DO
 
-    IF( iErr .NE. 0 )THEN
-
-      PRINT*, 'Volume term (X1)'
-      CALL DescribeError_Euler( iErr )
-
-    END IF
-
     CALL TimersStop_Euler( Timer_Euler_VolumeTerm )
 
     ! --- Contribution from Volume ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX, One, dLXdX1_q, nDOFX, &
              Flux_X1_q, nDOFX, One, dU_X1, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -864,11 +958,11 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      dU    (iNodeX,iX1,iX2,iX3,iCF) &
-        = dU(iNodeX,iX1,iX2,iX3,iCF) &
-            + dU_X1(iNodeX,iCF,iX2,iX3,iX1)
+      dU    (iNX,iX1,iX2,iX3,iCF) &
+        = dU(iNX,iX1,iX2,iX3,iCF) &
+            + dU_X1(iNX,iCF,iX2,iX3,iX1)
 
     END DO
     END DO
@@ -886,23 +980,122 @@ CONTAINS
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU_X1)', MAXVAL(dU_X1)
 #endif
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$OMP MAP( release: dX2, dX3, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP               uCF_K, uCF_F_L, uCF_F_R, &
-    !$OMP               uDF_K, uDF_F_L, uDF_F_R, &
+    !$OMP               uCF_L, uCF_R, uCF_K, &
+    !$OMP               uPF_L, uPF_R, uPF_K, &
+    !$OMP               uDF_L, uDF_R,        &
     !$OMP               G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
+    !$ACC COPYOUT(      iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3, &
-    !$ACC               uCF_K, uCF_F_L, uCF_F_R, &
-    !$ACC               uDF_K, uDF_F_L, uDF_F_R, &
+    !$ACC               uCF_L, uCF_R, uCF_K, &
+    !$ACC               uPF_L, uPF_R, uPF_K, &
+    !$ACC               uDF_L, uDF_R,        &
     !$ACC               G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
+
+#ifdef HYDRO_RELATIVISTIC
+
+    IF( ANY( iErr_L .NE. 0 ) .OR. &
+        ANY( iErr_R .NE. 0 ) .OR. &
+        ANY( iErr_M .NE. 0 ) .OR. &
+        ANY( iErr_V .NE. 0 ) )THEN
+
+      WRITE(*,*) 'ERROR: Surface term (X1) (Left)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1) + 1
+      DO iNX_X1 = 1, nDOFX_X1
+
+        IF( iErr_L(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_L(iNX_X1,iX2,iX3,iX1) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Surface term (X1) (Right)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1) + 1
+      DO iNX_X1 = 1, nDOFX_X1
+
+        IF( iErr_R(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_R(iNX_X1,iX2,iX3,iX1) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: AlphaMiddle (X1)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1) + 1
+      DO iNX_X1 = 1, nDOFX_X1
+
+        IF( iErr_M(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_M(iNX_X1,iX2,iX3,iX1) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Volume term (X1)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        IF( iErr_V(iNX,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_V(iNX,iX2,iX3,iX1) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
     END ASSOCIATE
 
@@ -922,48 +1115,73 @@ CONTAINS
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER  :: nK(3), nF_X2(3), nCF_K, nCF_F, nGF_F, nDF_F
-    INTEGER  :: iNodeX, iNodeX_X2, iX1, iX2, iX3, iCF, iGF, iErr = 0
+    INTEGER  :: iNX, iNX_X2, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
-    REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
-    REAL(DP) :: uCF_L(nCF), uCF_R(nCF)
+    REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
     REAL(DP) :: Flux_X2_L(nCF), Flux_X2_R(nCF)
     REAL(DP) :: Flux_X2_F(nCF), Flux_X2_K(nCF)
     REAL(DP) :: EigVals_L(nCF), EigVals_R(nCF)
     REAL(DP) :: P_L, P_R, P_K
     REAL(DP) :: Cs_L, Cs_R
+
     REAL(DP) :: G_K          (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)-1:iX_E0(2)+1)
     REAL(DP) :: G_F          (nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
+
+    REAL(DP) :: uCF_L        (nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
+                                           iX_B0(3)  :iX_E0(3), &
+                                           iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: uCF_R        (nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
+                                           iX_B0(3)  :iX_E0(3), &
+                                           iX_B0(2)  :iX_E0(2)+1)
     REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: uCF_F_L      (nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
+
+    REAL(DP) :: uPF_L        (nDOFX_X2,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: uCF_F_R      (nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uPF_R        (nDOFX_X2,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: uDF_K        (nDOFX,     2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: uDF_F_L      (nDOFX_X2,  2,iX_B0(1)  :iX_E0(1), &
+
+    REAL(DP) :: uDF_L        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: uDF_F_R      (nDOFX_X2,  2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uDF_R        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
+
     REAL(DP) :: dU_X2        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)  )
+
     REAL(DP) :: Flux_X2_q    (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)  )
+
     REAL(DP) :: NumericalFlux(nDOFX_X2,nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
+
+    INTEGER :: iErr_L(1:nDOFX_X2,iX_B0(1):iX_E0(1), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(2):iX_E0(2)+1 )
+    INTEGER :: iErr_R(1:nDOFX_X2,iX_B0(1):iX_E0(1), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(2):iX_E0(2)+1 )
+    INTEGER :: iErr_M(1:nDOFX_X2,iX_B0(1):iX_E0(1), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(2):iX_E0(2)+1 )
+    INTEGER :: iErr_V(1:nDOFX   ,iX_B0(1):iX_E0(1), &
+                                 iX_B0(3):iX_E0(3), &
+                                 iX_B0(2):iX_E0(2) )
 
     IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
 
@@ -976,27 +1194,31 @@ CONTAINS
 
     ASSOCIATE( dX1 => MeshX(1) % Width, dX3 => MeshX(3) % Width )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3 ) &
-    !$OMP MAP( alloc: uCF_K, uCF_F_L, uCF_F_R, &
-    !$OMP             uDF_K, uDF_F_L, uDF_F_R, &
-    !$OMP             G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux )
+    !$OMP MAP( alloc: uCF_L, uCF_R, uCF_K, &
+    !$OMP             uPF_L, uPF_R, uPF_K, &
+    !$OMP             uDF_L, uDF_R,        &
+    !$OMP             G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux, &
+    !$OMP             iErr_L, iErr_R, iErr_M, iErr_V )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3 ) &
-    !$ACC CREATE(     uCF_K, uCF_F_L, uCF_F_R, &
-    !$ACC             uDF_K, uDF_F_L, uDF_F_R, &
-    !$ACC             G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux )
+    !$ACC CREATE(     uCF_L, uCF_R, uCF_K, &
+    !$ACC             uPF_L, uPF_R, uPF_K, &
+    !$ACC             uDF_L, uDF_R,        &
+    !$ACC             G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux, &
+    !$ACC             iErr_L, iErr_R, iErr_M, iErr_V )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
 
     ! --- Geometry Fields in Element Nodes ---
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -1010,9 +1232,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iGF = 1, nGF
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      G_K(iNodeX,iGF,iX1,iX3,iX2) = G(iNodeX,iX1,iX2,iX3,iGF)
+      G_K(iNX,iGF,iX1,iX3,iX2) = G(iNX,iX1,iX2,iX3,iGF)
 
     END DO
     END DO
@@ -1020,11 +1242,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Face States (Average of Left and Right States) ---
 
@@ -1037,13 +1259,13 @@ CONTAINS
              G_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
              G_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -1056,33 +1278,33 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX_X2 = 1, nDOFX_X2
+    DO iNX_X2 = 1, nDOFX_X2
 
-      G_F         (iNodeX_X2,iGF_h_1,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_h_1,iX1,iX3,iX2), SqrtTiny )
+      G_F         (iNX_X2,iGF_h_1,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_h_1,iX1,iX3,iX2), SqrtTiny )
 
-      G_F         (iNodeX_X2,iGF_h_2,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_h_2,iX1,iX3,iX2), SqrtTiny )
+      G_F         (iNX_X2,iGF_h_2,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_h_2,iX1,iX3,iX2), SqrtTiny )
 
-      G_F         (iNodeX_X2,iGF_h_3,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_h_3,iX1,iX3,iX2), SqrtTiny )
+      G_F         (iNX_X2,iGF_h_3,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_h_3,iX1,iX3,iX2), SqrtTiny )
 
-      G_F         (iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+      G_F         (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
 
-      G_F         (iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+      G_F         (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
 
-      G_F         (iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+      G_F         (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
 
-      G_F        (iNodeX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
-        = G_F    (iNodeX_X2,iGF_h_1   ,iX1,iX3,iX2) &
-            * G_F(iNodeX_X2,iGF_h_2   ,iX1,iX3,iX2) &
-            * G_F(iNodeX_X2,iGF_h_3   ,iX1,iX3,iX2)
+      G_F        (iNX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
+        = G_F    (iNX_X2,iGF_h_1   ,iX1,iX3,iX2) &
+            * G_F(iNX_X2,iGF_h_2   ,iX1,iX3,iX2) &
+            * G_F(iNX_X2,iGF_h_3   ,iX1,iX3,iX2)
 
-      G_F         (iNodeX_X2,iGF_Alpha,iX1,iX3,iX2) &
-        = MAX( G_F(iNodeX_X2,iGF_Alpha,iX1,iX3,iX2), SqrtTiny )
+      G_F         (iNX_X2,iGF_Alpha,iX1,iX3,iX2) &
+        = MAX( G_F(iNX_X2,iGF_Alpha,iX1,iX3,iX2), SqrtTiny )
 
     END DO
     END DO
@@ -1101,9 +1323,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      uCF_K(iNodeX,iCF,iX1,iX3,iX2) = U(iNodeX,iX1,iX2,iX3,iCF)
+      uCF_K(iNX,iCF,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF)
 
     END DO
     END DO
@@ -1112,185 +1334,232 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uDF_K, D )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, uDF_L, uDF_R, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+    DO iX2 = iX_B0(2), iX_E0(2) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
 
-      uDF_K(iNodeX,1,iX1,iX3,iX2) = D(iNodeX,iX1,iX2,iX3,iDF_Sh_X1)
-      uDF_K(iNodeX,2,iX1,iX3,iX2) = D(iNodeX,iX1,iX2,iX3,iDF_Sh_X3)
+      uDF_L(1,iX1,iX3,iX2) = D(1,iX1,iX2-1,iX3,iDF_Sh_X1)
+      uDF_L(2,iX1,iX3,iX2) = D(1,iX1,iX2-1,iX3,iDF_Sh_X3)
+      uDF_R(1,iX1,iX3,iX2) = D(1,iX1,iX2  ,iX3,iDF_Sh_X1)
+      uDF_R(2,iX1,iX3,iX2) = D(1,iX1,iX2  ,iX3,iDF_Sh_X3)
 
     END DO
     END DO
     END DO
-    END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Interpolate Left State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X2, nCF_F, nDOFX, One, LX_X2_Up, nDOFX_X2, &
-             uCF_K  (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
-             uCF_F_L(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X2, nDF_F, nDOFX, One, LX_X2_Up, nDOFX_X2, &
-             uDF_K  (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
-             uDF_F_L(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+             uCF_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+             uCF_L(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X2, nCF_F, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
-             uCF_K  (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
-             uCF_F_R(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+             uCF_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
+             uCF_R(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X2, nDF_F, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
-             uDF_K  (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
-             uDF_F_R(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Numerical Flux ---
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_F, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$ACC          iErr_L, iErr_R )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2) + 1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX_X2 = 1, nDOFX_X2
+
+      iErr_L(iNX_X2,iX1,iX3,iX2) = 0
+      iErr_R(iNX_X2,iX1,iX3,iX2) = 0
+
+      CALL ComputePrimitive_Euler &
+             ( uCF_L (iNX_X2,iCF_D       ,iX1,iX3,iX2), &
+               uCF_L (iNX_X2,iCF_S1      ,iX1,iX3,iX2), &
+               uCF_L (iNX_X2,iCF_S2      ,iX1,iX3,iX2), &
+               uCF_L (iNX_X2,iCF_S3      ,iX1,iX3,iX2), &
+               uCF_L (iNX_X2,iCF_E       ,iX1,iX3,iX2), &
+               uCF_L (iNX_X2,iCF_Ne      ,iX1,iX3,iX2), &
+               uPF_L (iNX_X2,iPF_D       ,iX1,iX3,iX2), &
+               uPF_L (iNX_X2,iPF_V1      ,iX1,iX3,iX2), &
+               uPF_L (iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+               uPF_L (iNX_X2,iPF_V3      ,iX1,iX3,iX2), &
+               uPF_L (iNX_X2,iPF_E       ,iX1,iX3,iX2), &
+               uPF_L (iNX_X2,iPF_Ne      ,iX1,iX3,iX2), &
+               G_F   (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
+               G_F   (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+               G_F   (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
+               iErr_L(iNX_X2             ,iX1,iX3,iX2) )
+
+      CALL ComputePrimitive_Euler &
+             ( uCF_R (iNX_X2,iCF_D       ,iX1,iX3,iX2), &
+               uCF_R (iNX_X2,iCF_S1      ,iX1,iX3,iX2), &
+               uCF_R (iNX_X2,iCF_S2      ,iX1,iX3,iX2), &
+               uCF_R (iNX_X2,iCF_S3      ,iX1,iX3,iX2), &
+               uCF_R (iNX_X2,iCF_E       ,iX1,iX3,iX2), &
+               uCF_R (iNX_X2,iCF_Ne      ,iX1,iX3,iX2), &
+               uPF_R (iNX_X2,iPF_D       ,iX1,iX3,iX2), &
+               uPF_R (iNX_X2,iPF_V1      ,iX1,iX3,iX2), &
+               uPF_R (iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+               uPF_R (iNX_X2,iPF_V3      ,iX1,iX3,iX2), &
+               uPF_R (iNX_X2,iPF_E       ,iX1,iX3,iX2), &
+               uPF_R (iNX_X2,iPF_Ne      ,iX1,iX3,iX2), &
+               G_F   (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
+               G_F   (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+               G_F   (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
+               iErr_R(iNX_X2             ,iX1,iX3,iX2) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X2_L, Flux_X2_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$OMP          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$OMP          Flux_X2_F, AlphaMns, AlphaPls, AlphaMdl )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( Flux_X2_L, Flux_X2_R, P_L, P_R, Cs_L, Cs_R, &
-    !$ACC          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$ACC          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$ACC          Flux_X2_F, AlphaMns, AlphaPls, AlphaMdl ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX3, uCF_F_L, uCF_F_R, uDF_F_L, uDF_F_R, &
-    !$ACC          NumericalFlux, G_F, dX1, dX3, WeightsX_X2 )
+    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX3, &
+    !$ACC          G_F, uCF_L, uCF_R, uPF_L, uPF_R, uDF_L, uDF_R, &
+    !$ACC          NumericalFlux, WeightsX_X2, iErr_M )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X2_L, Flux_X2_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$OMP          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$OMP          Flux_X2_F, AlphaMns, AlphaPls, AlphaMdl )
 #endif
     DO iX2 = iX_B0(2), iX_E0(2) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX_X2 = 1, nDOFX_X2
+    DO iNX_X2 = 1, nDOFX_X2
+
+      iErr_M(iNX_X2,iX1,iX3,iX2) = 0
 
       DO iCF = 1, nCF
 
-        uCF_L(iCF) = uCF_F_L(iNodeX_X2,iCF,iX1,iX3,iX2)
-        uCF_R(iCF) = uCF_F_R(iNodeX_X2,iCF,iX1,iX3,iX2)
+        uCF_F_L(iCF) = uCF_L(iNX_X2,iCF,iX1,iX3,iX2)
+        uCF_F_R(iCF) = uCF_R(iNX_X2,iCF,iX1,iX3,iX2)
 
       END DO
 
       ! --- Left State Primitive, etc. ---
 
-      CALL ComputePrimitive_Euler &
-             ( uCF_L(iCF_D ), uCF_L(iCF_S1), uCF_L(iCF_S2), &
-               uCF_L(iCF_S3), uCF_L(iCF_E ), uCF_L(iCF_Ne), &
-               uPF_L(iPF_D ), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-               uPF_L(iPF_V3), uPF_L(iPF_E ), uPF_L(iPF_Ne), &
-               G_F(iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
-               G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-               G_F(iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-               iErr_Option = iErr )
-
       CALL ComputePressureFromPrimitive &
-             ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
+             ( uPF_L(iNX_X2,iPF_D ,iX1,iX3,iX2), &
+               uPF_L(iNX_X2,iPF_E ,iX1,iX3,iX2), &
+               uPF_L(iNX_X2,iPF_Ne,iX1,iX3,iX2), &
+               P_L  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+             ( uPF_L(iNX_X2,iPF_D ,iX1,iX3,iX2), &
+               uPF_L(iNX_X2,iPF_E ,iX1,iX3,iX2), &
+               uPF_L(iNX_X2,iPF_Ne,iX1,iX3,iX2), &
+               Cs_L )
 
       EigVals_L = &
         Eigenvalues_Euler &
-          ( uPF_L(iPF_V2),                             &
-            Cs_L,                                      &
-            G_F  (iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-            uPF_L(iPF_V1),                             &
-            uPF_L(iPF_V2),                             &
-            uPF_L(iPF_V3),                             &
-            G_F  (iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
-            G_F  (iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-            G_F  (iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-            G_F  (iNodeX_X2,iGF_Alpha,   iX1,iX3,iX2), &
-            G_F  (iNodeX_X2,iGF_Beta_2,  iX1,iX3,iX2) )
+          ( uPF_L(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+            Cs_L,                                   &
+            G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+            uPF_L(iNX_X2,iPF_V1      ,iX1,iX3,iX2), &
+            uPF_L(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+            uPF_L(iNX_X2,iPF_V3      ,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2) )
 
       Flux_X2_L &
         = Flux_X2_Euler &
-            ( uPF_L(iPF_D ),                           &
-              uPF_L(iPF_V1),                           &
-              uPF_L(iPF_V2),                           &
-              uPF_L(iPF_V3),                           &
-              uPF_L(iPF_E ),                           &
-              uPF_L(iPF_Ne),                           &
-              P_L,                                     &
-              G_F(iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Alpha,   iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Beta_2,  iX1,iX3,iX2) )
+            ( uPF_L(iNX_X2,iPF_D       ,iX1,iX3,iX2), &
+              uPF_L(iNX_X2,iPF_V1      ,iX1,iX3,iX2), &
+              uPF_L(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+              uPF_L(iNX_X2,iPF_V3      ,iX1,iX3,iX2), &
+              uPF_L(iNX_X2,iPF_E       ,iX1,iX3,iX2), &
+              uPF_L(iNX_X2,iPF_Ne      ,iX1,iX3,iX2), &
+              P_L,                                    &
+              G_F  (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2) )
 
       ! --- Right State Primitive, etc. ---
 
-      CALL ComputePrimitive_Euler &
-             ( uCF_R(iCF_D ), uCF_R(iCF_S1), uCF_R(iCF_S2), &
-               uCF_R(iCF_S3), uCF_R(iCF_E ), uCF_R(iCF_Ne), &
-               uPF_R(iPF_D ), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-               uPF_R(iPF_V3), uPF_R(iPF_E ), uPF_R(iPF_Ne), &
-               G_F(iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
-               G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-               G_F(iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-               iErr_Option = iErr )
-
       CALL ComputePressureFromPrimitive &
-             ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
+             ( uPF_R(iNX_X2,iPF_D ,iX1,iX3,iX2), &
+               uPF_R(iNX_X2,iPF_E ,iX1,iX3,iX2), &
+               uPF_R(iNX_X2,iPF_Ne,iX1,iX3,iX2), &
+               P_R  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
+             ( uPF_R(iNX_X2,iPF_D ,iX1,iX3,iX2), &
+               uPF_R(iNX_X2,iPF_E ,iX1,iX3,iX2), &
+               uPF_R(iNX_X2,iPF_Ne,iX1,iX3,iX2), &
+               Cs_R )
 
-      EigVals_R &
-        = Eigenvalues_Euler &
-            ( uPF_R(iPF_V2),                             &
-              Cs_R,                                      &
-              G_F  (iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              uPF_R(iPF_V1),                             &
-              uPF_R(iPF_V2),                             &
-              uPF_R(iPF_V3),                             &
-              G_F  (iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
-              G_F  (iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              G_F  (iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-              G_F  (iNodeX_X2,iGF_Alpha,   iX1,iX3,iX2), &
-              G_F  (iNodeX_X2,iGF_Beta_2,  iX1,iX3,iX2) )
+      EigVals_R = &
+        Eigenvalues_Euler &
+          ( uPF_R(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+            Cs_R,                                   &
+            G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+            uPF_R(iNX_X2,iPF_V1      ,iX1,iX3,iX2), &
+            uPF_R(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+            uPF_R(iNX_X2,iPF_V3      ,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
+            G_F  (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2) )
 
       Flux_X2_R &
         = Flux_X2_Euler &
-            ( uPF_R(iPF_D ),                           &
-              uPF_R(iPF_V1),                           &
-              uPF_R(iPF_V2),                           &
-              uPF_R(iPF_V3),                           &
-              uPF_R(iPF_E ),                           &
-              uPF_R(iPF_Ne),                           &
-              P_R,                                     &
-              G_F(iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Alpha,   iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Beta_2,  iX1,iX3,iX2) )
+            ( uPF_R(iNX_X2,iPF_D       ,iX1,iX3,iX2), &
+              uPF_R(iNX_X2,iPF_V1      ,iX1,iX3,iX2), &
+              uPF_R(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+              uPF_R(iNX_X2,iPF_V3      ,iX1,iX3,iX2), &
+              uPF_R(iNX_X2,iPF_E       ,iX1,iX3,iX2), &
+              uPF_R(iNX_X2,iPF_Ne      ,iX1,iX3,iX2), &
+              P_R,                                    &
+              G_F  (iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2) )
 
       AlphaMns &
         = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
@@ -1300,35 +1569,37 @@ CONTAINS
 
       AlphaMdl &
         = AlphaMiddle_Euler &
-            ( uCF_L    (iCF_D), uCF_L    (iCF_S2), uCF_L    (iCF_E), &
+            ( uCF_F_L  (iCF_D), uCF_F_L  (iCF_S2), uCF_F_L  (iCF_E), &
               Flux_X2_L(iCF_D), Flux_X2_L(iCF_S2), Flux_X2_L(iCF_E), &
-              uCF_R    (iCF_D), uCF_R    (iCF_S2), uCF_R    (iCF_E), &
+              uCF_F_R  (iCF_D), uCF_F_R  (iCF_S2), uCF_F_R  (iCF_E), &
               Flux_X2_R(iCF_D), Flux_X2_R(iCF_S2), Flux_X2_R(iCF_E), &
-              G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), AlphaPls, AlphaMns, &
-              G_F(iNodeX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
-              G_F(iNodeX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
-              iErr_Option = iErr )
+              G_F(iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), AlphaPls, AlphaMns, &
+              G_F(iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
+              G_F(iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
+              iErr_M(iNX_X2,iX1,iX3,iX2) )
 
       Flux_X2_F &
         = NumericalFlux_Euler_X2 &
-            ( uCF_L, uCF_R, Flux_X2_L, Flux_X2_R,          &
-              AlphaPls, AlphaMns, AlphaMdl,                &
-              G_F    (iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
-              uPF_L(iPF_V2), uPF_R(iPF_V2), P_L, P_R,      &
-              G_F    (iNodeX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
-              G_F    (iNodeX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
-              uDF_F_L(iNodeX_X2,1           ,iX1,iX3,iX2), &
-              uDF_F_R(iNodeX_X2,1           ,iX1,iX3,iX2), &
-              uDF_F_L(iNodeX_X2,2           ,iX1,iX3,iX2), &
-              uDF_F_R(iNodeX_X2,2           ,iX1,iX3,iX2) )
+            ( uCF_F_L, uCF_F_R, Flux_X2_L, Flux_X2_R, &
+              AlphaPls, AlphaMns, AlphaMdl,           &
+              G_F  (iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
+              uPF_L(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+              uPF_R(iNX_X2,iPF_V2      ,iX1,iX3,iX2), &
+              P_L, P_R,                               &
+              G_F  (iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
+              G_F  (iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
+              uDF_L(1                  ,iX1,iX3,iX2), &
+              uDF_R(1                  ,iX1,iX3,iX2), &
+              uDF_L(2                  ,iX1,iX3,iX2), &
+              uDF_R(2                  ,iX1,iX3,iX2) )
 
       DO iCF = 1, nCF
 
-        NumericalFlux    (iNodeX_X2,iCF       ,iX1,iX3,iX2) &
-          = Flux_X2_F(iCF)                                  &
-              * G_F      (iNodeX_X2,iGF_Alpha ,iX1,iX3,iX2) &
-              * G_F      (iNodeX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
-              * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNodeX_X2)
+        NumericalFlux    (iNX_X2,iCF       ,iX1,iX3,iX2) &
+          = Flux_X2_F(iCF)                               &
+              * G_F      (iNX_X2,iGF_Alpha ,iX1,iX3,iX2) &
+              * G_F      (iNX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
+              * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX_X2)
 
       END DO
 
@@ -1337,18 +1608,11 @@ CONTAINS
     END DO
     END DO
 
-    IF( iErr .NE. 0 )THEN
-
-      PRINT*, 'Surface term (X2)'
-      CALL DescribeError_Euler( iErr )
-
-    END IF
-
     CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
 
     ! --- Surface Contribution ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Contribution from Left Face ---
 
@@ -1364,7 +1628,7 @@ CONTAINS
              NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One, &
              dU_X2, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     !--------------------
     ! --- Volume Term ---
@@ -1372,67 +1636,95 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_VolumeTerm )
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( uPF_K, Flux_X2_K, P_K )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-    !$ACC PRIVATE( uPF_K, Flux_X2_K, P_K ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX3, Flux_X2_q, uCF_K, G_K, WeightsX_q )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_K, uCF_K, uPF_K, iErr_V )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( uPF_K, Flux_X2_K, P_K )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
+
+      iErr_V(iNX,iX1,iX3,iX2) = 0
 
       CALL ComputePrimitive_Euler &
-             ( uCF_K(iNodeX,iCF_D ,iX1,iX3,iX2),     &
-               uCF_K(iNodeX,iCF_S1,iX1,iX3,iX2),     &
-               uCF_K(iNodeX,iCF_S2,iX1,iX3,iX2),     &
-               uCF_K(iNodeX,iCF_S3,iX1,iX3,iX2),     &
-               uCF_K(iNodeX,iCF_E ,iX1,iX3,iX2),     &
-               uCF_K(iNodeX,iCF_Ne,iX1,iX3,iX2),     &
-               uPF_K(iPF_D ),                        &
-               uPF_K(iPF_V1),                        &
-               uPF_K(iPF_V2),                        &
-               uPF_K(iPF_V3),                        &
-               uPF_K(iPF_E ),                        &
-               uPF_K(iPF_Ne),                        &
-               G_K(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2), &
-               G_K(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2), &
-               G_K(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2), &
-               iErr_Option = iErr )
+             ( uCF_K (iNX,iCF_D       ,iX1,iX3,iX2), &
+               uCF_K (iNX,iCF_S1      ,iX1,iX3,iX2), &
+               uCF_K (iNX,iCF_S2      ,iX1,iX3,iX2), &
+               uCF_K (iNX,iCF_S3      ,iX1,iX3,iX2), &
+               uCF_K (iNX,iCF_E       ,iX1,iX3,iX2), &
+               uCF_K (iNX,iCF_Ne      ,iX1,iX3,iX2), &
+               uPF_K (iNX,iPF_D       ,iX1,iX3,iX2), &
+               uPF_K (iNX,iPF_V1      ,iX1,iX3,iX2), &
+               uPF_K (iNX,iPF_V2      ,iX1,iX3,iX2), &
+               uPF_K (iNX,iPF_V3      ,iX1,iX3,iX2), &
+               uPF_K (iNX,iPF_E       ,iX1,iX3,iX2), &
+               uPF_K (iNX,iPF_Ne      ,iX1,iX3,iX2), &
+               G_K   (iNX,iGF_Gm_dd_11,iX1,iX3,iX2), &
+               G_K   (iNX,iGF_Gm_dd_22,iX1,iX3,iX2), &
+               G_K   (iNX,iGF_Gm_dd_33,iX1,iX3,iX2), &
+               iErr_V(iNX             ,iX1,iX3,iX2) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Flux_X2_K, P_K )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
+    !$ACC PRIVATE( Flux_X2_K, P_K ) &
+    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX3, &
+    !$ACC          G_K, uCF_K, uPF_K, Flux_X2_q, WeightsX_q )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Flux_X2_K, P_K )
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
       CALL ComputePressureFromPrimitive &
-             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
+             ( uPF_K(iNX,iPF_D ,iX1,iX3,iX2), &
+               uPF_K(iNX,iPF_E ,iX1,iX3,iX2), &
+               uPF_K(iNX,iPF_Ne,iX1,iX3,iX2), &
+               P_K )
 
       Flux_X2_K &
         = Flux_X2_Euler &
-          ( uPF_K(iPF_D ),                        &
-            uPF_K(iPF_V1),                        &
-            uPF_K(iPF_V2),                        &
-            uPF_K(iPF_V3),                        &
-            uPF_K(iPF_E ),                        &
-            uPF_K(iPF_Ne),                        &
-            P_K,                                  &
-            G_K(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2), &
-            G_K(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2), &
-            G_K(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2), &
-            G_K(iNodeX,iGF_Alpha,   iX1,iX3,iX2), &
-            G_K(iNodeX,iGF_Beta_2,  iX1,iX3,iX2) )
+          ( uPF_K(iNX,iPF_D       ,iX1,iX3,iX2), &
+            uPF_K(iNX,iPF_V1      ,iX1,iX3,iX2), &
+            uPF_K(iNX,iPF_V2      ,iX1,iX3,iX2), &
+            uPF_K(iNX,iPF_V3      ,iX1,iX3,iX2), &
+            uPF_K(iNX,iPF_E       ,iX1,iX3,iX2), &
+            uPF_K(iNX,iPF_Ne      ,iX1,iX3,iX2), &
+            P_K,                                 &
+            G_K  (iNX,iGF_Gm_dd_11,iX1,iX3,iX2), &
+            G_K  (iNX,iGF_Gm_dd_22,iX1,iX3,iX2), &
+            G_K  (iNX,iGF_Gm_dd_33,iX1,iX3,iX2), &
+            G_K  (iNX,iGF_Alpha,   iX1,iX3,iX2), &
+            G_K  (iNX,iGF_Beta_2,  iX1,iX3,iX2) )
 
       DO iCF = 1, nCF
 
-        Flux_X2_q(iNodeX,iCF,iX1,iX3,iX2) = Flux_X2_K(iCF)
+        Flux_X2_q(iNX,iCF,iX1,iX3,iX2) = Flux_X2_K(iCF)
 
-        Flux_X2_q    (iNodeX,iCF       ,iX1,iX3,iX2) &
-          = Flux_X2_q(iNodeX,iCF       ,iX1,iX3,iX2) &
-              * G_K  (iNodeX,iGF_Alpha ,iX1,iX3,iX2) &
-              * G_K  (iNodeX,iGF_SqrtGm,iX1,iX3,iX2) &
-              * dX1(iX1) * dX3(iX3) * WeightsX_q(iNodeX)
+        Flux_X2_q    (iNX,iCF       ,iX1,iX3,iX2) &
+          = Flux_X2_q(iNX,iCF       ,iX1,iX3,iX2) &
+              * G_K  (iNX,iGF_Alpha ,iX1,iX3,iX2) &
+              * G_K  (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+              * dX1(iX1) * dX3(iX3) * WeightsX_q(iNX)
 
       END DO
 
@@ -1441,24 +1733,17 @@ CONTAINS
     END DO
     END DO
 
-    IF( iErr .NE. 0 )THEN
-
-      PRINT*, 'Volume term (X2)'
-      CALL DescribeError_Euler( iErr )
-
-    END IF
-
     CALL TimersStop_Euler( Timer_Euler_VolumeTerm )
 
     ! --- Contribution from Volume ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX, One, dLXdX2_q, nDOFX, &
              Flux_X2_q, nDOFX, One, dU_X2, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -1472,11 +1757,11 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      dU    (iNodeX,iX1,iX2,iX3,iCF) &
-        = dU(iNodeX,iX1,iX2,iX3,iCF) &
-            + dU_X2(iNodeX,iCF,iX1,iX3,iX2)
+      dU    (iNX,iX1,iX2,iX3,iCF) &
+        = dU(iNX,iX1,iX2,iX3,iCF) &
+            + dU_X2(iNX,iCF,iX1,iX3,iX2)
 
     END DO
     END DO
@@ -1494,23 +1779,122 @@ CONTAINS
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU_X2)', MAXVAL(dU_X2)
 #endif
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3, &
-    !$OMP               uCF_K, uCF_F_L, uCF_F_R, &
-    !$OMP               uDF_K, uDF_F_L, uDF_F_R, &
+    !$OMP               uCF_L, uCF_R, uCF_K, &
+    !$OMP               uPF_L, uPF_R, uPF_K, &
+    !$OMP               uDF_L, uDF_R,        &
     !$OMP               G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
+    !$ACC COPYOUT(      iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX3, &
-    !$ACC               uCF_K, uCF_F_L, uCF_F_R, &
-    !$ACC               uDF_K, uDF_F_L, uDF_F_R, &
+    !$ACC               uCF_L, uCF_R, uCF_K, &
+    !$ACC               uPF_L, uPF_R, uPF_K, &
+    !$ACC               uDF_L, uDF_R,        &
     !$ACC               G_K, G_F, dU_X2, Flux_X2_q, NumericalFlux )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
+
+#ifdef HYDRO_RELATIVISTIC
+
+    IF( ANY( iErr_L .NE. 0 ) .OR. &
+        ANY( iErr_R .NE. 0 ) .OR. &
+        ANY( iErr_M .NE. 0 ) .OR. &
+        ANY( iErr_V .NE. 0 ) )THEN
+
+      WRITE(*,*) 'ERROR: Surface term (X2) (Left)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2) + 1
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X2 = 1, nDOFX_X2
+
+        IF( iErr_L(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_L(iNX_X2,iX1,iX3,iX2) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Surface term (X2) (Right)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2) + 1
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X2 = 1, nDOFX_X2
+
+        IF( iErr_R(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_R(iNX_X2,iX1,iX3,iX2) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: AlphaMiddle (X2)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2) + 1
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X2 = 1, nDOFX_X2
+
+        IF( iErr_M(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_M(iNX_X2,iX1,iX3,iX2) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Volume term (X2)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        IF( iErr_V(iNX,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_V(iNX,iX1,iX3,iX2) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
     END ASSOCIATE
 
@@ -1530,48 +1914,73 @@ CONTAINS
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER  :: nK(3), nF_X3(3), nCF_K, nCF_F, nGF_F, nDF_F
-    INTEGER  :: iNodeX, iNodeX_X3, iX1, iX2, iX3, iCF, iGF, iErr = 0
+    INTEGER  :: iNX, iNX_X3, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
-    REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
-    REAL(DP) :: uCF_L(nCF), uCF_R(nCF)
+    REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
     REAL(DP) :: Flux_X3_L(nCF), Flux_X3_R(nCF)
     REAL(DP) :: Flux_X3_F(nCF), Flux_X3_K(nCF)
     REAL(DP) :: EigVals_L(nCF), EigVals_R(nCF)
     REAL(DP) :: P_L, P_R, P_K
     REAL(DP) :: Cs_L, Cs_R
+
     REAL(DP) :: G_K          (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)-1:iX_E0(3)+1)
     REAL(DP) :: G_F          (nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
+
+    REAL(DP) :: uCF_L        (nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
+                                           iX_B0(2)  :iX_E0(2), &
+                                           iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP) :: uCF_R        (nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
+                                           iX_B0(2)  :iX_E0(2), &
+                                           iX_B0(3)  :iX_E0(3)+1)
     REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: uCF_F_L      (nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
+
+    REAL(DP) :: uPF_L        (nDOFX_X3,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: uCF_F_R      (nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uPF_R        (nDOFX_X3,nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: uDF_K        (nDOFX,     2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uPF_K        (nDOFX,   nPF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: uDF_F_L      (nDOFX_X3,  2,iX_B0(1)  :iX_E0(1), &
+
+    REAL(DP) :: uDF_L        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: uDF_F_R      (nDOFX_X3,  2,iX_B0(1)  :iX_E0(1), &
+    REAL(DP) :: uDF_R        (2           ,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
+
     REAL(DP) :: dU_X3        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)  )
+
     REAL(DP) :: Flux_X3_q    (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)  )
+
     REAL(DP) :: NumericalFlux(nDOFX_X3,nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
+
+    INTEGER :: iErr_L(1:nDOFX_X3,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3)+1 )
+    INTEGER :: iErr_R(1:nDOFX_X3,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3)+1 )
+    INTEGER :: iErr_M(1:nDOFX_X3,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3)+1 )
+    INTEGER :: iErr_V(1:nDOFX   ,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3) )
 
     IF( iX_E0(3) .EQ. iX_B0(3) ) RETURN
 
@@ -1584,27 +1993,31 @@ CONTAINS
 
     ASSOCIATE( dX1 => MeshX(1) % Width, dX2 => MeshX(2) % Width )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2 ) &
-    !$OMP MAP( alloc: uCF_K, uCF_F_L, uCF_F_R, &
-    !$OMP             uDF_K, uDF_F_L, uDF_F_R, &
-    !$OMP             G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux )
+    !$OMP MAP( alloc: uCF_L, uCF_R, uCF_K, &
+    !$OMP             uPF_L, uPF_R, uPF_K, &
+    !$OMP             uDF_L, uDF_R,        &
+    !$OMP             G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux, &
+    !$OMP             iErr_L, iErr_R, iErr_M, iErr_V )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2 ) &
-    !$ACC CREATE(     uCF_K, uCF_F_L, uCF_F_R, &
-    !$ACC             uDF_K, uDF_F_L, uDF_F_R, &
-    !$ACC             G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux )
+    !$ACC CREATE(     uCF_L, uCF_R, uCF_K, &
+    !$ACC             uPF_L, uPF_R, uPF_K, &
+    !$ACC             uDF_L, uDF_R,        &
+    !$ACC             G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux, &
+    !$ACC             iErr_L, iErr_R, iErr_M, iErr_V )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
 
     ! --- Geometry Fields in Element Nodes ---
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -1618,9 +2031,9 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iGF = 1, nGF
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      G_K(iNodeX,iGF,iX1,iX2,iX3) = G(iNodeX,iX1,iX2,iX3,iGF)
+      G_K(iNX,iGF,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF)
 
     END DO
     END DO
@@ -1628,11 +2041,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Face States (Average of Left and Right States) ---
 
@@ -1645,13 +2058,13 @@ CONTAINS
              G_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
              G_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -1664,33 +2077,33 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3) + 1
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX_X3 = 1, nDOFX_X3
+    DO iNX_X3 = 1, nDOFX_X3
 
-      G_F         (iNodeX_X3,iGF_h_1,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_h_1,iX1,iX2,iX3), SqrtTiny )
+      G_F         (iNX_X3,iGF_h_1,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_h_1,iX1,iX2,iX3), SqrtTiny )
 
-      G_F         (iNodeX_X3,iGF_h_2,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_h_2,iX1,iX2,iX3), SqrtTiny )
+      G_F         (iNX_X3,iGF_h_2,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_h_2,iX1,iX2,iX3), SqrtTiny )
 
-      G_F         (iNodeX_X3,iGF_h_3,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_h_3,iX1,iX2,iX3), SqrtTiny )
+      G_F         (iNX_X3,iGF_h_3,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_h_3,iX1,iX2,iX3), SqrtTiny )
 
-      G_F         (iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+      G_F         (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
 
-      G_F         (iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+      G_F         (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
 
-      G_F         (iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+      G_F         (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
 
-      G_F        (iNodeX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
-        = G_F    (iNodeX_X3,iGF_h_1   ,iX1,iX2,iX3) &
-            * G_F(iNodeX_X3,iGF_h_2   ,iX1,iX2,iX3) &
-            * G_F(iNodeX_X3,iGF_h_3   ,iX1,iX2,iX3)
+      G_F        (iNX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
+        = G_F    (iNX_X3,iGF_h_1   ,iX1,iX2,iX3) &
+            * G_F(iNX_X3,iGF_h_2   ,iX1,iX2,iX3) &
+            * G_F(iNX_X3,iGF_h_3   ,iX1,iX2,iX3)
 
-      G_F         (iNodeX_X3,iGF_Alpha,iX1,iX2,iX3) &
-        = MAX( G_F(iNodeX_X3,iGF_Alpha,iX1,iX2,iX3), SqrtTiny )
+      G_F         (iNX_X3,iGF_Alpha,iX1,iX2,iX3) &
+        = MAX( G_F(iNX_X3,iGF_Alpha,iX1,iX2,iX3), SqrtTiny )
 
     END DO
     END DO
@@ -1709,9 +2122,9 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      uCF_K(iNodeX,iCF,iX1,iX2,iX3) = U(iNodeX,iX1,iX2,iX3,iCF)
+      uCF_K(iNX,iCF,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF)
 
     END DO
     END DO
@@ -1720,185 +2133,232 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uDF_K, D )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, uDF_L, uDF_R, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+    DO iX3 = iX_B0(3), iX_E0(3) + 1
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
 
-      uDF_K(iNodeX,1,iX1,iX2,iX3) = D(iNodeX,iX1,iX2,iX3,iDF_Sh_X1)
-      uDF_K(iNodeX,2,iX1,iX2,iX3) = D(iNodeX,iX1,iX2,iX3,iDF_Sh_X2)
+      uDF_L(1,iX1,iX2,iX3) = D(1,iX1,iX2,iX3-1,iDF_Sh_X1)
+      uDF_L(2,iX1,iX2,iX3) = D(1,iX1,iX2,iX3-1,iDF_Sh_X2)
+      uDF_R(1,iX1,iX2,iX3) = D(1,iX1,iX2,iX3  ,iDF_Sh_X1)
+      uDF_R(2,iX1,iX2,iX3) = D(1,iX1,iX2,iX3  ,iDF_Sh_X2)
 
     END DO
     END DO
     END DO
-    END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Interpolate Left State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nCF_F, nDOFX, One, LX_X3_Up, nDOFX_X3, &
-             uCF_K  (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
-             uCF_F_L(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X3, nDF_F, nDOFX, One, LX_X3_Up, nDOFX_X3, &
-             uDF_K  (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
-             uDF_F_L(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+             uCF_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
+             uCF_L(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
 
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nCF_F, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
-             uCF_K  (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
-             uCF_F_R(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+             uCF_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
+             uCF_R(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
 
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X3, nDF_F, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
-             uDF_K  (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
-             uDF_F_R(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Numerical Flux ---
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_F, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$ACC          iErr_L, iErr_R )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3) + 1
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX_X3 = 1, nDOFX_X3
+
+      iErr_L(iNX_X3,iX1,iX2,iX3) = 0
+      iErr_R(iNX_X3,iX1,iX2,iX3) = 0
+
+      CALL ComputePrimitive_Euler &
+             ( uCF_L (iNX_X3,iCF_D       ,iX1,iX2,iX3), &
+               uCF_L (iNX_X3,iCF_S1      ,iX1,iX2,iX3), &
+               uCF_L (iNX_X3,iCF_S2      ,iX1,iX2,iX3), &
+               uCF_L (iNX_X3,iCF_S3      ,iX1,iX2,iX3), &
+               uCF_L (iNX_X3,iCF_E       ,iX1,iX2,iX3), &
+               uCF_L (iNX_X3,iCF_Ne      ,iX1,iX2,iX3), &
+               uPF_L (iNX_X3,iPF_D       ,iX1,iX2,iX3), &
+               uPF_L (iNX_X3,iPF_V1      ,iX1,iX2,iX3), &
+               uPF_L (iNX_X3,iPF_V2      ,iX1,iX2,iX3), &
+               uPF_L (iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+               uPF_L (iNX_X3,iPF_E       ,iX1,iX2,iX3), &
+               uPF_L (iNX_X3,iPF_Ne      ,iX1,iX2,iX3), &
+               G_F   (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
+               G_F   (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
+               G_F   (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+               iErr_L(iNX_X3             ,iX1,iX2,iX3) )
+
+      CALL ComputePrimitive_Euler &
+             ( uCF_R (iNX_X3,iCF_D       ,iX1,iX2,iX3), &
+               uCF_R (iNX_X3,iCF_S1      ,iX1,iX2,iX3), &
+               uCF_R (iNX_X3,iCF_S2      ,iX1,iX2,iX3), &
+               uCF_R (iNX_X3,iCF_S3      ,iX1,iX2,iX3), &
+               uCF_R (iNX_X3,iCF_E       ,iX1,iX2,iX3), &
+               uCF_R (iNX_X3,iCF_Ne      ,iX1,iX2,iX3), &
+               uPF_R (iNX_X3,iPF_D       ,iX1,iX2,iX3), &
+               uPF_R (iNX_X3,iPF_V1      ,iX1,iX2,iX3), &
+               uPF_R (iNX_X3,iPF_V2      ,iX1,iX2,iX3), &
+               uPF_R (iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+               uPF_R (iNX_X3,iPF_E       ,iX1,iX2,iX3), &
+               uPF_R (iNX_X3,iPF_Ne      ,iX1,iX2,iX3), &
+               G_F   (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
+               G_F   (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
+               G_F   (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+               iErr_R(iNX_X3             ,iX1,iX2,iX3) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X3_L, Flux_X3_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$OMP          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$OMP          Flux_X3_F, AlphaMns, AlphaPls, AlphaMdl )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( Flux_X3_L, Flux_X3_R, P_L, P_R, Cs_L, Cs_R, &
-    !$ACC          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$ACC          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$ACC          Flux_X3_F, AlphaMns, AlphaPls, AlphaMdl ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX2, uCF_F_L, uCF_F_R, uDF_F_L, uDF_F_R, &
-    !$ACC          NumericalFlux, G_F, dX1, dX2, WeightsX_X3 )
+    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX2, &
+    !$ACC          G_F, uCF_L, uCF_R, uPF_L, uPF_R, uDF_L, uDF_R, &
+    !$ACC          NumericalFlux, WeightsX_X3, iErr_M )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X3_L, Flux_X3_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
+    !$OMP          EigVals_L, EigVals_R, uCF_F_L, uCF_F_R, &
     !$OMP          Flux_X3_F, AlphaMns, AlphaPls, AlphaMdl )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3) + 1
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX_X3 = 1, nDOFX_X3
+    DO iNX_X3 = 1, nDOFX_X3
+
+      iErr_M(iNX_X3,iX1,iX2,iX3) = 0
 
       DO iCF = 1, nCF
 
-        uCF_L(iCF) = uCF_F_L(iNodeX_X3,iCF,iX1,iX2,iX3)
-        uCF_R(iCF) = uCF_F_R(iNodeX_X3,iCF,iX1,iX2,iX3)
+        uCF_F_L(iCF) = uCF_L(iNX_X3,iCF,iX1,iX2,iX3)
+        uCF_F_R(iCF) = uCF_R(iNX_X3,iCF,iX1,iX2,iX3)
 
       END DO
 
       ! --- Left State Primitive, etc. ---
 
-      CALL ComputePrimitive_Euler &
-             ( uCF_L(iCF_D ), uCF_L(iCF_S1), uCF_L(iCF_S2), &
-               uCF_L(iCF_S3), uCF_L(iCF_E ), uCF_L(iCF_Ne), &
-               uPF_L(iPF_D ), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-               uPF_L(iPF_V3), uPF_L(iPF_E ), uPF_L(iPF_Ne), &
-               G_F(iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
-               G_F(iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
-               G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-               iErr_Option = iErr )
-
       CALL ComputePressureFromPrimitive &
-             ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
+             ( uPF_L(iNX_X3,iPF_D ,iX1,iX2,iX3), &
+               uPF_L(iNX_X3,iPF_E ,iX1,iX2,iX3), &
+               uPF_L(iNX_X3,iPF_Ne,iX1,iX2,iX3), &
+               P_L  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+             ( uPF_L(iNX_X3,iPF_D ,iX1,iX2,iX3), &
+               uPF_L(iNX_X3,iPF_E ,iX1,iX2,iX3), &
+               uPF_L(iNX_X3,iPF_Ne,iX1,iX2,iX3), &
+               Cs_L )
 
       EigVals_L &
         = Eigenvalues_Euler &
-            ( uPF_L(iPF_V3),                             &
-              Cs_L,                                      &
-              G_F  (iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              uPF_L(iPF_V1),                             &
-              uPF_L(iPF_V2),                             &
-              uPF_L(iPF_V3),                             &
-              G_F  (iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Alpha,   iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Beta_3,  iX1,iX2,iX3) )
+            ( uPF_L(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              Cs_L,                                   &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V1      ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V2      ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3) )
 
       Flux_X3_L &
         = Flux_X3_Euler &
-            ( uPF_L(iPF_D ),                           &
-              uPF_L(iPF_V1),                           &
-              uPF_L(iPF_V2),                           &
-              uPF_L(iPF_V3),                           &
-              uPF_L(iPF_E ),                           &
-              uPF_L(iPF_Ne),                           &
-              P_L,                                     &
-              G_F(iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Alpha,   iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Beta_3,  iX1,iX2,iX3) )
+            ( uPF_L(iNX_X3,iPF_D       ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V1      ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V2      ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_E       ,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_Ne      ,iX1,iX2,iX3), &
+              P_L,                                    &
+              G_F  (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3) )
 
       ! --- Right State Primitive, etc. ---
 
-      CALL ComputePrimitive_Euler &
-             ( uCF_R(iCF_D ), uCF_R(iCF_S1), uCF_R(iCF_S2), &
-               uCF_R(iCF_S3), uCF_R(iCF_E ), uCF_R(iCF_Ne), &
-               uPF_R(iPF_D ), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-               uPF_R(iPF_V3), uPF_R(iPF_E ), uPF_R(iPF_Ne), &
-               G_F(iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
-               G_F(iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
-               G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-               iErr_Option = iErr )
-
       CALL ComputePressureFromPrimitive &
-             ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
+             ( uPF_R(iNX_X3,iPF_D ,iX1,iX2,iX3), &
+               uPF_R(iNX_X3,iPF_E ,iX1,iX2,iX3), &
+               uPF_R(iNX_X3,iPF_Ne,iX1,iX2,iX3), &
+               P_R  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
+             ( uPF_R(iNX_X3,iPF_D ,iX1,iX2,iX3), &
+               uPF_R(iNX_X3,iPF_E ,iX1,iX2,iX3), &
+               uPF_R(iNX_X3,iPF_Ne,iX1,iX2,iX3), &
+               Cs_R )
 
       EigVals_R &
         = Eigenvalues_Euler &
-            ( uPF_R(iPF_V3),                             &
-              Cs_R,                                      &
-              G_F  (iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              uPF_R(iPF_V1),                             &
-              uPF_R(iPF_V2),                             &
-              uPF_R(iPF_V3),                             &
-              G_F  (iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Alpha,   iX1,iX2,iX3), &
-              G_F  (iNodeX_X3,iGF_Beta_3,  iX1,iX2,iX3) )
+            ( uPF_R(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              Cs_R,                                   &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V1      ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V2      ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3) )
 
       Flux_X3_R &
         = Flux_X3_Euler &
-            ( uPF_R(iPF_D ),                           &
-              uPF_R(iPF_V1),                           &
-              uPF_R(iPF_V2),                           &
-              uPF_R(iPF_V3),                           &
-              uPF_R(iPF_E ),                           &
-              uPF_R(iPF_Ne),                           &
-              P_R,                                     &
-              G_F(iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Alpha,   iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Beta_3,  iX1,iX2,iX3) )
+            ( uPF_R(iNX_X3,iPF_D       ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V1      ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V2      ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_E       ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_Ne      ,iX1,iX2,iX3), &
+              P_R,                                    &
+              G_F  (iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3) )
 
       AlphaMns &
         = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
@@ -1908,35 +2368,37 @@ CONTAINS
 
       AlphaMdl &
         = AlphaMiddle_Euler &
-            ( uCF_L    (iCF_D), uCF_L    (iCF_S3), uCF_L    (iCF_E), &
+            ( uCF_F_L  (iCF_D), uCF_F_L  (iCF_S3), uCF_F_L  (iCF_E), &
               Flux_X3_L(iCF_D), Flux_X3_L(iCF_S3), Flux_X3_L(iCF_E), &
-              uCF_R    (iCF_D), uCF_R    (iCF_S3), uCF_R    (iCF_E), &
+              uCF_F_R  (iCF_D), uCF_F_R  (iCF_S3), uCF_F_R  (iCF_E), &
               Flux_X3_R(iCF_D), Flux_X3_R(iCF_S3), Flux_X3_R(iCF_E), &
-              G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), AlphaPls, AlphaMns, &
-              G_F(iNodeX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
-              G_F(iNodeX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
-              iErr_Option = iErr )
+              G_F(iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), AlphaPls, AlphaMns, &
+              G_F(iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
+              G_F(iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
+              iErr_M(iNX_X3,iX1,iX2,iX3) )
 
       Flux_X3_F &
         = NumericalFlux_Euler_X3 &
-            ( uCF_L, uCF_R, Flux_X3_L, Flux_X3_R,          &
-              AlphaPls, AlphaMns, AlphaMdl,                &
-              G_F    (iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-              uPF_L(iPF_V3), uPF_R(iPF_V3), P_L, P_R,      &
-              G_F    (iNodeX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
-              G_F    (iNodeX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
-              uDF_F_L(iNodeX_X3,1           ,iX1,iX2,iX3), &
-              uDF_F_R(iNodeX_X3,1           ,iX1,iX2,iX3), &
-              uDF_F_L(iNodeX_X3,2           ,iX1,iX2,iX3), &
-              uDF_F_R(iNodeX_X3,2           ,iX1,iX2,iX3) )
+            ( uCF_F_L, uCF_F_R, Flux_X3_L, Flux_X3_R,   &
+              AlphaPls, AlphaMns, AlphaMdl,             &
+              G_F  (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
+              uPF_L(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              uPF_R(iNX_X3,iPF_V3      ,iX1,iX2,iX3), &
+              P_L, P_R,   &
+              G_F  (iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
+              G_F  (iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
+              uDF_L(1                  ,iX1,iX2,iX3), &
+              uDF_R(1                  ,iX1,iX2,iX3), &
+              uDF_L(2                  ,iX1,iX2,iX3), &
+              uDF_R(2                  ,iX1,iX2,iX3) )
 
       DO iCF = 1, nCF
 
-        NumericalFlux    (iNodeX_X3,iCF       ,iX1,iX2,iX3) &
-          = Flux_X3_F(iCF)                                  &
-              * G_F      (iNodeX_X3,iGF_Alpha ,iX1,iX2,iX3) &
-              * G_F      (iNodeX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
-              * dX1(iX1) * dX2(iX2) * WeightsX_X3(iNodeX_X3)
+        NumericalFlux    (iNX_X3,iCF       ,iX1,iX2,iX3) &
+          = Flux_X3_F(iCF)                               &
+              * G_F      (iNX_X3,iGF_Alpha ,iX1,iX2,iX3) &
+              * G_F      (iNX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
+              * dX1(iX1) * dX2(iX2) * WeightsX_X3(iNX_X3)
 
       END DO
 
@@ -1945,18 +2407,11 @@ CONTAINS
     END DO
     END DO
 
-    IF( iErr .NE. 0 )THEN
-
-      PRINT*, 'Surface term (X3)'
-      CALL DescribeError_Euler( iErr )
-
-    END IF
-
     CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
 
     ! --- Surface Contribution ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Contribution from Left Face ---
 
@@ -1972,7 +2427,7 @@ CONTAINS
              NumericalFlux(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One, &
              dU_X3, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     !--------------------
     ! --- Volume Term ---
@@ -1980,67 +2435,95 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_VolumeTerm )
 
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( uPF_K, Flux_X3_K, P_K )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-    !$ACC PRIVATE( uPF_K, Flux_X3_K, P_K ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX2, Flux_X3_q, uCF_K, G_K, WeightsX_q )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_K, uCF_K, uPF_K, iErr_V )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( uPF_K, Flux_X3_K, P_K )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
+
+      iErr_V(iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler &
-             ( uCF_K(iNodeX,iCF_D ,iX1,iX2,iX3),     &
-               uCF_K(iNodeX,iCF_S1,iX1,iX2,iX3),     &
-               uCF_K(iNodeX,iCF_S2,iX1,iX2,iX3),     &
-               uCF_K(iNodeX,iCF_S3,iX1,iX2,iX3),     &
-               uCF_K(iNodeX,iCF_E ,iX1,iX2,iX3),     &
-               uCF_K(iNodeX,iCF_Ne,iX1,iX2,iX3),     &
-               uPF_K(iPF_D ),                        &
-               uPF_K(iPF_V1),                        &
-               uPF_K(iPF_V2),                        &
-               uPF_K(iPF_V3),                        &
-               uPF_K(iPF_E ),                        &
-               uPF_K(iPF_Ne),                        &
-               G_K(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3), &
-               G_K(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3), &
-               G_K(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3), &
-               iErr_Option = iErr )
+             ( uCF_K (iNX,iCF_D       ,iX1,iX2,iX3), &
+               uCF_K (iNX,iCF_S1      ,iX1,iX2,iX3), &
+               uCF_K (iNX,iCF_S2      ,iX1,iX2,iX3), &
+               uCF_K (iNX,iCF_S3      ,iX1,iX2,iX3), &
+               uCF_K (iNX,iCF_E       ,iX1,iX2,iX3), &
+               uCF_K (iNX,iCF_Ne      ,iX1,iX2,iX3), &
+               uPF_K (iNX,iPF_D       ,iX1,iX2,iX3), &
+               uPF_K (iNX,iPF_V1      ,iX1,iX2,iX3), &
+               uPF_K (iNX,iPF_V2      ,iX1,iX2,iX3), &
+               uPF_K (iNX,iPF_V3      ,iX1,iX2,iX3), &
+               uPF_K (iNX,iPF_E       ,iX1,iX2,iX3), &
+               uPF_K (iNX,iPF_Ne      ,iX1,iX2,iX3), &
+               G_K   (iNX,iGF_Gm_dd_11,iX1,iX2,iX3), &
+               G_K   (iNX,iGF_Gm_dd_22,iX1,iX2,iX3), &
+               G_K   (iNX,iGF_Gm_dd_33,iX1,iX2,iX3), &
+               iErr_V(iNX             ,iX1,iX2,iX3) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Flux_X3_K, P_K )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
+    !$ACC PRIVATE( Flux_X3_K, P_K ) &
+    !$ACC PRESENT( iX_B0, iX_E0, dX1, dX2, &
+    !$ACC          G_K, uCF_K, uPF_K, Flux_X3_q, WeightsX_q )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Flux_X3_K, P_K )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
       CALL ComputePressureFromPrimitive &
-             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
+             ( uPF_K(iNX,iPF_D ,iX1,iX2,iX3), &
+               uPF_K(iNX,iPF_E ,iX1,iX2,iX3), &
+               uPF_K(iNX,iPF_Ne,iX1,iX2,iX3), &
+               P_K )
 
       Flux_X3_K &
         = Flux_X3_Euler &
-          ( uPF_K(iPF_D ),                        &
-            uPF_K(iPF_V1),                        &
-            uPF_K(iPF_V2),                        &
-            uPF_K(iPF_V3),                        &
-            uPF_K(iPF_E ),                        &
-            uPF_K(iPF_Ne),                        &
-            P_K,                                  &
-            G_K(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3), &
-            G_K(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3), &
-            G_K(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3), &
-            G_K(iNodeX,iGF_Alpha,   iX1,iX2,iX3), &
-            G_K(iNodeX,iGF_Beta_3,  iX1,iX2,iX3) )
+          ( uPF_K(iNX,iPF_D       ,iX1,iX2,iX3), &
+            uPF_K(iNX,iPF_V1      ,iX1,iX2,iX3), &
+            uPF_K(iNX,iPF_V2      ,iX1,iX2,iX3), &
+            uPF_K(iNX,iPF_V3      ,iX1,iX2,iX3), &
+            uPF_K(iNX,iPF_E       ,iX1,iX2,iX3), &
+            uPF_K(iNX,iPF_Ne      ,iX1,iX2,iX3), &
+            P_K,                                 &
+            G_K  (iNX,iGF_Gm_dd_11,iX1,iX2,iX3), &
+            G_K  (iNX,iGF_Gm_dd_22,iX1,iX2,iX3), &
+            G_K  (iNX,iGF_Gm_dd_33,iX1,iX2,iX3), &
+            G_K  (iNX,iGF_Alpha,   iX1,iX2,iX3), &
+            G_K  (iNX,iGF_Beta_3,  iX1,iX2,iX3) )
 
       DO iCF = 1, nCF
 
-        Flux_X3_q(iNodeX,iCF,iX1,iX2,iX3) = Flux_X3_K(iCF)
+        Flux_X3_q(iNX,iCF,iX1,iX2,iX3) = Flux_X3_K(iCF)
 
-        Flux_X3_q    (iNodeX,iCF       ,iX1,iX2,iX3) &
-          = Flux_X3_q(iNodeX,iCF       ,iX1,iX2,iX3) &
-              * G_K  (iNodeX,iGF_Alpha ,iX1,iX2,iX3) &
-              * G_K  (iNodeX,iGF_SqrtGm,iX1,iX2,iX3) &
-              * dX1(iX1) * dX2(iX2) * WeightsX_q(iNodeX)
+        Flux_X3_q    (iNX,iCF       ,iX1,iX2,iX3) &
+          = Flux_X3_q(iNX,iCF       ,iX1,iX2,iX3) &
+              * G_K  (iNX,iGF_Alpha ,iX1,iX2,iX3) &
+              * G_K  (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+              * dX1(iX1) * dX2(iX2) * WeightsX_q(iNX)
 
       END DO
 
@@ -2049,24 +2532,17 @@ CONTAINS
     END DO
     END DO
 
-    IF( iErr .NE. 0 )THEN
-
-      PRINT*, 'Volume term (X3)'
-      CALL DescribeError_Euler( iErr )
-
-    END IF
-
     CALL TimersStop_Euler( Timer_Euler_VolumeTerm )
 
     ! --- Contribution from Volume ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX, One, dLXdX3_q, nDOFX, &
              Flux_X3_q, nDOFX, One, dU_X3, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -2080,11 +2556,11 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1, nDOFX
+    DO iNX = 1, nDOFX
 
-      dU    (iNodeX,iX1,iX2,iX3,iCF) &
-        = dU(iNodeX,iX1,iX2,iX3,iCF) &
-            + dU_X3(iNodeX,iCF,iX1,iX2,iX3)
+      dU    (iNX,iX1,iX2,iX3,iCF) &
+        = dU(iNX,iX1,iX2,iX3,iCF) &
+            + dU_X3(iNX,iCF,iX1,iX2,iX3)
 
     END DO
     END DO
@@ -2102,23 +2578,122 @@ CONTAINS
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU_X3)', MAXVAL(dU_X3)
 #endif
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, &
-    !$OMP               uCF_K, uCF_F_L, uCF_F_R, &
-    !$OMP               uDF_K, uDF_F_L, uDF_F_R, &
+    !$OMP               uCF_L, uCF_R, uCF_K, &
+    !$OMP               uPF_L, uPF_R, uPF_K, &
+    !$OMP               uDF_L, uDF_R,        &
     !$OMP               G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
+    !$ACC COPYOUT(      iErr_L, iErr_R, iErr_M, iErr_V ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, &
-    !$ACC               uCF_K, uCF_F_L, uCF_F_R, &
-    !$ACC               uDF_K, uDF_F_L, uDF_F_R, &
+    !$ACC               uCF_L, uCF_R, uCF_K, &
+    !$ACC               uPF_L, uPF_R, uPF_K, &
+    !$ACC               uDF_L, uDF_R,        &
     !$ACC               G_K, G_F, dU_X3, Flux_X3_q, NumericalFlux )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
+
+#ifdef HYDRO_RELATIVISTIC
+
+    IF( ANY( iErr_L .NE. 0 ) .OR. &
+        ANY( iErr_R .NE. 0 ) .OR. &
+        ANY( iErr_M .NE. 0 ) .OR. &
+        ANY( iErr_V .NE. 0 ) )THEN
+
+      WRITE(*,*) 'ERROR: Surface term (X3) (Left)'
+
+      DO iX3 = iX_B0(3), iX_E0(3) + 1
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X3 = 1, nDOFX_X3
+
+        IF( iErr_L(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_L(iNX_X3,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Surface term (X3) (Right)'
+
+      DO iX3 = iX_B0(3), iX_E0(3) + 1
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X3 = 1, nDOFX_X3
+
+        IF( iErr_R(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_R(iNX_X3,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: AlphaMiddle (X3)'
+
+      DO iX3 = iX_B0(3), iX_E0(3) + 1
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X3 = 1, nDOFX_X3
+
+        IF( iErr_M(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_M(iNX_X3,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Volume term (X3)'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        IF( iErr_V(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_V(iNX,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
     END ASSOCIATE
 
@@ -2136,127 +2711,13 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-real(dp)::temp(ndofx,ix_b1(1):ix_e1(1),ix_b1(2):ix_e1(2),ix_b1(3):ix_e1(3),ncf)
-integer::ix1,ix2,ix3,inx
-
 #ifdef HYDRO_RELATIVISTIC
 
-!!$temp=du
 !!$    CALL ComputeIncrement_Geometry_Relativistic_CPU &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-!!$OPEN(100,FILE='cc_D')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='cc_S1')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='cc_E')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$du=temp
-!!$    CALL ComputeIncrement_Geometry_Relativistic_GPU &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-!!$OPEN(100,FILE='gc_D')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gc_S1')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gc_E')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
 
     CALL ComputeIncrement_Geometry_Relativistic_GPU &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-!!$!$ACC UPDATE HOST( dU )
-!!$OPEN(100,FILE='gg_D')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gg_S1')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gg_E')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
 
 #else
 
@@ -2279,7 +2740,7 @@ integer::ix1,ix2,ix3,inx
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNX
     REAL(DP) :: dX1, dX2
     REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: dh2dX1(nDOFX), dh3dX1(nDOFX), dh3dX2(nDOFX)
@@ -2348,17 +2809,17 @@ integer::ix1,ix2,ix3,inx
       CALL ComputePressureFromPrimitive &
              ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
 
-      DO iNodeX = 1, nDOFX
+      DO iNX = 1, nDOFX
 
-        Stress(iNodeX,1:3) &
+        Stress(iNX,1:3) &
           = StressTensor_Diagonal_Euler &
-              ( uCF_K(iNodeX,iCF_S1), &
-                uCF_K(iNodeX,iCF_S2), &
-                uCF_K(iNodeX,iCF_S3), &
-                uPF_K(iNodeX,iPF_V1), &
-                uPF_K(iNodeX,iPF_V2), &
-                uPF_K(iNodeX,iPF_V3), &
-                P_K  (iNodeX) )
+              ( uCF_K(iNX,iCF_S1), &
+                uCF_K(iNX,iCF_S2), &
+                uCF_K(iNX,iCF_S3), &
+                uPF_K(iNX,iPF_V1), &
+                uPF_K(iNX,iPF_V2), &
+                uPF_K(iNX,iPF_V3), &
+                P_K  (iNX) )
 
       END DO
 
@@ -2486,7 +2947,7 @@ integer::ix1,ix2,ix3,inx
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iDim, jDim, iNX
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNX, iDim, jDim, iErr(nDOFX)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX), &
@@ -2608,14 +3069,15 @@ integer::ix1,ix2,ix3,inx
              uPF_K(:,iPF_Ne),     &
              G_K(:,iGF_Gm_dd_11), &
              G_K(:,iGF_Gm_dd_22), &
-             G_K(:,iGF_Gm_dd_33) )
+             G_K(:,iGF_Gm_dd_33), &
+             iErr )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
 
       ! --- Compute P^{ij} ---
 
-      DO iNodeX = 1, nDOFX
+      DO iNX = 1, nDOFX
 
         PressureTensor(:,1,1) &
           = ( uPF_K(:,iPF_V1) * uCF_K(:,iCF_S1) + P_K ) / G_K(:,iGF_Gm_dd_11)
@@ -2649,17 +3111,17 @@ integer::ix1,ix2,ix3,inx
       ! --- Redundant calculation. Will modify code so this can be
       !     removed later ---
 
-      DO iNodeX = 1, nDOFX
+      DO iNX = 1, nDOFX
 
-        Stress(iNodeX,:) &
+        Stress(iNX,:) &
           = StressTensor_Diagonal_Euler &
-              ( uCF_K(iNodeX,iCF_S1), &
-                uCF_K(iNodeX,iCF_S2), &
-                uCF_K(iNodeX,iCF_S3), &
-                uPF_K(iNodeX,iPF_V1), &
-                uPF_K(iNodeX,iPF_V2), &
-                uPF_K(iNodeX,iPF_V3), &
-                P_K  (iNodeX) )
+              ( uCF_K(iNX,iCF_S1), &
+                uCF_K(iNX,iCF_S2), &
+                uCF_K(iNX,iCF_S3), &
+                uPF_K(iNX,iPF_V1), &
+                uPF_K(iNX,iPF_V2), &
+                uPF_K(iNX,iPF_V3), &
+                P_K  (iNX) )
 
       END DO
 
@@ -3539,7 +4001,7 @@ integer::ix1,ix2,ix3,inx
     nK = iX_E0 - iX_B0 + 1
     nGF_K = ( nGF + 1 ) * PRODUCT( nK )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -3559,31 +4021,11 @@ integer::ix1,ix2,ix3,inx
     !$ACC             EnergyDensitySourceTerms, iErr )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
 
     ! --- Permute data ---
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, iErr )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
-
-      iErr(iNX,iX1,iX2,iX3) = Zero
-
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -3728,11 +4170,11 @@ integer::ix1,ix2,ix3,inx
 
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ! --- Interpolate to faces ---
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- X1 ---
 
@@ -3802,11 +4244,11 @@ integer::ix1,ix2,ix3,inx
 
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
     ! --- Compute derivatives (X1) ---
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -3857,9 +4299,9 @@ integer::ix1,ix2,ix3,inx
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
-    CALL TimersStart_Euler( Timer_Euler_Interpolate )
+    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, +One, LX_X1_Up, nDOFX_X1, &
@@ -3876,9 +4318,9 @@ integer::ix1,ix2,ix3,inx
              G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX   , One , &
              dGdX1, nDOFX )
 
-    CALL TimersStop_Euler( Timer_Euler_Interpolate )
+    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -3903,13 +4345,13 @@ integer::ix1,ix2,ix3,inx
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     IF( nDimsX .GT. 1 )THEN
 
       ! --- Compute derivatives (X2) ---
 
-      CALL TimersStart_Euler( Timer_Euler_Permute )
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -3960,9 +4402,9 @@ integer::ix1,ix2,ix3,inx
       END DO
       END DO
 
-      CALL TimersStop_Euler( Timer_Euler_Permute )
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
-      CALL TimersStart_Euler( Timer_Euler_Interpolate )
+      CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
       CALL MatrixMatrixMultiply &
              ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, +One, LX_X2_Up, nDOFX_X2, &
@@ -3979,9 +4421,9 @@ integer::ix1,ix2,ix3,inx
                G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX   , One , &
                dGdX2, nDOFX )
 
-      CALL TimersStop_Euler( Timer_Euler_Interpolate )
+      CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
-      CALL TimersStart_Euler( Timer_Euler_Permute )
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -4006,7 +4448,7 @@ integer::ix1,ix2,ix3,inx
       END DO
       END DO
 
-      CALL TimersStop_Euler( Timer_Euler_Permute )
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ELSE
 
@@ -4038,7 +4480,7 @@ integer::ix1,ix2,ix3,inx
 
       ! --- Compute derivatives (X3) ---
 
-      CALL TimersStart_Euler( Timer_Euler_Permute )
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -4089,9 +4531,9 @@ integer::ix1,ix2,ix3,inx
       END DO
       END DO
 
-      CALL TimersStop_Euler( Timer_Euler_Permute )
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
-      CALL TimersStart_Euler( Timer_Euler_Interpolate )
+      CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
       CALL MatrixMatrixMultiply &
              ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, +One, LX_X3_Up, nDOFX_X3, &
@@ -4108,9 +4550,9 @@ integer::ix1,ix2,ix3,inx
                G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX   , One , &
                dGdX3, nDOFX )
 
-      CALL TimersStop_Euler( Timer_Euler_Interpolate )
+      CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
-      CALL TimersStart_Euler( Timer_Euler_Permute )
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -4135,7 +4577,7 @@ integer::ix1,ix2,ix3,inx
       END DO
       END DO
 
-      CALL TimersStop_Euler( Timer_Euler_Permute )
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
     ELSE
 
@@ -4175,7 +4617,7 @@ integer::ix1,ix2,ix3,inx
     !$ACC          PressureTensor, PressureTensorTrace, &
     !$ACC          dGdX1, dGdX2, dGdX3, EnergyDensitySourceTerms, iErr )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -4183,23 +4625,25 @@ integer::ix1,ix2,ix3,inx
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
+      iErr(iNX,iX1,iX2,iX3) = 0
+
       CALL ComputePrimitive_Euler &
-             ( U(iNX,iX1,iX2,iX3,iCF_D ), &
-               U(iNX,iX1,iX2,iX3,iCF_S1), &
-               U(iNX,iX1,iX2,iX3,iCF_S2), &
-               U(iNX,iX1,iX2,iX3,iCF_S3), &
-               U(iNX,iX1,iX2,iX3,iCF_E ), &
-               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+             ( U(   iNX,iX1,iX2,iX3,iCF_D ), &
+               U(   iNX,iX1,iX2,iX3,iCF_S1), &
+               U(   iNX,iX1,iX2,iX3,iCF_S2), &
+               U(   iNX,iX1,iX2,iX3,iCF_S3), &
+               U(   iNX,iX1,iX2,iX3,iCF_E ), &
+               U(   iNX,iX1,iX2,iX3,iCF_Ne), &
                P(iPF_D ), &
                P(iPF_V1), &
                P(iPF_V2), &
                P(iPF_V3), &
                P(iPF_E ), &
                P(iPF_Ne), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               iErr(iNX,iX1,iX2,iX3) )
 
       CALL ComputePressureFromPrimitive &
              ( P(iPF_D), P(iPF_E), P(iPF_Ne), Pressure )
@@ -4368,7 +4812,7 @@ integer::ix1,ix2,ix3,inx
     !$ACC          EnergyDensitySourceTerms, &
     !$ACC          PressureTensor, PressureTensorTrace )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$OMP          Christoffel_X1  , Christoffel_X2  , Christoffel_X3  , &
     !$OMP          Xij, PressureTensor_ud, DivGridVolume )
@@ -4677,7 +5121,7 @@ integer::ix1,ix2,ix3,inx
 
 #endif
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -4697,22 +5141,27 @@ integer::ix1,ix2,ix3,inx
     !$ACC               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3 )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
     END ASSOCIATE ! dX1, dX2, dX3
 
+    CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
+
+#ifdef HYDRO_RELATIVISTIC
+
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      PRINT*, 'Geometry'
+      WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
-        IF( iErr(iNX,iX2,iX3,iX1) .NE. 0 )THEN
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          PRINT*, 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
           CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
 
         END IF
@@ -4723,6 +5172,10 @@ integer::ix1,ix2,ix3,inx
       END DO
 
     END IF
+
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
 #ifndef USE_AMREX_TRUE
 
