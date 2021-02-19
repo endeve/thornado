@@ -2,7 +2,7 @@ GeometryFieldsModule.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
-  GeometryFieldsModule.f90
+  GeometryFieldsModule.F90
 
 GeometryComputationModule.o: \
   KindModule.o \
@@ -16,7 +16,7 @@ GeometryComputationModule.o: \
 GeometryFieldsModuleE.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  GeometryFieldsModuleE.f90
+  GeometryFieldsModuleE.F90
 
 GeometryComputationModuleE.o: \
   KindModule.o \
@@ -25,7 +25,7 @@ GeometryComputationModuleE.o: \
   ReferenceElementModuleE_Lagrange.o \
   MeshModule.o \
   GeometryFieldsModuleE.o \
-  GeometryComputationModuleE.f90
+  GeometryComputationModuleE.F90
 
 GravitySolutionModule_Newtonian_PointMass.o: \
   KindModule.o \

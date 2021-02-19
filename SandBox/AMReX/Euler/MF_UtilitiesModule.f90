@@ -71,6 +71,10 @@ MODULE MF_UtilitiesModule
     EdgeMap,          &
     ConstructEdgeMap, &
     MF_ApplyBoundaryConditions_Euler
+  USE TimersModule_AMReX_Euler,           ONLY: &
+    TimersStart_AMReX_Euler,      &
+    TimersStop_AMReX_Euler,       &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
@@ -100,6 +104,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iField
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
@@ -114,6 +120,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
   END SUBROUTINE amrex2thornado_Euler
 
@@ -130,6 +138,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iField
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
@@ -144,6 +154,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
   END SUBROUTINE thornado2amrex_Euler
 

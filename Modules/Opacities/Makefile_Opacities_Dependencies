@@ -6,13 +6,15 @@ ifneq ($(MICROPHYSICS),WEAKLIB)
 OpacityModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
-  DeviceModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
   OpacityModule_TABLE.F90
 else ifdef LIBNAME
 OpacityModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
-  DeviceModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
   OpacityModule_TABLE.F90
 else
 OpacityModule_TABLE.o: \
@@ -22,7 +24,8 @@ OpacityModule_TABLE.o: \
   wlInterpolationModule.o \
   KindModule.o \
   UnitsModule.o \
-  DeviceModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
   OpacityModule_TABLE.F90
 endif
 

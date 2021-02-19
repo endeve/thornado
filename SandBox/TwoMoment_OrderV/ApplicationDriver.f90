@@ -30,7 +30,8 @@ PROGRAM ApplicationDriver
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK
   USE InitializationModule, ONLY: &
-    InitializeFields
+    InitializeFields, &
+    ComputeError
 
   IMPLICIT NONE
 
@@ -585,6 +586,8 @@ PROGRAM ApplicationDriver
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
+
+  CALL ComputeError( t )
 
   ! --- Auxiliary Finalization ---
 

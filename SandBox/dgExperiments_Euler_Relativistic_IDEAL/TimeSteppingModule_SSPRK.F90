@@ -197,7 +197,7 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    REAL(DP), INTENT(out)   :: &
+    REAL(DP), INTENT(inout) :: &
       D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid

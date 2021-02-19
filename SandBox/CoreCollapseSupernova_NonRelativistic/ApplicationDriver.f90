@@ -329,7 +329,7 @@ CONTAINS
              nX_Option &
                = nX, &
              swX_Option &
-               = [ 1, 1, 1 ], &
+               = [ 1, 0, 0 ], &
              bcX_Option &
                = bcX, &
              xL_Option &

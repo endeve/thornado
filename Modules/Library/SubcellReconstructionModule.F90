@@ -119,10 +119,26 @@ CONTAINS
       STOP
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: ProjectionMatrix, ReconstructionMatrix )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( ProjectionMatrix, ReconstructionMatrix )
+#endif
+
   END SUBROUTINE InitializeSubcellReconstruction
 
 
   SUBROUTINE FinalizeSubcellReconstruction
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: ProjectionMatrix, ReconstructionMatrix )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( ProjectionMatrix, ReconstructionMatrix )
+#endif
 
     DEALLOCATE( ProjectionMatrix )
     DEALLOCATE( ReconstructionMatrix )

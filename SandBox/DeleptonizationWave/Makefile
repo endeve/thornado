@@ -50,6 +50,7 @@ DeleptonizationWave1D: \
 
 clean:
 	rm -f *.o *.mod *.ld
+	rm -f *.cub *.ptx
 
 clobber: clean
 	rm -f DeleptonizationWave_$(MACHINE)
@@ -126,7 +127,7 @@ InitializationModule.o: \
   EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesComputationModule.o \
   TwoMoment_UtilitiesModule.o \
-  InitializationModule.f90
+  InitializationModule.F90
 
 TimeSteppingModule_Flash.o: \
   KindModule.o \

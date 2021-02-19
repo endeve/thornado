@@ -194,7 +194,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iP
+    INTEGER  :: iX1, iX2, iX3, iCF, iP, iErr(nPT)
     REAL(DP) :: G_q(nDOFX,nGF), U_q(nDOFX,nCF), &
                 U_K(nCF), q(nPT), SSq(nPT), &
                 Ye(nPT), Pressure(nPT), Temperature(nPT), &
@@ -243,7 +243,8 @@ CONTAINS
                P_PP(:,iPF_Ne), &
                G_PP(:,iGF_Gm_dd_11), &
                G_PP(:,iGF_Gm_dd_22), &
-               G_PP(:,iGF_Gm_dd_33) )
+               G_PP(:,iGF_Gm_dd_33), &
+               iErr )
 
       Ye = P_PP(:,iPF_Ne) * BaryonMass / P_PP(:,iPF_D)
 

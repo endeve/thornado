@@ -6,7 +6,9 @@ MODULE TwoMoment_PositivityLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nNodesZ, nDOF, nDOFE, nDOFX
+    nDOFZ, nDOF, nNodesZ, &
+    nDOFE, nNodesE, &
+    nDOFX, nNodesX
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -18,19 +20,26 @@ MODULE TwoMoment_PositivityLimiterModule
     Timer_PL_Theta_2, &
     Timer_PL_Out
   USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply, &
-    MatrixVectorMultiply
+    MatrixMatrixMultiply
   USE ReferenceElementModule, ONLY: &
     nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
+  USE ReferenceElementModuleX, ONLY: &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    LX_X1_Dn, LX_X1_Up, &
+    LX_X2_Dn, LX_X2_Up, &
+    LX_X3_Dn, LX_X3_Up
   USE ReferenceElementModule_Lagrange, ONLY: &
     L_X1_Dn, L_X1_Up, &
     L_X2_Dn, L_X2_Up, &
     L_X3_Dn, L_X3_Up
   USE GeometryFieldsModule, ONLY: &
-    nGF
+    iGF_SqrtGm, nGF, iGF_h_1, iGF_h_2, iGF_h_3
   USE GeometryFieldsModuleE, ONLY: &
-    nGE
+    iGE_Ep2, nGE
   USE RadiationFieldsModule, ONLY: &
     nSpecies, nCR, &
     iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -46,14 +55,20 @@ MODULE TwoMoment_PositivityLimiterModule
   CHARACTER(256)        :: TallyFileName
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
-  INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
-  INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
-  INTEGER               :: nPT      ! Number of Positive Points
+  INTEGER               :: N_R, N_G
+  INTEGER,    PARAMETER :: nPS_Z = 9    ! Number of Positive Point Sets
+  INTEGER,    PARAMETER :: nPS_X = 7    ! Number of Positive Point Sets
+  INTEGER               :: nPP_Z(nPS_Z) ! Number of Positive Points Per Set
+  INTEGER               :: nPP_X(nPS_X) ! Number of Positive Points Per Set
+  INTEGER               :: nPT_Z        ! Number of Positive Points
+  INTEGER               :: nPT_X        ! Number of Positive Points
   INTEGER               :: nR, nR_1, nZ(4)
+  INTEGER,  ALLOCATABLE :: PointZ2X(:)
   REAL(DP)              :: Min_1, Max_1, Min_2
   REAL(DP)              :: Theta_FD, MinTheta_1, MinTheta_2
   REAL(DP),   PARAMETER :: Theta_Eps = 1.0_DP - 10.0_DP*EPSILON(1.0_DP)
-  REAL(DP), ALLOCATABLE :: L_X(:,:)
+  REAL(DP), ALLOCATABLE :: InterpMat_Z(:,:)
+  REAL(DP), ALLOCATABLE :: InterpMat_X(:,:)
 
   INTEGER,    PARAMETER :: MAX_IT = 19
 
@@ -85,7 +100,8 @@ CONTAINS
 
     LOGICAL :: Verbose
     INTEGER :: i, FileUnit
-    INTEGER :: iNode, iNodeX1, iNodeX2, iNodeX3, iOS
+    INTEGER :: iNodeZ, iNodeX, iOS_Z, iOS_X, iP_Z, iP_X
+    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3
 
     IF( PRESENT( Min_1_Option ) )THEN
       Min_1 = Min_1_Option
@@ -148,55 +164,60 @@ CONTAINS
     !$ACC UPDATE DEVICE( Min_1, Max_1, Min_2, Theta_FD )
 #endif
 
-    nPP = 0
-    nPP(1) = PRODUCT( nNodesZ )
+    ! --- Interpolation Matrix for Energy-Position Space Variables ---
 
-    DO i = 2, 4 ! --- Exclude energy dimension for now ---
+    nPP_Z    = 0
+    nPP_Z(1) = PRODUCT( nNodesZ )
+
+    DO i = 2, 4  ! --- Exclude energy dimension for Order-1 ---
 
       IF( nNodesZ(i) > 1 )THEN
 
-        nPP(2*i:2*i+1) &
+        nPP_Z(2*i:2*i+1) &
           = PRODUCT( nNodesZ, MASK = [1,2,3,4] .NE. i )
 
       END IF
 
     END DO
 
-    nPT = SUM( nPP )
+    ! --- Total Number of Positive Points ---
 
-    ALLOCATE( L_X(nPT,nDOF) )
-    L_X = Zero
-    DO iNode = 1, nDOF
+    nPT_Z = SUM( nPP_Z )
 
-      L_X(iNode,iNode) = One
+    ALLOCATE( InterpMat_Z(nPT_Z,nDOFZ) )
 
-      IF ( SUM( nPP(4:5) ) > 0 ) THEN
+    InterpMat_Z = Zero
+    DO iNodeZ = 1, nDOFZ
 
-        iOS = SUM( nPP(1:3) )
-        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Dn(1:nDOF_X1,iNode)
+      InterpMat_Z(iNodeZ,iNodeZ) = One
 
-        iOS = iOS + nPP(4)
-        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Up(1:nDOF_X1,iNode)
+      IF( SUM( nPP_Z(4:5) ) > 0 )THEN
 
-      END IF
+        iOS_Z = SUM( nPP_Z(1:3) )
+        InterpMat_Z(iOS_Z+1:iOS_Z+nDOF_X1,iNodeZ) = L_X1_Dn(1:nDOF_X1,iNodeZ)
 
-      IF ( SUM( nPP(6:7) ) > 0 ) THEN
-
-        iOS = SUM( nPP(1:5) )
-        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Dn(1:nDOF_X2,iNode)
-
-        iOS = iOS + nPP(6)
-        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Up(1:nDOF_X2,iNode)
+        iOS_Z = iOS_Z + nPP_Z(4)
+        InterpMat_Z(iOS_Z+1:iOS_Z+nDOF_X1,iNodeZ) = L_X1_Up(1:nDOF_X1,iNodeZ)
 
       END IF
 
-      IF ( SUM( nPP(8:9) ) > 0 ) THEN
+      IF( SUM( nPP_Z(6:7) ) > 0 )THEN
 
-        iOS = SUM( nPP(1:7) )
-        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Dn(1:nDOF_X3,iNode)
+        iOS_Z = SUM( nPP_Z(1:5) )
+        InterpMat_Z(iOS_Z+1:iOS_Z+nDOF_X2,iNodeZ) = L_X2_Dn(1:nDOF_X2,iNodeZ)
 
-        iOS = iOS + nPP(8)
-        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Up(1:nDOF_X3,iNode)
+        iOS_Z = iOS_Z + nPP_Z(6)
+        InterpMat_Z(iOS_Z+1:iOS_Z+nDOF_X2,iNodeZ) = L_X2_Up(1:nDOF_X2,iNodeZ)
+
+      END IF
+
+      IF( SUM( nPP_Z(8:9) ) > 0 )THEN
+
+        iOS_Z = SUM( nPP_Z(1:7) )
+        InterpMat_Z(iOS_Z+1:iOS_Z+nDOF_X3,iNodeZ) = L_X3_Dn(1:nDOF_X3,iNodeZ)
+
+        iOS_Z = iOS_Z + nPP_Z(8)
+        InterpMat_Z(iOS_Z+1:iOS_Z+nDOF_X3,iNodeZ) = L_X3_Up(1:nDOF_X3,iNodeZ)
 
       END IF
 
@@ -204,10 +225,289 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: L_X )
+    !$OMP MAP( to: InterpMat_Z )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( L_X )
+    !$ACC COPYIN( InterpMat_Z )
+#endif
+
+    ! --- Interpolation Matrix for Position Space Variables ---
+
+    nPP_X    = 0
+    nPP_X(1) = PRODUCT( nNodesX )
+
+    DO i = 1, 3
+
+      IF( nNodesX(i) > 1 )THEN
+
+        nPP_X(2*i:2*i+1) = PRODUCT( nNodesX, MASK = [1,2,3] .NE. i )
+
+      END IF
+
+    END DO
+
+    nPT_X = SUM( nPP_X )
+
+    ALLOCATE( InterpMat_X(nPT_X,nDOFX) )
+
+    InterpMat_X = Zero
+    DO iNodeX = 1, nDOFX
+
+      InterpMat_X(iNodeX,iNodeX) = One
+
+      IF( SUM( nPP_X(2:3) ) > 0 )THEN
+
+        iOS_X = nPP_X(1)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X1,iNodeX) &
+          = LX_X1_Dn(1:nDOFX_X1,iNodeX)
+
+        iOS_X = iOS_X + nPP_X(2)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X1,iNodeX) &
+          = LX_X1_Up(1:nDOFX_X1,iNodeX)
+
+      END IF
+
+      IF( SUM( nPP_X(4:5) ) > 0 )THEN
+
+        iOS_X = SUM( nPP_X(1:3) )
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X2,iNodeX) &
+          = LX_X2_Dn(1:nDOFX_X2,iNodeX)
+
+        iOS_X = iOS_X + nPP_X(4)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X2,iNodeX) &
+          = LX_X2_Up(1:nDOFX_X2,iNodeX)
+
+      END IF
+
+      IF( SUM( nPP_X(6:7) ) > 0 )THEN
+
+        iOS_X = SUM( nPP_X(1:5) )
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X3,iNodeX) &
+          = LX_X3_Dn(1:nDOFX_X3,iNodeX)
+
+        iOS_X = iOS_X + nPP_X(6)
+        InterpMat_X(iOS_X+1:iOS_X+nDOFX_X3,iNodeX) &
+          = LX_X3_Up(1:nDOFX_X3,iNodeX)
+
+      END IF
+
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: InterpMat_X )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( InterpMat_X )
+#endif
+
+    ! --- Index Map from Energy-Position to Position ---
+
+    ALLOCATE( PointZ2X(nPT_Z) )
+
+    iP_Z = 0
+    iP_X = 0
+    DO iNodeX3 = 1, nNodesX(3)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
+
+      iP_X = iP_X + 1
+
+      DO iNodeE  = 1, nNodesE
+
+        iP_Z = iP_Z + 1
+
+        PointZ2X(iP_Z) = iP_X
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    IF( nPP_Z(2) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:1) )
+      iP_X = 0
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_Z = iP_Z + 1
+        iP_X = iP_X + 1
+
+        PointZ2X(iP_Z) = iP_X
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(3) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:2) )
+      iP_X = 0
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_Z = iP_Z + 1
+        iP_X = iP_X + 1
+
+        PointZ2X(iP_Z) = iP_X
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(4) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:3) )
+      iP_X = SUM( nPP_X(1:1) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(5) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:4) )
+      iP_X = SUM( nPP_X(1:2) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(6) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:5) )
+      iP_X = SUM( nPP_X(1:3) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(7) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:6) )
+      iP_X = SUM( nPP_X(1:4) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(8) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:7) )
+      iP_X = SUM( nPP_X(1:5) )
+
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(9) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:8) )
+      iP_X = SUM( nPP_X(1:6) )
+
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: PointZ2X )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( PointZ2X )
 #endif
 
     ! --- For Tally of Positivity Limiter ---
@@ -229,16 +529,42 @@ CONTAINS
 
   SUBROUTINE FinalizePositivityLimiter_TwoMoment
 
-    IF ( ALLOCATED( L_X ) ) THEN
+    IF ( ALLOCATED( InterpMat_Z ) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: L_X )
+      !$OMP MAP( release: InterpMat_Z )
 #elif defined(THORNADO_OACC)
       !$ACC EXIT DATA &
-      !$ACC DELETE( L_X )
+      !$ACC DELETE( InterpMat_Z )
 #endif
-      DEALLOCATE( L_X )
+      DEALLOCATE( InterpMat_Z )
+
+    END IF
+
+    IF ( ALLOCATED( InterpMat_X ) ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: InterpMat_X )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( InterpMat_X )
+#endif
+      DEALLOCATE( InterpMat_X )
+
+    END IF
+
+    IF ( ALLOCATED( PointZ2X ) ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: PointZ2X )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( PointZ2X )
+#endif
+      DEALLOCATE( PointZ2X )
 
     END IF
 
@@ -257,8 +583,10 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iS, iCR, iP
+    INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iS, iCR, iP_Z, iP_X, iNodeE, iNodeX
+    INTEGER  :: iX1, iX2, iX3
     INTEGER  :: nNeg_1, nNeg_2
+    INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Min_K, Max_K, Theta_1, Min_Gam, Theta_2, Gam, Theta_P
 
     REAL(DP) :: Min_K_S  (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
@@ -267,19 +595,29 @@ CONTAINS
     REAL(DP) :: Min_Gam_S(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: Theta_2_S(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    INTEGER  :: iError(nPT,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    INTEGER  :: iError(nPT_Z,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
     LOGICAL  :: NegativeStates(2,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+
+    REAL(DP) :: Tau_Q  (nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    REAL(DP) :: GX_Q_hd1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: GX_Q_hd2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: GX_Q_hd3(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
     REAL(DP) :: U_Q_N  (nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_Q_G1 (nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_Q_G2 (nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_Q_G3 (nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    REAL(DP) :: U_P_N  (nPT ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
-    REAL(DP) :: U_P_G1 (nPT ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
-    REAL(DP) :: U_P_G2 (nPT ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
-    REAL(DP) :: U_P_G3 (nPT ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP) :: GX_P_Gmdd11(nPT_X,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: GX_P_Gmdd22(nPT_X,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: GX_P_Gmdd33(nPT_X,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    REAL(DP) :: U_P_N  (nPT_Z ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP) :: U_P_G1 (nPT_Z ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP) :: U_P_G2 (nPT_Z ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP) :: U_P_G3 (nPT_Z ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
     REAL(DP) :: U_K_N  (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_K_G1 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
@@ -292,9 +630,14 @@ CONTAINS
 
     CALL TimersStart( Timer_PositivityLimiter )
 
-    nZ = iZ_E0 - iZ_B0 + 1
+    nZ   = iZ_E0 - iZ_B0 + 1
     nR_1 = nSpecies * PRODUCT( nZ )
-    nR = nR_1 * nCR
+    N_R  = nR_1
+    nR   = nR_1 * nCR
+
+    iX_B0 = iZ_B0(2:4)
+    iX_E0 = iZ_E0(2:4)
+    N_G = PRODUCT( iX_E0 - iX_B0 + 1 )
 
     NegativeStates = .FALSE.
     iError = 0
@@ -309,23 +652,122 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iZ_B0, iZ_E0, NegativeStates, &
-    !$OMP          U, iError, MinTheta_1, MinTheta_2 ) &
-    !$OMP MAP( alloc: U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$OMP             U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$OMP             U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$OMP MAP( to: iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
+    !$OMP          U, iError, MinTheta_1, MinTheta_2 )         &
+    !$OMP MAP( alloc: Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,    &
+    !$OMP             GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,            &
+    !$OMP             GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,   &
+    !$OMP             U_P_N, U_P_G1, U_P_G2, U_P_G3,           &
+    !$OMP             U_K_N, U_K_G1, U_K_G2, U_K_G3,           &
     !$OMP             Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( iZ_B0, iZ_E0, NegativeStates, &
-    !$ACC         U, iError, MinTheta_1, MinTheta_2 ) &
-    !$ACC CREATE( U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$ACC COPYIN( iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
+    !$ACC         U, iError, MinTheta_1, MinTheta_2 )         &
+    !$ACC CREATE( Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,       &
+    !$ACC         GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,               &
+    !$ACC         GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,      &
+    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3,              &
+    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3,              &
     !$ACC         Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #endif
 
     CALL TimersStop( Timer_PL_In )
+
+    ! --- Geometry Factor ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( GX_Q_hd1, GX_Q_hd2, GX_Q_hd3, GX, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+            GX_Q_hd1(iNodeX,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_1)
+            GX_Q_hd2(iNodeX,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_2)
+            GX_Q_hd3(iNodeX,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_3)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Point Values ---
+
+    CALL TimersStart( Timer_PL_Points )
+
+    CALL ComputePointValuesX( iX_B0, iX_E0, GX_Q_hd1, GX_P_Gmdd11 )
+    CALL ComputePointValuesX( iX_B0, iX_E0, GX_Q_hd2, GX_P_Gmdd22 )
+    CALL ComputePointValuesX( iX_B0, iX_E0, GX_Q_hd3, GX_P_Gmdd33 )
+
+    CALL TimersStop( Timer_PL_Points )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iP_X = 1, nPT_X
+
+            GX_P_Gmdd11(iP_X,iX1,iX2,iX3) = MAX( GX_P_Gmdd11(iP_X,iX1,iX2,iX3)**2, SqrtTiny )
+            GX_P_Gmdd22(iP_X,iX1,iX2,iX3) = MAX( GX_P_Gmdd22(iP_X,iX1,iX2,iX3)**2, SqrtTiny )
+            GX_P_Gmdd33(iP_X,iX1,iX2,iX3) = MAX( GX_P_Gmdd33(iP_X,iX1,iX2,iX3)**2, SqrtTiny )
+
+      END DO
+
+   END DO
+   END DO
+   END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iNode )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iNode )                      &
+    !$ACC PRESENT( Tau_Q, GX, GE, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iNode )
+#endif
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+          iNode = (iNodeX-1) * nDOFE + iNodeE
+
+          Tau_Q(iNode,iZ1,iZ2,iZ3,iZ4) &
+            = GE(iNodeE,iZ1,iGE_Ep2) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -335,31 +777,34 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
+
     DO iS = 1, nSpecies
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-        DO iZ3 = iZ_B0(3), iZ_E0(3)
-          DO iZ2 = iZ_B0(2), iZ_E0(2)
-            DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
-              U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
-              U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
-              U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+      ! --- Copy Data ---
 
-            END DO
-          END DO
-        END DO
-      END DO
+      U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
+      U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+      U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+      U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
     ! --- Point Values ---
 
     CALL TimersStart( Timer_PL_Points )
 
-    CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_N , U_P_N  )
-    CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_G1, U_P_G1 )
-    CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_G2, U_P_G2 )
-    CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_G3, U_P_G3 )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, U_Q_N , U_P_N  )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, U_Q_G1, U_P_G1 )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, U_Q_G2, U_P_G2 )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, U_Q_G3, U_P_G3 )
 
     CALL TimersStop( Timer_PL_Points )
 
@@ -367,14 +812,10 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_CellAverage )
 
-    CALL MatrixVectorMultiply &
-      ( 'T', nDOF, nR_1, One, U_Q_N , nDOF, Weights_q, 1, Zero, U_K_N , 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nDOF, nR_1, One, U_Q_G1, nDOF, Weights_q, 1, Zero, U_K_G1, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nDOF, nR_1, One, U_Q_G2, nDOF, Weights_q, 1, Zero, U_K_G2, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nDOF, nR_1, One, U_Q_G3, nDOF, Weights_q, 1, Zero, U_K_G3, 1 )
+    CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_N , U_K_N  )
+    CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G1, U_K_G1 )
+    CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G2, U_K_G2 )
+    CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G3, U_K_G3 )
 
     CALL TimersStop( Timer_PL_CellAverage )
 
@@ -405,20 +846,16 @@ CONTAINS
 
               Min_K = Max_1
               Max_K = Min_1
-              DO iP = 1, nPT
-                Min_K = MIN( Min_K, U_P_N(iP,iZ1,iZ2,iZ3,iZ4,iS) )
-                Max_K = MAX( Max_K, U_P_N(iP,iZ1,iZ2,iZ3,iZ4,iS) )
+              DO iP_Z = 1, nPT_Z
+                Min_K = MIN( Min_K, U_P_N(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
+                Max_K = MAX( Max_K, U_P_N(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
               END DO
-              !Min_K = MINVAL( U_P_N(:,iZ1,iZ2,iZ3,iZ4,iS) )
-              !Max_K = MAXVAL( U_P_N(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
               IF ( Min_K < Min_1 .OR. Max_K > Max_1 ) THEN
 
                 NegativeStates(1,iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
                 ! --- Limit Density Towards Cell Average ---
-
-                !U_K_N(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
                 Theta_1 &
                   = Theta_Eps * MIN( One, &
@@ -450,7 +887,7 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_Points )
 
-    CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_N , U_P_N  )
+    CALL ComputePointValuesZ( iZ_B0, iZ_E0, U_Q_N , U_P_N  )
 
     CALL TimersStop( Timer_PL_Points )
 
@@ -517,20 +954,21 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
+    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
     !$OMP REDUCTION( min: MinTheta_2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
+    !$ACC PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
     !$ACC REDUCTION( min: MinTheta_2 ) &
     !$ACC PRESENT( U_P_N, U_P_G1, U_P_G2, U_P_G3, &
+    !$ACC          GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, &
     !$ACC          U_K_N, U_K_G1, U_K_G2, U_K_G3, &
     !$ACC          U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
     !$ACC          NegativeStates, Min_Gam_S, Theta_2_S, &
     !$ACC          MinTheta_2, iError, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
+    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
     !$OMP REDUCTION( min: MinTheta_2 )
 #endif
     DO iS = 1, nSpecies
@@ -542,29 +980,37 @@ CONTAINS
               Min_Gam = Min_2
               Theta_2 = One
 
-              DO iP = 1, nPT
+              DO iP_Z = 1, nPT_Z
+
+                iP_X = PointZ2X(iP_Z)
 
                 Gam = GammaFun &
-                      ( U_P_N (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                        U_P_G1(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                        U_P_G2(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                        U_P_G3(iP,iZ1,iZ2,iZ3,iZ4,iS) )
+                      ( U_P_N (iP_Z,iZ1,iZ2,iZ3,iZ4,iS),   &
+                        U_P_G1(iP_Z,iZ1,iZ2,iZ3,iZ4,iS),   &
+                        U_P_G2(iP_Z,iZ1,iZ2,iZ3,iZ4,iS),   &
+                        U_P_G3(iP_Z,iZ1,iZ2,iZ3,iZ4,iS),   &
+                        GX_P_Gmdd11(iP_X,iZ2,iZ3,iZ4), &
+                        GX_P_Gmdd22(iP_X,iZ2,iZ3,iZ4), &
+                        GX_P_Gmdd33(iP_X,iZ2,iZ3,iZ4) )
 
                 Min_Gam = MIN( Min_Gam, Gam )
 
                 IF ( Gam < Min_2 ) THEN
 
                   CALL SolveTheta_Bisection &
-                        ( U_P_N  (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_P_G1 (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_P_G2 (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_P_G3 (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_K_N  (   iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_K_G1 (   iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_K_G2 (   iZ1,iZ2,iZ3,iZ4,iS), &
-                          U_K_G3 (   iZ1,iZ2,iZ3,iZ4,iS), &
-                          Theta_P, &
-                          iError (iP,iZ1,iZ2,iZ3,iZ4,iS) )
+                        ( U_P_N  (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                          U_P_G1 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                          U_P_G2 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                          U_P_G3 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                          U_K_N  (   iZ1,iZ2,iZ3,iZ4,iS),   &
+                          U_K_G1 (   iZ1,iZ2,iZ3,iZ4,iS),   &
+                          U_K_G2 (   iZ1,iZ2,iZ3,iZ4,iS),   &
+                          U_K_G3 (   iZ1,iZ2,iZ3,iZ4,iS),   &
+                          GX_P_Gmdd11(iP_X,iZ2,iZ3,iZ4),    &
+                          GX_P_Gmdd22(iP_X,iZ2,iZ3,iZ4),    &
+                          GX_P_Gmdd33(iP_X,iZ2,iZ3,iZ4),    &
+                          Theta_P,                          &
+                          iError (iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
 
                   Theta_2 = MIN( Theta_2, Theta_P )
 
@@ -572,16 +1018,9 @@ CONTAINS
 
               END DO
 
-              !Min_Gam = MINVAL( Gam(:) )
-
               IF ( Min_Gam < Min_2 ) THEN
 
                 NegativeStates(2,iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
-
-                !U_K_N (iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) )
-                !U_K_G1(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) )
-                !U_K_G2(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) )
-                !U_K_G3(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
                 ! --- Limit Towards Cell Average ---
 
@@ -702,6 +1141,8 @@ CONTAINS
           DO iZ2 = iZ_B0(2), iZ_E0(2)
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
+              ! --- Update If Needed ---
+
               IF ( NegativeStates(2,iZ1,iZ2,iZ3,iZ4,iS) ) THEN
 
                 U(:,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) = U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS)
@@ -736,18 +1177,22 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: U, iError, MinTheta_1, MinTheta_2 ) &
-    !$OMP MAP( release: iZ_B0, iZ_E0, NegativeStates, &
-    !$OMP               U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$OMP               U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$OMP               U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$OMP MAP( release: iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
+    !$OMP               Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,       &
+    !$OMP               GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,               &
+    !$OMP               GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,      &
+    !$OMP               U_P_N, U_P_G1, U_P_G2, U_P_G3,              &
+    !$OMP               U_K_N, U_K_G1, U_K_G2, U_K_G3,              &
     !$OMP               Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U, iError, MinTheta_1, MinTheta_2 ) &
-    !$ACC DELETE( iZ_B0, iZ_E0, NegativeStates, &
-    !$ACC         U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$ACC COPYOUT( U, iError, MinTheta_1, MinTheta_2 )        &
+    !$ACC DELETE( iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
+    !$ACC         Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,       &
+    !$ACC         GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,               &
+    !$ACC         GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,      &
+    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3,              &
+    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3,              &
     !$ACC         Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #endif
 
@@ -759,21 +1204,21 @@ CONTAINS
           DO iZ3 = iZ_B0(3), iZ_E0(3)
             DO iZ2 = iZ_B0(2), iZ_E0(2)
               DO iZ1 = iZ_B0(1), iZ_E0(1)
-                DO iP = 1, nPT
+                DO iP_Z = 1, nPT_Z
 
-                  IF ( iError(iP,iZ1,iZ2,iZ3,iZ4,iS) > 0 ) THEN
+                  IF ( iError(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) > 0 ) THEN
 
                     WRITE(*,'(A6,A,6I4)') &
-                      '', 'SolveTheta_Bisection (M1):', iP, iZ1, iZ2, iZ3, iZ4, iS
+                      '', 'SolveTheta_Bisection (M1):', iP_Z, iZ1, iZ2, iZ3, iZ4, iS
                     WRITE(*,'(A8,A,I3.3)') &
-                      '', 'ITERATION ', iError(iP,iZ1,iZ2,iZ3,iZ4,iS)
-                    IF( iError(iP,iZ1,iZ2,iZ3,iZ4,iS) > MAX_IT + 3 ) STOP
+                      '', 'ITERATION ', iError(iP_Z,iZ1,iZ2,iZ3,iZ4,iS)
+                    IF( iError(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) > MAX_IT + 3 ) STOP
 
-                  ELSE IF ( iError(iP,iZ1,iZ2,iZ3,iZ4,iS) < 0 ) THEN
+                  ELSE IF ( iError(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) < 0 ) THEN
 
                     WRITE(*,*)
                     WRITE(*,'(A6,A,6I4)') &
-                      '', 'SolveTheta_Bisection (M1):', iP, iZ1, iZ2, iZ3, iZ4, iS
+                      '', 'SolveTheta_Bisection (M1):', iP_Z, iZ1, iZ2, iZ3, iZ4, iS
                     WRITE(*,'(A8,A,I3.3)') &
                       '', 'Error: No Root in Interval'
                     WRITE(*,*)
@@ -814,32 +1259,83 @@ CONTAINS
   END SUBROUTINE TallyPositivityLimiter_TwoMoment
 
 
-  SUBROUTINE ComputePointValues_Single( U_Q, U_P )
+  SUBROUTINE ComputePointValuesZ_Single( U_Q, U_P )
 
     REAL(DP), INTENT(in)  :: U_Q(nDOF)
-    REAL(DP), INTENT(out) :: U_P(nPT)
+    REAL(DP), INTENT(out) :: U_P(nPT_Z)
 
     CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nPT, 1, nDOF, One, L_X, nPT, &
-             U_Q, nDOF, Zero, U_P, nPT )
+           ( 'N', 'N', nPT_Z, 1, nDOFZ, One, InterpMat_Z, nPT_Z, &
+             U_Q, nDOFZ, Zero, U_P, nPT_Z )
 
-  END SUBROUTINE ComputePointValues_Single
+  END SUBROUTINE ComputePointValuesZ_Single
 
 
-  SUBROUTINE ComputePointValues( iZ_B0, iZ_E0, U_Q, U_P )
+  SUBROUTINE ComputePointValuesZ( iZ_B0, iZ_E0, U_Q, U_P )
 
     INTEGER,  INTENT(in)  :: iZ_B0(4), iZ_E0(4)
     REAL(DP), INTENT(in)  :: U_Q(nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
-    REAL(DP), INTENT(out) :: U_P(nPT ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP), INTENT(out) :: U_P(nPT_Z ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
     CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nPT, nR_1, nDOF, One, L_X, nPT, &
-             U_Q, nDOF, Zero, U_P, nPT )
+           ( 'N', 'N', nPT_Z, N_R, nDOFZ, One, InterpMat_Z, nPT_Z, &
+             U_Q, nDOFZ, Zero, U_P, nPT_Z )
 
-  END SUBROUTINE ComputePointValues
+  END SUBROUTINE ComputePointValuesZ
 
 
-  FUNCTION GammaFun_Scalar( N, G1, G2, G3 ) &
+  SUBROUTINE ComputePointValuesX( iX_B0, iX_E0, U_Q, U_P )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3)
+    REAL(DP), INTENT(in)  :: U_Q(nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: U_P(nPT_X,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nPT_X, N_G, nDOFX, One, InterpMat_X, nPT_X, &
+             U_Q, nDOFX, Zero, U_P, nPT_X )
+
+  END SUBROUTINE ComputePointValuesX
+
+
+  SUBROUTINE ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q, U_K )
+
+    INTEGER,  INTENT(in)  :: iZ_B0(4), iZ_E0(4)
+    REAL(DP), INTENT(in)  :: Tau_Q(nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in)  :: U_Q(nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP), INTENT(out) :: U_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U_K, Tau_Q, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+
+    DO iS = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              U_K(iZ1,iZ2,iZ3,iZ4,iS) &
+                = SUM( Weights_q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) &
+                         * U_Q(:,iZ1,iZ2,iZ3,iZ4,iS) ) &
+                  / SUM( Weights_q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) )
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ComputeCellAverage
+
+
+  FUNCTION GammaFun_Scalar( N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
       RESULT( GammaFun )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -847,15 +1343,16 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: N, G1, G2, G3
+    REAL(DP), INTENT(in) :: N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP) :: GammaFun
 
-    GammaFun = ( One - Theta_FD * N ) * N - SQRT( G1**2 + G2**2 + G3**2 )
+    GammaFun = ( One - Theta_FD * N ) * N &
+               - SQRT( G1**2 / Gm_dd_11 + G2**2 / Gm_dd_22 + G3**2 / Gm_dd_33 )
 
     RETURN
   END FUNCTION GammaFun_Scalar
 
-  FUNCTION GammaFun_Vector( N, G1, G2, G3 ) &
+  FUNCTION GammaFun_Vector( N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
       RESULT( GammaFun )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -863,16 +1360,20 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: N(:), G1(:), G2(:), G3(:)
+    REAL(DP), INTENT(in) :: N(:), G1(:), G2(:), G3(:), &
+                            Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     REAL(DP) :: GammaFun(SIZE(N))
 
-    GammaFun = ( One - Theta_FD * N ) * N - SQRT( G1**2 + G2**2 + G3**2 )
+    GammaFun = ( One - Theta_FD * N ) * N &
+               - SQRT( G1**2 / Gm_dd_11 + G2**2 / Gm_dd_22 + G3**2 / Gm_dd_33 )
 
     RETURN
   END FUNCTION GammaFun_Vector
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, U_K_N, U_K_G1, U_K_G2, U_K_G3, Theta_P, iError )
+  SUBROUTINE SolveTheta_Bisection &
+    ( U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Theta_P, iError )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -881,6 +1382,7 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3
     REAL(DP), INTENT(in)  :: U_K_N, U_K_G1, U_K_G2, U_K_G3
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(out) :: Theta_P
     INTEGER,  INTENT(out) :: iError
 
@@ -898,7 +1400,8 @@ CONTAINS
             ( x_a * U_Q_N  + ( One - x_a ) * U_K_N,   &
               x_a * U_Q_G1 + ( One - x_a ) * U_K_G1,  &
               x_a * U_Q_G2 + ( One - x_a ) * U_K_G2,  &
-              x_a * U_Q_G3 + ( One - x_a ) * U_K_G3 ) &
+              x_a * U_Q_G3 + ( One - x_a ) * U_K_G3,  &
+              Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
           - Min_2
 
     x_b = One
@@ -906,7 +1409,8 @@ CONTAINS
             ( x_b * U_Q_N  + ( One - x_b ) * U_K_N,   &
               x_b * U_Q_G1 + ( One - x_b ) * U_K_G1,  &
               x_b * U_Q_G2 + ( One - x_b ) * U_K_G2,  &
-              x_b * U_Q_G3 + ( One - x_b ) * U_K_G3 ) &
+              x_b * U_Q_G3 + ( One - x_b ) * U_K_G3,  &
+              Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
           - Min_2
 
     IF( .NOT. f_a * f_b < 0 )THEN
@@ -930,7 +1434,8 @@ CONTAINS
               ( x_c * U_Q_N  + ( One - x_c ) * U_K_N,   &
                 x_c * U_Q_G1 + ( One - x_c ) * U_K_G1,  &
                 x_c * U_Q_G2 + ( One - x_c ) * U_K_G2,  &
-                x_c * U_Q_G3 + ( One - x_c ) * U_K_G3 ) &
+                x_c * U_Q_G3 + ( One - x_c ) * U_K_G3,  &
+                Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
             - Min_2
 
       IF( f_a * f_c < Zero )THEN
