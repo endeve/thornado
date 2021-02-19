@@ -391,7 +391,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: CR_N, PF_N, GX_N, OP_N ) & 
+    !$OMP MAP( to: CR_N, PF_N, GX_N, OP_N ) &
     !$OMP MAP( alloc: dCR_N )
 #elif defined(THORNADO_OACC)
 #endif
@@ -611,8 +611,10 @@ CONTAINS
 
       LMAT = LMAT / DET
 
-      !CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+      ! PRINT*, "Doing DGEMV"
+      ! CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
 
+      PRINT*, "Doing GPU multiplication"
       GVEC(:,mk) = Zero
 
       DO j = 1, 4
@@ -635,16 +637,16 @@ CONTAINS
 
         ! --- Anderson Accelerated Fixed-Point ---
 
-        !BVEC = - FVEC(:,mk)
-
-        !AMAT(:,1:mk-1) &
+        ! BVEC = - FVEC(:,mk)
+        !
+        ! AMAT(:,1:mk-1) &
         !  = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
-
-        !CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
+        !
+        ! CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
         !            WORK, LWORK, INFO )
-
-        !Alpha(1:mk-1) = BVEC(1:mk-1)
-        !Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
+        !
+        ! Alpha(1:mk-1) = BVEC(1:mk-1)
+        ! Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
 
         CALL SolveAlpha_LS( M, mk, FVEC, Alpha )
 
@@ -669,8 +671,8 @@ CONTAINS
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
 
-        !GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-        !FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+        ! GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
+        ! FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
         CALL ShiftVectors( M, mk, FVEC, GVEC )
 
       END IF
