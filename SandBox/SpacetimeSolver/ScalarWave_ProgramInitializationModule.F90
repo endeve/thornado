@@ -17,8 +17,6 @@ MODULE ScalarWave_ProgramInitializationModule
     InitializeWeights
   USE QuadratureModule, ONLY: &
     InitializeQuadratures
-  USE ReferenceElementModuleX, ONLY: &
-    InitializeReferenceElementX
   USE PolynomialBasisModuleX_Lagrange, ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre, ONLY: &
@@ -156,9 +154,6 @@ CONTAINS
 
     CALL InitializePolynomialBasisX_Legendre
 
-    !-- Reference Element ---
-
-    CALL InitializeReferenceElementX
 
     ASSOCIATE( U => UnitsDisplay )
 
