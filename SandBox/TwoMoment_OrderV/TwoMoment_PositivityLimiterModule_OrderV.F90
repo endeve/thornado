@@ -938,9 +938,9 @@ CONTAINS
   REAL(DP) FUNCTION GammaFun( N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
+!!$    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
+!!$    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in) :: N, G1, G2, G3
@@ -958,9 +958,9 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Theta )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
+!!$    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
+!!$    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in)  :: N_P, G1_P, G2_P, G3_P

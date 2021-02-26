@@ -1,25 +1,19 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP, &
-    Zero, &
-    One
+    DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, &
-    iX_B1, &
-    iX_E0, &
-    iX_E1, &
+    iX_B0, iX_B1, iX_E0, iX_E1, &
     nDOFX
-  USE FluidFieldsModule, ONLY: &
-    nCF
-  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplySlopeLimiter_Euler_Relativistic_TABLE
-  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplyPositivityLimiter_Euler_Relativistic_TABLE
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler, &
-    Timer_Euler_UpdateFluid
+  USE ScalarFieldsModule, ONLY: &
+    nSF, iSF_u, iSF_v
+!  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
+!    ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
+!  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
+!    ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
+!  USE TimersModule_Euler, ONLY: &
+!    TimersStart_Euler, TimersStop_Euler, &
+!    Timer_Euler_UpdateFluid
 
   IMPLICIT NONE
   PRIVATE
@@ -32,12 +26,14 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: U_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
 
-  PUBLIC :: InitializeFluid_SSPRK
-  PUBLIC :: UpdateFluid_SSPRK
-  PUBLIC :: FinalizeFluid_SSPRK
+  LOGICAL :: Verbose
+
+  PUBLIC :: InitializeScalarWave_SSPRK
+  PUBLIC :: UpdateScalarWave_SSPRK
+  PUBLIC :: FinalizeScalarWave_SSPRK
 
   INTERFACE
-    SUBROUTINE FluidIncrement &
+    SUBROUTINE ScalarWaveIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)           :: &
@@ -49,66 +45,70 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(inout)        :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
       LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
-    END SUBROUTINE FluidIncrement
+    END SUBROUTINE ScalarWaveIncrement
   END INTERFACE
-
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFluid_SSPRK( nStages )
+  SUBROUTINE InitializeScalarWave_SSPRK( nStages, Verbose_Option )
 
-    INTEGER, INTENT(in) :: nStages
+    INTEGER, INTENT(in)           :: nStages
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+       Verbose = .TRUE.
+    END IF
 
     nStages_SSPRK = nStages
 
     CALL InitializeSSPRK( nStages )
 
-    WRITE(*,*)
-    WRITE(*,*)
-    WRITE(*,'(A)') '    INFO: TimeSteppingModule_SSPRK'
-    WRITE(*,'(A)') '    ------------------------------'
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
-
-    WRITE(*,*)
-    WRITE(*,'(A5,A)') '', 'Butcher Table:'
-    WRITE(*,'(A5,A)') '', '--------------'
-    DO i = 1, nStages
-      WRITE(*,'(A5,4ES14.4E3)') '', c_SSPRK(i), a_SSPRK(i,1:nStages)
-    END DO
-    WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Butcher Table:'
+      WRITE(*,'(A5,A)') '', '--------------'
+      DO i = 1, nStages
+        WRITE(*,'(A5,4ES14.4E3)') '', c_SSPRK(i), a_SSPRK(i,1:nStages)
+      END DO
+      WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
+      WRITE(*,*)
+    END IF
 
     ALLOCATE( U_SSPRK &
                 (1:nDOFX, &
                  iX_B1(1):iX_E1(1), &
                  iX_B1(2):iX_E1(2), &
                  iX_B1(3):iX_E1(3), &
-                 1:nCF) )
+                 1:nSF) )
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B1(1):iX_E1(1), &
-                 iX_B1(2):iX_E1(2), &
-                 iX_B1(3):iX_E1(3), &
-                 1:nCF,1:nStages) )
+                 iX_B0(1):iX_E0(1), &
+                 iX_B0(2):iX_E0(2), &
+                 iX_B0(3):iX_E0(3), &
+                 1:nSF,1:nStages) )
 
-  END SUBROUTINE InitializeFluid_SSPRK
+  END SUBROUTINE InitializeScalarWave_SSPRK
 
 
-  SUBROUTINE FinalizeFluid_SSPRK
+  SUBROUTINE FinalizeScalarWave_SSPRK
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
     DEALLOCATE( U_SSPRK, D_SSPRK )
 
-  END SUBROUTINE FinalizeFluid_SSPRK
+  END SUBROUTINE FinalizeScalarWave_SSPRK
 
 
   SUBROUTINE InitializeSSPRK( nStages )
@@ -164,25 +164,23 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE UpdateFluid_SSPRK &
-    ( t, dt, G, U, D, ComputeIncrement_Fluid )
+  SUBROUTINE UpdateScalarWave_SSPRK &
+    ( t, dt, G, U, D, ComputeIncrement_ScalarWave )
 
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in) :: &
       t, dt
     REAL(DP), INTENT(inout) :: &
-      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)   :: &
-      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    PROCEDURE (FluidIncrement) :: &
-      ComputeIncrement_Fluid
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    PROCEDURE(ScalarWaveIncrement) :: &
+      ComputeIncrement_ScalarWave
 
-    LOGICAL :: DEBUG = .FALSE.
+    INTEGER :: iS, jS
 
-    INTEGER :: iS, jS, iX1, iX2, iX3
-
-    CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
+!    CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
@@ -195,8 +193,7 @@ CONTAINS
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
-          IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
-          CALL AddIncrement_Fluid &
+          CALL AddIncrement_ScalarWave &
                  ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
 
         END IF
@@ -206,13 +203,13 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+!        CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
+!               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
-        CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+!        CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
+!               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
-        CALL ComputeIncrement_Fluid &
+        CALL ComputeIncrement_ScalarWave &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
@@ -224,52 +221,51 @@ CONTAINS
 
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
-        CALL AddIncrement_Fluid &
+        CALL AddIncrement_ScalarWave &
                ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
     END DO
 
-    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+!    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-
-    CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
-
-  END SUBROUTINE UpdateFluid_SSPRK
+!    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 
-  SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
+!    CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
+
+  END SUBROUTINE UpdateScalarWave_SSPRK
+
+
+  SUBROUTINE AddIncrement_ScalarWave( alpha, U, beta, D )
 
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
-      U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      D(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
-    INTEGER :: iCF, iX1, iX2, iX3
+    INTEGER :: iSF, iX1, iX2, iX3
 
-    DO iCF = 1, nCF
-
+    DO iSF = 1, nSF
       DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
 
-        U(:,iX1,iX2,iX3,iCF) &
-          = alpha * U(:,iX1,iX2,iX3,iCF) &
-              + beta * D(:,iX1,iX2,iX3,iCF)
+            U(:,iX1,iX2,iX3,iSF) &
+              = alpha * U(:,iX1,iX2,iX3,iSF) &
+                  + beta * D(:,iX1,iX2,iX3,iSF)
 
+          END DO
+        END DO
       END DO
-      END DO
-      END DO
-
     END DO
 
-  END SUBROUTINE AddIncrement_Fluid
+  END SUBROUTINE AddIncrement_ScalarWave
 
 
 END MODULE TimeSteppingModule_SSPRK

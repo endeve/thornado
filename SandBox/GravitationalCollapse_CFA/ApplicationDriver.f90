@@ -33,8 +33,6 @@ PROGRAM ApplicationDriver
     iX_E1,  &
     nDimsX, &
     nDOFX
-  USE GeometryComputationModule, ONLY: &
-    ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
@@ -63,7 +61,8 @@ PROGRAM ApplicationDriver
     FinalizeGravitySolver_CFA_Poseidon,   &
     SolveGravity_CFA_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    Time
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
@@ -88,8 +87,6 @@ PROGRAM ApplicationDriver
     Timer_Euler_Finalize
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
-  USE Euler_dgDiscretizationModule, ONLY: &
-    Time
 
   IMPLICIT NONE
 

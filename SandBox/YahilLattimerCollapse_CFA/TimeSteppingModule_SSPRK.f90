@@ -1,7 +1,7 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
     One
   USE ProgramHeaderModule, ONLY: &

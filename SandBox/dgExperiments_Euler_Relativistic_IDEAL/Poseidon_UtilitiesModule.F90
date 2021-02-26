@@ -1,35 +1,34 @@
 MODULE Poseidon_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP,  &
+    DP, &
     One, &
     Two, &
     Three
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Alpha,    &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
-    iGF_Beta_3,   &
-    nGF
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
-    nCF,    &
-    iCF_D,  &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    nPF,    &
-    iPF_D,  &
+    nPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic

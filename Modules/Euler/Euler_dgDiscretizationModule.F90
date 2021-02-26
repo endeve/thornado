@@ -25,8 +25,7 @@ MODULE Euler_dgDiscretizationModule
     WeightsX_X1, &
     WeightsX_X2, &
     WeightsX_X3, &
-    WeightsX_q, &
-    NodeNumberTableX
+    WeightsX_q
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     dLXdX1_q, &
     dLXdX2_q, &
@@ -70,8 +69,6 @@ MODULE Euler_dgDiscretizationModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
-    iAF_P, &
     nDF, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &
@@ -275,8 +272,6 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_Gravity )
 
-    CALL TimersStop_Euler( Timer_Euler_DG )
-
 #ifdef THORNADO_DEBUG_EULER
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU )
@@ -302,6 +297,8 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
     END ASSOCIATE
+
+    CALL TimersStop_Euler( Timer_Euler_DG )
 
   END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
 

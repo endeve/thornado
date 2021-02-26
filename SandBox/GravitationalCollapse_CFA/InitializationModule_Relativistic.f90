@@ -5,49 +5,49 @@ MODULE InitializationModule_Relativistic
     Zero
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX,       &
-    nNodesX,     &
-    iX_B0,       &
-    iX_B1,       &
-    iX_E0,       &
+    nDOFX, &
+    nNodesX, &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
     iX_E1
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
   USE UtilitiesModule, ONLY: &
-    Locate,      &
+    Locate, &
     NodeNumberX, &
     Interpolate1D_Linear
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     SolveGravity_CFA_Poseidon
   USE GeometryFieldsModule, ONLY: &
-    uGF,          &
+    uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_Alpha,    &
     iGF_Psi
   USE FluidFieldsModule, ONLY: &
-    uPF,    &
-    iPF_D,  &
+    uPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne, &
-    uCF,    &
-    iCF_D,  &
+    uCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    uAF,    &
-    iAF_P,  &
-    iAF_T,  &
+    uAF, &
+    iAF_P, &
+    iAF_T, &
     iAF_Ye, &
-    iAF_S,  &
-    iAF_E,  &
+    iAF_S, &
+    iAF_E, &
     iAF_Me, &
     iAF_Mp, &
     iAF_Mn, &
@@ -61,7 +61,6 @@ MODULE InitializationModule_Relativistic
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
   USE EquationOfStateModule, ONLY: &
-    ComputeTemperatureFromPressure,       &
     ComputeThermodynamicStates_Primitive, &
     ApplyEquationOfState
   USE ProgenitorModule, ONLY: &

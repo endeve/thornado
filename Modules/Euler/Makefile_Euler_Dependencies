@@ -59,12 +59,10 @@ Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o: \
 
 Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   KindModule.o \
-  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule_IDEAL.o \
   EquationOfStateModule.o \
-  TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.F90
 
 Euler_CharacteristicDecompositionModule.o: \
@@ -102,14 +100,14 @@ Euler_PositivityLimiterModule_NonRelativistic_TABLE.o: \
 Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.o \
   FluidFieldsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
-  Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
+  Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
 
 Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
   KindModule.o \
@@ -136,7 +134,6 @@ Euler_PositivityLimiterModule.o: \
 Euler_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
-  ReferenceElementModuleX.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \

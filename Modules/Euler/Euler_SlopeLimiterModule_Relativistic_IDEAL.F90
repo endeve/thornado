@@ -108,12 +108,12 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   !$OMP DECLARE TARGET &
   !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$OMP     UseConservativeCorrection, &
-  !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
+  !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$ACC     UseConservativeCorrection, &
-  !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
+  !$ACC     BetaTVD, BetaTVB, SlopeTolerance )
 #endif
 
 
@@ -234,6 +234,18 @@ CONTAINS
 
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO &
+    !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
+    !$OMP     UseConservativeCorrection, &
+    !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE &
+    !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
+    !$ACC     UseConservativeCorrection, &
+    !$ACC     BetaTVD, BetaTVB, SlopeTolerance )
+#endif
+
     I_6x6 = Zero
     DO i = 1, 6
       I_6x6(i,i) = One
@@ -288,15 +300,11 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
-    !$OMP     UseConservativeCorrection, &
-    !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: I_6x6, LegendreX, Kij_X )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
-    !$ACC     UseConservativeCorrection, &
-    !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX, Kij_X )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  I_6x6, LegendreX, Kij_X )
 #endif
 
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
@@ -1563,6 +1571,14 @@ CONTAINS
 
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: I_6x6, LegendreX, Kij_X )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       I_6x6, LegendreX, Kij_X )
+#endif
 
     DEALLOCATE( Kij_X )
     DEALLOCATE( LegendreX )

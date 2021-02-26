@@ -5,6 +5,7 @@ MODULE InitializationModule
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFX, nDOFE, &
+    iE_B0, iE_E0, iE_B1, iE_E1, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
     xL, xR
@@ -25,8 +26,8 @@ MODULE InitializationModule
     ComputeConserved_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
-    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, nPR, &
+    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeConserved_TwoMoment
   USE TwoMoment_OpacityModule_OrderV, ONLY: &
@@ -36,6 +37,7 @@ MODULE InitializationModule
   PRIVATE
 
   PUBLIC :: InitializeFields
+  PUBLIC :: ComputeError
 
 
 CONTAINS
@@ -2030,6 +2032,86 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_HomogeneousSphere
+
+
+  SUBROUTINE ComputeError( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    SELECT CASE( TRIM( ProgramName ) )
+
+      CASE( 'SineWaveStreaming' )
+
+        CALL ComputeError_SineWaveStreaming( t )
+
+      CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ComputeError
+
+
+  SUBROUTINE ComputeError_SineWaveStreaming( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    INTEGER  :: iE, iX1, iX2, iX3, iS
+    INTEGER  :: iNodeZ, iNodeX1
+    REAL(DP) :: X1, D_A, I1_A, I2_A, I3_A
+    REAL(DP) :: MaxError(nPR,nSpecies)
+
+    MaxError = Zero
+
+    DO iS  = 1       , nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0   , iE_E0
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX1 = NodeNumberTableZ(2,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        D_A  = 0.50_DP + 0.49_DP * SIN( TwoPi * ( X1 - t ) )
+        I1_A = D_A
+        I2_A = Zero
+        I3_A = Zero
+
+        MaxError(iPR_D, iS) &
+          = MAX( ABS( D_A  - uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) ), &
+                 MaxError(iPR_D ,iS) )
+
+        MaxError(iPR_I1,iS) &
+          = MAX( ABS( I1_A - uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) ), &
+                 MaxError(iPR_I1,iS) )
+
+        MaxError(iPR_I2,iS) &
+          = MAX( ABS( I2_A - uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) ), &
+                 MaxError(iPR_I2,iS) )
+
+        MaxError(iPR_I3,iS) &
+          = MAX( ABS( I3_A - uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) ), &
+                 MaxError(iPR_I3,iS) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A)') '', 'INFO: SineWaveStreaming Error'
+    WRITE(*,*)
+    WRITE(*,'(A4,A2,4A12)') '', 'Sp', 'N', 'G1', 'G2', 'G3'
+    DO iS = 1, nSpecies
+      WRITE(*,'(A4,I2.2,4ES12.4E2)') '', iS, MaxError(:,iS)
+    END DO
+
+  END SUBROUTINE ComputeError_SineWaveStreaming
 
 
 END MODULE InitializationModule
