@@ -56,8 +56,9 @@ MODULE Euler_UtilitiesModule_Relativistic
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep, &
-    Timer_Euler_CopyIn, &
-    Timer_Euler_CopyOut, &
+    Timer_Euler_CTS_ComputeTimeStep, &
+    Timer_Euler_CTS_CopyIn, &
+    Timer_Euler_CTS_CopyOut, &
     Timer_Euler_ComputeFromConserved, &
     Timer_Euler_CFC_CopyIn, &
     Timer_Euler_CFC_CopyOut, &
@@ -303,6 +304,10 @@ CONTAINS
     !$ACC CREATE(     P, A, iErr )
 #endif
 
+    CALL TimersStop_Euler( Timer_Euler_CFC_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
@@ -325,10 +330,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_CFC_CopyIn )
-
-    CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
@@ -345,17 +346,17 @@ CONTAINS
       iErr(iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (iNX,iX1,iX2,iX3,iCF_D),         &
+             ( U   (iNX,iX1,iX2,iX3,iCF_D ),        &
                U   (iNX,iX1,iX2,iX3,iCF_S1),        &
                U   (iNX,iX1,iX2,iX3,iCF_S2),        &
                U   (iNX,iX1,iX2,iX3,iCF_S3),        &
-               U   (iNX,iX1,iX2,iX3,iCF_E),         &
+               U   (iNX,iX1,iX2,iX3,iCF_E ),        &
                U   (iNX,iX1,iX2,iX3,iCF_Ne),        &
-               P   (iNX,iX1,iX2,iX3,iPF_D),         &
+               P   (iNX,iX1,iX2,iX3,iPF_D ),        &
                P   (iNX,iX1,iX2,iX3,iPF_V1),        &
                P   (iNX,iX1,iX2,iX3,iPF_V2),        &
                P   (iNX,iX1,iX2,iX3,iPF_V3),        &
-               P   (iNX,iX1,iX2,iX3,iPF_E),         &
+               P   (iNX,iX1,iX2,iX3,iPF_E ),        &
                P   (iNX,iX1,iX2,iX3,iPF_Ne),        &
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
@@ -399,14 +400,14 @@ CONTAINS
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
@@ -457,7 +458,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_CTS_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -469,7 +470,9 @@ CONTAINS
     !$ACC CREATE(     iErr )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_CTS_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_CTS_ComputeTimeStep )
 
     TimeStep = HUGE( One )
 
@@ -541,7 +544,9 @@ CONTAINS
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_CTS_ComputeTimeStep )
+
+    CALL TimersStart_Euler( Timer_Euler_CTS_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -553,7 +558,7 @@ CONTAINS
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_CTS_CopyOut )
 
     END ASSOCIATE ! dX1, etc.
 

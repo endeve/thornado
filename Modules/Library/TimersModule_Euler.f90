@@ -15,10 +15,14 @@ MODULE TimersModule_Euler
   ! --- ApplicationDriver ---
 
   REAL(DP), PUBLIC :: Timer_Euler_Initialize
-  REAL(DP), PUBLIC :: Timer_Euler_ComputeTimeStep
   REAL(DP), PUBLIC :: Timer_Euler_UpdateFluid
   REAL(DP), PUBLIC :: Timer_Euler_InputOutput
   REAL(DP), PUBLIC :: Timer_Euler_Finalize
+
+  REAL(DP), PUBLIC :: Timer_Euler_ComputeTimeStep
+  REAL(DP), PUBLIC :: Timer_Euler_CTS_ComputeTimeStep
+  REAL(DP), PUBLIC :: Timer_Euler_CTS_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_CTS_CopyOut
 
   ! --- DG discretization ---
 
@@ -35,7 +39,6 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_DG_Permute
   REAL(DP), PUBLIC :: Timer_Euler_DG_Interpolate
   REAL(DP), PUBLIC :: Timer_Euler_DG_ErrorCheck
-
 
   ! --- Data Manipulation ---
 
@@ -90,6 +93,13 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_PL_Integrate
   REAL(DP), PUBLIC :: Timer_Euler_PL_ErrorCheck
 
+  ! --- Boundary Conditions ---
+
+  REAL(DP), PUBLIC :: Timer_Euler_BoundaryConditions
+  REAL(DP), PUBLIC :: Timer_Euler_BC_ApplyBC
+  REAL(DP), PUBLIC :: Timer_Euler_BC_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_BC_CopyOut
+
   ! --- Miscellaneous ---
 
   REAL(DP), PUBLIC :: Timer_Euler_ComputeFromConserved
@@ -97,9 +107,7 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_CFC_ErrorCheck
   REAL(DP), PUBLIC :: Timer_Euler_CFC_CopyIn
   REAL(DP), PUBLIC :: Timer_Euler_CFC_CopyOut
-  REAL(DP), PUBLIC :: Timer_Euler_BoundaryConditions
   REAL(DP), PUBLIC :: Timer_GravitySolver
-
 
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
@@ -119,11 +127,15 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_Program )
 
-    Timer_Euler_Initialize      = SqrtTiny
-    Timer_Euler_ComputeTimeStep = SqrtTiny
-    Timer_Euler_UpdateFluid     = SqrtTiny
-    Timer_Euler_InputOutput     = SqrtTiny
-    Timer_Euler_Finalize        = SqrtTiny
+    Timer_Euler_Initialize  = SqrtTiny
+    Timer_Euler_UpdateFluid = SqrtTiny
+    Timer_Euler_InputOutput = SqrtTiny
+    Timer_Euler_Finalize    = SqrtTiny
+
+    Timer_Euler_ComputeTimeStep     = SqrtTiny
+    Timer_Euler_CTS_ComputeTimeStep = SqrtTiny
+    Timer_Euler_CTS_CopyIn          = SqrtTiny
+    Timer_Euler_CTS_CopyOut         = SqrtTiny
 
     Timer_Euler_DG               = SqrtTiny
     Timer_Euler_Increment        = SqrtTiny
@@ -178,8 +190,12 @@ CONTAINS
     Timer_Euler_PL_Integrate      = SqrtTiny
     Timer_Euler_PL_ErrorCheck     = SqrtTiny
 
-    Timer_GravitySolver            = SqrtTiny
     Timer_Euler_BoundaryConditions = SqrtTiny
+    Timer_Euler_BC_ApplyBC         = SqrtTiny
+    Timer_Euler_BC_CopyIn          = SqrtTiny
+    Timer_Euler_BC_CopyOut         = SqrtTiny
+
+    Timer_GravitySolver = SqrtTiny
 
     Timer_Euler_ComputeFromConserved = SqrtTiny
     Timer_Euler_CFC_ComputePrimitive = SqrtTiny
@@ -368,18 +384,6 @@ CONTAINS
         Timer_Euler_DG_Permute, ' s = ', &
         Timer_Euler_DG_Permute / Timer_Euler_Program
 
-      Timer_Euler_CopyIn &
-        = Timer_Euler_CopyIn + Timer_Euler_DG_CopyIn
-
-      Timer_Euler_CopyOut &
-        = Timer_Euler_CopyOut + Timer_Euler_DG_CopyOut
-
-      Timer_Euler_Interpolate &
-        = Timer_Euler_Interpolate + Timer_Euler_DG_Interpolate
-
-      Timer_Euler_Permute &
-        = Timer_Euler_Permute + Timer_Euler_DG_Permute
-
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL2)) &
@@ -387,31 +391,6 @@ CONTAINS
         Timer_Euler_DG_ErrorCheck, ' s = ', &
         Timer_Euler_DG_ErrorCheck / Timer_Euler_Program, ' = ', &
         Timer_Euler_DG_ErrorCheck / Timer_Euler_DG
-
-      WRITE(*,*)
-      WRITE(*,TRIM(Label)) 'Data Manipulation'
-      WRITE(*,TRIM(Label)) '-----------------'
-      WRITE(*,*)
-
-      WRITE(*,TRIM(TimeL1)) &
-        'CopyIn:      ', &
-        Timer_Euler_CopyIn, ' s = ', &
-        Timer_Euler_CopyIn / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        'CopyOut:     ', &
-        Timer_Euler_CopyOut, ' s = ', &
-        Timer_Euler_CopyOut / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        'Permute:     ', &
-        Timer_Euler_Permute, ' s = ', &
-        Timer_Euler_Permute / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        'Interpolate: ', &
-        Timer_Euler_Permute, ' s = ', &
-        Timer_Euler_Permute / Timer_Euler_Program
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Troubled-Cell Indicator'
@@ -694,19 +673,128 @@ CONTAINS
         Timer_Euler_CFC_CopyOut / Timer_Euler_ComputeFromConserved
 
       WRITE(*,*)
+      WRITE(*,TRIM(Label)) 'ComputeTimeStep'
+      WRITE(*,TRIM(Label)) '---------------'
+      WRITE(*,*)
+
+      TotalTime = Timer_Euler_CTS_ComputeTimeStep &
+                    + Timer_Euler_CTS_CopyIn &
+                    + Timer_Euler_CTS_CopyOut
+
+      WRITE(*,TRIM(TimeL2)) &
+        'ComputeTimeStep: ', &
+        Timer_Euler_ComputeTimeStep, ' s = ', &
+        Timer_Euler_ComputeTimeStep / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_ComputeTimeStep
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL2)) &
+        '  Compute TimeStep: ', &
+        Timer_Euler_CTS_ComputeTimeStep, ' s = ', &
+        Timer_Euler_CTS_ComputeTimeStep / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CTS_ComputeTimeStep / Timer_Euler_ComputeTimeStep
+
+      WRITE(*,TRIM(TimeL2)) &
+        '  CopyIn:           ', &
+        Timer_Euler_CTS_CopyIn, ' s = ', &
+        Timer_Euler_CTS_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CTS_CopyIn / Timer_Euler_ComputeTimeStep
+
+      WRITE(*,TRIM(TimeL2)) &
+        '  CopyOut:          ', &
+        Timer_Euler_CTS_CopyOut, ' s = ', &
+        Timer_Euler_CTS_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_CTS_CopyOut / Timer_Euler_ComputeTimeStep
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label)) 'Boundary Conditions'
+      WRITE(*,TRIM(Label)) '-------------------'
+      WRITE(*,*)
+
+      TotalTime = Timer_Euler_BC_ApplyBC &
+                    + Timer_Euler_BC_CopyIn &
+                    + Timer_Euler_BC_CopyOut
+
+      WRITE(*,TRIM(TimeL2)) &
+        'BoundaryConditions: ', &
+        Timer_Euler_BoundaryConditions, ' s = ', &
+        Timer_Euler_BoundaryConditions / Timer_Euler_Program, ' = ', &
+        TotalTime / Timer_Euler_BoundaryConditions
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL2)) &
+        '  Apply Boundary Conditions: ', &
+        Timer_Euler_BC_ApplyBC, ' s = ', &
+        Timer_Euler_BC_ApplyBC / Timer_Euler_Program, ' = ', &
+        Timer_Euler_BC_ApplyBC / Timer_Euler_BoundaryConditions
+
+      WRITE(*,TRIM(TimeL2)) &
+        '  CopyIn:                    ', &
+        Timer_Euler_BC_CopyIn, ' s = ', &
+        Timer_Euler_BC_CopyIn / Timer_Euler_Program, ' = ', &
+        Timer_Euler_BC_CopyIn / Timer_Euler_BoundaryConditions
+
+      WRITE(*,TRIM(TimeL2)) &
+        '  CopyOut:                   ', &
+        Timer_Euler_BC_CopyOut, ' s = ', &
+        Timer_Euler_BC_CopyOut / Timer_Euler_Program, ' = ', &
+        Timer_Euler_BC_CopyOut / Timer_Euler_BoundaryConditions
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label)) 'Data Manipulation'
+      WRITE(*,TRIM(Label)) '-----------------'
+      WRITE(*,*)
+
+      Timer_Euler_CopyIn = Timer_Euler_CTS_CopyIn &
+                             + Timer_Euler_DG_CopyIn &
+                             + Timer_Euler_DD_TCI_CopyIn &
+                             + Timer_Euler_DD_SD_CopyIn &
+                             + Timer_Euler_SL_CopyIn &
+                             + Timer_Euler_PL_CopyIn &
+                             + Timer_Euler_BC_CopyIn &
+                             + Timer_Euler_CFC_CopyIn
+
+      Timer_Euler_CopyOut = Timer_Euler_CTS_CopyOut &
+                             + Timer_Euler_DG_CopyOut &
+                             + Timer_Euler_DD_TCI_CopyOut &
+                             + Timer_Euler_DD_SD_CopyOut &
+                             + Timer_Euler_SL_CopyOut &
+                             + Timer_Euler_PL_CopyOut &
+                             + Timer_Euler_BC_CopyOut &
+                             + Timer_Euler_CFC_CopyOut
+
+      Timer_Euler_Permute = Timer_Euler_DG_Permute &
+                             + Timer_Euler_DD_TCI_Permute &
+                             + Timer_Euler_DD_SD_Permute &
+                             + Timer_Euler_SL_Permute &
+                             + Timer_Euler_PL_Permute
+
+      WRITE(*,TRIM(TimeL1)) &
+        'CopyIn:  ', &
+        Timer_Euler_CopyIn, ' s = ', &
+        Timer_Euler_CopyIn / Timer_Euler_Program
+
+      WRITE(*,TRIM(TimeL1)) &
+        'CopyOut: ', &
+        Timer_Euler_CopyOut, ' s = ', &
+        Timer_Euler_CopyOut / Timer_Euler_Program
+
+      WRITE(*,TRIM(TimeL1)) &
+        'Permute: ', &
+        Timer_Euler_Permute, ' s = ', &
+        Timer_Euler_Permute / Timer_Euler_Program
+
+      WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Miscellaneous'
       WRITE(*,TRIM(Label)) '-------------'
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
-        'GravitySolver:       ', &
+        'GravitySolver: ', &
         Timer_GravitySolver, ' s = ', &
         Timer_GravitySolver / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        'Boundary Conditions: ', &
-        Timer_Euler_BoundaryConditions, ' s = ', &
-        Timer_Euler_BoundaryConditions / Timer_Euler_Program
 
     END IF
 

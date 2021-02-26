@@ -370,6 +370,10 @@ CONTAINS
       !$ACC             U_K0_X1 )
 #endif
 
+      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
+
+      CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
+
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
@@ -390,7 +394,7 @@ CONTAINS
       END DO
       END DO
 
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
+      CALL TimersStop_Euler( Timer_Euler_DD_TCI_Permute )
 
     END IF
 

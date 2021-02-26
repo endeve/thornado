@@ -74,7 +74,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 
   INTEGER,  PARAMETER :: M_FP = 3
-  INTEGER,  PARAMETER :: M_outer = 3
+  INTEGER,  PARAMETER :: M_outer = 2
   INTEGER,  PARAMETER :: M_inner = 3
   REAL(DP), PARAMETER :: WFactor_FP = FourPi / PlanckConstant**3
 
