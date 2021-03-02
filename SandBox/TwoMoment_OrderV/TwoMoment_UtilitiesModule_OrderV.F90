@@ -346,7 +346,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRESENT( nIterations, nIterations_Option )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
+      !$OMP PARALLEL DO
 #endif
       DO iZ = 1, nZ
         nIterations_Option(iZ) = nIterations(iZ)
