@@ -301,10 +301,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: I_6x6, LegendreX, Kij_X )
+    !$OMP MAP( to: I_6x6, LegendreX, Kij_X, Pij_X )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(  I_6x6, LegendreX, Kij_X )
+    !$ACC COPYIN(  I_6x6, LegendreX, Kij_X, Pij_X )
 #endif
 
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
@@ -1574,10 +1574,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: I_6x6, LegendreX, Kij_X )
+    !$OMP MAP( release: I_6x6, LegendreX, Kij_X, Pij_X )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE(       I_6x6, LegendreX, Kij_X )
+    !$ACC DELETE(       I_6x6, LegendreX, Kij_X, Pij_X )
 #endif
 
     DEALLOCATE( Kij_X )
