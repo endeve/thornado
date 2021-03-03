@@ -81,7 +81,7 @@ InitializationModule_Relativistic.o: \
   UnitsModule.o \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
-  InitializationModule_Relativistic.f90
+  InitializationModule_Relativistic.F90
 
 TimeSteppingModule_SSPRK.o: \
   KindModule.o \
