@@ -1,21 +1,21 @@
 MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
-    DP,    &
-    Zero,  &
-    Half,  &
-    One,   &
-    Two,   &
+    DP, &
+    Zero, &
+    Half, &
+    One, &
+    Two, &
     Three, &
-    Four,  &
+    Four, &
     FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nNodesX,     &
-    nDOFX,       &
-    iX_B0,       &
-    iX_B1,       &
-    iX_E0,       &
+    nNodesX, &
+    nDOFX, &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
     iX_E1
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -23,29 +23,28 @@ MODULE InitializationModule_Relativistic
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    uGF,          &
+    uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Alpha,    &
+    iGF_Alpha, &
     iGF_Psi
   USE FluidFieldsModule, ONLY: &
-    nPF,    &
-    uPF,    &
-    iPF_D,  &
+    uPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne, &
-    uCF,    &
-    iCF_D,  &
+    uCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    uAF,    &
+    uAF, &
     iAF_P
   USE Euler_BoundaryConditionsModule, ONLY: &
     ExpD, &
@@ -57,12 +56,12 @@ MODULE InitializationModule_Relativistic
     ComputeConserved_Euler_Relativistic
   USE UnitsModule, ONLY: &
     GravitationalConstant, &
-    SpeedOfLight,          &
-    Kilometer,             &
-    SolarMass,             &
-    Gram,                  &
-    Centimeter,            &
-    Erg,                   &
+    SpeedOfLight, &
+    Kilometer, &
+    SolarMass, &
+    Gram, &
+    Centimeter, &
+    Erg, &
     Second
   USE UtilitiesModule, ONLY: &
     NodeNumberX
@@ -108,9 +107,9 @@ CONTAINS
     REAL(DP) :: PolytropicConstant    = PolytropicConstant2
     LOGICAL  :: ApplyPerturbation     = .FALSE.
     INTEGER  :: PerturbationOrder     = 0
-    REAL(DP) :: PerturbationAmplitude = 0.0_DP
-    REAL(DP) :: rPerturbationInner    = 0.0_DP
-    REAL(DP) :: rPerturbationOuter    = 0.0_DP
+    REAL(DP) :: PerturbationAmplitude = Zero
+    REAL(DP) :: rPerturbationInner    = Zero
+    REAL(DP) :: rPerturbationOuter    = Zero
 
     uPF(:,:,:,:,iPF_Ne) = Zero
 
@@ -153,6 +152,12 @@ CONTAINS
         STOP
 
     END SELECT
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE TO( uCF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE DEVICE   ( uCF )
+#endif
 
   END SUBROUTINE InitializeFields_Relativistic
 
@@ -244,7 +249,7 @@ CONTAINS
 
     ! --- Locate first element/node containing un-shocked fluid ---
 
-    X1 = 0.0_DP
+    X1 = Zero
 
     DO iX1 = iX_B1(1), iX_E1(1)
 
