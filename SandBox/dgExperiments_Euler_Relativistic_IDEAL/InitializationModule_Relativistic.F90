@@ -85,7 +85,7 @@ CONTAINS
 
     ! --- Sedov-Taylor Blast Wave (Defaults) ---
     INTEGER  :: nDetCells = 1
-    REAL(DP) :: Eblast    = 1.0d-3
+    REAL(DP) :: Eblast    = 1.0e-3_DP
 
     uPF(:,:,:,:,iPF_Ne) = Zero
 
@@ -153,6 +153,12 @@ CONTAINS
         STOP
 
     END SELECT
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE TO( uCF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE DEVICE   ( uCF )
+#endif
 
   END SUBROUTINE InitializeFields_Relativistic
 

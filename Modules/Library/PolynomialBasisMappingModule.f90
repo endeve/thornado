@@ -30,11 +30,6 @@ MODULE PolynomialBasisMappingModule
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: Kij_X, Pij_X
   REAL(DP), DIMENSION(:,:), ALLOCATABLE         :: Kij_Z, Pij_Z
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( Pij_X )
-#elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( Pij_X )
-#endif
 
 CONTAINS
 
@@ -118,12 +113,6 @@ CONTAINS
 
     END DO
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( Pij_X )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE   ( Pij_X )
-#endif
 
   END SUBROUTINE InitializePolynomialBasisMapping
 

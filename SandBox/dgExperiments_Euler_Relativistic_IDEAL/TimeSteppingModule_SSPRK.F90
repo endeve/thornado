@@ -43,13 +43,13 @@ MODULE TimeSteppingModule_SSPRK
       INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(in)    :: &
-        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+        G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+        D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
-        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+        dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       LOGICAL, INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
@@ -98,28 +98,28 @@ CONTAINS
                  iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET ENTER DATA &
-!!$    !$OMP MAP( alloc: U_SSPRK, D_SSPRK )
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC ENTER DATA &
-!!$    !$ACC CREATE(     U_SSPRK, D_SSPRK )
-!!$#endif
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    a_SSPRK, c_SSPRK, w_SSPRK ) &
+    !$OMP MAP( alloc: U_SSPRK, D_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     a_SSPRK, c_SSPRK, w_SSPRK ) &
+    !$ACC CREATE(     U_SSPRK, D_SSPRK )
+#endif
 
   END SUBROUTINE InitializeFluid_SSPRK
 
 
   SUBROUTINE FinalizeFluid_SSPRK
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET EXIT DATA &
-!!$    !$OMP MAP( release: U_SSPRK, D_SSPRK, &
-!!$    !$OMP               a_SSPRK, w_SSPRK, c_SSPRK )
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC EXIT DATA &
-!!$    !$ACC DELETE(       U_SSPRK, D_SSPRK, &
-!!$    !$ACC               a_SSPRK, w_SSPRK, c_SSPRK )
-!!$#endif
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: U_SSPRK, D_SSPRK, a_SSPRK, c_SSPRK, w_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       U_SSPRK, D_SSPRK, a_SSPRK, c_SSPRK, w_SSPRK )
+#endif
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
@@ -163,14 +163,6 @@ CONTAINS
       c_SSPRK(iS) = SUM( a_SSPRK(iS,1:iS-1) )
     END DO
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET ENTER DATA &
-!!$    !$OMP MAP( to: a_SSPRK, w_SSPRK, c_SSPRK )
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC ENTER DATA &
-!!$    !$ACC COPYIN(  a_SSPRK, w_SSPRK, c_SSPRK )
-!!$#endif
-
   END SUBROUTINE InitializeSSPRK
 
 
@@ -194,45 +186,45 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       t, dt
     REAL(DP), INTENT(in) :: &
-      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
     LOGICAL :: DEBUG = .FALSE.
 
-    INTEGER :: iNodeX, iX1, iX2, iX3, iCF
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
     INTEGER :: iS, jS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET ENTER DATA &
-!!$    !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC ENTER DATA &
-!!$    !$ACC COPYIN(  iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-!!$#endif
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+#endif
 
     DO iS = 1, nStages_SSPRK
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-!!$    !$ACC PRESENT( iX_B1, iX_E1, U_SSPRK, U )
-!!$#elif defined(THORNADO_OMP)
-!!$    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-!!$#endif
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U_SSPRK, U )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
       DO iCF = 1, nCF
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNodeX = 1, nDOFX
+      DO iNX = 1, nDOFX
 
-        U_SSPRK(iNodeX,iX1,iX2,iX3,iCF) = U(iNodeX,iX1,iX2,iX3,iCF)
+        U_SSPRK(iNX,iX1,iX2,iX3,iCF) = U(iNX,iX1,iX2,iX3,iCF)
 
       END DO
       END DO
@@ -245,7 +237,7 @@ CONTAINS
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Fluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
+                 ( jS, One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK )
 
         END IF
 
@@ -262,7 +254,10 @@ CONTAINS
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+                 G, U_SSPRK, D, &
+                 D_SSPRK(1:nDOFX,iX_B1(1):iX_E1(1), &
+                                 iX_B1(2):iX_E1(2), &
+                                 iX_B1(3):iX_E1(3),1:nCF,iS) )
 
       END IF
 
@@ -273,7 +268,7 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
+               ( iS, One, U, dt * w_SSPRK(iS), D_SSPRK )
 
       END IF
 
@@ -285,38 +280,42 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET EXIT DATA &
-!!$    !$OMP MAP( from: U )
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC EXIT DATA &
-!!$    !$ACC COPYOUT(   U )
-!!$#endif
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    U, D ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      U, D ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G )
+#endif
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
 
 
-  SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
+  SUBROUTINE AddIncrement_Fluid( iS, alpha, U, beta, D )
 
+    INTEGER,  INTENT(in)    :: &
+      iS
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
-      U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
 
-    INTEGER :: iCF, iX1, iX2, iX3, iNX
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-!!$    !$ACC PRESENT( iX_B1, iX_E1, U, D )
-!!$#elif defined(THORNADO_OMP)
-!!$    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-!!$#endif
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U, D )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iCF = 1, nCF
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -325,7 +324,7 @@ CONTAINS
 
       U(iNX,iX1,iX2,iX3,iCF) &
         = alpha * U(iNX,iX1,iX2,iX3,iCF) &
-            + beta * D(iNX,iX1,iX2,iX3,iCF)
+            + beta * D(iNX,iX1,iX2,iX3,iCF,iS)
 
     END DO
     END DO

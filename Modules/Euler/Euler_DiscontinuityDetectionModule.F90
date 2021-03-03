@@ -24,6 +24,7 @@ MODULE Euler_DiscontinuityDetectionModule
     L_X2, &
     L_X3
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -47,6 +48,7 @@ MODULE Euler_DiscontinuityDetectionModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    nDF, &
     iDF_TCI, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &
@@ -252,17 +254,79 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    IF( nDimsX .EQ. 1 ) &
-      CALL DetectTroubledCells_Euler_nDimsX_1 &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+    INTEGER :: iNX, iX1, iX2, iX3
 
-    IF( nDimsX .EQ. 2 ) &
-      CALL DetectTroubledCells_Euler_nDimsX_2 &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI )
 
-    IF( nDimsX .EQ. 3 ) &
-      CALL DetectTroubledCells_Euler_nDimsX_3 &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+    IF( .NOT. UseTroubledCellIndicator )THEN
+
+      CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( to: iX_B1, iX_E1, D )
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA &
+      !$ACC COPYIN(  iX_B1, iX_E1, D )
+#endif
+
+      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
+
+      CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B1, iX_E1, D )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nDOFX
+
+        D(iNX,iX1,iX2,iX3,iDF_TCI) = 1.1_DP * LimiterThreshold
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_DD_TCI_Permute )
+
+      CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyOut )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from:    D ) &
+      !$OMP MAP( release: iX_B1, iX_E1 )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(      D ) &
+      !$ACC DELETE(       iX_B1, iX_E1 )
+#endif
+
+      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyOut )
+
+    ELSE
+
+      IF( nDimsX .EQ. 1 ) &
+        CALL DetectTroubledCells_Euler_nDimsX_1 &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+
+      IF( nDimsX .EQ. 2 ) &
+        CALL DetectTroubledCells_Euler_nDimsX_2 &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+
+      IF( nDimsX .EQ. 3 ) &
+        CALL DetectTroubledCells_Euler_nDimsX_3 &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+
+    END IF
+
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI )
 
   END SUBROUTINE DetectTroubledCells_Euler
 
@@ -278,7 +342,7 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iFd
-    INTEGER  :: nX(3), nF_K
+    INTEGER  :: nF_K
     INTEGER, PARAMETER :: nF = 3 ! [ D, E, Ye ]
     REAL(DP) :: YeBoost
 
@@ -302,102 +366,6 @@ CONTAINS
                                   iX_B0(3)  :iX_E0(3), &
                                   iX_B0(1)  :iX_E0(1),1:2)
 
-    CALL TimersStart_Euler( Timer_Euler_DD_TCI )
-
-    CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B1, iX_E1, D )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN(  iX_B1, iX_E1, D )
-#endif
-
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-    IF( .NOT. UseTroubledCellIndicator )THEN
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-    !$ACC PRESENT( iX_B1, iX_E1, D )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        D(iNX,iX1,iX2,iX3,iDF_TCI) = 1.1_DP * LimiterThreshold
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: D ) &
-    !$OMP MAP( release: iX_B1, iX_E1 )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(   D ) &
-    !$ACC DELETE(       iX_B1, iX_E1 )
-#endif
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI )
-
-      RETURN
-
-    ELSE
-
-      CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( to:    iX_B1, iX_E1, U ), &
-      !$OMP MAP( alloc: U_X1  , U_X, &
-      !$OMP             U_K_X1, U_K, Max_UK, &
-      !$OMP             U_K0_X1)
-#elif defined(THORNADO_OACC)
-      !$ACC ENTER DATA &
-      !$ACC COPYIN(     iX_B1, iX_E1, U ) &
-      !$ACC CREATE(     U_X1  , U_X, &
-      !$ACC             U_K_X1, U_K, Max_UK, &
-      !$ACC             U_K0_X1 )
-#endif
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-      CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-      !$ACC PRESENT( iX_B0, iX_E0, D )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
-
-        D(iNX,iX1,iX2,iX3,iDF_TCI) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI_Permute )
-
-    END IF
-
 #ifdef MICROPHYSICS_WEAKLIB
 
     YeBoost = 1.0e2_DP
@@ -408,15 +376,32 @@ CONTAINS
 
 #endif
 
-    nX   = iX_E0 - iX_B0 + 1
-    nF_K = nF * PRODUCT( nX )
+    nF_K = nF * PRODUCT( iX_E0 - iX_B0 + 1 )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, U, D ) &
+    !$OMP MAP( alloc: U_X1  , U_X, &
+    !$OMP             U_K_X1, U_K, Max_UK, &
+    !$OMP             U_K0_X1)
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, U, D ) &
+    !$ACC CREATE(     U_X1  , U_X, &
+    !$ACC             U_K_X1, U_K, Max_UK, &
+    !$ACC             U_K0_X1 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
 
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U_X, U )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
@@ -429,7 +414,7 @@ CONTAINS
       U_X(iNX,1,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X(iNX,2,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X(iNX,3,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                    / U(iNX,iX1,iX2,iX3,iCF_D)
+                                 / U(iNX,iX1,iX2,iX3,iCF_D)
 
     END DO
     END DO
@@ -452,8 +437,8 @@ CONTAINS
       U_X1(iNX,1,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X1(iNX,2,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X1(iNX,3,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                     / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
-                                            SqrtTiny )
+                                  / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
+                                         SqrtTiny )
 
     END DO
     END DO
@@ -575,14 +560,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: D ) &
+    !$OMP MAP( from:    D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, U, &
     !$OMP               U_X1  , U_X, &
     !$OMP               U_K_X1, U_K, Max_UK, &
     !$OMP               U_K0_X1 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( D ) &
+    !$ACC COPYOUT(      D ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, U, &
     !$ACC               U_X1  , U_X, &
     !$ACC               U_K_X1, U_K, Max_UK, &
@@ -590,8 +575,6 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyOut )
-
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI )
 
   END SUBROUTINE DetectTroubledCells_Euler_nDimsX_1
 
@@ -607,7 +590,7 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iFd
-    INTEGER  :: nX(3), nF_K
+    INTEGER  :: nF_K
     INTEGER, PARAMETER :: nF = 3 ! [ D, E, Ye ]
     REAL(DP) :: YeBoost
 
@@ -641,98 +624,6 @@ CONTAINS
                                   iX_B0(3)  :iX_E0(3), &
                                   iX_B0(2)  :iX_E0(2),1:2)
 
-    CALL TimersStart_Euler( Timer_Euler_DD_TCI )
-
-    CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B1, iX_E1, D )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN(  iX_B1, iX_E1, D )
-#endif
-
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-    IF( .NOT. UseTroubledCellIndicator )THEN
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-    !$ACC PRESENT( iX_B1, iX_E1, D )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        D(iNX,iX1,iX2,iX3,iDF_TCI) = 1.1_DP * LimiterThreshold
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: D ) &
-    !$OMP MAP( release: iX_B1, iX_E1 )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(   D ) &
-    !$ACC DELETE(       iX_B1, iX_E1 )
-#endif
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI )
-
-      RETURN
-
-    ELSE
-
-      CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( to:    iX_B1, iX_E1, U ), &
-      !$OMP MAP( alloc: U_X1   , U_X2  , U_X, &
-      !$OMP             U_K_X1 , U_K_X2, U_K, Max_UK, &
-      !$OMP             U_K0_X1, U_K0_X2 )
-#elif defined(THORNADO_OACC)
-      !$ACC ENTER DATA &
-      !$ACC COPYIN(     iX_B1, iX_E1, U ) &
-      !$ACC CREATE(     U_X1   , U_X2  , U_X, &
-      !$ACC             U_K_X1 , U_K_X2, U_K, Max_UK, &
-      !$ACC             U_K0_X1, U_K0_X2 )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-      !$ACC PRESENT( iX_B0, iX_E0, D )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
-
-        D(iNX,iX1,iX2,iX3,iDF_TCI) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-    END IF
-
 #ifdef MICROPHYSICS_WEAKLIB
 
     YeBoost = 1.0e2_DP
@@ -743,15 +634,32 @@ CONTAINS
 
 #endif
 
-    nX   = iX_E0 - iX_B0 + 1
-    nF_K = nF * PRODUCT( nX )
+    nF_K = nF * PRODUCT( iX_E0 - iX_B0 + 1 )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, U, D ) &
+    !$OMP MAP( alloc: U_X1   , U_X2  , U_X, &
+    !$OMP             U_K_X1 , U_K_X2, U_K, Max_UK, &
+    !$OMP             U_K0_X1, U_K0_X2 )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, U, D ) &
+    !$ACC CREATE(     U_X1   , U_X2  , U_X, &
+    !$ACC             U_K_X1 , U_K_X2, U_K, Max_UK, &
+    !$ACC             U_K0_X1, U_K0_X2 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
 
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U_X, U )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
@@ -764,7 +672,7 @@ CONTAINS
       U_X(iNX,1,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X(iNX,2,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X(iNX,3,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                    / U(iNX,iX1,iX2,iX3,iCF_D)
+                                 / U(iNX,iX1,iX2,iX3,iCF_D)
 
     END DO
     END DO
@@ -787,8 +695,8 @@ CONTAINS
       U_X1(iNX,1,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X1(iNX,2,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X1(iNX,3,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                     / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
-                                            SqrtTiny )
+                                  / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
+                                         SqrtTiny )
 
     END DO
     END DO
@@ -811,8 +719,8 @@ CONTAINS
       U_X2(iNX,1,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X2(iNX,2,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X2(iNX,3,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                     / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
-                                            SqrtTiny )
+                                  / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
+                                         SqrtTiny )
 
     END DO
     END DO
@@ -970,14 +878,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: D ) &
+    !$OMP MAP( from:    D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, U, &
     !$OMP               U_X1   , U_X2  , U_X, &
     !$OMP               U_K_X1 , U_K_X2, U_K, Max_UK, &
     !$OMP               U_K0_X1, U_K0_X2)
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( D ) &
+    !$ACC COPYOUT(      D ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, U, &
     !$ACC               U_X1   , U_X2  , U_X, &
     !$ACC               U_K_X1 , U_K_X2, U_K, Max_UK, &
@@ -985,8 +893,6 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyOut )
-
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI )
 
   END SUBROUTINE DetectTroubledCells_Euler_nDimsX_2
 
@@ -1002,7 +908,7 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iFd
-    INTEGER  :: nX(3), nF_K
+    INTEGER  :: nF_K
     INTEGER, PARAMETER :: nF = 3 ! [ D, E, Ye ]
     REAL(DP) :: YeBoost
 
@@ -1046,98 +952,6 @@ CONTAINS
                                   iX_B0(2)  :iX_E0(2), &
                                   iX_B0(3)  :iX_E0(3),1:2)
 
-    CALL TimersStart_Euler( Timer_Euler_DD_TCI )
-
-    CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B1, iX_E1, D )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN(  iX_B1, iX_E1, D )
-#endif
-
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-    IF( .NOT. UseTroubledCellIndicator )THEN
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-    !$ACC PRESENT( iX_B1, iX_E1, D )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        D(iNX,iX1,iX2,iX3,iDF_TCI) = 1.1_DP * LimiterThreshold
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: D ) &
-    !$OMP MAP( release: iX_B1, iX_E1 )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(   D ) &
-    !$ACC DELETE(       iX_B1, iX_E1 )
-#endif
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI )
-
-      RETURN
-
-    ELSE
-
-      CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( to:    iX_B1, iX_E1, U ), &
-      !$OMP MAP( alloc: U_X1   , U_X2   , U_X3  , U_X, &
-      !$OMP             U_K_X1 , U_K_X2 , U_K_X3, U_K, Max_UK, &
-      !$OMP             U_K0_X1, U_K0_X2, U_K0_X3 )
-#elif defined(THORNADO_OACC)
-      !$ACC ENTER DATA &
-      !$ACC COPYIN(     iX_B1, iX_E1, U ) &
-      !$ACC CREATE(     U_X1   , U_X2   , U_X3  , U_X, &
-      !$ACC             U_K_X1 , U_K_X2 , U_K_X3, U_K, Max_UK, &
-      !$ACC             U_K0_X1, U_K0_X2, U_K0_X3 )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
-      !$ACC PRESENT( iX_B0, iX_E0, D )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
-
-        D(iNX,iX1,iX2,iX3,iDF_TCI) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
-
-    END IF
-
 #ifdef MICROPHYSICS_WEAKLIB
 
     YeBoost = 1.0e2_DP
@@ -1148,15 +962,32 @@ CONTAINS
 
 #endif
 
-    nX   = iX_E0 - iX_B0 + 1
-    nF_K = nF * PRODUCT( nX )
+    nF_K = nF * PRODUCT( iX_E0 - iX_B0 + 1 )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyIn )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, U, D ) &
+    !$OMP MAP( alloc: U_X1   , U_X2   , U_X3  , U_X, &
+    !$OMP             U_K_X1 , U_K_X2 , U_K_X3, U_K, Max_UK, &
+    !$OMP             U_K0_X1, U_K0_X2, U_K0_X3 )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, U, D ) &
+    !$ACC CREATE(     U_X1   , U_X2   , U_X3  , U_X, &
+    !$ACC             U_K_X1 , U_K_X2 , U_K_X3, U_K, Max_UK, &
+    !$ACC             U_K0_X1, U_K0_X2, U_K0_X3 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
 
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4), &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U_X, U )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
@@ -1169,7 +1000,7 @@ CONTAINS
       U_X(iNX,1,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X(iNX,2,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X(iNX,3,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                    / U(iNX,iX1,iX2,iX3,iCF_D)
+                                 / U(iNX,iX1,iX2,iX3,iCF_D)
 
     END DO
     END DO
@@ -1192,8 +1023,8 @@ CONTAINS
       U_X1(iNX,1,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X1(iNX,2,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X1(iNX,3,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                     / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
-                                            SqrtTiny )
+                                  / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
+                                         SqrtTiny )
 
     END DO
     END DO
@@ -1216,8 +1047,8 @@ CONTAINS
       U_X2(iNX,1,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X2(iNX,2,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X2(iNX,3,iX1,iX3,iX2) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                     / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
-                                            SqrtTiny )
+                                  / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
+                                         SqrtTiny )
 
     END DO
     END DO
@@ -1240,8 +1071,8 @@ CONTAINS
       U_X3(iNX,1,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_D)
       U_X3(iNX,2,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_E)
       U_X3(iNX,3,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF_Ne) &
-                                     / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
-                                            SqrtTiny )
+                                  / MAX( U(iNX,iX1,iX2,iX3,iCF_D), &
+                                         SqrtTiny )
 
     END DO
     END DO
@@ -1435,14 +1266,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: D ) &
+    !$OMP MAP( from:    D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, U, &
     !$OMP               U_X1   , U_X2   , U_X3   , U_X, &
     !$OMP               U_K_X1 , U_K_X2 , U_K_X3 , U_K, Max_UK, &
     !$OMP               U_K0_X1, U_K0_X2, U_K0_X3 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( D ) &
+    !$ACC COPYOUT(      D ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, U, &
     !$ACC               U_X1   , U_X2   , U_X3  , U_X, &
     !$ACC               U_K_X1 , U_K_X2 , U_K_X3, U_K, Max_UK, &
@@ -1450,8 +1281,6 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyOut )
-
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI )
 
   END SUBROUTINE DetectTroubledCells_Euler_nDimsX_3
 
@@ -1461,10 +1290,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
+      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
 
     INTEGER  :: iNX, iX1, iX2, iX3
     REAL(DP) :: GradP, DivV
@@ -1529,13 +1358,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
-    !$OMP             iX1arr, iX2arr, iX3arr, iErr )
+    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr, &
+    !$OMP             iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
-    !$ACC             iX1arr, iX2arr, iX3arr, iErr )
+    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr, &
+    !$ACC             iX1arr, iX2arr, iX3arr )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -1665,8 +1494,8 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B1, iX_E1, GK, UK, Vol, PK, PrK, VK, &
-    !$ACC          iX1arr, iX2arr, iX3arr, iErr )
+    !$ACC PRESENT( iX_B1, iX_E1, iErr, Vol, GK, UK, PK, PrK, VK, &
+    !$ACC          iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -1674,10 +1503,10 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
+      iErr(iX1,iX2,iX3) = 0
+
       IF( IsCornerCell &
             ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
-
-      iErr(iX1,iX2,iX3) = 0
 
       GK(1,iX1,iX2,iX3) = GK(1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(2,iX1,iX2,iX3) = GK(2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
@@ -1755,7 +1584,7 @@ CONTAINS
       GradP = ABS( PrK(iX1+1,iX2,iX3) - PrK(iX1-1,iX2,iX3) ) &
                 / MIN( PrK(iX1+1,iX2,iX3), PrK(iX1-1,iX2,iX3) )
 
-      DivV  = VK(1,iX1+1,iX2,iX3) - VK(1,iX1-1,iX2,iX3)
+      DivV = VK(1,iX1+1,iX2,iX3) - VK(1,iX1-1,iX2,iX3)
 
       IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
 
@@ -1774,7 +1603,7 @@ CONTAINS
         GradP = ABS( PrK(iX1,iX2+1,iX3) - PrK(iX1,iX2-1,iX3) ) &
                   / MIN( PrK(iX1,iX2+1,iX3), PrK(iX1,iX2-1,iX3) )
 
-        DivV  = VK(2,iX1,iX2+1,iX3) - VK(2,iX1,iX2-1,iX3)
+        DivV = VK(2,iX1,iX2+1,iX3) - VK(2,iX1,iX2-1,iX3)
 
         IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
 
@@ -1795,7 +1624,7 @@ CONTAINS
         GradP = ABS( PrK(iX1,iX2,iX3+1) - PrK(iX1,iX2,iX3-1) ) &
                   / MIN( PrK(iX1,iX2,iX3+1), PrK(iX1,iX2,iX3-1) )
 
-        DivV  = VK(3,iX1,iX2,iX3+1) - VK(3,iX1,iX2,iX3-1)
+        DivV = VK(3,iX1,iX2,iX3+1) - VK(3,iX1,iX2,iX3-1)
 
         IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
 
@@ -1839,18 +1668,20 @@ CONTAINS
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      PRINT*, 'Shock Detector'
+      WRITE(*,*) 'Module: Euler_DiscontinuityDetectionModule'
+      WRITE(*,*) 'Subroutine: DetectShocks_Euler'
 
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( IsCornerCell &
-              ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
+        IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
         IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
 
-          PRINT*, 'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr
+          WRITE(*,'(A,I4.4,1x,I4.4,1x,I4.4,1x,I2.2)') &
+            'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr(iX1,iX2,iX3)
+
           CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
 
         END IF
