@@ -20,6 +20,7 @@ MODULE ScalarFieldsModule
     namesSF = [ 'U                                           ', &
                 'V                                           ' ]
 
+  REAL(DP), DIMENSION(nSF), PUBLIC :: unitsSF
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uSF( :, :, :, :, : )
 
@@ -44,7 +45,9 @@ Contains
                  1 - sWX(3) : nX(3) + swX(3), &
                  1 : nSF ) )
 
-    !-- Set Initial Conditions --
+    unitsSF = One
+
+    !-- Initialize Fields --
     
     uSF( :, :, :, :, iSF_u )   = 0.0_DP
     uSF( :, :, :, :, iSF_v )   = 0.0_DP

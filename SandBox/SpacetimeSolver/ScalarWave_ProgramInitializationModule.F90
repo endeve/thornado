@@ -50,9 +50,7 @@ CONTAINS
   SUBROUTINE InitializeProgram &
     ( ProgramName_Option, nX_Option, swX_Option, bcX_Option, xL_Option, &
       xR_Option, zoomX_Option, CoordinateSystem_Option, &
-      nNodes_Option, ActivateUnits_Option, &
-      ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
-      ApplyPositivityLimiter_Option )
+      nNodes_Option, ActivateUnits_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -64,14 +62,9 @@ CONTAINS
     INTEGER,                INTENT(in), OPTIONAL :: nNodes_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: CoordinateSystem_Option
     LOGICAL,                INTENT(in), OPTIONAL :: ActivateUnits_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: BetaTVB_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: BetaTVD_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: &
-      ApplyPositivityLimiter_Option
 
     LOGICAL :: ActivateUnits
-    INTEGER :: iDim, nSpecies
+    INTEGER :: iDim
 
     CALL MPI_INIT( mpierr )
 
@@ -259,7 +252,7 @@ CONTAINS
 
     END DO
 
-    ! --- Geometry ---
+    ! --- Scalar Fields ---
 
     CALL DestroyScalarFields
 

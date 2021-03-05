@@ -34,7 +34,7 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(inout)        :: &
         U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     END SUBROUTINE ScalarWaveIncrement
   END INTERFACE
 
@@ -81,9 +81,9 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nSF,1:nStages) )
 
   END SUBROUTINE InitializeScalarWave_SSPRK
@@ -176,7 +176,6 @@ CONTAINS
 
           CALL AddIncrement_ScalarWave &
                  ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
-
         END IF
 
       END DO
@@ -212,7 +211,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iSF, iX1, iX2, iX3
 

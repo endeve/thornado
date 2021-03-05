@@ -44,7 +44,7 @@ CONTAINS
     REAL(DP), INTENT(inout)         :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(out)           :: &
-      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     INTEGER  :: iX1, iX2, iX3, iSF
     REAL(DP) :: dX1, dX2, dX3
@@ -55,6 +55,9 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ComputeIncrement_Divergence_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
+
+    CALL ComputeIncrement_SourceTerms_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
     ! --- Multiply Inverse Mass Matrix ---
@@ -91,11 +94,11 @@ CONTAINS
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nSF)
 
     INTEGER  :: iX1, iX2, iX3, iSF, iNodeX, iNodeX_X1
-    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: dX2, dX3
     REAL(DP) :: uSF_L(nDOFX_X1,nSF), uSF_R(nDOFX_X1,nSF)
     REAL(DP) :: uSF_P(nDOFX,nSF), uSF_K(nDOFX,nSF)
     REAL(DP) :: Flux_X1_L(nDOFX_X1,nSF), Flux_X1_R(nDOFX_X1,nSF)
-    REAL(DP) :: Flux_X1_q(nDOFX,nSF), Source_X1_q(nDOFx, nSF)
+    REAL(DP) :: Flux_X1_q(nDOFX,nSF)
     REAL(DP) :: NumericalFlux(nDOFX_X1,nSF)
 
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
@@ -110,7 +113,6 @@ CONTAINS
 
       dX3 = MeshX(3) % Width(iX3)
       dX2 = MeshX(2) % Width(iX2)
-      dX1 = MeshX(1) % Width(iX1)
 
       DO iSF = 1, nSF
 
@@ -146,31 +148,6 @@ CONTAINS
 
       END IF
 
-      !--------------------
-      ! --- Source Term ---
-      !--------------------
-      IF( iX1 .LT. iX_E0(1) + 1 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          Source_X1_q(iNodeX,:) &
-            = Source_X1 &
-                ( uSF_K(iNodeX,iSF_U ),       &
-                  uSF_K(iNodeX,iSF_V) )
-
-        END DO
-
-        DO iSF = 1, nSF
-
-          Source_X1_q(:,iSF) &
-            = dX1 * dX2 * dX3 * WeightsX_q * Source_X1_q(:,iSF)
-          
-          dU(:,iX1,iX2,iX3,iSF) = Source_X1_q(:,iSF) + dU(:,iX1,iX2,iX3,iSF)
-
-        END DO
-
-      END IF
-
       !---------------------
       ! --- Surface Term ---
       !---------------------
@@ -186,7 +163,6 @@ CONTAINS
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
                  uSF_K(:,iSF), 1, Zero, uSF_R(:,iSF), 1 )
-
 
       END DO
 
@@ -267,6 +243,73 @@ CONTAINS
     !$OMP END PARALLEL DO
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
+
+
+  SUBROUTINE ComputeIncrement_SourceTerms_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nSF)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nSF)
+
+    INTEGER  :: iX1, iX2, iX3, iSF, iNodeX, iNodeX_X1
+    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: uSF_K(nDOFX,nSF)
+    REAL(DP) :: Source_X1_q(nDOFx, nSF)
+
+    IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
+
+    !$OMP PARALLEL DO PRIVATE &
+    !$OMP& ( iX1, iX2, iX3, iSF, iNodeX, &
+    !$OMP&   iNodeX_X1,dX1, dX2, dX3, uSF_K )
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1) + 1
+
+      dX3 = MeshX(3) % Width(iX3)
+      dX2 = MeshX(2) % Width(iX2)
+      dX1 = MeshX(1) % Width(iX1)
+
+      DO iSF = 1, nSF
+
+        uSF_K(:,iSF) = U(:,iX1,iX2,iX3,iSF)
+
+      END DO
+
+      !--------------------
+      ! --- Source Term ---
+      !--------------------
+
+      IF( iX1 .LT. iX_E0(1) + 1 )THEN
+
+        DO iNodeX = 1, nDOFX
+
+          Source_X1_q(iNodeX,:) &
+            = Source_X1 &
+                ( uSF_K(iNodeX,iSF_U ),       &
+                  uSF_K(iNodeX,iSF_V) )
+
+        END DO
+
+        DO iSF = 1, nSF
+
+          Source_X1_q(:,iSF) &
+            = dX1 * dX2 * dX3 * WeightsX_q * Source_X1_q(:,iSF)
+     
+          dU(:,iX1,iX2,iX3,iSF) = Source_X1_q(:,iSF) + dU(:,iX1,iX2,iX3,iSF)
+
+        END DO
+
+      END IF
+    END DO
+    END DO
+    END DO
+    !$OMP END PARALLEL DO
+
+   END SUBROUTINE ComputeIncrement_SourceTerms_X1
 
 
 END MODULE ScalarWave_dgDiscretizationModule

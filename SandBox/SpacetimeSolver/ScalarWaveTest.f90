@@ -32,20 +32,21 @@ PROGRAM ScalarWaveTest
   IMPLICIT NONE
 
   LOGICAL  :: wrt
-  INTEGER  :: iCycle, nNodes
+  INTEGER  :: iCycle, nNodes, nWrites
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
 
+ 
   t = 0.0_DP
-  t_end = 1.0_DP
+  t_end = TwoPi
   dt_wrt = 1.0d-2 * t_end
 
   nNodes = 2
 
   CALL InitializeProgram &
          ( ProgramName_Option = 'SpacetimeTest', &
-           nX_Option = [ 16, 1, 1 ], swX_Option = [ 1, 0, 0 ], &
+           nX_Option = [ 2048, 1, 1 ], swX_Option = [ 1, 0, 0 ], &
            bcX_Option = [ 1, 0, 0 ], xL_Option = [ Zero, Zero, Zero ], &
-           xR_Option = [ TwoPi, One, One ], nNodes_Option = 1 )
+           xR_Option = [ TwoPi, One, One ], nNodes_Option = 3 )
 
   CALL InitializeReferenceElementX
 
@@ -55,7 +56,9 @@ PROGRAM ScalarWaveTest
 
   CALL WriteFieldsHDF( 0.0_DP, WriteSF_Option=.true.)
 
-  CALL InitializeScalarWave_SSPRK( nStages = 2 )
+  nWrites = 1
+
+  CALL InitializeScalarWave_SSPRK( nStages = 3 )
 
   t_wrt = t + dt_wrt
   wrt   = .FALSE.
@@ -64,7 +67,7 @@ PROGRAM ScalarWaveTest
   DO WHILE ( t < t_end )
     
     iCycle = iCycle + 1
-print*,iCycle
+
     CALL ComputeTimeStep_ScalarWave &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uSF, &
              CFL = 0.5_DP / (nDimsX * ( Two * DBLE ( nNodes ) - One ) ), &
@@ -90,12 +93,13 @@ print*,iCycle
     t = t + dt
 
     IF( wrt )THEN
-!print*,"Start write"
-!      CALL WriteFieldsHDF &
-!             ( t, WriteSF_Option = .TRUE. )
-!print*,"End write"
-      wrt = .FALSE.
 
+      CALL WriteFieldsHDF &
+             ( t , WriteSF_Option = .TRUE. )
+
+      wrt = .FALSE.
+      
+      nWrites = nWrites + 1
     END IF
 
   END DO
@@ -108,18 +112,15 @@ print*,iCycle
   WRITE(*,'(A6,A,I6.6,A)') &
     '', 'Finished ', iCycle, ' Cycles.'
   WRITE(*,*)
+  WRITE(*,'(A6,A,I6.6,A)') &
+    '', 'Wrote ', nWrites, ' Files.'
 
-print*,"Start Finalize SW_SSPRK"
   CALL FinalizeScalarWave_SSPRK
-print*,"Finish Finalize SW_SSPRK"
-print*,"Start Finalize REX_L"
+
   CALL FinalizeReferenceElementX_Lagrange
-print*,"Finish Finalize REX_L"  
-print*,"Start Finalize REX"
+
   CALL FinalizeReferenceElementX
-print*,"Finish Finalize REX"
-print*,"Start Finalize Program"
+
   CALL FinalizeProgram
-print*,"Finish Finalize Program"
 
 END PROGRAM ScalarWaveTest
