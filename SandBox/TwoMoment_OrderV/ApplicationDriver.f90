@@ -53,7 +53,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -156,7 +156,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      Spectrum = 'Bose-Einstein'
+      Spectrum = 'Fermi-Dirac'
 
       Direction = 'X' ! --- (X,Y, or Z)
 
@@ -207,7 +207,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 2.0d-0
+      t_end   = 2.0d+1
       iCycleD = 1
       iCycleW = 100
       maxCycles = 1000000
@@ -457,6 +457,39 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 1.0d+2
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .TRUE.
+
+    CASE( 'HomogeneousSphere1D' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 100, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 5.0_DP,     Pi,  TwoPi ]
+      bcX = [ 30, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 0
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.0d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.8_DP
+      Chi   = 4.0_DP
+      Sigma = 0.0_DP
 
       UseSlopeLimiter = .FALSE.
 
