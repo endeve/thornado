@@ -7,4 +7,6 @@ GRAVITY_SOLVER       = POSEIDON_CFA
 OPT_LEVEL = OPTIMIZE
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
+USE_OMP ?= FALSE
+
 include ../Makefile

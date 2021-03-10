@@ -158,7 +158,7 @@ DEBUG_dpochik      = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invali
 DEBUG_lucalin	   = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_bison        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -fcheck=all -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fdump-fortran-optimized
-DEBUG_rmurph	   = -g -ffpe-trap=invalid,zero,overflow -Wall -fcheck=all -fbacktrace
+DEBUG_rmurph	   = -g -framework Accelerate -ffpe-trap=invalid,zero,overflow -Wall -fcheck=all -fbacktrace -fbounds-check -fallow-argument-mismatch
 DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
 DEBUG_jrober       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
 DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
