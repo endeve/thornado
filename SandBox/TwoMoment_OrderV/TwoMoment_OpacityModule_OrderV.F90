@@ -81,7 +81,7 @@ CONTAINS
       D0, Chi
 
     REAL(DP), PARAMETER :: R_0 = 1.0d-00 ! --- Radius of Sphere
-    REAL(DP), PARAMETER :: L_R = 1.0d-01 ! --- Smoothing Lenght
+    REAL(DP), PARAMETER :: L_R = 1.0d-08 ! --- Smoothing Lenght
 
     INTEGER  :: iNodeZ, iNodeZ2, iZ1, iZ2, iZ3, iZ4, iS
     REAL(DP) :: Radius
