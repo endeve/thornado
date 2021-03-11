@@ -2,7 +2,7 @@ THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-DEFINES += -DTHORNADO_DEBUG
+#DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
@@ -79,8 +79,13 @@ AccretionShockDiagnosticsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_IDEAL.o \
+  EquationOfStateModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
   UnitsModule.o \
   QuadratureModule.o \
+  Euler_ErrorModule.o \
   AccretionShockDiagnosticsModule.f90

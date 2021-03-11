@@ -76,21 +76,29 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_Relativistic &
-               ( MassPNS_Option, ShockRadius_Option, &
-                 AccretionRate_Option, PolytropicConstant_Option, &
-                 ApplyPerturbation_Option, PerturbationOrder_Option, &
+               ( MassPNS_Option, &
+                 ShockRadius_Option, &
+                 AccretionRate_Option, &
+                 PolytropicConstant_Option, &
+                 ApplyPerturbation_Option, &
+                 PerturbationOrder_Option, &
                  PerturbationAmplitude_Option, &
-                 rPerturbationInner_Option, rPerturbationOuter_Option )
+                 rPerturbationInner_Option, &
+                 rPerturbationOuter_Option, &
+                 InitializeFluidFromFile_Option, &
+                 InitialConditionsFileName_Option )
 
-    REAL(DP),         INTENT(in), OPTIONAL :: MassPNS_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: ShockRadius_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: AccretionRate_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: PolytropicConstant_Option
-    LOGICAL,          INTENT(in), OPTIONAL :: ApplyPerturbation_Option
-    INTEGER,          INTENT(in), OPTIONAL :: PerturbationOrder_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: PerturbationAmplitude_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationInner_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationOuter_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: MassPNS_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: ShockRadius_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: AccretionRate_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: PolytropicConstant_Option
+    LOGICAL,            INTENT(in), OPTIONAL :: ApplyPerturbation_Option
+    INTEGER,            INTENT(in), OPTIONAL :: PerturbationOrder_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: PerturbationAmplitude_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: rPerturbationInner_Option
+    REAL(DP),           INTENT(in), OPTIONAL :: rPerturbationOuter_Option
+    LOGICAL,            INTENT(in), OPTIONAL :: InitializeFluidFromFile_Option
+    CHARACTER(LEN=128), INTENT(in), OPTIONAL :: InitialConditionsFileName_Option
 
     ! --- Standing Accretion Shock (Defaults) ---
 
@@ -104,12 +112,14 @@ CONTAINS
       PolytropicConstant2 = 2.0e14_DP &
                               * ( ( Erg / Centimeter**3 ) &
                               / ( Gram / Centimeter**3 )**( Four / Three ) )
-    REAL(DP) :: PolytropicConstant    = PolytropicConstant2
-    LOGICAL  :: ApplyPerturbation     = .FALSE.
-    INTEGER  :: PerturbationOrder     = 0
-    REAL(DP) :: PerturbationAmplitude = Zero
-    REAL(DP) :: rPerturbationInner    = Zero
-    REAL(DP) :: rPerturbationOuter    = Zero
+    REAL(DP)       :: PolytropicConstant        = PolytropicConstant2
+    LOGICAL        :: ApplyPerturbation         = .FALSE.
+    INTEGER        :: PerturbationOrder         = 0
+    REAL(DP)       :: PerturbationAmplitude     = Zero
+    REAL(DP)       :: rPerturbationInner        = Zero
+    REAL(DP)       :: rPerturbationOuter        = Zero
+    LOGICAL        :: InitializeFluidFromFile   = .FALSE.
+    CHARACTER(128) :: InitialConditionsFileName = 'InitialConditions.dat'
 
     uPF(:,:,:,:,iPF_Ne) = Zero
 
@@ -131,6 +141,10 @@ CONTAINS
       rPerturbationInner = rPerturbationInner_Option
     IF( PRESENT( rPerturbationOuter_Option ) ) &
       rPerturbationOuter = rPerturbationOuter_Option
+    IF( PRESENT( InitializeFluidFromFile_Option ) ) &
+      InitializeFluidFromFile = InitializeFluidFromFile_Option
+    IF( PRESENT( InitialConditionsFileName_Option ) ) &
+      InitialConditionsFileName = InitialConditionsFileName_Option
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -140,9 +154,17 @@ CONTAINS
       CASE( 'StandingAccretionShock' )
 
         CALL InitializeFields_StandingAccretionShock &
-               ( MassPNS, ShockRadius, AccretionRate, PolytropicConstant, &
-                 ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
-                 rPerturbationInner, rPerturbationOuter )
+               ( MassPNS, &
+                 ShockRadius, &
+                 AccretionRate, &
+                 PolytropicConstant, &
+                 ApplyPerturbation, &
+                 PerturbationOrder, &
+                 PerturbationAmplitude, &
+                 rPerturbationInner, &
+                 rPerturbationOuter, &
+                 InitializeFluidFromFile, &
+                 InitialConditionsFileName )
 
       CASE DEFAULT
 
@@ -163,17 +185,29 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_StandingAccretionShock &
-    ( MassPNS, ShockRadius, AccretionRate, PolytropicConstant, &
-      ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
-      rPerturbationInner, rPerturbationOuter )
+    ( MassPNS, &
+      ShockRadius, &
+      AccretionRate, &
+      PolytropicConstant, &
+      ApplyPerturbation, &
+      PerturbationOrder, &
+      PerturbationAmplitude, &
+      rPerturbationInner, &
+      rPerturbationOuter, &
+      InitializeFluidFromFile, &
+      InitialConditionsFileName )
 
-    REAL(DP), INTENT(in) :: MassPNS, ShockRadius, &
-                            AccretionRate, PolytropicConstant
-    LOGICAL,  INTENT(in) :: ApplyPerturbation
-    INTEGER,  INTENT(in) :: PerturbationOrder
-    REAL(DP), INTENT(in) :: PerturbationAmplitude
-    REAL(DP), INTENT(in) :: rPerturbationInner
-    REAL(DP), INTENT(in) :: rPerturbationOuter
+    REAL(DP),           INTENT(in) :: MassPNS
+    REAL(DP),           INTENT(in) :: ShockRadius
+    REAL(DP),           INTENT(in) :: AccretionRate
+    REAL(DP),           INTENT(in) :: PolytropicConstant
+    LOGICAL,            INTENT(in) :: ApplyPerturbation
+    INTEGER,            INTENT(in) :: PerturbationOrder
+    REAL(DP),           INTENT(in) :: PerturbationAmplitude
+    REAL(DP),           INTENT(in) :: rPerturbationInner
+    REAL(DP),           INTENT(in) :: rPerturbationOuter
+    LOGICAL,            INTENT(in) :: InitializeFluidFromFile
+    CHARACTER(LEN=128), INTENT(in) :: InitialConditionsFileName
 
     INTEGER  :: iX1, iX2, iX3, iNodeX1, iNodeX2, iNodeX3, iNodeX
     INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
@@ -198,6 +232,9 @@ CONTAINS
     Ka   = PolytropicConstant
 
     WRITE(*,*)
+    WRITE(*,'(6x,A,L)') &
+      'Initialize From File:            ', &
+      InitializeFluidFromFile
     WRITE(*,'(6x,A,ES9.2E3,A)') &
       'Shock radius:                    ', &
       ShockRadius / Kilometer, ' km'
@@ -247,152 +284,161 @@ CONTAINS
     END DO
     END DO
 
-    ! --- Locate first element/node containing un-shocked fluid ---
+    IF( InitializeFluidFromFile )THEN
 
-    X1 = Zero
+      CALL ReadFluidFieldsFromFile &
+             ( iX_B1, iX_E1, D, V, P, InitialConditionsFileName )
 
-    DO iX1 = iX_B1(1), iX_E1(1)
+    ELSE
 
-      DO iNodeX1 = 1, nNodesX(1)
+      ! --- Locate first element/node containing un-shocked fluid ---
 
-        dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
-        X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      X1 = Zero
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+      DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+        DO iNodeX1 = 1, nNodesX(1)
 
-          iX1_1     = iX1
-          iNodeX1_1 = iNodeX1
-          X1_1      = X1
-          X1_2      = X1 - dX1
+          dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
+          X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-          IF( iNodeX1_1 .EQ. 1 )THEN
+          IF( X1 .LE. ShockRadius ) CYCLE
 
-            iX1_2     = iX1_1 - 1
-            iNodeX1_2 = nNodesX(1)
+          IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
 
-          ELSE
+            iX1_1     = iX1
+            iNodeX1_1 = iNodeX1
+            X1_1      = X1
+            X1_2      = X1 - dX1
 
-            iX1_2     = iX1_1
-            iNodeX1_2 = iNodeX1_1 - 1
+            IF( iNodeX1_1 .EQ. 1 )THEN
+
+              iX1_2     = iX1_1 - 1
+              iNodeX1_2 = nNodesX(1)
+
+            ELSE
+
+              iX1_2     = iX1_1
+              iNodeX1_2 = iNodeX1_1 - 1
+
+            END IF
+
+            FirstPreShockElement = .TRUE.
 
           END IF
 
-          FirstPreShockElement = .TRUE.
-
-        END IF
+        END DO
 
       END DO
 
-    END DO
+      ! --- Pre-shock Fields ---
 
-    ! --- Pre-shock Fields ---
+      X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
 
-    X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
+      ! --- Use Newtonian values as initial guesses ---
 
-    ! --- Use Newtonian values as initial guesses ---
+      V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
+      D0 = -Mdot / ( FourPi * X1**2 * V0 )
+      P0 = Ka * D0**( Gamma_IDEAL )
 
-    V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
-    D0 = -Mdot / ( FourPi * X1**2 * V0 )
-    P0 = Ka * D0**( Gamma_IDEAL )
+      DO iX1 = iX_E1(1), iX1_1, -1
 
-    DO iX1 = iX_E1(1), iX1_1, -1
+        DO iNodeX1 = nNodesX(1), 1, -1
 
-      DO iNodeX1 = nNodesX(1), 1, -1
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          IF( X1 .LE. ShockRadius ) CYCLE
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+          CALL NewtonRaphson_SAS &
+                 ( X1, MassPNS, Ka, Mdot, &
+                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-        CALL NewtonRaphson_SAS &
-               ( X1, MassPNS, Ka, Mdot, &
-                 Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
-                 D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
+          D0 = D(iNodeX1,iX1)
+          V0 = V(iNodeX1,iX1)
+          P0 = P(iNodeX1,iX1)
 
-        D0 = D(iNodeX1,iX1)
-        V0 = V(iNodeX1,iX1)
-        P0 = P(iNodeX1,iX1)
-
-      END DO
-
-    END DO
-
-    ! --- Apply Jump Conditions ---
-
-    D_1 = D(iNodeX1_1,iX1_1)
-    V_1 = V(iNodeX1_1,iX1_1)
-    P_1 = P(iNodeX1_1,iX1_1)
-
-    W = LorentzFactor( Psi(iNodeX1_1,iX1), V_1 )
-
-    C1 = D_1 * W * V_1
-    C2 = D_1 &
-           * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                 * P_1 / D_1  ) * W**2 * V_1**2 / SpeedOfLight**2 &
-           + Psi(iNodeX1_1,iX1)**( -4 ) * P_1
-    C3 = D_1 &
-           * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                 * P_1 / D_1  ) * W**2 * V_1
-
-    CALL ApplyJumpConditions_SAS &
-           ( Psi(iNodeX1_1,iX1), V_1, C1, C2, C3, D_2, V_2, P_2 )
-
-    Kb = P_2 / D_2**( Gamma_IDEAL )
-
-    WRITE(*,*)
-    WRITE(*,'(6x,A)') 'Jump Conditions'
-    WRITE(*,'(6x,A)') '---------------'
-    WRITE(*,*)
-    WRITE(*,'(8x,A)') 'Pre-shock:'
-    WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
-    WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-      D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
-    WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-      V_1 / ( Kilometer / Second ), ' km/s'
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-      P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
-    WRITE(*,*)
-    WRITE(*,'(8x,A)') 'Post-shock:'
-    WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
-    WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-      D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
-    WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-      V_2 / ( Kilometer / Second ), ' km/s'
-    WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-      P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
-    WRITE(*,*)
-
-    ! --- Post-shock Fields ---
-
-    D0 = D_2
-    V0 = V_2
-    P0 = P_2
-
-    DO iX1 = iX1_2, iX_B1(1), -1
-
-      DO iNodeX1 = nNodesX(1), 1, -1
-
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-        IF( X1 .GT. ShockRadius ) CYCLE
-
-        CALL NewtonRaphson_SAS &
-               ( X1, MassPNS, Kb, Mdot, &
-                 Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
-                 D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
-
-        D0 = D(iNodeX1,iX1)
-        V0 = V(iNodeX1,iX1)
-        P0 = P(iNodeX1,iX1)
+        END DO
 
       END DO
 
-    END DO
+      ! --- Apply Jump Conditions ---
+
+      D_1 = D(iNodeX1_1,iX1_1)
+      V_1 = V(iNodeX1_1,iX1_1)
+      P_1 = P(iNodeX1_1,iX1_1)
+
+      W = LorentzFactor( Psi(iNodeX1_1,iX1), V_1 )
+
+      C1 = D_1 * W * V_1
+      C2 = D_1 &
+             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P_1 / D_1  ) * W**2 * V_1**2 / SpeedOfLight**2 &
+             + Psi(iNodeX1_1,iX1)**( -4 ) * P_1
+      C3 = D_1 &
+             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P_1 / D_1  ) * W**2 * V_1
+
+      CALL ApplyJumpConditions_SAS &
+             ( Psi(iNodeX1_1,iX1), V_1, C1, C2, C3, D_2, V_2, P_2 )
+
+      Kb = P_2 / D_2**( Gamma_IDEAL )
+
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Jump Conditions'
+      WRITE(*,'(6x,A)') '---------------'
+      WRITE(*,*)
+      WRITE(*,'(8x,A)') 'Pre-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+        D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+        V_1 / ( Kilometer / Second ), ' km/s'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+        P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+      WRITE(*,*)
+      WRITE(*,'(8x,A)') 'Post-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+        D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+      WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+        V_2 / ( Kilometer / Second ), ' km/s'
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+        P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+      WRITE(*,*)
+
+      ! --- Post-shock Fields ---
+
+      D0 = D_2
+      V0 = V_2
+      P0 = P_2
+
+      DO iX1 = iX1_2, iX_B1(1), -1
+
+        DO iNodeX1 = nNodesX(1), 1, -1
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+          IF( X1 .GT. ShockRadius ) CYCLE
+
+          CALL NewtonRaphson_SAS &
+                 ( X1, MassPNS, Kb, Mdot, &
+                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
+
+          D0 = D(iNodeX1,iX1)
+          V0 = V(iNodeX1,iX1)
+          P0 = P(iNodeX1,iX1)
+
+        END DO
+
+      END DO
+
+    END IF
 
     ! --- Map to 3D Domain ---
 
@@ -704,6 +750,7 @@ CONTAINS
     RETURN
   END FUNCTION Inv3x3
 
+
   REAL(DP) FUNCTION LorentzFactor( Psi, V )
 
     REAL(DP), INTENT(in) :: Psi, V
@@ -713,6 +760,46 @@ CONTAINS
     RETURN
   END FUNCTION LorentzFactor
 
-  ! --- End of auxiliary functions for standing accretion shock problem ---
+
+  SUBROUTINE ReadFluidFieldsFromFile &
+    ( iX_B1, iX_E1, D, V, P, InitialConditionsFileName )
+
+    INTEGER,  INTENT(in)           :: &
+      iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(out)          :: &
+      D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+    CHARACTER(LEN=128), INTENT(in) :: &
+      InitialConditionsFileName
+
+    CHARACTER(LEN=16) :: FMT
+    INTEGER           :: iX1
+
+    WRITE(*,*)
+    WRITE(*,'(6x,A,A)') &
+      'Initial Conditions File: ', TRIM( InitialConditionsFileName )
+    WRITE(*,*)
+
+    OPEN( UNIT = 101, FILE = TRIM( InitialConditionsFileName ) // '_D.dat' )
+    OPEN( UNIT = 102, FILE = TRIM( InitialConditionsFileName ) // '_V.dat' )
+    OPEN( UNIT = 103, FILE = TRIM( InitialConditionsFileName ) // '_P.dat' )
+
+    READ(101,*) FMT
+    READ(102,*) FMT
+    READ(103,*) FMT
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      READ(101,TRIM(FMT)) D(:,iX1)
+      READ(102,TRIM(FMT)) V(:,iX1)
+      READ(103,TRIM(FMT)) P(:,iX1)
+
+    END DO
+
+    CLOSE( 103 )
+    CLOSE( 102 )
+    CLOSE( 101 )
+
+  END SUBROUTINE ReadFluidFieldsFromFile
+
 
 END MODULE InitializationModule_Relativistic

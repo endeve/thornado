@@ -80,6 +80,7 @@ PROGRAM ApplicationDriver
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
   USE AccretionShockDiagnosticsModule, ONLY: &
+    WriteInitialConditionsToFile, &
     ComputeAccretionShockDiagnostics
 
   IMPLICIT NONE
@@ -108,6 +109,8 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
   REAL(DP)      :: ZoomX(3)
+  LOGICAL       :: WriteGF = .TRUE., WriteFF = .TRUE.
+  REAL(DP)      :: Timer_Evolution
 
   ! --- Standing accretion shock ---
 
@@ -119,10 +122,14 @@ PROGRAM ApplicationDriver
               rPerturbationInner, rPerturbationOuter
   REAL(DP) :: Power(0:2)
 
-  LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .TRUE.
   LOGICAL  :: WriteAccretionShockDiagnostics = .TRUE.
-  REAL(DP) :: Timer_Evolution
+
+  ! --- Relaxation Parameters ---
+
+  LOGICAL            :: InitializeFluidFromFile          = .FALSE.
+  LOGICAL            :: WriteInitialConditionsToFile_SAS = .FALSE.
+  CHARACTER(LEN=128) :: InitialConditionsFileName
 
   SuppressTally = .FALSE.
 
@@ -146,14 +153,17 @@ PROGRAM ApplicationDriver
   AccretionRate      = 0.3_DP    * ( SolarMass / Second )
   PolytropicConstant = 2.0e14_DP * ( Erg / Centimeter**3 &
                                      / ( Gram / Centimeter**3 )**( Gamma ) )
-  ApplyPerturbation     = .TRUE.
+  ApplyPerturbation     = .FALSE.
   PerturbationOrder     = 0
   PerturbationAmplitude = 0.04_DP
   rPerturbationInner    = 260.0_DP * Kilometer
   rPerturbationOuter    = 280.0_DP * Kilometer
 
-  nX  = [ 960, 32, 1 ]
-  swX = [ 1, 1, 0 ]
+  WRITE(InitialConditionsFileName,'(A)') &
+    'InitialConditions_MPNS1.4_Mdot0.3_Rs180'
+
+  nX  = [ 960, 1, 1 ]
+  swX = [ 1, 0, 0 ]
   xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
   xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
@@ -163,13 +173,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -180,8 +190,8 @@ PROGRAM ApplicationDriver
   UseSlopeLimiter           = .TRUE.
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75d0
-  BetaTVB                   = 0.0d0
-  SlopeTolerance            = 1.0d-6
+  BetaTVB                   = 0.0e0_DP
+  SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
@@ -190,8 +200,8 @@ PROGRAM ApplicationDriver
   ! --- Positivity Limiter ---
 
   UsePositivityLimiter = .TRUE.
-  Min_1                = 1.0d-13
-  Min_2                = 1.0d-13
+  Min_1                = 1.0e-13_DP
+  Min_2                = 1.0e-13_DP
 
   ! === End of User Input ===
 
@@ -260,19 +270,21 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
-  uCF = 0.0_DP ! Without this, crashes when copying data in TimeStepper
-  uDF = 0.0_DP ! Without this, crashes in IO
+  uCF = Zero ! Without this, crashes when copying data in TimeStepper
+  uDF = Zero ! Without this, crashes in IO
 
   CALL InitializeFields_Relativistic &
-         ( MassPNS_Option               = MassPNS, &
-           ShockRadius_Option           = ShockRadius, &
-           AccretionRate_Option         = AccretionRate, &
-           PolytropicConstant_Option    = PolytropicConstant, &
-           ApplyPerturbation_Option     = ApplyPerturbation, &
-           PerturbationOrder_Option     = PerturbationOrder, &
-           PerturbationAmplitude_Option = PerturbationAmplitude, &
-           rPerturbationInner_Option    = rPerturbationInner, &
-           rPerturbationOuter_Option    = rPerturbationOuter )
+         ( MassPNS_Option                   = MassPNS, &
+           ShockRadius_Option               = ShockRadius, &
+           AccretionRate_Option             = AccretionRate, &
+           PolytropicConstant_Option        = PolytropicConstant, &
+           ApplyPerturbation_Option         = ApplyPerturbation, &
+           PerturbationOrder_Option         = PerturbationOrder, &
+           PerturbationAmplitude_Option     = PerturbationAmplitude, &
+           rPerturbationInner_Option        = rPerturbationInner, &
+           rPerturbationOuter_Option        = rPerturbationOuter, &
+           InitializeFluidFromFile_Option   = InitializeFluidFromFile, &
+           InitialConditionsFileName_Option = InitialConditionsFileName )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -437,6 +449,13 @@ PROGRAM ApplicationDriver
 
   CALL ComputeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+
+  IF( WriteInitialConditionsToFile_SAS )THEN
+
+    CALL WriteInitialConditionsToFile &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, InitialConditionsFileName )
+
+  END IF
 
   CALL FinalizeTally_Euler_Relativistic
 

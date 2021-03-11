@@ -12,29 +12,131 @@ MODULE AccretionShockDiagnosticsModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nNodes, &
-    nNodesX
+    nNodesX, &
+    nDimsX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE GeometryFieldsModule, ONLY: &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
     iPF_D, &
     iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
   USE UnitsModule, ONLY: &
     Erg, &
     Gram, &
     Centimeter
   USE QuadratureModule, ONLY: &
     GetQuadrature
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: WriteInitialConditionsToFile
   PUBLIC :: ComputeAccretionShockDiagnostics
 
 
 CONTAINS
+
+
+  SUBROUTINE WriteInitialConditionsToFile &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, FileName )
+
+    INTEGER ,           INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP),           INTENT(in)    :: &
+      uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP),           INTENT(inout) :: &
+      uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    CHARACTER(LEN=128),   INTENT(in)  :: &
+      FileName
+
+    INTEGER  :: iNX, iX1
+    REAL(DP) :: D(nNodesX(1)), V1(nNodesX(1)), V2(nNodesX(1)), V3(nNodesX(1)), &
+                E(nNodesX(1)), Ne(nNodesX(1)), P (nNodesX(1))
+    INTEGER :: iErr(nNodesX(1),iX_B1(1):iX_E1(1))
+    CHARACTER(LEN=16) :: FMT
+
+    IF( nDimsX .GT. 1 )THEN
+
+      WRITE(*,*) 'WriteInitialConditionsToFile not implemented for nDimsX > 1.'
+      RETURN
+
+    END IF
+
+    WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
+
+    OPEN( 101, FILE = TRIM( FileName ) // '_D.dat' )
+    OPEN( 102, FILE = TRIM( FileName ) // '_V.dat' )
+    OPEN( 103, FILE = TRIM( FileName ) // '_P.dat' )
+
+    WRITE(101,'(A16)') TRIM( FMT )
+    WRITE(102,'(A16)') TRIM( FMT )
+    WRITE(103,'(A16)') TRIM( FMT )
+
+    CALL ApplyBoundaryConditions_Euler( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      iErr(:,iX1) = 0
+
+      CALL ComputePrimitive_Euler_Relativistic &
+             ( uCF(:,iX1,1,1,iCF_D ), &
+               uCF(:,iX1,1,1,iCF_S1), &
+               uCF(:,iX1,1,1,iCF_S2), &
+               uCF(:,iX1,1,1,iCF_S3), &
+               uCF(:,iX1,1,1,iCF_E ), &
+               uCF(:,iX1,1,1,iCF_Ne), &
+               D, V1, V2, V3, E, Ne, &
+               uGF(:,iX1,1,1,iGF_Gm_dd_11), &
+               uGF(:,iX1,1,1,iGF_Gm_dd_22), &
+               uGF(:,iX1,1,1,iGF_Gm_dd_33), &
+               iErr(:,iX1) )
+
+      CALL ComputePressureFromPrimitive &
+             ( D, E, Ne, P )
+
+      WRITE(101,FMT) D
+      WRITE(102,FMT) V1
+      WRITE(103,FMT) P
+
+    END DO
+
+    CLOSE( 103 )
+    CLOSE( 102 )
+    CLOSE( 101 )
+
+    IF( ANY( iErr .NE. 0 ) )THEN
+
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nNodesX(1)
+
+        CALL DescribeError_Euler( iErr(iNX,iX1) )
+
+      END DO
+      END DO
+
+    END IF
+
+  END SUBROUTINE WriteInitialConditionsToFile
 
 
   SUBROUTINE ComputeAccretionShockDiagnostics &
