@@ -2534,8 +2534,6 @@ CONTAINS
            nSpecies, &
            iZ_B0(1)  :iZ_E0(1)  )
 
-    IF( iZ_E0(1) .EQ. iZ_B0(1) ) RETURN
-
     ASSOCIATE &
       ( xZ1 => MeshE    % Center, &
         dZ1 => MeshE    % Width, &
@@ -4420,7 +4418,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_Derivatives_X3 )
 
-    IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
+    IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
       dV_u_dX3_Out   = Zero
       dV_d_dX3_Out   = Zero
       dGm_dd_dX3_Out = Zero
