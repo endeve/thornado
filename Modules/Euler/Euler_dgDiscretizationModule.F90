@@ -3934,9 +3934,6 @@ CONTAINS
     REAL(DP) :: PressureTensorTrace(nDOFX,iX_B0(1):iX_E0(1), &
                                           iX_B0(2):iX_E0(2), &
                                           iX_B0(3):iX_E0(3))
-    INTEGER :: iErr                (nDOFX,iX_B0(1):iX_E0(1), &
-                                          iX_B0(2):iX_E0(2), &
-                                          iX_B0(3):iX_E0(3))
 
     REAL(DP) :: G_K_X1 (nDOFX,   nGF+1,iX_B0(2)  :iX_E0(2), &
                                        iX_B0(3)  :iX_E0(3), &
@@ -3981,15 +3978,22 @@ CONTAINS
                                                  iX_B0(2):iX_E0(2), &
                                                  iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: Christoffel3D_X1 (3,3)
-    REAL(DP) :: Christoffel3D_X2 (3,3)
-    REAL(DP) :: Christoffel3D_X3 (3,3)
-    REAL(DP) :: Christoffel_X1   (3,3)
-    REAL(DP) :: Christoffel_X2   (3,3)
-    REAL(DP) :: Christoffel_X3   (3,3)
     REAL(DP) :: PressureTensor_ud(3,3)
-    REAL(DP) :: Xij              (3,3)
     REAL(DP) :: DivGridVolume
+
+    REAL(DP) :: Christoffel3D_X1(3,3,nDOFX,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: Christoffel3D_X2(3,3,nDOFX,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: Christoffel3D_X3(3,3,nDOFX,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3))
+
+    INTEGER :: iErr                (nDOFX,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3))
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -4007,7 +4011,9 @@ CONTAINS
     !$OMP             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$OMP             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
     !$OMP             G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
-    !$OMP             EnergyDensitySourceTerms, iErr )
+    !$OMP             EnergyDensitySourceTerms, &
+    !$OMP             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
+    !$OMP             iErr )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, dX1, dX2, dX3 ) &
@@ -4015,7 +4021,9 @@ CONTAINS
     !$ACC             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$ACC             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
     !$ACC             G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
-    !$ACC             EnergyDensitySourceTerms, iErr )
+    !$ACC             EnergyDensitySourceTerms, &
+    !$ACC             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
+    !$ACC             iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -4060,8 +4068,7 @@ CONTAINS
     DO iNX = 1, nDOFX
 
       G_K_X1(iNX,nGF+1,iX2,iX3,iX1) &
-        =   G_K_X1(iNX,iGF_Alpha ,iX2,iX3,iX1) &
-          * G_K_X1(iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+        =   G_K_X1(iNX,iGF_SqrtGm,iX2,iX3,iX1) &
           * G_K_X1(iNX,iGF_Beta_1,iX2,iX3,iX1)
 
     END DO
@@ -4107,8 +4114,7 @@ CONTAINS
       DO iNX = 1, nDOFX
 
         G_K_X2(iNX,nGF+1,iX1,iX3,iX2) &
-          =   G_K_X2(iNX,iGF_Alpha ,iX1,iX3,iX2) &
-            * G_K_X2(iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+          =   G_K_X2(iNX,iGF_SqrtGm,iX1,iX3,iX2) &
             * G_K_X2(iNX,iGF_Beta_2,iX1,iX3,iX2)
 
       END DO
@@ -4156,8 +4162,7 @@ CONTAINS
       DO iNX = 1, nDOFX
 
         G_K_X3(iNX,nGF+1,iX1,iX2,iX3) &
-          =   G_K_X3(iNX,iGF_Alpha ,iX1,iX2,iX3) &
-            * G_K_X3(iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+          =   G_K_X3(iNX,iGF_SqrtGm,iX1,iX2,iX3) &
             * G_K_X3(iNX,iGF_Beta_3,iX1,iX2,iX3)
 
       END DO
@@ -4795,24 +4800,23 @@ CONTAINS
 
     ! --- Contributions from time-dependent metric ---
 
+    CALL ComputeChristoffelSymbols_3D &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
+             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$OMP          Christoffel_X1  , Christoffel_X2  , Christoffel_X3  , &
-    !$OMP          Xij, PressureTensor_ud, DivGridVolume )
+    !$OMP PRIVATE( PressureTensor_ud, DivGridVolume )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$ACC          Christoffel_X1  , Christoffel_X2  , Christoffel_X3  , &
-    !$ACC          Xij, PressureTensor_ud, DivGridVolume ) &
+    !$ACC PRIVATE( PressureTensor_ud, DivGridVolume ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, dGdX1, dGdX2, dGdX3, &
     !$ACC          EnergyDensitySourceTerms, &
-    !$ACC          PressureTensor, PressureTensorTrace )
+    !$ACC          PressureTensor, PressureTensorTrace, &
+    !$ACC          Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$OMP          Christoffel_X1  , Christoffel_X2  , Christoffel_X3  , &
-    !$OMP          Xij, PressureTensor_ud, DivGridVolume )
+    !$OMP PRIVATE( PressureTensor_ud, DivGridVolume )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -4823,7 +4827,7 @@ CONTAINS
         =  (   dGdX1(iNX,nGF+1,iX2,iX3,iX1) &
              + dGdX2(iNX,nGF+1,iX1,iX3,iX2) &
              + dGdX3(iNX,nGF+1,iX1,iX2,iX3) ) &
-           / ( G(iNX,iX1,iX2,iX3,iGF_Alpha ) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) )
+           / G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
       ! --- Extrinsic curvature term ---
 
@@ -4846,186 +4850,6 @@ CONTAINS
               * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) &
           + PressureTensor(3,3,iNX  ,iX1,iX2,iX3) &
               * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3)
-
-        ! --- X1 ---
-
-        Christoffel3D_X1(1,1) &
-          = dGdX1(iNX,iGF_h_1,iX2,iX3,iX1) / G(iNX,iX1,iX2,iX3,iGF_h_1)
-
-        Christoffel3D_X1(2,1) &
-          = dGdX2(iNX,iGF_h_1,iX1,iX3,iX2) / G(iNX,iX1,iX2,iX3,iGF_h_1)
-
-        Christoffel3D_X1(3,1) &
-          = dGdX3(iNX,iGF_h_1,iX1,iX2,iX3) / G(iNX,iX1,iX2,iX3,iGF_h_1)
-
-        Christoffel3D_X1(1,2) &
-          = Christoffel3D_X1(2,1)
-
-        Christoffel3D_X1(2,2) &
-          = -G(iNX,iX1,iX2,iX3,iGF_h_2) / G(iNX,iX1,iX2,iX3,iGF_h_1)**2 &
-              * dGdX1(iNX,iGF_h_2,iX2,iX3,iX1)
-
-        Christoffel3D_X1(3,2) &
-          = Zero
-
-        Christoffel3D_X1(1,3) &
-          = Christoffel3D_X1(3,1)
-
-        Christoffel3D_X1(2,3) &
-          = Christoffel3D_X1(3,2)
-
-        Christoffel3D_X1(3,3) &
-          = -G(iNX,iX1,iX2,iX3,iGF_h_3) / G(iNX,iX1,iX2,iX3,iGF_h_1)**2 &
-              * dGdX1(iNX,iGF_h_3,iX2,iX3,iX1)
-
-        ! --- X2 ---
-
-        Christoffel3D_X2(1,1) &
-          = -G(iNX,iX1,iX2,iX3,iGF_h_1) / G(iNX,iX1,iX2,iX3,iGF_h_2)**2 &
-              * dGdX2(iNX,iGF_h_1,iX1,iX3,iX2)
-
-        Christoffel3D_X2(2,1) &
-          = dGdX1(iNX,iGF_h_2,iX2,iX3,iX1) / G(iNX,iX1,iX2,iX3,iGF_h_2)
-
-        Christoffel3D_X2(3,1) &
-          = Zero
-
-        Christoffel3D_X2(1,2) &
-          = Christoffel3D_X2(2,1)
-
-        Christoffel3D_X2(2,2) &
-          = dGdX2(iNX,iGF_h_2,iX1,iX3,iX2) / G(iNX,iX1,iX2,iX3,iGF_h_2)
-
-        Christoffel3D_X2(3,2) &
-          = dGdX3(iNX,iGF_h_2,iX1,iX2,iX3) / G(iNX,iX1,iX2,iX3,iGF_h_2)
-
-        Christoffel3D_X2(1,3) &
-          = Christoffel3D_X2(3,1)
-
-        Christoffel3D_X2(2,3) &
-          = Christoffel3D_X2(3,2)
-
-        Christoffel3D_X2(3,3) &
-          = -G(iNX,iX1,iX2,iX3,iGF_h_3) / G(iNX,iX1,iX2,iX3,iGF_h_2)**2 &
-              * dGdX2(iNX,iGF_h_3,iX1,iX3,iX2)
-
-        ! --- X3 ---
-
-        Christoffel3D_X3(1,1) &
-          = -G(iNX,iX1,iX2,iX3,iGF_h_1) / G(iNX,iX1,iX2,iX3,iGF_h_3)**2 &
-              * dGdX3(iNX,iGF_h_1,iX1,iX2,iX3)
-
-        Christoffel3D_X3(2,1) &
-          = Zero
-
-        Christoffel3D_X3(3,1) &
-          = dGdX1(iNX,iGF_h_3,iX2,iX3,iX1) / G(iNX,iX1,iX2,iX3,iGF_h_3)
-
-        Christoffel3D_X3(1,2) &
-          = Christoffel3D_X3(2,1)
-
-        Christoffel3D_X3(2,2) &
-          = -G(iNX,iX1,iX2,iX3,iGF_h_2) / G(iNX,iX1,iX2,iX3,iGF_h_3)**2 &
-              * dGdX3(iNX,iGF_h_2,iX1,iX2,iX3)
-
-        Christoffel3D_X3(3,2) &
-          = dGdX2(iNX,iGF_h_3,iX1,iX3,iX2) / G(iNX,iX1,iX2,iX3,iGF_h_3)
-
-        Christoffel3D_X3(1,3) &
-          = Christoffel3D_X3(3,1)
-
-        Christoffel3D_X3(2,3) &
-          = Christoffel3D_X3(3,2)
-
-        Christoffel3D_X3(3,3) &
-          = dGdX3(iNX,iGF_h_3,iX1,iX2,iX3) / G(iNX,iX1,iX2,iX3,iGF_h_3)
-
-        Xij(1,1) &
-          = G(iNX,iX1,iX2,iX3,iGF_Alpha)**( -2 ) &
-              * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                    * dGdX1 (iNX,iGF_Beta_1,iX2,iX3,iX1) &
-                    + G(iNX,iX1,iX2,iX3,iGF_h_1) &
-                        * (   G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                                * dGdX1(iNX,iGF_h_1,iX2,iX3,iX1) &
-                            + G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                                * dGdX2(iNX,iGF_h_1,iX1,iX3,iX2) &
-                            + G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
-                                * dGdX3(iNX,iGF_h_1,iX1,iX2,iX3) ) &
-                    - Third * G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                        * DivGridVolume )
-
-        Xij(2,1) &
-          = Half * G(iNX,iX1,iX2,iX3,iGF_Alpha)**( -2 ) &
-              * (   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                      * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) &
-                  + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                      * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) )
-
-        Xij(3,1) &
-          = Half * G(iNX,iX1,iX2,iX3,iGF_Alpha)**( -2 ) &
-              * (   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                      * dGdX3(iNX,iGF_Beta_1,iX1,iX2,iX3) &
-                  + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                      * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) )
-
-        Xij(1,2) = Xij(2,1)
-
-        Xij(2,2) &
-          = G(iNX,iX1,iX2,iX3,iGF_Alpha)**( -2 ) &
-              * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                    * dGdX2(iNX,iGF_Beta_2  ,iX1,iX3,iX2) &
-                    + G(iNX,iX1,iX2,iX3,iGF_h_2) &
-                        * (   G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                                * dGdX1(iNX,iGF_h_2,iX2,iX3,iX1) &
-                            + G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                                * dGdX2(iNX,iGF_h_2,iX1,iX3,iX2) &
-                            + G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
-                                * dGdX3(iNX,iGF_h_2,iX1,iX2,iX3) ) &
-                    - Third * G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                        * DivGridVolume )
-
-        Xij(3,2) &
-          = Half * G(iNX,iX1,iX2,iX3,iGF_Alpha)**( -2 ) &
-              * (   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                      * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) &
-                  + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                      * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) )
-
-        Xij(1,3) = Xij(3,1)
-
-        Xij(2,3) = Xij(3,2)
-
-        Xij(3,3) &
-          = G(iNX,iX1,iX2,iX3,iGF_Alpha)**( -2 ) &
-              * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                    * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
-                    + G(iNX,iX1,iX2,iX3,iGF_h_3) &
-                        * (   G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                                * dGdX1(iNX,iGF_h_3,iX2,iX3,iX1) &
-                            + G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                                * dGdX2(iNX,iGF_h_3,iX1,iX3,iX2) &
-                            + G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
-                                * dGdX3(iNX,iGF_h_3,iX1,iX2,iX3) ) &
-                    - Third * G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                        * DivGridVolume )
-
-      DO k = 1, 3
-      DO i = 1, 3
-
-        Christoffel_X1(i,k) &
-          = G(iNX,iX1,iX2,iX3,iGF_Beta_1) * Xij(i,k) &
-              + Christoffel3D_X1(i,k)
-
-        Christoffel_X2(i,k) &
-          = G(iNX,iX1,iX2,iX3,iGF_Beta_2) * Xij(i,k) &
-              + Christoffel3D_X2(i,k)
-
-        Christoffel_X3(i,k) &
-          = G(iNX,iX1,iX2,iX3,iGF_Beta_3) * Xij(i,k) &
-              + Christoffel3D_X3(i,k)
-
-      END DO
-      END DO
 
       EnergyDensitySourceTerms(3,iNX,iX1,iX2,iX3) = Zero
 
@@ -5050,25 +4874,25 @@ CONTAINS
         EnergyDensitySourceTerms(3,iNX,iX1,iX2,iX3) &
           = EnergyDensitySourceTerms(3,iNX,iX1,iX2,iX3) &
               + PressureTensor_ud(iDim,1) &
-                  * (   Christoffel_X1(iDim,1) &
+                  * (   Christoffel3D_X1(iDim,1,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                      + Christoffel_X1(iDim,2) &
+                      + Christoffel3D_X1(iDim,2,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                      + Christoffel_X1(iDim,3) &
+                      + Christoffel3D_X1(iDim,3,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_3) ) &
               + PressureTensor_ud(iDim,2) &
-                  * (   Christoffel_X2(iDim,1) &
+                  * (   Christoffel3D_X2(iDim,1,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                      + Christoffel_X2(iDim,2) &
+                      + Christoffel3D_X2(iDim,2,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                      + Christoffel_X2(iDim,3) &
+                      + Christoffel3D_X2(iDim,3,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_3) ) &
               + PressureTensor_ud(iDim,3) &
-                  * (   Christoffel_X3(iDim,1) &
+                  * (   Christoffel3D_X3(iDim,1,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                      + Christoffel_X3(iDim,2) &
+                      + Christoffel3D_X3(iDim,2,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                      + Christoffel_X3(iDim,3) &
+                      + Christoffel3D_X3(iDim,3,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_Beta_3) )
 
       END DO
@@ -5078,20 +4902,24 @@ CONTAINS
 
       ! --- 5, 6, and 7 are diagnostics ---
 
+      ! --- Divergence of grid element volume ---
+
       EnergyDensitySourceTerms(5,iNX,iX1,iX2,iX3) &
         = DivGridVolume
+
+      ! --- K^ij * K_ij ---
 
       EnergyDensitySourceTerms(6,iNX,iX1,iX2,iX3) &
         = Half / G(iNX,iX1,iX2,iX3,iGF_Alpha)**2 &
             * ( Four / Three * ( dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
-                  + Christoffel_X1(1,1) &
+                  + Christoffel3D_X1(1,1,iNX,iX1,iX2,iX3) &
                       * G(iNX,iX1,iX2,iX3,iGF_Beta_1) )**2 &
                 + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
                     * G(iNX,iX1,iX2,iX3,iGF_Beta_1)**2 &
                     * ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                          * Christoffel_X1(2,1)**2 &
+                          * Christoffel3D_X1(2,1,iNX,iX1,iX2,iX3)**2 &
                           + One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                          * Christoffel_X1(3,1)**2 ) )
+                          * Christoffel3D_X1(3,1,iNX,iX1,iX2,iX3)**2 ) )
 
       ! --- 7 (GradPsi) is deferred ---
 
@@ -5127,7 +4955,8 @@ CONTAINS
     !$OMP               PressureTensor, PressureTensorTrace, &
     !$OMP               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$OMP               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
-    !$OMP               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3 )
+    !$OMP               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
+    !$OMP               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      EnergyDensitySourceTerms, iErr ) &
@@ -5135,7 +4964,8 @@ CONTAINS
     !$ACC               PressureTensor, PressureTensorTrace, &
     !$ACC               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$ACC               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
-    !$ACC               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3 )
+    !$ACC               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
+    !$ACC               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
@@ -5384,6 +5214,142 @@ CONTAINS
     Answer = Answer / ( WeightsX_q * dX )
 
   END SUBROUTINE ComputeDerivative
+
+
+  SUBROUTINE ComputeChristoffelSymbols_3D &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
+      Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+
+      INTEGER,  INTENT(in) :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      REAL(DP), INTENT(in) :: G    (nDOFX      ,iX_B1(1):iX_E1(1), &
+                                                iX_B1(2):iX_E1(2), &
+                                                iX_B1(3):iX_E1(3),1:nGF)
+      REAL(DP), INTENT(in) :: dGdX1(nDOFX,nGF+1,iX_B0(2):iX_E0(2), &
+                                                iX_B0(3):iX_E0(3), &
+                                                iX_B0(1):iX_E0(1))
+      REAL(DP), INTENT(in) :: dGdX2(nDOFX,nGF+1,iX_B0(1):iX_E0(1), &
+                                                iX_B0(3):iX_E0(3), &
+                                                iX_B0(2):iX_E0(2))
+      REAL(DP), INTENT(in) :: dGdX3(nDOFX,nGF+1,iX_B0(1):iX_E0(1), &
+                                                iX_B0(2):iX_E0(2), &
+                                                iX_B0(3):iX_E0(3))
+
+      REAL(DP), INTENT(out) :: Christoffel3D_X1(3,3,nDOFX,iX_B0(1):iX_E0(1), &
+                                                          iX_B0(2):iX_E0(2), &
+                                                          iX_B0(3):iX_E0(3))
+      REAL(DP), INTENT(out) :: Christoffel3D_X2(3,3,nDOFX,iX_B0(1):iX_E0(1), &
+                                                          iX_B0(2):iX_E0(2), &
+                                                          iX_B0(3):iX_E0(3))
+      REAL(DP), INTENT(out) :: Christoffel3D_X3(3,3,nDOFX,iX_B0(1):iX_E0(1), &
+                                                          iX_B0(2):iX_E0(2), &
+                                                          iX_B0(3):iX_E0(3))
+
+      INTEGER :: iNX, iX1, iX2, iX3
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        ! --- X1 ---
+
+        Christoffel3D_X1(1,1,iNX,iX1,iX2,iX3) &
+          = dGdX1(iNX,iGF_h_1,iX2,iX3,iX1) / G(iNX,iX1,iX2,iX3,iGF_h_1)
+
+        Christoffel3D_X1(2,1,iNX,iX1,iX2,iX3) &
+          = dGdX2(iNX,iGF_h_1,iX1,iX3,iX2) / G(iNX,iX1,iX2,iX3,iGF_h_1)
+
+        Christoffel3D_X1(3,1,iNX,iX1,iX2,iX3) &
+          = dGdX3(iNX,iGF_h_1,iX1,iX2,iX3) / G(iNX,iX1,iX2,iX3,iGF_h_1)
+
+        Christoffel3D_X1(1,2,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X1(2,1,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X1(2,2,iNX,iX1,iX2,iX3) &
+          = -G(iNX,iX1,iX2,iX3,iGF_h_2) / G(iNX,iX1,iX2,iX3,iGF_h_1)**2 &
+              * dGdX1(iNX,iGF_h_2,iX2,iX3,iX1)
+
+        Christoffel3D_X1(3,2,iNX,iX1,iX2,iX3) &
+          = Zero
+
+        Christoffel3D_X1(1,3,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X1(3,1,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X1(2,3,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X1(3,2,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X1(3,3,iNX,iX1,iX2,iX3) &
+          = -G(iNX,iX1,iX2,iX3,iGF_h_3) / G(iNX,iX1,iX2,iX3,iGF_h_1)**2 &
+              * dGdX1(iNX,iGF_h_3,iX2,iX3,iX1)
+
+        ! --- X2 ---
+
+        Christoffel3D_X2(1,1,iNX,iX1,iX2,iX3) &
+          = -G(iNX,iX1,iX2,iX3,iGF_h_1) / G(iNX,iX1,iX2,iX3,iGF_h_2)**2 &
+              * dGdX2(iNX,iGF_h_1,iX1,iX3,iX2)
+
+        Christoffel3D_X2(2,1,iNX,iX1,iX2,iX3) &
+          = dGdX1(iNX,iGF_h_2,iX2,iX3,iX1) / G(iNX,iX1,iX2,iX3,iGF_h_2)
+
+        Christoffel3D_X2(3,1,iNX,iX1,iX2,iX3) &
+          = Zero
+
+        Christoffel3D_X2(1,2,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X2(2,1,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X2(2,2,iNX,iX1,iX2,iX3) &
+          = dGdX2(iNX,iGF_h_2,iX1,iX3,iX2) / G(iNX,iX1,iX2,iX3,iGF_h_2)
+
+        Christoffel3D_X2(3,2,iNX,iX1,iX2,iX3) &
+          = dGdX3(iNX,iGF_h_2,iX1,iX2,iX3) / G(iNX,iX1,iX2,iX3,iGF_h_2)
+
+        Christoffel3D_X2(1,3,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X2(3,1,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X2(2,3,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X2(3,2,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X2(3,3,iNX,iX1,iX2,iX3) &
+          = -G(iNX,iX1,iX2,iX3,iGF_h_3) / G(iNX,iX1,iX2,iX3,iGF_h_2)**2 &
+              * dGdX2(iNX,iGF_h_3,iX1,iX3,iX2)
+
+        ! --- X3 ---
+
+        Christoffel3D_X3(1,1,iNX,iX1,iX2,iX3) &
+          = -G(iNX,iX1,iX2,iX3,iGF_h_1) / G(iNX,iX1,iX2,iX3,iGF_h_3)**2 &
+              * dGdX3(iNX,iGF_h_1,iX1,iX2,iX3)
+
+        Christoffel3D_X3(2,1,iNX,iX1,iX2,iX3) &
+          = Zero
+
+        Christoffel3D_X3(3,1,iNX,iX1,iX2,iX3) &
+          = dGdX1(iNX,iGF_h_3,iX2,iX3,iX1) / G(iNX,iX1,iX2,iX3,iGF_h_3)
+
+        Christoffel3D_X3(1,2,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X3(2,1,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X3(2,2,iNX,iX1,iX2,iX3) &
+          = -G(iNX,iX1,iX2,iX3,iGF_h_2) / G(iNX,iX1,iX2,iX3,iGF_h_3)**2 &
+              * dGdX3(iNX,iGF_h_2,iX1,iX2,iX3)
+
+        Christoffel3D_X3(3,2,iNX,iX1,iX2,iX3) &
+          = dGdX2(iNX,iGF_h_3,iX1,iX3,iX2) / G(iNX,iX1,iX2,iX3,iGF_h_3)
+
+        Christoffel3D_X3(1,3,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X3(3,1,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X3(2,3,iNX,iX1,iX2,iX3) &
+          = Christoffel3D_X3(3,2,iNX,iX1,iX2,iX3)
+
+        Christoffel3D_X3(3,3,iNX,iX1,iX2,iX3) &
+          = dGdX3(iNX,iGF_h_3,iX1,iX2,iX3) / G(iNX,iX1,iX2,iX3,iGF_h_3)
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+  END SUBROUTINE ComputeChristoffelSymbols_3D
 
 
 END MODULE Euler_dgDiscretizationModule
