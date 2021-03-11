@@ -121,7 +121,7 @@ PROGRAM ApplicationDriver
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .TRUE.
-
+  LOGICAL  :: WriteAccretionShockDiagnostics = .TRUE.
   REAL(DP) :: Timer_Evolution
 
   SuppressTally = .FALSE.
@@ -138,7 +138,7 @@ PROGRAM ApplicationDriver
 
   Gamma = 4.0e0_DP / 3.0e0_DP
   t_end = 3.0e2_DP * Millisecond
-  bcX = [ 100, 0, 0 ]
+  bcX = [ 100, 3, 0 ]
 
   MassPNS            = 1.4_DP    * SolarMass
   RadiusPNS          = 40.0_DP   * Kilometer
@@ -152,8 +152,8 @@ PROGRAM ApplicationDriver
   rPerturbationInner    = 260.0_DP * Kilometer
   rPerturbationOuter    = 280.0_DP * Kilometer
 
-  nX  = [ 960, 1, 1 ]
-  swX = [ 1, 0, 0 ]
+  nX  = [ 960, 32, 1 ]
+  swX = [ 1, 1, 0 ]
   xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
   xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
@@ -402,13 +402,17 @@ PROGRAM ApplicationDriver
 
     END IF
 
-!!$    CALL ComputeFromConserved_Euler_Relativistic &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!!$
-!!$    CALL ComputeAccretionShockDiagnostics &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-!!$
-!!$    CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+    IF( nDimsX .GT. 1 .AND. WriteAccretionShockDiagnostics )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
+    END IF
 
   END DO
 
