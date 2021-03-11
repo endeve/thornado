@@ -2646,7 +2646,8 @@ CONTAINS
 
   FUNCTION Source_E( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                       alp, B_u_1, B_u_2, B_u_3, U_u, U_d, dU_dX0, dU_dX1, dU_dX2, dU_dX3, &
-                      dU_dX0_COV, dU_dX1_COV, dU_dX2_COV, dU_dX3_COV)
+                      dU_dX0_COV, dU_dX1_COV, dU_dX2_COV, dU_dX3_COV, &
+                      dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, E  )
 
 ! negative sign has been incorperated into Flux_E
 
@@ -2658,6 +2659,8 @@ CONTAINS
     REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3) 
     REAL(DP), INTENT(in) :: dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
     REAL(DP), INTENT(in) :: dU_dX0_COV(0:3), dU_dX1_COV(0:3), dU_dX2_COV(0:3), dU_dX3_COV(0:3)
+    REAL(DP), INTENT(in) :: dG_dd_dX1(0:3,0:3), dG_dd_dX2(0:3,0:3), dG_dd_dX3(0:3,0:3)
+    REAL(DP) :: dG_dd_dX(1:3,0:3,0:3), E
     REAL(DP) :: V_0, B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3), dU_dX(0:3,0:3), dU_dX_COV(0:3,0:3)
     INTEGER :: mu, nu, j
@@ -2732,6 +2735,11 @@ CONTAINS
     dU_dX_COV(3,2) = dU_dX3_COV(2) 
     dU_dX_COV(3,3) = dU_dX3_COV(3) 
 
+
+    dG_dd_dX(1,:,:) = dG_dd_dX1(:,:)
+    dG_dd_dX(2,:,:) = dG_dd_dX2(:,:)
+    dG_dd_dX(3,:,:) = dG_dd_dX3(:,:)
+
     Source_E = 0.0_DP
 
 
@@ -2742,6 +2750,18 @@ CONTAINS
 
       Source_E(j) = Source_E(j) - ( I(nu) * U_d(j) * U_u(mu) + l_uud_munurho(mu,nu,j) * D &
                     + k_ud_munu(nu,j) * D * U_u(mu) + k_uu_munu(nu,mu) * D * U_d(j) ) * dU_dX_COV(mu,nu)
+
+    END DO
+    END DO
+    END DO
+
+
+    DO j = 1,3
+    DO mu = 0,3
+    DO nu = 0,3
+
+      Source_E(j) = Source_E(j) + 0.5_DP * E * ( D * U_u(mu) * U_u(nu) + I(mu) * U_u(nu) &
+                                + I(nu) * U_u(mu) + k_uu_munu(mu,nu) * D ) * dG_dd_dX(j,mu,nu)
 
     END DO
     END DO

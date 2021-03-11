@@ -916,7 +916,7 @@ CONTAINS
     REAL(DP) :: k_ud_11_R, k_ud_12_R, k_ud_13_R
     REAL(DP) ::            k_ud_22_R, k_ud_23_R
     REAL(DP) ::                       k_ud_33_R
-    REAL(DP) :: uPR_K(nPR), Flux_K(nCR)
+    REAL(DP) :: uPR_K(nPR), Flux_K(nCR), E
     REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
     REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
     REAL(DP) :: S_E(3)
@@ -1540,7 +1540,12 @@ CONTAINS
       DO iNodeE = 1, nDOFE
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-        
+
+
+
+
+        E = NodeCoordinate( MeshE, iZ1, iNodeE ) 
+
         W = 1.0_DP - ( uPF_K(iNodeX,iPF_V1,iZ2,iZ3,iZ4)**2 * uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
                      + uPF_K(iNodeX,iPF_V2,iZ2,iZ3,iZ4)**2 * uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4) &
                      + uPF_K(iNodeX,iPF_V3,iZ2,iZ3,iZ4)**2 * uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
@@ -1590,8 +1595,10 @@ CONTAINS
                     dU_d_dX0_COV(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_d_dX1_COV(iNodeX,:,iZ2,iZ3,iZ4), &
                     dU_d_dX2_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4) )
-
+                    dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4), &
+                    dG_dd_dX1(iNodeX,:,:,iZ2,iZ3,iZ4), &
+                    dG_dd_dX2(iNodeX,:,:,iZ2,iZ3,iZ4), &
+                    dG_dd_dX3(iNodeX,:,:,iZ2,iZ3,iZ4), E )
         ! --- iCR_G1 ---
 
         dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1890,6 +1897,7 @@ CONTAINS
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
       dU_d_dX1 = Zero
+      dU_d_dX1_COV = Zero
       dU_u_dX1 = Zero
       RETURN
     END IF
@@ -2409,7 +2417,6 @@ CONTAINS
     END DO
 
 
-
   END SUBROUTINE ComputeWeakDerivatives_X1
 
   SUBROUTINE ComputeWeakDerivatives_X2 &
@@ -2502,6 +2509,7 @@ CONTAINS
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
       dU_d_dX2 = Zero
+      dU_d_dX2_COV = Zero
       dU_u_dX2 = Zero
       RETURN
     END IF
@@ -2995,7 +3003,6 @@ CONTAINS
     END DO
     END DO
 
-
   END SUBROUTINE ComputeWeakDerivatives_X2
 
 
@@ -3090,6 +3097,7 @@ CONTAINS
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
       dU_d_dX3 = Zero
+      dU_d_dX3_COV = Zero
       dU_u_dX3 = Zero
       RETURN
     END IF
@@ -3628,7 +3636,7 @@ CONTAINS
 
     INTEGER  :: nK(4), nK_X1(4), nX, nX_X1
     INTEGER  :: iNodeX, iNodeX1
-    INTEGER  :: i, iZ2, iZ3, iZ4, iCF, iGF
+    INTEGER  :: i, j, iZ2, iZ3, iZ4, iCF, iGF
     REAL(DP) :: B_u_X1(3), B_d_X1(3), A_X1, B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
       G_munu_K(nDOFX   ,7,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
@@ -3896,8 +3904,6 @@ CONTAINS
         dG_dd_dX1(iNodeX,2,3,iZ2,iZ3,iZ4) = 0.0_DP
 
         dG_dd_dX1(iNodeX,3,2,iZ2,iZ3,iZ4) = 0.0_DP
-
-
 
 
 
@@ -4677,9 +4683,6 @@ CONTAINS
     dU_u_dX(4,3) = dU_u_dX3(3)
     dU_u_dX(4,4) = dU_u_dX3(4)
 
-    B = 0
-
-IF (B==0) THEN
 
     A(1,1) =  dU_d_dX(1,1) + dU_d_dX(1,1)
     A(1,2) =  dU_d_dX(1,2) + dU_d_dX(2,1)
@@ -4720,50 +4723,6 @@ IF (B==0) THEN
     Alpha_A = SQRT(ABS(Alpha_A)) / W
 
     Alpha = C * ( Alpha_Eig + Alpha_A )
-
-END IF
-
-
-IF (B==1) THEN
-
-    l_mu(1) = W * V_u_1 + W * V_u_2 + W * V_u_3  
-    IF (Vsq .NE. 0.0_DP) THEN
-
-      l_mu(2) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_1**2 / Vsq ) &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq 
-
-      l_mu(3) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_2**2 / Vsq ) &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_2 / Vsq &
-              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
-
-      l_mu(4) = ( 1.0_DP + ( W - 1.0_DP ) * V_u_3**2 / Vsq ) &
-              + ( W - 1.0_DP ) * V_u_1 * V_u_3 / Vsq &
-              + ( W - 1.0_DP ) * V_u_2 * V_u_3 / Vsq 
-    ELSE
-
-      l_mu(2) = 0.0_DP
-      l_mu(3) = 0.0_DP
-      l_mu(4) = 0.0_DP
-
-    END IF
-
-    Alpha = 0.0_DP
- 
-
-
-    DO mu = 1, 4 
-    DO nu = 1, 4
-
-      ! Alpha = Alpha + ( l_mu(nu) * U_u(mu) + l_mu(mu) * l_mu(nu) ) * dU_dX(mu,nu)
-       Alpha = Alpha + 0.5_DP * ( U_u(mu) + l_mu(mu) ) * ( dU_d_dX(mu,nu) + dU_d_dX(nu,mu) ) &
-             * ( U_u(nu) + l_mu(nu))
-    END DO
-    END DO
- 
-    Alpha = C * ABS( Alpha ) / W
-
-END IF
 
 
 
