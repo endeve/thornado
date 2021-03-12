@@ -12,13 +12,13 @@ ApplicationDriver: \
 	$(thornado) \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
-	AccretionShockDiagnosticsModule.o \
+	AccretionShockUtilitiesModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
-	AccretionShockDiagnosticsModule.o \
+	AccretionShockUtilitiesModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
@@ -49,7 +49,7 @@ ApplicationDriver.o: \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
-  AccretionShockDiagnosticsModule.o \
+  AccretionShockUtilitiesModule.o \
   ApplicationDriver.F90
 
 InitializationModule_Relativistic.o: \
@@ -75,7 +75,7 @@ TimeSteppingModule_SSPRK.o: \
   TimersModule_Euler.o \
   TimeSteppingModule_SSPRK.F90
 
-AccretionShockDiagnosticsModule.o: \
+AccretionShockUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
@@ -88,4 +88,4 @@ AccretionShockDiagnosticsModule.o: \
   UnitsModule.o \
   QuadratureModule.o \
   Euler_ErrorModule.o \
-  AccretionShockDiagnosticsModule.f90
+  AccretionShockUtilitiesModule.f90

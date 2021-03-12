@@ -1,4 +1,4 @@
-MODULE AccretionShockDiagnosticsModule
+MODULE AccretionShockUtilitiesModule
 
   USE KindModule, ONLY: &
     DP, &
@@ -376,4 +376,4 @@ CONTAINS
   END SUBROUTINE ComputeIntegrationNodesX2
 
 
-END MODULE AccretionShockDiagnosticsModule
+END MODULE AccretionShockUtilitiesModule

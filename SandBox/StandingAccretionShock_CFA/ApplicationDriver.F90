@@ -79,7 +79,7 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
-  USE AccretionShockDiagnosticsModule, ONLY: &
+  USE AccretionShockUtilitiesModule, ONLY: &
     WriteInitialConditionsToFile, &
     ComputeAccretionShockDiagnostics
 
