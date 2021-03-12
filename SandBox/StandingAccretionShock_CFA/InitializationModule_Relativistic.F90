@@ -774,6 +774,10 @@ CONTAINS
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
 
+    D = Zero
+    V = Zero
+    P = Zero
+
     WRITE(*,*)
     WRITE(*,'(6x,A,A)') &
       'Initial Conditions File: ', TRIM( InitialConditionsFileName )
