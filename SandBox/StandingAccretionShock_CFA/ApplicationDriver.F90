@@ -125,11 +125,18 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ActivateUnits = .TRUE.
   LOGICAL  :: WriteAccretionShockDiagnostics = .TRUE.
 
+  CHARACTER(32) :: Parameters
+
   ! --- Relaxation Parameters ---
 
   LOGICAL            :: InitializeFluidFromFile          = .FALSE.
   LOGICAL            :: WriteInitialConditionsToFile_SAS = .FALSE.
   CHARACTER(LEN=128) :: InitialConditionsFileName
+
+  WRITE(Parameters,'(A)') 'MPNS1.4_Mdot0.3_Rs180'
+
+  WRITE(InitialConditionsFileName,'(A)') &
+    'InitialConditions_' // TRIM( Parameters )
 
   SuppressTally = .FALSE.
 
@@ -144,7 +151,7 @@ PROGRAM ApplicationDriver
   ZoomX             = 1.0_DP
 
   Gamma = 4.0e0_DP / 3.0e0_DP
-  t_end = 3.0e2_DP * Millisecond
+  t_end = 5.0e1_DP * Millisecond
   bcX = [ 100, 3, 0 ]
 
   MassPNS            = 1.4_DP    * SolarMass
@@ -159,11 +166,8 @@ PROGRAM ApplicationDriver
   rPerturbationInner    = 260.0_DP * Kilometer
   rPerturbationOuter    = 280.0_DP * Kilometer
 
-  WRITE(InitialConditionsFileName,'(A)') &
-    'InitialConditions_MPNS1.4_Mdot0.3_Rs180'
-
-  nX  = [ 960, 1, 1 ]
-  swX = [ 1, 0, 0 ]
+  nX  = [ 960, 32, 1 ]
+  swX = [ 1, 1, 0 ]
   xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
   xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
@@ -336,6 +340,14 @@ PROGRAM ApplicationDriver
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
+  IF( nDimsX .GT. 1 .AND. WriteAccretionShockDiagnostics )THEN
+
+    OPEN( 100, FILE = TRIM( Parameters ) &
+                        // '_PowerInLegendreModes.dat' )
+    WRITE(100,'(A)') 'Time [ms], Power(0), Power(1), Power(2)'
+
+  END IF
+
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
@@ -422,11 +434,16 @@ PROGRAM ApplicationDriver
       CALL ComputeAccretionShockDiagnostics &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
 
-      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+      WRITE(100,'(ES24.16E3,1x,ES24.16E3,1x,ES24.16E3,1x,ES24.16E3)') &
+        t / Millisecond, Power(0), Power(1), Power(2)
+!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
 
     END IF
 
   END DO
+
+  IF( nDimsX .GT. 1 .AND. WriteAccretionShockDiagnostics ) &
+    CLOSE( 100 )
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
