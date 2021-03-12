@@ -449,7 +449,7 @@ CONTAINS
     DO iN_E = 1, nE_G
     DO iS   = 1, nSpecies
 
-      CALL ComputeIncrement_FixedPoint &
+      CALL ComputeIncrement_FixedPoint_Richardson &
              ( dt, &
                CR_N (iCR_N       ,iS,iN_E,iN_X), &
                CR_N (iCR_G1      ,iS,iN_E,iN_X), &
@@ -787,7 +787,181 @@ CONTAINS
 
   END SUBROUTINE ComputeIncrement_FixedPoint
 
+  SUBROUTINE ComputeIncrement_FixedPoint_Richardson &
+    ( dt, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, D_0, Chi, Sigma, &
+      dN, dG_d_1, dG_d_2, dG_d_3 )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: dt
+    REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in)  :: D_0, Chi, Sigma
+    REAL(DP), INTENT(out) :: dN, dG_d_1, dG_d_2, dG_d_3
+
+    ! --- Parameters ---
+
+    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: LWORK = 2 * M
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+
+    ! --- Local Variables ---
+
+    LOGICAL  :: CONVERGED
+    INTEGER  :: i, j, k, mk, INFO
+    REAL(DP) :: D, I_d_1, I_d_2, I_d_3, Kappa
+    REAL(DP) ::    I_u_1, I_u_2, I_u_3
+    REAL(DP) :: k_dd(3,3)
+    ! REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: D_00, D_ii
+    REAL(DP) :: UVEC(4), CVEC(4)
+    REAL(DP) :: GVEC(4,M), GVECm(4)
+    REAL(DP) :: FVEC(4,M), FVECm(4)
+    REAL(DP) :: vMag, Omega, vI, vK, Alpha(M)
+    REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
+
+    Kappa = Chi + Sigma
+
+    D_00 = One + dt * Chi
+    D_ii = One + dt * Kappa
+
+    ! --- Constant Vector ---
+
+    CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
+
+    ! --- Initial Guess ---
+
+    D     = N
+    I_u_1 = Zero
+    I_u_2 = Zero
+    I_u_3 = Zero
+
+    I_d_1 = Gm_dd_11 * I_u_1
+    I_d_2 = Gm_dd_22 * I_u_2
+    I_d_3 = Gm_dd_33 * I_u_3
+
+    k = 0
+    CONVERGED = .FALSE.
+    DO WHILE( .NOT. CONVERGED .AND. k < MaxIterations )
+
+      k  = k + 1
+      mk = MIN( M, k )
+
+      UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
+
+      ! CALL ComputeEddingtonTensorComponents_dd &
+      !        ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      !          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+
+      k_dd = EddingtonTensorComponents_dd &
+               ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+
+      vMag = SQRT(V_u_1 * Gm_dd_11 * V_u_1 &
+                + V_u_2 * Gm_dd_22 * V_u_2 &
+                + V_u_3 * Gm_dd_33 * V_u_3)
+                
+      Omega = One / (One + vMag)
+
+      vI = V_u_1 * UVEC(2) + V_u_2 *  UVEC(3) + V_u_3 *  UVEC(4)
+      GVEC(1,mk) = (One - Omega) * UVEC(1) + &
+                   Omega / D_00 * (CVEC(1) + dt * Chi * D_0 - vI)
+
+      DO j = 1, 3
+        vK = V_u_1 * k_dd(j,1) + V_u_2 * k_dd(j,2) + V_u_3 * k_dd(j,3)
+        GVEC(j+1,mk) = (One - Omega) * UVEC(j+1) + &
+                     Omega / D_ii * (CVEC(j+1) - vK * UVEC(1))
+      END DO
+
+
+      FVEC(:,mk) = GVEC(:,mk) - UVEC
+
+      IF( mk == 1 )THEN
+
+        ! --- Picard Iteration ---
+
+        GVECm = GVEC(:,mk)
+
+      ELSE
+
+        Alpha = Alpha_LS( M, mk, FVEC )
+
+        GVECm = Zero
+        DO i = 1, mk
+
+          GVECm = GVECm + Alpha(i) * GVEC(:,i)
+
+        END DO
+
+      END IF
+
+      FVECm = GVECm - UVEC
+
+      IF( ALL( ABS( FVECm ) <= Rtol * ABS( CVEC ) ) )THEN
+
+        CONVERGED = .TRUE.
+
+      END IF
+
+      UVEC = GVECm
+
+      IF( mk == M .AND. .NOT. CONVERGED )THEN
+
+        FVEC = ShiftVec( M, mk, FVEC )
+        GVEC = ShiftVec( M, mk, GVEC )
+
+      END IF
+
+      D     = UVEC(1)
+      I_d_1 = UVEC(2); I_u_1 = I_d_1 / Gm_dd_11
+      I_d_2 = UVEC(3); I_u_2 = I_d_2 / Gm_dd_22
+      I_d_3 = UVEC(4); I_u_3 = I_d_3 / Gm_dd_33
+
+    END DO
+
+    dN     = Chi * ( D_0 - D )
+    dG_d_1 = - Kappa * I_d_1
+    dG_d_2 = - Kappa * I_d_2
+    dG_d_3 = - Kappa * I_d_3
+
+    ! IF( k == MaxIterations )THEN
+
+    !   PRINT*
+    !   PRINT*, "ComputeIncrement_FixedPoint"
+    !   PRINT*
+    !   PRINT*, "  N     = ", N
+    !   PRINT*, "  G_d_1 = ", G_d_1
+    !   PRINT*, "  G_d_2 = ", G_d_2
+    !   PRINT*, "  G_d_3 = ", G_d_3
+    !   PRINT*
+    !   PRINT*, "  V_u_1 = ", V_u_1
+    !   PRINT*, "  V_u_2 = ", V_u_2
+    !   PRINT*, "  V_u_3 = ", V_u_3
+    !   PRINT*
+
+    !   PRINT*, "  Converged with k = ", k
+
+    !   PRINT*
+    !   PRINT*, "  FVECm = ", FVECm
+    !   PRINT*
+
+    !   PRINT*
+    !   PRINT*, "  D     = ", D
+    !   PRINT*, "  I_u_1 = ", I_u_1
+    !   PRINT*, "  I_u_2 = ", I_u_2
+    !   PRINT*, "  I_u_3 = ", I_u_3
+    !   PRINT*
+
+    ! END IF
+
+  END SUBROUTINE ComputeIncrement_FixedPoint_Richardson
 
 
   FUNCTION Alpha_LS( M, mk, FVEC )

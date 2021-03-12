@@ -89,7 +89,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputePrimitive_TwoMoment, &
-    ComputePrimitive_TwoMoment_Vector, &
+    ComputePrimitive_TwoMoment_Vector_Richardson, &
     ComputeConserved_TwoMoment, &
     Flux_E, &
     Flux_X1, &
@@ -768,7 +768,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
@@ -777,7 +777,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
@@ -914,7 +914,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -1451,7 +1451,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
@@ -1460,7 +1460,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
@@ -1597,7 +1597,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -2132,7 +2132,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
@@ -2141,7 +2141,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
@@ -2278,7 +2278,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -2764,7 +2764,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_K, uV2_K, uV3_K, &
@@ -2773,7 +2773,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_K, uV2_K, uV3_K, &
@@ -2913,7 +2913,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector &
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
