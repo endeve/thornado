@@ -60,6 +60,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -194,11 +196,13 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iP, iErr(nPT)
+    INTEGER  :: iX1, iX2, iX3, iCF, iPT
     REAL(DP) :: G_q(nDOFX,nGF), U_q(nDOFX,nCF), &
                 U_K(nCF), q(nPT), SSq(nPT), &
                 Ye(nPT), Pressure(nPT), Temperature(nPT), &
                 Eps(nPT), Min_E(nPT), Max_E(nPT)
+
+    INTEGER :: iErr(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -209,6 +213,8 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      iErr(:,iX1,iX2,iX3) = 0
 
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
       G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
@@ -244,7 +250,7 @@ CONTAINS
                G_PP(:,iGF_Gm_dd_11), &
                G_PP(:,iGF_Gm_dd_22), &
                G_PP(:,iGF_Gm_dd_33), &
-               iErr )
+               iErr(:,iX1,iX2,iX3) )
 
       Ye = P_PP(:,iPF_Ne) * BaryonMass / P_PP(:,iPF_D)
 
@@ -257,13 +263,13 @@ CONTAINS
       CALL ComputeSpecificInternalEnergy_TABLE &
              ( P_PP(:,iPF_D), Temperature, Ye, Eps )
 
-      DO iP = 1, nPT
+      DO iPT = 1, nPT
 
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( P_PP(iP,iPF_D), Min_T, Ye(iP), Min_E(iP) )
+               ( P_PP(iPT,iPF_D), Min_T, Ye(iPT), Min_E(iPT) )
 
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( P_PP(iP,iPF_D), Max_T, Ye(iP), Max_E(iP) )
+               ( P_PP(iPT,iPF_D), Max_T, Ye(iPT), Max_E(iPT) )
 
       END DO
 
@@ -293,6 +299,27 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( ANY( iErr .NE. 0 ) )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iPT = 1, nPT
+
+        IF( iErr(iPT,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Euler_PositivityLimiterModule_Relativistic_TABLE'
+          CALL DescribeError_Euler( iErr(iPT,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
