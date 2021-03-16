@@ -1130,19 +1130,19 @@ CONTAINS
                              dG_dd_dX0, dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, Gamma_udd )
 
     CALL ComputeWeakDerivatives_X0 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_d_dX0, dU_u_dX0, dU_d_dX0_COV,  &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU_d_dX0, dU_d_dX0_COV,  &
              Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd, dU_d_dX1, dU_u_dX1, dU_d_dX1_COV, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, &
              Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd,  dU_d_dX2, dU_u_dX2, dU_d_dX2_COV, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd,  dU_d_dX2, dU_d_dX2_COV, &
              Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd, dU_d_dX3, dU_u_dX3, dU_d_dX3_COV, &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd, dU_d_dX3, dU_d_dX3_COV, &
              Verbose_Option = Verbose )
 
     CALL ComputeFourVelocity &
@@ -1152,20 +1152,6 @@ CONTAINS
 
 
 
-    !open(2, file = name1, status = 'new') 
-    !open(3, file = name2, status = 'new') 
-
-    !DO iZ4 = iZ_B0(4), iZ_E0(4)
-    !DO iZ3 = iZ_B0(3), iZ_E0(3)
-    !DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      !DO iNodeX = 1, nDOFX
-         !write(2,*) dU_dX1(iNodeX,0,iZ2,iZ3,iZ4)
-         !write(3,*) dU_dX1(iNodeX,1,iZ2,iZ3,iZ4)
-      !END DO
-
-    !END DO
-    !END DO
     !END DO
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
@@ -1393,10 +1379,10 @@ CONTAINS
                              dU_d_dX1(iNode,:,iZ2,iZ3,iZ4), &
                              dU_d_dX2(iNode,:,iZ2,iZ3,iZ4), &
                              dU_d_dX3(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_u_dX0(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_u_dX1(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_u_dX2(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_u_dX3(iNode,:,iZ2,iZ3,iZ4), &
+                             uGF_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4), &
+                             uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
+                             uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
+                             uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4), &
                              C, Alpha )
           DO iCR = 1, nCR
 
@@ -1795,7 +1781,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeWeakDerivatives_X0 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_d_dX0, dU_u_dX0, dU_d_dX0_COV, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU_d_dX0, dU_d_dX0_COV, Verbose_Option  )
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -1808,23 +1794,18 @@ CONTAINS
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
     REAL(DP), INTENT(out) :: &
-      dU_u_dX0 &
-         (1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP), INTENT(out) :: &
       dU_d_dX0_COV &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     dU_d_dX0 = Zero
-    dU_u_dX0 = Zero
     dU_d_dX0_COV = Zero
   END SUBROUTINE ComputeWeakDerivatives_X0 
 
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, Gamma_udd, dU_d_dX1, dU_u_dX1, dU_d_dX1_COV, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, Verbose_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -1844,10 +1825,6 @@ CONTAINS
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
     REAL(DP), INTENT(out) :: &
       dU_d_dX1_COV &
-         (1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP), INTENT(out) :: &
-      dU_u_dX1 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -1873,20 +1850,12 @@ CONTAINS
     REAL(DP) :: V_u_K(3), V_d_K(3), V_u_X1(3), V_d_X1(3), W_X1, W_K
     REAL(DP) :: B_u_X1(3), B_d_X1(3), A_X1, B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
-      U_u_X1(nDOFX_X1,4,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-             iZ_B0(2):iZ_E0(2)+1), &
       U_d_X1(nDOFX_X1,4,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
              iZ_B0(2):iZ_E0(2)+1), &
-      U_u_K(nDOFX,4,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-            iZ_B0(2):iZ_E0(2)), &
       U_d_K(nDOFX,4,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
             iZ_B0(2):iZ_E0(2))
     REAL(DP) :: &
       dU_d_dX1_Temp &
-         (1:nDOFX,4, &
-          iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)) 
-    REAL(DP) :: & 
-      dU_u_dX1_Temp &
          (1:nDOFX,4, &
           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)) 
     CHARACTER(len=40) :: name1, name2
@@ -1898,7 +1867,6 @@ CONTAINS
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
       dU_d_dX1 = Zero
       dU_d_dX1_COV = Zero
-      dU_u_dX1 = Zero
       RETURN
     END IF
 
@@ -2106,15 +2074,6 @@ CONTAINS
         B_d_X1(3) = GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2) * B_u_X1(3)
 
 
-        U_u_X1(iNodeX,1,iZ3,iZ4,iZ2) = W_X1 / A_X1
-        
-        U_u_X1(iNodeX,2,iZ3,iZ4,iZ2) = W_X1 * ( V_u_X1(1) - B_u_X1(1) / A_X1)
-
-        U_u_X1(iNodeX,3,iZ3,iZ4,iZ2) = W_X1 * ( V_u_X1(2) - B_u_X1(2) / A_X1)
-
-        U_u_X1(iNodeX,4,iZ3,iZ4,iZ2) = W_X1 * ( V_u_X1(3) - B_u_X1(3) / A_X1)
-
-
 
         U_d_X1(iNodeX,1,iZ3,iZ4,iZ2) = W_X1 * ( - A_X1 + B_d_X1(1) * V_u_X1(1) &
                                      + B_d_X1(2) * V_u_X1(2) + B_d_X1(3) * V_u_X1(3) )
@@ -2143,20 +2102,12 @@ CONTAINS
 
 
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
-             U_u_X1(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1, Zero, &
-             dU_u_dX1_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
              U_d_X1(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1, Zero, &
              dU_d_dX1_Temp, nDOFX )
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
-             U_u_X1(1,1,iZ_B0(3),iZ_B0(4),iZ_B0(2)+1), nDOFX_X1, One,  &
-             dU_u_dX1_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
@@ -2227,13 +2178,6 @@ CONTAINS
      
         W_K = WeightsX_q(iNodeX) / SQRT( 1.0_DP - Vsq_K )
 
-        U_u_K(iNodeX,1,iZ3,iZ4,iZ2) = W_K / A_K
-
-        U_u_K(iNodeX,2,iZ3,iZ4,iZ2) = W_K * ( - B_u_K(1) / A_K + V_u_K(1) )
-
-        U_u_K(iNodeX,3,iZ3,iZ4,iZ2) = W_K * ( - B_u_K(2) / A_K + V_u_K(2) )
-
-        U_u_K(iNodeX,4,iZ3,iZ4,iZ2) = W_K * ( - B_u_K(3) / A_K + V_u_K(3) )
        
 
         U_d_K(iNodeX,1,iZ3,iZ4,iZ2) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
@@ -2263,9 +2207,6 @@ CONTAINS
 
 
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX, - One, dLXdX1_q, nDOFX, &
-             U_u_K, nDOFX, One, dU_u_dX1_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX, - One, dLXdX1_q, nDOFX, &
@@ -2286,22 +2227,6 @@ CONTAINS
 
 
 
-        dU_u_dX1_Temp(iNodeX,1,iZ3,iZ4,iZ2) &
-         = dU_u_dX1_Temp(iNodeX,1,iZ3,iZ4,iZ2) &
-             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
-
-
-        dU_u_dX1_Temp(iNodeX,2,iZ3,iZ4,iZ2) &
-         = dU_u_dX1_Temp(iNodeX,2,iZ3,iZ4,iZ2) &
-             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
-
-        dU_u_dX1_Temp(iNodeX,3,iZ3,iZ4,iZ2) &
-         = dU_u_dX1_Temp(iNodeX,3,iZ3,iZ4,iZ2) &
-             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
-
-        dU_u_dX1_Temp(iNodeX,4,iZ3,iZ4,iZ2) &
-         = dU_u_dX1_Temp(iNodeX,4,iZ3,iZ4,iZ2) &
-             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
 
         dU_d_dX1_Temp(iNodeX,1,iZ3,iZ4,iZ2) &
@@ -2351,17 +2276,6 @@ CONTAINS
         dU_d_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
           = dU_d_dX1_Temp(iNodeX,4,iZ3,iZ4,iZ2)
 
-        dU_u_dX1(iNodeX,0,iZ2,iZ3,iZ4)  &
-          = dU_u_dX1_Temp(iNodeX,1,iZ3,iZ4,iZ2)         
-
-        dU_u_dX1(iNodeX,1,iZ2,iZ3,iZ4)  &
-          = dU_u_dX1_Temp(iNodeX,2,iZ3,iZ4,iZ2)         
- 
-        dU_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
-          = dU_u_dX1_Temp(iNodeX,3,iZ3,iZ4,iZ2)         
- 
-        dU_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
-          = dU_u_dX1_Temp(iNodeX,4,iZ3,iZ4,iZ2)         
 
 
 
@@ -2420,7 +2334,7 @@ CONTAINS
   END SUBROUTINE ComputeWeakDerivatives_X1
 
   SUBROUTINE ComputeWeakDerivatives_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, Gamma_udd, dU_d_dX2, dU_u_dX2, dU_d_dX2_COV, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, Gamma_udd, dU_d_dX2, dU_d_dX2_COV, Verbose_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -2444,10 +2358,6 @@ CONTAINS
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP), INTENT(out) :: &
       dU_d_dX2 &
-         (1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(out) :: &
-      dU_u_dX2 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP), INTENT(out) :: &
@@ -2489,20 +2399,12 @@ CONTAINS
     REAL(DP) :: V_u_K(3), V_d_K(3), V_u_X2(3), V_d_X2(3), W_X2, W_K
     REAL(DP) :: B_u_X2(3), B_d_X2(3), A_X2, B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
-      U_u_X2(nDOFX_X2,4,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
-             iZ_B0(3):iZ_E0(3)+1), &
       U_d_X2(nDOFX_X2,4,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
              iZ_B0(3):iZ_E0(3)+1), &
-      U_u_K(nDOFX,4,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
-            iZ_B0(3):iZ_E0(3)), &
       U_d_K(nDOFX,4,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
             iZ_B0(3):iZ_E0(3))
     REAL(DP) :: &
       dU_d_dX2_Temp &
-         (1:nDOFX,4, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3):iZ_E0(3)) 
-    REAL(DP) :: & 
-      dU_u_dX2_Temp &
          (1:nDOFX,4, &
           iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3):iZ_E0(3)) 
     LOGICAL :: Verbose
@@ -2510,7 +2412,6 @@ CONTAINS
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
       dU_d_dX2 = Zero
       dU_d_dX2_COV = Zero
-      dU_u_dX2 = Zero
       RETURN
     END IF
 
@@ -2699,14 +2600,6 @@ CONTAINS
         B_d_X2(3) = GX_F(iNodeX,iGF_Gm_dd_33,iZ2,iZ4,iZ3) * B_u_X2(3)
 
 
-        U_u_X2(iNodeX,1,iZ2,iZ4,iZ3) = W_X2 / A_X2
-        
-        U_u_X2(iNodeX,2,iZ2,iZ4,iZ3) = W_X2 * ( V_u_X2(1) - B_u_X2(1) / A_X2)
-
-        U_u_X2(iNodeX,3,iZ2,iZ4,iZ3) = W_X2 * ( V_u_X2(2) - B_u_X2(2) / A_X2)
-
-        U_u_X2(iNodeX,4,iZ2,iZ4,iZ3) = W_X2 * ( V_u_X2(3) - B_u_X2(3) / A_X2)
-
 
 
         U_d_X2(iNodeX,1,iZ2,iZ4,iZ3) = W_X2 * ( - A_X2 + B_d_X2(1) * V_u_X2(1) &
@@ -2729,20 +2622,12 @@ CONTAINS
 
 
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
-             U_u_X2(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2, Zero, &
-             dU_u_dX2_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
              U_d_X2(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2, Zero, &
              dU_d_dX2_Temp, nDOFX )
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
-             U_u_X2(1,1,iZ_B0(2),iZ_B0(4),iZ_B0(3)+1), nDOFX_X2, One,  &
-             dU_u_dX2_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
@@ -2819,13 +2704,6 @@ CONTAINS
  
         W_K = WeightsX_q(iNodeX) / SQRT( 1.0_DP - Vsq_K )
 
-        U_u_K(iNodeX,1,iZ2,iZ4,iZ3) = W_K / A_K
-
-        U_u_K(iNodeX,2,iZ2,iZ4,iZ3) = W_K * ( - B_u_K(1) / A_K + V_u_K(1) )
-
-        U_u_K(iNodeX,3,iZ2,iZ4,iZ3) = W_K * ( - B_u_K(2) / A_K + V_u_K(2) )
-
-        U_u_K(iNodeX,4,iZ2,iZ4,iZ3) = W_K * ( - B_u_K(3) / A_K + V_u_K(3) )
        
 
         U_d_K(iNodeX,1,iZ2,iZ4,iZ3) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
@@ -2851,9 +2729,6 @@ CONTAINS
 
 
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX, - One, dLXdX2_q, nDOFX, &
-             U_u_K, nDOFX, One, dU_u_dX2_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX, - One, dLXdX2_q, nDOFX, &
@@ -2876,22 +2751,6 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
 
-        dU_u_dX2_Temp(iNodeX,1,iZ2,iZ4,iZ3) &
-         = dU_u_dX2_Temp(iNodeX,1,iZ2,iZ4,iZ3) &
-             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
-
-
-        dU_u_dX2_Temp(iNodeX,2,iZ2,iZ4,iZ3) &
-         = dU_u_dX2_Temp(iNodeX,2,iZ2,iZ4,iZ3) &
-             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
-
-        dU_u_dX2_Temp(iNodeX,3,iZ2,iZ4,iZ3) &
-         = dU_u_dX2_Temp(iNodeX,3,iZ2,iZ4,iZ3) &
-             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
-
-        dU_u_dX2_Temp(iNodeX,4,iZ2,iZ4,iZ3) &
-         = dU_u_dX2_Temp(iNodeX,4,iZ2,iZ4,iZ3) &
-             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
 
 
         dU_d_dX2_Temp(iNodeX,1,iZ2,iZ4,iZ3) &
@@ -2942,17 +2801,6 @@ CONTAINS
           = dU_d_dX2_Temp(iNodeX,4,iZ2,iZ4,iZ3)
 
 
-        dU_u_dX2(iNodeX,0,iZ2,iZ3,iZ4)  &
-          = dU_u_dX2_Temp(iNodeX,1,iZ2,iZ4,iZ3)
-
-        dU_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
-          = dU_u_dX2_Temp(iNodeX,2,iZ2,iZ4,iZ3)
-
-        dU_u_dX2(iNodeX,2,iZ2,iZ3,iZ4)  &
-          = dU_u_dX2_Temp(iNodeX,3,iZ2,iZ4,iZ3)
-
-        dU_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
-          = dU_u_dX2_Temp(iNodeX,4,iZ2,iZ4,iZ3)
 
 
         dU_d_dX2_COV(iNodeX,0,iZ2,iZ3,iZ4)  &
@@ -3007,7 +2855,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeWeakDerivatives_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, Gamma_udd, dU_d_dX3, dU_u_dX3, dU_d_dX3_COV, Verbose_Option  )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, Gamma_udd, dU_d_dX3, dU_d_dX3_COV, Verbose_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -3031,10 +2879,6 @@ CONTAINS
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP), INTENT(out) :: &
       dU_d_dX3 &
-         (1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(out) :: &
-      dU_u_dX3 &
          (1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP), INTENT(out) :: &
@@ -3076,20 +2920,12 @@ CONTAINS
     REAL(DP) :: V_u_K(3), V_d_K(3), V_u_X3(3), V_d_X3(3), W_X3, W_K
     REAL(DP) :: B_u_X3(3), B_d_X3(3), A_X3, B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
-      U_u_X3(nDOFX_X3,4,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-             iZ_B0(4):iZ_E0(4)+1), &
       U_d_X3(nDOFX_X3,4,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
              iZ_B0(4):iZ_E0(4)+1), &
-      U_u_K(nDOFX,4,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4)), &
       U_d_K(nDOFX,4,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
             iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       dU_d_dX3_Temp &
-         (1:nDOFX,4, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP) :: & 
-      dU_u_dX3_Temp &
          (1:nDOFX,4, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
 
@@ -3098,7 +2934,6 @@ CONTAINS
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
       dU_d_dX3 = Zero
       dU_d_dX3_COV = Zero
-      dU_u_dX3 = Zero
       RETURN
     END IF
 
@@ -3291,13 +3126,6 @@ CONTAINS
         B_d_X3(3) = GX_F(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) * B_u_X3(3)
 
 
-        U_u_X3(iNodeX,1,iZ2,iZ3,iZ4) = W_X3 / A_X3
-        
-        U_u_X3(iNodeX,2,iZ2,iZ3,iZ4) = W_X3 * ( V_u_X3(1) - B_u_X3(1) / A_X3)
-
-        U_u_X3(iNodeX,3,iZ2,iZ3,iZ4) = W_X3 * ( V_u_X3(2) - B_u_X3(2) / A_X3)
-
-        U_u_X3(iNodeX,4,iZ2,iZ3,iZ4) = W_X3 * ( V_u_X3(3) - B_u_X3(3) / A_X3)
 
 
 
@@ -3323,20 +3151,12 @@ CONTAINS
 
 
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
-             U_u_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3, Zero, &
-             dU_u_dX3_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
              U_d_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3, Zero, &
              dU_d_dX3_Temp, nDOFX )
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
-             U_u_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)+1), nDOFX_X3, One,  &
-             dU_u_dX3_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
@@ -3414,13 +3234,6 @@ CONTAINS
      
         W_K = WeightsX_q(iNodeX) / SQRT( 1.0_DP - Vsq_K )
 
-        U_u_K(iNodeX,1,iZ2,iZ3,iZ4) = W_K / A_K
-
-        U_u_K(iNodeX,2,iZ2,iZ3,iZ4) = W_K * ( - B_u_K(1) / A_K + V_u_K(1) )
-
-        U_u_K(iNodeX,3,iZ2,iZ3,iZ4) = W_K * ( - B_u_K(2) / A_K + V_u_K(2) )
-
-        U_u_K(iNodeX,4,iZ2,iZ3,iZ4) = W_K * ( - B_u_K(3) / A_K + V_u_K(3) )
        
 
         U_d_K(iNodeX,1,iZ2,iZ3,iZ4) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
@@ -3446,9 +3259,6 @@ CONTAINS
 
 
 
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, 4*nX, nDOFX, - One, dLXdX3_q, nDOFX, &
-             U_u_K, nDOFX, One, dU_u_dX3_Temp, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 4*nX, nDOFX, - One, dLXdX3_q, nDOFX, &
@@ -3471,22 +3281,6 @@ CONTAINS
 
 
 
-        dU_u_dX3_Temp(iNodeX,1,iZ2,iZ3,iZ4) &
-         = dU_u_dX3_Temp(iNodeX,1,iZ2,iZ3,iZ4) &
-             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
-
-
-        dU_u_dX3_Temp(iNodeX,2,iZ2,iZ3,iZ4) &
-         = dU_u_dX3_Temp(iNodeX,2,iZ2,iZ3,iZ4) &
-             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
-
-        dU_u_dX3_Temp(iNodeX,3,iZ2,iZ3,iZ4) &
-         = dU_u_dX3_Temp(iNodeX,3,iZ2,iZ3,iZ4) &
-             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
-
-        dU_u_dX3_Temp(iNodeX,4,iZ2,iZ3,iZ4) &
-         = dU_u_dX3_Temp(iNodeX,4,iZ2,iZ3,iZ4) &
-             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
 
         dU_d_dX3_Temp(iNodeX,1,iZ2,iZ3,iZ4) &
@@ -3535,17 +3329,6 @@ CONTAINS
           = dU_d_dX3_Temp(iNodeX,4,iZ2,iZ3,iZ4)
 
 
-        dU_u_dX3(iNodeX,0,iZ2,iZ3,iZ4)  &
-          = dU_u_dX3_Temp(iNodeX,1,iZ2,iZ3,iZ4)
-
-        dU_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
-          = dU_u_dX3_Temp(iNodeX,2,iZ2,iZ3,iZ4)
-
-        dU_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
-          = dU_u_dX3_Temp(iNodeX,3,iZ2,iZ3,iZ4)
-
-        dU_u_dX3(iNodeX,3,iZ2,iZ3,iZ4)  &
-          = dU_u_dX3_Temp(iNodeX,4,iZ2,iZ3,iZ4)
 
 
         dU_d_dX3_COV(iNodeX,0,iZ2,iZ3,iZ4)  &
@@ -4628,16 +4411,16 @@ CONTAINS
 
   SUBROUTINE ComputeAlpha( V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                            U_u, dU_d_dX0, dU_d_dX1, dU_d_dX2, dU_d_dX3, &
-                           dU_u_dX0, dU_u_dX1, dU_u_dX2, dU_u_dX3, C, Alpha )
+                           Alp, B_u_1, B_u_2, B_u_3, C, Alpha )
 
     REAL(DP), INTENT(in)  :: V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in)  :: U_u(4), dU_d_dX0(4), dU_d_dX1(4), dU_d_dX2(4), dU_d_dX3(4)
-    REAL(DP), INTENT(in)  :: dU_u_dX0(4), dU_u_dX1(4), dU_u_dX2(4), dU_u_dX3(4), C     
+    REAL(DP), INTENT(in)  :: Alp, B_u_1, B_u_2, B_u_3, C
     REAL(DP), INTENT(out) :: Alpha
 
 
-    REAL(DP) :: dU_d_dX(4,4), dU_u_dX(4,4), W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11), l_mu(4)
-    INTEGER  :: mu, nu, INFO, B  
+    REAL(DP) :: dU_d_dX(4,4), G_uu_munu(4,4),  W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11), l_mu(4)
+    INTEGER  :: mu, nu, rho, INFO, B  
  
     Vsq =  V_u_1**2 * Gm_dd_11 + V_u_2**2 * Gm_dd_22 + V_u_3**2 * Gm_dd_33 
  
@@ -4663,26 +4446,18 @@ CONTAINS
     dU_d_dX(4,3) = dU_d_dX3(3)
     dU_d_dX(4,4) = dU_d_dX3(4)
 
-    dU_u_dX(1,1) = dU_u_dX0(1)
-    dU_u_dX(1,2) = dU_u_dX0(2)
-    dU_u_dX(1,3) = dU_u_dX0(3)
-    dU_u_dX(1,4) = dU_u_dX0(4)
-
-    dU_u_dX(2,1) = dU_u_dX1(1)
-    dU_u_dX(2,2) = dU_u_dX1(2)
-    dU_u_dX(2,3) = dU_u_dX1(3)
-    dU_u_dX(2,4) = dU_u_dX1(4)
-
-    dU_u_dX(3,1) = dU_u_dX2(1)
-    dU_u_dX(3,2) = dU_u_dX2(2)
-    dU_u_dX(3,3) = dU_u_dX2(3)
-    dU_u_dX(3,4) = dU_u_dX2(4)
-
-    dU_u_dX(4,1) = dU_u_dX3(1)
-    dU_u_dX(4,2) = dU_u_dX3(2)
-    dU_u_dX(4,3) = dU_u_dX3(3)
-    dU_u_dX(4,4) = dU_u_dX3(4)
-
+    G_uu_munu = 0.0_DP 
+    
+    G_uu_munu(1,1) = -1.0_DP / Alp**2
+    G_uu_munu(2,1) = B_u_1 / Alp**2
+    G_uu_munu(3,1) = B_u_2 / Alp**2
+    G_uu_munu(4,1) = B_u_3 / Alp**2
+    G_uu_munu(1,2) = B_u_1 / Alp**2
+    G_uu_munu(1,3) = B_u_2 / Alp**2
+    G_uu_munu(1,4) = B_u_3 / Alp**2
+    G_uu_munu(2,2) = 1.0_DP / Gm_dd_11 - B_u_1 * B_u_1 / Alp**2
+    G_uu_munu(3,3) = 1.0_DP / Gm_dd_22 - B_u_2 * B_u_2 / Alp**2
+    G_uu_munu(4,4) = 1.0_DP / Gm_dd_33 - B_u_3 * B_u_3 / Alp**2
 
     A(1,1) =  dU_d_dX(1,1) + dU_d_dX(1,1)
     A(1,2) =  dU_d_dX(1,2) + dU_d_dX(2,1)
@@ -4712,11 +4487,13 @@ CONTAINS
 
     Alpha_A = 0.0_DP
 
+    DO rho = 1, 4
     DO mu = 1, 4 
     DO nu = 1, 4
 
-      Alpha_A = Alpha_A + U_u(nu) * dU_d_dX(nu,mu) * U_u(nu) * dU_u_dX(nu,mu)
+      Alpha_A = Alpha_A + U_u(nu) * dU_d_dX(nu,mu) * U_u(nu) * dU_d_dX(nu,rho) * G_uu_munu(rho,mu)
 
+    END DO
     END DO
     END DO
 

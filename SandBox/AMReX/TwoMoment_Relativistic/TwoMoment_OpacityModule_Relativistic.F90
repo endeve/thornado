@@ -5,6 +5,8 @@ MODULE TwoMoment_OpacityModule_Relativistic
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFE
+  USE ReferenceElementModule, ONLY: &
+    NodeNumberTable
   USE MeshModule, ONLY: &
     MeshX, &
     MeshE, &
@@ -102,7 +104,7 @@ CONTAINS
 
       DO iNodeZ = 1, nDOFZ
 
-        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+        iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
         Radius = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
 
