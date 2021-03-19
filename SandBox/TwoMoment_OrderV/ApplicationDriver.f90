@@ -91,7 +91,7 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
+      UseSlopeLimiter = .TRUE.
 
       UsePositivityLimiter = .FALSE.
 
@@ -469,7 +469,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      nX  = [ 100, 1, 1 ]
+      nX  = [ 200, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 5.0_DP,     Pi,  TwoPi ]
       bcX = [ 30, 1, 1 ]
@@ -492,8 +492,8 @@ PROGRAM ApplicationDriver
 
       V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
 
-      D_0   = 1.0d0
-      Chi   = 1.0d1
+      D_0   = 0.8d0
+      Chi   = 4.0d0
       Sigma = 0.0d0
 
       UseSlopeLimiter = .TRUE.
@@ -784,7 +784,7 @@ CONTAINS
 
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option &
-               = 2.00_DP, &
+               = 1.75_DP, &
              UseSlopeLimiter_Option &
                = UseSlopeLimiter, &
              Verbose_Option &
