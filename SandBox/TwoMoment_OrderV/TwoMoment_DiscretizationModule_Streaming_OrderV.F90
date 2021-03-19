@@ -2750,8 +2750,8 @@ CONTAINS
                               + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
                           Two * dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
 
-        !CALL DSYEV( 'N', 'U', 3, A, 3, Lambda, WORK, 8, INFO )
         CALL EigenvaluesSymmetric3( A, Lambda )
+
         Alpha(iNodeX,iZ2,iZ3,iZ4) = MAXVAL( ABS( Lambda ) )
 
       END DO
@@ -3288,14 +3288,14 @@ CONTAINS
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  )
 
-    CALL TimersStart( Timer_Streaming_Derivatives_X1 )
-
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
       dV_u_dX1_Out   = Zero
       dV_d_dX1_Out   = Zero
       dGm_dd_dX1_Out = Zero
       RETURN
     END IF
+
+    CALL TimersStart( Timer_Streaming_Derivatives_X1 )
 
     ASSOCIATE( dZ2 => MeshX(1) % Width )
 
@@ -3852,14 +3852,14 @@ CONTAINS
                iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(3)  :iZ_E0(3)  )
 
-    CALL TimersStart( Timer_Streaming_Derivatives_X2 )
-
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
       dV_u_dX2_Out   = Zero
       dV_d_dX2_Out   = Zero
       dGm_dd_dX2_Out = Zero
       RETURN
     END IF
+
+    CALL TimersStart( Timer_Streaming_Derivatives_X2 )
 
     ASSOCIATE( dZ3 => MeshX(2) % Width )
 
@@ -4341,82 +4341,80 @@ CONTAINS
 
     REAL(DP) :: &
       GX_K   (nDOFX,nGF, &
-              iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
-              iZ_B0(3)-1:iZ_E0(3)+1)
+              iZ_B0(3)  :iZ_E0(3)  , &
+              iZ_B0(4)-1:iZ_E0(4)+1)
     REAL(DP) :: &
       GX_F   (nDOFX_X3,nGF, &
-              iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
-              iZ_B0(3)  :iZ_E0(3)+1)
+              iZ_B0(3)  :iZ_E0(3)  , &
+              iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
       h_d_F  (nDOFX_X3,3, &
-              iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
-              iZ_B0(3)  :iZ_E0(3)+1)
+              iZ_B0(3)  :iZ_E0(3)  , &
+              iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
       h_d_K  (nDOFX,3, &
-              iZ_B0(4)  :iZ_E0(4)  , &
               iZ_B0(2)  :iZ_E0(2)  , &
-              iZ_B0(3)  :iZ_E0(3)  )
+              iZ_B0(3)  :iZ_E0(3)  , &
+              iZ_B0(4)  :iZ_E0(4)  )
     REAL(DP) :: &
       dh_d_dX3(nDOFX,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)  )
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)  )
 
     ! --- Conserved Fluid Fields ---
 
     REAL(DP) :: &
       uCF_K(nDOFX,nCF, &
-            iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
-            iZ_B0(3)-1:iZ_E0(3)+1)
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)-1:iZ_E0(4)+1)
     REAL(DP) :: &
       uCF_L(nDOFX_X3,nCF, &
-            iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
-            iZ_B0(3)  :iZ_E0(3)+1)
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
       uCF_R(nDOFX_X3,nCF, &
-            iZ_B0(4)  :iZ_E0(4)  , &
             iZ_B0(2)  :iZ_E0(2)  , &
-            iZ_B0(3)  :iZ_E0(3)+1)
+            iZ_B0(3)  :iZ_E0(3)  , &
+            iZ_B0(4)  :iZ_E0(4)+1)
 
     ! --- Velocities ---
 
     REAL(DP) :: &
       V_u_X3  (nDOFX_X3,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)+1)
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
       V_d_X3  (nDOFX_X3,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)+1)
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
       V_u_K   (nDOFX,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)  )
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)  )
     REAL(DP) :: &
       V_d_K   (nDOFX,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)  )
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)  )
     REAL(DP) :: &
       dV_u_dX3(nDOFX,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)  )
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)  )
     REAL(DP) :: &
       dV_d_dX3(nDOFX,3, &
-               iZ_B0(4)  :iZ_E0(4)  , &
                iZ_B0(2)  :iZ_E0(2)  , &
-               iZ_B0(3)  :iZ_E0(3)  )
-
-    CALL TimersStart( Timer_Streaming_Derivatives_X3 )
+               iZ_B0(3)  :iZ_E0(3)  , &
+               iZ_B0(4)  :iZ_E0(4)  )
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
       dV_u_dX3_Out   = Zero
@@ -4424,6 +4422,8 @@ CONTAINS
       dGm_dd_dX3_Out = Zero
       RETURN
     END IF
+
+    CALL TimersStart( Timer_Streaming_Derivatives_X3 )
 
     ASSOCIATE( dZ4 => MeshX(3) % Width )
 
@@ -4453,14 +4453,14 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
-    DO iZ3 = iZ_B0(3)-1, iZ_E0(3)+1
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ4 = iZ_B0(4)-1, iZ_E0(4)+1
+    DO iZ3 = iZ_B0(3)  , iZ_E0(3)
+    DO iZ2 = iZ_B0(2)  , iZ_E0(2)
 
-      DO iGF = 1, nGF
+      DO iGF    = 1, nGF
       DO iNodeX = 1, nDOFX
 
-        GX_K(iNodeX,iGF,iZ4,iZ2,iZ3) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
+        GX_K(iNodeX,iGF,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
 
       END DO
       END DO
@@ -4483,13 +4483,13 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nX3_X*nGF, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-             GX_K(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)-1), nDOFX, Zero, &
-             GX_F(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3 )
+             GX_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)-1), nDOFX, Zero, &
+             GX_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nX3_X*nGF, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-             GX_K(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX, Half, &
-             GX_F(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3 )
+             GX_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX, Half, &
+             GX_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -4505,29 +4505,29 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iZ3  = iZ_B0(3), iZ_E0(3)+1
+    DO iZ4  = iZ_B0(4), iZ_E0(4)+1
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
     DO iZ2  = iZ_B0(2), iZ_E0(2)
-    DO iZ4  = iZ_B0(4), iZ_E0(4)
 
       DO iNodeX = 1, nDOFX_X3
 
-        GX_F(iNodeX,iGF_Gm_dd_11,iZ4,iZ2,iZ3) &
-          = MAX( GX_F(iNodeX,iGF_h_1,iZ4,iZ2,iZ3)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_22,iZ4,iZ2,iZ3) &
-          = MAX( GX_F(iNodeX,iGF_h_2,iZ4,iZ2,iZ3)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_33,iZ4,iZ2,iZ3) &
-          = MAX( GX_F(iNodeX,iGF_h_3,iZ4,iZ2,iZ3)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_SqrtGm,iZ4,iZ2,iZ3) &
-          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iZ4,iZ2,iZ3) &
-                  * GX_F(iNodeX,iGF_Gm_dd_22,iZ4,iZ2,iZ3) &
-                  * GX_F(iNodeX,iGF_Gm_dd_33,iZ4,iZ2,iZ3) )
+        GX_F(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iZ2,iZ3,iZ4)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iZ2,iZ3,iZ4)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iZ2,iZ3,iZ4)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
 
-        h_d_F(iNodeX,1,iZ4,iZ2,iZ3) &
-          = GX_F(iNodeX,iGF_h_1,iZ4,iZ2,iZ3) * WeightsX_X3(iNodeX)
-        h_d_F(iNodeX,2,iZ4,iZ2,iZ3) &
-          = GX_F(iNodeX,iGF_h_2,iZ4,iZ2,iZ3) * WeightsX_X3(iNodeX)
-        h_d_F(iNodeX,3,iZ4,iZ2,iZ3) &
-          = GX_F(iNodeX,iGF_h_3,iZ4,iZ2,iZ3) * WeightsX_X3(iNodeX)
+        h_d_F(iNodeX,1,iZ2,iZ3,iZ4) &
+          = GX_F(iNodeX,iGF_h_1,iZ2,iZ3,iZ4) * WeightsX_X3(iNodeX)
+        h_d_F(iNodeX,2,iZ2,iZ3,iZ4) &
+          = GX_F(iNodeX,iGF_h_2,iZ2,iZ3,iZ4) * WeightsX_X3(iNodeX)
+        h_d_F(iNodeX,3,iZ2,iZ3,iZ4) &
+          = GX_F(iNodeX,iGF_h_3,iZ2,iZ3,iZ4) * WeightsX_X3(iNodeX)
 
       END DO
 
@@ -4541,12 +4541,12 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
-             h_d_F(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3, Zero, &
+             h_d_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3, Zero, &
              dh_d_dX3, nDOFX )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
-             h_d_F(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)+1), nDOFX_X3, One,  &
+             h_d_F(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)+1), nDOFX_X3, One,  &
              dh_d_dX3, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -4563,14 +4563,14 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
-    DO iZ3 = iZ_B0(3)-1, iZ_E0(3)+1
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ4 = iZ_B0(4)-1, iZ_E0(4)+1
+    DO iZ3 = iZ_B0(3)  , iZ_E0(3)
+    DO iZ2 = iZ_B0(2)  , iZ_E0(2)
 
-      DO iCF = 1, nCF
+      DO iCF    = 1, nCF
       DO iNodeX = 1, nDOFX
 
-        uCF_K(iNodeX,iCF,iZ4,iZ2,iZ3) = uCF(iNodeX,iZ2,iZ3,iZ4,iCF)
+        uCF_K(iNodeX,iCF,iZ2,iZ3,iZ4) = uCF(iNodeX,iZ2,iZ3,iZ4,iCF)
 
       END DO
       END DO
@@ -4589,15 +4589,15 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nX3_X*nCF, nDOFX, One, LX_X3_Up, nDOFX_X3, &
-             uCF_K(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)-1), nDOFX, Zero, &
-             uCF_L(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3 )
+             uCF_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)-1), nDOFX, Zero, &
+             uCF_L(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X3, nX3_X*nCF, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
-             uCF_K(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX, Zero, &
-             uCF_R(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3 )
+             uCF_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX, Zero, &
+             uCF_R(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3 )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -4613,9 +4613,9 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
 #endif
-    DO iZ3 = iZ_B0(3), iZ_E0(3)+1
+    DO iZ4 = iZ_B0(4), iZ_E0(4)+1
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
 
       DO iNodeX = 1, nDOFX_X3
 
@@ -4626,15 +4626,15 @@ CONTAINS
 
           ! --- Left States ---
 
-          uV_L(i) = uCF_L(iNodeX,iCF_S,iZ4,iZ2,iZ3) &
-                    / ( GX_F (iNodeX,iGF_Gm_dd,iZ4,iZ2,iZ3) &
-                      * uCF_L(iNodeX,iCF_D ,iZ4,iZ2,iZ3) )
+          uV_L(i) = uCF_L(iNodeX,iCF_S,iZ2,iZ3,iZ4) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iZ2,iZ3,iZ4) &
+                         * uCF_L(iNodeX,iCF_D ,iZ2,iZ3,iZ4) )
 
           ! --- Right States ---
 
-          uV_R(i) = uCF_R(iNodeX,iCF_S,iZ4,iZ2,iZ3) &
-                    / ( GX_F (iNodeX,iGF_Gm_dd,iZ4,iZ2,iZ3) &
-                      * uCF_R(iNodeX,iCF_D ,iZ4,iZ2,iZ3) )
+          uV_R(i) = uCF_R(iNodeX,iCF_S,iZ2,iZ3,iZ4) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iZ2,iZ3,iZ4) &
+                         * uCF_R(iNodeX,iCF_D ,iZ2,iZ3,iZ4) )
 
         END DO
 
@@ -4647,11 +4647,12 @@ CONTAINS
 
           iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
 
-          V_u_X3(iNodeX,i,iZ4,iZ2,iZ3) &
+          V_u_X3(iNodeX,i,iZ2,iZ3,iZ4) &
             = uV_F(i) * WeightsX_X3(iNodeX)
 
-          V_d_X3(iNodeX,i,iZ4,iZ2,iZ3) &
-            = uV_F(i) * WeightsX_X3(iNodeX) * GX_F(iNodeX,iGF_Gm_dd,iZ4,iZ2,iZ3)
+          V_d_X3(iNodeX,i,iZ2,iZ3,iZ4) &
+            = uV_F(i) * WeightsX_X3(iNodeX) &
+                * GX_F(iNodeX,iGF_Gm_dd,iZ2,iZ3,iZ4)
 
         END DO
 
@@ -4669,28 +4670,28 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
-             V_u_X3(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3, Zero, &
+             V_u_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3, Zero, &
              dV_u_dX3, nDOFX )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
-             V_u_X3(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)+1), nDOFX_X3, One,  &
+             V_u_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)+1), nDOFX_X3, One,  &
              dV_u_dX3, nDOFX )
 
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
-             V_d_X3(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)  ), nDOFX_X3, Zero, &
+             V_d_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ), nDOFX_X3, Zero, &
              dV_d_dX3, nDOFX )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
-             V_d_X3(1,1,iZ_B0(4),iZ_B0(2),iZ_B0(3)+1), nDOFX_X3, One,  &
+             V_d_X3(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4)+1), nDOFX_X3, One,  &
              dV_d_dX3, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -4711,9 +4712,9 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
 #endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
 
       DO i = 1, 3
       DO iNodeX = 1, nDOFX
@@ -4722,19 +4723,19 @@ CONTAINS
         iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
         iGF_h     = iGF_h_1      + i - 1
 
-        h_d_K(iNodeX,i,iZ4,iZ2,iZ3) &
-          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iZ4,iZ2,iZ3)
+        h_d_K(iNodeX,i,iZ2,iZ3,iZ4) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iZ2,iZ3,iZ4)
 
         uV_K &
-          = uCF_K(iNodeX,iCF,iZ4,iZ2,iZ3) &
-            / ( GX_K (iNodeX,iGF_Gm_dd,iZ4,iZ2,iZ3) &
-              * uCF_K(iNodeX,iCF_D ,iZ4,iZ2,iZ3) )
+          = uCF_K(iNodeX,iCF,iZ2,iZ3,iZ4) &
+            / ( GX_K (iNodeX,iGF_Gm_dd,iZ2,iZ3,iZ4) &
+                 * uCF_K(iNodeX,iCF_D ,iZ2,iZ3,iZ4) )
 
-        V_u_K(iNodeX,i,iZ4,iZ2,iZ3) &
+        V_u_K(iNodeX,i,iZ2,iZ3,iZ4) &
           = uV_K * WeightsX_q(iNodeX)
 
-        V_d_K(iNodeX,i,iZ4,iZ2,iZ3) &
-          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iZ4,iZ2,iZ3)
+        V_d_K(iNodeX,i,iZ2,iZ3,iZ4) &
+          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iZ2,iZ3,iZ4)
 
       END DO
       END DO
@@ -4770,23 +4771,23 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
 
       DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dh_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
-          = dh_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
+        dh_d_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
+          = dh_d_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
               / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
-        dV_u_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
-         = dV_u_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
+        dV_u_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
+         = dV_u_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
              / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
-        dV_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
-         = dV_d_dX3(iNodeX,i,iZ4,iZ2,iZ3) &
+        dV_d_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
+         = dV_d_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
              / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
       END DO
@@ -4812,21 +4813,20 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      DO i = 1, 3
+      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
         iGF_h = iGF_h_1 + i - 1
 
         dGm_dd_dX3_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = Two * GX_K(iNodeX,iGF_h,iZ4,iZ2,iZ3) &
-              * dh_d_dX3(iNodeX,i,iZ4,iZ2,iZ3)
+          = Two * GX_K(iNodeX,iGF_h,iZ2,iZ3,iZ4) &
+              * dh_d_dX3(iNodeX,i,iZ2,iZ3,iZ4)
 
         dV_u_dX3_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dV_u_dX3(iNodeX,i,iZ4,iZ2,iZ3)
+          = dV_u_dX3(iNodeX,i,iZ2,iZ3,iZ4)
 
         dV_d_dX3_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dV_d_dX3(iNodeX,i,iZ4,iZ2,iZ3)
-
+          = dV_d_dX3(iNodeX,i,iZ2,iZ3,iZ4)
 
       END DO
       END DO
