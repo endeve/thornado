@@ -342,6 +342,14 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iS     = 1       , nSpecies
     DO iCR    = 1       , nCR
     DO iE     = iE_B0   , iE_E0
@@ -366,6 +374,13 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3    = iX_B0(3), iX_E0(3)
     DO iX2    = iX_B0(2), iX_E0(2)
     DO iX1    = iX_B0(1), iX_E0(1)
@@ -383,6 +398,13 @@ CONTAINS
 
     ! --- Compute Cell Average ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
@@ -422,6 +444,14 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_ReplaceSlopes )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( dSlope )
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
@@ -466,6 +496,14 @@ CONTAINS
 
     IF( ANY( Limited ) )THEN
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( Alpha )
+#endif
       DO iS   = 1       , nSpecies
       DO iCR  = 1       , nCR
       DO iE_G = 1       , nE_G
@@ -502,6 +540,14 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iS     = 1, nSpecies
     DO iCR    = 1, nCR
     DO iX3    = iX_B0(3), iX_E0(3)
@@ -571,6 +617,14 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iS     = 1         , nSpecies
     DO iCR    = 1         , nCR
     DO iE     = iE_B0     , iE_E0
@@ -617,6 +671,13 @@ CONTAINS
 
     ASSOCIATE( dX1 => MeshX(1) % Width )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
@@ -691,6 +752,14 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iS     = 1         , nSpecies
     DO iCR    = 1         , nCR
     DO iE     = iE_B0     , iE_E0
@@ -737,6 +806,13 @@ CONTAINS
 
     ASSOCIATE( dX2 => MeshX(2) % Width )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
@@ -768,6 +844,13 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
@@ -834,6 +917,14 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(8) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iS     = 1         , nSpecies
     DO iCR    = 1         , nCR
     DO iE     = iE_B0     , iE_E0
@@ -880,6 +971,13 @@ CONTAINS
 
     ASSOCIATE( dX3 => MeshX(3) % Width )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
@@ -911,6 +1009,13 @@ CONTAINS
 
     CALL TimersStart( Timer_SlopeLimiter_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
