@@ -7,13 +7,18 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
-    Timer_SlopeLimiter
+    Timer_SlopeLimiter, &
+    Timer_SlopeLimiter_Permute, &
+    Timer_SlopeLimiter_LinearAlgebra, &
+    Timer_SlopeLimiter_MinMod, &
+    Timer_SlopeLimiter_ReplaceSlopes, &
+    Timer_SlopeLimiter_Correction
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
   USE UtilitiesModule, ONLY: &
     MinModB
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
+    NodesX_q, WeightsX_q
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModalX, &
     MapModalToNodalX
@@ -22,7 +27,7 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
-    nGF
+    nGF, iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
@@ -40,8 +45,18 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
 
   CHARACTER(4) :: SlopeLimiterMethod
   LOGICAL      :: UseSlopeLimiter
+  INTEGER      :: iX_B0(3), iX_E0(3)
+  INTEGER      :: iE_B0, iE_E0, nE_G
   REAL(DP)     :: BetaTVD, BetaTVB
   REAL(DP)     :: SlopeTolerance
+  REAL(DP), ALLOCATABLE :: N2M_Vec_0(:)
+  REAL(DP), ALLOCATABLE :: N2M_Vec_1(:)
+  REAL(DP), ALLOCATABLE :: N2M_Vec_2(:)
+  REAL(DP), ALLOCATABLE :: N2M_Vec_3(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_0(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_1(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_2(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_3(:)
 
 CONTAINS
 
@@ -58,6 +73,7 @@ CONTAINS
     LOGICAL,      INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
+    INTEGER :: iNodeX
 
     IF( PRESENT( BetaTVD_Option ) )THEN
       BetaTVD = BetaTVD_Option
@@ -117,10 +133,45 @@ CONTAINS
 
     END IF
 
+    ! --- For Computing Modal Coefficients from Nodal Values ---
+
+    ALLOCATE( N2M_Vec_0(nDOFX) )
+    ALLOCATE( N2M_Vec_1(nDOFX) )
+    ALLOCATE( N2M_Vec_2(nDOFX) )
+    ALLOCATE( N2M_Vec_3(nDOFX) )
+
+    DO iNodeX = 1, nDOFX
+
+      N2M_Vec_0(iNodeX) =           WeightsX_q(iNodeX)
+      N2M_Vec_1(iNodeX) = 12.0_DP * WeightsX_q(iNodeX) * NodesX_q(1,iNodeX)
+      N2M_Vec_2(iNodeX) = 12.0_DP * WeightsX_q(iNodeX) * NodesX_q(2,iNodeX)
+      N2M_Vec_3(iNodeX) = 12.0_DP * WeightsX_q(iNodeX) * NodesX_q(3,iNodeX)
+
+    END DO
+
+    ! --- For Computing Nodal Values from Modal Coefficients ---
+
+    ALLOCATE( M2N_Vec_0(nDOFX) )
+    ALLOCATE( M2N_Vec_1(nDOFX) )
+    ALLOCATE( M2N_Vec_2(nDOFX) )
+    ALLOCATE( M2N_Vec_3(nDOFX) )
+
+    DO iNodeX = 1, nDOFX
+
+      M2N_Vec_0(iNodeX) = One
+      M2N_Vec_1(iNodeX) = NodesX_q(1,iNodeX)
+      M2N_Vec_2(iNodeX) = NodesX_q(2,iNodeX)
+      M2N_Vec_3(iNodeX) = NodesX_q(3,iNodeX)
+
+    END DO
+
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment
 
 
   SUBROUTINE FinalizeSlopeLimiter_TwoMoment
+
+    DEALLOCATE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3 )
+    DEALLOCATE( M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3 )
 
   END SUBROUTINE FinalizeSlopeLimiter_TwoMoment
 
@@ -213,47 +264,98 @@ CONTAINS
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER  :: &
-      iX1, iX2, iX3, iZ1, iCR, iS, iE_G, nE_G, &
-      iNodeZ, iNodeE, iNodeX, nV_KX, iDim
+      iE, iX1, iX2, iX3, iCR, iS, iE_G, &
+      iNodeZ, iNodeE, iNodeX, nV_KX
     REAL(DP) :: &
-      dX1, dX2, dX3
+      dSlope, Alpha
+    LOGICAL  :: &
+      Limited &
+           (iZ_B1(2):iZ_E1(2), &
+            iZ_B1(3):iZ_E1(3), &
+            iZ_B1(4):iZ_E1(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
     REAL(DP) :: &
-      SlopeDifference(1:nCR)
+      C_0  (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
     REAL(DP) :: &
-      uCR_M(1:nCR,1:nDOFX), dCR(1:nCR,1:nDimsX)
+      C_X1 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      C_X2 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      C_X3 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      CL_X1(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      CL_X2(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      CL_X3(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      uCR_K(iZ_B1(2):iZ_E1(2), &
+            iZ_B1(3):iZ_E1(3), &
+            iZ_B1(4):iZ_E1(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      wSqrtGm &
+           (1:nDOFX, &
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       uCR  (1:nDOFX, &
-            1:nCR,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: &
-      uCR_K(1:nCR,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
 
-    iX_B0 = iZ_B0(2:4)
-    iX_E0 = iZ_E0(2:4)
-    iX_B1 = iZ_B1(2:4)
-    iX_E1 = iZ_E1(2:4)
+    iE_B0 = iZ_B0(1); iX_B0 = iZ_B0(2:4)
+    iE_E0 = iZ_E0(1); iX_E0 = iZ_E0(2:4)
 
     nE_G = ( iZ_E0(1) - iZ_B0(1) + 1 ) * nDOFE
 
-    ! --- Reorder Data ---
+    CALL ComputeLimitedSlopes_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X1 )
 
-    DO iS     = 1, nSpecies
-    DO iZ1    = iZ_B0(1), iZ_E0(1)
-    DO iNodeE = 1, nDOFE
-    DO iX3    = iX_B1(3), iX_E1(3)
-    DO iX2    = iX_B1(2), iX_E1(2)
-    DO iX1    = iX_B1(1), iX_E1(1)
-    DO iCR    = 1, nCR
-    DO iNodeX = 1, nDOFX
+    CALL ComputeLimitedSlopes_X2( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X2 )
+
+    CALL ComputeLimitedSlopes_X3( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X3 )
+
+    ! --- Permute Radiation Fields ---
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
+
+    DO iS     = 1       , nSpecies
+    DO iCR    = 1       , nCR
+    DO iE     = iE_B0   , iE_E0
+    DO iNodeE = 1       , nDOFE
+    DO iX3    = iX_B0(3), iX_E0(3)
+    DO iX2    = iX_B0(2), iX_E0(2)
+    DO iX1    = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1       , nDOFX
 
       iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
-      iE_G   = (iZ1   -1) * nDOFE + iNodeE
+      iE_G   = (iE    -1) * nDOFE + iNodeE
 
-      uCR(iNodeX,iCR,iX1,iX2,iX3,iE_G,iS) &
-        = U_R(iNodeZ,iZ1,iX1,iX2,iX3,iCR,iS)
+      uCR(iNodeX,iX1,iX2,iX3,iE_G,iCR,iS) &
+        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
 
     END DO
     END DO
@@ -264,127 +366,156 @@ CONTAINS
     END DO
     END DO
 
-    ! --- Compute Cell Averages ---
+    DO iX3    = iX_B0(3), iX_E0(3)
+    DO iX2    = iX_B0(2), iX_E0(2)
+    DO iX1    = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1       , nDOFX
 
-    ! --- Variables Per Spatial Element ---
+      wSqrtGm(iNodeX,iX1,iX2,iX3) &
+        = WeightsX_q(iNodeX) * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
 
-    nV_KX = nCR * PRODUCT(iX_E1-iX_B1+1) * nE_G * nSpecies
+    END DO
+    END DO
+    END DO
+    END DO
 
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, WeightsX_q, 1, Zero, uCR_K, 1 )
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
 
-    DO iS   = 1, nSpecies
-    DO iE_G = 1, nE_G
+    ! --- Compute Cell Average ---
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
     DO iX2  = iX_B0(2), iX_E0(2)
     DO iX1  = iX_B0(1), iX_E0(1)
 
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
+      uCR_K(iX1,iX2,iX3,iE_G,iCR,iS) &
+        = SUM( wSqrtGm(:,iX1,iX2,iX3) * uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) )
 
-      ! --- Map to Modal Representation ---
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
-      DO iCR = 1, nCR
+    ! --- Compute Legendre Coefficients ---
 
-        CALL MapNodalToModalX &
-               ( uCR(1:nDOFX,iCR,iX1,iX2,iX3,iE_G,iS), uCR_M(iCR,1:nDOFX) )
+    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
 
-      END DO
+    nV_KX = PRODUCT( SHAPE( C_0 ) )
 
-      ! --- Compute Limited Slopes ---
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C_0 , 1 )
 
-      dCR(:,1) &
-        = MinModB( uCR_M(:,2), &
-                   BetaTVD * ( uCR_K  (:,iX1  ,iX2,iX3,iE_G,iS)    &
-                               - uCR_K(:,iX1-1,iX2,iX3,iE_G,iS) ), &
-                   BetaTVD * ( uCR_K  (:,iX1+1,iX2,iX3,iE_G,iS)    &
-                               - uCR_K(:,iX1  ,iX2,iX3,iE_G,iS) ), &
-                   dX1, BetaTVB )
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_1, 1, Zero, C_X1, 1 )
 
-      IF( nDimsX > 1 )THEN
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_2, 1, Zero, C_X2, 1 )
 
-        dCR(:,2) &
-          = MinModB( uCR_M(:,3), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2  ,iX3,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2-1,iX3,iE_G,iS) ), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2+1,iX3,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2  ,iX3,iE_G,iS) ), &
-                     dX2, BetaTVB )
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_3, 1, Zero, C_X3, 1 )
+
+    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+
+    CALL TimersStart( Timer_SlopeLimiter_ReplaceSlopes )
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
+
+      Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .FALSE.
+
+      dSlope &
+        = MAX( ABS( CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
+                    -C_X1(iX1,iX2,iX3,iE_G,iCR,iS) ), &
+               ABS( CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
+                    -C_X2(iX1,iX2,iX3,iE_G,iCR,iS) ), &
+               ABS( CL_X3(iX1,iX2,iX3,iE_G,iCR,iS) &
+                    -C_X3(iX1,iX2,iX3,iE_G,iCR,iS) ) )
+
+      IF( dSlope > SlopeTolerance * ABS( C_0(iX1,iX2,iX3,iE_G,iCR,iS) ) )THEN
+
+        uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) &
+          =   M2N_Vec_0(:) * C_0  (iX1,iX2,iX3,iE_G,iCR,iS) &
+            + M2N_Vec_1(:) * CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
+            + M2N_Vec_2(:) * CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
+            + M2N_Vec_3(:) * CL_X3(iX1,iX2,iX3,iE_G,iCR,iS)
+
+        Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .TRUE.
 
       END IF
 
-      IF( nDimsX > 2 )THEN
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
-        dCR(:,3) &
-          = MinModB( uCR_M(:,4), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2,iX3  ,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2,iX3-1,iE_G,iS) ), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2,iX3+1,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2,iX3  ,iE_G,iS) ), &
-                     dX3, BetaTVB )
+    CALL TimersStop( Timer_SlopeLimiter_ReplaceSlopes )
 
-      END IF
+    ! --- Conservative Correction ---
 
-      ! --- Compare Limited Slopes to Original Slopes ---
+    CALL TimersStart( Timer_SlopeLimiter_Correction )
 
-      SlopeDifference = Zero
+    IF( ANY( Limited ) )THEN
 
-      DO iDim = 1, nDimsX
-      DO iCR  = 1, nCR
+      DO iS   = 1       , nSpecies
+      DO iCR  = 1       , nCR
+      DO iE_G = 1       , nE_G
+      DO iX3  = iX_B0(3), iX_E0(3)
+      DO iX2  = iX_B0(2), iX_E0(2)
+      DO iX1  = iX_B0(1), iX_E0(1)
 
-        SlopeDifference(iCR) &
-          = MAX( SlopeDifference(iCR), &
-                 ABS( dCR(iCR,iDim) - uCR_M(iCR,1+iDim) ) )
+        IF( Limited(iX1,iX2,iX3,iE_G,iCR,iS) )THEN
 
-      END DO
-      END DO
+          Alpha &
+            = SUM( wSqrtGm(:,iX1,iX2,iX3) * uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) )
 
-      ! --- Replace Slopes and Discard High-Order Components ---
-      ! --- if Limited Slopes Deviate too Much from Original ---
+          IF( ABS( Alpha ) > Zero )THEN
 
-      DO iCR = 1, nCR
+            Alpha = uCR_K(iX1,iX2,iX3,iE_G,iCR,iS) / Alpha
 
-        IF( SlopeDifference(iCR) &
-              > SlopeTolerance * ABS( uCR_K(iCR,iX1,iX2,iX3,iE_G,iS) ) )THEN
+            uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) &
+              = Alpha * uCR(:,iX1,iX2,iX3,iE_G,iCR,iS)
 
-          uCR_M(iCR,2:nDOFX) = Zero
-
-          DO iDim = 1, nDimsX
-
-            uCR_M(iCR,1+iDim) = dCR(iCR,iDim)
-
-          END DO
-
-          CALL MapModalToNodalX &
-                 ( uCR(:,iCR,iX1,iX2,iX3,iE_G,iS), uCR_M(iCR,:) )
+          END IF
 
         END IF
 
       END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    END IF
 
-    ! --- Reorder Data ---
+    CALL TimersStop( Timer_SlopeLimiter_Correction )
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
 
     DO iS     = 1, nSpecies
     DO iCR    = 1, nCR
     DO iX3    = iX_B0(3), iX_E0(3)
     DO iX2    = iX_B0(2), iX_E0(2)
     DO iX1    = iX_B0(1), iX_E0(1)
-    DO iZ1    = iZ_B0(1), iZ_E0(1)
+    DO iE     = iE_B0   , iE_E0
     DO iNodeX = 1, nDOFX
     DO iNodeE = 1, nDOFE
 
       iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-      iE_G   = (iZ1   -1) * nDOFE + iNodeE
+      iE_G   = (iE    -1) * nDOFE + iNodeE
 
-      U_R(iNodeZ,iZ1,iX1,iX2,iX3,iCR,iS) &
-        = uCR(iNodeX,iCR,iX1,iX2,iX3,iE_G,iS)
+      U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
+        = uCR(iNodeX,iX1,iX2,iX3,iE_G,iCR,iS)
 
     END DO
     END DO
@@ -394,8 +525,412 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
 
   END SUBROUTINE ApplySlopeLimiter_TVD
+
+
+  SUBROUTINE ComputeLimitedSlopes_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X1 )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      CL_X1(iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nCR,1:nSpecies)
+
+    INTEGER  :: &
+      iE, iE_G, iX1, iX2, iX3, iCR, iS, &
+      iNodeE, iNodeX, iNodeZ, nV_KX
+    REAL(DP) :: &
+      C0(iX_B0(1)-1:iX_E0(1)+1, &
+         iX_B0(2)  :iX_E0(2)  , &
+         iX_B0(3)  :iX_E0(3)  , &
+         1:nE_G,1:nCR,1:nSpecies), &
+      C1(iX_B0(1)-1:iX_E0(1)+1, &
+         iX_B0(2)  :iX_E0(2)  , &
+         iX_B0(3)  :iX_E0(3)  , &
+         1:nE_G,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      uCR(1:nDOFX, &
+          iX_B0(1)-1:iX_E0(1)+1, &
+          iX_B0(2)  :iX_E0(2)  , &
+          iX_B0(3)  :iX_E0(3)  , &
+          1:nE_G,1:nCR,1:nSpecies)
+
+    ! --- Permute Radiation Fields ---
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
+
+    DO iS     = 1         , nSpecies
+    DO iCR    = 1         , nCR
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
+    DO iX3    = iX_B0(3)  , iX_E0(3)
+    DO iX2    = iX_B0(2)  , iX_E0(2)
+    DO iX1    = iX_B0(1)-1, iX_E0(1)+1
+    DO iNodeX = 1         , nDOFX
+
+      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
+      iE_G   = (iE    -1) * nDOFE + iNodeE
+
+      uCR(iNodeX,iX1,iX2,iX3,iE_G,iCR,iS) &
+        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
+
+    ! --- Legendre Coefficients C0 and C1 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+
+    nV_KX = PRODUCT( SHAPE( C0 ) )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C0, 1 )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_1, 1, Zero, C1, 1 )
+
+    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+
+    ! --- Limited Legendre Coefficient CL_X1 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_MinMod )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
+
+      CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
+        = MinModB &
+            ( C1(iX1,iX2,iX3,iE_G,iCR,iS), &
+              BetaTVD * ( C0  (iX1  ,iX2,iX3,iE_G,iCR,iS)    &
+                          - C0(iX1-1,iX2,iX3,iE_G,iCR,iS) ), &
+              BetaTVD * ( C0  (iX1+1,iX2,iX3,iE_G,iCR,iS)    &
+                          - C0(iX1  ,iX2,iX3,iE_G,iCR,iS) ), &
+              dX1(iX1), BetaTVB )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1
+
+    CALL TimersStop( Timer_SlopeLimiter_MinMod )
+
+  END SUBROUTINE ComputeLimitedSlopes_X1
+
+
+  SUBROUTINE ComputeLimitedSlopes_X2( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X2 )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      CL_X2(iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nCR,1:nSpecies)
+
+    INTEGER  :: &
+      iE, iE_G, iX1, iX2, iX3, iCR, iS, &
+      iNodeE, iNodeX, iNodeZ, nV_KX
+    REAL(DP) :: &
+      C0 (iX_B0(2)-1:iX_E0(2)+1, &
+          iX_B0(1)  :iX_E0(1)  , &
+          iX_B0(3)  :iX_E0(3)  , &
+          1:nE_G,1:nCR,1:nSpecies), &
+      C2 (iX_B0(2)-1:iX_E0(2)+1, &
+          iX_B0(1)  :iX_E0(1)  , &
+          iX_B0(3)  :iX_E0(3)  , &
+          1:nE_G,1:nCR,1:nSpecies), &
+      CL2(iX_B0(2)  :iX_E0(2)  , &
+          iX_B0(1)  :iX_E0(1)  , &
+          iX_B0(3)  :iX_E0(3)  , &
+          1:nE_G,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      uCR(1:nDOFX, &
+          iX_B0(2)-1:iX_E0(2)+1, &
+          iX_B0(1)  :iX_E0(1)  , &
+          iX_B0(3)  :iX_E0(3)  , &
+          1:nE_G,1:nCR,1:nSpecies)
+
+    ! --- Permute Radiation Fields ---
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
+
+    DO iS     = 1         , nSpecies
+    DO iCR    = 1         , nCR
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
+    DO iX3    = iX_B0(3)  , iX_E0(3)
+    DO iX1    = iX_B0(1)  , iX_E0(1)
+    DO iX2    = iX_B0(2)-1, iX_E0(2)+1
+    DO iNodeX = 1         , nDOFX
+
+      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
+      iE_G   = (iE    -1) * nDOFE + iNodeE
+
+      uCR(iNodeX,iX2,iX1,iX3,iE_G,iCR,iS) &
+        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
+
+    ! --- Legendre Coefficients C0 and C2 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+
+    nV_KX = PRODUCT( SHAPE( C0 ) )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C0, 1 )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_2, 1, Zero, C2, 1 )
+
+    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+
+    ! --- Limited Legendre Coefficient CL_X2 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_MinMod )
+
+    ASSOCIATE( dX2 => MeshX(2) % Width )
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iX2  = iX_B0(2), iX_E0(2)
+
+      CL2(iX2,iX1,iX3,iE_G,iCR,iS) &
+        = MinModB &
+            ( C2(iX2,iX1,iX3,iE_G,iCR,iS), &
+              BetaTVD * ( C0  (iX2  ,iX1,iX3,iE_G,iCR,iS)    &
+                          - C0(iX2-1,iX1,iX3,iE_G,iCR,iS) ), &
+              BetaTVD * ( C0  (iX2+1,iX1,iX3,iE_G,iCR,iS)    &
+                          - C0(iX2  ,iX1,iX3,iE_G,iCR,iS) ), &
+              dX2(iX2), BetaTVB )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX2
+
+    CALL TimersStop( Timer_SlopeLimiter_MinMod )
+
+    ! --- Permute Legendre Coefficient CL_X2 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
+
+      CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
+        = CL2(iX2,iX1,iX3,iE_G,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
+
+  END SUBROUTINE ComputeLimitedSlopes_X2
+
+
+  SUBROUTINE ComputeLimitedSlopes_X3( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X3 )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      CL_X3(iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nCR,1:nSpecies)
+
+    INTEGER  :: &
+      iE, iE_G, iX1, iX2, iX3, iCR, iS, &
+      iNodeE, iNodeX, iNodeZ, nV_KX
+    REAL(DP) :: &
+      C0 (iX_B0(3)-1:iX_E0(3)+1, &
+          iX_B0(2)  :iX_E0(2)  , &
+          iX_B0(1)  :iX_E0(1)  , &
+          1:nE_G,1:nCR,1:nSpecies), &
+      C3 (iX_B0(3)-1:iX_E0(3)+1, &
+          iX_B0(2)  :iX_E0(2)  , &
+          iX_B0(1)  :iX_E0(1)  , &
+          1:nE_G,1:nCR,1:nSpecies), &
+      CL3(iX_B0(3)  :iX_E0(3)  , &
+          iX_B0(2)  :iX_E0(2)  , &
+          iX_B0(1)  :iX_E0(1)  , &
+          1:nE_G,1:nCR,1:nSpecies)
+    REAL(DP) :: &
+      uCR(1:nDOFX, &
+          iX_B0(3)-1:iX_E0(3)+1, &
+          iX_B0(2)  :iX_E0(2)  , &
+          iX_B0(1)  :iX_E0(1)  , &
+          1:nE_G,1:nCR,1:nSpecies)
+
+    ! --- Permute Radiation Fields ---
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
+
+    DO iS     = 1         , nSpecies
+    DO iCR    = 1         , nCR
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
+    DO iX1    = iX_B0(1)  , iX_E0(1)
+    DO iX2    = iX_B0(2)  , iX_E0(2)
+    DO iX3    = iX_B0(3)-1, iX_E0(3)+1
+    DO iNodeX = 1         , nDOFX
+
+      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
+      iE_G   = (iE    -1) * nDOFE + iNodeE
+
+      uCR(iNodeX,iX3,iX2,iX1,iE_G,iCR,iS) &
+        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
+
+    ! --- Legendre Coefficients C0 and C3 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+
+    nV_KX = PRODUCT( SHAPE( C0 ) )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C0, 1 )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_3, 1, Zero, C3, 1 )
+
+    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+
+    ! --- Limited Legendre Coefficient CL_X3 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_MinMod )
+
+    ASSOCIATE( dX3 => MeshX(3) % Width )
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX3  = iX_B0(3), iX_E0(3)
+
+      CL3(iX3,iX2,iX1,iE_G,iCR,iS) &
+        = MinModB &
+            ( C3(iX3,iX2,iX1,iE_G,iCR,iS), &
+              BetaTVD * ( C0  (iX3  ,iX2,iX1,iE_G,iCR,iS)    &
+                          - C0(iX3-1,iX2,iX1,iE_G,iCR,iS) ), &
+              BetaTVD * ( C0  (iX3+1,iX2,iX1,iE_G,iCR,iS)    &
+                          - C0(iX3  ,iX2,iX1,iE_G,iCR,iS) ), &
+              dX3(iX3), BetaTVB )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX3
+
+    CALL TimersStop( Timer_SlopeLimiter_MinMod )
+
+    ! --- Permute Legendre Coefficient CL_X3 ---
+
+    CALL TimersStart( Timer_SlopeLimiter_Permute )
+
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
+
+      CL_X3(iX1,iX2,iX3,iE_G,iCR,iS) &
+        = CL3(iX3,iX2,iX1,iE_G,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_SlopeLimiter_Permute )
+
+  END SUBROUTINE ComputeLimitedSlopes_X3
 
 
   SUBROUTINE ApplySLopeLimiter_WENO &
