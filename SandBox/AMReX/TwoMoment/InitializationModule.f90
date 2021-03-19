@@ -293,6 +293,15 @@ CONTAINS
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
                                 Verbose_Option = amrex_parallel_ioprocessor()  )
 
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+!
+!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!                               Verbose_Option = amrex_parallel_ioprocessor()  )
+    
+    
+
+
     CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                               Verbose_Option = amrex_parallel_ioprocessor()  )
 

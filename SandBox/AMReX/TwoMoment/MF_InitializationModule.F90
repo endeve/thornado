@@ -153,7 +153,7 @@ CONTAINS
 
       CASE( 'HomogeneousSphere1D' )
 
-        CALL InitializeFields_HomogeneousSphere1D ( MF_uGF, MF_uCR, MF_uCF, V_0 )
+        CALL InitializeFields_HomogeneousSphere1D ( MF_uGF, MF_uCR, MF_uCF )
 
         IF (Verbose) THEN
           print*, ProgramName
@@ -1052,9 +1052,9 @@ CONTAINS
           DO iNodeX = 1, nDOFX
 
             uPF_K(iNodeX,iPF_D ) = 1.0_AR
-            uPF_K(iNodeX,iPF_V1) = 0.0_DP
-            uPF_K(iNodeX,iPF_V2) = 0.0_DP
-            uPF_K(iNodeX,iPF_V3) = 0.0_DP
+            uPF_K(iNodeX,iPF_V1) = 0.0_AR
+            uPF_K(iNodeX,iPF_V2) = 0.0_AR
+            uPF_K(iNodeX,iPF_V3) = 0.0_AR
             uPF_K(iNodeX,iPF_E ) = 0.1_AR
             uPF_K(iNodeX,iPF_Ne) = 0.0_AR
 

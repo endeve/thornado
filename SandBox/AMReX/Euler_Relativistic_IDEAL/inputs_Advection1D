@@ -5,8 +5,8 @@
 
 DEBUG = 0
 
-thornado.ProgramName      = "Advection1D"
-thornado.AdvectionProfile = "SineWave"
+thornado.ProgramName      = "Advection"
+thornado.AdvectionProfile = "SineWaveX1"
 
 thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
 

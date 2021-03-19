@@ -127,13 +127,9 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'Advection1D' )
+      CASE( 'Advection' )
 
-        CALL InitializeFields_Advection1D( MF_uGF, MF_uCF )
-
-      CASE( 'Advection2D' )
-
-        CALL InitializeFields_Advection2D( MF_uGF, MF_uCF )
+        CALL InitializeFields_Advection( MF_uGF, MF_uCF )
 
       CASE( 'RiemannProblem1D' )
 
@@ -168,6 +164,7 @@ CONTAINS
           WRITE(*,'(4x,A)')   'Valid Options:'
           WRITE(*,'(6x,A)')     'Advection1D'
           WRITE(*,'(6x,A)')     'Advection2D'
+          WRITE(*,'(6x,A)')     'Advection3D'
           WRITE(*,'(6x,A)')     'RiemannProblem1D'
           WRITE(*,'(6x,A)')     'RiemannProblem2D'
           WRITE(*,'(6x,A)')     'RiemannProblemSpherical'
@@ -183,157 +180,7 @@ CONTAINS
   END SUBROUTINE MF_InitializeFields_Relativistic_IDEAL
 
 
-  SUBROUTINE InitializeFields_Advection1D( MF_uGF, MF_uCF )
-
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
-    ! --- thornado ---
-    INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
-    INTEGER        :: iDim
-    TYPE(MeshType) :: MeshX(3)
-
-    ! --- AMReX ---
-    INTEGER                       :: iLevel
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    TYPE(amrex_parmparse)         :: PP
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
-    ! --- Problem-dependent Parameters ---
-    CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
-
-    AdvectionProfile = 'SineWave'
-    CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % query( 'AdvectionProfile', AdvectionProfile )
-    CALL amrex_parmparse_destroy( PP )
-
-    IF( TRIM( AdvectionProfile ) .NE. 'SineWave' )THEN
-
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(*,*)
-        WRITE(*,'(A,A)') &
-          'Invalid choice for AdvectionProfile: ', &
-          TRIM( AdvectionProfile )
-        WRITE(*,'(A)') 'Valid choices:'
-        WRITE(*,'(A)') '  SineWave'
-        WRITE(*,*)
-        WRITE(*,'(A)') 'Stopping...'
-
-      END IF
-
-      CALL DescribeError_Euler( 99 )
-
-    END IF
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
-
-    END IF
-
-    uGF_K = Zero
-    uCF_K = Zero
-    uPF_K = Zero
-    uAF_K = Zero
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        lo_G = LBOUND( uGF )
-        hi_G = UBOUND( uGF )
-
-        lo_F = LBOUND( uCF )
-        hi_F = UBOUND( uCF )
-
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
-
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-            IF     ( TRIM( AdvectionProfile ) .EQ. 'SineWave' )THEN
-
-              uPF_K(iNodeX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X1 )
-              uPF_K(iNodeX,iPF_V1) = 0.1_AR
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
-
-            END IF
-
-          END DO
-
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
-          CALL ComputeConserved_Euler &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                   uGF_K(:,iGF_Gm_dd_11), &
-                   uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33), &
-                   uAF_K(:,iAF_P) )
-
-          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
-
-        END DO
-        END DO
-        END DO
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
-
-  END SUBROUTINE InitializeFields_Advection1D
-
-
-  SUBROUTINE InitializeFields_Advection2D( MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields_Advection( MF_uGF, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
@@ -503,7 +350,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE InitializeFields_Advection2D
+  END SUBROUTINE InitializeFields_Advection
 
 
   SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )

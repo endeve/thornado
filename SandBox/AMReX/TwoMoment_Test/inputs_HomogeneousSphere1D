@@ -4,8 +4,8 @@
 
 DEBUG = 0
 
-thornado.ProgramName = "HomogeneusSphere1D"
-thornado.Scheme = "SSPRK2"
+thornado.ProgramName = "HomogeneousSphere1D"
+thornado.Scheme = "IMEX_PDARS"
 
 thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = 1.0      # Write time interval
@@ -33,7 +33,7 @@ thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for c
 
 geometry.coord_sys   = 2             # SPHERICAL
 geometry.prob_lo     = 0.0 0.0 0.0         # Lower spatial domain size
-geometry.prob_hi     = 5.0 Pi TwoPi         # High spatial domain size
+geometry.prob_hi     = 5.0 3.1415926535897932 6.28318530717959 # High spatial domain size
 geometry.is_periodic = 1   1   1
 
 

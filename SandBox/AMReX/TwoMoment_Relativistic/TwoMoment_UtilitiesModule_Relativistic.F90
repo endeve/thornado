@@ -571,9 +571,9 @@ CONTAINS
                + Gm_dd_33 * V_u_3 * V_u_3) )
    
 
-    Gm_uu_11 = 1.0_DP / Gm_dd_11 
-    Gm_uu_22 = 1.0_DP / Gm_dd_22 
-    Gm_uu_33 = 1.0_DP / Gm_dd_33 
+    Gm_uu_11 = 1.0_DP / Gm_dd_11 - B_u_1**2 / alp**2 
+    Gm_uu_22 = 1.0_DP / Gm_dd_22 - B_u_2**2 / alp**2 
+    Gm_uu_33 = 1.0_DP / Gm_dd_33 - B_u_3**2 / alp**2 
 
     V_d_1 = Gm_dd_11 * V_u_1
     V_d_2 = Gm_dd_22 * V_u_2
@@ -1043,9 +1043,9 @@ CONTAINS
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
-    Gm_uu_11 = 1.0_DP /  Gm_dd_11
-    Gm_uu_22 = 1.0_DP /  Gm_dd_22
-    Gm_uu_33 = 1.0_DP /  Gm_dd_33
+    Gm_uu_11 = 1.0_DP /  Gm_dd_11 - B_u_1**2 / alp**2 
+    Gm_uu_22 = 1.0_DP /  Gm_dd_22 - B_u_2**2 / alp**2 
+    Gm_uu_33 = 1.0_DP /  Gm_dd_33 - B_u_3**2 / alp**2 
 
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
