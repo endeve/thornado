@@ -1,4 +1,4 @@
-PROGRAM ApplicationDriverNeutrinos
+PROGRAM ApplicationDriver_Neutrinos
 
   USE KindModule, ONLY: &
     DP, Zero, One
@@ -14,12 +14,29 @@ PROGRAM ApplicationDriverNeutrinos
     uGF
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE FluidFieldsModule, ONLY: &
+    uCF
+  USE RadiationFieldsModule, ONLY: &
+    uCR
+  USE InputOutputModuleHDF, ONLY: &
+    WriteFieldsHDF
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
+  USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    Update_IMEX_RK
+  USE InitializationModule_Neutrinos, ONLY: &
+    InitializeFields
 
   IMPLICIT NONE
 
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
   CHARACTER(32) :: CoordinateSystem
+  CHARACTER(64) :: EosTableName
+  CHARACTER(64) :: OpacityTableName_AbEm
+  CHARACTER(64) :: OpacityTableName_Iso
+  CHARACTER(64) :: OpacityTableName_NES
+  CHARACTER(64) :: OpacityTableName_Pair
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: nSpecies
@@ -27,11 +44,17 @@ PROGRAM ApplicationDriverNeutrinos
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t_end
+  REAL(DP)      :: dt, t_end
 
   ProgramName = 'Relaxation'
 
   CoordinateSystem = 'CARTESIAN'
+
+  EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+  OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
+  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
+  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
+  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
 
   SELECT CASE( TRIM( ProgramName ) )
 
@@ -70,6 +93,19 @@ PROGRAM ApplicationDriverNeutrinos
 
   CALL InitializeDriver
 
+  CALL InitializeFields
+
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
+
+  dt = 1.0d-3 * Millisecond
+
+  CALL Update_IMEX_RK &
+         ( dt, uGE, uGF, uCF, uCR, ComputeIncrement_TwoMoment_Implicit )
+
   CALL FinalizeDriver
 
 CONTAINS
@@ -99,6 +135,14 @@ CONTAINS
       InitializeReferenceElement
     USE ReferenceElementModule_Lagrange, ONLY: &
       InitializeReferenceElement_Lagrange
+    USE EquationOfStateModule_TABLE, ONLY: &
+      InitializeEquationOfState_TABLE
+    USE OpacityModule_TABLE, ONLY: &
+      InitializeOpacities_TABLE
+    USE TwoMoment_ClosureModule, ONLY: &
+      InitializeClosure_TwoMoment
+    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+      Initialize_IMEX_RK
 
     CALL InitializeTimers
 
@@ -166,6 +210,37 @@ CONTAINS
 
     CALL InitializeReferenceElement_Lagrange
 
+    ! --- Initialize Equation of State ---
+
+    CALL InitializeEquationOfState_TABLE &
+           ( EquationOfStateTableName_Option &
+               = EosTableName, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Initialize Opacities ---
+
+    CALL InitializeOpacities_TABLE &
+           ( OpacityTableName_EmAb_Option &
+               = TRIM( OpacityTableName_AbEm ), &
+             OpacityTableName_Iso_Option  &
+               = TRIM( OpacityTableName_Iso ), &
+             OpacityTableName_NES_Option &
+               = TRIM( OpacityTableName_NES ), &
+             OpacityTableName_Pair_Option &
+               = TRIM( OpacityTableName_Pair ), &
+             EquationOfStateTableName_Option &
+               = TRIM( EosTableName ), &
+             Verbose_Option = .TRUE. )
+
+    ! --- Initialize Moment Closure ---
+
+    CALL InitializeClosure_TwoMoment
+
+    ! --- Initialize Time Stepper ---
+
+    CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
+
   END SUBROUTINE InitializeDriver
 
 
@@ -185,10 +260,22 @@ CONTAINS
       FinalizeReferenceElement
     USE ReferenceElementModule_Lagrange, ONLY: &
       FinalizeReferenceElement_Lagrange
+    USE EquationOfStateModule_TABLE, ONLY: &
+      FinalizeEquationOfState_TABLE
+    USE OpacityModule_TABLE, ONLY: &
+      FinalizeOpacities_TABLE
+    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+      Finalize_IMEX_RK
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
     USE TwoMoment_TimersModule_OrderV, ONLY: &
       FinalizeTimers
+
+    CALL Finalize_IMEX_RK
+
+    CALL FinalizeEquationOfState_TABLE
+
+    CALL FinalizeOpacities_TABLE
 
     CALL FinalizeReferenceElementX
 
@@ -211,4 +298,4 @@ CONTAINS
   END SUBROUTINE FinalizeDriver
 
 
-END PROGRAM ApplicationDriverNeutrinos
+END PROGRAM ApplicationDriver_Neutrinos
