@@ -4923,6 +4923,8 @@ CONTAINS
 
       ! --- 7 (GradPsi) is deferred ---
 
+      EnergyDensitySourceTerms(7,iNX,iX1,iX2,iX3) = Zero
+
       ! --- Energy Increment ---
 
       dU(iNX,iX1,iX2,iX3,iCF_E) &
