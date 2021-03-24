@@ -1,5 +1,5 @@
 MOMENT_CLOSURE = MINERBO
-MICROPHYSICS   = WEAKLIB
+MICROPHYSICS  ?=
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
