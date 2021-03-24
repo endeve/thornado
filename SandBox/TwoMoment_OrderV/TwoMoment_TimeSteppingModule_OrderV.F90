@@ -210,7 +210,7 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
                  Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM )
 
-        ! --- Fixme: Add fluid Increment here ---
+        CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
       END IF
