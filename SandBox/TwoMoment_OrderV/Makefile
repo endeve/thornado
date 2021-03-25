@@ -101,6 +101,7 @@ ApplicationDriverNeutrinos: \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	ApplicationDriverNeutrinos.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriverNeutrinos_$(MACHINE) \
@@ -115,6 +116,7 @@ ApplicationDriverNeutrinos: \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	ApplicationDriverNeutrinos.o \
 	$(LIBRARIES)
@@ -343,7 +345,24 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
   RadiationFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   EquationOfStateModule_TABLE.o \
+	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+	TwoMoment_UtilitiesModule_OrderV.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.F90
+
+TwoMoment_NeutrinoMatterSolverModule_OrderV.o: \
+  KindModule.o \
+	UnitsModule.o \
+  ProgramHeaderModule.o \
+	TimersModule.o \
+  ArrayUtilitiesModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleE.o \
+	MeshModule.o \
+  RadiationFieldsModule.o \
+	EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
 
 TwoMoment_TimeSteppingModule_OrderV.o: \
   KindModule.o \

@@ -15,12 +15,16 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_T, iAF_E , iAF_Ye
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, &
-    nCR
+    nSpecies, iNuE, iNuE_Bar, &
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Auxiliary_TABLE
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    SolveMatterEquations_FP_NestedAA
+  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+    ComputePrimitive_TwoMoment_Vector_Richardson
 
   IMPLICIT NONE
   PRIVATE
@@ -38,7 +42,18 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
   REAL(DP), ALLOCATABLE :: PF_N(:,:)
   REAL(DP), ALLOCATABLE :: AF_N(:,:)
-  REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:)
+
+  REAL(DP), ALLOCATABLE, TARGET :: CR_N(:,:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: PR_N(:,:,:,:)
+
+  REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: N_P, G1_P, G2_P, G3_P
+  REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: J_P, H1_P, H2_P, H3_P
+  
+  INTEGER,  DIMENSION(:), ALLOCATABLE :: PositionIndexZ
+
+  INTEGER, ALLOCATABLE :: nIterations_Inner(:)
+  INTEGER, ALLOCATABLE :: nIterations_Outer(:)
+  INTEGER, ALLOCATABLE :: nIterations_Prim(:)
 
 CONTAINS
 
@@ -94,6 +109,11 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
+    ! REAL(DP), DIMENSION(:,:,:), POINTER :: N_P, G1_P, G2_P, G3_P
+    ! REAL(DP), DIMENSION(:,:,:), POINTER :: J_P, H1_P, H2_P, H3_P
+
+
+
     INTEGER :: iN_X
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
@@ -123,11 +143,32 @@ CONTAINS
 
     END DO
 
+
+    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+          ( N_P, G1_P, G2_P, G3_P, &
+            J_P, H1_P, H2_P, H3_P, &
+            PF_N(:,iPF_V1), &
+            PF_N(:,iPF_V2), &
+            PF_N(:,iPF_V3), &
+            GX_N(:,iGF_Gm_dd_11), &
+            GX_N(:,iGF_Gm_dd_22), &
+            GX_N(:,iGF_Gm_dd_33), &
+            PositionIndexZ, nIterations_Prim )
+
+
     ! --- EOS Table Lookup ---
 
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+
+
+    CALL SolveMatterEquations_FP_NestedAA &
+           ( dt, PR_N(:,:,:,iCR_N), PR_N(:,:,:,iCR_G1), PR_N(:,:,:,iCR_G2), PR_N(:,:,:,iCR_G3), &
+             PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
+             PF_N(:,iPF_D ), AF_N(:,iAF_T), AF_N(:,iAF_Ye), AF_N(:,iAF_E), &
+             GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), GX_N(:,iGF_Gm_dd_33), &
+             nIterations_Inner, nIterations_Outer )
 
     CALL FinalizeCollisions
 
@@ -152,6 +193,9 @@ CONTAINS
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
 
+
+    INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
+
     iE_B0 = iZ_B0(1)  ; iE_E0 = iZ_E0(1)
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iE_B1 = iZ_B1(1)  ; iE_E1 = iZ_E1(1)
@@ -163,6 +207,7 @@ CONTAINS
 
     nX_G = nDOFX * PRODUCT( nX )
     nE_G = nDOFE * nE
+    nZ_G = nE_G * nX_G * nSpecies
 
     ALLOCATE( GE_N(nE_G,nGE) )
     ALLOCATE( GX_N(nX_G,nGF) )
@@ -172,6 +217,38 @@ CONTAINS
     ALLOCATE( AF_N(nX_G,nAF) )
 
     ALLOCATE( CR_N(nE_G,nX_G,nSpecies,nCR) )
+    ALLOCATE( PR_N(nE_G,nX_G,nSpecies,nCR) )
+
+    ALLOCATE( PositionIndexZ(nZ_G) )
+
+    iZ = 0
+    DO iS = 1, nSpecies
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+      iZ = iZ + 1
+      PositionIndexZ(iZ) = iN_X
+
+    END DO
+    END DO
+    END DO
+
+    ALLOCATE( nIterations_Inner(nX_G) )
+    ALLOCATE( nIterations_Outer(nX_G) )
+    ALLOCATE( nIterations_Prim(nZ_G) )
+
+    nIterations_Inner(:) = 0
+    nIterations_Outer(:) = 0
+    nIterations_Prim(:) = 0
+
+    N_P(1:nZ_G)  => CR_N(:,:,:,iCR_N )
+    G1_P(1:nZ_G) => CR_N(:,:,:,iCR_G1)
+    G2_P(1:nZ_G) => CR_N(:,:,:,iCR_G2)
+    G3_P(1:nZ_G) => CR_N(:,:,:,iCR_G3)
+    J_P(1:nZ_G)  => PR_N(:,:,:,iCR_N )
+    H1_P(1:nZ_G) => PR_N(:,:,:,iCR_G1)
+    H2_P(1:nZ_G) => PR_N(:,:,:,iCR_G2)
+    H3_P(1:nZ_G) => PR_N(:,:,:,iCR_G3)
+
 
   END SUBROUTINE InitializeCollisions
 
@@ -180,7 +257,13 @@ CONTAINS
 
     DEALLOCATE( GE_N, GX_N )
     DEALLOCATE( CF_N, PF_N, AF_N )
-    DEALLOCATE( CR_N )
+    DEALLOCATE( CR_N, PR_N )
+    DEALLOCATE( PositionIndexZ )
+    DEALLOCATE( nIterations_Inner )
+    DEALLOCATE( nIterations_Outer )
+    DEALLOCATE( nIterations_Prim )
+    NULLIFY( N_P, G1_P, G2_P, G3_P )
+    NULLIFY( J_P, H1_P, H2_P, H3_P )
 
   END SUBROUTINE FinalizeCollisions
 

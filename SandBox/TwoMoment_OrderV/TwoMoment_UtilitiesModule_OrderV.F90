@@ -48,6 +48,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: Flux_X3
   PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_dd
+  PUBLIC :: EddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: ComputeHeatFluxTensorComponents_udd
   PUBLIC :: NumericalFlux_LLF
@@ -497,9 +498,9 @@ CONTAINS
                    ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
                      Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) )
 
-          vMag = SQRT(V_u_1(iX) * V_u_1(iX) &
-                    + V_u_2(iX) * V_u_2(iX) &
-                    + V_u_3(iX) * V_u_3(iX))
+          vMag = SQRT(V_u_1(iX) * Gm_dd_11(iX) * V_u_1(iX) &
+                    + V_u_2(iX) * Gm_dd_22(iX) * V_u_2(iX) &
+                    + V_u_3(iX) * Gm_dd_33(iX) * V_u_3(iX))
 
           Omega = One / (One + vMag)
 
