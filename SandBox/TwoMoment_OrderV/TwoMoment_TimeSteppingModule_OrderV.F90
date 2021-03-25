@@ -19,8 +19,6 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     TimersStart, &
     TimersStop, &
     Timer_TimeStepper
-  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
-    DetectTroubledCells_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -187,9 +185,6 @@ CONTAINS
 
         IF( jS == iS - 1 )THEN
 
-          CALL DetectTroubledCells_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Mi )
-
           ! --- Apply Limiters ---
 
           CALL ApplySLopeLimiter_TwoMoment &
@@ -252,9 +247,6 @@ CONTAINS
         END IF
 
       END DO
-
-      CALL DetectTroubledCells_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Mi )
 
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
