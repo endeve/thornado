@@ -867,7 +867,7 @@ CONTAINS
       vMag = SQRT(V_u_1 * Gm_dd_11 * V_u_1 &
                 + V_u_2 * Gm_dd_22 * V_u_2 &
                 + V_u_3 * Gm_dd_33 * V_u_3)
-                
+
       Omega = One / (One + vMag)
 
       vI = V_u_1 * UVEC(2) + V_u_2 *  UVEC(3) + V_u_3 *  UVEC(4)
