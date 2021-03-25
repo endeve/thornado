@@ -35,6 +35,8 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
     nCR
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    DetectTroubledCells_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -203,8 +205,6 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter .OR. nDOFX == 1 ) RETURN
 
-    CALL TimersStart( Timer_SlopeLimiter )
-
     IF( PRESENT( SuppressBC_Option ) )THEN
       SuppressBC = SuppressBC_Option
     ELSE
@@ -237,8 +237,6 @@ CONTAINS
 
     END SELECT
 
-    CALL TimersStop( Timer_SlopeLimiter )
-
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
 
 
@@ -269,10 +267,16 @@ CONTAINS
     REAL(DP) :: &
       dSlope, Alpha
     LOGICAL  :: &
+      TroubledCell &
+           (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    LOGICAL  :: &
       Limited &
-           (iZ_B1(2):iZ_E1(2), &
-            iZ_B1(3):iZ_E1(3), &
-            iZ_B1(4):iZ_E1(4), &
+           (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
     REAL(DP) :: &
       C_0  (iZ_B0(2):iZ_E0(2), &
@@ -326,6 +330,11 @@ CONTAINS
             iZ_B0(3):iZ_E0(3), &
             iZ_B0(4):iZ_E0(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+
+    CALL DetectTroubledCells_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, TroubledCell )
+
+    CALL TimersStart( Timer_SlopeLimiter )
 
     iE_B0 = iZ_B0(1); iX_B0 = iZ_B0(2:4)
     iE_E0 = iZ_E0(1); iX_E0 = iZ_E0(2:4)
@@ -461,23 +470,27 @@ CONTAINS
 
       Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .FALSE.
 
-      dSlope &
-        = MAX( ABS( CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
-                    -C_X1(iX1,iX2,iX3,iE_G,iCR,iS) ), &
-               ABS( CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
-                    -C_X2(iX1,iX2,iX3,iE_G,iCR,iS) ), &
-               ABS( CL_X3(iX1,iX2,iX3,iE_G,iCR,iS) &
-                    -C_X3(iX1,iX2,iX3,iE_G,iCR,iS) ) )
+      IF( TroubledCell(iX1,iX2,iX3,iE_G,iS) )THEN
 
-      IF( dSlope > SlopeTolerance * ABS( C_0(iX1,iX2,iX3,iE_G,iCR,iS) ) )THEN
+        dSlope &
+          = MAX( ABS( CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
+                      -C_X1(iX1,iX2,iX3,iE_G,iCR,iS) ), &
+                 ABS( CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
+                      -C_X2(iX1,iX2,iX3,iE_G,iCR,iS) ), &
+                 ABS( CL_X3(iX1,iX2,iX3,iE_G,iCR,iS) &
+                      -C_X3(iX1,iX2,iX3,iE_G,iCR,iS) ) )
 
-        uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) &
-          =   M2N_Vec_0(:) * C_0  (iX1,iX2,iX3,iE_G,iCR,iS) &
-            + M2N_Vec_1(:) * CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
-            + M2N_Vec_2(:) * CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
-            + M2N_Vec_3(:) * CL_X3(iX1,iX2,iX3,iE_G,iCR,iS)
+        IF( dSlope > SlopeTolerance * ABS( C_0(iX1,iX2,iX3,iE_G,iCR,iS) ) )THEN
 
-        Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .TRUE.
+          uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) &
+            =   M2N_Vec_0(:) * C_0  (iX1,iX2,iX3,iE_G,iCR,iS) &
+              + M2N_Vec_1(:) * CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
+              + M2N_Vec_2(:) * CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
+              + M2N_Vec_3(:) * CL_X3(iX1,iX2,iX3,iE_G,iCR,iS)
+
+          Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .TRUE.
+
+        END IF
 
       END IF
 
@@ -573,6 +586,8 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_SlopeLimiter_Permute )
+
+    CALL TimersStop( Timer_SlopeLimiter )
 
   END SUBROUTINE ApplySlopeLimiter_TVD
 
