@@ -2,7 +2,7 @@ THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-DEFINES += -DTHORNADO_DEBUG
+#DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
@@ -12,13 +12,13 @@ ApplicationDriver: \
 	$(thornado) \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
-	AccretionShockDiagnosticsModule.o \
+	AccretionShockUtilitiesModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
-	AccretionShockDiagnosticsModule.o \
+	AccretionShockUtilitiesModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
@@ -49,7 +49,7 @@ ApplicationDriver.o: \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
-  AccretionShockDiagnosticsModule.o \
+  AccretionShockUtilitiesModule.o \
   ApplicationDriver.F90
 
 InitializationModule_Relativistic.o: \
@@ -75,12 +75,17 @@ TimeSteppingModule_SSPRK.o: \
   TimersModule_Euler.o \
   TimeSteppingModule_SSPRK.F90
 
-AccretionShockDiagnosticsModule.o: \
+AccretionShockUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_IDEAL.o \
+  EquationOfStateModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
   UnitsModule.o \
   QuadratureModule.o \
-  AccretionShockDiagnosticsModule.f90
+  Euler_ErrorModule.o \
+  AccretionShockUtilitiesModule.f90

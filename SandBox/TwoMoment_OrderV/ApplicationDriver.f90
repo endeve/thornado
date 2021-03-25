@@ -47,13 +47,16 @@ PROGRAM ApplicationDriver
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, dt, t_end, V_0(3)
+  REAL(DP)      :: t, dt, t_end, dt_CFL, dt_0, dt_grw, V_0(3)
   REAL(DP)      :: D_0, Chi, Sigma
   REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'SineWaveStreaming'
+
+  dt_0   = HUGE( One )
+  dt_grw = One
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -69,7 +72,7 @@ PROGRAM ApplicationDriver
       nE  = 1
       eL  = 0.0_DP
       eR  = 1.0_DP
-      bcE = 0
+      bcE = 1
 
       nNodes = 2
 
@@ -88,13 +91,13 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
+      UseSlopeLimiter = .TRUE.
 
       UsePositivityLimiter = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
-      nX  = [ 16, 8, 8 ]
+      nX  = [ 16, 1, 1 ]
       xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -102,7 +105,7 @@ PROGRAM ApplicationDriver
       nE  = 1
       eL  = 0.0_DP
       eR  = 1.0_DP
-      bcE = 0
+      bcE = 1
 
       nNodes = 3
 
@@ -156,7 +159,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      Spectrum = 'Bose-Einstein'
+      Spectrum = 'Fermi-Dirac'
 
       Direction = 'X' ! --- (X,Y, or Z)
 
@@ -207,7 +210,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 2.0d-0
+      t_end   = 2.0d+1
       iCycleD = 1
       iCycleW = 100
       maxCycles = 1000000
@@ -441,7 +444,7 @@ PROGRAM ApplicationDriver
       nE  = 1
       eL  = 0.0d0
       eR  = 1.0d0
-      bcE = 0
+      bcE = 1
 
       nNodes = 2
 
@@ -459,6 +462,41 @@ PROGRAM ApplicationDriver
       Sigma = 1.0d+2
 
       UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .TRUE.
+
+    CASE( 'HomogeneousSphere1D' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 200, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 5.0_DP,     Pi,  TwoPi ]
+      bcX = [ 30, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 2.0d+1
+      dt_0    = 1.0d-5
+      dt_grw  = 1.01_DP
+      iCycleD = 1
+      iCycleW = 500
+      maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.8d0
+      Chi   = 4.0d0
+      Sigma = 0.0d0
+
+      UseSlopeLimiter = .TRUE.
 
       UsePositivityLimiter = .TRUE.
 
@@ -533,7 +571,6 @@ PROGRAM ApplicationDriver
   ! --- Evolve ---
 
   t  = 0.0_DP
-  dt = 0.3_DP * MINVAL( (xR-xL) / DBLE(nX) ) / ( Two * DBLE(nNodes-1) + One )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -544,6 +581,26 @@ PROGRAM ApplicationDriver
   DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
     iCycle = iCycle + 1
+
+    dt_CFL = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
+
+    IF( dt_grw > One )THEN
+
+      IF( iCycle == 1 )THEN
+
+        dt = MIN( dt_CFL, dt_0 )
+
+      ELSE
+
+        dt = MIN( dt_CFL, dt_grw * dt )
+
+      END IF
+
+    ELSE
+
+      dt = dt_CFL
+
+    END IF
 
     IF( t + dt > t_end )THEN
 
@@ -727,7 +784,7 @@ CONTAINS
 
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option &
-               = 2.0_DP, &
+               = 1.75_DP, &
              UseSlopeLimiter_Option &
                = UseSlopeLimiter, &
              Verbose_Option &

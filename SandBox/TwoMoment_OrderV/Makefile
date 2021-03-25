@@ -1,5 +1,5 @@
 MOMENT_CLOSURE = MINERBO
-#MICROPHYSICS   = WEAKLIB
+MICROPHYSICS  ?=
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -15,7 +15,7 @@ VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 .DEFAULT_GOAL := all
 
 all: TwoMomentClosure PrimitiveConserved TimeStepper \
-     ApplicationDriver ApplicationDriverNeutrinos
+     ApplicationDriver ApplicationDriver_Neutrinos
 
 TwoMomentClosure: \
 	$(thornado) \
@@ -89,7 +89,7 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
-ApplicationDriverNeutrinos: \
+ApplicationDriver_Neutrinos: \
 	$(weaklib) \
 	$(thornado) \
 	TwoMoment_TimersModule_OrderV.o \
@@ -97,14 +97,13 @@ ApplicationDriverNeutrinos: \
 	TwoMoment_TroubledCellIndicatorModule.o \
 	TwoMoment_SlopeLimiterModule_OrderV.o \
 	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
-	ApplicationDriverNeutrinos.o
-	$(FLINKER) $(FLAGS) -o ApplicationDriverNeutrinos_$(MACHINE) \
+	InitializationModule_Neutrinos.o \
+	ApplicationDriver_Neutrinos.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriver_Neutrinos_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	TwoMoment_TimersModule_OrderV.o \
@@ -112,13 +111,12 @@ ApplicationDriverNeutrinos: \
 	TwoMoment_TroubledCellIndicatorModule.o \
 	TwoMoment_SlopeLimiterModule_OrderV.o \
 	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
-	ApplicationDriverNeutrinos.o \
+	InitializationModule_Neutrinos.o \
+	ApplicationDriver_Neutrinos.o \
 	$(LIBRARIES)
 
 clean:
@@ -133,8 +131,8 @@ clobber: clean
 	rm -rf TimeStepper_$(MACHINE).dSYM
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
-	rm -f  ApplicationDriverNeutrinos_$(MACHINE)
-	rm -rf ApplicationDriverNeutrinos_$(MACHINE).dSYM
+	rm -f  ApplicationDriver_Neutrinos_$(MACHINE)
+	rm -rf ApplicationDriver_Neutrinos_$(MACHINE).dSYM
 
 TwoMomentClosure.o: \
   KindModule.o \
@@ -217,13 +215,14 @@ ApplicationDriver.o: \
   TwoMoment_TroubledCellIndicatorModule.o \
   ApplicationDriver.f90
 
-ApplicationDriverNeutrinos.o: \
+ApplicationDriver_Neutrinos.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
   GeometryFieldsModuleE.o \
-  ApplicationDriverNeutrinos.f90
+  InitializationModule_Neutrinos.o \
+  ApplicationDriver_Neutrinos.f90
 
 InitializationModule.o: \
   KindModule.o \
@@ -238,6 +237,9 @@ InitializationModule.o: \
   TwoMoment_UtilitiesModule_OrderV.o \
   TwoMoment_OpacityModule_OrderV.o \
   InitializationModule.F90
+
+InitializationModule_Neutrinos.o: \
+  InitializationModule_Neutrinos.F90
 
 TwoMoment_TimersModule_OrderV.o: \
   KindModule.o \

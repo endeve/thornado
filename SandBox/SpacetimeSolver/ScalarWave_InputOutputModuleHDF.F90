@@ -21,7 +21,9 @@ MODULE ScalarWave_InputOutputModuleHDF
     FromField3D, &
     Field4D
   USE ScalarFieldsModule, ONLY: &
-    uSF, nSF, namesSF
+    uSF, nSF, &
+    unitsSF, &
+    namesSF
 
   USE HDF5
 
@@ -100,8 +102,7 @@ CONTAINS
     CHARACTER(256) :: DatasetName
     INTEGER        :: iSF
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
-
+    
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
     FileName &
@@ -162,7 +163,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uSF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iSF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ), &
+                   nDOFX, NodeNumberTableX ) / unitsSF(iSF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -172,6 +173,7 @@ CONTAINS
     CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE WriteScalarFieldsHDF
+
 
   SUBROUTINE ReadScalarFieldsHDF( Time )
 
@@ -380,5 +382,6 @@ CONTAINS
     call H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset4DHDF
+
 
 END MODULE ScalarWave_InputOutputModuleHDF

@@ -24,8 +24,9 @@ MODULE Euler_BoundaryConditionsModule
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_BoundaryConditions, &
-    Timer_Euler_CopyIn, &
-    Timer_Euler_CopyOut
+    Timer_Euler_BC_ApplyBC, &
+    Timer_Euler_BC_CopyIn, &
+    Timer_Euler_BC_CopyOut
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -104,12 +105,14 @@ CONTAINS
 
     INTEGER :: iApplyBC(3)
 
+    CALL TimersStart_Euler( Timer_Euler_BoundaryConditions )
+
     iApplyBC = iApplyBC_Euler_Both
 
     IF( PRESENT( iApplyBC_Option ) ) &
       iApplyBC = iApplyBC_Option
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_BC_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -119,9 +122,9 @@ CONTAINS
     !$ACC COPYIN(  U, iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_BC_CopyIn )
 
-    CALL TimersStart_Euler( Timer_Euler_BoundaryConditions )
+    CALL TimersStart_Euler( Timer_Euler_BC_ApplyBC )
 
     CALL ApplyBC_Euler_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(1) )
 
@@ -129,9 +132,9 @@ CONTAINS
 
     CALL ApplyBC_Euler_X3( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(3) )
 
-    CALL TimersStop_Euler( Timer_Euler_BoundaryConditions )
+    CALL TimersStop_Euler( Timer_Euler_BC_ApplyBC )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStart_Euler( Timer_Euler_BC_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -143,7 +146,9 @@ CONTAINS
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_BC_CopyOut )
+
+    CALL TimersStop_Euler( Timer_Euler_BoundaryConditions )
 
   END SUBROUTINE ApplyBoundaryConditions_Euler
 

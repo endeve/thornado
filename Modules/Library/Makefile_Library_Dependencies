@@ -136,7 +136,7 @@ PolynomialBasisMappingModule.o: \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
-  PolynomialBasisMappingModule.F90
+  PolynomialBasisMappingModule.f90
 
 SubcellReconstructionModule.o: \
   KindModule.o \

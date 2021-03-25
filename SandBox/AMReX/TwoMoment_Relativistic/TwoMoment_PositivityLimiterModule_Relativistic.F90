@@ -739,7 +739,6 @@ m=0
         Gamma_Min = MIN( Gamma, Gamma_Min )
 
         IF( Gamma_Min < Min_2 )THEN
-print*, iZ1, iZ2
           CALL SolveTheta_Bisection &
                  ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
                    G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &

@@ -8,6 +8,8 @@ SpacetimeTest: \
 	ScalarWave_ProgramInitializationModule.o \
 	InitializationModule.o \
 	ScalarWave_InputOutputModuleHDF.o \
+	ScalarWave_ErrorModule.o \
+	ScalarWave_BoundaryConditionsModule.o \
 	ScalarWave_dgDiscretizationModule.o \
 	TimeSteppingModule_SSPRK.o \
 	ScalarWaveTest.o 
@@ -17,7 +19,9 @@ SpacetimeTest: \
 	ScalarWave_ProgramInitializationModule.o \
 	InitializationModule.o \
 	ScalarWave_InputOutputModuleHDF.o \
-	ScalarWave_dgDiscretizationModule.o
+	ScalarWave_ErrorModule.o \
+	ScalarWave_BoundaryConditionsModule.o \
+	ScalarWave_dgDiscretizationModule.o \
 	TimeSteppingModule_SSPRK.o \
 	ScalarWaveTest.o \
 	$(LIBRARIES)
@@ -31,6 +35,7 @@ clobber: clean
 ScalarFieldsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  MeshModule.o \
   ScalarFieldsModule.F90
 
 ScalarWave_ProgramInitializationModule.o: \
@@ -65,13 +70,27 @@ ScalarWave_InputOutputModuleHDF.o: \
   ScalarFieldsModule.o \
   ScalarWave_InputOutputModuleHDF.F90
 
+ScalarWave_ErrorModule.o: \
+  UtilitiesModule.o \
+  ScalarWave_ErrorModule.F90
+
+ScalarWave_BoundaryConditionsModule.o: \
+  KindModule.o \
+  MeshModule.o \
+  ProgramHeaderModule.o \
+  ScalarFieldsModule.o \
+  ScalarWAve_ErrorModule.o \
+  ScalarWave_BoundaryConditionsModule.F90
+
 ScalarWave_dgDiscretizationModule.o: \
   KindModule.o \
   ProgramheaderModule.o \
   MeshModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModulex_Lagrange.o \
-  ScalarFieldsModule.F90
+  ScalarFieldsModule.o \
+  ScalarWave_BoundaryConditionsModule.o \
+  ScalarWave_dgDiscretizationModule.F90
 
 TimeSteppingModule_SSPRK.o: \
   KindModule.o \
@@ -81,8 +100,14 @@ TimeSteppingModule_SSPRK.o: \
 
 ScalarWaveTest.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
   ScalarWave_ProgramInitializationModule.o \
   InitializationModule.o \
   ScalarWave_InputOutputModuleHDF.o \
+  TimeSteppingModule_SSPRK.o \
+  ScalarFieldsModule.o \
+  ScalarWave_dgDiscretizationModule.o \
   ScalarWaveTest.f90
 

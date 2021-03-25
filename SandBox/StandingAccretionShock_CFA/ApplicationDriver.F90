@@ -79,7 +79,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
-  USE AccretionShockDiagnosticsModule, ONLY: &
+  USE AccretionShockUtilitiesModule, ONLY: &
+    WriteInitialConditionsToFile, &
     ComputeAccretionShockDiagnostics
 
   IMPLICIT NONE
@@ -92,6 +93,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: SuppressTally
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseConservativeCorrection
@@ -107,6 +109,8 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
   REAL(DP)      :: ZoomX(3)
+  LOGICAL       :: WriteGF = .TRUE., WriteFF = .TRUE.
+  REAL(DP)      :: Timer_Evolution
 
   ! --- Standing accretion shock ---
 
@@ -118,10 +122,23 @@ PROGRAM ApplicationDriver
               rPerturbationInner, rPerturbationOuter
   REAL(DP) :: Power(0:2)
 
-  LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .TRUE.
+  LOGICAL  :: WriteAccretionShockDiagnostics = .TRUE.
 
-  REAL(DP) :: Timer_Evolution
+  CHARACTER(32) :: Parameters
+
+  ! --- Relaxation Parameters ---
+
+  LOGICAL            :: InitializeFluidFromFile          = .FALSE.
+  LOGICAL            :: WriteInitialConditionsToFile_SAS = .FALSE.
+  CHARACTER(LEN=128) :: InitialConditionsFileName
+
+  WRITE(Parameters,'(A)') 'MPNS1.4_Mdot0.3_Rs180'
+
+  WRITE(InitialConditionsFileName,'(A)') &
+    'InitialConditions_' // TRIM( Parameters )
+
+  SuppressTally = .FALSE.
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -134,8 +151,8 @@ PROGRAM ApplicationDriver
   ZoomX             = 1.0_DP
 
   Gamma = 4.0e0_DP / 3.0e0_DP
-  t_end = 3.0e2_DP * Millisecond
-  bcX = [ 100, 0, 0 ]
+  t_end = 5.0e1_DP * Millisecond
+  bcX = [ 100, 3, 0 ]
 
   MassPNS            = 1.4_DP    * SolarMass
   RadiusPNS          = 40.0_DP   * Kilometer
@@ -143,14 +160,14 @@ PROGRAM ApplicationDriver
   AccretionRate      = 0.3_DP    * ( SolarMass / Second )
   PolytropicConstant = 2.0e14_DP * ( Erg / Centimeter**3 &
                                      / ( Gram / Centimeter**3 )**( Gamma ) )
-  ApplyPerturbation     = .TRUE.
+  ApplyPerturbation     = .FALSE.
   PerturbationOrder     = 0
   PerturbationAmplitude = 0.04_DP
   rPerturbationInner    = 260.0_DP * Kilometer
   rPerturbationOuter    = 280.0_DP * Kilometer
 
-  nX  = [ 960, 1, 1 ]
-  swX = [ 1, 0, 0 ]
+  nX  = [ 960, 32, 1 ]
+  swX = [ 1, 1, 0 ]
   xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
   xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
@@ -160,13 +177,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -177,8 +194,8 @@ PROGRAM ApplicationDriver
   UseSlopeLimiter           = .TRUE.
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75d0
-  BetaTVB                   = 0.0d0
-  SlopeTolerance            = 1.0d-6
+  BetaTVB                   = 0.0e0_DP
+  SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
@@ -187,8 +204,8 @@ PROGRAM ApplicationDriver
   ! --- Positivity Limiter ---
 
   UsePositivityLimiter = .TRUE.
-  Min_1                = 1.0d-13
-  Min_2                = 1.0d-13
+  Min_1                = 1.0e-13_DP
+  Min_2                = 1.0e-13_DP
 
   ! === End of User Input ===
 
@@ -257,16 +274,21 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
+  uCF = Zero ! Without this, crashes when copying data in TimeStepper
+  uDF = Zero ! Without this, crashes in IO
+
   CALL InitializeFields_Relativistic &
-         ( MassPNS_Option               = MassPNS, &
-           ShockRadius_Option           = ShockRadius, &
-           AccretionRate_Option         = AccretionRate, &
-           PolytropicConstant_Option    = PolytropicConstant, &
-           ApplyPerturbation_Option     = ApplyPerturbation, &
-           PerturbationOrder_Option     = PerturbationOrder, &
-           PerturbationAmplitude_Option = PerturbationAmplitude, &
-           rPerturbationInner_Option    = rPerturbationInner, &
-           rPerturbationOuter_Option    = rPerturbationOuter )
+         ( MassPNS_Option                   = MassPNS, &
+           ShockRadius_Option               = ShockRadius, &
+           AccretionRate_Option             = AccretionRate, &
+           PolytropicConstant_Option        = PolytropicConstant, &
+           ApplyPerturbation_Option         = ApplyPerturbation, &
+           PerturbationOrder_Option         = PerturbationOrder, &
+           PerturbationAmplitude_Option     = PerturbationAmplitude, &
+           rPerturbationInner_Option        = rPerturbationInner, &
+           rPerturbationOuter_Option        = rPerturbationOuter, &
+           InitializeFluidFromFile_Option   = InitializeFluidFromFile, &
+           InitialConditionsFileName_Option = InitialConditionsFileName )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -278,6 +300,12 @@ PROGRAM ApplicationDriver
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uGF )
+#endif
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -307,9 +335,18 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
+           SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
+
+  IF( nDimsX .GT. 1 .AND. WriteAccretionShockDiagnostics )THEN
+
+    OPEN( 100, FILE = TRIM( Parameters ) &
+                        // '_PowerInLegendreModes.dat' )
+    WRITE(100,'(A)') 'Time [ms], Power(0), Power(1), Power(2)'
+
+  END IF
 
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
@@ -371,6 +408,12 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uGF )
+#endif
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -383,15 +426,24 @@ PROGRAM ApplicationDriver
 
     END IF
 
-!!$    CALL ComputeFromConserved_Euler_Relativistic &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!!$
-!!$    CALL ComputeAccretionShockDiagnostics &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-!!$
-!!$    CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+    IF( nDimsX .GT. 1 .AND. WriteAccretionShockDiagnostics )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      WRITE(100,'(ES24.16E3,1x,ES24.16E3,1x,ES24.16E3,1x,ES24.16E3)') &
+        t / Millisecond, Power(0), Power(1), Power(2)
+!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
+    END IF
 
   END DO
+
+  IF( nDimsX .GT. 1 .AND. WriteAccretionShockDiagnostics ) &
+    CLOSE( 100 )
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
@@ -403,11 +455,24 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uGF )
+#endif
+
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL ComputeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+
+  IF( WriteInitialConditionsToFile_SAS )THEN
+
+    CALL WriteInitialConditionsToFile &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, InitialConditionsFileName )
+
+  END IF
 
   CALL FinalizeTally_Euler_Relativistic
 

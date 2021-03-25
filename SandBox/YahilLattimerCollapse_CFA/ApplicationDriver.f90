@@ -161,11 +161,11 @@ PROGRAM ApplicationDriver
   t_end = CollapseTime - 0.5_DP * Millisecond
   bcX = [ 30, 0, 0 ]
 
-  nX    = [ 256                 , 1     , 1      ]
+  nX    = [ 128                 , 1     , 1      ]
   swX   = [ 1                   , 0     , 0      ]
   xL    = [ Zero                , Zero  , Zero   ]
   xR    = [ CoreRadius          , Pi    , TwoPi  ]
-  ZoomX = [ 1.033358317557642_DP, 1.0_DP, 1.0_DP ]
+  ZoomX = [ 1.071835456828339_DP, 1.0_DP, 1.0_DP ]
 
   ! --- DG ---
 
@@ -175,7 +175,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -233,10 +233,10 @@ PROGRAM ApplicationDriver
                                          iX_B0(2):iX_E0(2), &
                                          iX_B0(3):iX_E0(3),1:6) )
 
-  ALLOCATE( Sources(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:6) )
-  Sources = 0.0_DP
+  ALLOCATE( Sources(1:7,1:nDOFX,iX_B0(1):iX_E0(1), &
+                                iX_B0(2):iX_E0(2), &
+                                iX_B0(3):iX_E0(3)) )
+  Sources = Zero
 
   CALL InitializeGravitySolver_CFA_Poseidon
 

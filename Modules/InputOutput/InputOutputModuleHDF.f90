@@ -1085,6 +1085,26 @@ CONTAINS
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
                / U % LengthX3Unit, DatasetName, FILE_ID )
 
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/X1_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Center(1:nX(1)) / U % LengthX1Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Center(1:nX(2)) / U % LengthX2Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
+             DatasetName, FILE_ID )
+
     END ASSOCIATE ! U
 
     ! --- Write Source Term Diagnostic Variables ---
@@ -1095,7 +1115,7 @@ CONTAINS
 
     ! --- Lapse Gradient ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Lapse Gradient'
+    DatasetName = TRIM( GroupName ) // '/Lapse Gradient'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
@@ -1106,7 +1126,7 @@ CONTAINS
 
     ! --- Pressure Tensor times Gradient of Shift Vector ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Pressure times GradShift'
+    DatasetName = TRIM( GroupName ) // '/Pressure times GradShift'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
@@ -1117,7 +1137,7 @@ CONTAINS
 
     ! --- Christoffel Symbol ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Christoffel Symbol'
+    DatasetName = TRIM( GroupName ) // '/Christoffel Symbol'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
@@ -1128,7 +1148,7 @@ CONTAINS
 
     ! --- Pressure Tensor times DivGridVolume ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Pressure times DivGridVolume'
+    DatasetName = TRIM( GroupName ) // '/Pressure times DivGridVolume'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
@@ -1139,7 +1159,7 @@ CONTAINS
 
     ! --- Grid Volume Divergence---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Grid Volume Divergence'
+    DatasetName = TRIM( GroupName ) // '/Grid Volume Divergence'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
@@ -1150,7 +1170,7 @@ CONTAINS
 
     ! --- Square of Extrinsic Curvature (1D) ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Square of Kij (1D)'
+    DatasetName = TRIM( GroupName ) // '/Square of Kij (1D)'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
@@ -1161,7 +1181,7 @@ CONTAINS
 
     ! --- Gradient of Conformal Factor ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'GradPsi'
+    DatasetName = TRIM( GroupName ) // '/GradPsi'
 
     CALL WriteDataset3DHDF &
            ( Field3D &

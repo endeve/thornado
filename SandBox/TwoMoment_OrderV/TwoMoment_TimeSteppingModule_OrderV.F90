@@ -19,8 +19,6 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     TimersStart, &
     TimersStop, &
     Timer_TimeStepper
-  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
-    DetectTroubledCells_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -187,9 +185,6 @@ CONTAINS
 
         IF( jS == iS - 1 )THEN
 
-          CALL DetectTroubledCells_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Mi )
-
           ! --- Apply Limiters ---
 
           CALL ApplySLopeLimiter_TwoMoment &
@@ -210,7 +205,7 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
                  Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM )
 
-        ! --- Fixme: Add fluid Increment here ---
+        CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
       END IF
@@ -252,9 +247,6 @@ CONTAINS
         END IF
 
       END DO
-
-      CALL DetectTroubledCells_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Mi )
 
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )

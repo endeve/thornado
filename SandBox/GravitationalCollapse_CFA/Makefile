@@ -7,7 +7,7 @@ WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
-all: ApplicationDriver TestPressure
+all: ApplicationDriver ComputePrimitiveTest TestPressure
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -37,6 +37,16 @@ TestPressure: \
 	TestPressure.o \
 	$(LIBRARIES)
 
+ComputePrimitiveTest: \
+	$(weaklib) \
+	$(thornado) \
+	ComputePrimitiveTest.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	ComputePrimitiveTest.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
@@ -45,6 +55,8 @@ clobber: clean
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
 	rm -f  TestPressure_$(MACHINE)
 	rm -rf TestPressure_$(MACHINE).dSYM
+	rm -f  ComputePrimitiveTest_$(MACHINE)
+	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
 
 ApplicationDriver.o: \
   KindModule.o \
@@ -110,3 +122,13 @@ TimeSteppingModule_SSPRK.o: \
   Poseidon_UtilitiesModule.o \
   Euler_dgDiscretizationModule.o \
   TimeSteppingModule_SSPRK.f90
+
+ComputePrimitiveTest.o: \
+  KindModule.o \
+  UnitsModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EquationOfStateModule_TABLE.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  ComputePrimitiveTest.f90
