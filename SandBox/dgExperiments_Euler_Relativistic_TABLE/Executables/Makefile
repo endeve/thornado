@@ -7,4 +7,6 @@ GRAVITY_SOLVER       =
 OPT_LEVEL = DEBUG
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
+USE_OMP ?= FALSE
+
 include ../Makefile

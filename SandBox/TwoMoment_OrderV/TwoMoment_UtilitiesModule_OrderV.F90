@@ -346,7 +346,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRESENT( nIterations, nIterations_Option )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
+      !$OMP PARALLEL DO
 #endif
       DO iZ = 1, nZ
         nIterations_Option(iZ) = nIterations(iZ)
@@ -382,9 +382,9 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F
     REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Alpha
 
-    REAL(DP) :: AA11, AA12, AA21, AA22, AB1, AB2, DET_AA, SUM1
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA
     REAL(DP) :: A1, A2, B
-    INTEGER  :: iZ, iP, iM
+    INTEGER  :: iZ, iP
 
     IF ( Mk > 1 ) THEN
 
@@ -937,7 +937,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP)             :: Flux_E(4), Flux_E_Old(4)
+    REAL(DP)             :: Flux_E(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), INTENT(in) :: V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(in) :: dV_u_1_dX1, dV_u_2_dX1, dV_u_3_dX1

@@ -84,6 +84,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: SuppressTally
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseConservativeCorrection
@@ -108,6 +109,8 @@ PROGRAM ApplicationDriver
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
+
+  SuppressTally = .FALSE.
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -412,8 +415,8 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
-  uCF = 0.0_DP ! Without this, crashes when copying data in TimeStepper
-  uDF = 0.0_DP ! Without this, crashes in IO
+  uCF = Zero ! Without this, crashes when copying data in TimeStepper
+  uDF = Zero ! Without this, crashes in IO
 
   CALL InitializeFields_Relativistic &
          ( AdvectionProfile_Option &
@@ -422,12 +425,6 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            nDetCells_Option = nDetCells, &
            Eblast_Option    = Eblast )
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE TO( uCF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE DEVICE(    uCF )
-#endif
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -440,6 +437,12 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uGF )
+#endif
+
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -451,7 +454,7 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
+  iCycleD = 1
 !!$  iCycleW = 1; dt_wrt = -1.0_DP
   dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
@@ -467,7 +470,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
+           SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -531,6 +535,12 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uGF )
+#endif
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -555,6 +565,12 @@ PROGRAM ApplicationDriver
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uGF )
+#endif
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

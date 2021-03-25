@@ -301,10 +301,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: I_6x6, LegendreX, Kij_X )
+    !$OMP MAP( to: I_6x6, LegendreX, Kij_X, Pij_X )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(  I_6x6, LegendreX, Kij_X )
+    !$ACC COPYIN(  I_6x6, LegendreX, Kij_X, Pij_X )
 #endif
 
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
@@ -600,6 +600,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
 
+      LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
+
       IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
 
       a(1,iCF,iX1,iX2,iX3) = U_M(2,iCF,iX1,iX2,iX3)
@@ -725,8 +727,6 @@ CONTAINS
 
       ! --- Replace Slopes and Discard High-Order Components ---
       ! --- if Limited Slopes Deviate too Much from Original ---
-
-      LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
 
       IF( SlopeDifference(iCF,iX1,iX2,iX3) &
             .GT. SlopeTolerance * ABS( U_M(1,iCF,iX1,iX2,iX3) ) )THEN
@@ -1202,7 +1202,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B0, iX_E0, D, U_M, dX1, dX2, dX3, LimitedCell, &
+    !$ACC PRESENT( iX_B0, iX_E0, D, U_M, dX1, dX2, dX3, &
     !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell, dU, &
     !$ACC          a, b, c, SlopeDifference, &
     !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU_C )
@@ -1450,6 +1450,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
 
+      LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
+
       IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
 
       ! --- Compare Limited Slopes to Original Slopes ---
@@ -1469,8 +1471,6 @@ CONTAINS
 
       ! --- Replace Slopes and Discard High-Order Components ---
       ! --- if Limited Slopes Deviate too Much from Original ---
-
-      LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
 
       IF( SlopeDifference(iCF,iX1,iX2,iX3) &
             .GT. SlopeTolerance * ABS( U_M(1,iCF,iX1,iX2,iX3) ) )THEN
@@ -1574,10 +1574,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: I_6x6, LegendreX, Kij_X )
+    !$OMP MAP( release: I_6x6, LegendreX, Kij_X, Pij_X )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE(       I_6x6, LegendreX, Kij_X )
+    !$ACC DELETE(       I_6x6, LegendreX, Kij_X, Pij_X )
 #endif
 
     DEALLOCATE( Kij_X )

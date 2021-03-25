@@ -1,11 +1,11 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
-    Two,  &
-    Pi,   &
+    One, &
+    Two, &
+    Pi, &
     TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
@@ -27,21 +27,21 @@ PROGRAM ApplicationDriver
     MinY, &
     MaxY
   USE ProgramHeaderModule, ONLY: &
-    iX_B0,  &
-    iX_B1,  &
-    iX_E0,  &
-    iX_E1,  &
-    nDimsX, &
-    nDOFX
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDOFX, &
+    nDimsX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_TABLE, &
-    FinalizeSlopeLimiter_Euler_Relativistic_TABLE,   &
+    FinalizeSlopeLimiter_Euler_Relativistic_TABLE, &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_TABLE, &
-    FinalizePositivityLimiter_Euler_Relativistic_TABLE,   &
+    FinalizePositivityLimiter_Euler_Relativistic_TABLE, &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
@@ -58,32 +58,32 @@ PROGRAM ApplicationDriver
     uGF
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     InitializeGravitySolver_CFA_Poseidon, &
-    FinalizeGravitySolver_CFA_Poseidon,   &
+    FinalizeGravitySolver_CFA_Poseidon, &
     SolveGravity_CFA_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
     Time
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK,   &
+    FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK, &
     WriteSourceTerms2
   USE UnitsModule, ONLY: &
-    Kilometer,   &
+    Kilometer, &
     Millisecond, &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic, ONLY: &
     InitializeTally_Euler_Relativistic, &
-    FinalizeTally_Euler_Relativistic,   &
+    FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler,            &
-    InitializeTimers_Euler,  &
-    FinalizeTimers_Euler,    &
-    TimersStart_Euler,       &
-    TimersStop_Euler,        &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_InputOutput, &
-    Timer_Euler_Initialize,  &
+    Timer_Euler_Initialize, &
     Timer_Euler_Finalize
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
@@ -393,7 +393,8 @@ PROGRAM ApplicationDriver
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
+  WRITE(*,'(A,I8.8,A,ES10.3E3,A)') &
+    'Finished ', iCycle, ' cycles in ', Timer_Evolution, ' s'
   WRITE(*,*)
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )

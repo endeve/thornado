@@ -35,7 +35,15 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Collisions_PrimitiveFluid
   REAL(DP), PUBLIC :: Timer_Collisions_Solve
   REAL(DP), PUBLIC :: Timer_TCI
+  REAL(DP), PUBLIC :: Timer_TCI_Permute
+  REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
+  REAL(DP), PUBLIC :: Timer_TCI_Compute
   REAL(DP), PUBLIC :: Timer_SlopeLimiter
+  REAL(DP), PUBLIC :: Timer_SlopeLimiter_Permute
+  REAL(DP), PUBLIC :: Timer_SlopeLimiter_LinearAlgebra
+  REAL(DP), PUBLIC :: Timer_SlopeLimiter_MinMod
+  REAL(DP), PUBLIC :: Timer_SlopeLimiter_ReplaceSlopes
+  REAL(DP), PUBLIC :: Timer_SlopeLimiter_Correction
   REAL(DP), PUBLIC :: Timer_PositivityLimiter
   REAL(DP), PUBLIC :: Timer_TimeStepper
 
@@ -79,8 +87,16 @@ CONTAINS
     Timer_Collisions_Solve              = Zero
 
     Timer_TCI                           = Zero
+    Timer_TCI_Permute                   = Zero
+    Timer_TCI_LinearAlgebra             = Zero
+    Timer_TCI_Compute                   = Zero
 
     Timer_SlopeLimiter                  = Zero
+    Timer_SlopeLimiter_Permute          = Zero
+    Timer_SlopeLimiter_LinearAlgebra    = Zero
+    Timer_SlopeLimiter_MinMod           = Zero
+    Timer_SlopeLimiter_ReplaceSlopes    = Zero
+    Timer_SlopeLimiter_Correction       = Zero
 
     Timer_PositivityLimiter             = Zero
 
@@ -159,7 +175,23 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_TCI_Permute                    :', Timer_TCI_Permute                   , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_TCI_LinearAlgebra              :', Timer_TCI_LinearAlgebra             , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_TCI_Compute                    :', Timer_TCI_Compute                   , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_SlopeLimiter                     :', Timer_SlopeLimiter                  , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_SlopeLimiter_Permute           :', Timer_SlopeLimiter_Permute          , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_SlopeLimiter_LinearAlgebra     :', Timer_SlopeLimiter_LinearAlgebra    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_SlopeLimiter_MinMod            :', Timer_SlopeLimiter_MinMod           , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_SlopeLimiter_ReplaceSlopes     :', Timer_SlopeLimiter_ReplaceSlopes    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_SlopeLimiter_Correction        :', Timer_SlopeLimiter_Correction       , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_PositivityLimiter                :', Timer_PositivityLimiter             , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &

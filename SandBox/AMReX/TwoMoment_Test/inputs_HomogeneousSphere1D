@@ -1,0 +1,52 @@
+
+
+
+
+DEBUG = 0
+
+thornado.ProgramName = "HomogeneousSphere1D"
+thornado.Scheme = "IMEX_PDARS"
+
+thornado.t_end     = 1.0     # Final time
+thornado.dt_wrt    = 1.0      # Write time interval
+thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
+thornado.nNodes    = 3        # Number of DG nodes in each active dimension
+thornado.CFL       = 0.5      # CFL number
+thornado.bcX       = 30 1 1 # Boundary conditions
+thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
+thornado.V_0       = 0.0 0.0 0.0  # three velocity
+thornado.nE        = 1       # Number of Energy Cells
+thornado.swE       = 01
+thornado.bcE       = 1
+thornado.eL        = 0.0           # Lower energy domain size
+thornado.eR        = 1.0           # Lower energy domain size
+thornado.D_0     = 1.0
+thornado.Chi     = 10.0
+thornado.Sigma     = 0.0
+thornado.zoomE     = 1.0
+thornado.nSpecies  = 1
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = 0100     # MOD this number to write plotfile
+thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
+
+
+geometry.coord_sys   = 2             # SPHERICAL
+geometry.prob_lo     = 0.0 0.0 0.0         # Lower spatial domain size
+geometry.prob_hi     = 5.0 3.1415926535897932 6.28318530717959 # High spatial domain size
+geometry.is_periodic = 1   1   1
+
+
+amr.n_cell            = 100 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 100
+amr.max_grid_size_y   = 1
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.max_level         = 0
+
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-26
+PL.Min_2                = 1.0e-26
+

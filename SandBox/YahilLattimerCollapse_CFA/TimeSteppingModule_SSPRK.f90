@@ -200,14 +200,12 @@ WriteSourceTerms2 = .FALSE.
     PROCEDURE (GravitySolver), OPTIONAL :: &
       ComputeGravity
 
-    ! --- E, S, S^1, S^2, S^3 ---
+    ! --- E, S, S^1, S^2, S^3, Mg ---
     REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
                                  iX_B0(3):iX_E0(3),6)
 
     LOGICAL :: SolveGravity
-    LOGICAL :: DEBUG = .FALSE.
-
     INTEGER :: iS, jS, iX1, iX2, iX3
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
@@ -227,7 +225,6 @@ WriteSourceTerms2 = .FALSE.
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
-          IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
           CALL AddIncrement_Fluid &
                  ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
 

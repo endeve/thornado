@@ -7,13 +7,6 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE ScalarFieldsModule, ONLY: &
     nSF, iSF_u, iSF_v
-!  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
-!    ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
-!  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
-!    ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
-!  USE TimersModule_Euler, ONLY: &
-!    TimersStart_Euler, TimersStop_Euler, &
-!    Timer_Euler_UpdateFluid
 
   IMPLICIT NONE
   PRIVATE
@@ -34,20 +27,14 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE ScalarWaveIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
+      ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)           :: &
-        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(inout)        :: &
         U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(inout)        :: &
-        D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
-      LOGICAL,  INTENT(in), OPTIONAL :: &
-        SuppressBC_Option
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     END SUBROUTINE ScalarWaveIncrement
   END INTERFACE
 
@@ -94,9 +81,9 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nSF,1:nStages) )
 
   END SUBROUTINE InitializeScalarWave_SSPRK
@@ -165,22 +152,16 @@ CONTAINS
 
 
   SUBROUTINE UpdateScalarWave_SSPRK &
-    ( t, dt, G, U, D, ComputeIncrement_ScalarWave )
+    ( t, dt, U, ComputeIncrement_ScalarWave )
 
     REAL(DP), INTENT(in) :: &
       t, dt
     REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)   :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE(ScalarWaveIncrement) :: &
       ComputeIncrement_ScalarWave
 
     INTEGER :: iS, jS
-
-!    CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
@@ -195,7 +176,6 @@ CONTAINS
 
           CALL AddIncrement_ScalarWave &
                  ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
-
         END IF
 
       END DO
@@ -203,15 +183,8 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-!        CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-!               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
-
-!        CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-!               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
-
         CALL ComputeIncrement_ScalarWave &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U_SSPRK, D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
@@ -228,15 +201,6 @@ CONTAINS
 
     END DO
 
-!    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-
-!    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-
-
-!    CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
-
   END SUBROUTINE UpdateScalarWave_SSPRK
 
 
@@ -247,7 +211,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iSF, iX1, iX2, iX3
 
