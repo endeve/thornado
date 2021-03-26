@@ -1,5 +1,5 @@
 MOMENT_CLOSURE = MINERBO
-MICROPHYSICS  ?=
+MICROPHYSICS   = WEAKLIB
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -340,6 +340,7 @@ TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
 
 TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
   KindModule.o \
+	UnitsModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \

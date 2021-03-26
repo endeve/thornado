@@ -10,7 +10,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     AtomicMassUnit, &
     Centimeter, &
     Gram, &
-    MeV
+    MeV, &
+    SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
     nDOFE
@@ -393,10 +394,13 @@ CONTAINS
     END DO
 
     DO iN_X = 1, nX_G
-    ! Compute fluid energy density (make this a subroutine with packing)
+    ! Compute fluid energy density ***over the matter density***
 
-      Ef(iN_X) = D(iN_X) * (E(iN_X) + Half * (V_u_1(iN_X)*V_d_1(iN_X) &
-                           + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X)))
+      ! Ef(iN_X) = D(iN_X) * (E(iN_X) + Half * (V_u_1(iN_X)*V_d_1(iN_X) &
+      !                      + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X)))
+      Ef(iN_X) = E(iN_X) + Half * (V_u_1(iN_X)*V_d_1(iN_X) &
+                         + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X))
+
     END DO
 
     CALL ArrayCopy( Y, Ef, Yold, Efold )
@@ -447,6 +451,17 @@ CONTAINS
 
       CALL CreatePackIndex &
              ( ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+
+      PRINT*, "kouter = ", k_outer
+      PRINT*, "D = ", D(:) / (Gram / Centimeter**3)
+      PRINT*, "T = ", T(:) / (MeV)
+      PRINT*, "Y = ", Y(:)
+      PRINT*, "Ef = ", Ef(:)
+      PRINT*, "E = ", E(:)
+      PRINT*, "V_d_1 = ", V_d_1(:)
+      PRINT*, "V_d_2 = ", V_d_2(:)
+      PRINT*, "V_d_3 = ", V_d_3(:)
+
 
       IF ( k_outer > 1 ) THEN
 
@@ -532,6 +547,16 @@ CONTAINS
 
       CALL TimersStop( Timer_Im_NestInner )
 
+      PRINT*, "after inner = "
+      PRINT*, "D = ", D(:) / (Gram / Centimeter**3)
+      PRINT*, "T = ", T(:) / (MeV)
+      PRINT*, "Y = ", Y(:)
+      PRINT*, "Ef = ", Ef(:)
+      PRINT*, "E = ", E(:)
+      PRINT*, "V_d_1 = ", V_d_1(:)
+      PRINT*, "V_d_2 = ", V_d_2(:)
+      PRINT*, "V_d_3 = ", V_d_3(:)
+
       ! --- Right-Hand Side Vectors and Residuals (outer) ---
 
       CALL ComputeMatterRHS_FP &
@@ -578,8 +603,11 @@ CONTAINS
       ! --- Compute E from Ef ---
 
       DO iN_X = 1, nX_G
-        E(iN_X) = Ef(iN_X) / D(iN_X) - Half * (V_u_1(iN_X)*V_d_1(iN_X) &
-                             + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X))
+        ! E(iN_X) = Ef(iN_X) / D(iN_X) - Half * (V_u_1(iN_X)*V_d_1(iN_X) &
+        !                      + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X))
+        E(iN_X) = Ef(iN_X) - Half * (V_u_1(iN_X)*V_d_1(iN_X) &
+                           + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X))
+
       END DO
 
       ! --- Update Temperature ---
@@ -587,6 +615,16 @@ CONTAINS
       CALL UpdateTemperature_Packed &
              ( D, E, Y, T, &
                ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+
+       PRINT*, "after update = "
+       PRINT*, "D = ", D(:) / (Gram / Centimeter**3)
+       PRINT*, "T = ", T(:) / (MeV)
+       PRINT*, "Y = ", Y(:)
+       PRINT*, "Ef = ", Ef(:)
+       PRINT*, "E = ", E(:)
+       PRINT*, "V_d_1 = ", V_d_1(:)
+       PRINT*, "V_d_2 = ", V_d_2(:)
+       PRINT*, "V_d_3 = ", V_d_3(:)
 
       ! --- Check Convergence (outer) ---
 
@@ -815,6 +853,10 @@ CONTAINS
       Phi_0_Ot_Pair_2_P => Phi_0_Ot_Pair(:,:,:,iS_2)
 
     END IF
+
+    PRINT*, "D = ", D_P(:) / (Gram / Centimeter**3)
+    PRINT*, "T = ", T_P(:) / (MeV)
+    PRINT*, "Y = ", Y_P(:)
 
     ! --- Equilibrium Distributions ---
 
@@ -1153,6 +1195,16 @@ CONTAINS
 
       DO iN_E = 1, nE_G
 
+        ! PRINT*, "iS = ", iS_1
+        ! PRINT*, "Jold = ", Jold(iN_E,iN_X,iS_1)
+        ! PRINT*, "H1old = ", H1old(iN_E,iN_X,iS_1)
+        ! PRINT*, "H2old = ", H2old(iN_E,iN_X,iS_1)
+        ! PRINT*, "H3old = ", H3old(iN_E,iN_X,iS_1)
+        !
+        ! PRINT*, "G11 = ", Gm_dd_11(iN_X)
+        ! PRINT*, "G22 = ", Gm_dd_22(iN_X)
+        ! PRINT*, "G33 = ", Gm_dd_33(iN_X)
+
         k_dd = EddingtonTensorComponents_dd &
                     ( Jold(iN_E,iN_X,iS_1), &
                      H1old(iN_E,iN_X,iS_1), H2old(iN_E,iN_X,iS_1), H3old(iN_E,iN_X,iS_1), &
@@ -1161,6 +1213,16 @@ CONTAINS
         vKold(iN_E,iN_X,iS_1,1) = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
         vKold(iN_E,iN_X,iS_1,2) = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
         vKold(iN_E,iN_X,iS_1,3) = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+
+        ! PRINT*, "iS = ", iS_2
+        ! PRINT*, "Jold = ", Jold(iN_E,iN_X,iS_2)
+        ! PRINT*, "H1old = ", H1old(iN_E,iN_X,iS_2)
+        ! PRINT*, "H2old = ", H2old(iN_E,iN_X,iS_2)
+        ! PRINT*, "H3old = ", H3old(iN_E,iN_X,iS_2)
+        !
+        ! PRINT*, "G11 = ", Gm_dd_11(iN_X)
+        ! PRINT*, "G22 = ", Gm_dd_22(iN_X)
+        ! PRINT*, "G33 = ", Gm_dd_33(iN_X)
 
         k_dd = EddingtonTensorComponents_dd &
                     ( Jold(iN_E,iN_X,iS_2), &
@@ -1263,9 +1325,14 @@ CONTAINS
 
       U_Y(iN_X) = Y(iN_X) / Yold(iN_X) ! --- Initial Guess
       U_Ef(iN_X) = Ef(iN_X) / Efold(iN_X) ! --- Initial Guess
-      U_V_d_1(iN_X) = V_d_1(iN_X) / V_d_1old(iN_X) ! --- Initial Guess
-      U_V_d_2(iN_X) = V_d_2(iN_X) / V_d_2old(iN_X) ! --- Initial Guess
-      U_V_d_3(iN_X) = V_d_3(iN_X) / V_d_3old(iN_X) ! --- Initial Guess
+
+      U_V_d_1(iN_X) = V_d_1(iN_X) / SpeedOfLight
+      U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
+      U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
+
+      ! U_V_d_1(iN_X) = V_d_1(iN_X) / V_d_1old(iN_X) ! --- Initial Guess
+      ! U_V_d_2(iN_X) = V_d_2(iN_X) / V_d_2old(iN_X) ! --- Initial Guess
+      ! U_V_d_3(iN_X) = V_d_3(iN_X) / V_d_3old(iN_X) ! --- Initial Guess
 
     END DO
 
@@ -1449,7 +1516,7 @@ CONTAINS
 
         G_Y(iN_X)      = One + C_Y(iN_X)     - G_Y(iN_X)     * S_Y(iN_X)
         G_Ef(iN_X)     = One + C_Ef(iN_X)    - G_Ef(iN_X)    * S_Ef(iN_X)
-        G_V_d_1(iN_X)  = One + C_V_d_1(iN_X) - G_V_d_1(iN_X) * S_V_d_1(iN_X)
+        G_V_d_1(iN_X)  = One + C_V_d_1(iN_X) - G_V_d_1(iN_X) * S_V_d_1(iN_X) ! the first term is no longer 1 due to the scaling of v
         G_V_d_2(iN_X)  = One + C_V_d_2(iN_X) - G_V_d_2(iN_X) * S_V_d_2(iN_X)
         G_V_d_3(iN_X)  = One + C_V_d_3(iN_X) - G_V_d_3(iN_X) * S_V_d_3(iN_X)
 
@@ -1598,9 +1665,13 @@ CONTAINS
 
         Y(iN_X)     = U_Y(iN_X)     * Yold(iN_X)
         Ef(iN_X)    = U_Ef(iN_X)    * Efold(iN_X)
-        V_d_1(iN_X) = U_V_d_1(iN_X) * V_d_1old(iN_X)
-        V_d_2(iN_X) = U_V_d_2(iN_X) * V_d_2old(iN_X)
-        V_d_3(iN_X) = U_V_d_3(iN_X) * V_d_3old(iN_X)
+        V_d_1(iN_X) = U_V_d_1(iN_X) * SpeedOfLight
+        V_d_2(iN_X) = U_V_d_2(iN_X) * SpeedOfLight
+        V_d_3(iN_X) = U_V_d_3(iN_X) * SpeedOfLight
+
+        ! V_d_1(iN_X) = U_V_d_1(iN_X) * V_d_1old(iN_X)
+        ! V_d_2(iN_X) = U_V_d_2(iN_X) * V_d_2old(iN_X)
+        ! V_d_3(iN_X) = U_V_d_3(iN_X) * V_d_3old(iN_X)
 
       END IF
     END DO
