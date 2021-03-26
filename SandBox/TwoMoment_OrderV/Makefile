@@ -6,9 +6,11 @@ include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 WEAKLIB_DIR ?= $(HOME)/weaklib
+ifeq ($(MICROPHYSICS),WEAKLIB)
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
+endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
@@ -18,26 +20,31 @@ all: TwoMomentClosure PrimitiveConserved TimeStepper \
      ApplicationDriver ApplicationDriver_Neutrinos
 
 TwoMomentClosure: \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMomentClosure.o
 	$(FLINKER) $(FLAGS) -o TwoMomentClosure_$(MACHINE) \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMomentClosure.o \
 	$(LIBRARIES)
 
 PrimitiveConserved: \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_$(MACHINE) \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o \
 	$(LIBRARIES)
 
 TimeStepper: \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMoment_TroubledCellIndicatorModule.o \
@@ -49,6 +56,7 @@ TimeStepper: \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	TimeStepper.o
 	$(FLINKER) $(FLAGS) -o TimeStepper_$(MACHINE) \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMoment_TroubledCellIndicatorModule.o \
@@ -62,6 +70,7 @@ TimeStepper: \
 	$(LIBRARIES)
 
 ApplicationDriver: \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
@@ -75,6 +84,7 @@ ApplicationDriver: \
 	InitializationModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
