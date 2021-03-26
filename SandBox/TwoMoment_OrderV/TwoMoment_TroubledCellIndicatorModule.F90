@@ -293,6 +293,14 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Compute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( TCI )
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -392,10 +400,18 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iX1    = iX_B0(1)-1, iX_E0(1)+1
     DO iS     = 1         , nSpecies
-    DO iE     = 1         , nE_G
-    DO iNodeE = iE_B0     , iE_E0
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
     DO iX3    = iX_B0(3)  , iX_E0(3)
     DO iX2    = iX_B0(2)  , iX_E0(2)
 
@@ -432,6 +448,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -460,6 +483,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -488,6 +518,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -516,6 +553,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -544,6 +588,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -613,10 +664,18 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iX2    = iX_B0(2)-1, iX_E0(2)+1
     DO iS     = 1         , nSpecies
-    DO iE     = 1         , nE_G
-    DO iNodeE = iE_B0     , iE_E0
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
     DO iX3    = iX_B0(3)  , iX_E0(3)
     DO iX1    = iX_B0(1)  , iX_E0(1)
 
@@ -653,6 +712,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -681,6 +747,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -709,6 +782,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -737,6 +817,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -806,10 +893,18 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iX3    = iX_B0(3)-1, iX_E0(3)+1
     DO iS     = 1         , nSpecies
-    DO iE     = 1         , nE_G
-    DO iNodeE = iE_B0     , iE_E0
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
     DO iX2    = iX_B0(2)  , iX_E0(2)
     DO iX1    = iX_B0(1)  , iX_E0(1)
 
@@ -846,6 +941,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -874,6 +976,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -902,6 +1011,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -930,6 +1046,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
