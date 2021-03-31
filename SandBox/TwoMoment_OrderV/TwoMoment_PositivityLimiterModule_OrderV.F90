@@ -503,7 +503,6 @@ CONTAINS
           1:nCR, &
           1:nSpecies)
 
-    LOGICAL  :: RecomputePointValues
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_Z, iP_X
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     INTEGER  :: iX1, iX2, iX3
@@ -511,6 +510,13 @@ CONTAINS
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    LOGICAL  :: &
+      RecomputePointValues &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
     REAL(DP) :: &
       Tau_Q(nDOFZ, &
             iZ_B0(1):iZ_E0(1), &
@@ -628,8 +634,17 @@ CONTAINS
 
     N_G = PRODUCT( iX_E0 - iX_B0 + 1 )
 
+    RecomputePointValues = .FALSE.
+
     CALL TimersStart( Timer_PL_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -654,6 +669,14 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -679,6 +702,13 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -720,9 +750,15 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_Theta_1 )
 
-    RecomputePointValues = .FALSE.
+#if   defined( THORNADO_OMP_OL )
 
-    DO iS = 1, nSpecies
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( Min_K, Max_K, Theta_1 )
+#endif
+    DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -753,7 +789,7 @@ CONTAINS
           = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
             + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
-        RecomputePointValues = .TRUE.
+        RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
       END IF
 
@@ -765,7 +801,7 @@ CONTAINS
 
     CALL TimersStop( Timer_PL_Theta_1 )
 
-    IF( RecomputePointValues )THEN
+    IF( ANY( RecomputePointValues ) )THEN
 
       CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
 
@@ -775,7 +811,16 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_Theta_2 )
 
-    DO iS = 1, nSpecies
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( Theta_2, Theta_P, Gamma, Gamma_Min, iP_X, &
+    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#endif
+    DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -856,6 +901,13 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -954,6 +1006,13 @@ CONTAINS
 
     CALL TimersStart( Timer_PL_CellAverage )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
