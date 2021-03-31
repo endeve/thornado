@@ -26,6 +26,7 @@ Euler_UtilitiesModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
+  EquationOfStateModule_TABLE.o \
   UnitsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \

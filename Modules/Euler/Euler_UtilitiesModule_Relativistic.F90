@@ -50,6 +50,12 @@ MODULE Euler_UtilitiesModule_Relativistic
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid, &
     ComputePressureFromSpecificInternalEnergy
+  USE EquationOfStateModule_TABLE, ONLY: &
+    MinD, &
+    MaxD, &
+    MinT, &
+    MaxT, &
+    ComputeSpecificInternalEnergy_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
   USE TimersModule_Euler,ONLY: &
@@ -1272,7 +1278,9 @@ CONTAINS
   ! --- Auxiliary utilities for ComputePrimitive ---
 
 
-  REAL(DP) FUNCTION FunZ( z, D, Ne, q, r, k )
+#ifdef MICROPHYSICS_WEAKLIB
+
+  SUBROUTINE ComputeFunZ( z, D, Ne, r, k, q, FunZ )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1280,7 +1288,73 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: z, D, Ne, q, r, k
+    REAL(DP), INTENT(in)    :: z, D, Ne, r, k
+    REAL(DP), INTENT(inout) :: q
+    REAL(DP), INTENT(out)   :: FunZ
+
+    REAL(DP) :: Wt, rhot, rhoh, epst, epsh, pt, at, Ye, ht, MinE, MaxE
+
+    ! --- Eq. C15 ---
+
+    Wt = SQRT( One + z**2 )
+    rhot = D / Wt
+
+    ! --- Eq. C16 ---
+
+    epst = Wt * q - z * r + z**2 / ( One + Wt )
+
+    Ye = Ne * AtomicMassUnit / D
+
+    ! --- Eq. C17 ---
+
+    rhoh = MAX( MIN( MaxD, rhot ), MinD )
+
+    ! --- Eq. C18 ---
+
+    CALL ComputeSpecificInternalEnergy_TABLE( rhoh, MinT, Ye, MinE )
+    CALL ComputeSpecificInternalEnergy_TABLE( rhoh, MaxT, Ye, MaxE )
+
+    epsh = MAX( MIN( MaxE, epst ), MinE )
+
+!    IF( epst .LT. MinE )THEN
+!
+!      ! --- Eq. C27 ---
+!
+!      q = ( One + MAX( q, SqrtTiny ) ) * ( One + MinE ) / ( One + epst ) - One
+!
+!      epst = MinE
+!
+!    END IF
+
+    CALL ComputePressureFromSpecificInternalEnergy &
+           ( rhoh, epsh, Ye, pt )
+
+    ! --- Eq. C20 ---
+
+    at = pt / ( rhoh * ( One + epsh ) )
+
+    ! --- Eq. C21 ---
+
+    ht = ( One + epsh ) * ( One + at )
+
+    ! --- Eq. C22 ---
+
+    FunZ = z - r / ht
+
+  END SUBROUTINE ComputeFunZ
+
+#else
+
+  SUBROUTINE ComputeFunZ( z, D, Ne, r, k, q, FunZ )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: z, D, Ne, r, k, q
+    REAL(DP), INTENT(out) :: FunZ
 
     REAL(DP) :: Wt, rhot, epst, pt, at, Ye, ht
 
@@ -1310,9 +1384,9 @@ CONTAINS
 
     FunZ = z - r / ht
 
-    RETURN
-  END FUNCTION FunZ
+  END SUBROUTINE ComputeFunZ
 
+#endif
 
   SUBROUTINE SolveZ_Bisection( CF_D, CF_Ne, q, r, k, z0, iErr )
 
@@ -1322,7 +1396,8 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: CF_D, CF_Ne, q, r, k
+    REAL(DP), INTENT(in)    :: CF_D, CF_Ne, r, k
+    REAL(DP), INTENT(inout) :: q
     REAL(DP), INTENT(out)   :: z0
     INTEGER,  INTENT(inout) :: iErr
 
@@ -1340,8 +1415,8 @@ CONTAINS
 
     ! --- Compute FunZ for upper and lower bounds ---
 
-    fa = FunZ( za, CF_D, CF_Ne, q, r, k )
-    fb = FunZ( zb, CF_D, CF_Ne, q, r, k )
+    CALL ComputeFunZ( za, CF_D, CF_Ne, r, k, q, fa )
+    CALL ComputeFunZ( zb, CF_D, CF_Ne, r, k, q, fb )
 
     ! --- Check that sign of FunZ changes across bounds ---
 
@@ -1382,7 +1457,7 @@ CONTAINS
 
       ! --- Compute f(zc) for midpoint zc ---
 
-      fc = FunZ( zc, CF_D, CF_Ne, q, r, k )
+      CALL ComputeFunZ( zc, CF_D, CF_Ne, r, k, q, fc )
 
       ! --- Change zc to za or zb, depending on sign of fc ---
 
