@@ -37,13 +37,18 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_TCI_Permute
   REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
   REAL(DP), PUBLIC :: Timer_TCI_Compute
-  REAL(DP), PUBLIC :: Timer_SlopeLimiter
-  REAL(DP), PUBLIC :: Timer_SlopeLimiter_Permute
-  REAL(DP), PUBLIC :: Timer_SlopeLimiter_LinearAlgebra
-  REAL(DP), PUBLIC :: Timer_SlopeLimiter_MinMod
-  REAL(DP), PUBLIC :: Timer_SlopeLimiter_ReplaceSlopes
-  REAL(DP), PUBLIC :: Timer_SlopeLimiter_Correction
-  REAL(DP), PUBLIC :: Timer_PositivityLimiter
+  REAL(DP), PUBLIC :: Timer_SL
+  REAL(DP), PUBLIC :: Timer_SL_Permute
+  REAL(DP), PUBLIC :: Timer_SL_LinearAlgebra
+  REAL(DP), PUBLIC :: Timer_SL_MinMod
+  REAL(DP), PUBLIC :: Timer_SL_ReplaceSlopes
+  REAL(DP), PUBLIC :: Timer_SL_Correction
+  REAL(DP), PUBLIC :: Timer_PL
+  REAL(DP), PUBLIC :: Timer_PL_Permute
+  REAL(DP), PUBLIC :: Timer_PL_PointValues
+  REAL(DP), PUBLIC :: Timer_PL_CellAverage
+  REAL(DP), PUBLIC :: Timer_PL_Theta_1
+  REAL(DP), PUBLIC :: Timer_PL_Theta_2
   REAL(DP), PUBLIC :: Timer_TimeStepper
 
   PUBLIC :: InitializeTimers
@@ -89,14 +94,19 @@ CONTAINS
     Timer_TCI_LinearAlgebra             = Zero
     Timer_TCI_Compute                   = Zero
 
-    Timer_SlopeLimiter                  = Zero
-    Timer_SlopeLimiter_Permute          = Zero
-    Timer_SlopeLimiter_LinearAlgebra    = Zero
-    Timer_SlopeLimiter_MinMod           = Zero
-    Timer_SlopeLimiter_ReplaceSlopes    = Zero
-    Timer_SlopeLimiter_Correction       = Zero
+    Timer_SL                  = Zero
+    Timer_SL_Permute          = Zero
+    Timer_SL_LinearAlgebra    = Zero
+    Timer_SL_MinMod           = Zero
+    Timer_SL_ReplaceSlopes    = Zero
+    Timer_SL_Correction       = Zero
 
-    Timer_PositivityLimiter             = Zero
+    Timer_PL                            = Zero
+    Timer_PL_Permute                    = Zero
+    Timer_PL_PointValues                = Zero
+    Timer_PL_CellAverage                = Zero
+    Timer_PL_Theta_1                    = Zero
+    Timer_PL_Theta_2                    = Zero
 
     Timer_TimeStepper                   = Zero
 
@@ -177,19 +187,29 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_TCI_Compute                    :', Timer_TCI_Compute                   , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '  Timer_SlopeLimiter                     :', Timer_SlopeLimiter                  , ' s'
+      '  Timer_SL                               :', Timer_SL                            , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_SlopeLimiter_Permute           :', Timer_SlopeLimiter_Permute          , ' s'
+      '    Timer_SL_Permute                     :', Timer_SL_Permute                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_SlopeLimiter_LinearAlgebra     :', Timer_SlopeLimiter_LinearAlgebra    , ' s'
+      '    Timer_SL_LinearAlgebra               :', Timer_SL_LinearAlgebra              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_SlopeLimiter_MinMod            :', Timer_SlopeLimiter_MinMod           , ' s'
+      '    Timer_SL_MinMod                      :', Timer_SL_MinMod                     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_SlopeLimiter_ReplaceSlopes     :', Timer_SlopeLimiter_ReplaceSlopes    , ' s'
+      '    Timer_SL_ReplaceSlopes               :', Timer_SL_ReplaceSlopes              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_SlopeLimiter_Correction        :', Timer_SlopeLimiter_Correction       , ' s'
+      '    Timer_SL_Correction                  :', Timer_SL_Correction                 , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '  Timer_PositivityLimiter                :', Timer_PositivityLimiter             , ' s'
+      '  Timer_PL                               :', Timer_PL                            , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_PL_Permute                     :', Timer_PL_Permute                    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_PL_CellAverage                 :', Timer_PL_CellAverage                , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_PL_PointValues                 :', Timer_PL_PointValues                , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_PL_Theta_1                     :', Timer_PL_Theta_1                    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_PL_Theta_2                     :', Timer_PL_Theta_2                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TimeStepper                      :', Timer_TimeStepper                   , ' s'
 

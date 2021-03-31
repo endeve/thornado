@@ -7,12 +7,12 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
-    Timer_SlopeLimiter, &
-    Timer_SlopeLimiter_Permute, &
-    Timer_SlopeLimiter_LinearAlgebra, &
-    Timer_SlopeLimiter_MinMod, &
-    Timer_SlopeLimiter_ReplaceSlopes, &
-    Timer_SlopeLimiter_Correction
+    Timer_SL, &
+    Timer_SL_Permute, &
+    Timer_SL_LinearAlgebra, &
+    Timer_SL_MinMod, &
+    Timer_SL_ReplaceSlopes, &
+    Timer_SL_Correction
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
   USE UtilitiesModule, ONLY: &
@@ -334,7 +334,7 @@ CONTAINS
     CALL DetectTroubledCells_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, TroubledCell )
 
-    CALL TimersStart( Timer_SlopeLimiter )
+    CALL TimersStart( Timer_SL )
 
     iE_B0 = iZ_B0(1); iX_B0 = iZ_B0(2:4)
     iE_E0 = iZ_E0(1); iX_E0 = iZ_E0(2:4)
@@ -349,7 +349,7 @@ CONTAINS
 
     ! --- Permute Radiation Fields ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -403,7 +403,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
     ! --- Compute Cell Average ---
 
@@ -433,7 +433,7 @@ CONTAINS
 
     ! --- Compute Legendre Coefficients ---
 
-    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStart( Timer_SL_LinearAlgebra )
 
     nV_KX = PRODUCT( SHAPE( C_0 ) )
 
@@ -449,9 +449,9 @@ CONTAINS
     CALL MatrixVectorMultiply &
            ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_3, 1, Zero, C_X3, 1 )
 
-    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStop( Timer_SL_LinearAlgebra )
 
-    CALL TimersStart( Timer_SlopeLimiter_ReplaceSlopes )
+    CALL TimersStart( Timer_SL_ReplaceSlopes )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -501,11 +501,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_ReplaceSlopes )
+    CALL TimersStop( Timer_SL_ReplaceSlopes )
 
     ! --- Conservative Correction ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Correction )
+    CALL TimersStart( Timer_SL_Correction )
 
     IF( ANY( Limited ) )THEN
 
@@ -549,9 +549,9 @@ CONTAINS
 
     END IF
 
-    CALL TimersStop( Timer_SlopeLimiter_Correction )
+    CALL TimersStop( Timer_SL_Correction )
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -585,9 +585,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
-    CALL TimersStop( Timer_SlopeLimiter )
+    CALL TimersStop( Timer_SL )
 
   END SUBROUTINE ApplySlopeLimiter_TVD
 
@@ -630,7 +630,7 @@ CONTAINS
 
     ! --- Permute Radiation Fields ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -664,11 +664,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
     ! --- Legendre Coefficients C0 and C1 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStart( Timer_SL_LinearAlgebra )
 
     nV_KX = PRODUCT( SHAPE( C0 ) )
 
@@ -678,11 +678,11 @@ CONTAINS
     CALL MatrixVectorMultiply &
            ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_1, 1, Zero, C1, 1 )
 
-    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStop( Timer_SL_LinearAlgebra )
 
     ! --- Limited Legendre Coefficient CL_X1 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_MinMod )
+    CALL TimersStart( Timer_SL_MinMod )
 
     ASSOCIATE( dX1 => MeshX(1) % Width )
 
@@ -718,7 +718,7 @@ CONTAINS
 
     END ASSOCIATE ! dX1
 
-    CALL TimersStop( Timer_SlopeLimiter_MinMod )
+    CALL TimersStop( Timer_SL_MinMod )
 
   END SUBROUTINE ComputeLimitedSlopes_X1
 
@@ -765,7 +765,7 @@ CONTAINS
 
     ! --- Permute Radiation Fields ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -799,11 +799,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
     ! --- Legendre Coefficients C0 and C2 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStart( Timer_SL_LinearAlgebra )
 
     nV_KX = PRODUCT( SHAPE( C0 ) )
 
@@ -813,11 +813,11 @@ CONTAINS
     CALL MatrixVectorMultiply &
            ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_2, 1, Zero, C2, 1 )
 
-    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStop( Timer_SL_LinearAlgebra )
 
     ! --- Limited Legendre Coefficient CL_X2 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_MinMod )
+    CALL TimersStart( Timer_SL_MinMod )
 
     ASSOCIATE( dX2 => MeshX(2) % Width )
 
@@ -853,11 +853,11 @@ CONTAINS
 
     END ASSOCIATE ! dX2
 
-    CALL TimersStop( Timer_SlopeLimiter_MinMod )
+    CALL TimersStop( Timer_SL_MinMod )
 
     ! --- Permute Legendre Coefficient CL_X2 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -883,7 +883,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
   END SUBROUTINE ComputeLimitedSlopes_X2
 
@@ -930,7 +930,7 @@ CONTAINS
 
     ! --- Permute Radiation Fields ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -964,11 +964,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
     ! --- Legendre Coefficients C0 and C3 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStart( Timer_SL_LinearAlgebra )
 
     nV_KX = PRODUCT( SHAPE( C0 ) )
 
@@ -978,11 +978,11 @@ CONTAINS
     CALL MatrixVectorMultiply &
            ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_3, 1, Zero, C3, 1 )
 
-    CALL TimersStop( Timer_SlopeLimiter_LinearAlgebra )
+    CALL TimersStop( Timer_SL_LinearAlgebra )
 
     ! --- Limited Legendre Coefficient CL_X3 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_MinMod )
+    CALL TimersStart( Timer_SL_MinMod )
 
     ASSOCIATE( dX3 => MeshX(3) % Width )
 
@@ -1018,11 +1018,11 @@ CONTAINS
 
     END ASSOCIATE ! dX3
 
-    CALL TimersStop( Timer_SlopeLimiter_MinMod )
+    CALL TimersStop( Timer_SL_MinMod )
 
     ! --- Permute Legendre Coefficient CL_X3 ---
 
-    CALL TimersStart( Timer_SlopeLimiter_Permute )
+    CALL TimersStart( Timer_SL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
 
@@ -1048,7 +1048,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_SlopeLimiter_Permute )
+    CALL TimersStop( Timer_SL_Permute )
 
   END SUBROUTINE ComputeLimitedSlopes_X3
 

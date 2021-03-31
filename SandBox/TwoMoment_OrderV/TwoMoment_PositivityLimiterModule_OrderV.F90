@@ -10,7 +10,12 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
-    Timer_PositivityLimiter
+    Timer_PL, &
+    Timer_PL_Permute, &
+    Timer_PL_PointValues, &
+    Timer_PL_CellAverage, &
+    Timer_PL_Theta_1, &
+    Timer_PL_Theta_2
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -614,7 +619,7 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
-    CALL TimersStart( Timer_PositivityLimiter )
+    CALL TimersStart( Timer_PL )
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -622,6 +627,8 @@ CONTAINS
     iX_E0 = iZ_E0(2:4)
 
     N_G = PRODUCT( iX_E0 - iX_B0 + 1 )
+
+    CALL TimersStart( Timer_PL_Permute )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -639,9 +646,13 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Permute )
+
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_1_Q, h_d_1_P )
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_2_Q, h_d_2_P )
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_3_Q, h_d_3_P )
+
+    CALL TimersStart( Timer_PL_Permute )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -663,6 +674,10 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PL_Permute )
+
+    CALL TimersStart( Timer_PL_Permute )
 
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -689,6 +704,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Permute )
+
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
@@ -700,6 +717,8 @@ CONTAINS
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G3_Q, G3_K )
 
     ! --- Ensure Bounded Density ---
+
+    CALL TimersStart( Timer_PL_Theta_1 )
 
     RecomputePointValues = .FALSE.
 
@@ -744,6 +763,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Theta_1 )
+
     IF( RecomputePointValues )THEN
 
       CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
@@ -751,6 +772,8 @@ CONTAINS
     END IF
 
     ! --- Ensure Positive "Gamma" ---
+
+    CALL TimersStart( Timer_PL_Theta_2 )
 
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -829,6 +852,10 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Theta_2 )
+
+    CALL TimersStart( Timer_PL_Permute )
+
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -846,7 +873,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_PositivityLimiter )
+    CALL TimersStop( Timer_PL_Permute )
+
+    CALL TimersStop( Timer_PL )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
@@ -870,9 +899,13 @@ CONTAINS
           iZ_B0(4):iZ_E0(4), &
           nSpecies)
 
+    CALL TimersStart( Timer_PL_PointValues )
+
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nPT_Z, N_R, nDOFZ, One, InterpMat_Z, nPT_Z, &
              U_Q, nDOFZ, Zero, U_P, nPT_Z )
+
+    CALL TimersStop( Timer_PL_PointValues )
 
   END SUBROUTINE ComputePointValuesZ
 
@@ -892,9 +925,13 @@ CONTAINS
           iX_B0(2):iX_E0(2), &
           iX_B0(3):iX_E0(3))
 
+    CALL TimersStart( Timer_PL_PointValues )
+
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nPT_X, N_G, nDOFX, One, InterpMat_X, nPT_X, &
              U_Q, nDOFX, Zero, U_P, nPT_X )
+
+    CALL TimersStop( Timer_PL_PointValues )
 
   END SUBROUTINE ComputePointValuesX
 
@@ -915,6 +952,8 @@ CONTAINS
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS
 
+    CALL TimersStart( Timer_PL_CellAverage )
+
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -931,6 +970,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PL_CellAverage )
 
   END SUBROUTINE ComputeCellAverage
 
