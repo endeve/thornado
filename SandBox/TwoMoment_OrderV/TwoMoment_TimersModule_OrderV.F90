@@ -9,7 +9,6 @@ MODULE TwoMoment_TimersModule_OrderV
   PRIVATE
 
   REAL(DP), PUBLIC :: Timer_Total
-
   REAL(DP), PUBLIC :: Timer_Streaming
   REAL(DP), PUBLIC :: Timer_Streaming_Permute
   REAL(DP), PUBLIC :: Timer_Streaming_LinearAlgebra
@@ -62,53 +61,53 @@ CONTAINS
 
   SUBROUTINE InitializeTimers
 
-    Timer_Total                         = Zero
+    Timer_Total                          = Zero
 
-    Timer_Streaming                     = Zero
-    Timer_Streaming_Permute             = Zero
-    Timer_Streaming_LinearAlgebra       = Zero
-    Timer_Streaming_BCs                 = Zero
-    Timer_Streaming_Zero                = Zero
-    Timer_Streaming_Divergence_X1       = Zero
-    Timer_Streaming_Divergence_X2       = Zero
-    Timer_Streaming_Divergence_X3       = Zero
-    Timer_Streaming_ObserverCorrections = Zero
-    Timer_Streaming_Derivatives_X1      = Zero
-    Timer_Streaming_Derivatives_X2      = Zero
-    Timer_Streaming_Derivatives_X3      = Zero
-    Timer_Streaming_InverseMassMatrix   = Zero
-    Timer_Streaming_NumericalFlux       = Zero
-    Timer_Streaming_NumericalFlux_InOut = Zero
-    Timer_Streaming_NumericalFlux_RHS   = Zero
-    Timer_Streaming_NumericalFlux_LS    = Zero
-    Timer_Streaming_NumericalFlux_Update= Zero
-    Timer_Streaming_Sources             = Zero
+    Timer_Streaming                      = Zero
+    Timer_Streaming_Permute              = Zero
+    Timer_Streaming_LinearAlgebra        = Zero
+    Timer_Streaming_BCs                  = Zero
+    Timer_Streaming_Zero                 = Zero
+    Timer_Streaming_Divergence_X1        = Zero
+    Timer_Streaming_Divergence_X2        = Zero
+    Timer_Streaming_Divergence_X3        = Zero
+    Timer_Streaming_ObserverCorrections  = Zero
+    Timer_Streaming_Derivatives_X1       = Zero
+    Timer_Streaming_Derivatives_X2       = Zero
+    Timer_Streaming_Derivatives_X3       = Zero
+    Timer_Streaming_InverseMassMatrix    = Zero
+    Timer_Streaming_NumericalFlux        = Zero
+    Timer_Streaming_NumericalFlux_InOut  = Zero
+    Timer_Streaming_NumericalFlux_RHS    = Zero
+    Timer_Streaming_NumericalFlux_LS     = Zero
+    Timer_Streaming_NumericalFlux_Update = Zero
+    Timer_Streaming_Sources              = Zero
 
-    Timer_Collisions                    = Zero
-    Timer_Collisions_Permute            = Zero
-    Timer_Collisions_PrimitiveFluid     = Zero
-    Timer_Collisions_Solve              = Zero
+    Timer_Collisions                     = Zero
+    Timer_Collisions_Permute             = Zero
+    Timer_Collisions_PrimitiveFluid      = Zero
+    Timer_Collisions_Solve               = Zero
 
-    Timer_TCI                           = Zero
-    Timer_TCI_Permute                   = Zero
-    Timer_TCI_LinearAlgebra             = Zero
-    Timer_TCI_Compute                   = Zero
+    Timer_TCI                            = Zero
+    Timer_TCI_Permute                    = Zero
+    Timer_TCI_LinearAlgebra              = Zero
+    Timer_TCI_Compute                    = Zero
 
-    Timer_SL                  = Zero
-    Timer_SL_Permute          = Zero
-    Timer_SL_LinearAlgebra    = Zero
-    Timer_SL_MinMod           = Zero
-    Timer_SL_ReplaceSlopes    = Zero
-    Timer_SL_Correction       = Zero
+    Timer_SL                             = Zero
+    Timer_SL_Permute                     = Zero
+    Timer_SL_LinearAlgebra               = Zero
+    Timer_SL_MinMod                      = Zero
+    Timer_SL_ReplaceSlopes               = Zero
+    Timer_SL_Correction                  = Zero
 
-    Timer_PL                            = Zero
-    Timer_PL_Permute                    = Zero
-    Timer_PL_PointValues                = Zero
-    Timer_PL_CellAverage                = Zero
-    Timer_PL_Theta_1                    = Zero
-    Timer_PL_Theta_2                    = Zero
+    Timer_PL                             = Zero
+    Timer_PL_Permute                     = Zero
+    Timer_PL_PointValues                 = Zero
+    Timer_PL_CellAverage                 = Zero
+    Timer_PL_Theta_1                     = Zero
+    Timer_PL_Theta_2                     = Zero
 
-    Timer_TimeStepper                   = Zero
+    Timer_TimeStepper                    = Zero
 
     CALL TimersStart( Timer_Total )
 
@@ -173,11 +172,11 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Collisions                       :', Timer_Collisions                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '  Timer_Collisions_Permute               :', Timer_Collisions_Permute            , ' s'
+      '    Timer_Collisions_Permute             :', Timer_Collisions_Permute            , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '  Timer_Collisions_PrimitiveFluid        :', Timer_Collisions_PrimitiveFluid     , ' s'
+      '    Timer_Collisions_PrimitiveFluid      :', Timer_Collisions_PrimitiveFluid     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '  Timer_Collisions_Solve                 :', Timer_Collisions_Solve              , ' s'
+      '    Timer_Collisions_Solve               :', Timer_Collisions_Solve              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
