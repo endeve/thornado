@@ -3995,6 +3995,8 @@ CONTAINS
                                           iX_B0(2):iX_E0(2), &
                                           iX_B0(3):iX_E0(3))
 
+    REAL(DP) :: GradPsiF(nDOFX)
+
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
@@ -4198,6 +4200,58 @@ CONTAINS
              G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
              G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
+      ! --- Compute metric on faces from scale factors ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_Up_X1, G_Dn_X1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iNX = 1, nDOFX_X1
+
+      G_Up_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+        = G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2
+      G_Up_X1    (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+        = G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2
+      G_Up_X1    (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+        = G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2
+
+      G_Up_X1        (iNX,iGF_SqrtGm  ,iX2,iX3,iX1) &
+        = G_Up_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+            * G_Up_X1(iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+            * G_Up_X1(iNX,iGF_Gm_dd_33,iX2,iX3,iX1)
+
+      G_Up_X1        (iNX,nGF+1     ,iX2,iX3,iX1) &
+        = G_Up_X1    (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+            * G_Up_X1(iNX,iGF_Beta_1,iX2,iX3,iX1)
+
+      G_Dn_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+        = G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2
+      G_Dn_X1    (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+        = G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2
+      G_Dn_X1    (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+        = G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2
+
+      G_Dn_X1        (iNX,iGF_SqrtGm  ,iX2,iX3,iX1) &
+        = G_Dn_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+            * G_Dn_X1(iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+            * G_Dn_X1(iNX,iGF_Gm_dd_33,iX2,iX3,iX1)
+
+      G_Dn_X1        (iNX,nGF+1     ,iX2,iX3,iX1) &
+        = G_Dn_X1    (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+            * G_Dn_X1(iNX,iGF_Beta_1,iX2,iX3,iX1)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     IF( nDimsX .GT. 1 )THEN
 
       ! --- X2 ---
@@ -4219,6 +4273,56 @@ CONTAINS
              ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
                G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X2, G_Dn_X2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX_X2
+
+        G_Up_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2
+        G_Up_X2    (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2
+        G_Up_X2    (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2
+
+        G_Up_X2        (iNX,iGF_SqrtGm  ,iX1,iX3,iX2) &
+          = G_Up_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+              * G_Up_X2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+              * G_Up_X2(iNX,iGF_Gm_dd_33,iX1,iX3,iX2)
+
+        G_Up_X2        (iNX,nGF+1     ,iX1,iX3,iX2) &
+          = G_Up_X2    (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+              * G_Up_X2(iNX,iGF_Beta_2,iX1,iX3,iX2)
+
+        G_Dn_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2
+        G_Dn_X2    (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2
+        G_Dn_X2    (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2
+
+        G_Dn_X2        (iNX,iGF_SqrtGm  ,iX1,iX3,iX2) &
+          = G_Dn_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+              * G_Dn_X2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+              * G_Dn_X2(iNX,iGF_Gm_dd_33,iX1,iX3,iX2)
+
+        G_Dn_X2        (iNX,nGF+1     ,iX1,iX3,iX2) &
+          = G_Dn_X2    (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+              * G_Dn_X2(iNX,iGF_Beta_2,iX1,iX3,iX2)
+
+      END DO
+      END DO
+      END DO
+      END DO
 
     END IF
 
@@ -4243,6 +4347,56 @@ CONTAINS
              ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
                G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X3, G_Dn_X3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX_X3
+
+        G_Up_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2
+        G_Up_X3    (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2
+        G_Up_X3    (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2
+
+        G_Up_X3        (iNX,iGF_SqrtGm  ,iX1,iX2,iX3) &
+          = G_Up_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+              * G_Up_X3(iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+              * G_Up_X3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3)
+
+        G_Up_X3        (iNX,nGF+1     ,iX1,iX2,iX3) &
+          = G_Up_X3    (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+              * G_Up_X3(iNX,iGF_Beta_3,iX1,iX2,iX3)
+
+        G_Dn_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2
+        G_Dn_X3    (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2
+        G_Dn_X3    (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2
+
+        G_Dn_X3        (iNX,iGF_SqrtGm  ,iX1,iX2,iX3) &
+          = G_Dn_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+              * G_Dn_X3(iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+              * G_Dn_X3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3)
+
+        G_Dn_X3        (iNX,nGF+1     ,iX1,iX2,iX3) &
+          = G_Dn_X3    (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+              * G_Dn_X3(iNX,iGF_Beta_3,iX1,iX2,iX3)
+
+      END DO
+      END DO
+      END DO
+      END DO
 
     END IF
 
@@ -4779,11 +4933,11 @@ CONTAINS
               - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
                   * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
 
-          EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
-            = EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
-                -U(iNX,iX1,iX2,iX3,iCF_S3) &
-                   / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                   * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
+        EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
+          = EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
+              -U(iNX,iX1,iX2,iX3,iCF_S3) &
+                 / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+                 * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
 
       END IF
 
@@ -4921,8 +5075,6 @@ CONTAINS
                           + One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
                           * Christoffel3D_X1(3,1,iNX,iX1,iX2,iX3)**2 ) )
 
-      ! --- 7 (GradPsi) is deferred ---
-
       EnergyDensitySourceTerms(7,iNX,iX1,iX2,iX3) = Zero
 
       ! --- Energy Increment ---
@@ -4945,6 +5097,16 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    ! --- GradPsiF ---
+
+    GradPsiF = Zero
+
+    CALL DGEMV &
+           ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             dGdX1(:,iGF_Psi,1,1,iX_E0(1)), 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
+
+    EnergyDensitySourceTerms(7,:,iX_E0(1),1,1) = GradPsiF
 
 #endif
 
