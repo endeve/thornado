@@ -32,8 +32,8 @@ MODULE MF_GeometryModule
   USE InputParsingModule,                        ONLY: &
     nLevels
   USE MF_UtilitiesModule,                        ONLY: &
-    amrex2thornado_Euler, &
-    thornado2amrex_Euler
+    amrex2thornado_X, &
+    thornado2amrex_X
   USE TimersModule_AMReX_Euler,                  ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
@@ -55,7 +55,8 @@ CONTAINS
     REAL(AR),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
-    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                                     iLo(4), iHi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -68,6 +69,9 @@ CONTAINS
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+        iLo = LBOUND( uGF )
+        iHi = UBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -84,12 +88,12 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
 
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        CALL thornado2amrex_Euler( nGF, iX_B1, iX_E1, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -112,7 +116,8 @@ CONTAINS
     REAL(AR),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
-    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                                     iLo(4), iHi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -125,6 +130,9 @@ CONTAINS
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+        iLo = LBOUND( uGF )
+        iHi = UBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -141,12 +149,12 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
 
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
-        CALL thornado2amrex_Euler( nGF, iX_B1, iX_E1, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
