@@ -30,7 +30,7 @@ MODULE MF_GeometryModule
   USE MyAmrModule,        ONLY: &
     nLevels
   USE MF_UtilitiesModule, ONLY: &
-    AMReX2thornado_Euler, thornado2AMReX_Euler
+    amrex2thornado_X, thornado2amrex_X
 
   IMPLICIT NONE
   PRIVATE
@@ -72,7 +72,7 @@ CONTAINS
                              iX_B1(3):iX_E1(3),1:nGF) )
 print*, iX_B1
 print*, iX_E1
-        CALL AMReX2thornado_Euler &
+        CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -84,7 +84,7 @@ print*, iX_E1
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        CALL thornado2AMReX_Euler &
+        CALL thornado2amrex_X &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &

@@ -88,15 +88,15 @@ MODULE MF_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: AMReX2thornado
-  PUBLIC :: thornado2AMReX
-  PUBLIC :: AMReX2thornado_Euler
-  PUBLIC :: thornado2AMReX_Euler
+  PUBLIC :: amrex2thornado_Z
+  PUBLIC :: thornado2amrex_Z
+  PUBLIC :: amrex2thornado_X
+  PUBLIC :: thornado2amrex_X
   PUBLIC :: WriteNodalDataToFile
 
   CONTAINS
 
-  SUBROUTINE AMReX2thornado( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE amrex2thornado_Z( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
     INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
@@ -130,10 +130,10 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
 
-  END SUBROUTINE AMReX2thornado
+  END SUBROUTINE amrex2thornado_Z
 
 
-  SUBROUTINE thornado2AMReX( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE thornado2amrex_Z( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
 
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
@@ -167,9 +167,9 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
 
-  END SUBROUTINE thornado2AMReX
+  END SUBROUTINE thornado2amrex_Z
 
-  SUBROUTINE AMReX2thornado_Euler( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE amrex2thornado_X( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars
     INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
@@ -193,10 +193,10 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
 
-  END SUBROUTINE AMReX2thornado_Euler
+  END SUBROUTINE amrex2thornado_X
 
 
-  SUBROUTINE thornado2AMReX_Euler( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE thornado2amrex_X( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars
     INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
@@ -220,7 +220,7 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
 
-  END SUBROUTINE thornado2AMReX_Euler
+  END SUBROUTINE thornado2amrex_X
 
 
   SUBROUTINE WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uCR, FileNameBase )
@@ -362,7 +362,7 @@ MODULE MF_UtilitiesModule
           i = i + 1 
         END DO
 
-        CALL AMReX2thornado_Euler &
+        CALL amrex2thornado_X &
                ( nGF, iX_B, iX_E, &
                  uGF(      iX_B(1):iX_E(1), &
                            iX_B(2):iX_E(2), &
@@ -371,7 +371,7 @@ MODULE MF_UtilitiesModule
                            iX_B(2):iX_E(2), &
                            iX_B(3):iX_E(3),1:nGF) )
 
-        CALL AMReX2thornado_Euler &
+        CALL amrex2thornado_X &
                ( nCF, iX_B, iX_E, &
                  uCF(      iX_B(1):iX_E(1), &
                            iX_B(2):iX_E(2), &
@@ -380,7 +380,7 @@ MODULE MF_UtilitiesModule
                            iX_B(2):iX_E(2), &
                            iX_B(3):iX_E(3),1:nCF) )
 
-        CALL AMReX2thornado &
+        CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iX_B1, iX_E1,                    &
                  uCR(      iZ_B1(2):iZ_E1(2), &
