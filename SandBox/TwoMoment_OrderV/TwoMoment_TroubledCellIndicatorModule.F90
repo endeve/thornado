@@ -286,10 +286,10 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
 
     CALL ComputeCellAverages_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R      , N_KS, N_KS0, N_KN, N_KN0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
 
     CALL ComputeCellAverages_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R      , N_KB, N_KB0, N_KT, N_KT0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
 
     CALL TimersStart( Timer_TCI_Compute )
 
@@ -615,7 +615,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_KS, N_KS0, N_KN, N_KN0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -626,6 +626,11 @@ CONTAINS
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      N_K0 (iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
       N_KS (iX_B0(1):iX_E0(1), &
             iX_B0(2):iX_E0(2), &
@@ -661,6 +666,14 @@ CONTAINS
           iX_B0(3):iX_E0(3), &
           1:nE_G,1:nSpecies, &
           iX_B0(2):iX_E0(2))
+
+    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
+       N_KS  = N_K0
+       N_KS0 = N_K0
+       N_KN  = N_K0
+       N_KN0 = N_K0
+       RETURN
+    END IF
 
     CALL TimersStart( Timer_TCI_Permute )
 
@@ -844,7 +857,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_KB, N_KB0, N_KT, N_KT0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -855,6 +868,11 @@ CONTAINS
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      N_K0 (iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
       N_KB (iX_B0(1):iX_E0(1), &
             iX_B0(2):iX_E0(2), &
@@ -890,6 +908,14 @@ CONTAINS
           iX_B0(2):iX_E0(2), &
           1:nE_G,1:nSpecies, &
           iX_B0(3):iX_E0(3))
+
+    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
+      N_KB  = N_K0
+      N_KB0 = N_K0
+      N_KT  = N_K0
+      N_KT0 = N_K0
+      RETURN
+    END IF
 
     CALL TimersStart( Timer_TCI_Permute )
 

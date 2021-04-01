@@ -763,6 +763,11 @@ CONTAINS
           iX_B0(3)  :iX_E0(3)  , &
           1:nE_G,1:nCR,1:nSpecies)
 
+    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
+      CL_X2 = Zero
+      RETURN
+    END IF
+
     ! --- Permute Radiation Fields ---
 
     CALL TimersStart( Timer_SL_Permute )
@@ -927,6 +932,11 @@ CONTAINS
           iX_B0(2)  :iX_E0(2)  , &
           iX_B0(1)  :iX_E0(1)  , &
           1:nE_G,1:nCR,1:nSpecies)
+
+    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
+      CL_X3 = Zero
+      RETURN
+    END IF
 
     ! --- Permute Radiation Fields ---
 
