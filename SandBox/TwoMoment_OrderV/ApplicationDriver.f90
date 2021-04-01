@@ -42,18 +42,22 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: TimeSteppingScheme
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: UseTroubledCellIndicator
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, t_end, dt_CFL, dt_0, dt_grw, V_0(3)
-  REAL(DP)      :: D_0, Chi, Sigma
+  REAL(DP)      :: D_0, Chi, Sigma, C_TCI
   REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'SineWaveStreaming'
+
+  C_TCI = 1.0_DP
+  UseTroubledCellIndicator = .FALSE.
 
   dt_0   = HUGE( One )
   dt_grw = One
@@ -91,9 +95,10 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .TRUE.
-
-      UsePositivityLimiter = .FALSE.
+      C_TCI = 1.0_DP
+      UseTroubledCellIndicator = .TRUE.
+      UseSlopeLimiter          = .TRUE.
+      UsePositivityLimiter     = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
@@ -204,7 +209,7 @@ PROGRAM ApplicationDriver
       eL    = 0.0d0
       eR    = 5.0d1
       bcE   = 10
-      zoomE = 1.2_DP
+      zoomE = 1.0_DP
 
       nNodes = 2
 
@@ -469,7 +474,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      nX  = [ 200, 1, 1 ]
+      nX  = [ 100, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 5.0_DP,     Pi,  TwoPi ]
       bcX = [ 30, 1, 1 ]
@@ -496,9 +501,10 @@ PROGRAM ApplicationDriver
       Chi   = 4.0d0
       Sigma = 0.0d0
 
-      UseSlopeLimiter = .TRUE.
-
-      UsePositivityLimiter = .TRUE.
+      C_TCI = 0.1_DP
+      UseTroubledCellIndicator = .TRUE.
+      UseSlopeLimiter          = .TRUE.
+      UsePositivityLimiter     = .TRUE.
 
     CASE( 'HomogeneousSphere2D' )
 
@@ -774,9 +780,9 @@ CONTAINS
 
     CALL InitializeTroubledCellIndicator_TwoMoment &
            ( UseTroubledCellIndicator_Option &
-               = .FALSE., &
+               = UseTroubledCellIndicator, &
              C_TCI_Option &
-               = 0.1_DP, &
+               = C_TCI, &
              Verbose_Option &
                = .TRUE. )
 
