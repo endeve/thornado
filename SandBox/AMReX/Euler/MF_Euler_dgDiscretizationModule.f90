@@ -78,7 +78,7 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: dU(:,:,:,:,:)
 
     INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo(4), iHi(4)
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -104,8 +104,7 @@ CONTAINS
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
         uDF  => MF_uDF (iLevel) % DataPtr( MFI )
 
-        iLo = LBOUND( uGF )
-        iHi = UBOUND( uGF )
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -130,11 +129,11 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo, iHi, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
 
-        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo, iHi, uDF, D )
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
 
         ! --- Apply boundary conditions to physical boundaries ---
 
@@ -147,7 +146,7 @@ CONTAINS
 
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo, iHi, uDF, D )
+        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -193,8 +192,7 @@ CONTAINS
         uDF  => MF_uDF (iLevel) % DataPtr( MFI )
         duCF => MF_duCF(iLevel) % DataPtr( MFI )
 
-        iLo = LBOUND( uGF )
-        iHi = UBOUND( uGF )
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -223,11 +221,11 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo, iHi, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
 
-        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo, iHi, uDF, D )
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
 
         ! --- Apply boundary conditions to physical boundaries ---
 
@@ -244,9 +242,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE. )
 
-        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo, iHi, duCF, dU )
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, duCF, dU )
 
-        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo, iHi, uDF , D )
+        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, uDF , D )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 

@@ -187,7 +187,7 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo(4), iHi(4)
+    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     DO iLevel = 0, nLevels-1
 
@@ -198,8 +198,7 @@ CONTAINS
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-        iLo = LBOUND( uGF )
-        iHi = UBOUND( uGF )
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -216,9 +215,9 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF) )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo, iHi, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPerturbations_Euler'
 
@@ -229,7 +228,7 @@ CONTAINS
 
         END IF
 
-        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo, iHi, uCF, U )
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
 
         DEALLOCATE( U )
 

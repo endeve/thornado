@@ -60,7 +60,7 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: P(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: A(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo(4), iHi(4)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     INTEGER, PARAMETER :: nLegModes = 3
     INTEGER            :: iLegMode
@@ -77,8 +77,7 @@ CONTAINS
         uPF => MF_uPF(iLevel) % DataPtr( MFI )
         uAF => MF_uAF(iLevel) % DataPtr( MFI )
 
-        iLo = LBOUND( uPF )
-        iHi = UBOUND( uPF )
+        iLo_MF = LBOUND( uPF )
 
         BX = MFI % tilebox()
 
@@ -99,9 +98,9 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo, iHi, uPF, P )
+        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo_MF, uPF, P )
 
-        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo, iHi, uAF, A )
+        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, uAF, A )
 
         CALL ComputeAccretionShockDiagnostics &
                ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, &

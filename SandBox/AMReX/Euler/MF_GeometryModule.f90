@@ -56,7 +56,7 @@ CONTAINS
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                                     iLo(4), iHi(4)
+                                     iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -70,8 +70,7 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
-        iLo = LBOUND( uGF )
-        iHi = UBOUND( uGF )
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -88,12 +87,12 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -117,7 +116,7 @@ CONTAINS
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                                     iLo(4), iHi(4)
+                                     iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -131,8 +130,7 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
-        iLo = LBOUND( uGF )
-        iHi = UBOUND( uGF )
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -149,12 +147,12 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo, iHi, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
