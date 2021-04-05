@@ -68,7 +68,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:,:,:)
 
     REAL(amrex_real) :: TimeStep(0:nLevels-1)
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -81,6 +81,8 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCR => MF_uCR(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -98,14 +100,7 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
 
-        CALL amrex2thornado_X &
-               ( nGF, iX_B1(1:3), iX_E1(1:3), &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -192,8 +187,9 @@ CONTAINS
 
     INTEGER, ALLOCATABLE :: nIterations(:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), nPoints
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLo_MF(4), nPoints, iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    INTEGER :: i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint
 
 
     DO iLevel = 0, nLevels-1
@@ -208,6 +204,8 @@ CONTAINS
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
         uCR  => MF_uCR (iLevel) % DataPtr( MFI )
         uPR  => MF_uPR (iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -266,23 +264,9 @@ CONTAINS
                              iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies) )
 
 
-        CALL amrex2thornado_X &
-               ( nGF, iX_B1, iX_E1, &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL amrex2thornado_X &
-               ( nCF, iX_B1, iX_E1, &
-                 uCF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
-                 CF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCF) )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, CF )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &

@@ -74,7 +74,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
 
     INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iZ2, iZ1
 
 
@@ -103,34 +103,36 @@ CONTAINS
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
         uCR  => MF_uCR (iLevel) % DataPtr( MFI )
         duCR => MF_duCR(iLevel) % DataPtr( MFI )
-        
+
+        iLo_MF = LBOUND( uGF )
+
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
- 
-        i=1          
+
+        i=1
 
         DO WHILE (i<=4)
-          
+
           IF (i==1) THEN
-          
-            iZ_B0(i)=iE_B0 
+
+            iZ_B0(i)=iE_B0
             iZ_E0(i)=iE_E0
             iZ_B1(i)=iE_B1
             iZ_E1(i)=iE_E1
 
-          ELSE 
+          ELSE
 
-            iZ_B0(i)=iX_B0(i-1) 
+            iZ_B0(i)=iX_B0(i-1)
             iZ_E0(i)=iX_E0(i-1)
             iZ_B1(i)=iX_B1(i-1)
             iZ_E1(i)=iX_E1(i-1)
 
           END IF
-          i = i + 1 
+          i = i + 1
         END DO
 
 
@@ -151,25 +153,9 @@ CONTAINS
                              iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
 
-        CALL amrex2thornado_X &
-               ( nGF, iX_B1, iX_E1, &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL amrex2thornado_X &
-               ( nCF, iX_B1, iX_E1, &
-                 uCF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
-                 C(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCF) )
-
-
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -181,9 +167,9 @@ CONTAINS
                            iZ_B1(2):iZ_E1(2), &
                            iZ_B1(3):iZ_E1(3), &
                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
-        
 
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )        
+
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
         CALL MF_ApplyBoundaryConditions_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )

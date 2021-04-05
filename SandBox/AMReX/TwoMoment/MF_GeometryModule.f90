@@ -46,7 +46,7 @@ CONTAINS
     REAL(amrex_real),     INTENT(in)    :: Mass
 
     INTEGER            :: iLevel
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -60,6 +60,8 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
+        iLo_MF = LBOUND( uGF )
+
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
@@ -72,26 +74,12 @@ CONTAINS
                              iX_B1(3):iX_E1(3),1:nGF) )
 print*, iX_B1
 print*, iX_E1
-        CALL amrex2thornado_X &
-               ( nGF, iX_B1, iX_E1, &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        CALL thornado2amrex_X &
-               ( nGF, iX_B1, iX_E1, &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         DEALLOCATE( G )
 
