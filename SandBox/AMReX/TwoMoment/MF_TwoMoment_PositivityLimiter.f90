@@ -144,29 +144,14 @@ CONTAINS
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 U(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
-
-
+                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, Verbose_Option = Verbose )
 
         CALL thornado2amrex_Z &
-               ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
-                 uCR(     iZ_B0(2):iZ_E0(2), &
-                           iZ_B0(3):iZ_E0(3), &
-                           iZ_B0(4):iZ_E0(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 U(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                            iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_E0(3), &
-                            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies) )
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
 
       END DO
 

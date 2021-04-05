@@ -68,7 +68,8 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:,:,:)
 
     REAL(amrex_real) :: TimeStep(0:nLevels-1)
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iZ_B1(4), iZ_E1(4), iLo_MF(4)
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -91,27 +92,26 @@ CONTAINS
         iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
+        iZ_B1(1) = iE_B1
+        iZ_E1(1) = iE_E1
+
+        iZ_B1(2:4) = iX_B1
+        iZ_E1(2:4) = iX_E1
 
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        ALLOCATE( U (1:nDOFZ,iE_B1:iE_E1,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
+        ALLOCATE( U(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
+                            iZ_B1(2):iZ_E1(2), &
+                            iZ_B1(3):iZ_E1(3), &
+                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFZ*nCR*nSpecies*nE), &
-                 U(1:nDOFZ,iE_B0:iE_E0, &
-                           iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
 
 !put compute timestep here
 
@@ -270,27 +270,11 @@ CONTAINS
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 CR(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, CR )
 
         CALL amrex2thornado_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uPR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nPR*nSpecies*nE), &
-                 PR(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies) )
-
-
+                 iZ_B1, iZ_E1, iLo_MF, uPR, PR )
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -367,14 +351,8 @@ CONTAINS
 
 
         CALL thornado2amrex_Z &
-               ( nPR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
-                 uPR(     iZ_B0(2):iZ_E0(2), &
-                           iZ_B0(3):iZ_E0(3), &
-                           iZ_B0(4):iZ_E0(4),1:nDOFZ*nPR*nSpecies*nE), &
-                 PR(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                            iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_E0(3), &
-                            iZ_B0(4):iZ_E0(4),1:nPR,1:nSpecies) )
+               ( nPR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, uPR, PR )
 
       END DO
 

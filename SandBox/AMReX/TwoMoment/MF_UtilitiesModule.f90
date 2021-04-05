@@ -96,27 +96,31 @@ MODULE MF_UtilitiesModule
 
   CONTAINS
 
-  SUBROUTINE amrex2thornado_Z( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE amrex2thornado_Z &
+    ( nVars, nS, nE, iE_B0, iE_E0, iZ_B, iZ_E, iLo_MF, &
+      Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
+    INTEGER,          INTENT(in)  :: iE_B0, iE_E0, iZ_B(4), iZ_E(4), iLo_MF(4)
     REAL(amrex_real), INTENT(in)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(amrex_real), INTENT(out) :: &
-      Data_thornado(1:,iE_B0:,iX_B(1):,iX_B(2):,iX_B(3):,1:,1:)
+      Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
+
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iD, iNodeZ
-    !always want iE_E and iE_B to not include ghost cells
-    DO iZ4 = iX_B(3), iX_E(3)
-    DO iZ3 = iX_B(2), iX_E(2)
-    DO iZ2 = iX_B(1), iX_E(1)
+
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
 
       DO iS = 1, nS
       DO iVar = 1, nVars
-      DO iZ1 = iE_B0, iE_E0
+      DO iZ1 = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeZ = 1, nDOFZ
 
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-           + ( iVar -1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+                + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
         Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
@@ -133,20 +137,22 @@ MODULE MF_UtilitiesModule
   END SUBROUTINE amrex2thornado_Z
 
 
-  SUBROUTINE thornado2amrex_Z( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
-
+  SUBROUTINE thornado2amrex_Z &
+    ( nVars, nS, nE, iE_B0, iE_E0, iZ_B, iZ_E, iLo_MF, &
+      Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
-    REAL(amrex_real), INTENT(out)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
-    REAL(amrex_real), INTENT(in) :: &
-      Data_thornado(1:,iE_B0:,iX_B(1):,iX_B(2):,iX_B(3):,1:,1:)
+    INTEGER,          INTENT(in)  :: iE_B0, iE_E0, iZ_B(4), iZ_E(4), iLo_MF(4)
+    REAL(amrex_real), INTENT(out) :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(amrex_real), INTENT(in)  :: &
+      Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
+
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iNodeZ, iD
 
-    DO iZ4 = iX_B(3), iX_E(3)
-    DO iZ3 = iX_B(2), iX_E(2)
-    DO iZ2 = iX_B(1), iX_E(1)
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
 
       DO iS = 1, nS
       DO iVar = 1, nVars
@@ -154,20 +160,23 @@ MODULE MF_UtilitiesModule
       DO iNodeZ = 1, nDOFZ
 
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-           + ( iVar -1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+               + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+               + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
         Data_amrex(iZ2,iZ3,iZ4,iD) &
-          =  Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS)
+          = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS)
 
       END DO
       END DO
       END DO
       END DO
+
     END DO
     END DO
     END DO
 
   END SUBROUTINE thornado2amrex_Z
+
 
   SUBROUTINE amrex2thornado_X &
     ( nVars, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
@@ -366,20 +375,23 @@ MODULE MF_UtilitiesModule
           i = i + 1
         END DO
 
-        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, uGF, &
+                               G(1:nDOFX,iX_B(1):iX_E(1), &
+                                         iX_B(2):iX_E(2), &
+                                         iX_B(3):iX_E(3),1:nGF) )
 
-        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, uCF, CF )
+        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, uCF, &
+                               CF(1:nDOFX,iX_B(1):iX_E(1), &
+                                          iX_B(2):iX_E(2), &
+                                          iX_B(3):iX_E(3),1:nCF) )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 CR(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, &
+                 CR(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
+                            iZ_B1(2):iZ_E1(2), &
+                            iZ_B1(3):iZ_E1(3), &
+                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
