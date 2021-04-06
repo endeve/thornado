@@ -152,7 +152,7 @@ CONTAINS
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B0, iZ_E0, iLo_MF, uCR, U )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
 
       END DO
 
