@@ -189,7 +189,7 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLo_MF(4), nPoints, iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    INTEGER :: i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint
+    INTEGER :: i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint, iErr(nDOFX)
 
 
     DO iLevel = 0, nLevels-1
@@ -293,9 +293,11 @@ CONTAINS
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+                 G (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+                 G (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+                 G (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
+                 iErr )
+
         END DO
         END DO
         END DO
