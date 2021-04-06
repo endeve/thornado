@@ -113,8 +113,6 @@ MODULE MF_UtilitiesModule
 
     Verbose = .False.
     IF(PRESENT(Verbose_Option)) Verbose=Verbose_Option 
-    print*, SHAPE(Data_amrex)
-    print*, SHAPE(Data_thornado)
 
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
@@ -130,10 +128,6 @@ MODULE MF_UtilitiesModule
                 + ( iZ1 - 1 ) * nDOFZ + iNodeZ
         Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
-IF (Verbose) THEN
-!print*, iD
-!print*,iNodeZ,iZ1,iZ2, Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
-END IF
       END DO
       END DO
       END DO
