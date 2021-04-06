@@ -51,6 +51,6 @@ PL.Min_1                = 1.0e-26
 PL.Min_2                = 1.0e-26
 
 # Slope limiter parameters
-SL.UseSlopeLimiter           = 1
+SL.UseSlopeLimiter           = 0
 SL.BetaTVD                   = 1.75e0
 
