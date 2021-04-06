@@ -82,9 +82,7 @@ CONTAINS
     END IF
 
 
-print*, "a"
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-print*, "b"
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -104,7 +102,6 @@ print*, "b"
     END DO
     END DO
     END DO
-print*, "c"
 
     ! --- Arrange Geometry Fields ---
 
@@ -120,7 +117,6 @@ print*, "c"
 
     END DO
     END DO
-print*, "d"
     ! --- Arrange Fluid Fields ---
 
     DO iN_X = 1, nX_G
@@ -136,7 +132,6 @@ print*, "d"
     END DO
     END DO
 
-print*, "e"
     ! --- Arrange Radiation Fields ---
 
     DO iS   = 1, nSpecies
@@ -161,7 +156,6 @@ print*, "e"
     END DO
     END DO
 
-print*, "f"
     ! --- Arrange Opacities ---
 
     DO iS   = 1, nSpecies
@@ -186,10 +180,8 @@ print*, "f"
     END DO
 
 
-print*, "g"
     DO iN_X = 1, nX_G
 
-print*, "g1"
       CALL ComputePrimitive_Euler_Relativistic &
              ( CF_N(iCF_D ,iN_X), &
                CF_N(iCF_S1,iN_X), &
@@ -207,10 +199,8 @@ print*, "g1"
                GX_N(iGF_Gm_dd_22,iN_X), &
                GX_N(iGF_Gm_dd_33,iN_X) )
 
-print*, "g2"
       DO iN_E = 1, nE_G
       DO iS   = 1, nSpecies
-print*, CR_N(iCR_N ,iS,iN_E,iN_X), CR_N(iCR_G1 ,iS,iN_E,iN_X)
         CALL ComputeIncrement_FixedPoint &
                ( dt, &
                  CR_N(iCR_N ,iS,iN_E,iN_X), &
@@ -234,13 +224,11 @@ print*, CR_N(iCR_N ,iS,iN_E,iN_X), CR_N(iCR_G1 ,iS,iN_E,iN_X)
                  dCR_N(iCR_G1,iS,iN_E,iN_X), &
                  dCR_N(iCR_G2,iS,iN_E,iN_X), &
                  dCR_N(iCR_G3,iS,iN_E,iN_X) )
-print*, "g4"
       END DO
       END DO
 
     END DO
 
-print*, "h"
 
     ! --- Revert Radiation Increment ---
 
@@ -275,11 +263,9 @@ print*, "h"
     END DO
     END DO
 
-print*, "i"
 
     CALL FinalizeCollisions
     
-print*, "j"
     IF (Verbose) THEN
       PRINT*, "      ComputeIncrement_TwoMoment_Implicit (End)"
     END IF
