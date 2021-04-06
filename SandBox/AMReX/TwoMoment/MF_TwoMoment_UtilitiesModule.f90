@@ -302,7 +302,6 @@ CONTAINS
           IF (ANY(iErr .NE. 0) )THEN
 
             print*, iErr
-STOP
           END IF
 
         END DO
