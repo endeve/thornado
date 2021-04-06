@@ -280,6 +280,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
+          iErr = 0
+
           CALL ComputePrimitive_Euler_Relativistic &
                ( CF(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
                  CF(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
@@ -293,10 +295,14 @@ CONTAINS
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
-                 G (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-                 G (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-                 G (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
-                 iErr )
+                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33), iErr )
+
+          IF (ANY(iErr .NE. 0) )THEN
+
+            print*, iErr
+          END IF
 
         END DO
         END DO

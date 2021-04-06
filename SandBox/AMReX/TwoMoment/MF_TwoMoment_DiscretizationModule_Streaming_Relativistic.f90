@@ -172,11 +172,7 @@ CONTAINS
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B0, iZ_E0, LBOUND( duCR ), duCR, &
-                 dU(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                            iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_E0(3), &
-                            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, duCR, dU )
 
       END DO
 

@@ -21,6 +21,8 @@ MODULE MF_InitializationModule
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE EquationOfStateModule,   ONLY: &
+    ComputeAuxiliary_Fluid, &
+    ApplyEquationOfState, &
     ComputePressureFromPrimitive
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -66,7 +68,20 @@ MODULE MF_InitializationModule
     iPF_E,  &
     iCF_Ne, &
     nAF,    &
-    iAF_P
+    iAF_P, &
+    iAF_T, &
+    iAF_Ye, &
+    iAF_S, &
+    iAF_E, &
+    iAF_Gm, &
+    iAF_Cs, &
+    iAF_Me, &
+    iAF_Mp, &
+    iAF_Mn, &
+    iAF_Xp, &
+    iAF_Xn, &
+    iAF_Xa, &
+    iAF_Xh
   USE GeometryFieldsModule,    ONLY: &
     uGF,          &
     nGF,          &
@@ -1081,6 +1096,7 @@ CONTAINS
                  uGF_K(:,iGF_Gm_dd_33), &
                  uAF_K(:,iAF_P)      )
 
+
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )   
       
@@ -1094,11 +1110,9 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 1.0d-8  
-            
+                = 10d-8  
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = 0.0_AR
-         
+                 = 0.0_AR
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
 
@@ -1146,7 +1160,6 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-  
   END SUBROUTINE InitializeFields_HomogeneousSphere1D
 
 
