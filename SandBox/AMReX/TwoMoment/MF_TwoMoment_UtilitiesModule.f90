@@ -189,7 +189,7 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLo_MF(4), nPoints, iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    INTEGER :: i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint
+    INTEGER :: i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint, iErr(nDOFX)
 
 
     DO iLevel = 0, nLevels-1
@@ -280,6 +280,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
+          iErr = 0
+
           CALL ComputePrimitive_Euler_Relativistic &
                ( CF(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
                  CF(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
@@ -295,7 +297,13 @@ CONTAINS
                  PF(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
                  G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                  G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33), iErr )
+
+          IF (ANY(iErr .NE. 0) )THEN
+
+            print*, iErr
+          END IF
+
         END DO
         END DO
         END DO

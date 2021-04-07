@@ -73,7 +73,7 @@ PROGRAM ApplicationDriver
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
 
-      nE  = 1
+      nE  = 8
       eL  = 0.0_DP
       eR  = 1.0_DP
       bcE = 1
@@ -96,8 +96,8 @@ PROGRAM ApplicationDriver
       Sigma = 0.0_DP
 
       C_TCI = 1.0_DP
-      UseTroubledCellIndicator = .TRUE.
-      UseSlopeLimiter          = .TRUE.
+      UseTroubledCellIndicator = .FALSE.
+      UseSlopeLimiter          = .FALSE.
       UsePositivityLimiter     = .FALSE.
 
     CASE( 'SineWaveDiffusion' )

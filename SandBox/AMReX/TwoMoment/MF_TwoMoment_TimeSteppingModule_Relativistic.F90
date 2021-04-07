@@ -39,6 +39,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ComputeIncrement_Implicit
   USE MF_TwoMoment_PositivityLimiter, ONLY: &
     MF_TwoMoment_ApplyPositivityLimiter
+  USE MF_TwoMoment_SlopeLimiter, ONLY: &
+    MF_TwoMoment_ApplySlopeLimiter
   ! --- Local Modules ---
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
@@ -119,7 +121,7 @@ CONTAINS
 
         CALL MF_U(iLevel) &
                % COPY( MF_uCR(iLevel), 1, 1, &
-                       MF_uCR(iLevel) % nComp(), swX(1) )
+                       MF_uCR(iLevel) % nComp(), swX )
 
 
         ! --- Apply boundary conditions to interior domains ---
@@ -156,14 +158,14 @@ CONTAINS
           CALL MF_U(iLevel) &
                    % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                               dt(iLevel) * a_EX(iS,jS), MF_DU_Ex(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), 0 )
+                              1, MF_U(iLevel) % nComp(), swX )
         END IF
 
         IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
           CALL MF_U(iLevel) &
                    % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                               dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), 0 )
+                              1, MF_U(iLevel) % nComp(), swX )
         END IF
 
         IF( jS == iS - 1 )THEN
@@ -171,6 +173,8 @@ CONTAINS
 
           ! --- Apply Limiters ---
 
+          CALL MF_TwoMoment_ApplySlopeLimiter &
+                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
           CALL MF_TwoMoment_ApplyPositivityLimiter &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
@@ -192,7 +196,7 @@ CONTAINS
         CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), 0 )
+                            1, MF_U(iLevel) % nComp(), swX )
       END IF
 
       IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
@@ -227,7 +231,7 @@ CONTAINS
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), 0 )
+                            1, MF_U(iLevel) % nComp(), swX )
 
         END IF
 
@@ -236,11 +240,14 @@ CONTAINS
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_EX(iS), MF_DU_Ex(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), 0 )
+                            1, MF_U(iLevel) % nComp(), swX )
 
         END IF
 
       END DO
+
+          CALL MF_TwoMoment_ApplySlopeLimiter &
+                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
           CALL MF_TwoMoment_ApplyPositivityLimiter &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
@@ -274,14 +281,14 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, 0 )
+               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
         CALL amrex_multifab_build &
-               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, 0 )
+               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
       END DO
 

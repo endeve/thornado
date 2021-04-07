@@ -98,7 +98,7 @@ MODULE MF_UtilitiesModule
 
   SUBROUTINE amrex2thornado_Z &
     ( nVars, nS, nE, iE_B0, iE_E0, iZ_B, iZ_E, iLo_MF, &
-      Data_amrex, Data_thornado )
+      Data_amrex, Data_thornado, Verbose_Option )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
     INTEGER,          INTENT(in)  :: iE_B0, iE_E0, iZ_B(4), iZ_E(4), iLo_MF(4)
@@ -106,8 +106,13 @@ MODULE MF_UtilitiesModule
       Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(amrex_real), INTENT(out) :: &
       Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
-
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iD, iNodeZ
+
+    LOGICAL :: Verbose
+
+    Verbose = .False.
+    IF(PRESENT(Verbose_Option)) Verbose=Verbose_Option 
 
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
@@ -121,10 +126,8 @@ MODULE MF_UtilitiesModule
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                 + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                 + ( iZ1 - 1 ) * nDOFZ + iNodeZ
-
         Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
-
       END DO
       END DO
       END DO
