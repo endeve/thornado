@@ -1047,6 +1047,22 @@ CONTAINS
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
 
+      CASE( 'ConstantSpherical' )
+
+        XD = 1.0_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = LeftState(iPF_D )
+        RightState(iPF_V1) = LeftState(iPF_V1)
+        RightState(iPF_V2) = LeftState(iPF_V2)
+        RightState(iPF_V3) = LeftState(iPF_V3)
+        RightState(iPF_E ) = LeftState(iPF_E )
+
       CASE DEFAULT
 
         WRITE(*,*)
@@ -1056,6 +1072,9 @@ CONTAINS
         WRITE(*,'(A)') &
           "  'SphericalSod' - &
           Spherical Sod's shock tube"
+        WRITE(*,'(A)') &
+          "  'ConstantSpherical' - &
+          All fields constant"
         WRITE(*,'(A)') 'Stopping...'
         STOP
 
@@ -1112,6 +1131,14 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
 
             END IF
+
+          CASE( 'ConstantSpherical' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = LeftState(iPF_D )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = LeftState(iPF_E )
 
         END SELECT
 
