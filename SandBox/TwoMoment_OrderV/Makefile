@@ -288,6 +288,7 @@ TwoMoment_SlopeLimiterModule_OrderV.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
   TwoMoment_SlopeLimiterModule_OrderV.F90
 
 TwoMoment_PositivityLimiterModule_OrderV.o: \
