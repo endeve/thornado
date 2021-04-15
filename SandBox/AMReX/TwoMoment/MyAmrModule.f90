@@ -27,6 +27,13 @@ MODULE MyAmrModule
   ! --- thornado Modules ---
   USE ProgramHeaderModule,   ONLY: &
     InitializeProgramHeader, nDimsX
+  USE UnitsModule,            ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay, &
+    Centimeter, &
+    Kilometer, &
+    SolarMass
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
@@ -78,6 +85,10 @@ MODULE MyAmrModule
 
   LOGICAL  :: UseSlopeLimiter
   REAL(AR) :: BetaTVD
+  
+
+  REAL(AR) :: Mass, R0
+
 CONTAINS
 
   SUBROUTINE MyAmrInit
@@ -139,6 +150,8 @@ CONTAINS
       CALL PP % getarr( 'prob_lo',    xL )
       CALL PP % getarr( 'prob_hi',    xR )
     CALL amrex_parmparse_destroy( PP )
+
+
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
     ELSE IF( coord_sys .EQ. 1 )THEN
@@ -148,6 +161,40 @@ CONTAINS
     ELSE
       STOP 'Invalid choice for coord_sys'
     END IF
+
+    Mass = 0.0_AR
+    R0 = 1000.0_AR
+    CALL amrex_parmparse_build( PP, 'ST' )
+      CALL PP % query( 'Mass', Mass )
+      CALL PP % query( 'R0'               ,R0 )
+    CALL amrex_parmparse_destroy( PP )
+
+    IF( UsePhysicalUnits )THEN
+
+      CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
+
+      t_end  = t_end  * UnitsDisplay % TimeUnit
+      dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
+      dt_chk = dt_chk * UnitsDisplay % TimeUnit
+
+      xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
+      xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
+      xL(2) = xL(2) * UnitsDisplay % LengthX2Unit
+      xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
+      xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
+      xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
+
+      eL = eL * UnitsDisplay % EnergyUnit 
+      eR = eR * UnitsDisplay % EnergyUnit 
+
+      Chi = Chi * ( 1.0_AR / Centimeter )
+
+      Mass = Mass * SolarMass
+
+      R0 = R0 * kilometer
+
+    END IF
+
 
 
     ! --- Parameters amr.* ---
@@ -196,6 +243,8 @@ CONTAINS
       CALL PP % query( 'BetaTVD'               , BetaTVD                )
     CALL amrex_parmparse_destroy( PP )
 
+
+
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
 
     nLevels = MaxLevel + 1
@@ -206,6 +255,12 @@ CONTAINS
              xL_Option = xL, xR_Option = xR, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, eL_option = eL, eR_option = eR, &
              Verbose_Option = amrex_parallel_ioprocessor() )
+
+
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
+
+
 
     IF( nDimsX .NE. amrex_spacedim )THEN
       WRITE(*,'(A)') 'ERROR'
