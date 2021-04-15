@@ -42,6 +42,7 @@ MODULE MF_Euler_PerturbationModule
     nLevels,          &
     DEBUG,            &
     UsePhysicalUnits, &
+    UseTiling,        &
     GEOM
 
   IMPLICIT NONE
@@ -191,7 +192,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

@@ -66,7 +66,8 @@ MODULE MF_UtilitiesModule
   USE InputParsingModule,                ONLY: &
     nLevels, &
     nX,      &
-    swX
+    swX,     &
+    UseTiling
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -174,7 +175,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -259,7 +260,7 @@ CONTAINS
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -468,7 +469,7 @@ CONTAINS
 
       CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -716,7 +717,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
