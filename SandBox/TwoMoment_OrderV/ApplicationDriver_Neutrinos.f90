@@ -15,7 +15,13 @@ PROGRAM ApplicationDriver_Neutrinos
   USE GeometryFieldsModuleE, ONLY: &
     uGE
   USE FluidFieldsModule, ONLY: &
-    uCF
+    uCF, uPF, uAF, uDF
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    ComputeFromConserved_Euler_NonRelativistic
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_NonRelativistic_TABLE
+  USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE RadiationFieldsModule, ONLY: &
     uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
@@ -43,7 +49,10 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
+  LOGICAL       :: EvolveEuler
+  LOGICAL       :: UseSlopeLimiter_Euler
   LOGICAL       :: UseSlopeLimiter_TwoMoment
+  LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: FixedTimeStep
   INTEGER       :: nSpecies
@@ -93,7 +102,10 @@ PROGRAM ApplicationDriver_Neutrinos
       iCycleD       = 1
       iCycleW       = 10
 
+      EvolveEuler                    = .FALSE.
+      UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
+      UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .FALSE.
 
     CASE( 'Deleptonization' )
@@ -119,7 +131,10 @@ PROGRAM ApplicationDriver_Neutrinos
       iCycleD = 1
       iCycleW = 10
 
+      EvolveEuler                    = .TRUE.
+      UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
+      UsePositivityLimiter_Euler     = .TRUE.
       UsePositivityLimiter_TwoMoment = .TRUE.
 
     CASE DEFAULT
@@ -137,10 +152,16 @@ PROGRAM ApplicationDriver_Neutrinos
 
   ! --- Apply Slope Limiter to Initial Data ---
 
+  CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
   CALL ApplySlopeLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
 
   ! --- Apply Positivity Limiter to Initial Data ---
+
+  CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
@@ -199,6 +220,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
+      CALL ComputeFromConserved_Euler_NonRelativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
       CALL ComputeFromConserved_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
@@ -211,6 +235,9 @@ PROGRAM ApplicationDriver_Neutrinos
     END IF
 
   END DO
+
+  CALL ComputeFromConserved_Euler_NonRelativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
@@ -251,11 +278,16 @@ CONTAINS
     USE ReferenceElementModule_Lagrange, ONLY: &
       InitializeReferenceElement_Lagrange
     USE EquationOfStateModule_TABLE, ONLY: &
-      InitializeEquationOfState_TABLE
+      InitializeEquationOfState_TABLE, &
+      MinD, MaxD, MinT, MaxT, MinY, MaxY
     USE OpacityModule_TABLE, ONLY: &
       InitializeOpacities_TABLE
     USE TwoMoment_ClosureModule, ONLY: &
       InitializeClosure_TwoMoment
+    USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+      InitializeSlopeLimiter_Euler_NonRelativistic_TABLE
+    USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
+      InitializePositivityLimiter_Euler_NonRelativistic_TABLE
     USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
       InitializeTroubledCellIndicator_TwoMoment
     USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
@@ -273,7 +305,7 @@ CONTAINS
              nX_Option &
                = nX, &
              swX_Option &
-               = [ 1, 1, 1 ], &
+               = [ 1, 0, 0 ], &
              bcX_Option &
                = bcX, &
              xL_Option &
@@ -358,6 +390,40 @@ CONTAINS
 
     CALL InitializeClosure_TwoMoment
 
+    ! --- Initialize Slope Limiter (Euler) ---
+
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( BetaTVD_Option &
+               = 1.75_DP, &
+             SlopeTolerance_Option &
+               = 1.0d-6, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter_Euler, &
+             UseTroubledCellIndicator_Option &
+               = .FALSE., &
+             LimiterThresholdParameter_Option &
+               = Zero )
+
+    ! --- Initialize Positivity Limiter (Euler) ---
+
+    CALL InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( UsePositivityLimiter_Option &
+               = UsePositivityLimiter_Euler, &
+             Verbose_Option &
+               = .TRUE., &
+             Min_1_Option &
+               = ( One + EPSILON( One ) ) * MinD, &
+             Min_2_Option &
+               = ( One + EPSILON( One ) ) * MinT, &
+             Min_3_Option &
+               = ( One + EPSILON( One ) ) * MinY, &
+             Max_1_Option &
+               = ( One - EPSILON( One ) ) * MaxD, &
+             Max_2_Option &
+               = ( One - EPSILON( One ) ) * MaxT, &
+             Max_3_Option &
+               = ( One - EPSILON( One ) ) * MaxY )
+
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 
     CALL InitializeTroubledCellIndicator_TwoMoment &
@@ -392,7 +458,8 @@ CONTAINS
 
     ! --- Initialize Time Stepper ---
 
-    CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
+    CALL Initialize_IMEX_RK &
+           ( TRIM( TimeSteppingScheme ), EvolveEuler_Option = EvolveEuler )
 
   END SUBROUTINE InitializeDriver
 
@@ -405,6 +472,10 @@ CONTAINS
       FinalizeEquationOfState_TABLE
     USE OpacityModule_TABLE, ONLY: &
       FinalizeOpacities_TABLE
+    USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+      FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
+    USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
+      FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
     USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
       FinalizeTroubledCellIndicator_TwoMoment
     USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
@@ -435,6 +506,10 @@ CONTAINS
     CALL FinalizeEquationOfState_TABLE
 
     CALL FinalizeOpacities_TABLE
+
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
+
+    CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
     CALL FinalizeTroubledCellIndicator_TwoMoment
 
