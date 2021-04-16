@@ -25,16 +25,18 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nSpecies, iNuE, iNuE_Bar, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputePrimitive_Euler_NonRelativistic
+    ComputePrimitive_Euler_NonRelativistic, &
+    ComputeConserved_Euler_NonRelativistic
   USE EquationOfStateModule_TABLE, ONLY: &
-    ComputeThermodynamicStates_Auxiliary_TABLE
+    ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputeThermodynamicStates_Primitive_TABLE
   USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
     SolveMatterEquations_FP_NestedAA, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputePrimitive_TwoMoment_Vector_Richardson
-
+    ComputePrimitive_TwoMoment_Vector_Richardson, &
+    ComputeConserved_TwoMoment
   IMPLICIT NONE
   PRIVATE
 
@@ -123,7 +125,7 @@ CONTAINS
 
 
 
-    INTEGER :: iN_X
+    INTEGER :: iN_X, iN_E, iS
 
     PRINT*, "--- In implicit solve ---"
     PRINT*, "--- Initializing ---"
@@ -134,11 +136,11 @@ CONTAINS
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    PRINT*, "CF_D = ", CF_N(:,iCF_D) / (Gram / Centimeter**3)
-    PRINT*, "CF_E = ", CF_N(:,iCF_E)
-    PRINT*, "CF_Ne = ", CF_N(:,iCF_Ne)
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! PRINT*, "CF_D = ", CF_N(:,iCF_D) / (Gram / Centimeter**3)
+    ! PRINT*, "CF_E = ", CF_N(:,iCF_E)
+    ! PRINT*, "CF_Ne = ", CF_N(:,iCF_Ne)
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
     PRINT*, "--- Computing primitive fluid ---"
 
@@ -165,42 +167,43 @@ CONTAINS
 
     END DO
 
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
-    PRINT*, "G22 = ", GX_N(:,iGF_Gm_dd_22)
-    PRINT*, "G33 = ", GX_N(:,iGF_Gm_dd_33)
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    PRINT*, "PF_V1 = ", PF_N(:,iPF_V1) / SpeedOfLight
-    PRINT*, "PF_V2 = ", PF_N(:,iPF_V2) / SpeedOfLight
-    PRINT*, "PF_V3 = ", PF_N(:,iPF_V3) / SpeedOfLight
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    PRINT*, "PF_D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
-    PRINT*, "PF_E = ", PF_N(:,iPF_E)
-    PRINT*, "PF_Ne = ", PF_N(:,iPF_Ne)
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
+    ! PRINT*, "G22 = ", GX_N(:,iGF_Gm_dd_22)
+    ! PRINT*, "G33 = ", GX_N(:,iGF_Gm_dd_33)
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! PRINT*, "PF_V1 = ", PF_N(:,iPF_V1) / SpeedOfLight
+    ! PRINT*, "PF_V2 = ", PF_N(:,iPF_V2) / SpeedOfLight
+    ! PRINT*, "PF_V3 = ", PF_N(:,iPF_V3) / SpeedOfLight
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! PRINT*, "PF_D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
+    ! PRINT*, "PF_E = ", PF_N(:,iPF_E)
+    ! PRINT*, "PF_Ne = ", PF_N(:,iPF_Ne)
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
     PRINT*, "--- Computing primitive moments ---"
 
     CALL ComputePrimitive_TwoMoment_Vector_Richardson &
-          ( N_P, G1_P, G2_P, G3_P, &
-            J_P, H1_P, H2_P, H3_P, &
-            PF_N(:,iPF_V1), &
-            PF_N(:,iPF_V2), &
-            PF_N(:,iPF_V3), &
-            GX_N(:,iGF_Gm_dd_11), &
-            GX_N(:,iGF_Gm_dd_22), &
-            GX_N(:,iGF_Gm_dd_33), &
-            PositionIndexZ, nIterations_Prim )
-            PRINT*, "N_P = ", N_P(:)
-            PRINT*, "G1_P = ", G1_P(:)
-            PRINT*, "G2_P = ", G2_P(:)
-            PRINT*, "G3_P = ", G3_P(:)
+           ( N_P, G1_P, G2_P, G3_P, &
+             J_P, H1_P, H2_P, H3_P, &
+             PF_N(:,iPF_V1), &
+             PF_N(:,iPF_V2), &
+             PF_N(:,iPF_V3), &
+             GX_N(:,iGF_Gm_dd_11), &
+             GX_N(:,iGF_Gm_dd_22), &
+             GX_N(:,iGF_Gm_dd_33), &
+             PositionIndexZ, nIterations_Prim )
 
-            PRINT*, "J_P = ", J_P(:)
-            PRINT*, "H1_P = ", H1_P(:)
-            PRINT*, "H2_P = ", H2_P(:)
-            PRINT*, "H3_P = ", H3_P(:)
+            ! PRINT*, "N_P = ", N_P(:)
+            ! PRINT*, "G1_P = ", G1_P(:)
+            ! PRINT*, "G2_P = ", G2_P(:)
+            ! PRINT*, "G3_P = ", G3_P(:)
+            !
+            ! PRINT*, "J_P = ", J_P(:)
+            ! PRINT*, "H1_P = ", H1_P(:)
+            ! PRINT*, "H2_P = ", H2_P(:)
+            ! PRINT*, "H3_P = ", H3_P(:)
 
     PRINT*, "--- EOS lookup ---"
 
@@ -210,14 +213,14 @@ CONTAINS
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    PRINT*, "D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
-    PRINT*, "T = ", AF_N(:,iAF_T) / (MeV)
-    PRINT*, "Y = ", AF_N(:,iAF_Ye)
-    PRINT*, "E = ", AF_N(:,iAF_E) / (MeV)
-    PRINT*, "PF_E = ", PF_N(:,iPF_E)
-    PRINT*, "Ne = ", PF_N(:,iPF_Ne)
-    ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! PRINT*, "D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
+    ! PRINT*, "T = ", AF_N(:,iAF_T) / (MeV)
+    ! PRINT*, "Y = ", AF_N(:,iAF_Ye)
+    ! PRINT*, "E = ", AF_N(:,iAF_E) / (MeV)
+    ! PRINT*, "PF_E = ", PF_N(:,iPF_E)
+    ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
+    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
     PRINT*, "--- Solving nonlinear system ---"
     CALL SolveMatterEquations_FP_NestedAA &
@@ -227,9 +230,58 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), GX_N(:,iGF_Gm_dd_33), &
              nIterations_Inner, nIterations_Outer )
 
+    PRINT*, "--- Map primitive and auxillary quantities back to conserved ones ---"
+    PRINT*, "--- and compute increment ---"
 
 
-   PRINT*, "--- Finalizing implicit solve---"
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+      CALL ComputeConserved_TwoMoment &
+             ( PR_N(iN_E,iN_X,iS,iCR_N ), &
+               PR_N(iN_E,iN_X,iS,iCR_G1), &
+               PR_N(iN_E,iN_X,iS,iCR_G2), &
+               PR_N(iN_E,iN_X,iS,iCR_G3), &
+               CR_N(iN_E,iN_X,iS,iCR_N ), &
+               CR_N(iN_E,iN_X,iS,iCR_G1), &
+               CR_N(iN_E,iN_X,iS,iCR_G2), &
+               CR_N(iN_E,iN_X,iS,iCR_G3), &
+               PF_N(iN_X,iPF_V1), &
+               PF_N(iN_X,iPF_V2), &
+               PF_N(iN_X,iPF_V3), &
+               GX_N(iN_X,iGF_Gm_dd_11), &
+               GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33) )
+    END DO
+    END DO
+    END DO
+
+    CALL ComputeThermodynamicStates_Primitive_TABLE &
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+             PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+    DO iN_X = 1, nX_G
+      CALL ComputeConserved_Euler_NonRelativistic &
+             ( PF_N(iN_X,iPF_D),  &
+               PF_N(iN_X,iPF_V1), &
+               PF_N(iN_X,iPF_V2), &
+               PF_N(iN_X,iPF_V3), &
+               PF_N(iN_X,iPF_E ), &
+               PF_N(iN_X,iPF_Ne), &
+               CF_N(iN_X,iCF_D ), &
+               CF_N(iN_X,iCF_S1), &
+               CF_N(iN_X,iCF_S2), &
+               CF_N(iN_X,iCF_S3), &
+               CF_N(iN_X,iCF_E ), &
+               CF_N(iN_X,iCF_Ne), &
+               GX_N(iN_X,iGF_Gm_dd_11), &
+               GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33) )
+
+    END DO
+    !! compute increment
+
+    PRINT*, "--- Finalizing implicit solve---"
     CALL FinalizeCollisions
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit

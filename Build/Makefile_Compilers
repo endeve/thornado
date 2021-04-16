@@ -65,6 +65,7 @@ FORTRAN_titan_gnu    = ftn -cpp
 FORTRAN_titan_pgi    = ftn -Mpreprocess
 FORTRAN_titan_cray   = ftn
 FORTRAN_paullaiu_gnu = mpif90
+FORTRAN_paullaiuair  = mpif90
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
 FORTRAN_summitdev_gcc= mpifort -cpp
@@ -96,6 +97,7 @@ SUFFIX_f90_dpochik      =
 SUFFIX_f90_lucalin	=
 SUFFIX_f90_bison        =
 SUFFIX_paullaiu_gnu     =
+SUFFIX_paullaiuair      =
 SUFFIX_f90_titan_gnu    =
 SUFFIX_f90_titan_pgi    =
 SUFFIX_f90_titan_cray   =
@@ -131,6 +133,7 @@ FLINKER_titan_gnu    = ftn -cpp
 FLINKER_titan_pgi    = ftn -Mpreprocess
 FLINKER_titan_cray   = ftn
 FLINKER_paullaiu_gnu = mpif90
+FLINKER_paullaiuair  = mpif90
 FLINKER_beacon_intel = mpiifort -mkl
 FLINKER_mcarpe21     = mpiifort
 FLINKER_summitdev_gcc= mpifort -cpp
@@ -166,6 +169,7 @@ DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_pgi    = -g -O0 -traceback -Mbounds -Ktrap=fp -Mnoopenmp
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
 DEBUG_paullaiu_gnu = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_paullaiuair  = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_beacon_intel = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
 DEBUG_mcarpe21     = -g
 DEBUG_summitdev_gcc= -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
@@ -202,6 +206,7 @@ OPTIMIZE_titan_gnu    = -O3 -march=bdver1
 OPTIMIZE_titan_pgi    = -fastsse
 OPTIMIZE_titan_cray   =
 OPTIMIZE_paullaiu_gnu = -O2
+OPTIMIZE_paullaiuair  = -O2
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
 OPTIMIZE_summitdev_gcc= -g -O3 -mcpu=power8
@@ -232,7 +237,8 @@ INCLUDE_HDF5_zelledge          = -I/usr/include/hdf5/serial
 #INCLUDE_HDF5_zelledge          = -I/usr/lib/x86_64-linux-gnu/hdf5/serial
 INCLUDE_HDF5_dpochik           = -I/usr/include/hdf5/serial
 INCLUDE_HDF5_lucalin           = -I/usr/local/hdf5-1.10.5/hdf5/include
-INCLUDE_HDF5_paullaiu_gnu      = -I/home/plc/libs/hdf5-1.10.7/hdf5/include
+INCLUDE_HDF5_paullaiu_gnu      = -I/usr/lib/hdf5/include
+INCLUDE_HDF5_paullaiuair       = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_bison             = -I/usr/include/hdf5/serial
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_pgi         = # Use Module Load
@@ -269,6 +275,7 @@ INCLUDE_LAPACK_dpochik         = -I/usr/include
 INCLUDE_LAPACK_lucalin         = -I/usr/include
 INCLUDE_LAPACK_bison           = -I/usr/include
 INCLUDE_LAPACK_paullaiu_gnu    = -I/usr/include
+INCLUDE_LAPACK_paullaiuair     = -I/usr/local/opt/lapack/include
 INCLUDE_LAPACK_accre           = -I/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/ScaLAPACK/2.0.2/include
 INCLUDE_LAPACK_titan_gnu       =
 INCLUDE_LAPACK_titan_pgi       =
@@ -327,7 +334,8 @@ LIBRARIES_HDF5_jrober          = -L/usr/local/hdf5/lib  -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_zelledge        = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_dpochik         = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_lucalin         = -L/usr/local/hdf5-1.10.5/hdf5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_paullaiu_gnu    = -L/home/plc/libs/hdf5-1.10.7/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_paullaiu_gnu    = -L/usr/lib/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_paullaiuair     = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_bison           = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_accre           = -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
@@ -368,6 +376,7 @@ LIBRARIES_LAPACK_dpochik       = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lb
 LIBRARIES_LAPACK_lucalin       = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
 LIBRARIES_LAPACK_bison         = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
 LIBRARIES_LAPACK_paullaiu_gnu  = -L/usr/lib/lapack  -llapack -lblas
+LIBRARIES_LAPACK_paullaiuair   = -L/usr/local/opt/lapack/lib -llapack -lblas
 LIBRARIES_LAPACK_accre         = -L/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/ScaLAPACK/2.0.2/lib -lscalapack -lopenblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 				 -L/usr/lib/libblas -lblas
@@ -449,6 +458,7 @@ PP_titan_gnu    = -D
 PP_titan_pgi    = -D
 PP_titan_cray   = -D
 PP_paullaiu_gnu = -D
+PP_paullaiuair  = -D
 PP_beacon_intel = -D
 PP_mcarpe21     = -D
 PP_summitdev_gcc= -D
@@ -480,6 +490,7 @@ MDEFS_titan_gnu    =
 MDEFS_titan_pgi    =
 MDEFS_titan_cray   =
 MDEFS_paullaiu_gnu =
+MDEFS_paullaiuair  =
 MDEFS_beacon_intel =
 MDEFS_mcarpe21     =
 MDEFS_summitdev_gcc=

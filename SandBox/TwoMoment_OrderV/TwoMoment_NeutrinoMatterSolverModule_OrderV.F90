@@ -1312,20 +1312,16 @@ CONTAINS
     DO iN_X = 1, nX_G
 
       S_Y(iN_X) = One / ( D(iN_X) * Yold(iN_X) / AtomicMassUnit )
+      ! Ef may be negative, may need to change scaling
+      ! A potential scaling is the lower bound in the table
       S_Ef(iN_X) = One / ( D(iN_X) * Efold(iN_X) )
-      S_V_d_1(iN_X) = One / D(iN_X)
-      S_V_d_2(iN_X) = One / D(iN_X)
-      S_V_d_3(iN_X) = One / D(iN_X)
+      S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
+      S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
+      S_V_d_3(iN_X) = One / ( D(iN_X) * SpeedOfLight )
 
-      C_Y(iN_X) = C_Y(iN_X) * S_Y(iN_X)
-      C_Ef(iN_X) = C_Ef(iN_X) * S_Ef(iN_X)
-      C_V_d_1(iN_X) = C_V_d_1(iN_X) * S_V_d_1(iN_X)
-      C_V_d_2(iN_X) = C_V_d_2(iN_X) * S_V_d_2(iN_X)
-      C_V_d_3(iN_X) = C_V_d_3(iN_X) * S_V_d_3(iN_X)
-
-      U_Y(iN_X) = Y(iN_X) / Yold(iN_X) ! --- Initial Guess
-      U_Ef(iN_X) = Ef(iN_X) / Efold(iN_X) ! --- Initial Guess
-
+      ! Initial guess is the old matter state
+      U_Y(iN_X)     = Y(iN_X)     / Yold(iN_X)
+      U_Ef(iN_X)    = Ef(iN_X)    / Efold(iN_X)
       U_V_d_1(iN_X) = V_d_1(iN_X) / SpeedOfLight
       U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
@@ -1333,6 +1329,13 @@ CONTAINS
       ! U_V_d_1(iN_X) = V_d_1(iN_X) / V_d_1old(iN_X) ! --- Initial Guess
       ! U_V_d_2(iN_X) = V_d_2(iN_X) / V_d_2old(iN_X) ! --- Initial Guess
       ! U_V_d_3(iN_X) = V_d_3(iN_X) / V_d_3old(iN_X) ! --- Initial Guess
+
+      ! Now the old matter state is included in C terms
+      C_Y(iN_X)     = Yold(iN_X)     / Yold(iN_X)   + C_Y(iN_X)     * S_Y(iN_X)
+      C_Ef(iN_X)    = Efold(iN_X)    / Efold(iN_X)  + C_Ef(iN_X)    * S_Ef(iN_X)
+      C_V_d_1(iN_X) = V_d_1old(iN_X) / SpeedOfLight + C_V_d_1(iN_X) * S_V_d_1(iN_X)
+      C_V_d_2(iN_X) = V_d_2old(iN_X) / SpeedOfLight + C_V_d_2(iN_X) * S_V_d_2(iN_X)
+      C_V_d_3(iN_X) = V_d_3old(iN_X) / SpeedOfLight + C_V_d_3(iN_X) * S_V_d_3(iN_X)
 
     END DO
 
@@ -1514,11 +1517,11 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
 
-        G_Y(iN_X)      = One + C_Y(iN_X)     - G_Y(iN_X)     * S_Y(iN_X)
-        G_Ef(iN_X)     = One + C_Ef(iN_X)    - G_Ef(iN_X)    * S_Ef(iN_X)
-        G_V_d_1(iN_X)  = One + C_V_d_1(iN_X) - G_V_d_1(iN_X) * S_V_d_1(iN_X) ! the first term is no longer 1 due to the scaling of v
-        G_V_d_2(iN_X)  = One + C_V_d_2(iN_X) - G_V_d_2(iN_X) * S_V_d_2(iN_X)
-        G_V_d_3(iN_X)  = One + C_V_d_3(iN_X) - G_V_d_3(iN_X) * S_V_d_3(iN_X)
+        G_Y(iN_X)      = C_Y(iN_X)     - G_Y(iN_X)     * S_Y(iN_X)
+        G_Ef(iN_X)     = C_Ef(iN_X)    - G_Ef(iN_X)    * S_Ef(iN_X)
+        G_V_d_1(iN_X)  = C_V_d_1(iN_X) - G_V_d_1(iN_X) * S_V_d_1(iN_X)
+        G_V_d_2(iN_X)  = C_V_d_2(iN_X) - G_V_d_2(iN_X) * S_V_d_2(iN_X)
+        G_V_d_3(iN_X)  = C_V_d_3(iN_X) - G_V_d_3(iN_X) * S_V_d_3(iN_X)
 
         Gm( iY,iN_X) = G_Y(iN_X)
         Gm(iEf,iN_X) = G_Ef(iN_X)
