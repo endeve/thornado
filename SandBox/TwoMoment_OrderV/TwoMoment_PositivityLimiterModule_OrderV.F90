@@ -10,7 +10,12 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
-    Timer_PositivityLimiter
+    Timer_PL, &
+    Timer_PL_Permute, &
+    Timer_PL_PointValues, &
+    Timer_PL_CellAverage, &
+    Timer_PL_Theta_1, &
+    Timer_PL_Theta_2
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -505,7 +510,6 @@ CONTAINS
           1:nCR, &
           1:nSpecies)
 
-    LOGICAL  :: RecomputePointValues
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_Z, iP_X
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     INTEGER  :: iX1, iX2, iX3
@@ -513,6 +517,13 @@ CONTAINS
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    LOGICAL  :: &
+      RecomputePointValues &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
     REAL(DP) :: &
       Tau_Q(nDOFZ, &
             iZ_B0(1):iZ_E0(1), &
@@ -621,7 +632,7 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
-    CALL TimersStart( Timer_PositivityLimiter )
+    CALL TimersStart( Timer_PL )
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -630,6 +641,17 @@ CONTAINS
 
     N_G = PRODUCT( iX_E0 - iX_B0 + 1 )
 
+    RecomputePointValues = .FALSE.
+
+    CALL TimersStart( Timer_PL_Permute )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -646,10 +668,22 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Permute )
+
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_1_Q, h_d_1_P )
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_2_Q, h_d_2_P )
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_3_Q, h_d_3_P )
 
+    CALL TimersStart( Timer_PL_Permute )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -671,6 +705,17 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Permute )
+
+    CALL TimersStart( Timer_PL_Permute )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -696,6 +741,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Permute )
+
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
@@ -708,9 +755,17 @@ CONTAINS
 
     ! --- Ensure Bounded Density ---
 
-    RecomputePointValues = .FALSE.
+    CALL TimersStart( Timer_PL_Theta_1 )
 
-    DO iS = 1, nSpecies
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( Min_K, Max_K, Theta_1 )
+#endif
+    DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -741,7 +796,7 @@ CONTAINS
           = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
             + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
-        RecomputePointValues = .TRUE.
+        RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
       END IF
 
@@ -751,7 +806,9 @@ CONTAINS
     END DO
     END DO
 
-    IF( RecomputePointValues )THEN
+    CALL TimersStop( Timer_PL_Theta_1 )
+
+    IF( ANY( RecomputePointValues ) )THEN
 
       CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
 
@@ -759,7 +816,18 @@ CONTAINS
 
     ! --- Ensure Positive "Gamma" ---
 
-    DO iS = 1, nSpecies
+    CALL TimersStart( Timer_PL_Theta_2 )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( Theta_2, Theta_P, Gamma, Gamma_Min, iP_X, &
+    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#endif
+    DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -836,6 +904,17 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_PL_Theta_2 )
+
+    CALL TimersStart( Timer_PL_Permute )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -853,7 +932,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_PositivityLimiter )
+    CALL TimersStop( Timer_PL_Permute )
+
+    CALL TimersStop( Timer_PL )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
@@ -877,9 +958,13 @@ CONTAINS
           iZ_B0(4):iZ_E0(4), &
           nSpecies)
 
+    CALL TimersStart( Timer_PL_PointValues )
+
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nPT_Z, N_R, nDOFZ, One, InterpMat_Z, nPT_Z, &
              U_Q, nDOFZ, Zero, U_P, nPT_Z )
+
+    CALL TimersStop( Timer_PL_PointValues )
 
   END SUBROUTINE ComputePointValuesZ
 
@@ -899,9 +984,13 @@ CONTAINS
           iX_B0(2):iX_E0(2), &
           iX_B0(3):iX_E0(3))
 
+    CALL TimersStart( Timer_PL_PointValues )
+
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nPT_X, N_G, nDOFX, One, InterpMat_X, nPT_X, &
              U_Q, nDOFX, Zero, U_P, nPT_X )
+
+    CALL TimersStop( Timer_PL_PointValues )
 
   END SUBROUTINE ComputePointValuesX
 
@@ -922,6 +1011,15 @@ CONTAINS
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS
 
+    CALL TimersStart( Timer_PL_CellAverage )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -938,6 +1036,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PL_CellAverage )
 
   END SUBROUTINE ComputeCellAverage
 

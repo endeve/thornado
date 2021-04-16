@@ -3,7 +3,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    One
+    One, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
@@ -101,7 +102,6 @@ CONTAINS
     INTEGER :: iDim
     LOGICAL :: Verbose
 
-
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
@@ -134,13 +134,12 @@ CONTAINS
     IF( PRESENT( Max_3_Option ) ) &
       Max_Ye = Max_3_Option
 
-
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: InitializePositivityLimiter_Euler_Relativistic_TABLE'
+        '    INFO: Positivity Limiter (Euler, Relativistic, TABLE)'
       WRITE(*,'(A)') &
-        '    ----------------------------------------------------------'
+        '    -----------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
@@ -196,13 +195,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iPT
-    REAL(DP) :: G_q(nDOFX,nGF), U_q(nDOFX,nCF), &
-                U_K(nCF), q(nPT), SSq(nPT), &
-                Ye(nPT), Pressure(nPT), Temperature(nPT), &
-                Eps(nPT), Min_E(nPT), Max_E(nPT)
-
-    INTEGER :: iErr(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    INTEGER  :: iX1, iX2, iX3, iCF
+    REAL(DP) :: U_q(nDOFX,nCF)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -214,10 +208,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      iErr(:,iX1,iX2,iX3) = 0
-
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
-      G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
 
       DO iCF = 1, nCF
 
@@ -225,101 +216,15 @@ CONTAINS
 
       END DO
 
-      CALL ComputePointValues &
-             ( G_q(1:nDOFX,iGF_h_1), G_PP(1:nPT,iGF_h_1) )
-      CALL ComputePointValues &
-             ( G_q(1:nDOFX,iGF_h_2), G_PP(1:nPT,iGF_h_2) )
-      CALL ComputePointValues &
-             ( G_q(1:nDOFX,iGF_h_3), G_PP(1:nPT,iGF_h_3) )
+      IF( ANY( U_PP(:,iCF_E) .LT. Zero ) )THEN
 
-      CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
-
-      CALL ComputePrimitive_Euler_Relativistic &
-             ( U_PP(:,iCF_D ), &
-               U_PP(:,iCF_S1), &
-               U_PP(:,iCF_S2), &
-               U_PP(:,iCF_S3), &
-               U_PP(:,iCF_E ), &
-               U_PP(:,iCF_Ne), &
-               P_PP(:,iPF_D ), &
-               P_PP(:,iPF_V1), &
-               P_PP(:,iPF_V2), &
-               P_PP(:,iPF_V3), &
-               P_PP(:,iPF_E ), &
-               P_PP(:,iPF_Ne), &
-               G_PP(:,iGF_Gm_dd_11), &
-               G_PP(:,iGF_Gm_dd_22), &
-               G_PP(:,iGF_Gm_dd_33), &
-               iErr(:,iX1,iX2,iX3) )
-
-      Ye = P_PP(:,iPF_Ne) * BaryonMass / P_PP(:,iPF_D)
-
-      CALL ComputePressureFromPrimitive_TABLE &
-             ( P_PP(:,iPF_D), P_PP(:,iPF_E), P_PP(:,iPF_Ne), Pressure )
-
-      CALL ComputeTemperatureFromPressure_TABLE &
-             ( P_PP(:,iPF_D), Pressure, Ye, Temperature )
-
-      CALL ComputeSpecificInternalEnergy_TABLE &
-             ( P_PP(:,iPF_D), Temperature, Ye, Eps )
-
-      DO iPT = 1, nPT
-
-        CALL ComputeSpecificInternalEnergy_TABLE &
-               ( P_PP(iPT,iPF_D), Min_T, Ye(iPT), Min_E(iPT) )
-
-        CALL ComputeSpecificInternalEnergy_TABLE &
-               ( P_PP(iPT,iPF_D), Max_T, Ye(iPT), Max_E(iPT) )
-
-      END DO
-
-      IF(        ANY( P_PP(:,iPF_D) .LT. Min_D  ) &
-            .OR. ANY( P_PP(:,iPF_D) .GT. Max_D  ) &
-            .OR. ANY( Temperature   .LT. Min_T  ) &
-            .OR. ANY( Temperature   .GT. Max_T  ) &
-            .OR. ANY( Ye            .LT. Min_Ye ) &
-            .OR. ANY( Ye            .GT. Max_Ye ) &
-            .OR. ANY( Eps           .LT. MINVAL( Min_E ) ) &
-            .OR. ANY( Eps           .GT. MAXVAL( Max_E ) ) )THEN
-
-
-        DO iCF = 1, nCF
-
-          U_K(iCF) &
-            = SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) &
-                     * U_q(1:nDOFX,iCF) ) &
-              / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) )
-
-          U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
-
-        END DO
+        U(:,iX1,iX2,iX3,iCF_E) = SqrtTiny
 
       END IF
 
     END DO
     END DO
     END DO
-
-    IF( ANY( iErr .NE. 0 ) )THEN
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iPT = 1, nPT
-
-        IF( iErr(iPT,iX1,iX2,iX3) .NE. 0 )THEN
-
-          WRITE(*,*) 'ERROR: Euler_PositivityLimiterModule_Relativistic_TABLE'
-          CALL DescribeError_Euler( iErr(iPT,iX1,iX2,iX3) )
-
-        END IF
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
 
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 

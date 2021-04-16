@@ -78,7 +78,7 @@ MODULE MF_UtilitiesModule
   USE MyAmrModule, ONLY: &
     nLevels, &
     nSpecies
-     
+
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -88,93 +88,106 @@ MODULE MF_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: AMReX2thornado
-  PUBLIC :: thornado2AMReX
-  PUBLIC :: AMReX2thornado_Euler
-  PUBLIC :: thornado2AMReX_Euler
+  PUBLIC :: amrex2thornado_Z
+  PUBLIC :: thornado2amrex_Z
+  PUBLIC :: amrex2thornado_X
+  PUBLIC :: thornado2amrex_X
   PUBLIC :: WriteNodalDataToFile
 
   CONTAINS
 
-  SUBROUTINE AMReX2thornado( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE amrex2thornado_Z &
+    ( nVars, nS, nE, iE_B0, iE_E0, iZ_B, iZ_E, iLo_MF, &
+      Data_amrex, Data_thornado, Verbose_Option )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
+    INTEGER,          INTENT(in)  :: iE_B0, iE_E0, iZ_B(4), iZ_E(4), iLo_MF(4)
     REAL(amrex_real), INTENT(in)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(amrex_real), INTENT(out) :: &
-      Data_thornado(1:,iE_B0:,iX_B(1):,iX_B(2):,iX_B(3):,1:,1:)
+      Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iD, iNodeZ
-    !always want iE_E and iE_B to not include ghost cells
-    DO iZ4 = iX_B(3), iX_E(3)
-    DO iZ3 = iX_B(2), iX_E(2)
-    DO iZ2 = iX_B(1), iX_E(1)
-      
+
+    LOGICAL :: Verbose
+
+    Verbose = .False.
+    IF(PRESENT(Verbose_Option)) Verbose=Verbose_Option 
+
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
       DO iS = 1, nS
       DO iVar = 1, nVars
-      DO iZ1 = iE_B0, iE_E0
+      DO iZ1 = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeZ = 1, nDOFZ
 
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-           + ( iVar -1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ + ( iZ1 - 1 ) * nDOFZ + iNodeZ
-
+                + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
         Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
+      END DO
+      END DO
+      END DO
+      END DO
 
-      END DO
-      END DO
-      END DO
-      END DO
-      
     END DO
     END DO
     END DO
 
-  END SUBROUTINE AMReX2thornado
+  END SUBROUTINE amrex2thornado_Z
 
 
-  SUBROUTINE thornado2AMReX( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
-
+  SUBROUTINE thornado2amrex_Z &
+    ( nVars, nS, nE, iE_B0, iE_E0, iZ_B, iZ_E, iLo_MF, &
+      Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
-    REAL(amrex_real), INTENT(out)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
-    REAL(amrex_real), INTENT(in) :: &
-      Data_thornado(1:,iE_B0:,iX_B(1):,iX_B(2):,iX_B(3):,1:,1:)
+    INTEGER,          INTENT(in)  :: iE_B0, iE_E0, iZ_B(4), iZ_E(4), iLo_MF(4)
+    REAL(amrex_real), INTENT(out) :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(amrex_real), INTENT(in)  :: &
+      Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
+
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iNodeZ, iD
 
-    DO iZ4 = iX_B(3), iX_E(3)
-    DO iZ3 = iX_B(2), iX_E(2)
-    DO iZ2 = iX_B(1), iX_E(1)
-      
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
       DO iS = 1, nS
       DO iVar = 1, nVars
       DO iZ1 = iE_B0, iE_E0
       DO iNodeZ = 1, nDOFZ
 
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-           + ( iVar -1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+               + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+               + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
-        Data_amrex(iZ2,iZ3,iZ4,iD) & 
-          =  Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS)
- 
+        Data_amrex(iZ2,iZ3,iZ4,iD) &
+          = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS)
+
       END DO
       END DO
       END DO
-      END DO      
+      END DO
+
     END DO
     END DO
     END DO
 
-  END SUBROUTINE thornado2AMReX
+  END SUBROUTINE thornado2amrex_Z
 
-  SUBROUTINE AMReX2thornado_Euler( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+
+  SUBROUTINE amrex2thornado_X &
+    ( nVars, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
+    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iLo_MF(4)
     REAL(amrex_real), INTENT(in)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(amrex_real), INTENT(out) :: &
       Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
 
@@ -193,15 +206,16 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
 
-  END SUBROUTINE AMReX2thornado_Euler
+  END SUBROUTINE amrex2thornado_X
 
 
-  SUBROUTINE thornado2AMReX_Euler( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE thornado2amrex_X &
+    ( nVars, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
+    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iLo_MF(4)
     REAL(amrex_real), INTENT(out) :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(amrex_real), INTENT(in)  :: &
       Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
 
@@ -220,7 +234,7 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
 
-  END SUBROUTINE thornado2AMReX_Euler
+  END SUBROUTINE thornado2amrex_X
 
 
   SUBROUTINE WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uCR, FileNameBase )
@@ -231,13 +245,13 @@ MODULE MF_UtilitiesModule
     TYPE(amrex_multifab), INTENT(in) :: MF_uCR(0:nLevels-1)
     CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
 
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                          iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), & 
-                          iZ_B (4), iZ_E (4), iE_B, iE_E,     &
-                          iX_B (3), iX_E (3), iEL, iER,     &
-                          iLevel, nCompGF, nCompCF, nCompCR,      &
-                          iX1, iX2, iX3, iCF, iGF, iCR, iPR, i,   &
-                          iZ1, iZ2, iZ3, iZ4, iS, iE,             &
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3),     &
+                          iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4),     &
+                          iZ_B (4), iZ_E (4), iE_B, iE_E,             &
+                          iX_B (3), iX_E (3), iEL, iER, iLo_MF(4),    &
+                          iLevel, nCompGF, nCompCF, nCompCR,          &
+                          iX1, iX2, iX3, iCF, iGF, iCR, iPR, i,       &
+                          iZ1, iZ2, iZ3, iZ4, iS, iE,                 &
                           iNodeZ, iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4, &
                           iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeE
     TYPE(amrex_box)    :: BX
@@ -306,6 +320,8 @@ MODULE MF_UtilitiesModule
         uCR     => MF_uCR(iLevel) % DataPtr( MFI )
         nCompCR =  MF_uCr(iLevel) % nComp()
 
+        iLo_MF = LBOUND( uGF )
+
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
@@ -316,20 +332,20 @@ MODULE MF_UtilitiesModule
         iX_B = iX_B0
         iX_E = iX_E0
 
-        i=1          
+        i=1
 
         DO WHILE (i<=4)
-          
+
           IF (i==1) THEN
-          
+
             iZ_B0(i)=iE_B0
             iZ_E0(i)=iE_E0
-          ELSE 
+          ELSE
 
-            iZ_B0(i)=iX_B0(i-1) 
+            iZ_B0(i)=iX_B0(i-1)
             iZ_E0(i)=iX_E0(i-1)
           END IF
-          i = i + 1 
+          i = i + 1
         END DO
 
         IF( iX_B0(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
@@ -342,54 +358,43 @@ MODULE MF_UtilitiesModule
         IF( iE_E0 .EQ. nE ) iE_E = nE + swE
 
 
-        i=1          
+        i=1
 
         DO WHILE (i<=4)
-          
+
           IF (i==1) THEN
-          
+
             iZ_B(i)=iE_B
             iZ_E(i)=iE_E
             iZ_B1(i)=iE_B1
             iZ_E1(i)=iE_E1
-          ELSE 
+          ELSE
 
-            iZ_B(i)=iX_B(i-1) 
+            iZ_B(i)=iX_B(i-1)
             iZ_E(i)=iX_E(i-1)
             iZ_B1(i)=iX_B1(i-1)
             iZ_E1(i)=iX_E1(i-1)
           END IF
-          i = i + 1 
+          i = i + 1
         END DO
 
-        CALL AMReX2thornado_Euler &
-               ( nGF, iX_B, iX_E, &
-                 uGF(      iX_B(1):iX_E(1), &
-                           iX_B(2):iX_E(2), &
-                           iX_B(3):iX_E(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B(1):iX_E(1), &
-                           iX_B(2):iX_E(2), &
-                           iX_B(3):iX_E(3),1:nGF) )
+        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, uGF, &
+                               G(1:nDOFX,iX_B(1):iX_E(1), &
+                                         iX_B(2):iX_E(2), &
+                                         iX_B(3):iX_E(3),1:nGF) )
 
-        CALL AMReX2thornado_Euler &
-               ( nCF, iX_B, iX_E, &
-                 uCF(      iX_B(1):iX_E(1), &
-                           iX_B(2):iX_E(2), &
-                           iX_B(3):iX_E(3),1:nDOFX*nCF), &
-                 CF(1:nDOFX,iX_B(1):iX_E(1), &
-                           iX_B(2):iX_E(2), &
-                           iX_B(3):iX_E(3),1:nCF) )
+        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, uCF, &
+                               CF(1:nDOFX,iX_B(1):iX_E(1), &
+                                          iX_B(2):iX_E(2), &
+                                          iX_B(3):iX_E(3),1:nCF) )
 
-        CALL AMReX2thornado &
+        CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 CR(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, &
+                 CR(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
+                            iZ_B1(2):iZ_E1(2), &
+                            iZ_B1(3):iZ_E1(3), &
+                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
@@ -423,7 +428,7 @@ MODULE MF_UtilitiesModule
     END DO
     END DO
     END DO
-    
+
     DO iS     = 1, nSpecies
     DO iZ4    = 1-swX(3), nX(3)+swX(3)
     DO iZ3    = 1-swX(2), nX(2)+swX(2)
@@ -556,9 +561,9 @@ MODULE MF_UtilitiesModule
             iER = 3 * nNodesE
 
           END IF
-          
+
           DO iE = 1, nE
-          DO iNodeE = iEL, iER        
+          DO iNodeE = iEL, iER
             D = PR(iNodeE,iE,iX1,iX2,iX3,iPR_D,iS)
             I1 = PR(iNodeE,iE,iX1,iX2,iX3,iPR_I1,iS)
             I2 = PR(iNodeE,iE,iX1,iX2,iX3,iPR_I2,iS)
@@ -569,29 +574,29 @@ MODULE MF_UtilitiesModule
             G3 = CR(iNodeE,iE,iX1,iX2,iX3,iCR_G3,iS)
 
             WRITE(101,'(ES24.16E3,1x)',ADVANCE='NO') &
-              D 
+              D
             WRITE(102,'(ES24.16E3,1x)',ADVANCE='NO') &
-              I1 
+              I1
             WRITE(103,'(ES24.16E3,1x)',ADVANCE='NO') &
-              I2 
+              I2
             WRITE(104,'(ES24.16E3,1x)',ADVANCE='NO') &
-              I3 
+              I3
             WRITE(105,'(ES24.16E3,1x)',ADVANCE='NO') &
-              N 
+              N
             WRITE(106,'(ES24.16E3,1x)',ADVANCE='NO') &
-              G1 
+              G1
             WRITE(107,'(ES24.16E3,1x)',ADVANCE='NO') &
-              G2 
+              G2
             WRITE(108,'(ES24.16E3,1x)',ADVANCE='NO') &
-              G3 
+              G3
             IF (iX1 .EQ. nX(1)/2 .AND. iNodeX1 .EQ. 1) THEN
               WRITE(109,'(ES24.16E3,1x)',ADVANCE='NO') &
                 D
-            END IF  
-            IF (iE .EQ. 1 .AND. iNodeE .EQ. 1) THEN 
+            END IF
+            IF (iE .EQ. 1 .AND. iNodeE .EQ. 1) THEN
               WRITE(110,'(ES24.16E3,1x)',ADVANCE='NO') &
                 D
-            END IF  
+            END IF
           END DO
           END DO
         WRITE(101,*)

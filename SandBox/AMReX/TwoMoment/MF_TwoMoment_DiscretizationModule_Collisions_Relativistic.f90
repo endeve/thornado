@@ -29,10 +29,10 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
-    AMReX2thornado_Euler, &
-    thornado2AMReX_Euler, &
-    AMReX2thornado, &
-    thornado2AMReX
+    amrex2thornado_X, &
+    thornado2amrex_X, &
+    amrex2thornado_Z, &
+    thornado2amrex_Z
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nSpecies, &
@@ -53,7 +53,7 @@ CONTAINS
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
-    REAL(amrex_real),     INTENT(in)    :: dt   
+    REAL(amrex_real),     INTENT(in)    :: dt
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -72,7 +72,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
 
     INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
 
 
@@ -99,34 +99,36 @@ CONTAINS
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
         uCR  => MF_uCR (iLevel) % DataPtr( MFI )
         duCR => MF_duCR(iLevel) % DataPtr( MFI )
-        
+
+        iLo_MF = LBOUND( uGF )
+
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
- 
-        i=1          
+
+        i=1
 
         DO WHILE (i<=4)
-          
+
           IF (i==1) THEN
-          
-            iZ_B0(i)=iE_B0 
+
+            iZ_B0(i)=iE_B0
             iZ_E0(i)=iE_E0
             iZ_B1(i)=iE_B1
             iZ_E1(i)=iE_E1
 
-          ELSE 
+          ELSE
 
-            iZ_B0(i)=iX_B0(i-1) 
+            iZ_B0(i)=iX_B0(i-1)
             iZ_E0(i)=iX_E0(i-1)
             iZ_B1(i)=iX_B1(i-1)
             iZ_E1(i)=iX_E1(i-1)
 
           END IF
-          i = i + 1 
+          i = i + 1
         END DO
 
 
@@ -147,49 +149,20 @@ CONTAINS
                              iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
 
-        CALL AMReX2thornado_Euler &
-               ( nGF, iX_B1, iX_E1, &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL AMReX2thornado_Euler &
-               ( nCF, iX_B1, iX_E1, &
-                 uCF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
-                 C(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCF) )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
 
-
-
-        CALL AMReX2thornado &
+        CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 U(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, U, .TRUE. )
 
         CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )
-
-        CALL thornado2AMReX &
-               ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
-                 duCR(     iZ_B0(2):iZ_E0(2), &
-                           iZ_B0(3):iZ_E0(3), &
-                           iZ_B0(4):iZ_E0(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 dU(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                            iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_E0(3), &
-                            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies) )
+        
+        CALL thornado2amrex_Z &
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, duCR, dU )
 
       END DO
 

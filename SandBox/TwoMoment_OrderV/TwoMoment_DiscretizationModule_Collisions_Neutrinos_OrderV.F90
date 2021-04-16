@@ -35,7 +35,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputePrimitive_TwoMoment_Vector_Richardson, &
+    ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
   IMPLICIT NONE
   PRIVATE
@@ -184,7 +184,7 @@ CONTAINS
 
     PRINT*, "--- Computing primitive moments ---"
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
              PF_N(:,iPF_V1), &

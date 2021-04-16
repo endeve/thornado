@@ -76,6 +76,8 @@ MODULE MyAmrModule
   LOGICAL  :: UsePositivityLimiter
   REAL(AR) :: Min_1, Min_2
 
+  LOGICAL  :: UseSlopeLimiter
+  REAL(AR) :: BetaTVD
 CONTAINS
 
   SUBROUTINE MyAmrInit
@@ -83,6 +85,8 @@ CONTAINS
     REAL(AR), PARAMETER :: Zero = 0.0_AR
     REAL(AR), PARAMETER :: One  = 1.0_AR
     REAL(AR), PARAMETER :: Two  = 2.0_AR
+    REAL(AR), PARAMETER :: Pi     = ACOS( -1.0_AR )
+    REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
 
     TYPE(amrex_parmparse) :: PP
 
@@ -182,6 +186,14 @@ CONTAINS
       CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
       CALL PP % query( 'Min_1'               , Min_1                )
       CALL PP % query( 'Min_2'               , Min_2                )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- Positivitiy limiter parameters PL.* ---
+    UseSlopeLimiter = .TRUE.
+    BetaTVD = 1.0_AR
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter', UseSlopeLimiter )
+      CALL PP % query( 'BetaTVD'               , BetaTVD                )
     CALL amrex_parmparse_destroy( PP )
 
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]

@@ -286,13 +286,21 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
 
     CALL ComputeCellAverages_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R      , N_KS, N_KS0, N_KN, N_KN0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
 
     CALL ComputeCellAverages_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R      , N_KB, N_KB0, N_KT, N_KT0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
 
     CALL TimersStart( Timer_TCI_Compute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( TCI )
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -392,10 +400,18 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iX1    = iX_B0(1)-1, iX_E0(1)+1
     DO iS     = 1         , nSpecies
-    DO iE     = 1         , nE_G
-    DO iNodeE = iE_B0     , iE_E0
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
     DO iX3    = iX_B0(3)  , iX_E0(3)
     DO iX2    = iX_B0(2)  , iX_E0(2)
 
@@ -432,6 +448,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -460,6 +483,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -488,6 +518,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -516,6 +553,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -544,6 +588,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -564,7 +615,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_KS, N_KS0, N_KN, N_KN0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -575,6 +626,11 @@ CONTAINS
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      N_K0 (iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
       N_KS (iX_B0(1):iX_E0(1), &
             iX_B0(2):iX_E0(2), &
@@ -611,12 +667,28 @@ CONTAINS
           1:nE_G,1:nSpecies, &
           iX_B0(2):iX_E0(2))
 
+    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
+       N_KS  = N_K0
+       N_KS0 = N_K0
+       N_KN  = N_K0
+       N_KN0 = N_K0
+       RETURN
+    END IF
+
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iX2    = iX_B0(2)-1, iX_E0(2)+1
     DO iS     = 1         , nSpecies
-    DO iE     = 1         , nE_G
-    DO iNodeE = iE_B0     , iE_E0
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
     DO iX3    = iX_B0(3)  , iX_E0(3)
     DO iX1    = iX_B0(1)  , iX_E0(1)
 
@@ -653,6 +725,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -681,6 +760,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -709,6 +795,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -737,6 +830,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -757,7 +857,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_KB, N_KB0, N_KT, N_KT0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -768,6 +868,11 @@ CONTAINS
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      N_K0 (iX_B0(1):iX_E0(1), &
+            iX_B0(2):iX_E0(2), &
+            iX_B0(3):iX_E0(3), &
+            1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
       N_KB (iX_B0(1):iX_E0(1), &
             iX_B0(2):iX_E0(2), &
@@ -804,12 +909,28 @@ CONTAINS
           1:nE_G,1:nSpecies, &
           iX_B0(3):iX_E0(3))
 
+    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
+      N_KB  = N_K0
+      N_KB0 = N_K0
+      N_KT  = N_K0
+      N_KT0 = N_K0
+      RETURN
+    END IF
+
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
+#endif
     DO iX3    = iX_B0(3)-1, iX_E0(3)+1
     DO iS     = 1         , nSpecies
-    DO iE     = 1         , nE_G
-    DO iNodeE = iE_B0     , iE_E0
+    DO iE     = iE_B0     , iE_E0
+    DO iNodeE = 1         , nDOFE
     DO iX2    = iX_B0(2)  , iX_E0(2)
     DO iX1    = iX_B0(1)  , iX_E0(1)
 
@@ -846,6 +967,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -874,6 +1002,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -902,6 +1037,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)
@@ -930,6 +1072,13 @@ CONTAINS
 
     CALL TimersStart( Timer_TCI_Permute )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
     DO iX3  = iX_B0(3), iX_E0(3)

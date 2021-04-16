@@ -89,7 +89,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputePrimitive_TwoMoment, &
-    ComputePrimitive_TwoMoment_Vector_Richardson, &
     ComputeConserved_TwoMoment, &
     Flux_E, &
     Flux_X1, &
@@ -136,8 +135,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   INTEGER,  DIMENSION(:,:), ALLOCATABLE :: &
     IndexTableZ_F, IndexTableZ_K
 
-  INTEGER :: nZ(4), nK_X, nK_Z, nNodesX_K, nNodesZ_K
-  INTEGER :: nZ_E(4), nE_X, nE_Z, nNodesX_E, nNodesZ_E
+  INTEGER :: nZ   (4), nK_X , nK_Z , nNodesX_K, nNodesZ_K
+  INTEGER :: nZ_E (4), nE_X , nE_Z , nNodesZ_E
   INTEGER :: nZ_X1(4), nX1_X, nX1_Z, nNodesX_X1, nNodesZ_X1
   INTEGER :: nZ_X2(4), nX2_X, nX2_Z, nNodesX_X2, nNodesZ_X2
   INTEGER :: nZ_X3(4), nX3_X, nX3_Z, nNodesX_X3, nNodesZ_X3
@@ -389,7 +388,7 @@ CONTAINS
            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X1, iNodeX_X1
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
 
@@ -768,7 +767,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
@@ -777,7 +776,8 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+
+    CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
@@ -914,7 +914,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -1072,7 +1072,7 @@ CONTAINS
            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X2, iNodeX_X2
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
 
@@ -1451,7 +1451,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
@@ -1460,7 +1460,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
@@ -1597,7 +1597,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -1753,7 +1753,7 @@ CONTAINS
            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X3, iNodeX_X3
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
 
@@ -2132,7 +2132,7 @@ CONTAINS
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
@@ -2141,7 +2141,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
@@ -2278,7 +2278,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -2434,7 +2434,7 @@ CONTAINS
            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_E
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
 
     REAL(DP) :: EdgeEnergyCubed, Beta
@@ -2758,11 +2758,12 @@ CONTAINS
 
     END DO
     END DO
+
     END DO
 
     ! --- Left State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_K, uV2_K, uV3_K, &
@@ -2771,7 +2772,7 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_K, uV2_K, uV3_K, &
@@ -2911,7 +2912,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
-    CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+    CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
@@ -2920,10 +2921,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K )
+    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, &
+    !$OMP          Flux_K )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-    !$ACC PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K ) &
+    !$ACC PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, &
+    !$ACC          Flux_K ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
@@ -2932,7 +2935,8 @@ CONTAINS
     !$ACC          PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K )
+    !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, &
+    !$OMP          Flux_K )
 #endif
     DO iZ_K = 1, nNodesZ_K
 
@@ -3201,11 +3205,10 @@ CONTAINS
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
 
-    INTEGER  :: iNodeX, iNodeX_X1
+    INTEGER  :: iNodeX
     INTEGER  :: iZ2, iZ3, iZ4, i
     INTEGER  :: iCF, iCF_S
     INTEGER  :: iGF, iGF_h, iGF_Gm_dd
-    INTEGER  :: iX_F, iX_K
 
     REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
 
@@ -3765,11 +3768,10 @@ CONTAINS
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
 
-    INTEGER  :: iNodeX, iNodeX_X2
+    INTEGER  :: iNodeX
     INTEGER  :: iZ2, iZ3, iZ4, i
     INTEGER  :: iCF, iCF_S
     INTEGER  :: iGF, iGF_h, iGF_Gm_dd
-    INTEGER  :: iX_F, iX_K
 
     REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
 
@@ -4329,11 +4331,10 @@ CONTAINS
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
 
-    INTEGER  :: iNodeX, iNodeX_X3
+    INTEGER  :: iNodeX
     INTEGER  :: iZ3, iZ4, iZ2, i
     INTEGER  :: iCF, iCF_S
     INTEGER  :: iGF, iGF_h, iGF_Gm_dd
-    INTEGER  :: iX_F, iX_K
 
     REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
 
@@ -5346,7 +5347,7 @@ CONTAINS
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iNodeE
     INTEGER :: iX_K, iZ_K, iNodeX, iNodeZ
-    INTEGER :: iX_F, iZ_F, iNode_E, iNodeZ_E
+    INTEGER :: iX_F, iZ_F, iNode_E
 
     Gm_dd_11_K(1:nNodesX_K) => uGF_K(:,:,:,iZ_B0(4):iZ_E0(4),iGF_Gm_dd_11)
     Gm_dd_22_K(1:nNodesX_K) => uGF_K(:,:,:,iZ_B0(4):iZ_E0(4),iGF_Gm_dd_22)

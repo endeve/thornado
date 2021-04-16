@@ -1,4 +1,4 @@
-MODULE MF_TwoMoment_PositivityLimiter
+MODULE MF_TwoMoment_SlopeLimiter
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,     ONLY: &
@@ -24,8 +24,8 @@ MODULE MF_TwoMoment_PositivityLimiter
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
-    ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
+    ApplySlopeLimiter_TwoMoment
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
@@ -40,13 +40,13 @@ MODULE MF_TwoMoment_PositivityLimiter
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ApplyPositivityLimiter
+  PUBLIC :: MF_TwoMoment_ApplySlopeLimiter
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ApplyPositivityLimiter( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
+  SUBROUTINE MF_TwoMoment_ApplySlopeLimiter( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
@@ -66,12 +66,11 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U (:,:,:,:,:,:,:)
 
     INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iZ2, iZ1
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iZ2, iZ1, iLo_MF(4)
 
 
     LOGICAL :: Verbose
-
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -138,16 +137,18 @@ CONTAINS
 
 
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
+        CALL amrex2thornado_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, uCR, U )
 
-        CALL ApplyPositivityLimiter_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, Verbose_Option = Verbose )
+        CALL ApplySlopeLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U )
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -161,10 +162,10 @@ CONTAINS
 
 
 
-  END SUBROUTINE MF_TwoMoment_ApplyPositivityLimiter
+  END SUBROUTINE MF_TwoMoment_ApplySlopeLimiter
 
 
 
 
 
-END MODULE MF_TwoMoment_PositivityLimiter
+END MODULE MF_TwoMoment_SlopeLimiter

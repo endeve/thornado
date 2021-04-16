@@ -39,7 +39,6 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: FinalizeComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment_Scalar
-  PUBLIC :: ComputePrimitive_TwoMoment_Vector_Richardson
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: Flux_E
