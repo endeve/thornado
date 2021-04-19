@@ -16,17 +16,19 @@ VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
 .DEFAULT_GOAL := all
 
-all: TwoMomentClosure PrimitiveConserved TimeStepper \
+all: TwoMomentClosure PrimitiveConserved \
      ApplicationDriver ApplicationDriver_Neutrinos
 
 TwoMomentClosure: \
 	$(weaklib) \
 	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMomentClosure.o
 	$(FLINKER) $(FLAGS) -o TwoMomentClosure_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMomentClosure.o \
 	$(LIBRARIES)
@@ -34,39 +36,15 @@ TwoMomentClosure: \
 PrimitiveConserved: \
 	$(weaklib) \
 	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o \
-	$(LIBRARIES)
-
-TimeStepper: \
-	$(weaklib) \
-	$(thornado) \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_OpacityModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
-	TimeStepper.o
-	$(FLINKER) $(FLAGS) -o TimeStepper_$(MACHINE) \
-	$(weaklib) \
-	$(thornado) \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_OpacityModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
-	TimeStepper.o \
 	$(LIBRARIES)
 
 ApplicationDriver: \
@@ -135,8 +113,6 @@ clobber: clean
 	rm -rf TwoMomentClosure_$(MACHINE).dSYM
 	rm -f  PrimitiveConserved_$(MACHINE)
 	rm -rf PrimitiveConserved_$(MACHINE).dSYM
-	rm -f  TimeStepper_$(MACHINE)
-	rm -rf TimeStepper_$(MACHINE).dSYM
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
 	rm -f  ApplicationDriver_Neutrinos_$(MACHINE)
@@ -169,28 +145,6 @@ PrimitiveConserved.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule_OrderV.o \
   PrimitiveConserved.f90
-
-TimeStepper.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  ProgramInitializationModule.o \
-  TimersModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  ReferenceElementModuleE.o \
-  ReferenceElementModuleE_Lagrange.o \
-  ReferenceElementModule.o \
-  ReferenceElementModule_Lagrange.o \
-  GeometryComputationModule.o \
-  GeometryComputationModuleE.o \
-  GeometryFieldsModule.o \
-  GeometryFieldsModuleE.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  TwoMoment_ClosureModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_TimeSteppingModule_OrderV.o \
-  TimeStepper.f90
 
 ApplicationDriver.o: \
   KindModule.o \
