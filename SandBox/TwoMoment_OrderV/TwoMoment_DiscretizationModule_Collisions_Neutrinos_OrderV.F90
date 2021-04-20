@@ -33,7 +33,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
     SolveMatterEquations_FP_NestedAA, &
     InitializeNeutrinoMatterSolver, &
-    FinalizeNeutrinoMatterSolver
+    FinalizeNeutrinoMatterSolver, &
+    InitializeNeutrinoMatterSolverParameters
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
@@ -120,19 +121,15 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
-    ! REAL(DP), DIMENSION(:,:,:), POINTER :: N_P, G1_P, G2_P, G3_P
-    ! REAL(DP), DIMENSION(:,:,:), POINTER :: J_P, H1_P, H2_P, H3_P
-
-
 
     INTEGER :: iN_X, iN_E, iS
 
-    PRINT*, "--- In implicit solve ---"
-    PRINT*, "--- Initializing ---"
+    ! PRINT*, "--- In implicit solve ---"
+    ! PRINT*, "--- Initializing ---"
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
-    PRINT*, "--- Mapping data ---"
+    ! PRINT*, "--- Mapping data ---"
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
@@ -142,7 +139,7 @@ CONTAINS
     ! PRINT*, "CF_Ne = ", CF_N(:,iCF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
-    PRINT*, "--- Computing primitive fluid ---"
+    ! PRINT*, "--- Computing primitive fluid ---"
 
     ! --- Compute Primitive Fluid ---
 
@@ -182,7 +179,7 @@ CONTAINS
     ! PRINT*, "PF_Ne = ", PF_N(:,iPF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
-    PRINT*, "--- Computing primitive moments ---"
+    ! PRINT*, "--- Computing primitive moments ---"
 
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
@@ -205,7 +202,7 @@ CONTAINS
             ! PRINT*, "H2_P = ", H2_P(:)
             ! PRINT*, "H3_P = ", H3_P(:)
 
-    PRINT*, "--- EOS lookup ---"
+    ! PRINT*, "--- EOS lookup ---"
 
     ! --- EOS Table Lookup ---
 
@@ -222,7 +219,7 @@ CONTAINS
     ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
-    PRINT*, "--- Solving nonlinear system ---"
+    ! PRINT*, "--- Solving nonlinear system ---"
     CALL SolveMatterEquations_FP_NestedAA &
            ( dt, PR_N(:,:,:,iCR_N), PR_N(:,:,:,iCR_G1), PR_N(:,:,:,iCR_G2), PR_N(:,:,:,iCR_G3), &
              PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
@@ -230,8 +227,8 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), GX_N(:,iGF_Gm_dd_33), &
              nIterations_Inner, nIterations_Outer )
 
-    PRINT*, "--- Map primitive and auxillary quantities back to conserved ones ---"
-    PRINT*, "--- and compute increment ---"
+    ! PRINT*, "--- Map primitive and auxillary quantities back to conserved ones ---"
+    ! PRINT*, "--- and compute increment ---"
 
 
     DO iS   = 1, nSpecies
@@ -277,11 +274,15 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
-
     END DO
-    !! compute increment
 
-    PRINT*, "--- Finalizing implicit solve---"
+    !! compute increment
+    CALL ComputeAndMapIncrement( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_F, U_R, dU_F, dU_R )
+
+
+
+
+    ! PRINT*, "--- Finalizing implicit solve---"
     CALL FinalizeCollisions
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
@@ -361,22 +362,10 @@ CONTAINS
     H2_P(1:nZ_G) => PR_N(:,:,:,iCR_G2)
     H3_P(1:nZ_G) => PR_N(:,:,:,iCR_G3)
 
-    ! iZ = 0
-    ! DO iS = 1, nSpecies
-    ! DO iN_X = 1, nX_G
-    ! DO iN_E = 1, nE_G
-    !   iZ = iZ + 1
-    !   PRINT*, "iZ = ", iZ
-    !   PRINT*, "iS, iN_X, iN_E = ", iS, iN_X, iN_E
-    !   PRINT*, "N_P = ", N_P(iZ)
-    !   PRINT*, "CR_N = ", CR_N(iN_E,iN_X,iS,iCR_N )
-    !
-    ! END DO
-    ! END DO
-    ! END DO
 
     CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
-
+    ! --- parameter initialization can be moved to the program init
+    CALL InitializeNeutrinoMatterSolverParameters()
   END SUBROUTINE InitializeCollisions
 
 
@@ -518,6 +507,96 @@ CONTAINS
 
   END SUBROUTINE MapDataForCollisions
 
+
+  SUBROUTINE ComputeAndMapIncrement &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_F, U_R, dU_F, dU_R )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      U_F (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCF)
+    REAL(DP), INTENT(in) :: &
+      U_R (1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCR, &
+           1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU_F(1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      dU_R(1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCR, &
+           1:nSpecies)
+
+    INTEGER :: iCF, iCR, iS
+    INTEGER :: iE, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNodeX, iNodeZ
+    INTEGER :: iN_E, iN_X
+
+    ! --- Fluid Fields ---
+
+#if   defined(THORNADO_OMP_OL)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iCF  = 1, nCF
+    DO iN_X = 1, nX_G
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      dU_F(iNodeX,iX1,iX2,iX3,iCF) = CF_N(iN_X,iCF) &
+                                     - U_F(iNodeX,iX1,iX2,iX3,iCF)
+
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+#if   defined(THORNADO_OMP_OL)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iS   = 1, nSpecies
+    DO iCR  = 1, nCR
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+
+      iE     = MOD( (iN_E-1) / nDOFE, nZ(1) ) + iE_B0
+      iNodeE = MOD( (iN_E-1)        , nDOFE ) + 1
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+      dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = CR_N(iN_E,iN_X,iS,iCR) &
+                                          - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeAndMapIncrement
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
