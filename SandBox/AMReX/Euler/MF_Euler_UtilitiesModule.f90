@@ -36,7 +36,8 @@ MODULE MF_Euler_UtilitiesModule
   ! --- Local Modules ---
 
   USE InputParsingModule,       ONLY: &
-    nLevels
+    nLevels, &
+    UseTiling
   USE MF_UtilitiesModule,       ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
@@ -80,7 +81,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -180,7 +181,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

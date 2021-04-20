@@ -181,7 +181,8 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$OMP   OS_Xa, OS_Xh, OS_Gm, &
   !$OMP   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
-  !$OMP   Xas_T, Xhs_T, Gms_T )
+  !$OMP   Xas_T, Xhs_T, Gms_T, &
+  !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( Ds_T, Ts_T, Ys_T, &
@@ -190,7 +191,8 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$ACC   OS_Xa, OS_Xh, OS_Gm, &
   !$ACC   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
-  !$ACC   Xas_T, Xhs_T, Gms_T )
+  !$ACC   Xas_T, Xhs_T, Gms_T, &
+  !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #endif
 
 CONTAINS
@@ -394,14 +396,16 @@ CONTAINS
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
-    !$OMP   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
+    !$OMP   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T, &
+    !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( Ds_T, Ts_T, Ys_T, &
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
-    !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
+    !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T, &
+    !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #endif
 
 #endif
@@ -412,13 +416,6 @@ CONTAINS
   SUBROUTINE FinalizeEquationOfState_TABLE
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Ds_T, Ts_T, Ys_T, &
-    !$OMP               Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, &
-    !$OMP               Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
-#endif
 
     DEALLOCATE( Ds_T, Ts_T, Ys_T )
 
@@ -625,6 +622,9 @@ CONTAINS
     !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP MAP( from: Error )
 #endif
       DO iP = 1, nP
 
@@ -645,6 +645,9 @@ CONTAINS
     !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP MAP( from: Error )
 #endif
       DO iP = 1, nP
 
@@ -925,6 +928,8 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, T, Y, Em, Ev, Ne )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
 
@@ -998,6 +1003,9 @@ CONTAINS
     !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
     !$ACC COPYOUT( Error )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP MAP( from: Error )
 #endif
     DO iP = 1, nP
 
@@ -1712,6 +1720,8 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC IF( do_gpu ) &
       !$ACC PRESENT( D, T, Y, V, OS_V, V_T )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
 
@@ -1811,6 +1821,8 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC IF( do_gpu ) &
       !$ACC PRESENT( D, T, Y, V, dVdD, dVdT, dVdY, OS_V, V_T )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
 

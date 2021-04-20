@@ -12,7 +12,13 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF, uDF
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_NonRelativistic_TABLE
+  USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
+  USE Euler_dgDiscretizationModule, ONLY: &
+    ComputeIncrement_Euler_DG_Explicit
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
   USE TwoMoment_TimersModule_OrderV, ONLY: &
@@ -36,6 +42,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     REAL(DP), ALLOCATABLE :: dM_EX(:,:,:,:,:,:,:)
   END TYPE StageDataType
 
+  LOGICAL                          :: EvolveEuler
   INTEGER                          :: nStages
   REAL(DP),            ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP),            ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
@@ -187,11 +194,21 @@ CONTAINS
 
           ! --- Apply Limiters ---
 
+          IF( EvolveEuler )THEN
+
+            CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
+
+            CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
+
+          END IF
+
           CALL ApplySLopeLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
           CALL ApplyPositivityLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
         END IF
 
@@ -208,11 +225,29 @@ CONTAINS
         CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
+        IF( EvolveEuler )THEN
+
+          CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
+
+        END IF
+
+        CALL ApplyPositivityLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
       END IF
 
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
         ! --- Explicit Solve ---
+
+        IF( EvolveEuler )THEN
+
+          CALL ComputeIncrement_Euler_DG_Explicit &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
+                   Ui, uDF, StageData(iS) % dU_EX )
+
+        END IF
 
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
@@ -241,18 +276,28 @@ CONTAINS
 
         IF( w_EX(iS) .NE. Zero )THEN
 
-          CALL AddToArray( One, Ui, dt * w_EX(iS), StageData(iS) % dU_IM )
+          CALL AddToArray( One, Ui, dt * w_EX(iS), StageData(iS) % dU_EX )
           CALL AddToArray( One, Mi, dt * w_EX(iS), StageData(iS) % dM_EX )
 
         END IF
 
       END DO
 
+      IF( EvolveEuler )THEN
+
+        CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
+
+        CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
+
+      END IF
+
       CALL ApplySlopeLimiter_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
       CALL ApplyPositivityLimiter_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
     END IF
 
@@ -262,14 +307,21 @@ CONTAINS
   END SUBROUTINE Update_IMEX_RK
 
 
-  SUBROUTINE Initialize_IMEX_RK( Scheme )
+  SUBROUTINE Initialize_IMEX_RK( Scheme, EvolveEuler_Option )
 
-    CHARACTER(LEN=*), INTENT(in) :: Scheme
+    CHARACTER(LEN=*), INTENT(in)           :: Scheme
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
 
     INTEGER :: i
 
+    EvolveEuler = .FALSE.
+    IF( PRESENT( EvolveEuler_Option ) )THEN
+      EvolveEuler = EvolveEuler_Option
+    END IF
+
     WRITE(*,*)
-    WRITE(*,'(A6,A,A)') '', 'IMEX-RK Scheme: ', TRIM( Scheme )
+    WRITE(*,'(A6,A16,A)' ) '', 'IMEX-RK Scheme: ', TRIM( Scheme )
+    WRITE(*,'(A6,A16,L1)') '', 'Evolve Euler: '  , EvolveEuler
 
     SELECT CASE ( TRIM( Scheme ) )
 

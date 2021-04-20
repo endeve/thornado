@@ -33,6 +33,7 @@ MODULE MF_Euler_PositivityLimiterModule
   USE InputParsingModule,            ONLY: &
     nLevels,              &
     UsePositivityLimiter, &
+    UseTiling,            &
     DEBUG
   USE TimersModule_AMReX_Euler,      ONLY: &
     TimersStart_AMReX_Euler, &
@@ -74,7 +75,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
