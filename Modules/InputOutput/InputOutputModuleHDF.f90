@@ -1165,7 +1165,7 @@ CONTAINS
            ( Field3D &
                ( SourceTerm(5,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
-                   / ( ( Erg / Centimeter**3 ) / Second ), &
+                   / ( 1.0_DP / Second ), &
              DatasetName, FILE_ID )
 
     ! --- Square of Extrinsic Curvature (1D) ---

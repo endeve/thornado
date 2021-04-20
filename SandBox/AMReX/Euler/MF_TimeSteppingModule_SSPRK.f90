@@ -43,6 +43,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     MF_ApplyPositivityLimiter_Euler
   USE InputParsingModule,               ONLY: &
     nLevels, &
+    UseTiling, &
     DEBUG
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimersStart_AMReX_Euler,       &
@@ -284,7 +285,7 @@ CONTAINS
 
         ! --- Copy ghost data from physical boundaries ---
 
-        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
         DO WHILE( MFI % next() )
 

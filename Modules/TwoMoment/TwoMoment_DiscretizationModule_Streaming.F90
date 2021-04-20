@@ -160,7 +160,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( dU, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
@@ -201,7 +201,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeX, Tau ) &
     !$ACC PRESENT( GX, dU, dZ2, dZ3, dZ4, Weights_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeX, Tau )
 #endif
     DO iS = 1, nSpecies
@@ -347,7 +347,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = 1, nGF
       DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
@@ -411,7 +411,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
     DO iGF = iGF_h_1, iGF_h_3
@@ -437,7 +437,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iNodeZ )
 #endif
   DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
@@ -459,7 +459,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( G_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -483,7 +483,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( uCR_K, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
       DO iS = 1, nSpecies
@@ -659,7 +659,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_K, GX_K, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
     DO iGF = 1, nGF
@@ -764,7 +764,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( dU_X1, dU, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
@@ -899,7 +899,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = 1, nGF
       DO iZ3 = iZ_B0(3) - 1, iZ_E0(3) + 1
@@ -963,7 +963,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
     DO iGF = iGF_h_1, iGF_h_3
@@ -989,7 +989,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iNodeZ )
 #endif
   DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
@@ -1011,7 +1011,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( G_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1035,7 +1035,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( uCR_K, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iZ3 = iZ_B0(3) - 1, iZ_E0(3) + 1
       DO iS = 1, nSpecies
@@ -1211,7 +1211,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_K, GX_K, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1316,7 +1316,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( dU, dU_X2, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
@@ -1451,7 +1451,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = 1, nGF
       DO iZ4 = iZ_B0(4) - 1, iZ_E0(4) + 1
@@ -1515,7 +1515,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
     DO iGF = iGF_h_1, iGF_h_3
@@ -1541,7 +1541,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iNodeZ )
 #endif
   DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
@@ -1563,7 +1563,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( G_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
       DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1587,7 +1587,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( uCR_K, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iZ4 = iZ_B0(4) - 1, iZ_E0(4) + 1
       DO iS = 1, nSpecies
@@ -1763,7 +1763,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( G_K, GX_K, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1868,7 +1868,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( dU, dU_X3, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
@@ -1996,7 +1996,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_X1, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = iGF_h_1, iGF_h_3
       DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
@@ -2042,7 +2042,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( h2_X1, h3_X1, WeightsX_X1, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2066,7 +2066,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_X1, WeightsX_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = iGF_h_1, iGF_h_3
       DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2123,7 +2123,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( dh2dX1, dh3dX1, dZ2, WeightsX_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2155,7 +2155,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_X2, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = iGF_h_1, iGF_h_3
       DO iZ3 = iZ_B1(3), iZ_E1(3)
@@ -2192,7 +2192,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( h3_X2, WeightsX_X2, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2213,7 +2213,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( GX_X2, WeightsX_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iGF = iGF_h_1, iGF_h_3
       DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -2255,7 +2255,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( dh3dX2, dZ3, WeightsX_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iZ3 = iZ_B0(3), iZ_E0(3)
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2282,7 +2282,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeX ) &
     !$ACC PRESENT( G, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iNodeX )
 #endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -2318,7 +2318,7 @@ CONTAINS
     !$ACC          PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress ) &
     !$ACC PRESENT( dh2dX1, dh3dX1, dh3dX2, G, U, dU )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeX, h2, h3, G11, G22, G33, dU_G1, dU_G2, &
     !$OMP          PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress )
 #endif
