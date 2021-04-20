@@ -37,6 +37,10 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
     nLevels, &
     nSpecies, &
     nE
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap, &
+    MF_ApplyBoundaryConditions_TwoMoment
 
 
   IMPLICIT NONE
@@ -77,6 +81,9 @@ CONTAINS
 
 
     LOGICAL :: Verbose
+
+
+    TYPE(EdgeMap) :: Edge_Map
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -155,7 +162,13 @@ CONTAINS
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uCR, U, .TRUE. )
+                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
+
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+
+        CALL MF_ApplyBoundaryConditions_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
+
 
         CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )

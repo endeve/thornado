@@ -108,14 +108,14 @@ CONTAINS
       WRITE(*,'(A)') &
         '    -----------------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A6,A,L1)') &
+      WRITE(*,'(A6,A27,L1)') &
         '', 'UsePositivityLimiter: ', UsePositivityLimiter
       WRITE(*,*)
-      WRITE(*,'(A6,A,ES12.4E3)') &
-        '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A,ES12.4E3)') &
-        '', 'Min_2 = ', Min_2
-    END IF
+      WRITE(*,'(A6,A27,ES11.4E3)') &
+        '', 'Min_1: ', Min_1
+      WRITE(*,'(A6,A27,ES11.4E3)') &
+        '', 'Min_2: ', Min_2
+     END IF
 
     nPP(1:nPS) = 0
     nPP(1)     = PRODUCT( nNodesX(1:3) )

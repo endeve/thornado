@@ -27,10 +27,12 @@ MODULE InputOutput
     iPR_I1, &
     iPR_I2, &
     iPR_I3, &
+    unitsPR, &
     iCR_N,  &
     iCR_G1, &
     iCR_G2, &
     iCR_G3, &
+    unitsCR, &
     ShortNamesCR, &
     ShortNamesPR
   USE UnitsModule,             ONLY: &
@@ -448,6 +450,7 @@ MODULE InputOutput
       END DO
       END DO
 
+      CALL ConvertUnits( nComp, iOS, u_A, Field )
 
     END DO
 
@@ -456,6 +459,38 @@ MODULE InputOutput
   END SUBROUTINE MF_ComputeCellAverage
 
 
+  SUBROUTINE ConvertUnits( nComp, iOS, U_plt, Field )
+
+    INTEGER,      INTENT(in)    :: nComp, iOS
+    REAL(AR),     INTENT(inout) :: U_plt(:,:,:,:)
+    CHARACTER(2), INTENT(in)    :: Field
+
+    INTEGER  :: iComp
+
+
+    IF( Field .EQ. 'CR' )THEN
+
+      DO iComp = 1, nComp
+
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsCR(iComp)
+
+      END DO
+
+    ELSE IF( Field .EQ. 'PR' )THEN
+
+      DO iComp = 1, nComp
+
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsPR(iComp)
+
+      END DO
+
+    ELSE
+
+      RETURN
+
+    END IF
+
+  END SUBROUTINE ConvertUnits
 
 
 END MODULE InputOutput

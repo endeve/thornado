@@ -202,34 +202,34 @@ CONTAINS
       WRITE(*,'(A)') &
         '    ------------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
+      WRITE(*,'(A6,A27,A)')         '', 'SlopeLimiterMethod: ', &
         TRIM( SlopeLimiterMethod )
       WRITE(*,*)
 
       IF( TRIM( SlopeLimiterMethod ) .EQ. 'TVD' )THEN
 
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
+        WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
           BetaTVD
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
+        WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
           BetaTVB
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
+        WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
           SlopeTolerance
         WRITE(*,*)
 
       END IF
 
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
+      WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
 
     END IF
@@ -1045,7 +1045,7 @@ CONTAINS
       G_X(iNX,1,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)
       G_X(iNX,2,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)
       G_X(iNX,3,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)
-      G_X(iNX,4,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm  )
+      G_X(iNX,4,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm  )**2
       G_X(iNX,5,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Alpha   )
       G_X(iNX,6,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_1  )
       G_X(iNX,7,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_2  )

@@ -97,6 +97,7 @@ MODULE InputParsingModule
   TYPE(amrex_boxarray) , ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
   TYPE(amrex_geometry) , ALLOCATABLE, PUBLIC :: GEOM(:)
+  LOGICAL                                    :: UseTiling
 
 
 CONTAINS
@@ -211,6 +212,7 @@ CONTAINS
     BlockingFactorX1 = 1
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
+    UseTiling        = .FALSE.
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell'           , nX               )
       CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
@@ -220,6 +222,7 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
       CALL PP % get   ( 'max_level'        , MaxLevel         )
+      CALL PP % query ( 'UseTiling'        , UseTiling        )
     CALL amrex_parmparse_destroy( PP )
 
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]

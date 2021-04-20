@@ -36,6 +36,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     thornado2amrex_X
   USE InputParsingModule,                 ONLY: &
     nLevels, &
+    UseTiling, &
     DEBUG
   USE MF_Euler_BoundaryConditionsModule,  ONLY: &
     EdgeMap,          &
@@ -96,7 +97,7 @@ CONTAINS
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -183,7 +184,7 @@ CONTAINS
 
       CALL MF_duCF(iLevel) % setval( 0.0_AR )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

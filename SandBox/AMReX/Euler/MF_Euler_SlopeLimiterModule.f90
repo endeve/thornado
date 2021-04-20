@@ -37,6 +37,7 @@ MODULE MF_Euler_SlopeLimiterModule
   USE InputParsingModule,                ONLY: &
     nLevels,         &
     UseSlopeLimiter, &
+    UseTiling,       &
     DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
@@ -97,7 +98,7 @@ CONTAINS
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

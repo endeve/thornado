@@ -87,8 +87,12 @@ CONTAINS
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     WRITE(*,*)
-    WRITE(*,'(A4,A)') '', 'InitializeGravitySolver_CFA_Poseidon'
-    WRITE(*,'(A4,A)') '', 'Only implemented for 1D spherical symmetry.'
+    WRITE(*,'(A)') &
+      '    INFO: Gravity Solver (Poseidon, CFA)'
+    WRITE(*,'(A)') &
+      '    ------------------------------------'
+    WRITE(*,*)
+    WRITE(*,'(A6,A)') '', 'Only implemented for 1D spherical symmetry.'
     WRITE(*,*)
 
     CALL Poseidon_Initialize &
