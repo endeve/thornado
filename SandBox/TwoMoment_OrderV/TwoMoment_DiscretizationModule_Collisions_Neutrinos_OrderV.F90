@@ -277,7 +277,7 @@ CONTAINS
     END DO
 
     !! compute increment
-    CALL ComputeAndMapIncrement( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_F, U_R, dU_F, dU_R )
+    CALL ComputeAndMapIncrement( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
 
 
@@ -509,10 +509,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeAndMapIncrement &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_F, U_R, dU_F, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: dt
     REAL(DP), INTENT(in) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
@@ -561,8 +562,8 @@ CONTAINS
       iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
       iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
 
-      dU_F(iNodeX,iX1,iX2,iX3,iCF) = CF_N(iN_X,iCF) &
-                                     - U_F(iNodeX,iX1,iX2,iX3,iCF)
+      dU_F(iNodeX,iX1,iX2,iX3,iCF) = ( CF_N(iN_X,iCF) &
+                                     - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
 
     END DO
     END DO
@@ -588,8 +589,8 @@ CONTAINS
 
       iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
-      dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = CR_N(iN_E,iN_X,iS,iCR) &
-                                          - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
+      dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = ( CR_N(iN_E,iN_X,iS,iCR) &
+                                           - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) /dt
 
     END DO
     END DO
