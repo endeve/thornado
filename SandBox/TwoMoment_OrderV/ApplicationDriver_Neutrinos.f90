@@ -25,7 +25,8 @@ PROGRAM ApplicationDriver_Neutrinos
   USE RadiationFieldsModule, ONLY: &
     uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
@@ -55,6 +56,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: FixedTimeStep
+  INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -74,6 +76,8 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
 
   FixedTimeStep = .FALSE.
+
+  RestartFileNumber = - 1
 
   SELECT CASE( TRIM( ProgramName ) )
 
@@ -150,31 +154,43 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeFields
 
-  ! --- Apply Slope Limiter to Initial Data ---
+  IF( RestartFileNumber .LT. 0 )THEN
 
-  CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+    t = Zero
 
-  CALL ApplySlopeLimiter_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+    ! --- Apply Slope Limiter to Initial Data ---
 
-  ! --- Apply Positivity Limiter to Initial Data ---
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
-  CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+    CALL ApplySlopeLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
 
-  CALL ApplyPositivityLimiter_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+    ! --- Apply Positivity Limiter to Initial Data ---
 
-  CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, &
-           WriteGF_Option = .TRUE., &
-           WriteFF_Option = .TRUE., &
-           WriteRF_Option = .TRUE. )
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    CALL ApplyPositivityLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+
+    CALL WriteFieldsHDF &
+           ( Time = 0.0_DP, &
+             WriteGF_Option = .TRUE., &
+             WriteFF_Option = .TRUE., &
+             WriteRF_Option = .TRUE. )
+
+  ELSE
+
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadGF_Option = .TRUE., &
+             ReadFF_Option = .TRUE., &
+             ReadRF_Option = .TRUE. )
+
+  END IF
 
   ! --- Evolve ---
-
-  t = Zero
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
