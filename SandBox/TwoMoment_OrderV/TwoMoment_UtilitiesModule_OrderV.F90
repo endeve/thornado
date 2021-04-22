@@ -305,7 +305,8 @@ CONTAINS
           I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
           I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
 
-          CONVERGED = ALL( ABS( FVECm(:,iZ) ) <= Rtol * ABS( CVEC(:,iZ) ) )
+          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
+                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
 
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
@@ -386,7 +387,7 @@ CONTAINS
 
     ! --- Parameters ---
 
-    INTEGER,  PARAMETER :: M = 1
+    INTEGER,  PARAMETER :: M = 2
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
 
@@ -524,7 +525,6 @@ CONTAINS
             GVEC(i,Mk,iZ) = GVECm(i,iZ)
             FVEC(i,Mk,iZ) = FVECm(i,iZ)
           END DO
-
         END IF
       END DO
 
@@ -588,7 +588,8 @@ CONTAINS
           I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
           I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
 
-          CONVERGED = ALL( ABS( FVECm(:,iZ) ) <= Rtol * ABS( CVEC(:,iZ) ) )
+          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
+                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
 
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
@@ -885,7 +886,7 @@ CONTAINS
 
       FVECm = GVECm - UVEC
 
-      IF( ALL( ABS( FVECm ) <= Rtol * ABS( CVEC ) ) )THEN
+      IF( SQRT( SUM( FVECm**2 ) ) <= Rtol * SQRT( SUM( CVEC**2 ) ) )THEN
 
         CONVERGED = .TRUE.
 
