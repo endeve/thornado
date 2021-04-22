@@ -386,7 +386,7 @@ CONTAINS
 
     ! --- Parameters ---
 
-    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: M = 1
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
 

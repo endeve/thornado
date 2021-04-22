@@ -558,14 +558,14 @@ CONTAINS
 
         ! --- Compute Omega (Richardson damping coefficient) based on velocity
         DO iN_X = 1, nX_G
-          Omega(iN_X) = One / (One + NormVsq(iN_X))
+          Omega(iN_X) = One / (One + SQRT(NormVsq(iN_X)))
         END DO
         ! --- Right-Hand Side Vectors and Residuals (inner) ---
 
         CALL ComputeNeutrinoRHS_FP &
                ( ITERATE_INNER, n_FP_inner, FVECm_inner, GVECm_inner, &
                  dt, Omega, V_u_1, V_u_2, V_u_3, &
-                 CJ, CH1, CH1, CH3, &
+                 CJ, CH1, CH2, CH3, &
                  Jnew, H1new, H2new, H3new, &
                  J0, Chi, Sig, &
                  Chi_NES, Eta_NES, &
