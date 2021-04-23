@@ -141,6 +141,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   INTEGER :: nZ_X2(4), nX2_X, nX2_Z, nNodesX_X2, nNodesZ_X2
   INTEGER :: nZ_X3(4), nX3_X, nX3_Z, nNodesX_X3, nNodesZ_X3
 
+  REAL(DP), PUBLIC :: OffGridFlux_TwoMoment(nCR)
+
 CONTAINS
 
 
@@ -249,6 +251,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    OffGridFlux_TwoMoment = Zero
 
     CALL TimersStop( Timer_Streaming_Zero )
 
@@ -776,7 +780,6 @@ CONTAINS
 
     ! --- Right State Primitive ---
 
-
     CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
@@ -888,6 +891,48 @@ CONTAINS
              nDOF_X1, One,  dU_X1, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X1 = 1, nDOF_X1
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X1 = 1, nDOF_X1
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
     !--------------------
     ! --- Volume Term ---
@@ -1498,7 +1543,7 @@ CONTAINS
 
       iNodeZ_X2 = iNodeE + ( iNodeX_X2 - 1 ) * nDOFE
 
-        ! --- Left State Flux ---
+      ! --- Left State Flux ---
 
       Flux_L &
         = Flux_X2 &
@@ -1571,6 +1616,48 @@ CONTAINS
              nDOF_X2, One,  dU_X2, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X2 = 1, nDOF_X2
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X2 = 1, nDOF_X2
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
     !--------------------
     ! --- Volume Term ---
@@ -2253,6 +2340,48 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iS  = 1       , nSpecies
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X3 = 1, nDOF_X3
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X3 = 1, nDOF_X3
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
     !--------------------
     ! --- Volume Term ---
     !--------------------
@@ -2905,6 +3034,48 @@ CONTAINS
              nDOF_E, One,  dU_E, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_E = 1, nDOF_E
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_E = 1, nDOF_E
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
     !--------------------
     ! --- Volume Term ---
