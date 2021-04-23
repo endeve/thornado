@@ -305,8 +305,8 @@ CONTAINS
           I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
           I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
 
-          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
-                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) &
+                        <= Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
 
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
