@@ -2363,7 +2363,7 @@ CONTAINS
     END DO
 
     DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(3), iZ_E0(3)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
     DO iCR = 1       , nCR
