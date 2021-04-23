@@ -480,19 +480,20 @@ CONTAINS
     CALL TimersStart( Timer_Im_ComputeOpacity )
 
     CALL ComputeOpacities_Packed &
-           ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, Phi_0_In_Pair, Phi_0_Ot_Pair )
+           ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, &
+             Phi_0_In_Pair, Phi_0_Ot_Pair )
 
     CALL TimersStop( Timer_Im_ComputeOpacity )
 
     ! --- Initial RHS ---
 
     CALL InitializeRHS_FP &
-          ( J, Jold, CJ, Jnew, H_d_1, H1old, CH1, H1new, &
-            H_d_2, H2old, CH2, H2new, H_d_3, H3old, CH3, H3new, &
-            D, Y, Yold, C_Y, S_Y, Unew_Y, Ef, Efold, C_Ef, S_Ef, Unew_Ef, &
-            V_d_1, V1old, C_V1, S_V1, Unew_V1, V_d_2, V2old, C_V2, S_V2, Unew_V2, &
-            V_d_3, V3old, C_V3, S_V3, Unew_V3, &
-            Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+           ( J, Jold, CJ, Jnew, H_d_1, H1old, CH1, H1new, &
+             H_d_2, H2old, CH2, H2new, H_d_3, H3old, CH3, H3new, &
+             D, Y, Yold, C_Y, S_Y, Unew_Y, Ef, Efold, C_Ef, S_Ef, Unew_Ef, &
+             V_d_1, V1old, C_V1, S_V1, Unew_V1, V_d_2, V2old, C_V2, S_V2, &
+             Unew_V2, V_d_3, V3old, C_V3, S_V3, Unew_V3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     k_outer = 0
     DO WHILE( ANY( ITERATE_OUTER(:) ) .AND. k_outer < MaxIter_outer )
@@ -524,7 +525,8 @@ CONTAINS
         CALL TimersStart( Timer_Im_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
-               ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+               ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, &
+                 Phi_0_In_Pair, Phi_0_Ot_Pair, &
                  ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
         CALL TimersStop( Timer_Im_ComputeOpacity )
@@ -551,7 +553,8 @@ CONTAINS
                ( Jnew, &
                  Phi_0_In_NES, Phi_0_Ot_NES, Phi_0_In_Pair, Phi_0_Ot_Pair, &
                  Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-                 ITERATE_INNER, nX_P_inner, PackIndex_inner, UnpackIndex_inner, nX_P_outer )
+                 ITERATE_INNER, nX_P_inner, PackIndex_inner, &
+                 UnpackIndex_inner, nX_P_outer )
 
         CALL TimersStop( Timer_Im_ComputeRate )
 
@@ -600,7 +603,8 @@ CONTAINS
         ! --- Shift History Arrays (inner) ---
 
         CALL ShiftRHS_FP &
-               ( ITERATE_INNER, n_FP_inner, M_inner, Mk_inner, FVEC_inner, GVEC_inner )
+               ( ITERATE_INNER, n_FP_inner, M_inner, Mk_inner, &
+                 FVEC_inner, GVEC_inner )
 
         CALL TimersStop( Timer_Im_UpdateFP )
 
