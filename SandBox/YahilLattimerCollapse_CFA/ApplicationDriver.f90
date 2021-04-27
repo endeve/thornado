@@ -62,7 +62,7 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK, &
-    WriteSourceTerms2
+    WritePlotFile
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -107,7 +107,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
-  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, t_wrt2, CFL
+  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: ZoomX(3)
@@ -180,6 +180,12 @@ PROGRAM ApplicationDriver
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
   CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
+
+  OPEN(100,FILE='../Output/BoundaryFlux_Euler.dat')
+
+    WRITE(100,'(6ES25.16E3)') [ Zero, Zero, Zero, Zero, Zero, Zero ]
+
+  CLOSE(100)
 
   ! --- Slope Limiter ---
 
@@ -326,7 +332,6 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   t_wrt = t + dt_wrt
-  t_wrt2 = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic &
@@ -367,21 +372,6 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    IF( t + dt .GT. t_wrt2 )THEN
-
-      t_wrt2 = t_wrt2 + dt_wrt
-      WriteSourceTerms2 = .TRUE.
-      Time = t
-
-    END IF
-
-    CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, &
-             ComputeIncrement_Euler_DG_Explicit, &
-             SolveGravity_CFA_Poseidon )
-
-    WriteSourceTerms2 = .FALSE.
-
     IF( iCycleW .GT. 0 )THEN
 
       IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
@@ -392,11 +382,18 @@ PROGRAM ApplicationDriver
       IF( t + dt .GT. t_wrt )THEN
 
         t_wrt = t_wrt + dt_wrt
-        wrt   = .TRUE.
+
+        wrt           = .TRUE.
+        WritePlotFile = .TRUE.
 
       END IF
 
     END IF
+
+    CALL UpdateFluid_SSPRK &
+           ( t, dt, uGF, uCF, uDF, &
+             ComputeIncrement_Euler_DG_Explicit, &
+             SolveGravity_CFA_Poseidon )
 
     IF( wrt )THEN
 
@@ -411,7 +408,8 @@ PROGRAM ApplicationDriver
       CALL ComputeTally_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
-      wrt = .FALSE.
+      wrt           = .FALSE.
+      WritePlotFile = .FALSE.
 
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 

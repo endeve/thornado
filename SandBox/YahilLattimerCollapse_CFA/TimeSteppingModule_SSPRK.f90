@@ -23,7 +23,8 @@ MODULE TimeSteppingModule_SSPRK
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    WriteSourceTerms
+    WriteSourceTerms, &
+    OffGridFlux_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -40,7 +41,7 @@ MODULE TimeSteppingModule_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
 
-  LOGICAL, PUBLIC :: WriteSourceTerms2
+  LOGICAL, PUBLIC :: WritePlotFile
 
   INTERFACE
     SUBROUTINE FluidIncrement &
@@ -83,7 +84,7 @@ CONTAINS
 
     INTEGER :: i
 
-WriteSourceTerms2 = .FALSE.
+    WritePlotFile = .FALSE.
 
     nStages_SSPRK = nStages
 
@@ -205,6 +206,8 @@ WriteSourceTerms2 = .FALSE.
                                  iX_B0(2):iX_E0(2), &
                                  iX_B0(3):iX_E0(3),6)
 
+    REAL(DP) :: OffGridMass_Euler(nStages_SSPRK,nCF)
+
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS, iX1, iX2, iX3
 
@@ -216,6 +219,8 @@ WriteSourceTerms2 = .FALSE.
 
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
+
+    OffGridMass_Euler = Zero
 
     DO iS = 1, nStages_SSPRK
 
@@ -252,13 +257,14 @@ WriteSourceTerms2 = .FALSE.
         END IF
 
         WriteSourceTerms = .FALSE.
-
-        IF( WriteSourceTerms2 .AND. iS .EQ. nStages_SSPRK ) &
+        IF( WritePlotFile .AND. iS .EQ. nStages_SSPRK ) &
           WriteSourceTerms = .TRUE.
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+
+        OffGridMass_Euler(iS,:) = OffGridMass_Euler(iS,:) + OffGridFlux_Euler
 
       END IF
 
@@ -290,6 +296,9 @@ WriteSourceTerms2 = .FALSE.
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
 
     END IF
+
+    IF( WritePlotFile ) &
+      CALL ComputeOffGridMass_Euler( OffGridMass_Euler, dt )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
@@ -324,6 +333,28 @@ WriteSourceTerms2 = .FALSE.
     END DO
 
   END SUBROUTINE AddIncrement_Fluid
+
+
+  SUBROUTINE ComputeOffGridMass_Euler( OffGridMass_Euler, dt )
+
+    REAL(DP), INTENT(in) :: OffGridMass_Euler(nStages_SSPRK,nCF), dt
+
+    INTEGER :: iCF
+
+    OPEN(100,FILE='../Output/BoundaryFlux_Euler.dat',POSITION='APPEND')
+
+    DO iCF = 1, nCF
+
+      WRITE(100,'(ES24.16E3,1x)',ADVANCE='NO') &
+        dt * SUM( w_SSPRK * OffGridMass_Euler(:,iCF) )
+
+    END DO
+
+    WRITE(100,*)
+
+    CLOSE(100)
+
+  END SUBROUTINE ComputeOffGridMass_Euler
 
 
 END MODULE TimeSteppingModule_SSPRK
