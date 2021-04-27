@@ -78,7 +78,6 @@ MODULE LinearAlgebraModule
   PUBLIC :: VectorNorm2
   PUBLIC :: VectorNorm2_Kernel
   PUBLIC :: VectorVectorAdd
-  PUBLIC :: VectorGather
   PUBLIC :: LinearLeastSquares_LWORK
   PUBLIC :: LinearLeastSquares
   PUBLIC :: LinearSolveBatched
