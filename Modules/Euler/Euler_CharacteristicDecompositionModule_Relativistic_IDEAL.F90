@@ -60,10 +60,10 @@ CONTAINS
     REAL(DP) :: xi, DELTA
     REAL(DP) :: GAMMA_11, GAMMA_22, GAMMA_33
 
-    LOGICAL  :: DEBUG    = .TRUE.
-    LOGICAL  :: DEBUG_X1 = .TRUE.
-    LOGICAL  :: DEBUG_X2 = .TRUE.
-    LOGICAL  :: DEBUG_X3 = .TRUE.
+    LOGICAL  :: DEBUG    = .FALSE.
+    LOGICAL  :: DEBUG_X1 = .FALSE.
+    LOGICAL  :: DEBUG_X2 = .FALSE.
+    LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: iCF, iErr
 
