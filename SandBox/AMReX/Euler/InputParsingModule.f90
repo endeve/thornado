@@ -212,7 +212,7 @@ CONTAINS
     BlockingFactorX1 = 1
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
-    UseTiling        = .FALSE.
+    UseTiling        = .TRUE.
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell'           , nX               )
       CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
