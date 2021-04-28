@@ -52,20 +52,22 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   ! --- Poseidon Modules --------------------
 
+  USE Initialization_Poseidon, ONLY: &
+    Initialize_Poseidon
+
   USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Initialize, &
-    Poseidon_Run,        &
-    Poseidon_Close,      &
+    Poseidon_Run, &
+    Poseidon_Close, &
     Poseidon_CFA_Set_Uniform_Boundary_Conditions
 
-  USE Poseidon_Source_Module, ONLY: &
+  USE Source_Input_Module, ONLY: &
     Poseidon_Input_Sources
 
-  USE Initial_Guess_Module, ONLY: &
-    Initialize_Flat_Space_Guess_Values
-
-  USE Poseidon_Calculate_Results_Module, ONLY : &
+  USE Variables_Functions, ONLY: &
     Calc_1D_CFA_Values
+
+  USE FP_Initial_Guess_Module, ONLY: &
+    Init_FP_Guess_Flat
 
   ! -----------------------------------------
 
@@ -95,23 +97,18 @@ CONTAINS
     WRITE(*,'(A6,A)') '', 'Only implemented for 1D spherical symmetry.'
     WRITE(*,*)
 
-    CALL Poseidon_Initialize &
-         ( Units                  = "G",                  &
-           Dimensions             = 1,                    &
-           FEM_Degree_Input       = MAX( 1, nNodes - 1 ), &
-           L_Limit_Input          = 0,                    &
-           Inner_Radius           = xL(1),                &
-           Outer_Radius           = xR(1),                &
-           R_Elements_Input       = nX(1),                &
-           T_Elements_Input       = nX(2),                &
-           P_Elements_Input       = nX(3),                &
-           Local_R_Elements_Input = nX(1),                &
-           Local_T_Elements_Input = nX(2),                &
-           Local_P_Elements_Input = nX(3),                &
-           Num_R_Quad_Input       = nNodes,               &
-           Num_T_Quad_Input       = 1,                    &
-           Num_P_Quad_Input       = 1,                    &
-           Input_Delta_R_Vector   = MeshX(1) % Width(1:nX(1)) )
+    CALL Initialize_Poseidon &
+         ( Units_Option       = 'G',                       &
+           Dimensions_Option  = 3,                         &
+           FEM_Degree_Option  = MAX( 1, nNodes - 1 ),      &
+           L_Limit_Option     = 0,                         &
+           Domain_Edge_Option = [ xL(1), xR(1) ],          &
+           NE_Option          = nX,                        &
+           NQ_Option          = [ nNodes, 1, 1 ],          &
+           dr_Option          = MeshX(1) % Width(1:nX(1)), &
+           dt_Option          = MeshX(2) % Width(1:nX(2)), &
+           dp_Option          = MeshX(3) % Width(1:nX(3)), &
+           Verbose_Option     = .TRUE. )
 
 #endif
 
@@ -190,7 +187,7 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Initialize_Flat_Space_Guess_Values() ! Possibly move this to init call
+    CALL Init_FP_Guess_Flat() ! Possibly move this to init call
 
     CALL Poseidon_Run()
 
