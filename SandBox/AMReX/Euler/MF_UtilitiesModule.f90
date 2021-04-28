@@ -103,21 +103,19 @@ CONTAINS
     REAL(AR), INTENT(out) :: &
       Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iField
+    INTEGER :: iX1, iX2, iX3, iFd
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
+    DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      DO iField = 1, nFields
+      Data_thornado(1:nDOFX,iX1,iX2,iX3,iFd) &
+        = Data_amrex(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
 
-        Data_thornado(1:nDOFX,iX1,iX2,iX3,iField) &
-          = Data_amrex(iX1,iX2,iX3,nDOFX*(iField-1)+1:nDOFX*iField)
-
-      END DO
-
+    END DO
     END DO
     END DO
     END DO
@@ -137,21 +135,19 @@ CONTAINS
     REAL(AR), INTENT(in)  :: &
       Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iField
+    INTEGER :: iX1, iX2, iX3, iFd
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
+    DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      DO iField = 1, nFields
+      Data_amrex(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd) &
+        = Data_thornado(1:nDOFX,iX1,iX2,iX3,iFd)
 
-        Data_amrex(iX1,iX2,iX3,nDOFX*(iField-1)+1:nDOFX*iField) &
-          = Data_thornado(1:nDOFX,iX1,iX2,iX3,iField)
-
-      END DO
-
+    END DO
     END DO
     END DO
     END DO
