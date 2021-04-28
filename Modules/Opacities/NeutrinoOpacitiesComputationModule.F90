@@ -55,6 +55,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
+    LogInterpolateSingleVariable_4D_Custom, &
     LogInterpolateSingleVariable_2D2D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
@@ -1522,7 +1523,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES_Points(:)
 
-    INTEGER  :: iX, iE
+    INTEGER  :: ip
     REAL(DP) :: LogE_P(ip_B:ip_E), LogD_P(ip_B:ip_E), LogT_P(ip_B:ip_E), Y_P(ip_B:ip_E)
     LOGICAL  :: do_gpu
 
@@ -1568,7 +1569,7 @@ CONTAINS
       LogD_P(iP) = LOG10( D(iP) / UnitD )
       LogT_P(iP) = LOG10( T(iP) / UnitT )
       Y_P(iP) = Y(iP) / UnitY
-      LogE_P(iE) = LOG10( E(iP) / UnitE )
+      LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
     CALL LogInterpolateSingleVariable_4D_Custom &
