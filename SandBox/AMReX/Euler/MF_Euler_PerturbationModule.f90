@@ -216,9 +216,9 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF) )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPerturbations_Euler'
 
@@ -229,7 +229,7 @@ CONTAINS
 
         END IF
 
-        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
         DEALLOCATE( U )
 

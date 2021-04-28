@@ -130,11 +130,11 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
-        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
         ! --- Apply boundary conditions to physical boundaries ---
 
@@ -147,7 +147,7 @@ CONTAINS
 
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
+        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -222,11 +222,11 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
-        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
         ! --- Apply boundary conditions to physical boundaries ---
 
@@ -243,9 +243,8 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE. )
 
-        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, duCF, dU )
-
-        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, uDF , D )
+        CALL thornado2amrex_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 

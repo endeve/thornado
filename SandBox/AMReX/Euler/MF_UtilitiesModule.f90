@@ -94,14 +94,14 @@ CONTAINS
 
 
   SUBROUTINE amrex2thornado_X &
-    ( nFields, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
+    ( nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,  INTENT(in)  :: nFields
-    INTEGER,  INTENT(in)  :: iX_B(3), iX_E(3), iLo_MF(4)
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
     REAL(AR), INTENT(in)  :: &
       Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(AR), INTENT(out) :: &
-      Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3, iField
 
@@ -128,14 +128,14 @@ CONTAINS
 
 
   SUBROUTINE thornado2amrex_X &
-    ( nFields, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
+    ( nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,  INTENT(in)  :: nFields
-    INTEGER,  INTENT(in)  :: iX_B(3), iX_E(3), iLo_MF(4)
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
     REAL(AR), INTENT(out) :: &
       Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(AR), INTENT(in)  :: &
-      Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3, iField
 
@@ -214,7 +214,7 @@ CONTAINS
     CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
 
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                          iX_B (3), iX_E (3), iLo_MF(4), &
+                          iX_B (3), iX_E (3), iLo_MF(4), iLo(3), iHi(3), &
                           iX1, iX2, iX3, iNodeX, iCF, iGF, &
                           iLevel, nCompGF, nCompCF
     CHARACTER(LEN=16)  :: FMT
@@ -229,21 +229,24 @@ CONTAINS
     REAL(AR), ALLOCATABLE         :: P  (:,:,:,:,:)
     REAL(AR), ALLOCATABLE         :: A  (:,:,:,:,:)
 
-    ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nGF) )
+    iLo = 1  - swX
+    iHi = nX + swX
 
-    ALLOCATE( U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nCF) )
+    ALLOCATE( G(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nGF) )
 
-    ALLOCATE( P(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nPF) )
+    ALLOCATE( U(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nCF) )
 
-    ALLOCATE( A(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nAF) )
+    ALLOCATE( P(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nPF) )
+
+    ALLOCATE( A(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nAF) )
 
     G = 0.0_AR
     U = 0.0_AR
@@ -291,9 +294,9 @@ CONTAINS
         IF( iX_E0(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
         IF( iX_E0(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
 
-        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iLo, iHi, iLo_MF, iX_B, iX_E, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, uCF, U )
+        CALL amrex2thornado_X( nCF, iLo, iHi, iLo_MF, iX_B, iX_E, uCF, U )
 
         ! --- Apply boundary conditions ---
 
@@ -414,7 +417,7 @@ CONTAINS
 
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
                           iX_B (3), iX_E (3), iXL(3), iXR(3), iLo_MF(4), &
-                          iLevel, nCompGF, nCompCF, nCompDF, &
+                          iLevel, nCompGF, nCompCF, nCompDF, iLo(3), iHi(3), &
                           iX1, iX2, iX3, iCF, iGF, &
                           iNodeX, iNodeX1, iNodeX2, iNodeX3
     TYPE(amrex_box)    :: BX
@@ -432,25 +435,28 @@ CONTAINS
 
     REAL(AR) :: Alpha, Psi, SqrtGm, rho, v, e, pr
 
-    ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nGF) )
+    iLo = 1  - swX
+    iHi = nX + swX
 
-    ALLOCATE( U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nCF) )
+    ALLOCATE( G(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nGF) )
 
-    ALLOCATE( P(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nPF) )
+    ALLOCATE( U(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nCF) )
 
-    ALLOCATE( A(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nAF) )
+    ALLOCATE( P(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nPF) )
 
-    ALLOCATE( D(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nDF) )
+    ALLOCATE( A(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nAF) )
+
+    ALLOCATE( D(1:nDOFX,iLo(1):iHi(1), &
+                        iLo(2):iHi(2), &
+                        iLo(3):iHi(3),1:nDF) )
 
     G = 0.0_AR
     U = 0.0_AR
@@ -503,11 +509,11 @@ CONTAINS
         IF( iX_E0(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
         IF( iX_E0(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
 
-        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iLo, iHi, iLo_MF, iX_B, iX_E, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, uCF, U )
+        CALL amrex2thornado_X( nCF, iLo, iHi, iLo_MF, iX_B, iX_E, uCF, U )
 
-        CALL amrex2thornado_X( nDF, iX_B, iX_E, iLo_MF, uDF, D )
+        CALL amrex2thornado_X( nDF, iLo, iHi, iLo_MF, iX_B, iX_E, uDF, D )
 
         ! --- Apply boundary conditions ---
 
