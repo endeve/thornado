@@ -82,6 +82,7 @@ MODULE MF_UtilitiesModule
 
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
+  PUBLIC :: amrex2thornado_X_Global
   PUBLIC :: ShowVariableFromMultiFab
   PUBLIC :: WriteNodalDataToFile_SAS
   PUBLIC :: WriteNodalDataToFile
@@ -157,6 +158,59 @@ CONTAINS
   END SUBROUTINE thornado2amrex_X
 
 
+  SUBROUTINE amrex2thornado_X_Global( MF, nF, U )
+
+    TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
+    INTEGER,              INTENT(in)  :: nF
+    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):,1:)
+
+    INTEGER                       :: iX1, iX2, iX3, iFd, iLevel, &
+                                     iX_B(3), iX_E(3)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uF(:,:,:,:)
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uF => MF(iLevel) % DataPtr( MFI )
+        BX = MFI % tilebox()
+
+        iX_B = BX % lo
+        iX_E = BX % hi
+
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
+        IF( BX % lo(2) .EQ. 1     ) iX_B(2) = 1     - swX(2)
+        IF( BX % lo(3) .EQ. 1     ) iX_B(3) = 1     - swX(3)
+        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = nX(1) + swX(1)
+        IF( BX % hi(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
+        IF( BX % hi(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
+
+        DO iFd = 1, nF
+        DO iX3 = iX_B(3), iX_E(3)
+        DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+
+          U(1:nDOFX,iX1,iX2,iX3,iFd) &
+            = uF(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+  END SUBROUTINE amrex2thornado_X_Global
+
+
   SUBROUTINE ShowVariableFromMultiFab( MF, swXX, iComp )
 
     TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels-1)
@@ -164,7 +218,6 @@ CONTAINS
     INTEGER,              INTENT(in) :: iComp
 
     INTEGER                       :: iX1, iX2, iX3, iLevel
-    INTEGER                       :: lo(4), hi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: U(:,:,:,:)
@@ -177,8 +230,6 @@ CONTAINS
 
         U => MF(iLevel) % DataPtr( MFI )
         BX = MFI % tilebox()
-
-        lo = LBOUND( U ); hi = UBOUND( U )
 
         DO iX3 = BX % lo(3) - swXX(3), BX % hi(3) + swXX(3)
         DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
