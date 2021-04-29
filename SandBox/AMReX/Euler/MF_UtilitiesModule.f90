@@ -157,6 +157,114 @@ CONTAINS
   END SUBROUTINE thornado2amrex_X
 
 
+  SUBROUTINE amrex2thornado_X_Global( GEOM, MF, nF, U, ApplyBC_Option )
+
+    TYPE(amrex_geometry), INTENT(in)  :: GEOM(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
+    INTEGER,              INTENT(in)  :: nF
+    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):,1:)
+    LOGICAL,              INTENT(in), OPTIONAL :: ApplyBC_Option
+
+    INTEGER                       :: iNX, iX1, iX2, iX3, iFd, iLevel, &
+                                     iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                                     iX_B (3), iX_E (3)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    TYPE(EdgeMap)                 :: Edge_Map
+    LOGICAL                       :: ApplyBC
+    REAL(AR), CONTIGUOUS, POINTER :: uF(:,:,:,:)
+
+    ApplyBC = .FALSE.
+    IF( PRESENT( ApplyBC_Option ) ) &
+      ApplyBC = ApplyBC_Option
+
+    U = 0.0_AR
+
+    DO iLevel = 0, nLevels-1
+
+      CALL MF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uF => MF(iLevel) % DataPtr( MFI )
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        IF( ApplyBC )THEN
+
+          CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+
+          CALL amrex2thornado_X &
+                 ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
+                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3), &
+                     1:nF) )
+
+          CALL MF_ApplyBoundaryConditions_Euler &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+          CALL thornado2amrex_X &
+                 ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
+                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3), &
+                     1:nF) )
+
+        END IF
+
+        iX_B = iX_B0
+        iX_E = iX_E0
+
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
+        IF( BX % lo(2) .EQ. 1     ) iX_B(2) = 1     - swX(2)
+        IF( BX % lo(3) .EQ. 1     ) iX_B(3) = 1     - swX(3)
+        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = nX(1) + swX(1)
+        IF( BX % hi(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
+        IF( BX % hi(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
+
+        DO iFd = 1, nF
+        DO iX3 = iX_B(3), iX_E(3)
+        DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+
+          U(1:nDOFX,iX1,iX2,iX3,iFd) &
+            = uF(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+      DO iFd = 1, nF
+      DO iX3 = 1-swX(3), nX(3)+swX(3)
+      DO iX2 = 1-swX(2), nX(2)+swX(2)
+      DO iX1 = 1-swX(1), nX(1)+swX(1)
+      DO iNX = 1, nDOFX
+
+        CALL amrex_parallel_reduce_sum( U(iNX,iX1,iX2,iX3,iFd) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END DO
+
+  END SUBROUTINE amrex2thornado_X_Global
+
+
   SUBROUTINE ShowVariableFromMultiFab( MF, swXX, iComp )
 
     TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels-1)
