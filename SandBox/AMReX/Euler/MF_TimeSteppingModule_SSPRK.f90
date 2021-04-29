@@ -307,7 +307,7 @@ CONTAINS
             CALL MF_U(iLevel) &
                    % LinComb( One, MF_U(iLevel), 1, &
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), 1 )
+                              1, MF_U(iLevel) % nComp(), swX )
 
         END DO
 
@@ -340,7 +340,7 @@ CONTAINS
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iLevel,iS), 1, &
-                            1, MF_uCF(iLevel) % nComp(), 1 )
+                            1, MF_uCF(iLevel) % nComp(), swX )
 
       END DO
 
