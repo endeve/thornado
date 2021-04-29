@@ -1,4 +1,4 @@
-MODULE AccretionShockDiagnosticsModule
+MODULE AccretionShockUtilitiesModule
 
   USE KindModule,                  ONLY: &
     DP,    &
@@ -215,4 +215,4 @@ endif
   END SUBROUTINE Legendre
 
 
-END MODULE AccretionShockDiagnosticsModule
+END MODULE AccretionShockUtilitiesModule

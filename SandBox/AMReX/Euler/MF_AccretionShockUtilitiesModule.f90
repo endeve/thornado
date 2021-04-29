@@ -1,4 +1,4 @@
-MODULE MF_AccretionShockDiagnosticsModule
+MODULE MF_AccretionShockUtilitiesModule
 
   ! --- AMReX Modules ---
 
@@ -22,7 +22,7 @@ MODULE MF_AccretionShockDiagnosticsModule
   USE FluidFieldsModule,               ONLY: &
     nPF, &
     nAF
-  USE AccretionShockDiagnosticsModule, ONLY: &
+  USE AccretionShockUtilitiesModule, ONLY: &
     ComputeAccretionShockDiagnostics
 
   ! --- Local Modules ---
@@ -130,4 +130,4 @@ CONTAINS
   END SUBROUTINE MF_ComputeAccretionShockDiagnostics
 
 
-END MODULE MF_AccretionShockDiagnosticsModule
+END MODULE MF_AccretionShockUtilitiesModule
