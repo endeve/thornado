@@ -312,168 +312,35 @@ CONTAINS
 
   SUBROUTINE WriteNodalDataToFile_SAS( GEOM, MF_uGF, MF_uCF, FileNameBase )
 
-    TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in) :: GEOM(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
     CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
 
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                          iX_B (3), iX_E (3), iLo_MF(4), iLo(3), iHi(3), &
-                          iX1, iX2, iX3, iNodeX, iCF, iGF, &
-                          iLevel, nCompGF, nCompCF
-    CHARACTER(LEN=16)  :: FMT
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(EdgeMap)      :: Edge_Map
+    INTEGER           :: iLo(3), iHi(3), iX1, iX2, iX3
+    CHARACTER(LEN=16) :: FMT
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: G  (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: U  (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: P  (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: A  (:,:,:,:,:)
+    REAL(AR) :: P(1:nDOFX,1:nPF)
+    REAL(AR) :: A(1:nDOFX,1:nAF)
+    REAL(AR) :: G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+                          1-swX(2):nX(2)+swX(2), &
+                          1-swX(3):nX(3)+swX(3), &
+                  1:nGF)
+    REAL(AR) :: U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+                          1-swX(2):nX(2)+swX(2), &
+                          1-swX(3):nX(3)+swX(3), &
+                  1:nCF)
 
-    iLo = 1  - swX
-    iHi = nX + swX
+    CALL amrex2thornado_X_Global &
+           ( GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
 
-    ALLOCATE( G(1:nDOFX,iLo(1):iHi(1), &
-                        iLo(2):iHi(2), &
-                        iLo(3):iHi(3),1:nGF) )
-
-    ALLOCATE( U(1:nDOFX,iLo(1):iHi(1), &
-                        iLo(2):iHi(2), &
-                        iLo(3):iHi(3),1:nCF) )
-
-    ALLOCATE( P(1:nDOFX,iLo(1):iHi(1), &
-                        iLo(2):iHi(2), &
-                        iLo(3):iHi(3),1:nPF) )
-
-    ALLOCATE( A(1:nDOFX,iLo(1):iHi(1), &
-                        iLo(2):iHi(2), &
-                        iLo(3):iHi(3),1:nAF) )
-
-    G = 0.0_AR
-    U = 0.0_AR
-    P = 0.0_AR
-    A = 0.0_AR
-
-    ! --- Convert AMReX MultiFabs to thornado arrays ---
-
-    DO iLevel = 0, nLevels-1
-
-      ! --- Apply boundary conditions to interior domains ---
-
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        uGF     => MF_uGF(iLevel) % DataPtr( MFI )
-        nCompGF =  MF_uGF(iLevel) % nComp()
-
-        uCF     => MF_uCF(iLevel) % DataPtr( MFI )
-        nCompCF =  MF_uCF(iLevel) % nComp()
-
-        iLo_MF = LBOUND( uGF )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
-
-        iX_B = iX_B0
-        iX_E = iX_E0
-
-        ! --- Ensure exchange cells are excluded ---
-
-        IF( iX_B0(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
-        IF( iX_B0(2) .EQ. 1     ) iX_B(2) = 1     - swX(2)
-        IF( iX_B0(3) .EQ. 1     ) iX_B(3) = 1     - swX(3)
-        IF( iX_E0(1) .EQ. nX(1) ) iX_E(1) = nX(1) + swX(1)
-        IF( iX_E0(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
-        IF( iX_E0(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
-
-        CALL amrex2thornado_X( nGF, iLo, iHi, iLo_MF, iX_B, iX_E, uGF, G )
-
-        CALL amrex2thornado_X( nCF, iLo, iHi, iLo_MF, iX_B, iX_E, uCF, U )
-
-        ! --- Apply boundary conditions ---
-
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
-
-        CALL MF_ApplyBoundaryConditions_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-    ! --- Combine data from all processes ---
-
-    DO iX3    = 1-swX(3), nX(3)+swX(3)
-    DO iX2    = 1-swX(2), nX(2)+swX(2)
-    DO iX1    = 1-swX(1), nX(1)+swX(1)
-    DO iNodeX = 1       , nDOFX
-
-      DO iGF = 1, nGF
-
-        CALL amrex_parallel_reduce_sum( G(iNodeX,iX1,iX2,iX3,iGF) )
-
-      END DO
-
-      DO iCF = 1, nCF
-
-        CALL amrex_parallel_reduce_sum( U(iNodeX,iX1,iX2,iX3,iCF) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Compute primitive and write to file ---
+    CALL amrex2thornado_X_Global &
+           ( GEOM, MF_uCF, nCF, U, ApplyBC_Option = .TRUE. )
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      DO iX3 = 1-swX(3), nX(3)+swX(3)
-      DO iX2 = 1-swX(2), nX(2)+swX(2)
-      DO iX1 = 1-swX(1), nX(1)+swX(1)
-
-        CALL ComputePrimitive_Euler &
-               ( U(:,iX1,iX2,iX3,iCF_D ),       &
-                 U(:,iX1,iX2,iX3,iCF_S1),       &
-                 U(:,iX1,iX2,iX3,iCF_S2),       &
-                 U(:,iX1,iX2,iX3,iCF_S3),       &
-                 U(:,iX1,iX2,iX3,iCF_E ),       &
-                 U(:,iX1,iX2,iX3,iCF_Ne),       &
-                 P(:,iX1,iX2,iX3,iPF_D ),       &
-                 P(:,iX1,iX2,iX3,iPF_V1),       &
-                 P(:,iX1,iX2,iX3,iPF_V2),       &
-                 P(:,iX1,iX2,iX3,iPF_V3),       &
-                 P(:,iX1,iX2,iX3,iPF_E ),       &
-                 P(:,iX1,iX2,iX3,iPF_Ne),       &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-        CALL ComputePressureFromPrimitive &
-               ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
-                 P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
-
-      END DO
-      END DO
-      END DO
+      iLo = 1  - swX
+      iHi = nX + swX
 
       OPEN( UNIT = 101, FILE = TRIM( FileNameBase ) // '_D.dat' )
       OPEN( UNIT = 102, FILE = TRIM( FileNameBase ) // '_V.dat' )
@@ -485,13 +352,33 @@ CONTAINS
       WRITE(102,'(A)') FMT
       WRITE(103,'(A)') FMT
 
-      DO iX3 = 1-swX(3), nX(3)+swX(3)
-      DO iX2 = 1-swX(2), nX(2)+swX(2)
-      DO iX1 = 1-swX(1), nX(1)+swX(1)
+      DO iX3 = iLo(3), iHi(3)
+      DO iX2 = iLo(2), iHi(2)
+      DO iX1 = iLo(1), iHi(1)
 
-        WRITE(101,FMT) P(:,iX1,iX2,iX3,iPF_D )
-        WRITE(102,FMT) P(:,iX1,iX2,iX3,iPF_V1)
-        WRITE(103,FMT) A(:,iX1,iX2,iX3,iAF_P )
+        CALL ComputePrimitive_Euler &
+               ( U(:,iX1,iX2,iX3,iCF_D ), &
+                 U(:,iX1,iX2,iX3,iCF_S1), &
+                 U(:,iX1,iX2,iX3,iCF_S2), &
+                 U(:,iX1,iX2,iX3,iCF_S3), &
+                 U(:,iX1,iX2,iX3,iCF_E ), &
+                 U(:,iX1,iX2,iX3,iCF_Ne), &
+                 P(:,iPF_D ), &
+                 P(:,iPF_V1), &
+                 P(:,iPF_V2), &
+                 P(:,iPF_V3), &
+                 P(:,iPF_E ), &
+                 P(:,iPF_Ne), &
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        CALL ComputePressureFromPrimitive &
+               ( P(:,iPF_D ), P(:,iPF_E ), P(:,iPF_Ne), A(:,iAF_P) )
+
+        WRITE(101,FMT) P(:,iPF_D )
+        WRITE(102,FMT) P(:,iPF_V1)
+        WRITE(103,FMT) A(:,iAF_P )
 
       END DO
       END DO
@@ -502,11 +389,6 @@ CONTAINS
       CLOSE( 101 )
 
     END IF
-
-    DEALLOCATE( A )
-    DEALLOCATE( P )
-    DEALLOCATE( U )
-    DEALLOCATE( G )
 
   END SUBROUTINE WriteNodalDataToFile_SAS
 
