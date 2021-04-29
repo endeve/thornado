@@ -119,6 +119,9 @@ MODULE MF_InitializationModule
     Kilometer,    &
     SolarMass,    &
     SpeedOfLight, &
+    Erg,          &
+    Gram,         &
+    Centimeter,   &
     GravitationalConstant
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -183,9 +186,9 @@ CONTAINS
 
         CALL InitializeFields_HomogeneousSphere1D ( MF_uGF, MF_uCR, MF_uCF )
       
-      CASE( 'Test' )
+      CASE( 'HomogeneousSphereGR' )
 
-        CALL InitializeFields_Test ( MF_uGF, MF_uCR, MF_uCF )
+        CALL InitializeFields_HomogeneousSphereGR ( MF_uGF, MF_uCR, MF_uCF )
 
         IF (Verbose) THEN
           print*, ProgramName
@@ -201,6 +204,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'SineWaveDiffusion'
           WRITE(*,'(6x,A)')     'StreamingDopplerShift'
           WRITE(*,'(6x,A)')     'HomogeneousSphere1D'
+          WRITE(*,'(6x,A)')     'HomogeneousSphereGR'
           STOP 'MF_InitializationModule_NonRelativistic_IDEAL.f90'
         END IF
 
@@ -1182,7 +1186,7 @@ CONTAINS
 
 
 
-  SUBROUTINE InitializeFields_Test( MF_uGF, MF_uCR, MF_uCF )
+  SUBROUTINE InitializeFields_HomogeneousSphereGR( MF_uGF, MF_uCR, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
@@ -1226,7 +1230,7 @@ CONTAINS
     DO iDim = 1, 3
 
       CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                xL(iDim), xR(iDim) )
 
     END DO
@@ -1254,7 +1258,8 @@ CONTAINS
 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)         
+        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)      
+ 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
@@ -1268,13 +1273,13 @@ CONTAINS
 
             theta = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-            uPF_K(iNodeX,iPF_D ) = 1.0_AR
+            uPF_K(iNodeX,iPF_D ) = 1.0d12 * Gram / Centimeter**3
             uPF_K(iNodeX,iPF_V1) = 0.0_AR
             uPF_K(iNodeX,iPF_V2) = 0.0_AR
             uPF_K(iNodeX,iPF_V3) = 0.0_AR
-            uPF_K(iNodeX,iPF_E ) = 0.1_AR
+            uPF_K(iNodeX,iPF_E ) = 1.00d25 * Erg / Centimeter**3
             uPF_K(iNodeX,iPF_Ne) = 0.0_AR
-            
+
             CALL ComputeAlphaPsi( Mass, R, R0, theta, uGF_K(iNodeX,:) )
           END DO
         CALL ComputePressureFromPrimitive &
@@ -1366,8 +1371,8 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-STOP
-  END SUBROUTINE InitializeFields_Test
+
+  END SUBROUTINE InitializeFields_HomogeneousSphereGR
 
 
   SUBROUTINE ComputeAlphaPsi( M, R, R0, theta, G ) 
@@ -1411,6 +1416,8 @@ STOP
     G(iGF_Gm_dd_33) = G(iGF_h_3)**2 
 
     G(iGF_SqrtGm) = SQRT( G(iGF_Gm_dd_11) * G(iGF_Gm_dd_22) * G(iGF_Gm_dd_33) )   
+
+  
 
   END SUBROUTINE ComputeAlphaPsi
 

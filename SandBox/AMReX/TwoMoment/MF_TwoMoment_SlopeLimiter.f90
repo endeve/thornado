@@ -148,7 +148,7 @@ CONTAINS
                  iZ_B1, iZ_E1, iLo_MF, uCR, U )
 
         CALL ApplySlopeLimiter_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, Verbose_Option = Verbose )
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
