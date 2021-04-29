@@ -176,6 +176,7 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+   ! apply(1) = 0
 
     CALL ApplyBoundaryConditions_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
@@ -411,7 +412,6 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         GX_K(iNodeX,iGF,iZ3,iZ4,iZ2) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
-
       END DO
 
     END DO
@@ -483,8 +483,6 @@ CONTAINS
     DO iZ3  = iZ_B0(3), iZ_E0(3)
 
       DO iNodeX = 1, nDOFX_X1
-
-!this is where the issue is
 
         ! --- Left State ---
         CALL ComputePrimitive_Euler_Relativistic &
@@ -686,7 +684,6 @@ CONTAINS
                  GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
-
         ! --- Numerical Flux ---
         DO iCR = 1, nCR
 
@@ -712,6 +709,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
     ! --- Surface Contributions ---
 
     ! --- Contribution from Left Face ---
@@ -806,7 +804,6 @@ CONTAINS
                 GX_K(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                 GX_K(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                 GX_K(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
-
         DO iCR = 1, nCR
 
           Flux_q(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
@@ -814,7 +811,6 @@ CONTAINS
                 * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
                 * GX_K(iNodeX,iGF_SqrtGm,iZ3,iZ4,iZ2) &
                 * Flux_K(iCR)
-
         END DO
       END DO
       END DO
@@ -1099,7 +1095,7 @@ CONTAINS
     CALL ComputeWeakDerivatives_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, &
              Verbose_Option = Verbose )
-
+    
     CALL ComputeWeakDerivatives_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd,  dU_d_dX2, dU_d_dX2_COV, &
              Verbose_Option = Verbose )
@@ -1114,8 +1110,6 @@ CONTAINS
 
 
 
-
-    !END DO
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
