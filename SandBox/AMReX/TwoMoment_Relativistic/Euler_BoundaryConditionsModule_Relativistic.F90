@@ -212,7 +212,6 @@ CONTAINS
     CASE ( 30 ) ! Reflecting (Inner), Zero (Outer)
 
       ! --- Inner Boundary --
-print*,"Fick my cunt"
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         DO iX3 = iX_B0(3), iX_E0(3)
