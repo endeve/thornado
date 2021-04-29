@@ -52,7 +52,6 @@ MODULE MF_UtilitiesModule
     iPF_Ne,  &
     unitsPF, &
     nDF,     &
-    iDF_TCI, &
     unitsAF, &
     nAF,     &
     iAF_P
@@ -82,8 +81,8 @@ MODULE MF_UtilitiesModule
 
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
+  PUBLIC :: amrex2thornado_X_Global
   PUBLIC :: ShowVariableFromMultiFab
-  PUBLIC :: WriteNodalDataToFile_SAS
   PUBLIC :: WriteNodalDataToFile
   PUBLIC :: CombineGridData
 
@@ -308,89 +307,6 @@ CONTAINS
     WRITE(*,*)
 
   END SUBROUTINE ShowVariableFromMultiFab
-
-
-  SUBROUTINE WriteNodalDataToFile_SAS( GEOM, MF_uGF, MF_uCF, FileNameBase )
-
-    TYPE(amrex_geometry), INTENT(in) :: GEOM(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
-    CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
-
-    INTEGER           :: iLo(3), iHi(3), iX1, iX2, iX3
-    CHARACTER(LEN=16) :: FMT
-
-    REAL(AR) :: P(1:nDOFX,1:nPF)
-    REAL(AR) :: A(1:nDOFX,1:nAF)
-    REAL(AR) :: G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                          1-swX(2):nX(2)+swX(2), &
-                          1-swX(3):nX(3)+swX(3), &
-                  1:nGF)
-    REAL(AR) :: U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                          1-swX(2):nX(2)+swX(2), &
-                          1-swX(3):nX(3)+swX(3), &
-                  1:nCF)
-
-    CALL amrex2thornado_X_Global &
-           ( GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
-
-    CALL amrex2thornado_X_Global &
-           ( GEOM, MF_uCF, nCF, U, ApplyBC_Option = .TRUE. )
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      iLo = 1  - swX
-      iHi = nX + swX
-
-      OPEN( UNIT = 101, FILE = TRIM( FileNameBase ) // '_D.dat' )
-      OPEN( UNIT = 102, FILE = TRIM( FileNameBase ) // '_V.dat' )
-      OPEN( UNIT = 103, FILE = TRIM( FileNameBase ) // '_P.dat' )
-
-      WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
-
-      WRITE(101,'(A)') FMT
-      WRITE(102,'(A)') FMT
-      WRITE(103,'(A)') FMT
-
-      DO iX3 = iLo(3), iHi(3)
-      DO iX2 = iLo(2), iHi(2)
-      DO iX1 = iLo(1), iHi(1)
-
-        CALL ComputePrimitive_Euler &
-               ( U(:,iX1,iX2,iX3,iCF_D ), &
-                 U(:,iX1,iX2,iX3,iCF_S1), &
-                 U(:,iX1,iX2,iX3,iCF_S2), &
-                 U(:,iX1,iX2,iX3,iCF_S3), &
-                 U(:,iX1,iX2,iX3,iCF_E ), &
-                 U(:,iX1,iX2,iX3,iCF_Ne), &
-                 P(:,iPF_D ), &
-                 P(:,iPF_V1), &
-                 P(:,iPF_V2), &
-                 P(:,iPF_V3), &
-                 P(:,iPF_E ), &
-                 P(:,iPF_Ne), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-        CALL ComputePressureFromPrimitive &
-               ( P(:,iPF_D ), P(:,iPF_E ), P(:,iPF_Ne), A(:,iAF_P) )
-
-        WRITE(101,FMT) P(:,iPF_D )
-        WRITE(102,FMT) P(:,iPF_V1)
-        WRITE(103,FMT) A(:,iAF_P )
-
-      END DO
-      END DO
-      END DO
-
-      CLOSE( 103 )
-      CLOSE( 102 )
-      CLOSE( 101 )
-
-    END IF
-
-  END SUBROUTINE WriteNodalDataToFile_SAS
 
 
   SUBROUTINE WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uDF, FileNameBase )
