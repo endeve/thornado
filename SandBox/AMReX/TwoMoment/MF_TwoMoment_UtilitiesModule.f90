@@ -35,7 +35,6 @@ MODULE MF_TwoMoment_UtilitiesModule
     nLevels, nSpecies, nE
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z
 
@@ -69,7 +68,7 @@ CONTAINS
 
     REAL(amrex_real) :: TimeStep(0:nLevels-1)
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iZ_B1(4), iZ_E1(4), iLo_MF(4)
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), iLo_MF(4)
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -92,6 +91,12 @@ CONTAINS
         iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
+        iZ_B0(1) = iE_B0
+        iZ_E0(1) = iE_E0
+
+        iZ_B0(2:4) = iX_B0
+        iZ_E0(2:4) = iX_E0
+
         iZ_B1(1) = iE_B1
         iZ_E1(1) = iE_E1
 
@@ -107,11 +112,11 @@ CONTAINS
                             iZ_B1(3):iZ_E1(3), &
                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
 
 !put compute timestep here
 
@@ -264,17 +269,19 @@ CONTAINS
                              iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies) )
 
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, CF )
+        CALL amrex2thornado_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, CF )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uCR, CR )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, CR )
 
         CALL amrex2thornado_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uPR, PR )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -360,7 +367,7 @@ CONTAINS
 
         CALL thornado2amrex_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uPR, PR )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
       END DO
 
