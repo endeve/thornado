@@ -1507,13 +1507,14 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
 
+
   SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
-    ( iP_B, ip_E, E, D, T, Y, iSpecies, iMoment, opES_Points )
+    ( iP_B, iP_E, E, D, T, Y, iSpecies, iMoment, opES_Points )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
     ! --- Modified by Sherwood Richers to take in particle data ---
 
-    INTEGER,  INTENT(in)  :: ip_B, ip_E
+    INTEGER,  INTENT(in)  :: iP_B, iP_E
     REAL(DP), INTENT(in)  :: E(:)
     REAL(DP), INTENT(in)  :: D(:)
     REAL(DP), INTENT(in)  :: T(:)
@@ -1522,7 +1523,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES_Points(:)
 
-    INTEGER  :: iX, iE
+    INTEGER  :: iP
     REAL(DP) :: LogE_P(ip_B:ip_E), LogD_P(ip_B:ip_E), LogT_P(ip_B:ip_E), Y_P(ip_B:ip_E)
     LOGICAL  :: do_gpu
 
@@ -1568,7 +1569,7 @@ CONTAINS
       LogD_P(iP) = LOG10( D(iP) / UnitD )
       LogT_P(iP) = LOG10( T(iP) / UnitT )
       Y_P(iP) = Y(iP) / UnitY
-      LogE_P(iE) = LOG10( E(iP) / UnitE )
+      LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
     CALL LogInterpolateSingleVariable_4D_Custom &
