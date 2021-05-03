@@ -24,9 +24,12 @@ LIBRARY = \
   PolynomialBasisMappingModule.o \
   SubcellReconstructionModule.o
 
-ifeq ($(USE_GPU),TRUE)
+ifeq ($(USE_CUDA),TRUE)
 LIBRARY += \
   CudaModule.o
+else ifeq ($(USE_HIP),TRUE)
+LIBRARY += \
+  HipModule.o
 endif
 
 ifeq ($(USE_OACC),TRUE)
@@ -37,10 +40,15 @@ LIBRARY += \
   OpenMPModule.o
 endif
 
-ifeq ($(USE_MAGMA),TRUE)
-LIBRARY += \
-  MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
-else ifeq ($(USE_CUBLAS),TRUE)
+ifeq ($(USE_CUBLAS),TRUE)
 LIBRARY += \
   CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_ROCM),TRUE)
+LIBRARY += \
+  RocblasModule.o RocsolverModule.o RocsparseModule.o
+endif
+
+ifeq ($(USE_MAGMA),TRUE)
+LIBRARY += \
+  MagmaModule.o
 endif
