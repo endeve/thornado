@@ -52,6 +52,7 @@ MODULE NeutrinoOpacitiesComputationModule
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
+    LogInterpolateSingleVariable_4D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
