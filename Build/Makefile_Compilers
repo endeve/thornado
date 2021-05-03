@@ -305,7 +305,7 @@ INCLUDE_CUDA_summit_xl         = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_poplar_cce        = -I$(CUDA_ROOT)/include
 INCLUDE_CUDA                   = $(INCLUDE_CUDA_$(MACHINE))
 
-INCLUDE_ROCM_spock_cce         = -I$(ROCM_ROOT)/include
+INCLUDE_ROCM_spock_cce         = -I$(ROCM_PATH)/include
 INCLUDE_ROCM                   = $(INCLUDE_ROCM_$(MACHINE))
 
 INCLUDE_MAGMA_titan_gnu        = -I$(OLCF_MAGMA_ROOT)/include
@@ -419,7 +419,7 @@ LIBRARIES_CUDA_corigpu_pgi     = -cudalib
 LIBRARIES_CUDA_poplar_cce      = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -L$(CUDA_ROOT)/compat -lcuda
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
 
-LIBRARIES_ROCM_spock_cce       = -L$(ROCM_ROOT)/lib64
+LIBRARIES_ROCM_spock_cce       = -L$(ROCM_PATH)/lib
 LIBRARIES_ROCM                 = $(LIBRARIES_ROCM_$(MACHINE))
 
 LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
