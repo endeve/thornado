@@ -4,6 +4,8 @@ else ifeq ($(USE_OMP_OL),TRUE)
    USE_GPU = TRUE
 else ifeq ($(USE_CUBLAS),TRUE)
    USE_GPU = TRUE
+else ifeq ($(USE_ROCM),TRUE)
+   USE_GPU = TRUE
 else ifeq ($(USE_MAGMA),TRUE)
    USE_GPU = TRUE
 endif
@@ -34,5 +36,6 @@ else
    USE_OMP_OL ?= FALSE
    USE_MAGMA  ?= FALSE
    USE_CUBLAS ?= FALSE
+   USE_ROCM   ?= FALSE
 
 endif

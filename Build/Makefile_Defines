@@ -29,6 +29,8 @@ ifeq ($(USE_GPU),TRUE)
    endif
    ifeq ($(USE_MAGMA),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_MAGMA
+   else ifeq ($(USE_ROCM),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_ROCM
    else ifeq ($(USE_CUBLAS),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_CUBLAS
    endif
