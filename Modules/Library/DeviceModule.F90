@@ -4,15 +4,12 @@ MODULE DeviceModule
   USE KindModule, ONLY: &
     DP
 
-#if defined(THORNADO_GPU)
+#if defined(THORNADO_CUDA)
   USE CudaModule, ONLY: &
     stream, &
     cudaGetDeviceCount, &
     cudaSetDevice, &
     cudaStreamCreate
-#endif
-
-#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
   USE CublasModule, ONLY: &
     cublas_handle, &
     cublasCreate_v2, &
@@ -26,6 +23,21 @@ MODULE DeviceModule
     cusparse_handle, &
     cusparseCreate, &
     cusparseSetStream
+#elif defined(THORNADO_HIP)
+  USE HipModule, ONLY: &
+    stream, &
+    hipGetDeviceCount, &
+    hipSetDevice, &
+    hipStreamCreate
+  USE RocblasModule, ONLY: &
+    rocblas_handle, &
+    rocblas_create_handle, &
+    rocblas_get_stream, &
+    rocblas_set_stream
+  USE RocsolverModule, ONLY: &
+    rocsolver_handle
+  USE RocsparseModule, ONLY: &
+    rocsparse_handle
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -104,27 +116,42 @@ CONTAINS
 #if defined(THORNADO_GPU)
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, nranks, ierr )
+#if defined(THORNADO_CUDA)
     ierr = cudaGetDeviceCount( ndevices )
+#elif defined(THORNADO_HIP)
+    ierr = hipGetDeviceCount( ndevices )
+#endif
     IF ( ndevices > 0 ) THEN
       mydevice = MOD( myrank, ndevices )
     ELSE
-      WRITE(*,*) 'No CUDA capable device found'
+      WRITE(*,*) 'No capable device found'
       CALL MPI_FINALIZE( ierr )
     END IF
+#if defined(THORNADO_CUDA)
     ierr = cudaSetDevice( mydevice )
+#elif defined(THORNADO_HIP)
+    ierr = hipSetDevice( mydevice )
+#endif
 #else
     mydevice = -1
     ndevices = 0
 #endif
 
-#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+#if defined(THORNADO_CUDA)
     ierr = cublasCreate_v2( cublas_handle )
+#elif defined(THORNADO_HIP)
+    ierr = rocblas_create_handle( rocblas_handle )
+#endif
 
 #if defined(THORNADO_OACC)
     stream = acc_get_cuda_stream( acc_async_default )
-#else
+#elif defined(THORNADO_CUDA)
     ierr = cudaStreamCreate( stream )
+#elif defined(THORNADO_HIP)
+    ierr = hipStreamCreate( stream )
 #endif
+
+#if defined(THORNADO_CUDA)
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
 
@@ -133,6 +160,10 @@ CONTAINS
 
     ierr = cusparseCreate( cusparse_handle )
     ierr = cusparseSetStream( cusparse_handle, stream )
+#elif defined(THORNADO_HIP)
+    ierr = rocblas_set_stream( rocblas_handle, stream )
+    rocsolver_handle = rocblas_handle
+    rocsprase_handle = rocblas_handle
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
