@@ -37,6 +37,8 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: U_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
 
+  REAL(DP) :: OffGridMass_Euler(nCF)
+
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
@@ -167,6 +169,8 @@ CONTAINS
       c_SSPRK(iS) = SUM( a_SSPRK(iS,1:iS-1) )
     END DO
 
+    OffGridMass_Euler = Zero
+
   END SUBROUTINE InitializeSSPRK
 
 
@@ -206,8 +210,6 @@ CONTAINS
                                  iX_B0(2):iX_E0(2), &
                                  iX_B0(3):iX_E0(3),6)
 
-    REAL(DP) :: OffGridMass_Euler(nStages_SSPRK,nCF)
-
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS, iX1, iX2, iX3
 
@@ -219,8 +221,6 @@ CONTAINS
 
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
-
-    OffGridMass_Euler = Zero
 
     DO iS = 1, nStages_SSPRK
 
@@ -264,7 +264,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
-        OffGridMass_Euler(iS,:) = OffGridMass_Euler(iS,:) + OffGridFlux_Euler
+    IF( WritePlotFile ) &
+        OffGridMass_Euler &
+          = OffGridMass_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 
@@ -298,7 +300,7 @@ CONTAINS
     END IF
 
     IF( WritePlotFile ) &
-      CALL ComputeOffGridMass_Euler( OffGridMass_Euler, dt )
+      CALL WriteOffGridMass_Euler
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
@@ -335,9 +337,7 @@ CONTAINS
   END SUBROUTINE AddIncrement_Fluid
 
 
-  SUBROUTINE ComputeOffGridMass_Euler( OffGridMass_Euler, dt )
-
-    REAL(DP), INTENT(in) :: OffGridMass_Euler(nStages_SSPRK,nCF), dt
+  SUBROUTINE WriteOffGridMass_Euler
 
     INTEGER :: iCF
 
@@ -345,8 +345,7 @@ CONTAINS
 
     DO iCF = 1, nCF
 
-      WRITE(100,'(ES24.16E3,1x)',ADVANCE='NO') &
-        dt * SUM( w_SSPRK * OffGridMass_Euler(:,iCF) )
+      WRITE(100,'(ES24.16E3,1x)',ADVANCE='NO') OffGridMass_Euler(iCF)
 
     END DO
 
@@ -354,7 +353,7 @@ CONTAINS
 
     CLOSE(100)
 
-  END SUBROUTINE ComputeOffGridMass_Euler
+  END SUBROUTINE WriteOffGridMass_Euler
 
 
 END MODULE TimeSteppingModule_SSPRK
