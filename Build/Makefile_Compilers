@@ -516,8 +516,13 @@ MDEFS_acf_gnu      =
 MDEFS              = $(MDEFS_$(MACHINE))
 
 ifeq ($(USE_GPU),TRUE)
-    INCLUDE      += $(INCLUDE_CUDA) $(INCLUDE_ROCM)
-    LIBRARIES    += $(LIBRARIES_CUDA) $(LIBRARIES_ROCM)
+    ifeq ($(USE_CUDA),TRUE)
+        INCLUDE   += $(INCLUDE_CUDA)
+        LIBRARIES += $(LIBRARIES_CUDA)
+    else ifeq ($(USE_HIP),TRUE)
+        INCLUDE   += $(INCLUDE_ROCM)
+        LIBRARIES += $(LIBRARIES_ROCM)
+    endif
     ifeq ($(USE_MAGMA),TRUE)
         INCLUDE   += $(INCLUDE_MAGMA)
         LIBRARIES += $(LIBRARIES_MAGMA)

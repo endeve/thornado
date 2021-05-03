@@ -20,6 +20,11 @@ $(MDEFS)$(PP)USE_AMREX_$(USE_AMREX)
 
 ifeq ($(USE_GPU),TRUE)
    DEFINES      += $(MDEFS)$(PP)THORNADO_GPU
+   ifeq ($(USE_CUDA),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_CUDA
+   else ifeq ($(USE_HIP),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_HIP
+   endif
    ifeq ($(USE_OACC),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_OACC
       DEFINES   += $(MDEFS)$(PP)$(MICROPHYSICS)_OACC
