@@ -30,12 +30,17 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+    ComputeIncrement_TwoMoment_Explicit, &
+    OffGridFlux_TwoMoment
+  USE TwoMoment_TallyModule_OrderV, ONLY: &
+    IncrementOffGridTally_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
 
   TYPE :: StageDataType
+    REAL(DP)              :: OffGridFlux_U(nCF)
+    REAL(DP)              :: OffGridFlux_M(2*nCR)
     REAL(DP), ALLOCATABLE :: dU_IM(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dU_EX(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dM_IM(:,:,:,:,:,:,:)
@@ -164,7 +169,8 @@ CONTAINS
     PROCEDURE(ImplicitIncrement) :: &
       ComputeIncrement_TwoMoment_Implicit
 
-    INTEGER :: iS, jS
+    INTEGER  :: iS, jS
+    REAL(DP) :: dM_OffGrid(2*nCR)
 
     CALL CopyArray( U0, One, U )
     CALL CopyArray( M0, One, M )
@@ -253,6 +259,8 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                  Ui, Mi, StageData(iS) % dM_EX )
 
+        StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
+
       END IF
 
     END DO ! iS = 1, nStages
@@ -303,6 +311,16 @@ CONTAINS
 
     CALL CopyArray( U, One, Ui )
     CALL CopyArray( M, One, Mi )
+
+    dM_OffGrid = Zero
+    DO iS = 1, nStages
+
+      dM_OffGrid &
+        = dM_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_M
+
+    END DO
+
+    CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
 
   END SUBROUTINE Update_IMEX_RK
 

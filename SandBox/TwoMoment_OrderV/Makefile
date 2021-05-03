@@ -58,6 +58,7 @@ ApplicationDriver: \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_TallyModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o
@@ -72,6 +73,7 @@ ApplicationDriver: \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_TallyModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o \
@@ -305,7 +307,7 @@ TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
 
 TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
   KindModule.o \
-	UnitsModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
@@ -313,24 +315,27 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
   RadiationFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   EquationOfStateModule_TABLE.o \
-	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.F90
 
 TwoMoment_NeutrinoMatterSolverModule_OrderV.o: \
   KindModule.o \
-	UnitsModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
-	TimersModule.o \
+  TimersModule.o \
   ArrayUtilitiesModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleE.o \
-	MeshModule.o \
+  MeshModule.o \
   RadiationFieldsModule.o \
-	EquationOfStateModule_TABLE.o \
+  EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesComputationModule.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
+
+TwoMoment_TallyModule_OrderV.o: \
+  TwoMoment_TallyModule_OrderV.F90
 
 TwoMoment_TimeSteppingModule_OrderV.o: \
   KindModule.o \
