@@ -3,53 +3,39 @@ MODULE Euler_TallyModule_Relativistic
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    Two,  &
-    Pi
-  USE UnitsModule, ONLY: &
-    UnitsDisplay
+    FourPi
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
+    nDimsX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
-    iGF_Psi
+    CoordinateSystem, &
+    iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, &
-    iCF_D, &
-    iCF_S1, &
-    iCF_S2, &
-    iCF_S3, &
-    iCF_E,  &
-    iCF_Ne, &
-    nPF, &
-    iPF_D, &
-    iPF_V1, &
-    iPF_V2, &
-    iPF_V3, &
-    iPF_E, &
-    iPF_Ne
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputePrimitive_Euler_Relativistic
+    iCF_D
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeTally_Euler_Relativistic
-  PUBLIC :: FinalizeTally_Euler_Relativistic
   PUBLIC :: ComputeTally_Euler_Relativistic
+  PUBLIC :: IncrementOffGridTally_Euler
+  PUBLIC :: FinalizeTally_Euler_Relativistic
 
-  LOGICAL               :: SuppressTally
-  CHARACTER(256)        :: TallyFileName, FMT
-  INTEGER               :: nTallies
-  INTEGER               :: iTally_Eb ! baryonic mass
-  INTEGER               :: iTally_Eg ! gravitational mass
-  REAL(DP), ALLOCATABLE :: EulerTally(:)
+  LOGICAL :: SuppressTally
+
+  CHARACTER(256) :: Mass_FileName
+  REAL(DP)       :: Mass_Interior
+  REAL(DP)       :: Mass_Initial
+  REAL(DP)       :: Mass_OffGrid
+  REAL(DP)       :: Mass_Change
 
 
 CONTAINS
@@ -67,7 +53,11 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
 
-    INTEGER :: FileUnit
+    CHARACTER(256) :: BaseFileName
+    INTEGER        :: FileUnit
+
+    CHARACTER(256) :: TimeLabel
+    CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
@@ -75,36 +65,36 @@ CONTAINS
 
     IF( SuppressTally ) RETURN
 
-    iTally_Eb = nCF + 1
-    iTally_Eg = nCF + 2
-    nTallies  = nCF + 2
+    BaseFileName = '../Output/' // TRIM( ProgramName )
 
-    ALLOCATE( EulerTally(1:nTallies) )
+    Mass_FileName &
+      = TRIM( BaseFileName ) // '_Tally_Mass.dat'
 
-    WRITE(FMT,'(A,I2.2,A)') '(',  nTallies, 'ES25.16E3,1x)'
+    Mass_Interior = Zero
+    Mass_Initial  = Zero
+    Mass_OffGrid  = Zero
+    Mass_Change   = Zero
 
-    TallyFileName = '../Output/EulerTally.dat'
+    TimeLabel     = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel = 'Interior [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+    OffGridLabel  = 'Off Grid [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+    InitialLabel  = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
+    ChangeLabel   = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
 
-    OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( Mass_FileName ) )
 
-    WRITE(FileUnit,'(A)') &
-      'Time, D, S1, S2, S3, tau, BaryonicMass, GravitationalMass'
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
 
     CLOSE( FileUnit )
 
   END SUBROUTINE InitializeTally_Euler_Relativistic
 
 
-  SUBROUTINE FinalizeTally_Euler_Relativistic
-
-    IF( .NOT. SuppressTally ) &
-      DEALLOCATE( EulerTally )
-
-  END SUBROUTINE FinalizeTally_Euler_Relativistic
-
-
   SUBROUTINE ComputeTally_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time, &
+      SetInitialValues_Option, Verbose_Option )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -114,71 +104,103 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
       Time
+    LOGICAL, INTENT(in), OPTIONAL :: SetInitialValues_Option
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER  :: iCF, iX1, iX2, iX3, iErr(nDOFX)
-    REAL(DP) :: P(nDOFX,nPF), d3X
+    LOGICAL :: SetInitialValues
+    LOGICAL :: Verbose
 
     IF( SuppressTally ) RETURN
 
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width(iX_B0(1):iX_E0(1)), &
-        dX2 => MeshX(2) % Width(iX_B0(2):iX_E0(2)), &
-        dX3 => MeshX(3) % Width(iX_B0(3):iX_E0(3)) )
+    SetInitialValues = .FALSE.
+    IF( PRESENT( SetInitialValues_Option ) ) &
+      SetInitialValues = SetInitialValues_Option
 
-    EulerTally = Zero
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    CALL ComputeTally_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    IF( SetInitialValues )THEN
+
+      Mass_Initial = Mass_Interior
+
+    END IF
+
+    Mass_Change &
+      = Mass_Interior &
+          - ( Mass_Initial + Mass_OffGrid )
+
+    CALL WriteTally_Euler( Time )
+
+    IF( Verbose )THEN
+
+      CALL DisplayTally( Time )
+
+    END IF
+
+  END SUBROUTINE ComputeTally_Euler_Relativistic
+
+
+  SUBROUTINE ComputeTally_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    INTEGER,  INTENT(in) :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iNX, iX1, iX2, iX3
+    REAL(DP) :: d3X
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, &
+               dX2 => MeshX(2) % Width, &
+               dX3 => MeshX(3) % Width )
+
+    Mass_Interior = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
-      d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3) ! Hack for 1D spherical
+      IF( CoordinateSystem .EQ. 'SPHERICAL' .AND. nDimsX .EQ. 1 )THEN
 
-      DO iCF = 1, nCF
+        d3X = FourPi * dX1(iX1)
 
-        EulerTally(iCF) &
-          = EulerTally(iCF) &
-              + SUM( WeightsX_q(:) &
-                       * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                       * U(:,iX1,iX2,iX3,iCF) ) &
-                  * d3X
-      END DO
+      ELSE
 
-      CALL ComputePrimitive_Euler_Relativistic &
-             ( U(:,iX1,iX2,iX3,iCF_D) , U(:,iX1,iX2,iX3,iCF_S1), &
-               U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-               U(:,iX1,iX2,iX3,iCF_E) , U(:,iX1,iX2,iX3,iCF_Ne), &
-               P(:,iPF_D) , P(:,iPF_V1), P(:,iPF_V2), &
-               P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr )
+        d3X = dX1(iX1) * dX2(iX2) * dX3(iX3)
 
-      ! --- Baryonic Mass ---
+      END IF
 
-      EulerTally(iTally_Eb) &
-        = EulerTally(iTally_Eb) &
-            + d3X * SUM( WeightsX_q(:) &
-                     * U(:,iX1,iX2,iX3,iCF_D) &
-                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+      Mass_Interior &
+        = Mass_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * U(iNX,iX1,iX2,iX3,iCF_D)
 
-      ! --- Gravitational Mass ---
-
-      EulerTally(iTally_Eg) &
-        = EulerTally(iTally_Eg) &
-            + d3X * SUM( WeightsX_q(:) &
-                     * ( P(:,iPF_D) + P(:,iPF_E) ) &
-                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) / G(:,iX1,iX2,iX3,iGF_Psi) )
-
+    END DO
     END DO
     END DO
     END DO
 
     END ASSOCIATE ! dX1, etc.
 
-    CALL WriteTally_Euler( Time )
+  END SUBROUTINE ComputeTally_Euler
 
-  END SUBROUTINE ComputeTally_Euler_Relativistic
+
+  SUBROUTINE IncrementOffGridTally_Euler( dM )
+
+    REAL(DP), INTENT(in) :: dM(nCF)
+
+    Mass_OffGrid &
+      = Mass_OffGrid + dM(iCF_D)
+
+  END SUBROUTINE IncrementOffGridTally_Euler
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -187,26 +209,51 @@ CONTAINS
 
     INTEGER :: FileUnit
 
-    ASSOCIATE( U => UnitsDisplay )
-
-    OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ), &
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( Mass_FileName ), &
           POSITION = 'APPEND', ACTION = 'WRITE' )
 
-    WRITE(FileUnit,FMT) &
-      Time                  / U % TimeUnit,         &
-      EulerTally(iCF_D    ) / U % MassUnit,         &
-      EulerTally(iCF_S1   ) / U % MomentumUnit,     &
-      EulerTally(iCF_S2   ) / U % MomentumUnit,     &
-      EulerTally(iCF_S3   ) / U % MomentumUnit,     &
-      EulerTally(iCF_E    ) / U % EnergyGlobalUnit, &
-      EulerTally(iTally_Eb) / U % MassUnit,         &
-      EulerTally(iTally_Eg) / U % MassUnit
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      Mass_Interior / UnitsDisplay % MassUnit, &
+      Mass_OffGrid  / UnitsDisplay % MassUnit, &
+      Mass_Initial  / UnitsDisplay % MassUnit, &
+      Mass_Change   / UnitsDisplay % MassUnit
 
     CLOSE( FileUnit )
 
-    END ASSOCIATE ! U
-
   END SUBROUTINE WriteTally_Euler
+
+
+  SUBROUTINE DisplayTally( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    WRITE(*,*)
+    WRITE(*,'(A8,A,ES8.2E2,x,A)') &
+      '', 'Euler Tally. t = ', Time / UnitsDisplay % TimeUnit, &
+      UnitsDisplay % TimeLabel
+    WRITE(*,*)
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Mass Interior.: ', Mass_Interior / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Mass Initial..: ', Mass_Initial  / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Mass Off Grid.: ', Mass_OffGrid  / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Mass Change...: ', Mass_Change   / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+
+    WRITE(*,*)
+
+  END SUBROUTINE DisplayTally
+
+
+  SUBROUTINE FinalizeTally_Euler_Relativistic
+
+  END SUBROUTINE FinalizeTally_Euler_Relativistic
 
 
 END MODULE Euler_TallyModule_Relativistic
