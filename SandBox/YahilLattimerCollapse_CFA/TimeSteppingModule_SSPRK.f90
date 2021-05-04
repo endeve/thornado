@@ -25,6 +25,8 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_dgDiscretizationModule, ONLY: &
     WriteSourceTerms, &
     OffGridFlux_Euler
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    IncrementOffGridTally_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -36,8 +38,6 @@ MODULE TimeSteppingModule_SSPRK
 
   REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: U_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
-
-  REAL(DP) :: OffGridMass_Euler(nCF)
 
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
@@ -169,8 +169,6 @@ CONTAINS
       c_SSPRK(iS) = SUM( a_SSPRK(iS,1:iS-1) )
     END DO
 
-    OffGridMass_Euler = Zero
-
   END SUBROUTINE InitializeSSPRK
 
 
@@ -212,6 +210,10 @@ CONTAINS
 
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS, iX1, iX2, iX3
+
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
@@ -264,9 +266,8 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
-    IF( WritePlotFile ) &
-        OffGridMass_Euler &
-          = OffGridMass_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 
@@ -299,8 +300,7 @@ CONTAINS
 
     END IF
 
-    IF( WritePlotFile ) &
-      CALL WriteOffGridMass_Euler
+    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
@@ -335,25 +335,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE AddIncrement_Fluid
-
-
-  SUBROUTINE WriteOffGridMass_Euler
-
-    INTEGER :: iCF
-
-    OPEN(100,FILE='../Output/BoundaryFlux_Euler.dat',POSITION='APPEND')
-
-    DO iCF = 1, nCF
-
-      WRITE(100,'(ES24.16E3,1x)',ADVANCE='NO') OffGridMass_Euler(iCF)
-
-    END DO
-
-    WRITE(100,*)
-
-    CLOSE(100)
-
-  END SUBROUTINE WriteOffGridMass_Euler
 
 
 END MODULE TimeSteppingModule_SSPRK
