@@ -213,11 +213,11 @@ CONTAINS
     END DO
     END DO
 
+    OffGridFlux_Euler = Zero
+
     CALL TimersStop_Euler( Timer_Euler_Increment )
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
-
-    OffGridFlux_Euler = Zero
 
     CALL ComputeIncrement_Euler_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
@@ -1003,6 +1003,8 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1817,6 +1819,8 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
@@ -2629,6 +2633,8 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
 
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
