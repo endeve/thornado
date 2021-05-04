@@ -161,11 +161,11 @@ PROGRAM ApplicationDriver
   t_end = CollapseTime - 0.5_DP * Millisecond
   bcX = [ 30, 0, 0 ]
 
-  nX    = [ 128                 , 1     , 1      ]
+  nX    = [ 512                 , 1     , 1      ]
   swX   = [ 1                   , 0     , 0      ]
   xL    = [ Zero                , Zero  , Zero   ]
   xR    = [ CoreRadius          , Pi    , TwoPi  ]
-  ZoomX = [ 1.071835456828339_DP, 1.0_DP, 1.0_DP ]
+  ZoomX = [ 1.017435658116902_DP, 1.0_DP, 1.0_DP ]
 
   ! --- DG ---
 
@@ -180,12 +180,6 @@ PROGRAM ApplicationDriver
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
   CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
-
-  OPEN(100,FILE='../Output/BoundaryFlux_Euler.dat')
-
-    WRITE(100,'(6ES25.16E3)') [ Zero, Zero, Zero, Zero, Zero, Zero ]
-
-  CLOSE(100)
 
   ! --- Slope Limiter ---
 
@@ -337,6 +331,10 @@ PROGRAM ApplicationDriver
   CALL InitializeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
+  CALL ComputeTally_Euler_Relativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+         SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
+
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   iCycle = 0
@@ -406,7 +404,8 @@ PROGRAM ApplicationDriver
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
       CALL ComputeTally_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+             Verbose_Option = .FALSE. )
 
       wrt           = .FALSE.
       WritePlotFile = .FALSE.
@@ -426,7 +425,8 @@ PROGRAM ApplicationDriver
       CALL WriteSourceTermDiagnosticsHDF( t, Sources )
 
       CALL ComputeTally_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+             Verbose_Option = .FALSE. )
 
       EXIT
 
