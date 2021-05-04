@@ -6,6 +6,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     AR => amrex_real
   USE amrex_box_module,        ONLY: &
     amrex_box
+  USE amrex_geometry_module,   ONLY: &
+    amrex_geometry
   USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
@@ -87,7 +89,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Gamma_IDEAL,        &
     UseTiling
   USE MF_UtilitiesModule,      ONLY: &
-    CombineGridData
+    amrex2thornado_X_Global
 
   IMPLICIT NONE
   PRIVATE
@@ -113,11 +115,12 @@ CONTAINS
 
 
   SUBROUTINE MF_InitializeFields_Relativistic_IDEAL &
-    ( ProgramName, MF_uGF, MF_uCF )
+    ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -155,7 +158,7 @@ CONTAINS
       CASE( 'StandingAccretionShock_Relativistic' )
 
         CALL InitializeFields_StandingAccretionShock_Relativistic &
-               ( MF_uGF, MF_uCF )
+               ( MF_uGF, MF_uCF, GEOM )
 
       CASE DEFAULT
 
@@ -1551,10 +1554,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
-    ( MF_uGF, MF_uCF )
+    ( MF_uGF, MF_uCF, GEOM )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -1590,13 +1594,12 @@ CONTAINS
     REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, C1, C2, C3
     REAL(AR) :: D0, V0, P0
     REAL(AR) :: W, dX1, Ka, Kb, Mdot
-    REAL(AR), ALLOCATABLE :: D      (:,:)
-    REAL(AR), ALLOCATABLE :: V      (:,:)
-    REAL(AR), ALLOCATABLE :: P      (:,:)
-    REAL(AR), ALLOCATABLE :: Alpha  (:,:)
-    REAL(AR), ALLOCATABLE :: Psi    (:,:)
-    REAL(AR), ALLOCATABLE :: Alpha3D(:,:,:,:)
-    REAL(AR), ALLOCATABLE :: Psi3D  (:,:,:,:)
+    REAL(AR), ALLOCATABLE :: G    (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: D    (:,:)
+    REAL(AR), ALLOCATABLE :: V    (:,:)
+    REAL(AR), ALLOCATABLE :: P    (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha(:,:)
+    REAL(AR), ALLOCATABLE :: Psi  (:,:)
     LOGICAL               :: FirstPreShockElement = .FALSE.
     LOGICAL               :: InitializeFromFile
     INTEGER, PARAMETER    :: nX_LeastSquares = 5
@@ -1707,17 +1710,14 @@ CONTAINS
     iX_B1 = [1,1,1] - swX
     iX_E1 = nX      + swX
 
-    ALLOCATE( D      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( V      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( P      (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Alpha  (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Psi    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Alpha3D(1:nDOFX     ,iX_B1(1):iX_E1(1), &
-                                   iX_B1(2):iX_E1(2), &
-                                   iX_B1(3):iX_E1(3)) )
-    ALLOCATE( Psi3D  (1:nDOFX     ,iX_B1(1):iX_E1(1), &
-                                   iX_B1(2):iX_E1(2), &
-                                   iX_B1(3):iX_E1(3)) )
+    ALLOCATE( G    (1:nDOFX     ,iX_B1(1):iX_E1(1), &
+                                 iX_B1(2):iX_E1(2), &
+                                 iX_B1(3):iX_E1(3),1:nGF) )
+    ALLOCATE( D    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( V    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( P    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Psi  (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
 
     IF( InitializeFromFile )THEN
 
@@ -1727,13 +1727,12 @@ CONTAINS
 
       ! --- Make local copies of Lapse and Conformal Factor ---
 
-      CALL CombineGridData( MF_uGF, nGF, iGF_Alpha, Alpha3D )
-      CALL CombineGridData( MF_uGF, nGF, iGF_Psi  , Psi3D   )
+      CALL amrex2thornado_X_Global( GEOM, MF_uGF, nGF, G )
 
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        Alpha(:,iX1) = Alpha3D(1:nNodesX(1),iX1,1,1)
-        Psi  (:,iX1) = Psi3D  (1:nNodesX(1),iX1,1,1)
+        Alpha(:,iX1) = G(1:nNodesX(1),iX1,1,1,iGF_Alpha)
+        Psi  (:,iX1) = G(1:nNodesX(1),iX1,1,1,iGF_Psi)
 
       END DO
 
@@ -1994,13 +1993,12 @@ CONTAINS
 
     END DO
 
-    DEALLOCATE( Psi3D   )
-    DEALLOCATE( Alpha3D )
     DEALLOCATE( Psi     )
     DEALLOCATE( Alpha   )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
+    DEALLOCATE( G )
 
     DO iDim = 1, 3
 
@@ -2008,7 +2006,7 @@ CONTAINS
 
     END DO
 
-    CALL ComputeExtrapolationExponents( MF_uCF, nX_LeastSquares )
+    CALL ComputeExtrapolationExponents( MF_uCF, GEOM, nX_LeastSquares )
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -2030,20 +2028,18 @@ CONTAINS
   ! --- Auxiliary functions/subroutines for SAS problem ---
 
 
-  SUBROUTINE ComputeExtrapolationExponents( MF_uCF, nX_LeastSquares )
+  SUBROUTINE ComputeExtrapolationExponents( MF_uCF, GEOM, nX_LeastSquares )
 
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     INTEGER             , INTENT(in) :: nX_LeastSquares
 
     REAL(AR) :: lnR   (nNodesX(1),1-swX(1):nX(1)+swX(1))
     REAL(AR) :: lnD   (nNodesX(1),1-swX(1):nX(1)+swX(1))
     REAL(AR) :: lnE   (nNodesX(1),1-swX(1):nX(1)+swX(1))
-    REAL(AR) :: lnD3D (nDOFX     ,1-swX(1):nX(1)+swX(1), &
+    REAL(AR) :: U(nDOFX          ,1-swX(1):nX(1)+swX(1), &
                                   1-swX(2):nX(2)+swX(2), &
-                                  1-swX(3):nX(3)+swX(3))
-    REAL(AR) :: lnE3D (nDOFX     ,1-swX(1):nX(1)+swX(1), &
-                                  1-swX(2):nX(2)+swX(2), &
-                                  1-swX(3):nX(3)+swX(3))
+                                  1-swX(3):nX(3)+swX(3),nCF)
     REAL(AR) :: lnR_LS(nNodesX(1),nX_LeastSquares)
     REAL(AR) :: lnD_LS(nNodesX(1),nX_LeastSquares)
     REAL(AR) :: lnE_LS(nNodesX(1),nX_LeastSquares)
@@ -2063,16 +2059,15 @@ CONTAINS
 
     ! --- Make local copies of X1, D, and tau ---
 
-    CALL CombineGridData( MF_uCF, nCF, iCF_D, lnD3D )
-    CALL CombineGridData( MF_uCF, nCF, iCF_E, lnE3D )
+    CALL amrex2thornado_X_Global( GEOM, MF_uCF, nCF, U )
 
     DO iX1 = 1-swX(1), nX(1)+swX(1)
 
       DO iNodeX1 = 1, nNodesX(1)
 
         lnR(iNodeX1,iX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNodeX1 ) )
-        lnD(iNodeX1,iX1) = lnD3D(iNodeX1,iX1,1,1)
-        lnE(iNodeX1,iX1) = lnE3D(iNodeX1,iX1,1,1)
+        lnD(iNodeX1,iX1) = U(iNodeX1,iX1,1,1,iCF_D)
+        lnE(iNodeX1,iX1) = U(iNodeX1,iX1,1,1,iCF_E)
 
       END DO
 
