@@ -190,9 +190,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    INTEGER        :: iNX, iNX1, iNX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -201,6 +202,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -211,6 +213,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
+
     CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
 
     AdvectionProfile = 'SineWaveX1'
@@ -284,38 +287,38 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
             IF     ( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
-              uPF_K(iNodeX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X1 )
-              uPF_K(iNodeX,iPF_V1) = 0.1_AR
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+              uPF_K(iNX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X1 )
+              uPF_K(iNX,iPF_V1) = 0.1_AR
+              uPF_K(iNX,iPF_V2) = Zero
+              uPF_K(iNX,iPF_V3) = Zero
+              uPF_K(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
             ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX2' )THEN
 
-              uPF_K(iNodeX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X2 )
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = 0.1_AR
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+              uPF_K(iNX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X2 )
+              uPF_K(iNX,iPF_V1) = Zero
+              uPF_K(iNX,iPF_V2) = 0.1_AR
+              uPF_K(iNX,iPF_V3) = Zero
+              uPF_K(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
             ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1X2' )THEN
 
-              uPF_K(iNodeX,iPF_D ) &
+              uPF_K(iNX,iPF_D ) &
                 = One + 0.1_AR * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
-              uPF_K(iNodeX,iPF_V1) = 0.1_AR * COS( Pi / Four )
-              uPF_K(iNodeX,iPF_V2) = 0.1_AR * SIN( Pi / Four )
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+              uPF_K(iNX,iPF_V1) = 0.1_AR * COS( Pi / Four )
+              uPF_K(iNX,iPF_V2) = 0.1_AR * SIN( Pi / Four )
+              uPF_K(iNX,iPF_V3) = Zero
+              uPF_K(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
             END IF
 
@@ -363,8 +366,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1
+    INTEGER        :: iNX, iNX1
     REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -374,6 +378,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -384,6 +389,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-Specific Parameters ---
+
     CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
     REAL(AR)                      :: XD, Vs
     REAL(AR)                      :: LeftState(nPF), RightState(nPF)
@@ -630,30 +636,30 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
             IF( X1 .LE. XD ) THEN
 
-              uPF_K(iNodeX,iPF_D)  = LeftState(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = LeftState(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = LeftState(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = LeftState(iPF_V3)
-              uPF_K(iNodeX,iPF_E)  = LeftState(iPF_E )
+              uPF_K(iNX,iPF_D)  = LeftState(iPF_D )
+              uPF_K(iNX,iPF_V1) = LeftState(iPF_V1)
+              uPF_K(iNX,iPF_V2) = LeftState(iPF_V2)
+              uPF_K(iNX,iPF_V3) = LeftState(iPF_V3)
+              uPF_K(iNX,iPF_E)  = LeftState(iPF_E )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D)  = RightState(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = RightState(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = RightState(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = RightState(iPF_V3)
-              uPF_K(iNodeX,iPF_E)  = RightState(iPF_E )
+              uPF_K(iNX,iPF_D)  = RightState(iPF_D )
+              uPF_K(iNX,iPF_V1) = RightState(iPF_V1)
+              uPF_K(iNX,iPF_V2) = RightState(iPF_V2)
+              uPF_K(iNX,iPF_V3) = RightState(iPF_V3)
+              uPF_K(iNX,iPF_E)  = RightState(iPF_E )
 
               IF( TRIM( RiemannProblemName ) .EQ. 'PerturbedShockTube' ) &
-                uPF_k(iNodeX,iPF_D) &
+                uPF_K(iNX,iPF_D) &
                   = 2.0_AR + 0.3_AR * SIN( 50.0_AR * X1 )
 
             END IF
@@ -702,9 +708,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    INTEGER        :: iNX, iNX1, iNX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -713,6 +720,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -723,6 +731,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-specific parameters ---
+
     CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
     REAL(AR)                      :: X1D, X2D, Vs, V2
     REAL(AR)                      :: NE(nPF), NW(nPF), SE(nPF), SW(nPF)
@@ -923,49 +932,49 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
             ! --- NE ---
             IF     ( X1 .GT. X1D .AND. X2 .GT. X2D )THEN
 
-              uPF_K(iNodeX,iPF_D ) = NE(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = NE(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = NE(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = NE(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = NE(iPF_E )
+              uPF_K(iNX,iPF_D ) = NE(iPF_D )
+              uPF_K(iNX,iPF_V1) = NE(iPF_V1)
+              uPF_K(iNX,iPF_V2) = NE(iPF_V2)
+              uPF_K(iNX,iPF_V3) = NE(iPF_V3)
+              uPF_K(iNX,iPF_E ) = NE(iPF_E )
 
             ! --- NW ---
             ELSE IF( X1 .LE. X1D .AND. X2 .GT. X2D )THEN
 
-              uPF_K(iNodeX,iPF_D ) = NW(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = NW(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = NW(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = NW(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = NW(iPF_E )
+              uPF_K(iNX,iPF_D ) = NW(iPF_D )
+              uPF_K(iNX,iPF_V1) = NW(iPF_V1)
+              uPF_K(iNX,iPF_V2) = NW(iPF_V2)
+              uPF_K(iNX,iPF_V3) = NW(iPF_V3)
+              uPF_K(iNX,iPF_E ) = NW(iPF_E )
 
             ! --- SW ---
             ELSE IF( X1 .LE. X1D .AND. X2 .LE. X2D )THEN
 
-              uPF_K(iNodeX,iPF_D ) = SW(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = SW(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = SW(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = SW(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = SW(iPF_E )
+              uPF_K(iNX,iPF_D ) = SW(iPF_D )
+              uPF_K(iNX,iPF_V1) = SW(iPF_V1)
+              uPF_K(iNX,iPF_V2) = SW(iPF_V2)
+              uPF_K(iNX,iPF_V3) = SW(iPF_V3)
+              uPF_K(iNX,iPF_E ) = SW(iPF_E )
 
             ! --- SE ---
             ELSE
 
-              uPF_K(iNodeX,iPF_D ) = SE(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = SE(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = SE(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = SE(iPF_V3)
-              uPF_K(iNodeX,iPF_E ) = SE(iPF_E )
+              uPF_K(iNX,iPF_D ) = SE(iPF_D )
+              uPF_K(iNX,iPF_V1) = SE(iPF_V1)
+              uPF_K(iNX,iPF_V2) = SE(iPF_V2)
+              uPF_K(iNX,iPF_V3) = SE(iPF_V3)
+              uPF_K(iNX,iPF_E ) = SE(iPF_E )
 
             END IF
 
@@ -973,7 +982,7 @@ CONTAINS
 
               ! --- Perturb velocity in X2-direction ---
               CALL RANDOM_NUMBER( V2 )
-              uPF_K(iNodeX,iPF_V2) = 1.0e-13_AR * ( Two * V2 - One )
+              uPF_K(iNX,iPF_V2) = 1.0e-13_AR * ( Two * V2 - One )
 
             END IF
 
@@ -1021,8 +1030,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1
+    INTEGER        :: iNX, iNX1
     REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -1032,6 +1042,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -1042,6 +1053,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-Specific Parameters ---
+
     CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
     REAL(AR)                      :: XD
     REAL(AR)                      :: LeftState(nPF), RightState(nPF)
@@ -1161,27 +1173,27 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
             IF( X1 .LE. XD ) THEN
 
-              uPF_K(iNodeX,iPF_D)  = LeftState(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = LeftState(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = LeftState(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = LeftState(iPF_V3)
-              uPF_K(iNodeX,iPF_E)  = LeftState(iPF_E )
+              uPF_K(iNX,iPF_D)  = LeftState(iPF_D )
+              uPF_K(iNX,iPF_V1) = LeftState(iPF_V1)
+              uPF_K(iNX,iPF_V2) = LeftState(iPF_V2)
+              uPF_K(iNX,iPF_V3) = LeftState(iPF_V3)
+              uPF_K(iNX,iPF_E)  = LeftState(iPF_E )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D)  = RightState(iPF_D )
-              uPF_K(iNodeX,iPF_V1) = RightState(iPF_V1)
-              uPF_K(iNodeX,iPF_V2) = RightState(iPF_V2)
-              uPF_K(iNodeX,iPF_V3) = RightState(iPF_V3)
-              uPF_K(iNodeX,iPF_E)  = RightState(iPF_E )
+              uPF_K(iNX,iPF_D)  = RightState(iPF_D )
+              uPF_K(iNX,iPF_V1) = RightState(iPF_V1)
+              uPF_K(iNX,iPF_V2) = RightState(iPF_V2)
+              uPF_K(iNX,iPF_V3) = RightState(iPF_V3)
+              uPF_K(iNX,iPF_E)  = RightState(iPF_E )
 
             END IF
 
@@ -1231,9 +1243,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    INTEGER        :: iNX, iNX1, iNX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -1242,6 +1255,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -1251,6 +1265,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
+
     REAL(AR) :: a      = 0.01_AR
     REAL(AR) :: Vshear = Half
     REAL(AR) :: A0     = 0.1_AR ! --- Perturbation amplitude ---
@@ -1295,24 +1310,24 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
             ! --- V1 ---
             IF( X2 .GT. Zero )THEN
 
-              uPF_K(iNodeX,iPF_V1) &
+              uPF_K(iNX,iPF_V1) &
                 = +Vshear * TANH( ( X2 - Half ) / a )
 
             ELSE
 
               ! --- Paper has a typo here, the minus sign is required ---
-              uPF_K(iNodeX,iPF_V1) &
+              uPF_K(iNX,iPF_V1) &
                 = -Vshear * TANH( ( X2 + Half ) / a )
 
             END IF
@@ -1320,13 +1335,13 @@ CONTAINS
             ! --- V2 ---
             IF( X2 .GT. Zero )THEN
 
-              uPF_K(iNodeX,iPF_V2) &
+              uPF_K(iNX,iPF_V2) &
                 =  A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 - Half )**2 / sigma ) )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_V2) &
+              uPF_K(iNX,iPF_V2) &
                 = -A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 + Half )**2 / sigma ) )
 
@@ -1335,18 +1350,18 @@ CONTAINS
             ! --- rho ---
             IF( X2 .GT. Zero )THEN
 
-              uPF_K(iNodeX,iPF_D) &
+              uPF_K(iNX,iPF_D) &
                 = rho0 + rho1 * TANH( ( X2 - Half ) / a )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D) &
+              uPF_K(iNX,iPF_D) &
                 = rho0 - rho1 * TANH( ( X2 + Half ) / a )
 
             END IF
 
-            uPF_K(iNodeX,iPF_V3) = Zero
-            uPF_K(iNodeX,iPF_E)  = One / ( Gamma_IDEAL - One )
+            uPF_K(iNX,iPF_V3) = Zero
+            uPF_K(iNX,iPF_E)  = One / ( Gamma_IDEAL - One )
 
           END DO
 
@@ -1394,9 +1409,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    INTEGER        :: iNX, iNX1, iNX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -1405,6 +1421,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -1414,6 +1431,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
+
     REAL(AR) :: a      = 0.01_AR
     REAL(AR) :: Vshear = Half
     REAL(AR) :: A0     = 0.1_AR ! --- Perturbation amplitude ---
@@ -1459,24 +1477,24 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
             ! --- V1 ---
             IF( X2 .GT. Zero )THEN
 
-              uPF_K(iNodeX,iPF_V1) &
+              uPF_K(iNX,iPF_V1) &
                 = +Vshear * TANH( ( X2 - Half ) / a )
 
             ELSE
 
               ! --- Paper has a typo here, the minus sign is required ---
-              uPF_K(iNodeX,iPF_V1) &
+              uPF_K(iNX,iPF_V1) &
                 = -Vshear * TANH( ( X2 + Half ) / a )
 
             END IF
@@ -1484,13 +1502,13 @@ CONTAINS
             ! --- V2 ---
             IF( X2 .GT. Zero )THEN
 
-              uPF_K(iNodeX,iPF_V2) &
+              uPF_K(iNX,iPF_V2) &
                 =  A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 - Half )**2 / sigma ) )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_V2) &
+              uPF_K(iNX,iPF_V2) &
                 = -A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 + Half )**2 / sigma ) )
 
@@ -1499,21 +1517,21 @@ CONTAINS
             ! --- rho ---
             IF( X2 .GT. Zero )THEN
 
-              uPF_K(iNodeX,iPF_D) &
+              uPF_K(iNX,iPF_D) &
                 = rho0 + rho1 * TANH( ( X2 - Half ) / a )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D) &
+              uPF_K(iNX,iPF_D) &
                 = rho0 - rho1 * TANH( ( X2 + Half ) / a )
 
             END IF
 
             CALL RANDOM_NUMBER( Vz )
 
-            uPF_K(iNodeX,iPF_V3) = 0.01_AR * Vz
+            uPF_K(iNX,iPF_V3) = 0.01_AR * Vz
 
-            uPF_K(iNodeX,iPF_E)  = One / ( Gamma_IDEAL - One )
+            uPF_K(iNX,iPF_E)  = One / ( Gamma_IDEAL - One )
 
           END DO
 
@@ -1561,9 +1579,10 @@ CONTAINS
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
     ! --- thornado ---
+
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    INTEGER        :: iNX, iNX1, iNX2
     REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -1572,6 +1591,7 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
+
     INTEGER                       :: iLevel
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
@@ -1582,6 +1602,7 @@ CONTAINS
     TYPE(amrex_parmparse)         :: PP
 
     ! --- Problem-dependent Parameters ---
+
     REAL(AR) :: MassPNS, ShockRadius, AccretionRate, PolytropicConstant
     LOGICAL  :: ApplyPerturbation
     INTEGER  :: PerturbationOrder
@@ -1589,22 +1610,19 @@ CONTAINS
     REAL(AR) :: rPerturbationInner
     REAL(AR) :: rPerturbationOuter
 
-    INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
+    INTEGER  :: iX1_1, iX1_2, iNX1_1, iNX1_2
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
-    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, C1, C2, C3
+    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2
     REAL(AR) :: D0, V0, P0
-    REAL(AR) :: W, dX1, Ka, Kb, Mdot
+    REAL(AR) :: Ka, Kb, Mdot
     REAL(AR), ALLOCATABLE :: G    (:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: D    (:,:)
     REAL(AR), ALLOCATABLE :: V    (:,:)
     REAL(AR), ALLOCATABLE :: P    (:,:)
     REAL(AR), ALLOCATABLE :: Alpha(:,:)
     REAL(AR), ALLOCATABLE :: Psi  (:,:)
-    LOGICAL               :: FirstPreShockElement = .FALSE.
     LOGICAL               :: InitializeFromFile
     INTEGER, PARAMETER    :: nX_LeastSquares = 5
-
-    ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
 
     ApplyPerturbation         = .FALSE.
     PerturbationOrder         = 0
@@ -1736,45 +1754,11 @@ CONTAINS
 
       END DO
 
-      ! --- Locate first element with un-shocked fluid ---
+      ! --- Quantities with _1 are pre-shock, those with _2 are post-shock ---
 
-      X1 = Zero
-
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        DO iNodeX1 = 1, nNodesX(1)
-
-          dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
-          X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-          IF( X1 .LE. ShockRadius ) CYCLE
-
-          IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
-
-            iX1_1     = iX1
-            iNodeX1_1 = iNodeX1
-            X1_1      = X1
-            X1_2      = X1 - dX1
-
-            IF( iNodeX1_1 .EQ. 1 )THEN
-
-              iX1_2     = iX1_1 - 1
-              iNodeX1_2 = nNodesX(1)
-
-            ELSE
-
-              iX1_2     = iX1_1
-              iNodeX1_2 = iNodeX1_1 - 1
-
-            END IF
-
-            FirstPreShockElement = .TRUE.
-
-          END IF
-
-        END DO
-
-      END DO
+      CALL LocateFirstUnShockedElement &
+             ( iX_B1, iX_E1, ShockRadius, MeshX, &
+               iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
 
       ! --- Pre-shock Fields ---
 
@@ -1788,20 +1772,20 @@ CONTAINS
 
       DO iX1 = iX_E1(1), iX1_1, -1
 
-        DO iNodeX1 = nNodesX(1), 1, -1
+        DO iNX1 = nNodesX(1), 1, -1
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
           IF( X1 .LE. ShockRadius ) CYCLE
 
           CALL NewtonRaphson_SAS &
                  ( X1, MassPNS, Ka, Mdot, &
-                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
-                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
+                   Alpha(iNX1,iX1), Psi(iNX1,iX1), D0, V0, P0, &
+                   D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
 
-          D0 = D(iNodeX1,iX1)
-          V0 = V(iNodeX1,iX1)
-          P0 = P(iNodeX1,iX1)
+          D0 = D(iNX1,iX1)
+          V0 = V(iNX1,iX1)
+          P0 = P(iNX1,iX1)
 
         END DO
 
@@ -1809,23 +1793,12 @@ CONTAINS
 
       ! --- Apply Jump Conditions ---
 
-      D_1 = D(iNodeX1_1,iX1_1)
-      V_1 = V(iNodeX1_1,iX1_1)
-      P_1 = P(iNodeX1_1,iX1_1)
-
-      W = LorentzFactor( Psi(iNodeX1_1,iX1), V_1 )
-
-      C1 = D_1 * W * V_1
-      C2 = D_1 &
-             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                   * P_1 / D_1  ) * W**2 * V_1**2 / SpeedOfLight**2 &
-             + Psi(iNodeX1_1,iX1)**( -4 ) * P_1
-      C3 = D_1 &
-             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                   * P_1 / D_1  ) * W**2 * V_1
+      D_1 = D(iNX1_1,iX1_1)
+      V_1 = V(iNX1_1,iX1_1)
+      P_1 = P(iNX1_1,iX1_1)
 
       CALL ApplyJumpConditions_SAS &
-             ( Psi(iNodeX1_1,iX1), V_1, C1, C2, C3, D_2, V_2, P_2 )
+             ( Psi(iNX1_1,iX1), D_1, V_1, P_1, D_2, V_2, P_2 )
 
       Kb = P_2 / D_2**( Gamma_IDEAL )
 
@@ -1837,7 +1810,7 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(8x,A)') 'Pre-shock:'
         WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
-        WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_1
+        WRITE(*,'(10x,A,I2.2)')       'iNX1     = ', iNX1_1
         WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
         WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
           D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
@@ -1848,7 +1821,7 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(8x,A)') 'Post-shock:'
         WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
-        WRITE(*,'(10x,A,I2.2)')       'iNodeX1  = ', iNodeX1_2
+        WRITE(*,'(10x,A,I2.2)')       'iNX1     = ', iNX1_2
         WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
         WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
           D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
@@ -1868,20 +1841,20 @@ CONTAINS
 
       DO iX1 = iX1_2, iX_B1(1), -1
 
-        DO iNodeX1 = nNodesX(1), 1, -1
+        DO iNX1 = nNodesX(1), 1, -1
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
           IF( X1 .GT. ShockRadius ) CYCLE
 
           CALL NewtonRaphson_SAS &
                  ( X1, MassPNS, Kb, Mdot, &
-                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
-                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
+                   Alpha(iNX1,iX1), Psi(iNX1,iX1), D0, V0, P0, &
+                   D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
 
-          D0 = D(iNodeX1,iX1)
-          V0 = V(iNodeX1,iX1)
-          P0 = P(iNodeX1,iX1)
+          D0 = D(iNX1,iX1)
+          V0 = V(iNX1,iX1)
+          P0 = P(iNX1,iX1)
 
         END DO
 
@@ -1926,45 +1899,45 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
 
             IF( ApplyPerturbation )THEN
 
-              X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-              X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+              X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+              X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
               IF( X1 .GE. rPerturbationInner &
                     .AND. X1 .LE. rPerturbationOuter )THEN
 
                 IF( PerturbationOrder .EQ. 0 ) &
-                  uPF_K(iNodeX,iPF_D) &
-                    = D(iNodeX1,iX1) &
+                  uPF_K(iNX,iPF_D) &
+                    = D(iNX1,iX1) &
                         * ( One + PerturbationAmplitude )
 
                 IF( PerturbationOrder .EQ. 1 ) &
-                  uPF_K(iNodeX,iPF_D) &
-                    = D(iNodeX1,iX1) &
+                  uPF_K(iNX,iPF_D) &
+                    = D(iNX1,iX1) &
                         * ( One + PerturbationAmplitude * COS( X2 ) )
 
               ELSE
 
-                uPF_K(iNodeX,iPF_D) = D(iNodeX1,iX1)
+                uPF_K(iNX,iPF_D) = D(iNX1,iX1)
 
               END IF
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D) = D(iNodeX1,iX1)
+              uPF_K(iNX,iPF_D) = D(iNX1,iX1)
 
             END IF
 
-            uPF_K(iNodeX,iPF_V1) = V(iNodeX1,iX1)
-            uPF_K(iNodeX,iPF_V2) = Zero
-            uPF_K(iNodeX,iPF_V3) = Zero
-            uPF_K(iNodeX,iPF_E ) = P(iNodeX1,iX1) / ( Gamma_IDEAL - One )
+            uPF_K(iNX,iPF_V1) = V(iNX1,iX1)
+            uPF_K(iNX,iPF_V2) = Zero
+            uPF_K(iNX,iPF_V3) = Zero
+            uPF_K(iNX,iPF_E ) = P(iNX1,iX1) / ( Gamma_IDEAL - One )
 
           END DO
 
@@ -2044,7 +2017,7 @@ CONTAINS
     REAL(AR) :: lnD_LS(nNodesX(1),nX_LeastSquares)
     REAL(AR) :: lnE_LS(nNodesX(1),nX_LeastSquares)
 
-    INTEGER  :: iX1, iNodeX1, iDim
+    INTEGER  :: iX1, iNX1, iDim
     REAL(AR) :: n
 
     TYPE(MeshType) :: MeshX(3)
@@ -2063,11 +2036,11 @@ CONTAINS
 
     DO iX1 = 1-swX(1), nX(1)+swX(1)
 
-      DO iNodeX1 = 1, nNodesX(1)
+      DO iNX1 = 1, nNodesX(1)
 
-        lnR(iNodeX1,iX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNodeX1 ) )
-        lnD(iNodeX1,iX1) = U(iNodeX1,iX1,1,1,iCF_D)
-        lnE(iNodeX1,iX1) = U(iNodeX1,iX1,1,1,iCF_E)
+        lnR(iNX1,iX1) = LOG( NodeCoordinate( MeshX(1), iX1, iNX1 ) )
+        lnD(iNX1,iX1) = U(iNX1,iX1,1,1,iCF_D)
+        lnE(iNX1,iX1) = U(iNX1,iX1,1,1,iCF_E)
 
       END DO
 
@@ -2215,19 +2188,28 @@ CONTAINS
   END SUBROUTINE NewtonRaphson_SAS
 
 
-  SUBROUTINE ApplyJumpConditions_SAS( Psi, V_1, C1, C2, C3, D_2, V_2, P_2 )
+  SUBROUTINE ApplyJumpConditions_SAS( Psi, D_1, V_1, P_1, D_2, V_2, P_2 )
 
-    REAL(AR), INTENT(in)  :: Psi, V_1, C1, C2, C3
-    REAL(AR), INTENT(out) :: D_2, V_2, P_2
+    REAL(AR), INTENT(in)  :: Psi, D_1, V_1, P_1
+    REAL(AR), INTENT(out) ::      D_2, V_2, P_2
 
-    REAL(AR) :: A, B, C, D, E
-    REAL(AR) :: dx, xa, xb, xc, fa, fb, fc, W
+    REAL(AR) :: C1, C2, C3, A, B, C, D, E
+    REAL(AR) :: W_1, h_1
+    REAL(AR) :: dx, xa, xb, xc, fa, fb, fc, W_2
 
     INTEGER             :: ITER
     INTEGER,  PARAMETER :: MAX_ITER = 1000
     REAL(AR), PARAMETER :: TolChi = 1.0e-16_AR
 
     LOGICAL :: CONVERGED
+
+    W_1 = LorentzFactor( Psi, V_1 )
+
+    h_1 = SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) * P_1 / D_1
+
+    C1 = D_1 * W_1 * V_1
+    C2 = D_1 * h_1 * W_1**2 * V_1**2 / SpeedOfLight**2 + Psi**( -4 ) * P_1
+    C3 = D_1 * h_1 * W_1**2 * V_1
 
     A = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 - One
     B = -Two * SpeedOfLight**( 3 ) * C2 * C3 / C1**2 &
@@ -2289,11 +2271,11 @@ CONTAINS
 
     V_2 = xc * SpeedOfLight
 
-    W = LorentzFactor( Psi, V_2 )
+    W_2 = LorentzFactor( Psi, V_2 )
 
     D_2 = SpeedOfLight**( -1 ) * ABS( C1 ) * SQRT( xc**( -2 ) - Psi**4 )
-    P_2 = ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) &
-            / ( Gamma_IDEAL / ( Gamma_IDEAL - One ) * W**2 * V_2 )
+    P_2 = ( C3 - D_2 * SpeedOfLight**2 * W_2**2 * V_2 ) &
+            / ( Gamma_IDEAL / ( Gamma_IDEAL - One ) * W_2**2 * V_2 )
 
   END SUBROUTINE ApplyJumpConditions_SAS
 
@@ -2504,6 +2486,61 @@ CONTAINS
 
     RETURN
   END FUNCTION PostShockVelocity
+
+
+  SUBROUTINE LocateFirstUnShockedElement &
+    ( iX_B1, iX_E1, ShockRadius, MeshX, &
+      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
+
+    INTEGER,        INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(AR),       INTENT(in)  :: ShockRadius
+    TYPE(MeshType), INTENT(in)  :: MeshX(3)
+    INTEGER,        INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
+    REAL(AR),       INTENT(out) :: X1_1, X1_2
+
+    REAL(AR) :: X1, dX1
+    INTEGER  :: iX1, iNX1
+    LOGICAL  :: FirstPreShockElement = .FALSE.
+
+    X1 = Zero
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNX1 = 1, nNodesX(1)
+
+        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
+        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
+
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+
+          iX1_1  = iX1
+          iNX1_1 = iNX1
+          X1_1   = X1
+          X1_2   = X1 - dX1
+
+          IF( iNX1_1 .EQ. 1 )THEN
+
+            iX1_2  = iX1_1 - 1
+            iNX1_2 = nNodesX(1)
+
+          ELSE
+
+            iX1_2  = iX1_1
+            iNX1_2 = iNX1_1 - 1
+
+          END IF
+
+          FirstPreShockElement = .TRUE.
+
+        END IF
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE LocateFirstUnShockedElement
 
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL
