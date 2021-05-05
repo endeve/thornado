@@ -1998,7 +1998,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
 
-  ! --- Auxiliary functions/subroutines for SAS problem ---
+  ! --- Auxiliary utilities for SAS problem ---
 
 
   SUBROUTINE ComputeExtrapolationExponents( MF_uCF, GEOM, nX_LeastSquares )
@@ -2321,7 +2321,62 @@ CONTAINS
   END FUNCTION LorentzFactor
 
 
-  ! --- Auxiliary functions/subroutines for computine left state ---
+  SUBROUTINE LocateFirstUnShockedElement &
+    ( iX_B1, iX_E1, ShockRadius, MeshX, &
+      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
+
+    INTEGER,        INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(AR),       INTENT(in)  :: ShockRadius
+    TYPE(MeshType), INTENT(in)  :: MeshX(3)
+    INTEGER,        INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
+    REAL(AR),       INTENT(out) :: X1_1, X1_2
+
+    REAL(AR) :: X1, dX1
+    INTEGER  :: iX1, iNX1
+    LOGICAL  :: FirstPreShockElement = .FALSE.
+
+    X1 = Zero
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNX1 = 1, nNodesX(1)
+
+        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
+        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
+
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+
+          iX1_1  = iX1
+          iNX1_1 = iNX1
+          X1_1   = X1
+          X1_2   = X1 - dX1
+
+          IF( iNX1_1 .EQ. 1 )THEN
+
+            iX1_2  = iX1_1 - 1
+            iNX1_2 = nNodesX(1)
+
+          ELSE
+
+            iX1_2  = iX1_1
+            iNX1_2 = iNX1_1 - 1
+
+          END IF
+
+          FirstPreShockElement = .TRUE.
+
+        END IF
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE LocateFirstUnShockedElement
+
+
+  ! --- Auxiliary utilities for computine left state ---
 
 
   SUBROUTINE ComputeLeftState( Vs, DR, VR, PR, DL, VL, PL )
@@ -2486,61 +2541,6 @@ CONTAINS
 
     RETURN
   END FUNCTION PostShockVelocity
-
-
-  SUBROUTINE LocateFirstUnShockedElement &
-    ( iX_B1, iX_E1, ShockRadius, MeshX, &
-      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
-
-    INTEGER,        INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(AR),       INTENT(in)  :: ShockRadius
-    TYPE(MeshType), INTENT(in)  :: MeshX(3)
-    INTEGER,        INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
-    REAL(AR),       INTENT(out) :: X1_1, X1_2
-
-    REAL(AR) :: X1, dX1
-    INTEGER  :: iX1, iNX1
-    LOGICAL  :: FirstPreShockElement = .FALSE.
-
-    X1 = Zero
-
-    DO iX1 = iX_B1(1), iX_E1(1)
-
-      DO iNX1 = 1, nNodesX(1)
-
-        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
-        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
-
-        IF( X1 .LE. ShockRadius ) CYCLE
-
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
-
-          iX1_1  = iX1
-          iNX1_1 = iNX1
-          X1_1   = X1
-          X1_2   = X1 - dX1
-
-          IF( iNX1_1 .EQ. 1 )THEN
-
-            iX1_2  = iX1_1 - 1
-            iNX1_2 = nNodesX(1)
-
-          ELSE
-
-            iX1_2  = iX1_1
-            iNX1_2 = iNX1_1 - 1
-
-          END IF
-
-          FirstPreShockElement = .TRUE.
-
-        END IF
-
-      END DO
-
-    END DO
-
-  END SUBROUTINE LocateFirstUnShockedElement
 
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL
