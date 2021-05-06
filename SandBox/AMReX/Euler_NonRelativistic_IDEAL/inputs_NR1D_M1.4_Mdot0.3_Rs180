@@ -49,7 +49,7 @@ thornado.bcX         = 11 00 00
 geometry.is_periodic =  0  1  1
 
 geometry.coord_sys   = 2
-geometry.prob_lo     = 4.0e2 0.0                0.0
+geometry.prob_lo     = 4.0e1 0.0                0.0
 geometry.prob_hi     = 1.0e3 3.1415926535897931 6.2831853071795862
 
 amr.n_cell            = 960 01 01
