@@ -29,7 +29,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     swX,     &
     nDimsX
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX
+    NodeNumberTableX, &
+    WeightsX1
   USE MeshModule,              ONLY: &
     MeshType,    &
     CreateMesh,  &
@@ -82,7 +83,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     xL,      &
     xR,      &
     Gamma_IDEAL, &
-    UseTiling
+    UseTiling,   &
+    t_end
 
   IMPLICIT NONE
   PRIVATE
@@ -1432,11 +1434,11 @@ CONTAINS
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
     REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2
     REAL(AR) :: D0, V0, P0
-    REAL(AR) :: Ka, Kb, Mdot
+    REAL(AR) :: Ka, Kb, Mdot, AdvectionTime
     REAL(AR), ALLOCATABLE :: D(:,:)
     REAL(AR), ALLOCATABLE :: V(:,:)
     REAL(AR), ALLOCATABLE :: P(:,:)
-    LOGICAL               :: InitializeFromFile
+    LOGICAL               :: InitializeFromFile, ResetEndTime
 
     ApplyPerturbation         = .FALSE.
     PerturbationOrder         = 0
@@ -1446,6 +1448,7 @@ CONTAINS
     InitializeFromFile        = .FALSE.
     WriteNodalData_SAS        = .FALSE.
     NodalDataFileNameBase_SAS = 'M1.4_Rs180_Mdot0.3'
+    ResetEndTime              = .FALSE.
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass'                     , MassPNS                   )
       CALL PP % get  ( 'AccretionRate'            , AccretionRate             )
@@ -1459,6 +1462,7 @@ CONTAINS
       CALL PP % query( 'InitializeFromFile'       , InitializeFromFile        )
       CALL PP % query( 'WriteNodalData_SAS'       , WriteNodalData_SAS        )
       CALL PP % query( 'NodalDataFileNameBase_SAS', NodalDataFileNameBase_SAS )
+      CALL PP % query( 'ResetEndTime'             , ResetEndTime              )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -1634,6 +1638,8 @@ CONTAINS
 
       ! --- Post-shock Fields ---
 
+      AdvectionTime = Zero
+
       D0 = D_2
       V0 = V_2
       P0 = P_2
@@ -1655,9 +1661,16 @@ CONTAINS
           V0 = V(iNX1,iX1)
           P0 = P(iNX1,iX1)
 
+          AdvectionTime &
+            = AdvectionTime &
+                + WeightsX1(iNX1) * MeshX(1) % Width(iX1) / ABS( V(iNX1,iX1) )
+
         END DO
 
       END DO
+
+      IF( ResetEndTime ) &
+        t_end = 4.0_AR * AdvectionTime
 
     END IF
 
