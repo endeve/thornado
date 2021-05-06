@@ -72,7 +72,8 @@ MODULE InputOutputModuleAMReX
     nLevels,          &
     MaxGridSizeX,     &
     PlotFileBaseName, &
-    nX
+    nX,               &
+    UseTiling
   USE MF_FieldsModule,         ONLY: &
     MF_uGF, &
     MF_uCF, &
@@ -544,7 +545,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
 
-    CALL amrex_mfiter_build( MFI, MF, tiling = .TRUE. )
+    CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
