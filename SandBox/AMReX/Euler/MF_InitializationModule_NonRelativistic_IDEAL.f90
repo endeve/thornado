@@ -1501,6 +1501,10 @@ CONTAINS
         'InitializeFromFile:              ', &
         InitializeFromFile
 
+      WRITE(*,'(6x,A,A)') &
+        'FileName_Nodal1DIC_SAS:          ', &
+        TRIM( FileName_Nodal1DIC_SAS )
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'Shock radius:                    ', &
         ShockRadius / Kilometer, &
@@ -1812,9 +1816,10 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      WRITE(*,'(6x,A,ES13.6E3,A)') &
-        'Advection time:  ', &
-        AdvectionTime / Millisecond, ' ms'
+      IF( .NOT. InitializeFromFile ) &
+        WRITE(*,'(6x,A,ES13.6E3,A)') &
+          'Advection time:  ', &
+          AdvectionTime / Millisecond, ' ms'
 
     END IF
 
@@ -2225,14 +2230,6 @@ CONTAINS
 
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(6x,A,A)') &
-        'FileName_Nodal1DIC_SAS = ', FileName_Nodal1DIC_SAS
-
-    END IF
 
     OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
 

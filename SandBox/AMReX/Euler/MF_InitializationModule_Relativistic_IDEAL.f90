@@ -1685,6 +1685,10 @@ CONTAINS
         'InitializeFromFile:              ', &
         InitializeFromFile
 
+      WRITE(*,'(6x,A,A)') &
+        'FileName_Nodal1DIC_SAS:          ', &
+        TRIM( FileName_Nodal1DIC_SAS )
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'Shock radius:                    ', &
         ShockRadius / Kilometer, &
@@ -2118,14 +2122,6 @@ CONTAINS
 
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(6x,A,A)') &
-        'FileName_Nodal1DIC_SAS = ', FileName_Nodal1DIC_SAS
-
-    END IF
 
     OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
 
