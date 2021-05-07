@@ -72,7 +72,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     Centimeter,            &
     Erg,                   &
     Gram,                  &
-    SpeedOfLight
+    SpeedOfLight,          &
+    Millisecond
   USE Euler_ErrorModule,       ONLY: &
     DescribeError_Euler
 
@@ -1528,6 +1529,12 @@ CONTAINS
         'Outer radius of perturbation: ', &
         rPerturbationOuter / Kilometer, ' km'
 
+      WRITE(*,*)
+
+      WRITE(*,'(6x,A,L)') &
+        'Reset end-time:               ', &
+        ResetEndTime
+
     END IF
 
     uGF_K = Zero
@@ -1787,6 +1794,14 @@ CONTAINS
       CALL DestroyMesh( MeshX(iDim) )
 
     END DO
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,ES13.6E3,A)') &
+        'Advection time:  ', &
+        AdvectionTime / Millisecond, ' ms'
+
+    END IF
 
   END SUBROUTINE InitializeFields_StandingAccretionShock_NonRelativistic
 

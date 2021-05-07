@@ -75,7 +75,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Centimeter,   &
     Erg,          &
     SpeedOfLight, &
-    GravitationalConstant
+    GravitationalConstant, &
+    Millisecond
   USE UtilitiesModule,         ONLY: &
     NodeNumberX
   USE Euler_ErrorModule,       ONLY: &
@@ -1714,6 +1715,12 @@ CONTAINS
         'Outer radius of perturbation: ', &
         rPerturbationOuter / Kilometer, ' km'
 
+      WRITE(*,*)
+
+      WRITE(*,'(6x,A,L)') &
+        'Reset end-time:               ', &
+        ResetEndTime
+
     END IF
 
     uGF_K = Zero
@@ -1870,8 +1877,8 @@ CONTAINS
 
       END DO
 
-    IF( ResetEndTime ) &
-      t_end = 4.0_AR * AdvectionTime
+      IF( ResetEndTime ) &
+        t_end = 4.0_AR * AdvectionTime
 
     END IF
 
@@ -1899,8 +1906,8 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        iX_E(1) = iX_E0(1)
         iX_B(1) = iX_B0(1)
+        iX_E(1) = iX_E0(1)
 
         IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B1(1)
         IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E1(1)
@@ -1995,6 +2002,11 @@ CONTAINS
     CALL ComputeExtrapolationExponents( MF_uCF, GEOM, nX_LeastSquares )
 
     IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( .NOT. InitializeFromFile ) &
+        WRITE(*,'(6x,A,ES13.6E3,A)') &
+          'Advection time:  ', &
+          AdvectionTime / Millisecond, ' ms'
 
       WRITE(*,'(6x,A,I2.2)') &
         'nX_LeastSquares: ', &
