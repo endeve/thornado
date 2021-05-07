@@ -19,8 +19,8 @@ SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
 SAS.PolytropicConstant = 2.0e14 # [cgs]
 
-SAS.WriteNodalData_SAS        = 1
-SAS.NodalDataFileNameBase_SAS = "GR1D_M1.4_Mdot0.3_Rs180_IC"
+SAS.WriteNodal1DIC_SAS     = 1
+SAS.FileName_Nodal1DIC_SAS = "GR1D_M1.4_Mdot0.3_Rs180.IC"
 
 SAS.InitializeFromFile = 0
 

@@ -65,9 +65,6 @@ MODULE MF_AccretionShockUtilitiesModule
     UseTiling, &
     nX, &
     DEBUG
-  USE MF_InitializationModule_Relativistic_IDEAL, ONLY: &
-    WriteNodalData_SAS, &
-    NodalDataFileNameBase_SAS
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -77,7 +74,10 @@ MODULE MF_AccretionShockUtilitiesModule
   PRIVATE
 
   PUBLIC :: MF_ComputeAccretionShockDiagnostics
-  PUBLIC :: WriteNodalDataToFile_SAS
+  PUBLIC :: WriteNodal1DICToFile_SAS
+
+  LOGICAL,          PUBLIC              :: WriteNodal1DIC_SAS
+  CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: FileName_Nodal1DIC_SAS
 
 
 CONTAINS
@@ -166,7 +166,7 @@ CONTAINS
   END SUBROUTINE MF_ComputeAccretionShockDiagnostics
 
 
-  SUBROUTINE WriteNodalDataToFile_SAS( GEOM, MF_uGF, MF_uCF )
+  SUBROUTINE WriteNodal1DICToFile_SAS( GEOM, MF_uGF, MF_uCF )
 
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
@@ -190,7 +190,7 @@ CONTAINS
                             1-swX(2):nX(2)+swX(2), &
                             1-swX(3):nX(3)+swX(3))
 
-    IF( .NOT. WriteNodalData_SAS ) RETURN
+    IF( .NOT. WriteNodal1DIC_SAS ) RETURN
 
     CALL amrex2thornado_X_Global &
            ( GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
@@ -203,15 +203,11 @@ CONTAINS
       iLo = 1  - swX
       iHi = nX + swX
 
-      OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_D.dat' )
-      OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_V.dat' )
-      OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_P.dat' )
+      OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
 
       WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
 
       WRITE(101,'(A)') FMT
-      WRITE(102,'(A)') FMT
-      WRITE(103,'(A)') FMT
 
       DO iX3 = iLo(3), iHi(3)
       DO iX2 = iLo(2), iHi(2)
@@ -253,20 +249,18 @@ CONTAINS
                ( P(:,iPF_D ), P(:,iPF_E ), P(:,iPF_Ne), A(:,iAF_P) )
 
         WRITE(101,FMT) P(:,iPF_D )
-        WRITE(102,FMT) P(:,iPF_V1)
-        WRITE(103,FMT) A(:,iAF_P )
+        WRITE(101,FMT) P(:,iPF_V1)
+        WRITE(101,FMT) A(:,iAF_P )
 
       END DO
       END DO
       END DO
 
-      CLOSE( 103 )
-      CLOSE( 102 )
       CLOSE( 101 )
 
     END IF
 
-  END SUBROUTINE WriteNodalDataToFile_SAS
+  END SUBROUTINE WriteNodal1DICToFile_SAS
 
 
 END MODULE MF_AccretionShockUtilitiesModule

@@ -86,6 +86,9 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     Gamma_IDEAL, &
     UseTiling,   &
     t_end
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    WriteNodal1DIC_SAS, &
+    FileName_Nodal1DIC_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -103,8 +106,6 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
   REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
   REAL(AR), PARAMETER :: FourPi = 4.0_AR * Pi
 
-  LOGICAL,          PUBLIC              :: WriteNodalData_SAS
-  CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: NodalDataFileNameBase_SAS
 
 CONTAINS
 
@@ -1441,29 +1442,43 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: P(:,:)
     LOGICAL               :: InitializeFromFile, ResetEndTime
 
-    ApplyPerturbation         = .FALSE.
-    PerturbationOrder         = 0
-    PerturbationAmplitude     = Zero
-    rPerturbationInner        = Zero
-    rPerturbationOuter        = Zero
-    InitializeFromFile        = .FALSE.
-    WriteNodalData_SAS        = .FALSE.
-    NodalDataFileNameBase_SAS = 'M1.4_Rs180_Mdot0.3'
-    ResetEndTime              = .FALSE.
+    ApplyPerturbation      = .FALSE.
+    PerturbationOrder      = 0
+    PerturbationAmplitude  = Zero
+    rPerturbationInner     = Zero
+    rPerturbationOuter     = Zero
+    InitializeFromFile     = .FALSE.
+    ResetEndTime           = .FALSE.
+    WriteNodal1DIC_SAS     = .FALSE.
+    FileName_Nodal1DIC_SAS = 'Nodal1DIC_SAS.dat'
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get  ( 'Mass'                     , MassPNS                   )
-      CALL PP % get  ( 'AccretionRate'            , AccretionRate             )
-      CALL PP % get  ( 'ShockRadius'              , ShockRadius               )
-      CALL PP % get  ( 'PolytropicConstant'       , PolytropicConstant        )
-      CALL PP % query( 'ApplyPerturbation'        , ApplyPerturbation         )
-      CALL PP % query( 'PerturbationOrder'        , PerturbationOrder         )
-      CALL PP % query( 'PerturbationAmplitude'    , PerturbationAmplitude     )
-      CALL PP % query( 'rPerturbationInner'       , rPerturbationInner        )
-      CALL PP % query( 'rPerturbationOuter'       , rPerturbationOuter        )
-      CALL PP % query( 'InitializeFromFile'       , InitializeFromFile        )
-      CALL PP % query( 'WriteNodalData_SAS'       , WriteNodalData_SAS        )
-      CALL PP % query( 'NodalDataFileNameBase_SAS', NodalDataFileNameBase_SAS )
-      CALL PP % query( 'ResetEndTime'             , ResetEndTime              )
+      CALL PP % get  ( 'Mass', &
+                        MassPNS )
+      CALL PP % get  ( 'AccretionRate', &
+                        AccretionRate )
+      CALL PP % get  ( 'ShockRadius', &
+                        ShockRadius )
+      CALL PP % get  ( 'PolytropicConstant', &
+                        PolytropicConstant )
+      CALL PP % query( 'ApplyPerturbation', &
+                        ApplyPerturbation )
+      CALL PP % query( 'PerturbationOrder', &
+                        PerturbationOrder )
+      CALL PP % query( 'PerturbationAmplitude', &
+                        PerturbationAmplitude )
+      CALL PP % query( 'rPerturbationInner', &
+                        rPerturbationInner )
+      CALL PP % query( 'rPerturbationOuter', &
+                        rPerturbationOuter )
+      CALL PP % query( 'InitializeFromFile', &
+                        InitializeFromFile )
+      CALL PP % query( 'ResetEndTime', &
+                        ResetEndTime )
+      CALL PP % query( 'WriteNodal1DIC_SAS', &
+                        WriteNodal1DIC_SAS )
+      CALL PP % query( 'FileName_Nodal1DIC_SAS', &
+                        FileName_Nodal1DIC_SAS )
+
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -2215,28 +2230,22 @@ CONTAINS
 
       WRITE(*,*)
       WRITE(*,'(6x,A,A)') &
-        'NodalDataFileNameBase_SAS = ', NodalDataFileNameBase_SAS
+        'FileName_Nodal1DIC_SAS = ', FileName_Nodal1DIC_SAS
 
     END IF
 
-    OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_D.dat' )
-    OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_V.dat' )
-    OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_P.dat' )
+    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
 
     READ(101,*) FMT
-    READ(102,*) FMT
-    READ(103,*) FMT
 
     DO iX1 = iX_B1(1), iX_E1(1)
 
       READ(101,TRIM(FMT)) D(:,iX1)
-      READ(102,TRIM(FMT)) V(:,iX1)
-      READ(103,TRIM(FMT)) P(:,iX1)
+      READ(101,TRIM(FMT)) V(:,iX1)
+      READ(101,TRIM(FMT)) P(:,iX1)
 
     END DO
 
-    CLOSE( 103 )
-    CLOSE( 102 )
     CLOSE( 101 )
 
   END SUBROUTINE ReadFluidFieldsFromFile
