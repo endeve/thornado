@@ -1,4 +1,4 @@
-##### inputs_GR1D_M1.4_Mdot0.3_Rs180 #####
+##### GR1D_M1.4_Mdot0.3_Rs180.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -20,7 +20,7 @@ SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 SAS.PolytropicConstant = 2.0e14 # [cgs]
 
 SAS.WriteNodalData_SAS        = 1
-SAS.NodalDataFileNameBase_SAS = "GR1D_M1.4_Mdot0.3_Rs180"
+SAS.NodalDataFileNameBase_SAS = "GR1D_M1.4_Mdot0.3_Rs180_IC"
 
 SAS.InitializeFromFile = 0
 
