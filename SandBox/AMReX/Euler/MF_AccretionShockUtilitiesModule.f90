@@ -65,6 +65,9 @@ MODULE MF_AccretionShockUtilitiesModule
     UseTiling, &
     nX, &
     DEBUG
+  USE MF_InitializationModule_Relativistic_IDEAL, ONLY: &
+    WriteNodalData_SAS, &
+    NodalDataFileNameBase_SAS
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -163,12 +166,11 @@ CONTAINS
   END SUBROUTINE MF_ComputeAccretionShockDiagnostics
 
 
-  SUBROUTINE WriteNodalDataToFile_SAS( GEOM, MF_uGF, MF_uCF, FileNameBase )
+  SUBROUTINE WriteNodalDataToFile_SAS( GEOM, MF_uGF, MF_uCF )
 
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
-    CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
 
     INTEGER           :: iLo(3), iHi(3), iNX, iX1, iX2, iX3
     CHARACTER(LEN=16) :: FMT
@@ -188,6 +190,8 @@ CONTAINS
                             1-swX(2):nX(2)+swX(2), &
                             1-swX(3):nX(3)+swX(3))
 
+    IF( .NOT. WriteNodalData_SAS ) RETURN
+
     CALL amrex2thornado_X_Global &
            ( GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
 
@@ -199,9 +203,9 @@ CONTAINS
       iLo = 1  - swX
       iHi = nX + swX
 
-      OPEN( UNIT = 101, FILE = TRIM( FileNameBase ) // '_D.dat' )
-      OPEN( UNIT = 102, FILE = TRIM( FileNameBase ) // '_V.dat' )
-      OPEN( UNIT = 103, FILE = TRIM( FileNameBase ) // '_P.dat' )
+      OPEN( UNIT = 101, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_D.dat' )
+      OPEN( UNIT = 102, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_V.dat' )
+      OPEN( UNIT = 103, FILE = TRIM( NodalDataFileNameBase_SAS ) // '_P.dat' )
 
       WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
 
