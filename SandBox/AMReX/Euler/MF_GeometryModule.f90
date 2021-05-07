@@ -86,6 +86,8 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
+        G = 0.0_AR
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         CALL ComputeGeometryX &
