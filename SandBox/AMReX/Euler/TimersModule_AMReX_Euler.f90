@@ -284,7 +284,6 @@ CONTAINS
     IF( WriteAtIntermediateTime ) &
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Program )
 
-    RETURN
   END SUBROUTINE FinalizeTimers_AMReX_Euler
 
 
