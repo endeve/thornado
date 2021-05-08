@@ -17,8 +17,6 @@ SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
-SAS.PolytropicConstant = 2.0e14 # [cgs]
-
 SAS.WriteNodal1DIC_SAS     = 1
 SAS.FileName_Nodal1DIC_SAS = "NR1D_M1.4_Mdot0.3_Rs180.IC"
 
@@ -30,16 +28,16 @@ thornado.UsePhysicalUnits = 1
 
 thornado.SolveGravity = 1
 
-thornado.t_end   = 6.0e+2
+thornado.t_end   = 1.0e+2
 SAS.ResetEndTime = 1
 thornado.iCycleD = 10
 
-thornado.PlotFileBaseName = "plt"
-thornado.dt_wrt  = 6.1e+2
+thornado.PlotFileBaseName = "NR1D_M1.4_Mdot0.3_Rs180.plt"
+thornado.dt_wrt  = 1.1e+2
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "chk"
-thornado.dt_chk    = 6.1e+2
+thornado.CheckpointFileBaseName = "NR1D_M1.4_Mdot0.3_Rs180.chk"
+thornado.dt_chk    = 1.1e+2
 thornado.iCycleChk = -1
 
 thornado.nNodes  = 3
@@ -52,11 +50,11 @@ geometry.is_periodic =  0  1  1
 
 geometry.coord_sys   = 2
 geometry.prob_lo     = 4.0e1 0.0                0.0
-geometry.prob_hi     = 1.0e3 3.1415926535897931 6.2831853071795862
+geometry.prob_hi     = 3.6e2 3.1415926535897931 6.2831853071795862
 
-amr.n_cell            = 960 01 01
+amr.n_cell            = 320 01 01
 thornado.swX          = 001 00 00
-amr.max_grid_size_x   = 120
+amr.max_grid_size_x   = 20
 amr.blocking_factor_x = 1
 amr.max_level         = 0
 

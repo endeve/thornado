@@ -1458,8 +1458,6 @@ CONTAINS
                         AccretionRate )
       CALL PP % get  ( 'ShockRadius', &
                         ShockRadius )
-      CALL PP % get  ( 'PolytropicConstant', &
-                        PolytropicConstant )
       CALL PP % query( 'ApplyPerturbation', &
                         ApplyPerturbation )
       CALL PP % query( 'PerturbationOrder', &
@@ -1484,7 +1482,7 @@ CONTAINS
     MassPNS            = MassPNS            * SolarMass
     AccretionRate      = AccretionRate      * ( SolarMass / Second )
     ShockRadius        = ShockRadius        * Kilometer
-    PolytropicConstant = PolytropicConstant &
+    PolytropicConstant = 2.0e14_AR &
                            * ( Erg / Centimeter**3 &
                            / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
     rPerturbationInner = rPerturbationInner * Kilometer
