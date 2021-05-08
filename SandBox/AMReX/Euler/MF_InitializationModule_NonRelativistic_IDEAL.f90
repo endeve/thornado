@@ -1549,7 +1549,7 @@ CONTAINS
       WRITE(*,*)
 
       WRITE(*,'(6x,A,L)') &
-        'Reset end-time:               ', &
+        'Reset end-time:  ', &
         ResetEndTime
 
     END IF
