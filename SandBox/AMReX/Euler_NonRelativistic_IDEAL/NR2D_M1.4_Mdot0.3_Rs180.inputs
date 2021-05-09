@@ -5,7 +5,7 @@
 
 DEBUG = 0
 
-thornado.ProgramName = "StandingAccretionShock_Relativistic"
+thornado.ProgramName = "StandingAccretionShock_NonRelativistic"
 
 SAS.Mass          = 1.4   # [Msun]
 SAS.AccretionRate = 0.3   # [Msun/s]

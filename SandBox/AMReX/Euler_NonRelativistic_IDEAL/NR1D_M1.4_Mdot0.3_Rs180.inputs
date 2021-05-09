@@ -28,16 +28,16 @@ thornado.UsePhysicalUnits = 1
 
 thornado.SolveGravity = 1
 
-thornado.t_end   = 1.0e+2
+thornado.t_end   = 6.0e+2
 SAS.ResetEndTime = 1
 thornado.iCycleD = 10
 
 thornado.PlotFileBaseName = "NR1D_M1.4_Mdot0.3_Rs180.plt"
-thornado.dt_wrt  = 1.1e+2
+thornado.dt_wrt  = 6.1e+2
 thornado.iCycleW = -1
 
 thornado.CheckpointFileBaseName = "NR1D_M1.4_Mdot0.3_Rs180.chk"
-thornado.dt_chk    = 1.1e+2
+thornado.dt_chk    = 6.1e+2
 thornado.iCycleChk = -1
 
 thornado.nNodes  = 3
