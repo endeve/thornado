@@ -183,8 +183,6 @@ CONTAINS
     IF( PRESENT( ApplyBC_Option ) ) &
       ApplyBC = ApplyBC_Option
 
-    U = 0.0_AR
-
     DO iLevel = 0, nLevels-1
 
       CALL MF(iLevel) % Fill_Boundary( GEOM(iLevel) )
@@ -211,8 +209,13 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3), &
                      1:nF) )
+
           CALL MF_ApplyBoundaryConditions_Euler &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, &
+                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3), &
+                     1:nF), Edge_Map )
 
           CALL thornado2amrex_X &
                  ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
@@ -222,6 +225,8 @@ CONTAINS
                      1:nF) )
 
         END IF
+
+        U = Zero
 
         iX_B = iX_B0
         iX_E = iX_E0

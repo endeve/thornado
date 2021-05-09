@@ -21,7 +21,8 @@ MODULE MF_AccretionShockUtilitiesModule
 
   USE ProgramHeaderModule, ONLY: &
     swX, &
-    nDOFX
+    nDOFX, &
+    nDimsX
   USE UtilitiesModule, ONLY: &
     IsCornerCell
   USE GeometryFieldsModule, ONLY: &
@@ -191,6 +192,8 @@ CONTAINS
                             1-swX(3):nX(3)+swX(3))
 
     IF( .NOT. WriteNodal1DIC_SAS ) RETURN
+
+    IF( .NOT. nDimsX .EQ. 1 ) RETURN
 
     CALL amrex2thornado_X_Global &
            ( GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
