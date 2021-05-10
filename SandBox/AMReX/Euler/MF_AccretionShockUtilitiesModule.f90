@@ -79,6 +79,7 @@ MODULE MF_AccretionShockUtilitiesModule
 
   LOGICAL,          PUBLIC              :: WriteNodal1DIC_SAS
   CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: FileName_Nodal1DIC_SAS
+  CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: AccretionShockDiagnosticsFileName
 
 
 CONTAINS
@@ -103,6 +104,8 @@ CONTAINS
     INTEGER, PARAMETER :: nLegModes = 3
     INTEGER            :: iLegMode
     REAL(AR)           :: Power_Legendre(0:nLevels-1,0:nLegModes-1)
+
+    INTEGER :: FileUnit
 
     IF( nDimsX .EQ. 1 ) RETURN
 
@@ -165,6 +168,20 @@ CONTAINS
       CALL amrex_parallel_reduce_sum( Power_Legendre(:,iLegMode), nLevels )
 
     END DO
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
+            POSITION = 'APPEND' )
+
+      WRITE( FileUnit, '(SP3ES25.16E3)', &
+             ADVANCE = 'NO' ) Power_Legendre(0,:)
+
+      WRITE( FileUnit, * )
+
+      CLOSE( FileUnit )
+
+    END IF
 
   END SUBROUTINE MF_ComputeAccretionShockDiagnostics
 

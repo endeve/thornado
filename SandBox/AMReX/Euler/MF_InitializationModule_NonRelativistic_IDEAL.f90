@@ -88,7 +88,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     t_end
   USE MF_AccretionShockUtilitiesModule, ONLY: &
     WriteNodal1DIC_SAS, &
-    FileName_Nodal1DIC_SAS
+    FileName_Nodal1DIC_SAS, &
+    AccretionShockDiagnosticsFileName
 
   IMPLICIT NONE
   PRIVATE
@@ -1442,15 +1443,16 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: P(:,:)
     LOGICAL               :: InitializeFromFile, ResetEndTime
 
-    ApplyPerturbation      = .FALSE.
-    PerturbationOrder      = 0
-    PerturbationAmplitude  = Zero
-    rPerturbationInner     = Zero
-    rPerturbationOuter     = Zero
-    InitializeFromFile     = .FALSE.
-    ResetEndTime           = .FALSE.
-    WriteNodal1DIC_SAS     = .FALSE.
-    FileName_Nodal1DIC_SAS = 'Nodal1DIC_SAS.dat'
+    ApplyPerturbation                 = .FALSE.
+    PerturbationOrder                 = 0
+    PerturbationAmplitude             = Zero
+    rPerturbationInner                = Zero
+    rPerturbationOuter                = Zero
+    InitializeFromFile                = .FALSE.
+    ResetEndTime                      = .FALSE.
+    WriteNodal1DIC_SAS                = .FALSE.
+    FileName_Nodal1DIC_SAS            = 'Nodal1DIC_SAS.dat'
+    AccretionShockDiagnosticsFileName = 'AccretionShockDiagnostics.dat'
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass', &
                         MassPNS )
@@ -1476,7 +1478,8 @@ CONTAINS
                         WriteNodal1DIC_SAS )
       CALL PP % query( 'FileName_Nodal1DIC_SAS', &
                         FileName_Nodal1DIC_SAS )
-
+      CALL PP % query( 'AccretionShockDiagnosticsFileName', &
+                        AccretionShockDiagnosticsFileName )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass

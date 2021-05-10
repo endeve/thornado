@@ -16,6 +16,7 @@ SAS.PerturbationOrder     = 1
 SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
+SAS.AccretionShockDiagnosticsFileName = "NR2D_M1.4_Mdot0.3_Rs180_000-300ms_L1.Diagnostics.dat"
 
 SAS.FileName_Nodal1DIC_SAS = "NR1D_M1.4_Mdot0.3_Rs180.IC"
 
