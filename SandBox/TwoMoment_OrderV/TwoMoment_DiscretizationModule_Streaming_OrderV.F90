@@ -80,7 +80,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, &
+    nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
@@ -950,7 +950,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              + NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -974,7 +975,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              - NumericalFlux (iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -1728,7 +1730,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              + NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -1752,7 +1755,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              - NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -2504,7 +2508,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              + NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -2528,7 +2533,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              - NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -3254,7 +3260,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              + NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &
@@ -3278,7 +3285,8 @@ CONTAINS
 
         OffGridFlux_TwoMoment(iCR) &
           = OffGridFlux_TwoMoment(iCR) &
-              - NumericalFlux (iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
 
         OffGridFlux_TwoMoment(nCR+iCR) &
           = OffGridFlux_TwoMoment(nCR+iCR) &

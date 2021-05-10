@@ -22,7 +22,7 @@ MODULE TwoMoment_TallyModule_OrderV
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, iNuE, iNuE_Bar, &
+    nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
 
   IMPLICIT NONE
@@ -63,8 +63,6 @@ MODULE TwoMoment_TallyModule_OrderV
   REAL(DP)       :: NeutrinoMomentum3_OffGrid
   REAL(DP)       :: NeutrinoMomentum3_Change
 
-  REAL(DP)       :: LeptonNumber(6)
-
 CONTAINS
 
 
@@ -72,10 +70,6 @@ CONTAINS
 
     CHARACTER(256) :: BaseFileName
     INTEGER        :: FileUnit
-
-    LeptonNumber           = Zero
-    LeptonNumber(iNuE)     = + One
-    LeptonNumber(iNuE_Bar) = - One
 
     BaseFileName = '../Output/' // TRIM( ProgramName )
 
