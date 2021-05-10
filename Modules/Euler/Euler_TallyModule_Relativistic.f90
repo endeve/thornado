@@ -49,7 +49,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option, &
+      BaseFileName_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -59,6 +60,8 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      BaseFileName_Option
 
     CHARACTER(256) :: BaseFileName
     INTEGER        :: FileUnit
@@ -72,7 +75,11 @@ CONTAINS
 
     IF( SuppressTally ) RETURN
 
-    BaseFileName = '../Output/' // TRIM( ProgramName )
+    BaseFileName = '../Output/'
+    IF( PRESENT( BaseFileName_Option ) ) &
+      BaseFileName = TRIM( BaseFileName_Option )
+
+    BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
 
     ! --- Baryonic Mass ---
 

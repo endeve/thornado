@@ -55,7 +55,7 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_NonRelativistic &
-    ( iX_B0, iX_E0, G, U, SuppressTally_Option )
+    ( iX_B0, iX_E0, G, U, SuppressTally_Option, BaseFileName_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3)
@@ -65,12 +65,19 @@ CONTAINS
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
+    CHARACTER(LEN=*),  INTENT(in), OPTIONAL :: &
+      BaseFileName_Option
 
-    INTEGER :: FileUnit
+    INTEGER        :: FileUnit
+    CHARACTER(256) :: BaseFileName
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
       SuppressTally = SuppressTally_Option
+
+    BaseFileName = '../Output/'
+    IF( PRESENT( BaseFileName_Option ) ) &
+      BaseFileName = TRIM( BaseFileName_Option )
 
     IF( SuppressTally ) RETURN
 
