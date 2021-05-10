@@ -55,6 +55,8 @@ PROGRAM ApplicationDriver
     iCycleW,   &
     iCycleChk, &
     GEOM
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_ComputeTally_Euler
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
     FinalizeTimers_AMReX_Euler,    &
@@ -194,6 +196,9 @@ PROGRAM ApplicationDriver
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF )
 
+      CALL MF_ComputeTally_Euler &
+             ( GEOM, MF_uGF, MF_uCF, t(0), Verbose_Option = .FALSE. )
+
       wrt = .FALSE.
 
     END IF
@@ -231,6 +236,9 @@ PROGRAM ApplicationDriver
            MF_uPF_Option = MF_uPF, &
            MF_uAF_Option = MF_uAF, &
            MF_uDF_Option = MF_uDF )
+
+  CALL MF_ComputeTally_Euler &
+         ( GEOM, MF_uGF, MF_uCF, t(0), Verbose_Option = .FALSE. )
 
   CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
