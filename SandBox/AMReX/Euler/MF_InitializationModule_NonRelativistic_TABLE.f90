@@ -6,6 +6,8 @@ MODULE MF_InitializationModule_NonRelativistic_TABLE
     AR => amrex_real
   USE amrex_box_module,        ONLY: &
     amrex_box
+  USE amrex_geometry_module,   ONLY: &
+    amrex_geometry
   USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
@@ -106,11 +108,12 @@ CONTAINS
 
 
   SUBROUTINE MF_InitializeFields_NonRelativistic_TABLE &
-    ( ProgramName, MF_uGF, MF_uCF )
+    ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
 
     IF( amrex_parallel_ioprocessor() )THEN

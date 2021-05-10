@@ -686,18 +686,18 @@ print*, "Cell Average"
 
       DO iP = 1, nPT_X
 
-        CALL CheckRealizability( N_K(iZ1,iZ2,iZ3,iZ4,iS) , &
-                                 G1_K(iZ1,iZ2,iZ3,iZ4,iS) , &                                                                   
-                                 G2_K(iZ1,iZ2,iZ3,iZ4,iS) , &                                                                   
-                                 G3_K(iZ1,iZ2,iZ3,iZ4,iS) , &                                                                   
-                                 V1_P(iP,iZ2,iZ3,iZ4), &
-                                 V2_P(iP,iZ2,iZ3,iZ4), &
-                                 V3_P(iP,iZ2,iZ3,iZ4), &
-                                 G_11_P(iP,iZ2,iZ3,iZ4), &
-                                 G_22_P(iP,iZ2,iZ3,iZ4), &
-                                 G_33_P(iP,iZ2,iZ3,iZ4), &
-                                 iZ1, iZ2, Min_1, Min_2 )
-
+!        CALL CheckRealizability( N_K(iZ1,iZ2,iZ3,iZ4,iS) , &
+!                                 G1_K(iZ1,iZ2,iZ3,iZ4,iS) , &                                                                   
+!                                 G2_K(iZ1,iZ2,iZ3,iZ4,iS) , &                                                                   
+!                                 G3_K(iZ1,iZ2,iZ3,iZ4,iS) , &                                                                   
+!                                 V1_P(iP,iZ2,iZ3,iZ4), &
+!                                 V2_P(iP,iZ2,iZ3,iZ4), &
+!                                 V3_P(iP,iZ2,iZ3,iZ4), &
+!                                 G_11_P(iP,iZ2,iZ3,iZ4), &
+!                                 G_22_P(iP,iZ2,iZ3,iZ4), &
+!                                 G_33_P(iP,iZ2,iZ3,iZ4), &
+!                                 iZ1, iZ2, Min_1, Min_2 )
+!
       END DO
 
 
@@ -757,7 +757,6 @@ m=0
                    Theta_P )
 
           Theta_2 = MIN( Theta_2, Theta_P )
-
         END IF
 
       END DO
@@ -811,41 +810,6 @@ print*, n, m
     END DO
 
 
-!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
-!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G1_Q, G1_P )
-!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G2_Q, G2_P )
-!    CALL ComputePointValuesZ( iZ_B0, iZ_E0, G3_Q, G3_P )
-!!print*, "Point Values"
-!    DO iS = 1, nSpecies
-!    DO iZ4 = iZ_B0(4), iZ_E0(4)
-!    DO iZ3 = iZ_B0(3), iZ_E0(3)
-!    DO iZ2 = iZ_B0(2), iZ_E0(2)
-!    DO iZ1 = iZ_B0(1), iZ_E0(1)
-!
-!      DO iP = 1, nPT
-!
-!        CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
-!        CALL CheckRealizability( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                                 G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                                 G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                                 G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                                 V1_P(iP_X,iZ2,iZ3,iZ4), &
-!                                 V2_P(iP_X,iZ2,iZ3,iZ4), &
-!                                 V3_P(iP_X,iZ2,iZ3,iZ4), &
-!                                 G_11_P(iP_X,iZ2,iZ3,iZ4), &
-!                                 G_22_P(iP_X,iZ2,iZ3,iZ4), &
-!                                 G_33_P(iP_X,iZ2,iZ3,iZ4), &
-!                                 iZ1, iZ2, Min_1, Min_2 )
-!
-!      END DO
-!
-!
-!
-!    END DO
-!    END DO
-!    END DO
-!    END DO
-!    END DO
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
   SUBROUTINE ComputePointValuesX( iX_B0, iX_E0, U_Q, U_P )
@@ -935,6 +899,8 @@ print*, n, m
       + V2 * V3 * Gm_dd_22 * Gm_dd_33 * G2 * G3 )
     G = SQRT(G)  
     GammaFun = N - G 
+
+
     RETURN
   END FUNCTION GammaFun
 

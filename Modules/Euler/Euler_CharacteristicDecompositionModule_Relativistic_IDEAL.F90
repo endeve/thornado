@@ -106,28 +106,31 @@ CONTAINS
 
     IF( DEBUG )THEN
 
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule...'
-      WRITE(*,*)
+      PRINT*
+      PRINT '(A)', 'Debugging CharacteristicDecompositionModule...'
+      PRINT*
 
-      WRITE(*,'(A)') '# Geometry Fields'
-      WRITE(*,'(A,ES24.16E3)') 'Gmdd11        = ', Gmdd11
-      WRITE(*,'(A,ES24.16E3)') 'Gmdd22        = ', Gmdd22
-      WRITE(*,'(A,ES24.16E3)') 'Gmdd33        = ', Gmdd33
-      WRITE(*,'(A,ES24.16E3)') 'DetGm         = ', DetGm
-      WRITE(*,'(A,ES24.16E3)') 'ShiftVector1  = ', ShiftVector(1)
-      WRITE(*,'(A,ES24.16E3)') 'ShiftVector2  = ', ShiftVector(2)
-      WRITE(*,'(A,ES24.16E3)') 'ShiftVector3  = ', ShiftVector(3)
-      WRITE(*,'(A,ES24.16E3)') 'LapseFunction = ', LapseFunction
-      WRITE(*,*)
-      WRITE(*,'(A)') '# Fluid Fields'
-      WRITE(*,'(A,ES24.16E3)') 'Gamma  = ', Gamma_IDEAL
-      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D
-      WRITE(*,'(A,ES24.16E3)') 'Vu1    = ', Vu1
-      WRITE(*,'(A,ES24.16E3)') 'Vu2    = ', Vu2
-      WRITE(*,'(A,ES24.16E3)') 'Vu3    = ', Vu3
-      WRITE(*,'(A,ES24.16E3)') 'e      = ', E
-      WRITE(*,*)
+      PRINT '(A)', '# Geometry Fields'
+
+      PRINT '(A,ES24.16E3)',
+
+      PRINT '(A,ES24.16E3)', 'Gmdd11        = ', Gmdd11
+      PRINT '(A,ES24.16E3)', 'Gmdd22        = ', Gmdd22
+      PRINT '(A,ES24.16E3)', 'Gmdd33        = ', Gmdd33
+      PRINT '(A,ES24.16E3)', 'DetGm         = ', DetGm
+      PRINT '(A,ES24.16E3)', 'ShiftVector1  = ', ShiftVector(1)
+      PRINT '(A,ES24.16E3)', 'ShiftVector2  = ', ShiftVector(2)
+      PRINT '(A,ES24.16E3)', 'ShiftVector3  = ', ShiftVector(3)
+      PRINT '(A,ES24.16E3)', 'LapseFunction = ', LapseFunction
+      PRINT*
+      PRINT '(A)', '# Fluid Fields'
+      PRINT '(A,ES24.16E3)', 'Gamma  = ', Gamma_IDEAL
+      PRINT '(A,ES24.16E3)', 'rho    = ', D
+      PRINT '(A,ES24.16E3)', 'Vu1    = ', Vu1
+      PRINT '(A,ES24.16E3)', 'Vu2    = ', Vu2
+      PRINT '(A,ES24.16E3)', 'Vu3    = ', Vu3
+      PRINT '(A,ES24.16E3)', 'e      = ', E
+      PRINT*
 
     END IF
 
@@ -249,46 +252,43 @@ CONTAINS
 
         IF( DEBUG_X1 )THEN
 
-           WRITE(*,*)
-           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X1)'
-           WRITE(*,'(2x,A)') '-------------------------------------------'
-           WRITE(*,*)
+           PRINT*
+           PRINT '(2x,A)', 'Debugging characteristic decomposition (X1)'
+           PRINT '(2x,A)', '-------------------------------------------'
+           PRINT*
 
            CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
-           WRITE(*,'(4x,A)') 'Eigenvalues'
-           WRITE(*,'(4x,A)') '-----------'
+           PRINT '(4x,A)', 'Eigenvalues'
+           PRINT '(4x,A)', '-----------'
            DO iCF = 1, nCF
-             WRITE(*,'(6x,ES10.2E3)') EigVals(iCF)
+             PRINT '(6x,ES10.2E3)', EigVals(iCF)
            END DO
-           WRITE(*,*)
+           PRINT*
 
-           WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-           WRITE(*,'(4x,A)') '--------------------------'
+           PRINT '(4x,A)', 'Diagonalized flux-jacobian'
+           PRINT '(4x,A)', '--------------------------'
            LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
            DO iCF = 1, nCF
-             WRITE(*,'(6x,6ES11.2E3)') &
-             LAMBDA(iCF,:)
+             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
            END DO
-           WRITE(*,*)
+           PRINT*
 
-           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-           WRITE(*,'(4x,A)') '-----------------'
+           PRINT '(4x,A)', 'MATMUL( invR, R )'
+           PRINT '(4x,A)', '-----------------'
            LAMBDA = MATMUL( invR, R )
            DO iCF = 1, nCF
-             WRITE(*,'(6x,6ES11.2E3)') &
-             LAMBDA(iCF,:)
+             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
            END DO
-           WRITE(*,*)
+           PRINT*
 
-           WRITE(*,'(4x,A)') 'invR - inv( R )'
-           WRITE(*,'(4x,A)') '---------------'
+           PRINT '(4x,A)', 'invR - inv( R )'
+           PRINT '(4x,A)', '---------------'
            LAMBDA = inv( R )
            DO iCF = 1, nCF
-             WRITE(*,'(6x,6ES11.2E3)') &
-             invR(iCF,:) - LAMBDA(iCF,:)
+             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
            END DO
-           WRITE(*,*)
+           PRINT*
 
         END IF
 
@@ -408,46 +408,44 @@ CONTAINS
 
         IF( DEBUG_X2 )THEN
 
-           WRITE(*,*)
-           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X2)'
-           WRITE(*,'(2x,A)') '-------------------------------------------'
-           WRITE(*,*)
+           PRINT*
+           PRINT '(2x,A)', 'Debugging characteristic decomposition (X2)'
+           PRINT '(2x,A)', '-------------------------------------------'
+           PRINT*
 
            CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
-           WRITE(*,'(4x,A)') 'Eigenvalues'
-           WRITE(*,'(4x,A)') '-----------'
+           PRINT '(4x,A)', 'Eigenvalues'
+           PRINT '(4x,A)', '-----------'
            DO iCF = 1, nCF
-             WRITE(*,'(6x,ES10.2E3)') EigVals(iCF)
+             PRINT '(6x,ES10.2E3)', EigVals(iCF)
            END DO
-           WRITE(*,*)
+           PRINT*
 
-           WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-           WRITE(*,'(4x,A)') '--------------------------'
+           PRINT '(4x,A)', 'Diagonalized flux-jacobian'
+           PRINT '(4x,A)', '--------------------------'
            LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
            DO iCF = 1, nCF
-             WRITE(*,'(6x,6ES11.2E3)') &
-             LAMBDA(iCF,:)
+             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
            END DO
-           WRITE(*,*)
+           PRINT*
 
-           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-           WRITE(*,'(4x,A)') '-----------------'
+           PRINT '(4x,A)', 'MATMUL( invR, R )'
+           PRINT '(4x,A)', '-----------------'
            LAMBDA = MATMUL( invR, R )
            DO iCF = 1, nCF
-             WRITE(*,'(6x,6ES11.2E3)') &
-             LAMBDA(iCF,:)
+             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
            END DO
-           WRITE(*,*)
+           PRINT*
 
-           WRITE(*,'(4x,A)') 'invR - inv( R )'
-           WRITE(*,'(4x,A)') '---------------'
+           PRINT '(4x,A)', 'invR - inv( R )'
+           PRINT '(4x,A)', '---------------'
            LAMBDA = inv( R )
            DO iCF = 1, nCF
-             WRITE(*,'(6x,6ES11.2E3)') &
-             invR(iCF,:) - LAMBDA(iCF,:)
+             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
            END DO
-           WRITE(*,*)
+           PRINT*
+
 
         END IF
 
@@ -567,37 +565,43 @@ CONTAINS
 
         IF( DEBUG_X3 )THEN
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X3)'
-          WRITE(*,'(2x,A)') '-------------------------------------------'
-          WRITE(*,*)
+           PRINT*
+           PRINT '(2x,A)', 'Debugging characteristic decomposition (X3)'
+           PRINT '(2x,A)', '-------------------------------------------'
+           PRINT*
 
-          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+           CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
-          WRITE(*,'(4x,A)') 'Eigenvalues'
-          WRITE(*,'(4x,A)') '-----------'
-          DO iCF = 1, nCF
-            WRITE(*,'(6x,ES10.2E3)') EigVals(iCF)
-          END DO
-          WRITE(*,*)
+           PRINT '(4x,A)', 'Eigenvalues'
+           PRINT '(4x,A)', '-----------'
+           DO iCF = 1, nCF
+             PRINT '(6x,ES10.2E3)', EigVals(iCF)
+           END DO
+           PRINT*
 
-          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-          WRITE(*,'(4x,A)') '--------------------------'
-          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-          DO iCF = 1, nCF
-            WRITE(*,'(6x,6ES11.2E3)') &
-            LAMBDA(iCF,:)
-          END DO
-          WRITE(*,*)
+           PRINT '(4x,A)', 'Diagonalized flux-jacobian'
+           PRINT '(4x,A)', '--------------------------'
+           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+           DO iCF = 1, nCF
+             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+           END DO
+           PRINT*
 
-          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-          WRITE(*,'(4x,A)') '-----------------'
-          LAMBDA = MATMUL( invR, R )
-          DO iCF = 1, nCF
-            WRITE(*,'(6x,6ES11.2E3)') &
-            LAMBDA(iCF,:)
-          END DO
-          WRITE(*,*)
+           PRINT '(4x,A)', 'MATMUL( invR, R )'
+           PRINT '(4x,A)', '-----------------'
+           LAMBDA = MATMUL( invR, R )
+           DO iCF = 1, nCF
+             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+           END DO
+           PRINT*
+
+           PRINT '(4x,A)', 'invR - inv( R )'
+           PRINT '(4x,A)', '---------------'
+           LAMBDA = inv( R )
+           DO iCF = 1, nCF
+             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+           END DO
+           PRINT*
 
         END IF
 

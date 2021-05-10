@@ -55,6 +55,12 @@ PROGRAM main
     ReadCheckpointFile
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE UnitsModule,            ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay, &
+    Millisecond, &
+    Kilometer
 
   IMPLICIT NONE
 
@@ -67,7 +73,8 @@ PROGRAM main
 !      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
 !        MF_uCR % P,  &
 !        MF_uPR % P  )
-!  
+print*, t_wrt / UnitsDisplay % TimeUnit, t_end / UnitsDisplay % TimeUnit
+print*, xL / kilometer, xR / kilometer
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
@@ -81,7 +88,9 @@ PROGRAM main
     END IF
     IF( amrex_parallel_ioprocessor() )THEN
       !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-       print*,  'StepNo: ', StepNo(0), ' t = ', t , ' dt = ', dt(0) 
+       print*,  'StepNo: ', StepNo(0), ' t = ', t / UnitsDisplay % TimeUnit , &
+       TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
+       TRIM( UnitsDisplay % TimeLabel )
     END IF
     !this is where the issue is
     CALL MF_Update_IMEX_RK &

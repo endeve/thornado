@@ -265,13 +265,12 @@ Euler_TallyModule_NonRelativistic.o: \
 
 Euler_TallyModule_Relativistic.o: \
   KindModule.o \
-  UnitsModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  Euler_UtilitiesModule_Relativistic.o \
+  UnitsModule.o \
   Euler_TallyModule_Relativistic.f90
 
 Euler_TallyModule.o: \

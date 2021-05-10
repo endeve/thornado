@@ -23,7 +23,10 @@ MODULE TimeSteppingModule_SSPRK
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    WriteSourceTerms
+    WriteSourceTerms, &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    IncrementOffGridTally_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -40,7 +43,7 @@ MODULE TimeSteppingModule_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
 
-  LOGICAL, PUBLIC :: WriteSourceTerms2
+  LOGICAL, PUBLIC :: WritePlotFile
 
   INTERFACE
     SUBROUTINE FluidIncrement &
@@ -83,7 +86,7 @@ CONTAINS
 
     INTEGER :: i
 
-WriteSourceTerms2 = .FALSE.
+    WritePlotFile = .FALSE.
 
     nStages_SSPRK = nStages
 
@@ -208,6 +211,10 @@ WriteSourceTerms2 = .FALSE.
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS, iX1, iX2, iX3
 
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
+
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     SolveGravity = .FALSE.
@@ -252,13 +259,15 @@ WriteSourceTerms2 = .FALSE.
         END IF
 
         WriteSourceTerms = .FALSE.
-
-        IF( WriteSourceTerms2 .AND. iS .EQ. nStages_SSPRK ) &
+        IF( WritePlotFile .AND. iS .EQ. nStages_SSPRK ) &
           WriteSourceTerms = .TRUE.
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 
@@ -290,6 +299,8 @@ WriteSourceTerms2 = .FALSE.
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
 
     END IF
+
+    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

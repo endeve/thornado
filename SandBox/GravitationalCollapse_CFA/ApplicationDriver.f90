@@ -304,6 +304,10 @@ PROGRAM ApplicationDriver
   CALL InitializeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
+  CALL ComputeTally_Euler_Relativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+         SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
+
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   iCycle = 0
@@ -381,7 +385,8 @@ PROGRAM ApplicationDriver
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
       CALL ComputeTally_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+             Verbose_Option = .FALSE. )
 
       wrt = .FALSE.
 

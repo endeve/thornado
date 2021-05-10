@@ -431,7 +431,7 @@ CONTAINS
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF, GEOM )
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 

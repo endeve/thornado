@@ -56,7 +56,7 @@ FORTRAN_ranchuair    = mpif90
 FORTRAN_rmurph	     = mpif90 -fopenmp
 FORTRAN_sjdunham     = mpif90 -fopenmp
 FORTRAN_jrober       = /usr/local/openmpi/bin/mpif90 -fopenmp
-FORTRAN_accre        = mpif90
+FORTRAN_accre_gnu    = mpif90
 FORTRAN_zelledge     = mpif90
 FORTRAN_dpochik      = mpif90
 FORTRAN_lucalin      = mpif90 -fopenmp -cpp
@@ -91,7 +91,7 @@ SUFFIX_f90_ranchuair    =
 SUFFIX_f90_sjdunham     =
 SUFFIX_f90_rmurph       =
 SUFFIX_f90_jrober       =
-SUFFIX_f90_accre        =
+SUFFIX_f90_accre_gnu    =
 SUFFIX_f90_zelledge     =
 SUFFIX_f90_dpochik      =
 SUFFIX_f90_lucalin	=
@@ -124,7 +124,7 @@ FLINKER_ranchuair    = mpif90
 FLINKER_rmurph	     = mpif90 -fopenmp -llapack -lblas
 FLINKER_sjdunham     = mpif90 -fopenmp
 FLINKER_jrober       = /usr/local/openmpi/bin/mpif90 -fopenmp
-FLINKER_accre        = mpif90
+FLINKER_accre_gnu    = mpif90
 FLINKER_zelledge     = mpif90
 FLINKER_dpochik      = mpif90
 FLINKER_lucalin	     = mpif90 -fopenmp
@@ -164,7 +164,7 @@ DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -fcheck=all -ffpe-trap
 DEBUG_rmurph	   = -g -framework Accelerate -ffpe-trap=invalid,zero,overflow -Wall -fcheck=all -fbacktrace -fbounds-check -fallow-argument-mismatch
 DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
 DEBUG_jrober       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
-DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_accre_gnu    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_pgi    = -g -O0 -traceback -Mbounds -Ktrap=fp -Mnoopenmp
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
@@ -197,7 +197,7 @@ OPTIMIZE_ranchuair    = -O2
 OPTIMIZE_rmurph	      = -O2 -framework Accelerate
 OPTIMIZE_sjdunham     = -O2 -fallow-argument-mismatch
 OPTIMIZE_jrober       = -O2 -framework Accelerate
-OPTIMIZE_accre        = -O2
+OPTIMIZE_accre_gnu    = -O2
 OPTIMIZE_zelledge     = -O2
 OPTIMIZE_dpochik      = -O2
 OPTIMIZE_lucalin      = -O2
@@ -232,7 +232,7 @@ INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_sjdunham          = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_rmurph	       = -I/usr/local/Cellar/hdf5/1.12.0_1/include
 INCLUDE_HDF5_jrober            = -I/usr/local/hdf5/include
-INCLUDE_HDF5_accre             = -I/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/HDF5/1.10.1/include
+INCLUDE_HDF5_accre_gnu         = -I$(HDF5_DIR)/include
 INCLUDE_HDF5_zelledge          = -I/usr/include/hdf5/serial
 #INCLUDE_HDF5_zelledge          = -I/usr/lib/x86_64-linux-gnu/hdf5/serial
 INCLUDE_HDF5_dpochik           = -I/usr/include/hdf5/serial
@@ -277,6 +277,7 @@ INCLUDE_LAPACK_bison           = -I/usr/include
 INCLUDE_LAPACK_paullaiu_gnu    = -I/usr/include
 INCLUDE_LAPACK_paullaiuair     = -I/usr/local/opt/lapack/include
 INCLUDE_LAPACK_accre           = -I/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/ScaLAPACK/2.0.2/include
+INCLUDE_LAPACK_accre_gnu       = -I$(LAPACK_DIR)/include
 INCLUDE_LAPACK_titan_gnu       =
 INCLUDE_LAPACK_titan_pgi       =
 INCLUDE_LAPACK_summitdev_gcc   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
@@ -337,7 +338,7 @@ LIBRARIES_HDF5_lucalin         = -L/usr/local/hdf5-1.10.5/hdf5/lib -lhdf5_fortra
 LIBRARIES_HDF5_paullaiu_gnu    = -L/usr/lib/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_paullaiuair     = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_bison           = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_accre           = -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_accre_gnu       = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
 LIBRARIES_HDF5_titan_pgi       = # Use Module Load
 LIBRARIES_HDF5_titan_cray      = # Use Module Load
@@ -378,6 +379,7 @@ LIBRARIES_LAPACK_bison         = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lb
 LIBRARIES_LAPACK_paullaiu_gnu  = -L/usr/lib/lapack  -llapack -lblas
 LIBRARIES_LAPACK_paullaiuair   = -L/usr/local/opt/lapack/lib -llapack -lblas
 LIBRARIES_LAPACK_accre         = -L/accre/arch/easybuild/software/MPI/GCC/6.4.0-2.28/OpenMPI/2.1.1/ScaLAPACK/2.0.2/lib -lscalapack -lopenblas
+LIBRARIES_LAPACK_accre_gnu     = -L$(LAPACK_DIR)/lib -lscalapack -lopenblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 				 -L/usr/lib/libblas -lblas
 LIBRARIES_LAPACK_titan_gnu     =
@@ -453,7 +455,7 @@ PP_ranchuair    = -D
 PP_sjdunham     = -D
 PP_rmurph	= -D
 PP_jrober       = -D
-PP_accre        = -D
+PP_accre_gnu    = -D
 PP_titan_gnu    = -D
 PP_titan_pgi    = -D
 PP_titan_cray   = -D
@@ -485,7 +487,7 @@ MDEFS_lucalin      =
 MDEFS_bison        =
 MDEFS_ranchuair    =
 MDEFS_sjdunham     =
-MDEFS_accre        =
+MDEFS_accre_gnu    =
 MDEFS_titan_gnu    =
 MDEFS_titan_pgi    =
 MDEFS_titan_cray   =

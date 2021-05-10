@@ -33,13 +33,12 @@ MODULE MyAmrModule
     UnitsDisplay, &
     Centimeter, &
     Kilometer, &
+    MeV, &
     SolarMass
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
     FinalizeDataAMReX
-
-
   ! --- thornado ---
   REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
@@ -87,7 +86,7 @@ MODULE MyAmrModule
   REAL(AR) :: BetaTVD
   
 
-  REAL(AR) :: Mass, R0
+  REAL(AR) :: Mass, R0, kT, mu0, E0
 
 CONTAINS
 
@@ -167,6 +166,9 @@ CONTAINS
     CALL amrex_parmparse_build( PP, 'ST' )
       CALL PP % query( 'Mass', Mass )
       CALL PP % query( 'R0'               ,R0 )
+      CALL PP % query( 'mu0'               ,mu0 )
+      CALL PP % query( 'E0'               ,E0 )
+      CALL PP % query( 'kT'               ,kT )
     CALL amrex_parmparse_destroy( PP )
 
     IF( UsePhysicalUnits )THEN
@@ -190,7 +192,9 @@ CONTAINS
       Chi = Chi * ( 1.0_AR / Centimeter )
 
       Mass = Mass * SolarMass
-
+      E0 = E0 * MeV 
+      mu0 = mu0 * MeV 
+      kT = kT * MeV 
       R0 = R0 * kilometer
 
     END IF

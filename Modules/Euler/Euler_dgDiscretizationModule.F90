@@ -127,6 +127,7 @@ MODULE Euler_dgDiscretizationModule
   LOGICAL,  PUBLIC :: WriteSourceTerms
   REAL(DP), PUBLIC :: Time
 
+  REAL(DP), PUBLIC :: OffGridFlux_Euler(nCF)
 
 CONTAINS
 
@@ -211,6 +212,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    OffGridFlux_Euler = Zero
 
     CALL TimersStop_Euler( Timer_Euler_Increment )
 
@@ -1000,6 +1003,23 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iCF = 1, nCF
+    DO iNX_X1 = 1, nDOFX_X1
+
+      OffGridFlux_Euler(iCF) &
+        = OffGridFlux_Euler(iCF) &
+            - ( NumericalFlux(iNX_X1,iCF,iX2,iX3,iX_E0(1)+1) &
+                  - NumericalFlux(iNX_X1,iCF,iX2,iX3,iX_B0(1)) )
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -1799,6 +1819,23 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+    DO iNX_X2 = 1, nDOFX_X2
+
+      OffGridFlux_Euler(iCF) &
+        = OffGridFlux_Euler(iCF) &
+            - ( NumericalFlux(iNX_X2,iCF,iX1,iX3,iX_E0(2)+1) &
+                  - NumericalFlux(iNX_X2,iCF,iX1,iX3,iX_B0(2)) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
 #ifdef HYDRO_RELATIVISTIC
@@ -2596,6 +2633,23 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+    DO iNX_X3 = 1, nDOFX_X3
+
+      OffGridFlux_Euler(iCF) &
+        = OffGridFlux_Euler(iCF) &
+            - ( NumericalFlux(iNX_X3,iCF,iX1,iX2,iX_E0(3)+1) &
+                  - NumericalFlux(iNX_X3,iCF,iX1,iX2,iX_B0(3)) )
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
