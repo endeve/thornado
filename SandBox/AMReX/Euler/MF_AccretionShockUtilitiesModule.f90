@@ -104,6 +104,8 @@ CONTAINS
     INTEGER            :: iLegMode
     REAL(AR)           :: Power_Legendre(0:nLevels-1,0:nLegModes-1)
 
+    IF( nDimsX .EQ. 1 ) RETURN
+
     Power_Legendre = 0.0_AR
 
     DO iLevel = 0, nLevels-1
