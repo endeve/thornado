@@ -177,7 +177,8 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     TYPE(EdgeMap)                 :: Edge_Map
     LOGICAL                       :: ApplyBC
-    REAL(AR), CONTIGUOUS, POINTER :: uF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uA(:,:,:,:)
+    REAL(AR), ALLOCATABLE         :: uT(:,:,:,:,:)
 
     ApplyBC = .FALSE.
     IF( PRESENT( ApplyBC_Option ) ) &
@@ -189,9 +190,11 @@ CONTAINS
 
       CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
 
+      U = Zero
+
       DO WHILE( MFI % next() )
 
-        uF => MF(iLevel) % DataPtr( MFI )
+        uA => MF(iLevel) % DataPtr( MFI )
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
@@ -201,32 +204,25 @@ CONTAINS
 
         IF( ApplyBC )THEN
 
+          ALLOCATE( uT(nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3), &
+                       nF) )
+
           CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
           CALL amrex2thornado_X &
-                 ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
-                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), &
-                     1:nF) )
+                 ( nF, iX_B1, iX_E1, LBOUND( uA ), iX_B1, iX_E1, uA, uT )
 
           CALL MF_ApplyBoundaryConditions_Euler &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), &
-                     1:nF), Edge_Map )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uT, Edge_Map )
 
           CALL thornado2amrex_X &
-                 ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
-                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), &
-                     1:nF) )
+                 ( nF, iX_B1, iX_E1, LBOUND( uA ), iX_B1, iX_E1, uA, uT )
+
+          DEALLOCATE( uT )
 
         END IF
-
-        U = Zero
 
         iX_B = iX_B0
         iX_E = iX_E0
@@ -244,7 +240,7 @@ CONTAINS
         DO iX1 = iX_B(1), iX_E(1)
 
           U(1:nDOFX,iX1,iX2,iX3,iFd) &
-            = uF(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
+            = uA(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
 
         END DO
         END DO
