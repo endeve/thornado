@@ -1,23 +1,23 @@
-##### GR2D_M1.4_Mdot0.3_Rs180.inputs #####
+##### NR2D_M1.4_Mdot0.3_Rs180_000-300ms_L1.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 DEBUG = 0
 
-thornado.ProgramName = "StandingAccretionShock_Relativistic"
+thornado.ProgramName = "StandingAccretionShock_NonRelativistic"
 
 SAS.Mass          = 1.4   # [Msun]
 SAS.AccretionRate = 0.3   # [Msun/s]
 SAS.ShockRadius   = 180.0 # [km]
 
 SAS.ApplyPerturbation     = 1
-SAS.PerturbationOrder     = 0
+SAS.PerturbationOrder     = 1
 SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
-SAS.FileName_Nodal1DIC_SAS = "GR1D_M1.4_Mdot0.3_Rs180.IC"
+SAS.FileName_Nodal1DIC_SAS = "NR1D_M1.4_Mdot0.3_Rs180.IC"
 
 SAS.InitializeFromFile = 1
 
@@ -25,15 +25,15 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.t_end   = 1.0e+2
+thornado.t_end   = 3.0e+2
 thornado.iCycleD = 10
 
-thornado.PlotFileBaseName = "GR2D_M1.4_Mdot0.3_Rs180.plt"
+thornado.PlotFileBaseName = "NR2D_M1.4_Mdot0.3_Rs180_000-300ms_L1.plt"
 thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "GR2D_M1.4_Mdot0.3_Rs180.chk"
-thornado.dt_chk    = 1.0e+1
+thornado.CheckpointFileBaseName = "NR2D_M1.4_Mdot0.3_Rs180_000-300ms_L1.chk"
+thornado.dt_chk    = 1.0e+2
 thornado.iCycleChk = -1
 
 thornado.nNodes  = 3
@@ -41,8 +41,8 @@ thornado.nStages = 3
 
 thornado.CFL = 0.5
 
-thornado.bcX         = 100 03 00
-geometry.is_periodic =   0  0  1
+thornado.bcX         = 11 03 00
+geometry.is_periodic =  0  0  1
 
 geometry.coord_sys   = 2
 geometry.prob_lo     = 4.0e1 0.0                0.0
