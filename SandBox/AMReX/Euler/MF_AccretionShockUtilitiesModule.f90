@@ -106,8 +106,27 @@ CONTAINS
     REAL(AR)           :: Power_Legendre(0:nLevels-1,0:nLegModes-1)
 
     INTEGER :: FileUnit
+    LOGICAL :: IsFile
 
     IF( nDimsX .EQ. 1 ) RETURN
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      INQUIRE( FILE = TRIM( AccretionShockDiagnosticsFileName ), &
+               EXIST = IsFile )
+
+      IF( .NOT. IsFile )THEN
+
+        OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ) )
+
+        WRITE( FileUnit, '(3(A25,1x))' ) &
+          'P0 (Entropy) [cgs]', 'P1 (Entropy) [cgs]', 'P2 (Entropy) [cgs]'
+
+        CLOSE( FileUnit )
+
+      END IF
+
+    END IF
 
     Power_Legendre = 0.0_AR
 
@@ -133,11 +152,11 @@ CONTAINS
 
         ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nPF ) )
+                            iX_B1(3):iX_E1(3),1:nPF) )
 
         ALLOCATE( A(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nAF ) )
+                            iX_B1(3):iX_E1(3),1:nAF) )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -174,7 +193,7 @@ CONTAINS
       OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
             POSITION = 'APPEND' )
 
-      WRITE( FileUnit, '(SP3ES25.16E3)', &
+      WRITE( FileUnit, '(3(SPES25.16E3,1x))', &
              ADVANCE = 'NO' ) Power_Legendre(0,:)
 
       WRITE( FileUnit, * )
