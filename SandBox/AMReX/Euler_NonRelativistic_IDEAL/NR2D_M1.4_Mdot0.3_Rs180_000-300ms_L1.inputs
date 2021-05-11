@@ -26,6 +26,8 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
+thornado.SolveGravity = 1
+
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 10
 
