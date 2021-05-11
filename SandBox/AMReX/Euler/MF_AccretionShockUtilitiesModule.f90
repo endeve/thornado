@@ -22,9 +22,14 @@ MODULE MF_AccretionShockUtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     swX, &
     nDOFX, &
-    nDimsX
+    nDimsX, &
+    nNodesX
   USE UtilitiesModule, ONLY: &
     IsCornerCell
+  USE MeshModule, ONLY: &
+    MeshType, &
+    CreateMesh, &
+    DestroyMesh
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
@@ -58,6 +63,10 @@ MODULE MF_AccretionShockUtilitiesModule
 
   ! --- Local Modules ---
 
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap, &
+    MF_ApplyBoundaryConditions_Euler
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_X_Global
@@ -65,6 +74,8 @@ MODULE MF_AccretionShockUtilitiesModule
     nLevels, &
     UseTiling, &
     nX, &
+    xL, &
+    xR, &
     DEBUG
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, &
@@ -85,28 +96,38 @@ MODULE MF_AccretionShockUtilitiesModule
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeAccretionShockDiagnostics( MF_uPF, MF_uAF )
+  SUBROUTINE MF_ComputeAccretionShockDiagnostics( GEOM, MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uPF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uAF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(inout) :: GEOM  (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
+    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: P(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: A(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4), &
+               iNX, iX1, iX2, iX3, iDim
+
+    TYPE(EdgeMap)  :: Edge_Map
+    TYPE(MeshType) :: MeshX(3)
 
     INTEGER, PARAMETER :: nLegModes = 3
     INTEGER            :: iLegMode
-    REAL(AR)           :: Power_Legendre(0:nLevels-1,0:nLegModes-1)
+    REAL(AR)           :: Power_Legendre          (0:nLevels-1,0:nLegModes-1)
+    REAL(AR)           :: AngleAveragedShockRadius(0:nLevels-1)
 
     INTEGER :: FileUnit
     LOGICAL :: IsFile
+
+    INTEGER :: iErr(nDOFX)
 
     IF( nDimsX .EQ. 1 ) RETURN
 
@@ -119,8 +140,9 @@ CONTAINS
 
         OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ) )
 
-        WRITE( FileUnit, '(3(A25,1x))' ) &
-          'P0 (Entropy) [cgs]', 'P1 (Entropy) [cgs]', 'P2 (Entropy) [cgs]'
+        WRITE( FileUnit, '(4(A25,1x))' ) &
+          'P0 (Entropy) [cgs]', 'P1 (Entropy) [cgs]', 'P2 (Entropy) [cgs]', &
+          'Shock Radius [km]'
 
         CLOSE( FileUnit )
 
@@ -128,18 +150,30 @@ CONTAINS
 
     END IF
 
-    Power_Legendre = 0.0_AR
+    Power_Legendre           = 0.0_AR
+    AngleAveragedShockRadius = 0.0_AR
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim) )
+
+    END DO
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uPF(iLevel), tiling = UseTiling )
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uPF => MF_uPF(iLevel) % DataPtr( MFI )
-        uAF => MF_uAF(iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-        iLo_MF = LBOUND( uPF )
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -150,6 +184,14 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
+
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
+
         ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nPF) )
@@ -158,23 +200,67 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nAF) )
 
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
-        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, P )
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
-        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAF, A )
+        CALL MF_ApplyBoundaryConditions_Euler &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+        DO iX3 = iX_B1(3), iX_E1(3)
+        DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
+
+          iErr = 0
+
+          IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+          CALL ComputePrimitive_Euler &
+                 ( U   (:,iX1,iX2,iX3,iCF_D ), &
+                   U   (:,iX1,iX2,iX3,iCF_S1), &
+                   U   (:,iX1,iX2,iX3,iCF_S2), &
+                   U   (:,iX1,iX2,iX3,iCF_S3), &
+                   U   (:,iX1,iX2,iX3,iCF_E ), &
+                   U   (:,iX1,iX2,iX3,iCF_Ne), &
+                   P   (:,iX1,iX2,iX3,iPF_D ), &
+                   P   (:,iX1,iX2,iX3,iPF_V1), &
+                   P   (:,iX1,iX2,iX3,iPF_V2), &
+                   P   (:,iX1,iX2,iX3,iPF_V3), &
+                   P   (:,iX1,iX2,iX3,iPF_E ), &
+                   P   (:,iX1,iX2,iX3,iPF_Ne), &
+                   G   (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   G   (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   G   (:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                   iErr )
+
+          IF( ANY( iErr .NE. 0 ) )THEN
+
+            DO iNX = 1, nDOFX
+
+              CALL DescribeError_Euler( iErr(iNX) )
+
+            END DO
+
+          END IF
+
+          CALL ComputePressureFromPrimitive &
+                 ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E), &
+                   P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
+
+        END DO
+        END DO
+        END DO
 
         CALL ComputeAccretionShockDiagnostics &
                ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, &
-                 Power_Legendre(iLevel,0:nLegModes-1) )
-
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+                 Power_Legendre(iLevel,0:nLegModes-1), &
+                 MeshX, AngleAveragedShockRadius(iLevel) )
 
         DEALLOCATE( A )
-
         DEALLOCATE( P )
-
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        DEALLOCATE( U )
+        DEALLOCATE( G )
 
       END DO
 
@@ -188,6 +274,8 @@ CONTAINS
 
     END DO
 
+    CALL amrex_parallel_reduce_sum( AngleAveragedShockRadius, nLevels )
+
     IF( amrex_parallel_ioprocessor() )THEN
 
       OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
@@ -196,11 +284,20 @@ CONTAINS
       WRITE( FileUnit, '(3(SPES25.16E3,1x))', &
              ADVANCE = 'NO' ) Power_Legendre(0,:)
 
+      WRITE( FileUnit, '(SPES25.16E3,1x)', &
+             ADVANCE = 'NO' ) AngleAveragedShockRadius(0)
+
       WRITE( FileUnit, * )
 
       CLOSE( FileUnit )
 
     END IF
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
 
   END SUBROUTINE MF_ComputeAccretionShockDiagnostics
 
