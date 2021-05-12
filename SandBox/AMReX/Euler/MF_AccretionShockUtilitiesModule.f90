@@ -59,6 +59,8 @@ MODULE MF_AccretionShockUtilitiesModule
     ComputePrimitive_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
+  USE UnitsModule, ONLY: &
+    Millisecond
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -97,8 +99,9 @@ MODULE MF_AccretionShockUtilitiesModule
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeAccretionShockDiagnostics( GEOM, MF_uGF, MF_uCF )
+  SUBROUTINE MF_ComputeAccretionShockDiagnostics( Time, GEOM, MF_uGF, MF_uCF )
 
+    REAL(AR),             INTENT(in)    :: Time  (0:nLevels-1)
     TYPE(amrex_geometry), INTENT(inout) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
@@ -142,7 +145,8 @@ CONTAINS
 
         OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ) )
 
-        WRITE( FileUnit, '(4(A25,1x))' ) &
+        WRITE( FileUnit, '(5(A25,1x))' ) &
+          'Time [ms]', &
           'P0 (Entropy) [cgs]', 'P1 (Entropy) [cgs]', 'P2 (Entropy) [cgs]', &
           'Shock Radius [km]'
 
@@ -293,6 +297,9 @@ CONTAINS
 
       OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
             POSITION = 'APPEND' )
+
+      WRITE( FileUnit, '(SPES25.16E3,1x)', &
+             ADVANCE = 'NO' ) Time(0) / Millisecond
 
       WRITE( FileUnit, '(3(SPES25.16E3,1x))', &
              ADVANCE = 'NO' ) Power
