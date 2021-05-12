@@ -20,6 +20,10 @@ MODULE TimeSteppingModule_SSPRK
     ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
+  USE Euler_dgDiscretizationModule, ONLY: &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_NonRelativistic, ONLY: &
+    IncrementOffGridTally_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -231,6 +235,10 @@ CONTAINS
     INTEGER :: iNodeX, iX1, iX2, iX3, iCF
     INTEGER :: iS, jS
 
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
+
     IF( PRESENT( ComputeGravitationalPotential ) )THEN
       SolveGravity = .TRUE.
     ELSE
@@ -301,6 +309,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+
       END IF
 
     END DO
@@ -337,6 +348,8 @@ CONTAINS
 !!$    !$ACC EXIT DATA &
 !!$    !$ACC COPYOUT(   G, U, D )
 !!$#endif
+
+    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
 
   END SUBROUTINE UpdateFluid_SSPRK
 

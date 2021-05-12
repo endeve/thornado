@@ -2,20 +2,23 @@ MODULE Euler_TallyModule_NonRelativistic
 
   USE KindModule, ONLY: &
     DP, &
-    Zero
-  USE UnitsModule, ONLY: &
-    UnitsDisplay
+    Zero, &
+    Half, &
+    FourPi
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
+    nDimsX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem, &
+    iGF_SqrtGm, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
     iGF_Phi_N
   USE FluidFieldsModule, ONLY: &
     nCF, &
@@ -34,208 +37,428 @@ MODULE Euler_TallyModule_NonRelativistic
     iPF_Ne
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeTally_Euler_NonRelativistic
-  PUBLIC :: FinalizeTally_Euler_NonRelativistic
   PUBLIC :: ComputeTally_Euler_NonRelativistic
+  PUBLIC :: IncrementOffGridTally_Euler
+  PUBLIC :: FinalizeTally_Euler_NonRelativistic
 
-  LOGICAL               :: SuppressTally
-  CHARACTER(256)        :: TallyFileName
-  INTEGER               :: nTallies
-  INTEGER               :: iTally_E_i
-  INTEGER               :: iTally_E_k
-  INTEGER               :: iTally_E_g
-  REAL(DP), ALLOCATABLE :: EulerTally(:,:)
+  LOGICAL :: SuppressTally
+
+  CHARACTER(256) :: BaryonicMass_FileName
+  REAL(DP)       :: BaryonicMass_Interior
+  REAL(DP)       :: BaryonicMass_Initial
+  REAL(DP)       :: BaryonicMass_OffGrid
+  REAL(DP)       :: BaryonicMass_Change
+
+  CHARACTER(256) :: Energy_FileName
+  REAL(DP)       :: Energy_Interior
+  REAL(DP)       :: Energy_Initial
+  REAL(DP)       :: Energy_OffGrid
+  REAL(DP)       :: Energy_Change
+
+  CHARACTER(256) :: InternalEnergy_FileName
+  REAL(DP)       :: InternalEnergy_Interior
+  REAL(DP)       :: InternalEnergy_Initial
+  REAL(DP)       :: InternalEnergy_OffGrid
+  REAL(DP)       :: InternalEnergy_Change
+
+  CHARACTER(256) :: KineticEnergy_FileName
+  REAL(DP)       :: KineticEnergy_Interior
+  REAL(DP)       :: KineticEnergy_Initial
+  REAL(DP)       :: KineticEnergy_OffGrid
+  REAL(DP)       :: KineticEnergy_Change
+
+  CHARACTER(256) :: GravitationalEnergy_FileName
+  REAL(DP)       :: GravitationalEnergy_Interior
+  REAL(DP)       :: GravitationalEnergy_Initial
+  REAL(DP)       :: GravitationalEnergy_OffGrid
+  REAL(DP)       :: GravitationalEnergy_Change
 
 
 CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_NonRelativistic &
-    ( iX_B0, iX_E0, G, U, SuppressTally_Option, BaseFileName_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option, &
+      BaseFileName_Option )
 
     INTEGER,  INTENT(in)           :: &
-      iX_B0(3), iX_E0(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)           :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
-    CHARACTER(LEN=*),  INTENT(in), OPTIONAL :: &
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       BaseFileName_Option
 
-    INTEGER        :: FileUnit
     CHARACTER(256) :: BaseFileName
+    INTEGER        :: FileUnit
+
+    CHARACTER(256) :: TimeLabel
+    CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
       SuppressTally = SuppressTally_Option
 
+    IF( SuppressTally ) RETURN
+
     BaseFileName = '../Output/'
     IF( PRESENT( BaseFileName_Option ) ) &
       BaseFileName = TRIM( BaseFileName_Option )
 
-    IF( SuppressTally ) RETURN
+    BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
 
-    nTallies   = nCF + 3
-    iTally_E_i = nCF + 1
-    iTally_E_k = nCF + 2
-    iTally_E_g = nCF + 3
+    ! --- Baryonic Mass ---
 
-    ALLOCATE( EulerTally(1:nTallies,0:1) )
+    BaryonicMass_FileName &
+      = TRIM( BaseFileName ) // '_Tally_BaryonicMass.dat'
 
-    TallyFileName = '../Output/EulerTally.dat'
+    BaryonicMass_Interior = Zero
+    BaryonicMass_Initial  = Zero
+    BaryonicMass_OffGrid  = Zero
+    BaryonicMass_Change   = Zero
 
-    OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
+    TimeLabel     &
+      = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
 
-    WRITE( FileUnit, '(9(A20,x))' ) &
-      'Time', 'D', 'S1', 'S2', 'S3', 'E', 'E_i', 'E_k', 'E_g'
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
 
     CLOSE( FileUnit )
 
-    CALL ComputeTally_Euler_NonRelativistic &
-           ( iX_B0, iX_E0, G, U, Time = Zero, &
-             iState_Option = 0, DisplayTally_Option = .FALSE. )
+    ! --- Energy ---
 
-    CALL ComputeTally_Euler_NonRelativistic &
-           ( iX_B0, iX_E0, G, U, Time = Zero, &
-             iState_Option = 1, DisplayTally_Option = .TRUE. )
+    Energy_FileName &
+      = TRIM( BaseFileName ) // '_Tally_Energy.dat'
+
+    Energy_Interior = Zero
+    Energy_Initial  = Zero
+    Energy_OffGrid  = Zero
+    Energy_Change   = Zero
+
+    TimeLabel     &
+      = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( Energy_FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
+
+    ! --- Internal Energy ---
+
+    InternalEnergy_FileName &
+      = TRIM( BaseFileName ) // '_Tally_InternalEnergy.dat'
+
+    InternalEnergy_Interior = Zero
+    InternalEnergy_Initial  = Zero
+    InternalEnergy_OffGrid  = Zero
+    InternalEnergy_Change   = Zero
+
+    TimeLabel     &
+      = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( InternalEnergy_FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
+
+    ! --- Kinetic Energy ---
+
+    KineticEnergy_FileName &
+      = TRIM( BaseFileName ) // '_Tally_KineticEnergy.dat'
+
+    KineticEnergy_Interior = Zero
+    KineticEnergy_Initial  = Zero
+    KineticEnergy_OffGrid  = Zero
+    KineticEnergy_Change   = Zero
+
+    TimeLabel     &
+      = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( KineticEnergy_FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
+
+    ! --- Gravitational Energy ---
+
+    GravitationalEnergy_FileName &
+      = TRIM( BaseFileName ) // '_Tally_GravitationalEnergy.dat'
+
+    GravitationalEnergy_Interior = Zero
+    GravitationalEnergy_Initial  = Zero
+    GravitationalEnergy_OffGrid  = Zero
+    GravitationalEnergy_Change   = Zero
+
+    TimeLabel     &
+      = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( GravitationalEnergy_FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
 
   END SUBROUTINE InitializeTally_Euler_NonRelativistic
 
 
-  SUBROUTINE FinalizeTally_Euler_NonRelativistic
-
-    IF( .NOT. SuppressTally ) &
-      DEALLOCATE( EulerTally )
-
-  END SUBROUTINE FinalizeTally_Euler_NonRelativistic
-
-
   SUBROUTINE ComputeTally_Euler_NonRelativistic &
-    ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time, &
+      SetInitialValues_Option, Verbose_Option )
 
     INTEGER,  INTENT(in) :: &
-      iX_B0(3), iX_E0(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in) :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
       Time
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iState_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      DisplayTally_Option
+    LOGICAL, INTENT(in), OPTIONAL :: SetInitialValues_Option
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    LOGICAL  :: DisplayTally
-    INTEGER  :: iState, iCF
-    INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: P(nDOFX,nPF)
+    LOGICAL :: SetInitialValues
+    LOGICAL :: Verbose
 
     IF( SuppressTally ) RETURN
 
-    IF( PRESENT( iState_Option ) )THEN
-      iState = iState_Option
-    ELSE
-      iState = 1
+    SetInitialValues = .FALSE.
+    IF( PRESENT( SetInitialValues_Option ) ) &
+      SetInitialValues = SetInitialValues_Option
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    CALL ComputeTally_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    IF( SetInitialValues )THEN
+
+      BaryonicMass_Initial        = BaryonicMass_Interior
+      Energy_Initial              = Energy_Interior
+      InternalEnergy_Initial      = InternalEnergy_Interior
+      KineticEnergy_Initial       = KineticEnergy_Interior
+      GravitationalEnergy_Initial = GravitationalEnergy_Interior
+
     END IF
 
-    IF( PRESENT( DisplayTally_Option ) )THEN
-      DisplayTally = DisplayTally_Option
-    ELSE
-      DisplayTally = .FALSE.
-    END IF
+    BaryonicMass_Change &
+      = BaryonicMass_Interior &
+          - ( BaryonicMass_Initial + BaryonicMass_OffGrid )
 
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width(iX_B0(1):iX_E0(1)), &
-        dX2 => MeshX(2) % Width(iX_B0(2):iX_E0(2)), &
-        dX3 => MeshX(3) % Width(iX_B0(3):iX_E0(3)) )
+    Energy_Change &
+      = Energy_Interior &
+          - ( Energy_Initial + Energy_OffGrid )
 
-    EulerTally(:,iState) = Zero
+    InternalEnergy_Change &
+      = InternalEnergy_Interior &
+          - ( InternalEnergy_Initial + InternalEnergy_OffGrid )
 
-    ! --- Conserved Fluid ---
+    KineticEnergy_Change &
+      = KineticEnergy_Interior &
+          - ( KineticEnergy_Initial + KineticEnergy_OffGrid )
 
-    DO iCF = 1, nCF
-      DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
+    GravitationalEnergy_Change &
+      = GravitationalEnergy_Interior &
+          - ( GravitationalEnergy_Initial + GravitationalEnergy_OffGrid )
 
-            EulerTally(iCF,iState) &
-              = EulerTally(iCF,iState) &
-                  + SUM( WeightsX_q(:) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                           * U(:,iX1,iX2,iX3,iCF) ) &
-                      * dX1(iX1) * dX2(iX2) * dX3(iX3)
+    CALL WriteTally_Euler( Time )
 
-          END DO
-        END DO
-      END DO
-    END DO
+    IF( Verbose )THEN
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-
-          CALL ComputePrimitive_Euler_NonRelativistic &
-                 ( U(:,iX1,iX2,iX3,iCF_D) , U(:,iX1,iX2,iX3,iCF_S1), &
-                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-                   U(:,iX1,iX2,iX3,iCF_E) , U(:,iX1,iX2,iX3,iCF_Ne), &
-                   P(:,iPF_D) , P(:,iPF_V1), P(:,iPF_V2), &
-                   P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-          ! --- Internal Energy ---
-
-          EulerTally(iTally_E_i,iState) &
-            = EulerTally(iTally_E_i,iState) &
-                + SUM( WeightsX_q(:) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * P(:,iPF_E) ) &
-                    * dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-          ! --- Kinetic Energy ---
-
-          EulerTally(iTally_E_k,iState) &
-            = EulerTally(iTally_E_k,iState) &
-                + SUM( WeightsX_q(:) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * 0.5_DP &
-                         * (   U(:,iX1,iX2,iX3,iCF_S1) * P(:,iPF_V1) &
-                             + U(:,iX1,iX2,iX3,iCF_S2) * P(:,iPF_V2) &
-                             + U(:,iX1,iX2,iX3,iCF_S3) * P(:,iPF_V3) ) ) &
-                    * dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-          ! --- Gravitational Energy ---
-
-          EulerTally(iTally_E_g,iState) &
-            = EulerTally(iTally_E_g,iState) &
-                + SUM( WeightsX_q(:) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * 0.5_DP &
-                         * U(:,iX1,iX2,iX3,iCF_D) &
-                         * G(:,iX1,iX2,iX3,iGF_Phi_N) ) &
-                    * dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-        END DO
-      END DO
-    END DO
-
-    END ASSOCIATE ! dX1, etc.
-
-    IF( DisplayTally )THEN
-
-      CALL WriteTally_Euler( Time )
+      CALL DisplayTally( Time )
 
     END IF
 
   END SUBROUTINE ComputeTally_Euler_NonRelativistic
+
+
+  SUBROUTINE ComputeTally_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    INTEGER,  INTENT(in) :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iNX, iX1, iX2, iX3
+    REAL(DP) :: d3X
+
+    REAL(DP) :: P(nDOFX,nPF)
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, &
+               dX2 => MeshX(2) % Width, &
+               dX3 => MeshX(3) % Width )
+
+    BaryonicMass_Interior        = Zero
+    Energy_Interior              = Zero
+    InternalEnergy_Interior      = Zero
+    KineticEnergy_Interior       = Zero
+    GravitationalEnergy_Interior = Zero
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
+
+      IF( CoordinateSystem .EQ. 'SPHERICAL' .AND. nDimsX .EQ. 1 )THEN
+
+        d3X = FourPi * dX1(iX1)
+
+      ELSE
+
+        d3X = dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+      END IF
+
+      CALL ComputePrimitive_Euler_NonRelativistic &
+             ( U(iNX,iX1,iX2,iX3,iCF_D ), &
+               U(iNX,iX1,iX2,iX3,iCF_S1), &
+               U(iNX,iX1,iX2,iX3,iCF_S2), &
+               U(iNX,iX1,iX2,iX3,iCF_S3), &
+               U(iNX,iX1,iX2,iX3,iCF_E ), &
+               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+               P(iNX,iPF_D ), &
+               P(iNX,iPF_V1), &
+               P(iNX,iPF_V2), &
+               P(iNX,iPF_V3), &
+               P(iNX,iPF_E ), &
+               P(iNX,iPF_Ne), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      BaryonicMass_Interior &
+        = BaryonicMass_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * U(iNX,iX1,iX2,iX3,iCF_D)
+
+      Energy_Interior &
+        = Energy_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * U(iNX,iX1,iX2,iX3,iCF_E)
+
+      InternalEnergy_Interior &
+        = InternalEnergy_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * P(iNX,iPF_E)
+
+      KineticEnergy_Interior &
+        = KineticEnergy_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * Half * ( U(iNX,iX1,iX2,iX3,iCF_S1) * P(iNX,iPF_V1) &
+                           + U(iNX,iX1,iX2,iX3,iCF_S2) * P(iNX,iPF_V2) &
+                           + U(iNX,iX1,iX2,iX3,iCF_S3) * P(iNX,iPF_V3) )
+
+      GravitationalEnergy_Interior &
+        = GravitationalEnergy_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * Half * P(iNX,iPF_D) * G(iNX,iX1,iX2,iX3,iGF_Phi_N)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc.
+
+  END SUBROUTINE ComputeTally_Euler
+
+
+  SUBROUTINE IncrementOffGridTally_Euler( dM )
+
+    REAL(DP), INTENT(in) :: dM(nCF)
+
+    BaryonicMass_OffGrid &
+      = dM(iCF_D)
+
+    Energy_OffGrid &
+      = dM(iCF_E)
+
+    InternalEnergy_OffGrid &
+      = Zero
+
+    KineticEnergy_OffGrid &
+      = Zero
+
+    GravitationalEnergy_OffGrid &
+      = Zero
+
+  END SUBROUTINE IncrementOffGridTally_Euler
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -244,26 +467,182 @@ CONTAINS
 
     INTEGER :: FileUnit
 
-    ASSOCIATE( U => UnitsDisplay )
+    ! --- Baryonic Mass ---
 
-    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), POSITION='APPEND', ACTION='WRITE' )
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
 
-    WRITE( FileUnit, '(9(ES20.12,x))' ) &
-      Time / U % TimeUnit, &
-      EulerTally(iCF_D,     1) / U % MassUnit, &
-      EulerTally(iCF_S1,    1) / U % MomentumUnit, &
-      EulerTally(iCF_S2,    1) / U % MomentumUnit, &
-      EulerTally(iCF_S3,    1) / U % MomentumUnit, &
-      EulerTally(iCF_E,     1) / U % EnergyGlobalUnit, &
-      EulerTally(iTally_E_i,1) / U % EnergyGlobalUnit, &
-      EulerTally(iTally_E_k,1) / U % EnergyGlobalUnit, &
-      EulerTally(iTally_E_g,1) / U % EnergyGlobalUnit
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      BaryonicMass_Interior / UnitsDisplay % MassUnit, &
+      BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
+      BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
+      BaryonicMass_Change   / UnitsDisplay % MassUnit
 
     CLOSE( FileUnit )
 
-    END ASSOCIATE ! U
+    ! --- Energy ---
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( Energy_FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      Energy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      Energy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      Energy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      Energy_Change   / UnitsDisplay % EnergyGlobalUnit
+
+    CLOSE( FileUnit )
+
+    ! --- Internal Energy ---
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( InternalEnergy_FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      InternalEnergy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      InternalEnergy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      InternalEnergy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      InternalEnergy_Change   / UnitsDisplay % EnergyGlobalUnit
+
+    CLOSE( FileUnit )
+
+    ! --- Kinetic Energy ---
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( KineticEnergy_FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      KineticEnergy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      KineticEnergy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      KineticEnergy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      KineticEnergy_Change   / UnitsDisplay % EnergyGlobalUnit
+
+    CLOSE( FileUnit )
+
+    ! --- Gravitational Energy ---
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( GravitationalEnergy_FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      GravitationalEnergy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      GravitationalEnergy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      GravitationalEnergy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      GravitationalEnergy_Change   / UnitsDisplay % EnergyGlobalUnit
+
+    CLOSE( FileUnit )
 
   END SUBROUTINE WriteTally_Euler
+
+
+  SUBROUTINE DisplayTally( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    WRITE(*,*)
+    WRITE(*,'(A8,A,ES8.2E2,x,A)') &
+      '', 'Euler Tally. t = ', &
+      Time / UnitsDisplay % TimeUnit, &
+      UnitsDisplay % TimeLabel
+    WRITE(*,*)
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Baryonic Mass Interior.: ', &
+      BaryonicMass_Interior / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Baryonic Mass Initial..: ', &
+      BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Baryonic Mass Off Grid.: ', &
+      BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Baryonic Mass Change...: ', &
+      BaryonicMass_Change   / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,*)
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Energy Interior.: ', &
+      Energy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Energy Initial..: ', &
+      Energy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Energy Off Grid.: ', &
+      Energy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Energy Change...: ', &
+      Energy_Change  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,*)
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Internal Energy Interior.: ', &
+      InternalEnergy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Internal Energy Initial..: ', &
+      InternalEnergy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Internal Energy Off Grid.: ', &
+      InternalEnergy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Internal Energy Change...: ', &
+      InternalEnergy_Change   / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,*)
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Kinetic Energy Interior.: ', &
+      KineticEnergy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Kinetic Energy Initial..: ', &
+      KineticEnergy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Kinetic Energy Off Grid.: ', &
+      KineticEnergy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Kinetic Energy Change...: ', &
+      KineticEnergy_Change   / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,*)
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Gravitational Energy Interior.: ', &
+      GravitationalEnergy_Interior / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Gravitational Energy Initial..: ', &
+      GravitationalEnergy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Gravitational Energy Off Grid.: ', &
+      GravitationalEnergy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'Gravitational Energy Change...: ', &
+      GravitationalEnergy_Change   / UnitsDisplay % EnergyGlobalUnit, &
+      UnitsDisplay % EnergyGlobalLabel
+
+    WRITE(*,*)
+
+  END SUBROUTINE DisplayTally
+
+
+  SUBROUTINE FinalizeTally_Euler_NonRelativistic
+
+  END SUBROUTINE FinalizeTally_Euler_NonRelativistic
 
 
 END MODULE Euler_TallyModule_NonRelativistic
