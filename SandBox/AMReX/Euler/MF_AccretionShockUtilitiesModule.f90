@@ -53,7 +53,8 @@ MODULE MF_AccretionShockUtilitiesModule
     nAF, &
     iAF_P
   USE AccretionShockUtilitiesModule, ONLY: &
-    ComputeAccretionShockDiagnostics
+    ComputeAccretionShockDiagnostics, &
+    ComputePowerInLegendreModes
   USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive_Euler
   USE EquationOfStateModule, ONLY: &
@@ -114,15 +115,16 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: A(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4), &
-               iNX, iX1, iX2, iX3, iDim
+               iNX, iNX1, iX1, iX2, iX3, iDim
 
     TYPE(EdgeMap)  :: Edge_Map
     TYPE(MeshType) :: MeshX(3)
 
-    INTEGER, PARAMETER :: nLegModes = 3
-    INTEGER            :: iLegMode
-    REAL(AR)           :: Power_Legendre          (0:nLevels-1,0:nLegModes-1)
-    REAL(AR)           :: AngleAveragedShockRadius(0:nLevels-1)
+    INTEGER, PARAMETER    :: nLegModes = 3
+    INTEGER               :: iLegMode
+    REAL(AR)              :: Power(0:nLegModes-1)
+    REAL(AR)              :: AngleAveragedShockRadius(0:nLevels-1)
+    REAL(AR), ALLOCATABLE :: PowerIntegrand(:,:,:,:)
 
     INTEGER :: FileUnit
     LOGICAL :: IsFile
@@ -150,9 +152,6 @@ CONTAINS
 
     END IF
 
-    Power_Legendre           = 0.0_AR
-    AngleAveragedShockRadius = 0.0_AR
-
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -160,6 +159,12 @@ CONTAINS
                xL(iDim), xR(iDim) )
 
     END DO
+
+    ALLOCATE( PowerIntegrand(0:nLevels-1,0:nLegModes, &
+                             1:nNodesX(1),1:nX(1)) )
+
+    PowerIntegrand           = 0.0_AR
+    AngleAveragedShockRadius = 0.0_AR
 
     DO iLevel = 0, nLevels-1
 
@@ -254,7 +259,7 @@ CONTAINS
 
         CALL ComputeAccretionShockDiagnostics &
                ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, &
-                 Power_Legendre(iLevel,0:nLegModes-1), &
+                 PowerIntegrand(iLevel,:,:,iX_B0(1):iX_E0(1)), &
                  MeshX, AngleAveragedShockRadius(iLevel) )
 
         DEALLOCATE( A )
@@ -268,21 +273,29 @@ CONTAINS
 
     END DO
 
+    DO iX1 = 1, nX(1)
+    DO iNX1 = 1, nNodesX(1)
     DO iLegMode = 0, nLegModes-1
 
-      CALL amrex_parallel_reduce_sum( Power_Legendre(:,iLegMode), nLevels )
+      CALL amrex_parallel_reduce_sum &
+             ( PowerIntegrand(:,iLegMode,iNX1,iX1), nLevels )
 
+    END DO
+    END DO
     END DO
 
     CALL amrex_parallel_reduce_sum( AngleAveragedShockRadius, nLevels )
 
     IF( amrex_parallel_ioprocessor() )THEN
 
+      CALL ComputePowerInLegendreModes &
+             ( 1, nX(1), MeshX(1), PowerIntegrand(0,:,:,:), Power )
+
       OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
             POSITION = 'APPEND' )
 
       WRITE( FileUnit, '(3(SPES25.16E3,1x))', &
-             ADVANCE = 'NO' ) Power_Legendre(0,:)
+             ADVANCE = 'NO' ) Power
 
       WRITE( FileUnit, '(SPES25.16E3,1x)', &
              ADVANCE = 'NO' ) AngleAveragedShockRadius(0)
@@ -292,6 +305,8 @@ CONTAINS
       CLOSE( FileUnit )
 
     END IF
+
+    DEALLOCATE( PowerIntegrand )
 
     DO iDim = 1, 3
 
