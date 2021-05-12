@@ -189,9 +189,12 @@ CONTAINS
     Power = Zero
 
     DO iX1 = iX1_B, iX1_E
-    DO iNX1 = 1, nNodesX(1)
 
-      X1(iNX1) = NodeCoordinate( MeshX1, iX1, iNX1 ) / Centimeter
+      DO iNX1 = 1, nNodesX(1)
+
+        X1(iNX1) = NodeCoordinate( MeshX1, iX1, iNX1 ) / Centimeter
+
+      END DO
 
       dX1 = MeshX1 % Width(iX1) / Centimeter
 
@@ -210,7 +213,6 @@ CONTAINS
             + TwoPi * dX1 &
                 * SUM( WeightsX1 * PowerIntegrand(2,:,iX1)**2 * X1**2 )
 
-    END DO
     END DO
 
   END SUBROUTINE ComputePowerInLegendreModes
