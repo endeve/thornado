@@ -7,7 +7,7 @@ module ThornadoInitializationModule
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
     InitializeProgramHeaderX, &
-    nNodesE, &
+    bcZ, nNodesE, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
     iX_B0, iX_E0, iX_B1, iX_E1
   use DeviceModule, only: &
@@ -81,15 +81,27 @@ module ThornadoInitializationModule
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
     InitializeClosure_TwoMoment
+#ifdef TWOMOMENT_ORDER_1
   use TwoMoment_PositivityLimiterModule, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
+#elif TWOMOMENT_ORDER_V
+  use TwoMoment_SlopeLimiterModule_OrderV, only: &
+    InitializeSlopeLimiter_TwoMoment, &
+    FinalizeSlopeLimiter_TwoMoment
+  use TwoMoment_PositivityLimiterModule_OrderV, only: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment
+#endif
   use TwoMoment_MeshRefinementModule, only : &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment
+!#ifdef TWOMOMENT_ORDER_1
   use TwoMoment_DiscretizationModule_Collisions_Neutrinos, only : &
     InitializeNonlinearSolverTally, &
     FinalizeNonlinearSolverTally
+!#else
+!#endif
 
   implicit none
   private
@@ -132,7 +144,8 @@ contains
     logical,          intent(in), optional :: Verbose_Option
 
     logical  :: PositivityLimiter, Verbose
-    integer  :: nX(3), i
+    integer  :: nX(3), bcX(3)
+    integer  :: i, bcE
     real(dp) :: eL, eR, UpperBry1
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
@@ -153,6 +166,16 @@ contains
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
     END IF
 
+    WRITE(*,*)
+#ifdef TWOMOMENT_ORDER_V
+    IF(Verbose) WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_V'
+#elif TWOMOMENT_ORDER_1
+    IF(Verbose) WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_1'
+#else
+    IF(Verbose) WRITE(*,*) 'INFO: use Default TWOMOMENT_ORDER'
+#endif
+    WRITE(*,*) '---------------------------------------'
+
     ! --- Convert from MeV (expected) to thornado code units ---
 
     eL = eL_MeV * MeV
@@ -163,11 +186,16 @@ contains
       nX(i) = nX(i) + 1
     END DO
 
+    bcX = [ 0, 0, 0 ]
+    bcE = 0
+    if( swE > 0 ) bcE = 10
+
     call InitializeDevice
 
     call InitializeProgramHeader &
            ( ProgramName_Option = '', nNodes_Option = nNodes, &
-             nX_Option = nX, nE_Option = nE, swE_Option = swE, &
+             nX_Option = nX, bcX_Option = bcX, &
+             nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
              eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE )
 
     call InitializeTimers
@@ -210,6 +238,16 @@ contains
     call InitializeClosure_TwoMoment &
            ( Verbose_Option = Verbose )
 
+#ifdef TWOMOMENT_ORDER_V
+    call InitializeSlopeLimiter_TwoMoment &
+           ( BetaTVD_Option &
+               = 1.75_DP, &
+             UseSlopeLimiter_Option &
+               = .FALSE., &
+             Verbose_Option &
+               = .TRUE. )
+#endif
+
     call InitializePositivityLimiter_TwoMoment &
            ( Min_1_Option = 0.0_DP + SqrtTiny, &
              Max_1_Option = UpperBry1, &
@@ -250,6 +288,7 @@ contains
 
   end subroutine InitThornado
 
+
   subroutine FreeThornado(write_timers)
 
     logical, intent(in) :: write_timers
@@ -286,9 +325,14 @@ contains
 
     call FinalizePositivityLimiter_TwoMoment
 
+#ifdef TWOMOMENT_ORDER_V
+    call FinalizeSlopeLimiter_TwoMoment
+#endif
+
     call FinalizeDevice
 
   end subroutine FreeThornado
+
 
   subroutine InitThornado_Patch &
     ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
@@ -299,7 +343,7 @@ contains
     real(dp), intent(in) :: xL(3), xR(3)
     character(len=*), intent(in), optional :: CoordinateSystem_Option
 
-    integer :: iDim
+    integer :: iDim, bcX(3)
     character(24) :: CoordinateSystem
 
     IF( PRESENT(CoordinateSystem_Option) )THEN
@@ -317,8 +361,10 @@ contains
       CoordinateSystem = 'CARTESIAN'
     END IF
 
+    bcX = [ 0, 0, 0 ]
+
     call InitializeProgramHeaderX &
-           ( nX_Option = nX, swX_Option = swX, &
+           ( nX_Option = nX, swX_Option = swX, bcX_Option = bcX, &
              xL_Option = xL, xR_Option  = xR,  &
              reinitializeZ_Option = .TRUE. )
 
@@ -346,6 +392,7 @@ contains
 
   end subroutine InitThornado_Patch
 
+
   subroutine FreeThornado_Patch()
 
     integer :: iDim
@@ -363,6 +410,5 @@ contains
     call DestroyRadiationFields
 
   end subroutine FreeThornado_Patch
-
 
 end module ThornadoInitializationModule
