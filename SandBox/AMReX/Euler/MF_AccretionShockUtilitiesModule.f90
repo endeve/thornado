@@ -60,7 +60,7 @@ MODULE MF_AccretionShockUtilitiesModule
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule, ONLY: &
-    Millisecond
+    UnitsDisplay
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -79,7 +79,8 @@ MODULE MF_AccretionShockUtilitiesModule
     nX, &
     xL, &
     xR, &
-    DEBUG
+    DEBUG, &
+    UsePhysicalUnits
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -134,6 +135,8 @@ CONTAINS
 
     INTEGER :: iErr(nDOFX)
 
+    CHARACTER(256) :: TimeLabel, PowerLabel(0:nLegModes-1), ShockRadiusLabel
+
     IF( nDimsX .EQ. 1 ) RETURN
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -143,12 +146,31 @@ CONTAINS
 
       IF( .NOT. IsFile )THEN
 
+        TimeLabel = 'Time [' // TRIM( UnitsDisplay % TimeLabel ) // ']'
+
+        IF( UsePhysicalUnits )THEN
+
+          PowerLabel(0) = 'P0 (Entropy) [cgs]'
+          PowerLabel(1) = 'P1 (Entropy) [cgs]'
+          PowerLabel(2) = 'P2 (Entropy) [cgs]'
+
+        ELSE
+
+          PowerLabel(0) = 'P0 (Entropy) []'
+          PowerLabel(1) = 'P1 (Entropy) []'
+          PowerLabel(2) = 'P2 (Entropy) []'
+
+        END IF
+
+        ShockRadiusLabel &
+          = 'Shock Radius [' // TRIM( UnitsDisplay % LengthX1Label ) // ']'
+
         OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ) )
 
         WRITE( FileUnit, '(5(A25,1x))' ) &
-          'Time [ms]', &
-          'P0 (Entropy) [cgs]', 'P1 (Entropy) [cgs]', 'P2 (Entropy) [cgs]', &
-          'Shock Radius [km]'
+          TRIM( TimeLabel ), &
+          TRIM( PowerLabel(0) ), TRIM( PowerLabel(1) ), TRIM( PowerLabel(2) ), &
+          TRIM( ShockRadiusLabel )
 
         CLOSE( FileUnit )
 
@@ -298,14 +320,14 @@ CONTAINS
       OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
             POSITION = 'APPEND' )
 
-      WRITE( FileUnit, '(SPES25.16E3,1x)', &
-             ADVANCE = 'NO' ) Time(0) / Millisecond
+      WRITE( FileUnit, '(SPES25.16E3,1x)', ADVANCE = 'NO' ) &
+        Time(0) / UnitsDisplay % TimeUnit
 
-      WRITE( FileUnit, '(3(SPES25.16E3,1x))', &
-             ADVANCE = 'NO' ) Power
+      WRITE( FileUnit, '(3(SPES25.16E3,1x))', ADVANCE = 'NO' ) &
+        Power
 
-      WRITE( FileUnit, '(SPES25.16E3,1x)', &
-             ADVANCE = 'NO' ) AngleAveragedShockRadius(0)
+      WRITE( FileUnit, '(SPES25.16E3,1x)', ADVANCE = 'NO' ) &
+        AngleAveragedShockRadius(0) / UnitsDisplay % LengthX1Unit
 
       WRITE( FileUnit, * )
 
