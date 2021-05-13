@@ -18,7 +18,8 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    OffGridFlux_Euler
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
   USE TwoMoment_TimersModule_OrderV, ONLY: &
@@ -33,6 +34,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     ComputeIncrement_TwoMoment_Explicit, &
     OffGridFlux_TwoMoment
   USE TwoMoment_TallyModule_OrderV, ONLY: &
+    IncrementOffGridTally_Euler, &
     IncrementOffGridTally_TwoMoment
 
   IMPLICIT NONE
@@ -170,6 +172,7 @@ CONTAINS
       ComputeIncrement_TwoMoment_Implicit
 
     INTEGER  :: iS, jS
+    REAL(DP) :: dU_OffGrid(nCF)
     REAL(DP) :: dM_OffGrid(2*nCR)
 
     CALL CopyArray( U0, One, U )
@@ -253,6 +256,8 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                    Ui, uDF, StageData(iS) % dU_EX )
 
+          StageData(iS) % OffGridFlux_U = OffGridFlux_Euler
+
         END IF
 
         CALL ComputeIncrement_TwoMoment_Explicit &
@@ -311,6 +316,16 @@ CONTAINS
 
     CALL CopyArray( U, One, Ui )
     CALL CopyArray( M, One, Mi )
+
+    dU_OffGrid = Zero
+    DO iS = 1, nStages
+
+      dU_OffGrid &
+        = dU_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_U
+
+    END DO
+
+    CALL IncrementOffGridTally_Euler( dU_OffGrid )
 
     dM_OffGrid = Zero
     DO iS = 1, nStages
@@ -470,6 +485,9 @@ CONTAINS
       CALL AllocateArray( StageData(i) % dU_EX )
       CALL AllocateArray( StageData(i) % dM_IM )
       CALL AllocateArray( StageData(i) % dM_EX )
+
+      StageData(i) % OffGridFlux_U = Zero
+      StageData(i) % OffGridFlux_M = Zero
 
     END DO
 

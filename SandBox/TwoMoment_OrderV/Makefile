@@ -90,6 +90,7 @@ ApplicationDriver_Neutrinos: \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+	TwoMoment_TallyModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule_Neutrinos.o \
 	ApplicationDriver_Neutrinos.o
@@ -104,6 +105,7 @@ ApplicationDriver_Neutrinos: \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
 	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+	TwoMoment_TallyModule_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule_Neutrinos.o \
 	ApplicationDriver_Neutrinos.o \

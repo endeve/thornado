@@ -39,6 +39,8 @@ PROGRAM ApplicationDriver_Neutrinos
     Update_IMEX_RK
   USE InitializationModule_Neutrinos, ONLY: &
     InitializeFields
+  USE TwoMoment_TallyModule_OrderV, ONLY: &
+    ComputeTally
 
   IMPLICIT NONE
 
@@ -180,6 +182,10 @@ PROGRAM ApplicationDriver_Neutrinos
              WriteFF_Option = .TRUE., &
              WriteRF_Option = .TRUE. )
 
+    CALL ComputeTally &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
+             SetInitialValues_Option = .TRUE. )
+
   ELSE
 
     CALL ReadFieldsHDF &
@@ -248,6 +254,9 @@ PROGRAM ApplicationDriver_Neutrinos
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
 
+      CALL ComputeTally &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+
     END IF
 
   END DO
@@ -263,6 +272,9 @@ PROGRAM ApplicationDriver_Neutrinos
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
+
+  CALL ComputeTally &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
   CALL FinalizeDriver
 
@@ -310,6 +322,8 @@ CONTAINS
       InitializeSlopeLimiter_TwoMoment
     USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
       InitializePositivityLimiter_TwoMoment
+    USE TwoMoment_TallyModule_OrderV, ONLY: &
+      InitializeTally
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Initialize_IMEX_RK
 
@@ -472,6 +486,10 @@ CONTAINS
              Verbose_Option &
                = .TRUE. )
 
+    ! --- Initialize Tally ---
+
+    CALL InitializeTally
+
     ! --- Initialize Time Stepper ---
 
     CALL Initialize_IMEX_RK &
@@ -484,6 +502,8 @@ CONTAINS
 
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Finalize_IMEX_RK
+    USE TwoMoment_TallyModule_OrderV, ONLY: &
+      FinalizeTally
     USE EquationOfStateModule_TABLE, ONLY: &
       FinalizeEquationOfState_TABLE
     USE OpacityModule_TABLE, ONLY: &
@@ -518,6 +538,8 @@ CONTAINS
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
+
+    CALL FinalizeTally
 
     CALL FinalizeEquationOfState_TABLE
 
