@@ -45,6 +45,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     nLevels, &
     UseTiling, &
     DEBUG
+  USE MF_FieldsModule,                  ONLY: &
+    MF_OffGridFlux_Euler
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_IncrementOffGridTally_Euler
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimersStart_AMReX_Euler,       &
     TimersStop_AMReX_Euler,        &
@@ -245,7 +249,11 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
 
+    REAL(AR) :: dM_OffGrid_Euler(0:nLevels-1,nCF)
+
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+
+    dM_OffGrid_Euler = Zero
 
     ! --- Set temporary MultiFabs U and dU to zero ---
 
@@ -328,6 +336,14 @@ CONTAINS
 
         CALL MF_ComputeIncrement_Euler( GEOM, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
+        DO iLevel = 0, nLevels-1
+
+          dM_OffGrid_Euler(iLevel,:) &
+            = dM_OffGrid_Euler(iLevel,:) &
+                + dt(iLevel) * w_SSPRK(iS) * MF_OffGridFlux_Euler(iLevel,:)
+
+        END DO
+
       END IF
 
     END DO
@@ -353,6 +369,12 @@ CONTAINS
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
 
     CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler(iLevel,:) )
+
+    END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

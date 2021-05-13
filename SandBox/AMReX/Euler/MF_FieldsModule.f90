@@ -1,29 +1,45 @@
 MODULE MF_FieldsModule
 
+  ! --- AMReX Modules ---
+
+  USE amrex_fort_module, ONLY: &
+    AR => amrex_real
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_destroy
+
+  ! --- thornado Modules ---
+
+  USE FluidFieldsModule, ONLY: &
+    nCF
 
   IMPLICIT NONE
   PRIVATE
 
   ! --- Geometry Fields ---
+
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF(:)
 
   ! --- Conserved Fluid Fields ---
+
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF(:)
 
   ! --- Primitive Fluid Fields ---
+
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPF(:)
 
   ! --- Auxiliary Fluid Fields ---
+
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uAF(:)
 
   ! --- Diagnostic Fields ---
+
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF(:)
 
   PUBLIC :: CreateFields_MF
   PUBLIC :: DestroyFields_MF
+
+  REAL(AR), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Euler(:,:)
 
 
 CONTAINS
@@ -39,6 +55,8 @@ CONTAINS
     ALLOCATE( MF_uAF(0:nLevels-1) )
     ALLOCATE( MF_uDF(0:nLevels-1) )
 
+    ALLOCATE( MF_OffGridFlux_Euler(0:nLevels-1,nCF) )
+
   END SUBROUTINE CreateFields_MF
 
 
@@ -47,6 +65,8 @@ CONTAINS
     INTEGER, INTENT(in) :: nLevels
 
     INTEGER :: iLevel
+
+    DEALLOCATE( MF_OffGridFlux_Euler )
 
     DO iLevel = 0, nLevels-1
 
