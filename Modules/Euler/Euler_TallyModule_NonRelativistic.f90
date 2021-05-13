@@ -45,7 +45,7 @@ MODULE Euler_TallyModule_NonRelativistic
 
   PUBLIC :: InitializeTally_Euler_NonRelativistic
   PUBLIC :: ComputeTally_Euler_NonRelativistic
-  PUBLIC :: IncrementOffGridTally_Euler
+  PUBLIC :: IncrementOffGridTally_Euler_Relativistic
   PUBLIC :: FinalizeTally_Euler_NonRelativistic
 
   LOGICAL :: SuppressTally
@@ -439,7 +439,7 @@ CONTAINS
   END SUBROUTINE ComputeTally_Euler
 
 
-  SUBROUTINE IncrementOffGridTally_Euler( dM )
+  SUBROUTINE IncrementOffGridTally_Euler_Relativistic( dM )
 
     REAL(DP), INTENT(in) :: dM(nCF)
 
@@ -458,7 +458,7 @@ CONTAINS
     GravitationalEnergy_OffGrid &
       = Zero
 
-  END SUBROUTINE IncrementOffGridTally_Euler
+  END SUBROUTINE IncrementOffGridTally_Euler_Relativistic
 
 
   SUBROUTINE WriteTally_Euler( Time )
