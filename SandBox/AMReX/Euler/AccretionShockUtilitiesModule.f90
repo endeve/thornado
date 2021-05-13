@@ -36,7 +36,6 @@ MODULE AccretionShockUtilitiesModule
     Erg,        &
     Gram,       &
     Centimeter, &
-    Kilometer,  &
     UnitsDisplay
 
   IMPLICIT NONE
@@ -341,7 +340,7 @@ CONTAINS
             + One / FourPi * MeshX(2) % Width(iX2) * MeshX(3) % Width(iX3) &
             * SUM( WeightsX_X1 * ShockRadius(:,iX2,iX3) &
                    * SIN( MeshX(2) % Center(iX2) &
-                            + NodesX2 * MeshX(2) % Width(iX2) ) ) / Kilometer
+                            + NodesX2 * MeshX(2) % Width(iX2) ) )
 
     END DO
     END DO

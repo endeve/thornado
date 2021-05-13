@@ -23,7 +23,7 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_dgDiscretizationModule, ONLY: &
     OffGridFlux_Euler
   USE Euler_TallyModule_NonRelativistic, ONLY: &
-    IncrementOffGridTally_Euler
+    IncrementOffGridTally_Euler_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -349,7 +349,7 @@ CONTAINS
 !!$    !$ACC COPYOUT(   G, U, D )
 !!$#endif
 
-    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
+    CALL IncrementOffGridTally_Euler_NonRelativistic( dM_OffGrid_Euler )
 
   END SUBROUTINE UpdateFluid_SSPRK
 

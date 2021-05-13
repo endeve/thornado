@@ -22,6 +22,7 @@ MODULE MF_Euler_TallyModule
   USE Euler_TallyModule, ONLY: &
     InitializeTally_Euler, &
     ComputeTally_Euler, &
+    IncrementOffGridTally_Euler, &
     FinalizeTally_Euler
 
   ! --- Local Modules ---
@@ -38,6 +39,7 @@ MODULE MF_Euler_TallyModule
 
   PUBLIC :: MF_InitializeTally_Euler
   PUBLIC :: MF_ComputeTally_Euler
+  PUBLIC :: MF_IncrementOffGridTally_Euler
   PUBLIC :: MF_FinalizeTally_Euler
 
 
@@ -124,6 +126,16 @@ CONTAINS
                Verbose_Option = Verbose )
 
   END SUBROUTINE MF_ComputeTally_Euler
+
+
+  SUBROUTINE MF_IncrementOffGridTally_Euler( dM )
+
+    REAL(AR), INTENT(in) :: dM(nCF)
+
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL IncrementOffGridTally_Euler( dM )
+
+  END SUBROUTINE MF_IncrementOffGridTally_Euler
 
 
   SUBROUTINE MF_FinalizeTally_Euler

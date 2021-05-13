@@ -17,7 +17,7 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_dgDiscretizationModule, ONLY: &
     OffGridFlux_Euler
   USE Euler_TallyModule_NonRelativistic, ONLY: &
-    IncrementOffGridTally_Euler
+    IncrementOffGridTally_Euler_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -282,7 +282,7 @@ CONTAINS
 
     END IF
 
-    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
+    CALL IncrementOffGridTally_Euler_NonRelativistic( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

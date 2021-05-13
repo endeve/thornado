@@ -26,7 +26,7 @@ MODULE TimeSteppingModule_SSPRK
     WriteSourceTerms, &
     OffGridFlux_Euler
   USE Euler_TallyModule_Relativistic, ONLY: &
-    IncrementOffGridTally_Euler
+    IncrementOffGridTally_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -300,7 +300,7 @@ CONTAINS
 
     END IF
 
-    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
+    CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

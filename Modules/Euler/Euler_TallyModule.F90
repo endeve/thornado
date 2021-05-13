@@ -2,6 +2,8 @@ MODULE Euler_TallyModule
 
   USE KindModule, ONLY: &
     DP
+  USE FluidFieldsModule, ONLY: &
+    nCF
 
 #ifdef HYDRO_RELATIVISTIC
 
@@ -18,6 +20,7 @@ MODULE Euler_TallyModule
 
   PUBLIC :: InitializeTally_Euler
   PUBLIC :: FinalizeTally_Euler
+  PUBLIC :: IncrementOffGridTally_Euler
   PUBLIC :: ComputeTally_Euler
 
 
@@ -126,6 +129,23 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeTally_Euler
+
+
+  SUBROUTINE IncrementOffGridTally_Euler( dM )
+
+    REAL(DP), INTENT(in) :: dM(nCF)
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL IncrementOffGridTally_Euler_Relativistic( dM )
+
+#else
+
+    CALL IncrementOffGridTally_Euler_NonRelativistic( dM )
+
+#endif
+
+  END SUBROUTINE IncrementOffGridTally_Euler
 
 
 END MODULE Euler_TallyModule

@@ -27,7 +27,7 @@ MODULE Euler_TallyModule_Relativistic
 
   PUBLIC :: InitializeTally_Euler_Relativistic
   PUBLIC :: ComputeTally_Euler_Relativistic
-  PUBLIC :: IncrementOffGridTally_Euler
+  PUBLIC :: IncrementOffGridTally_Euler_Relativistic
   PUBLIC :: FinalizeTally_Euler_Relativistic
 
   LOGICAL :: SuppressTally
@@ -256,7 +256,7 @@ CONTAINS
   END SUBROUTINE ComputeTally_Euler
 
 
-  SUBROUTINE IncrementOffGridTally_Euler( dM )
+  SUBROUTINE IncrementOffGridTally_Euler_Relativistic( dM )
 
     REAL(DP), INTENT(in) :: dM(nCF)
 
@@ -266,7 +266,7 @@ CONTAINS
     Energy_OffGrid &
       = Energy_OffGrid + dM(iCF_E)
 
-  END SUBROUTINE IncrementOffGridTally_Euler
+  END SUBROUTINE IncrementOffGridTally_Euler_Relativistic
 
 
   SUBROUTINE WriteTally_Euler( Time )
