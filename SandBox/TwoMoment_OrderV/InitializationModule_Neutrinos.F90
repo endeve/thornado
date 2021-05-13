@@ -201,7 +201,7 @@ CONTAINS
 
     REAL(DP), PARAMETER :: D_L = 1.0d13 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: V_L = 0.0d00 * SpeedOfLight
-    REAL(DP), PARAMETER :: P_L = 1.0d32 * Erg / Centimeter**3
+    REAL(DP), PARAMETER :: P_L = 1.1d32 * Erg / Centimeter**3
     REAL(DP), PARAMETER :: Y_L = 0.3d00
 
     REAL(DP), PARAMETER :: D_R = 1.0d12 * Gram / Centimeter**3
