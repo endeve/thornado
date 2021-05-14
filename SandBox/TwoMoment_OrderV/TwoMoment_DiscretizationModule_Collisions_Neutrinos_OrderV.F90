@@ -121,7 +121,6 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
-
     INTEGER :: iN_X, iN_E, iS
 
     ! PRINT*, "--- In implicit solve ---"
@@ -310,16 +309,16 @@ CONTAINS
     INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
 
     iE_B0 = iZ_B0(1)  ; iE_E0 = iZ_E0(1)
-    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iE_B1 = iZ_B1(1)  ; iE_E1 = iZ_E1(1)
+    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
 
-    nZ = iZ_E0 - iZ_B0 + 1
-    nX = iX_E0 - iX_B0 + 1
     nE = iE_E0 - iE_B0 + 1
+    nX = iX_E0 - iX_B0 + 1
+    nZ = iZ_E0 - iZ_B0 + 1
 
-    nX_G = nDOFX * PRODUCT( nX )
     nE_G = nDOFE * nE
+    nX_G = nDOFX * PRODUCT( nX )
     nZ_G = nE_G * nX_G * nSpecies
 
     ALLOCATE( GE_N(nE_G,nGE) )
@@ -335,10 +334,12 @@ CONTAINS
     ALLOCATE( PositionIndexZ(nZ_G) )
 
     iZ = 0
-    DO iS = 1, nSpecies
+    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
+
       iZ = iZ + 1
+
       PositionIndexZ(iZ) = iN_X
 
     END DO
@@ -347,25 +348,28 @@ CONTAINS
 
     ALLOCATE( nIterations_Inner(nX_G) )
     ALLOCATE( nIterations_Outer(nX_G) )
-    ALLOCATE( nIterations_Prim(nZ_G) )
+    ALLOCATE( nIterations_Prim (nZ_G) )
 
     nIterations_Inner(:) = 0
     nIterations_Outer(:) = 0
-    nIterations_Prim(:) = 0
+    nIterations_Prim (:) = 0
 
-    N_P(1:nZ_G)  => CR_N(:,:,:,iCR_N )
+    N_P (1:nZ_G) => CR_N(:,:,:,iCR_N )
     G1_P(1:nZ_G) => CR_N(:,:,:,iCR_G1)
     G2_P(1:nZ_G) => CR_N(:,:,:,iCR_G2)
     G3_P(1:nZ_G) => CR_N(:,:,:,iCR_G3)
-    J_P(1:nZ_G)  => PR_N(:,:,:,iCR_N )
+
+    J_P (1:nZ_G) => PR_N(:,:,:,iCR_N )
     H1_P(1:nZ_G) => PR_N(:,:,:,iCR_G1)
     H2_P(1:nZ_G) => PR_N(:,:,:,iCR_G2)
     H3_P(1:nZ_G) => PR_N(:,:,:,iCR_G3)
 
-
     CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
+
     ! --- parameter initialization can be moved to the program init
+
     CALL InitializeNeutrinoMatterSolverParameters()
+
   END SUBROUTINE InitializeCollisions
 
 

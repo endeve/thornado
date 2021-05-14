@@ -78,7 +78,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER  :: nE_G, nX_G, nZ(4)
   INTEGER  :: n_FP, n_FP_inner, n_FP_outer
   INTEGER  :: iE_B, iE_E
-  INTEGER  :: iX_B(3), iX_E(3)
 
   REAL(DP), ALLOCATABLE :: E_N(:)        ! --- Energy Grid
   REAL(DP), ALLOCATABLE :: W2_N(:)       ! --- Ingegration Weights (E^2)
@@ -96,6 +95,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
 
   ! --- Solver Parameters to be initialized
+
   LOGICAL  :: UsePreconditionerEmAb
   INTEGER  :: M_FP, M_outer, M_inner
   INTEGER  :: MaxIter_outer, MaxIter_inner
@@ -104,13 +104,14 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   INTEGER :: iS_1 = iNuE
   INTEGER :: iS_2 = iNuE_Bar
-  INTEGER :: OS_JNuE, OS_H1NuE, OS_H2NuE, OS_H3NuE
+  INTEGER :: OS_JNuE    , OS_H1NuE    , OS_H2NuE    , OS_H3NuE
   INTEGER :: OS_JNuE_Bar, OS_H1NuE_Bar, OS_H2NuE_Bar, OS_H3NuE_Bar
-  INTEGER :: iY  = 1
-  INTEGER :: iEf = 2
-  INTEGER :: iV1 = 3
-  INTEGER :: iV2 = 4
-  INTEGER :: iV3 = 5
+
+  INTEGER, PARAMETER :: iY  = 1
+  INTEGER, PARAMETER :: iEf = 2
+  INTEGER, PARAMETER :: iV1 = 3
+  INTEGER, PARAMETER :: iV2 = 4
+  INTEGER, PARAMETER :: iV3 = 5
 
   ! --- Temporary arrays for scatter/gather (packing)
 
@@ -118,13 +119,12 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), ALLOCATABLE, TARGET :: P2D(:,:,:)
   REAL(DP), ALLOCATABLE, TARGET :: P3D(:,:,:,:)
 
-  INTEGER, PARAMETER :: nP1D = 4
   INTEGER, PARAMETER :: iP1D_D = 1
   INTEGER, PARAMETER :: iP1D_T = 2
   INTEGER, PARAMETER :: iP1D_Y = 3
   INTEGER, PARAMETER :: iP1D_E = 4
+  INTEGER, PARAMETER :: nP1D   = 4
 
-  INTEGER, PARAMETER :: nP2D = 16
   INTEGER, PARAMETER :: iP2D_Chi_NES_1  = 1
   INTEGER, PARAMETER :: iP2D_Chi_NES_2  = 2
   INTEGER, PARAMETER :: iP2D_Eta_NES_1  = 3
@@ -139,10 +139,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER, PARAMETER :: iP2D_J0_2       = 12
   INTEGER, PARAMETER :: iP2D_J_1        = 13
   INTEGER, PARAMETER :: iP2D_J_2        = 14
-  INTEGER, PARAMETER :: iP2D_Sig_1        = 15
-  INTEGER, PARAMETER :: iP2D_Sig_2        = 16
+  INTEGER, PARAMETER :: iP2D_Sig_1      = 15
+  INTEGER, PARAMETER :: iP2D_Sig_2      = 16
+  INTEGER, PARAMETER :: nP2D            = 16
 
-  INTEGER, PARAMETER :: nP3D = 10
   INTEGER, PARAMETER :: iP3D_Phi_0_In_NES_1  = 1
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_NES_1  = 2
   INTEGER, PARAMETER :: iP3D_Phi_0_In_NES_2  = 3
@@ -151,8 +151,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_1 = 6
   INTEGER, PARAMETER :: iP3D_Phi_0_In_Pair_2 = 7
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_2 = 8
-  INTEGER, PARAMETER :: iP3D_WORK1 = 9
-  INTEGER, PARAMETER :: iP3D_WORK2 = 10
+  INTEGER, PARAMETER :: iP3D_WORK1           = 9
+  INTEGER, PARAMETER :: iP3D_WORK2           = 10
+  INTEGER, PARAMETER :: nP3D                 = 10
 
   PUBLIC :: E_N
 
@@ -237,55 +238,65 @@ CONTAINS
     !$ACC CREATE( WORK )
 #endif
 
-
   END SUBROUTINE InitializeNeutrinoMatterSolver
 
 
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
-    ( Mout, Min, MaxItout, MaxItin, RelTol, AbsTol, EmAbPrecond)
+    ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
+      MaxIter_inner_Option, Rtol_Option, Utol_Option, &
+      UsePreconditionerEmAb_Option )
 
-    INTEGER,  OPTIONAL, INTENT(in) :: Mout, Min
-    INTEGER,  OPTIONAL, INTENT(in) :: MaxItout, MaxItin
-    REAL(DP), OPTIONAL, INTENT(in) :: RelTol, AbsTol
-    LOGICAL,  OPTIONAL, INTENT(in) :: EmAbPrecond
+    INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
+    INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
+    INTEGER , INTENT(in), OPTIONAL :: MaxIter_outer_Option
+    INTEGER , INTENT(in), OPTIONAL :: MaxIter_inner_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Rtol_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Utol_Option
+    LOGICAL , INTENT(in), OPTIONAL :: UsePreconditionerEmAb_Option
 
-    IF ( PRESENT( Mout ) ) THEN
-      M_outer = Mout
+    IF( PRESENT( M_outer_Option ) )THEN
+      M_outer = M_outer_Option
     ELSE
       M_outer = 3
     END IF
-    IF ( PRESENT( Min ) ) THEN
-      M_inner = Min
+
+    IF( PRESENT( M_inner_Option ) )THEN
+      M_inner = M_inner_Option
     ELSE
       M_inner = 3
     END IF
-    IF ( PRESENT( MaxItout ) ) THEN
-      MaxIter_outer = MaxItout
+
+    IF( PRESENT( MaxIter_outer_Option ) )THEN
+      MaxIter_outer = MaxIter_outer_Option
     ELSE
       MaxIter_outer = 100
     END IF
-    IF ( PRESENT( MaxItin ) ) THEN
-      MaxIter_inner = MaxItin
+
+    IF( PRESENT( MaxIter_inner_Option ) )THEN
+      MaxIter_inner = MaxIter_inner_Option
     ELSE
       MaxIter_inner = 100
     END IF
-    IF ( PRESENT( RelTol ) ) THEN
-      Rtol = RelTol
+
+    IF( PRESENT( Rtol_Option ) )THEN
+      Rtol = Rtol_Option
     ELSE
       Rtol = 1.0d-08
     END IF
-    IF ( PRESENT( AbsTol ) ) THEN
-      Utol = AbsTol
+
+    IF( PRESENT( Utol_Option ) )THEN
+      Utol = Utol_Option
     ELSE
       Utol = 1.0d-10
     END IF
-    IF ( PRESENT( EmAbPrecond ) ) THEN
-      UsePreconditionerEmAb = EmAbPrecond
+
+    IF( PRESENT( UsePreconditionerEmAb_Option ) )THEN
+      UsePreconditionerEmAb = UsePreconditionerEmAb_Option
     ELSE
       UsePreconditionerEmAb = .FALSE.
     END IF
 
-    M_FP = MAX(M_outer, M_inner)
+    M_FP = MAX( M_outer, M_inner )
 
   END SUBROUTINE InitializeNeutrinoMatterSolverParameters
 
@@ -356,7 +367,7 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: H1old, H2old, H3old
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: H1new, H2new, H3new
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: CJ, CH1, CH2, CH3
-    REAL(DP), DIMENSION(       1:nX_G,1:nSpecies) :: Jnorm, Hnorm
+    REAL(DP), DIMENSION(       1:nX_G,1:nSpecies) :: Jnorm
 
     REAL(DP), DIMENSION(1:nX_G) :: Omega, NormVsq
     REAL(DP), DIMENSION(1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
@@ -1413,14 +1424,13 @@ CONTAINS
   END SUBROUTINE InitializeRHS_FP
 
 
-  SUBROUTINE ComputeJNorm &
-    ( MASK, J, Jnorm )
+  SUBROUTINE ComputeJNorm( MASK, J, Jnorm )
 
     LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(in)    :: J
     REAL(DP), DIMENSION(1:nX_G,1:nSpecies),        INTENT(inout) :: Jnorm
 
-    INTEGER  :: iN_E, iN_X
+    INTEGER  :: iN_X
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -1438,7 +1448,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeJNorm
-
 
 
   SUBROUTINE ComputeMatterRHS_FP &
@@ -2163,7 +2172,7 @@ CONTAINS
 
     REAL(DP) :: Fnorm_1, Fnorm_2
     LOGICAL  :: CONVERGED
-    INTEGER  :: iN_E, iN_X
+    INTEGER  :: iN_X
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
