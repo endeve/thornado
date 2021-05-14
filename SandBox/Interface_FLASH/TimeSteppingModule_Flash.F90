@@ -30,8 +30,8 @@ MODULE TimeSteppingModule_Flash
 #elif TWOMOMENT_ORDER_V
   USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_New
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY : &
@@ -347,11 +347,20 @@ CONTAINS
 
     IF( Implicit )THEN
 
+#ifdef TWOMOMENT_ORDER_1
       CALL ComputeIncrement_TwoMoment_Implicit_New &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
                U_R, Q1_R )
+
+#elif TWOMOMENT_ORDER_V
+      CALL ComputeIncrement_TwoMoment_Implicit &
+             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
+               uGE, uGF, &
+               U_F, Q1_F, &
+               U_R, Q1_R )
+#endif
 
     ELSE
 
@@ -517,12 +526,19 @@ CONTAINS
 
       IF( Implicit )THEN
 
+#ifdef TWOMOMENT_ORDER_1
         CALL ComputeIncrement_TwoMoment_Implicit_New &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R )
-
+#elif TWOMOMENT_ORDER_V
+        CALL ComputeIncrement_TwoMoment_Implicit &
+               (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
+                 uGE, uGF, &
+                 U_F, Q1_F, &
+                 U_R, Q1_R )
+#endif
       ELSE
 
 #if defined(THORNADO_OMP_OL)
