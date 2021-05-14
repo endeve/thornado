@@ -15,7 +15,8 @@ MODULE MF_AccretionShockUtilitiesModule
     amrex_geometry
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_sum
+    amrex_parallel_reduce_sum, &
+    amrex_parallel_reduce_min
 
   ! --- thornado Modules ---
 
@@ -69,10 +70,6 @@ MODULE MF_AccretionShockUtilitiesModule
 
   ! --- Local Modules ---
 
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
-    MF_ApplyBoundaryConditions_Euler
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_X_Global
@@ -96,6 +93,7 @@ MODULE MF_AccretionShockUtilitiesModule
   PUBLIC :: WriteNodal1DICToFile_SAS
 
   LOGICAL,          PUBLIC              :: WriteNodal1DIC_SAS
+  LOGICAL,          PUBLIC              :: WriteAccretionShockDiagnostics
   CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: FileName_Nodal1DIC_SAS
   CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: AccretionShockDiagnosticsFileName
 
@@ -103,12 +101,11 @@ MODULE MF_AccretionShockUtilitiesModule
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeAccretionShockDiagnostics( Time, GEOM, MF_uGF, MF_uCF )
+  SUBROUTINE MF_ComputeAccretionShockDiagnostics( Time, MF_uGF, MF_uCF )
 
-    REAL(AR),             INTENT(in)    :: Time  (0:nLevels-1)
-    TYPE(amrex_geometry), INTENT(inout) :: GEOM  (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    REAL(AR),             INTENT(in) :: Time  (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -121,10 +118,9 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: P(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: A(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4), &
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iLo_MF(4), &
                iNX, iNX1, iX1, iX2, iX3, iDim
 
-    TYPE(EdgeMap)  :: Edge_Map
     TYPE(MeshType) :: MeshX(3)
 
     INTEGER, PARAMETER    :: nLegModes = 3
@@ -140,6 +136,8 @@ CONTAINS
     INTEGER :: iErr(nDOFX)
 
     CHARACTER(256) :: TimeLabel, PowerLabel(0:nLegModes-1), ShockRadiusLabel
+
+    IF( .NOT. WriteAccretionShockDiagnostics ) RETURN
 
     IF( nDimsX .EQ. 1 ) RETURN
 
@@ -193,15 +191,12 @@ CONTAINS
     ALLOCATE( PowerIntegrand(0:nLevels-1,0:nLegModes, &
                              1:nNodesX(1),1:nX(1)) )
 
-    ALLOCATE( ShockRadius(0:nLevels-1,nDOFX_X1,nX(1),nX(2)) )
+    ALLOCATE( ShockRadius(0:nLevels-1,nDOFX_X1,nX(2),nX(3)) )
 
     PowerIntegrand = 0.0_AR
-    ShockRadius    = 0.0_AR
+    ShockRadius    = HUGE( 1.0_AR )
 
     DO iLevel = 0, nLevels-1
-
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -216,44 +211,35 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nGF) )
 
-        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
+        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nCF) )
 
-        ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nPF) )
+        ALLOCATE( P(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nPF) )
 
-        ALLOCATE( A(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nAF) )
+        ALLOCATE( A(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nAF) )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
+        CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
-
-        CALL MF_ApplyBoundaryConditions_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
-
-        DO iX3 = iX_B1(3), iX_E1(3)
-        DO iX2 = iX_B1(2), iX_E1(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
 
           iErr = 0
-
-          IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
           CALL ComputePrimitive_Euler &
                  ( U   (:,iX1,iX2,iX3,iCF_D ), &
@@ -292,10 +278,9 @@ CONTAINS
         END DO
 
         CALL ComputeAccretionShockDiagnostics &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, &
-                 MeshX, &
+               ( iX_B0, iX_E0, P, A, MeshX, &
                  PowerIntegrand(iLevel,:,:,iX_B0(1):iX_E0(1)), &
-                 ShockRadius(iLevel,:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2)) )
+                 ShockRadius(iLevel,:,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) )
 
         DEALLOCATE( A )
         DEALLOCATE( P )
@@ -319,11 +304,11 @@ CONTAINS
     END DO
     END DO
 
+    DO iX3 = 1, nX(3)
     DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
     DO iNX1 = 1, nDOFX_X1
 
-      CALL amrex_parallel_reduce_sum( ShockRadius(:,iNX1,iX1,iX2), nLevels )
+      CALL amrex_parallel_reduce_min( ShockRadius(:,iNX1,iX2,iX3), nLevels )
 
     END DO
     END DO

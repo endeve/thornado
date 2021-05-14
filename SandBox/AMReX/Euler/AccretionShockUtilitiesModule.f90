@@ -50,31 +50,31 @@ CONTAINS
 
 
   SUBROUTINE ComputeAccretionShockDiagnostics &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, &
+    ( iX_B0, iX_E0, uPF, uAF, &
       MeshX, PowerIntegrand, ShockRadius )
 
-    INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP),       INTENT(in)    :: uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP),       INTENT(in)    :: uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3)
+    REAL(DP),       INTENT(in)    :: uPF(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP),       INTENT(in)    :: uAF(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     TYPE(MeshType), INTENT(in)    :: MeshX(3)
     REAL(DP),       INTENT(inout) :: PowerIntegrand(0:,1:,iX_B0(1):)
-    REAL(DP),       INTENT(inout) :: ShockRadius(1:,iX_B0(1):,iX_B0(2):)
+    REAL(DP),       INTENT(inout) :: ShockRadius(1:,iX_B0(2):,iX_B0(3):)
 
     CALL ComputePowerIntegrand &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, PowerIntegrand )
+           ( iX_B0, iX_E0, uPF, uAF, MeshX, PowerIntegrand )
 
     CALL LocateShockRadius &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, ShockRadius )
+           ( iX_B0, iX_E0, uPF, uAF, MeshX, ShockRadius )
 
   END SUBROUTINE ComputeAccretionShockDiagnostics
 
 
   SUBROUTINE ComputePowerIntegrand &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, PowerIntegrand )
+    ( iX_B0, iX_E0, uPF, uAF, MeshX, PowerIntegrand )
 
-    INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP),       INTENT(in)    :: uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP),       INTENT(in)    :: uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3)
+    REAL(DP),       INTENT(in)    :: uPF(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP),       INTENT(in)    :: uAF(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     TYPE(MeshType), INTENT(in)    :: MeshX(3)
     REAL(DP),       INTENT(inout) :: PowerIntegrand(0:,1:,iX_B0(1):)
 
@@ -234,18 +234,18 @@ CONTAINS
 
 
   SUBROUTINE LocateShockRadius &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, ShockRadius )
+    ( iX_B0, iX_E0, uPF, uAF, MeshX, ShockRadius )
 
-    INTEGER ,       INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP),       INTENT(in)  :: uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP),       INTENT(in)  :: uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    TYPE(MeshType), INTENT(in)  :: MeshX(3)
-    REAL(DP),       INTENT(out) :: ShockRadius(1:,iX_B0(2):,iX_B0(3):)
+    INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3)
+    REAL(DP),       INTENT(in)    :: uPF(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP),       INTENT(in)    :: uAF(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    TYPE(MeshType), INTENT(in)    :: MeshX(3)
+    REAL(DP),       INTENT(inout) :: ShockRadius(1:,iX_B0(2):,iX_B0(3):)
 
     INTEGER  :: iNX, iNX1, iNX2, iNX3, iX1, iX2, iX3, iNX_X1
     REAL(DP) :: X1
 
-    REAL(DP) :: Entropy(nDOFX,iX_B1(1):iX_E1(1), &
+    REAL(DP) :: Entropy(nDOFX,iX_B0(1):iX_E0(1), &
                               iX_B0(2):iX_E0(2), &
                               iX_B0(3):iX_E0(3))
 
@@ -263,7 +263,7 @@ CONTAINS
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
       Entropy(iNX,iX1,iX2,iX3) &
@@ -279,7 +279,7 @@ CONTAINS
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B1(1), iX_E0(1) ! include ghost cell w/o double counting
+    DO iX1 = iX_B0(1), iX_E0(1)
 
       DO iNX3 = 1, nNodesX(3)
       DO iNX2 = 1, nNodesX(2)
@@ -291,11 +291,9 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        IF( ShockRadius(iNX_X1,iX2,iX3) .GT. SqrtTiny &
-              .AND. ShockRadius(iNX_X1,iX2,iX3) .LT. X1 ) CYCLE
-
-        IF( Entropy(iNX,iX1,iX2,iX3) .LT. EntropyThreshold ) &
-          ShockRadius(iNX_X1,iX2,iX3) = X1
+        IF( Entropy(iNX,iX1,iX2,iX3) .LT. EntropyThreshold &
+              .AND. X1 .LT. ShockRadius(iNX_X1,iX2,iX3) ) &
+            ShockRadius(iNX_X1,iX2,iX3) = X1
 
       END DO
       END DO
