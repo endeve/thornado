@@ -26,6 +26,8 @@ MODULE MF_AccretionShockUtilitiesModule
     nNodesX
   USE UtilitiesModule, ONLY: &
     IsCornerCell
+  USE ReferenceElementModuleX, ONLY: &
+    nDOFX_X1
   USE MeshModule, ONLY: &
     MeshType, &
     CreateMesh, &
@@ -54,7 +56,8 @@ MODULE MF_AccretionShockUtilitiesModule
     iAF_P
   USE AccretionShockUtilitiesModule, ONLY: &
     ComputeAccretionShockDiagnostics, &
-    ComputePowerInLegendreModes
+    ComputePowerInLegendreModes, &
+    ComputeAngleAveragedShockRadius
   USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive_Euler
   USE EquationOfStateModule, ONLY: &
@@ -127,8 +130,9 @@ CONTAINS
     INTEGER, PARAMETER    :: nLegModes = 3
     INTEGER               :: iLegMode
     REAL(AR)              :: Power(0:nLegModes-1)
-    REAL(AR)              :: AngleAveragedShockRadius(0:nLevels-1)
+    REAL(AR)              :: AngleAveragedShockRadius
     REAL(AR), ALLOCATABLE :: PowerIntegrand(:,:,:,:)
+    REAL(AR), ALLOCATABLE :: ShockRadius   (:,:,:,:)
 
     INTEGER :: FileUnit
     LOGICAL :: IsFile
@@ -189,8 +193,10 @@ CONTAINS
     ALLOCATE( PowerIntegrand(0:nLevels-1,0:nLegModes, &
                              1:nNodesX(1),1:nX(1)) )
 
-    PowerIntegrand           = 0.0_AR
-    AngleAveragedShockRadius = 0.0_AR
+    ALLOCATE( ShockRadius(0:nLevels-1,nDOFX_X1,nX(1),nX(2)) )
+
+    PowerIntegrand = 0.0_AR
+    ShockRadius    = 0.0_AR
 
     DO iLevel = 0, nLevels-1
 
@@ -287,8 +293,9 @@ CONTAINS
 
         CALL ComputeAccretionShockDiagnostics &
                ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, &
+                 MeshX, &
                  PowerIntegrand(iLevel,:,:,iX_B0(1):iX_E0(1)), &
-                 MeshX, AngleAveragedShockRadius(iLevel) )
+                 ShockRadius(iLevel,:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2)) )
 
         DEALLOCATE( A )
         DEALLOCATE( P )
@@ -312,12 +319,23 @@ CONTAINS
     END DO
     END DO
 
-    CALL amrex_parallel_reduce_sum( AngleAveragedShockRadius, nLevels )
+    DO iX2 = 1, nX(2)
+    DO iX1 = 1, nX(1)
+    DO iNX1 = 1, nDOFX_X1
+
+      CALL amrex_parallel_reduce_sum( ShockRadius(:,iNX1,iX1,iX2), nLevels )
+
+    END DO
+    END DO
+    END DO
 
     IF( amrex_parallel_ioprocessor() )THEN
 
       CALL ComputePowerInLegendreModes &
              ( 1, nX(1), MeshX(1), PowerIntegrand(0,:,:,:), Power )
+
+      CALL ComputeAngleAveragedShockRadius &
+             ( [ 1, 1, 1 ], nX, ShockRadius(0,:,:,:), AngleAveragedShockRadius )
 
       OPEN( FileUnit, FILE = TRIM( AccretionShockDiagnosticsFileName ), &
             POSITION = 'APPEND' )
@@ -329,7 +347,7 @@ CONTAINS
         Power
 
       WRITE( FileUnit, '(SPES25.16E3,1x)', ADVANCE = 'NO' ) &
-        AngleAveragedShockRadius(0) / UnitsDisplay % LengthX1Unit
+        AngleAveragedShockRadius / UnitsDisplay % LengthX1Unit
 
       WRITE( FileUnit, * )
 
@@ -337,6 +355,7 @@ CONTAINS
 
     END IF
 
+    DEALLOCATE( ShockRadius    )
     DEALLOCATE( PowerIntegrand )
 
     DO iDim = 1, 3

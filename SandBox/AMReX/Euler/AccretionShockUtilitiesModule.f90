@@ -43,6 +43,7 @@ MODULE AccretionShockUtilitiesModule
 
   PUBLIC :: ComputeAccretionShockDiagnostics
   PUBLIC :: ComputePowerInLegendreModes
+  PUBLIC :: ComputeAngleAveragedShockRadius
 
 
 CONTAINS
@@ -50,21 +51,20 @@ CONTAINS
 
   SUBROUTINE ComputeAccretionShockDiagnostics &
     ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, &
-      PowerIntegrand, MeshX, AngleAveragedShockRadius )
+      MeshX, PowerIntegrand, ShockRadius )
 
     INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP),       INTENT(in)    :: uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP),       INTENT(in)    :: uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     TYPE(MeshType), INTENT(in)    :: MeshX(3)
     REAL(DP),       INTENT(inout) :: PowerIntegrand(0:,1:,iX_B0(1):)
-    REAL(DP),       INTENT(inout) :: AngleAveragedShockRadius
+    REAL(DP),       INTENT(inout) :: ShockRadius(1:,iX_B0(1):,iX_B0(2):)
 
     CALL ComputePowerIntegrand &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, PowerIntegrand )
 
-    CALL ComputeAngleAveragedShockRadius &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, &
-             MeshX, AngleAveragedShockRadius )
+    CALL LocateShockRadius &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, ShockRadius )
 
   END SUBROUTINE ComputeAccretionShockDiagnostics
 
@@ -277,13 +277,6 @@ CONTAINS
 
     ! --- Find shock radius as function of theta and phi ---
 
-    ShockRadius = Zero
-
-    ! --- If the grid doesn't contain the shock, return ---
-
-    IF( ALL( Entropy .GT. EntropyThreshold ) &
-          .OR. ALL( Entropy .LT. EntropyThreshold ) ) RETURN
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B1(1), iX_E0(1) ! include ghost cell w/o double counting
@@ -294,11 +287,12 @@ CONTAINS
 
         iNX_X1 = iNX2 + iNX3 - 1
 
-        IF( ShockRadius(iNX_X1,iX2,iX3) .GT. SqrtTiny ) CYCLE
-
         iNX = NodeNumberTableX3D(iNX1,iNX2,iNX3)
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        IF( ShockRadius(iNX_X1,iX2,iX3) .GT. SqrtTiny &
+              .AND. ShockRadius(iNX_X1,iX2,iX3) .LT. X1 ) CYCLE
 
         IF( Entropy(iNX,iX1,iX2,iX3) .LT. EntropyThreshold ) &
           ShockRadius(iNX_X1,iX2,iX3) = X1
@@ -315,22 +309,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeAngleAveragedShockRadius &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, &
-      MeshX, AngleAveragedShockRadius )
+    ( iX_B0, iX_E0, ShockRadius, AngleAveragedShockRadius )
 
-    INTEGER ,       INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP),       INTENT(in)    :: uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP),       INTENT(in)    :: uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    TYPE(MeshType), INTENT(in)    :: MeshX(3)
-    REAL(DP),       INTENT(inout) :: AngleAveragedShockRadius
+    INTEGER , INTENT(in)  :: iX_B0(3), iX_E0(3)
+    REAL(DP), INTENT(in)  :: ShockRadius(1:,iX_B0(1):,iX_B0(2):)
+    REAL(DP), INTENT(out) :: AngleAveragedShockRadius
 
-    REAL(DP) :: ShockRadius(nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     INTEGER  :: iX2, iX3
 
-    CALL LocateShockRadius &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, MeshX, ShockRadius )
-
-    ! --- Compute angle averaged shock radius ---
+    AngleAveragedShockRadius = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
