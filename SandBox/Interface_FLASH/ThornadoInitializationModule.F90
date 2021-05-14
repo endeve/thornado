@@ -1,7 +1,7 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP, SqrtTiny, Pi, TwoPi
+    DP, SqrtTiny
   use UnitsModule, only : &
     MeV
   use ProgramHeaderModule, only: &
@@ -96,12 +96,6 @@ module ThornadoInitializationModule
   use TwoMoment_MeshRefinementModule, only : &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment
-!#ifdef TWOMOMENT_ORDER_1
-  use TwoMoment_DiscretizationModule_Collisions_Neutrinos, only : &
-    InitializeNonlinearSolverTally, &
-    FinalizeNonlinearSolverTally
-!#else
-!#endif
 
   implicit none
   private
@@ -114,7 +108,7 @@ module ThornadoInitializationModule
 contains
 
   subroutine InitThornado &
-    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, &
+    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
@@ -122,7 +116,7 @@ contains
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       Verbose_Option )
 
-    integer,  intent(in) :: nNodes, nDimsX, nE, swE
+    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
@@ -145,7 +139,7 @@ contains
 
     logical  :: PositivityLimiter, Verbose
     integer  :: nX(3), bcX(3)
-    integer  :: i, bcE
+    integer  :: i
     real(dp) :: eL, eR, UpperBry1
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
@@ -187,8 +181,6 @@ contains
     END DO
 
     bcX = [ 0, 0, 0 ]
-    bcE = 0
-    if( swE > 0 ) bcE = 10
 
     call InitializeDevice
 
