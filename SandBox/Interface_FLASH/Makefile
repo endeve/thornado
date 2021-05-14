@@ -13,7 +13,7 @@ include ../../../Makefile.h
 
 # these should get defined by invoking the Makefile from FLASH
 MOMENT_CLOSURE = MINERBO
-#MICROPHYSICS = WEAKLIB
+MICROPHYSICS = WEAKLIB
 TWOMOMENT_ORDER = ORDER_V
 
 # Import thornado Makefiles
@@ -118,6 +118,8 @@ OBJS += \
        TwoMoment_PositivityLimiterModule_OrderV.o \
        TwoMoment_OpacityModule_OrderV.o \
        TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+       TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+       TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
        TwoMoment_DiscretizationModule_Streaming_OrderV.o
 endif
 
@@ -199,7 +201,6 @@ ThornadoInitializationModule.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_MeshRefinementModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   ThornadoInitializationModule.F90
 else
 TimeSteppingModule_Flash.o: \
@@ -222,7 +223,8 @@ TimeSteppingModule_Flash.o: \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   InputOutputModuleHDF.o \
   Euler_dgDiscretizationModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
@@ -271,6 +273,5 @@ ThornadoInitializationModule.o: \
   InputOutputModuleHDF.o \
   Euler_dgDiscretizationModule.o \
   TwoMoment_MeshRefinementModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   ThornadoInitializationModule.F90
 endif
