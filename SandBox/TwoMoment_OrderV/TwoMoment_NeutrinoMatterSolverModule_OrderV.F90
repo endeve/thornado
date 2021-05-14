@@ -65,7 +65,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   PUBLIC :: InitializeNeutrinoMatterSolver
   PUBLIC :: FinalizeNeutrinoMatterSolver
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
-  ! PUBLIC :: SolveMatterEquations_EmAb_FP
   PUBLIC :: SolveMatterEquations_FP_NestedAA
 
   ! --- Units Only for Displaying to Screen ---
@@ -96,7 +95,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   ! --- Solver Parameters to be initialized
 
-  LOGICAL  :: UsePreconditionerEmAb
   INTEGER  :: M_FP, M_outer, M_inner
   INTEGER  :: MaxIter_outer, MaxIter_inner
   REAL(DP) :: Rtol, Utol
@@ -173,16 +171,16 @@ CONTAINS
     nE_G = nZ(1) * nNodesZ(1)
     nX_G = PRODUCT( nZ(2:4) * nNodesZ(2:4) )
 
-    n_FP       = 5 + 2*(nE_G + 3*nE_G)
-    n_FP_inner = 2*(nE_G + 3*nE_G)
+    n_FP       = 5 + 2 * ( nE_G + 3 * nE_G )
+    n_FP_inner = 2 * ( nE_G + 3 * nE_G )
     n_FP_outer = 5
 
-    OS_JNuE = 0
-    OS_H1NuE = OS_JNuE + nE_G
-    OS_H2NuE = OS_H1NuE + nE_G
-    OS_H3NuE = OS_H2NuE + nE_G
-    OS_JNuE_Bar = OS_H3NuE + nE_G
-    OS_H1NuE_Bar = OS_JNuE_Bar + nE_G
+    OS_JNuE      = 0
+    OS_H1NuE     = OS_JNuE      + nE_G
+    OS_H2NuE     = OS_H1NuE     + nE_G
+    OS_H3NuE     = OS_H2NuE     + nE_G
+    OS_JNuE_Bar  = OS_H3NuE     + nE_G
+    OS_H1NuE_Bar = OS_JNuE_Bar  + nE_G
     OS_H2NuE_Bar = OS_H1NuE_Bar + nE_G
     OS_H3NuE_Bar = OS_H2NuE_Bar + nE_G
 
@@ -203,8 +201,8 @@ CONTAINS
     ALLOCATE( IPIV(n_FP,nX_G) )
     ALLOCATE( INFO(nX_G) )
 
-    ALLOCATE( P1D(nX_G,nP1D) )
-    ALLOCATE( P2D(nE_G,nX_G,nP2D) )
+    ALLOCATE( P1D(          nX_G,nP1D) )
+    ALLOCATE( P2D(nE_G     ,nX_G,nP2D) )
     ALLOCATE( P3D(nE_G,nE_G,nX_G,nP3D) )
 
 #if defined(THORNADO_OMP_OL)
@@ -217,11 +215,11 @@ CONTAINS
     !$ACC CREATE( AMAT, BVEC, TAU, IPIV, INFO, P1D, P2D, P3D )
 #endif
 
-    IF ( M_FP> 3 ) THEN
+    IF( M_FP > 3 )THEN
 
       CALL LinearLeastSquares_LWORK &
-             ( 'N', n_FP, M_FP-1, 1, &
-               AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
+             ( 'N', n_FP, M_FP-1, 1, AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
+
       ALLOCATE( WORK(LWORK,nX_G) )
 
     ELSE
@@ -243,8 +241,7 @@ CONTAINS
 
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
-      MaxIter_inner_Option, Rtol_Option, Utol_Option, &
-      UsePreconditionerEmAb_Option )
+      MaxIter_inner_Option, Rtol_Option, Utol_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
@@ -252,7 +249,6 @@ CONTAINS
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_inner_Option
     REAL(DP), INTENT(in), OPTIONAL :: Rtol_Option
     REAL(DP), INTENT(in), OPTIONAL :: Utol_Option
-    LOGICAL , INTENT(in), OPTIONAL :: UsePreconditionerEmAb_Option
 
     IF( PRESENT( M_outer_Option ) )THEN
       M_outer = M_outer_Option
@@ -290,12 +286,6 @@ CONTAINS
       Utol = 1.0d-10
     END IF
 
-    IF( PRESENT( UsePreconditionerEmAb_Option ) )THEN
-      UsePreconditionerEmAb = UsePreconditionerEmAb_Option
-    ELSE
-      UsePreconditionerEmAb = .FALSE.
-    END IF
-
     M_FP = MAX( M_outer, M_inner )
 
   END SUBROUTINE InitializeNeutrinoMatterSolverParameters
@@ -317,7 +307,6 @@ CONTAINS
     DEALLOCATE( AMAT, BVEC, TAU, WORK, IPIV, INFO )
     DEALLOCATE( P1D, P2D, P3D )
 
-
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
 
@@ -327,7 +316,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: W2(1:nE_G)
     REAL(DP), INTENT(out) :: W3(1:nE_G)
 
-    INTEGER  :: iN_E, iE, iNodeE
+    INTEGER :: iN_E, iE, iNodeE
 
     DO iN_E = 1, nE_G
 
@@ -358,7 +347,6 @@ CONTAINS
     REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: D, T, Y, E
     INTEGER,  DIMENSION(1:nX_G), INTENT(out)   :: nIterations_Inner, nIterations_Outer
-
 
     ! --- Local Variables ---
 
@@ -403,7 +391,6 @@ CONTAINS
     INTEGER :: k_inner, Mk_inner, nX_P_inner
     INTEGER :: iN_X
 
-
     ITERATE_OUTER(:) = .TRUE.
     ITERATE_INNER(:) = .TRUE.
 
@@ -444,7 +431,6 @@ CONTAINS
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
-
     DO iN_X = 1, nX_G
       V_d_1(iN_X) = Gm_dd_11(iN_X) * V_u_1(iN_X)
       V_d_2(iN_X) = Gm_dd_22(iN_X) * V_u_2(iN_X)
@@ -473,18 +459,6 @@ CONTAINS
 
     CALL ArrayCopy( J, Jold )
     CALL ArrayCopy( H_d_1, H_d_2, H_d_3, H1old, H2old, H3old )
-
-    ! IF( UsePreconditionerEmAb )THEN
-    !
-    !   CALL TimersStart( Timer_Im_EmAb_FP )
-    !
-    !   CALL SolveMatterEquations_EmAb_FP &
-    !          ( dt, iS_1, iS_2, J_1, J_2, &
-    !            Chi_1, Chi_2, J0_1, J0_2, D, T, Y, E )
-    !
-    !   CALL TimersStop( Timer_Im_EmAb_FP )
-    !
-    ! END IF
 
     ! --- Compute Opacity Kernels ---
 
@@ -787,7 +761,7 @@ CONTAINS
 
     INTEGER :: nX
 
-    IF ( PRESENT( nX_P ) ) THEN
+    IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
       nX = nX_G
@@ -869,13 +843,13 @@ CONTAINS
 
     INTEGER :: nX, nX0
 
-    IF ( PRESENT( nX_P ) ) THEN
+    IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
       nX = nX_G
     END IF
 
-    IF ( PRESENT( nX_P0 ) ) THEN
+    IF( PRESENT( nX_P0 ) )THEN
       nX0 = nX_P0
     ELSE
       nX0 = nX_G
@@ -889,9 +863,7 @@ CONTAINS
       T_P => P1D(1:nX,iP1D_T)
       Y_P => P1D(1:nX,iP1D_Y)
 
-      CALL ArrayPack &
-             ( nX, UnpackIndex, &
-               D, T, Y, D_P, T_P, Y_P )
+      CALL ArrayPack( nX, UnpackIndex, D, T, Y, D_P, T_P, Y_P )
 
       J0_1_P  => P2D(:,1:nX,iP2D_J0_1)
       J0_2_P  => P2D(:,1:nX,iP2D_J0_2)
@@ -915,8 +887,8 @@ CONTAINS
       T_P => T(:)
       Y_P => Y(:)
 
-      J0_1_P => J0(:,:,iS_1)
-      J0_2_P => J0(:,:,iS_2)
+      J0_1_P  => J0 (:,:,iS_1)
+      J0_2_P  => J0 (:,:,iS_2)
       Chi_1_P => Chi(:,:,iS_1)
       Chi_2_P => Chi(:,:,iS_2)
       Sig_1_P => Sig(:,:,iS_1)
@@ -933,16 +905,13 @@ CONTAINS
 
     END IF
 
-    ! PRINT*, "D = ", D_P(:) / (Gram / Centimeter**3)
-    ! PRINT*, "T = ", T_P(:) / (MeV)
-    ! PRINT*, "Y = ", Y_P(:)
-
     ! --- Equilibrium Distributions ---
 
     CALL ComputeEquilibriumDistributions_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     ! --- EmAb ---
+
     CALL ComputeNeutrinoOpacities_EC_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, Chi_1_P )
 
@@ -950,6 +919,7 @@ CONTAINS
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, Chi_2_P )
 
     ! --- Isoenergetic scattering---
+
     CALL ComputeNeutrinoOpacities_ES_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, Sig_1_P )
 
@@ -983,14 +953,17 @@ CONTAINS
              ( nX, MASK, PackIndex, &
                Chi_1_P, Chi_2_P, Sig_1_P, Sig_2_P, &
                Chi(:,:,iS_1), Chi(:,:,iS_2), Sig(:,:,iS_1), Sig(:,:,iS_2) )
+
       IF ( nX < nX0 ) THEN
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, &
-                 Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-                 Phi_0_In_NES(:,:,:,iS_1), Phi_0_Ot_NES(:,:,:,iS_1), &
-                 Phi_0_In_NES(:,:,:,iS_2), Phi_0_Ot_NES(:,:,:,iS_2), &
+                 Phi_0_In_NES_1_P , Phi_0_Ot_NES_1_P, &
+                 Phi_0_In_NES_2_P , Phi_0_Ot_NES_2_P, &
+                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+                 Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+                 Phi_0_In_NES (:,:,:,iS_1), Phi_0_Ot_NES (:,:,:,iS_1), &
+                 Phi_0_In_NES (:,:,:,iS_2), Phi_0_Ot_NES (:,:,:,iS_2), &
                  Phi_0_In_Pair(:,:,:,iS_1), Phi_0_Ot_Pair(:,:,:,iS_1), &
                  Phi_0_In_Pair(:,:,:,iS_2), Phi_0_Ot_Pair(:,:,:,iS_2) )
 
@@ -1031,7 +1004,6 @@ CONTAINS
 
     INTEGER :: nX, nX0
 
-
     IF ( PRESENT( nX_P ) ) THEN
       nX = nX_P
     ELSE
@@ -1061,8 +1033,7 @@ CONTAINS
       J_2_P => P2D(:,1:nX,iP2D_J_2)
 
       CALL ArrayPack &
-             ( nX, UnpackIndex, &
-               J(:,:,iS_1), J(:,:,iS_2), J_1_P, J_2_P )
+             ( nX, UnpackIndex, J(:,:,iS_1), J(:,:,iS_2), J_1_P, J_2_P )
 
       Phi_0_In_NES_1_P  => P3D(:,:,1:nX,iP3D_Phi_0_In_NES_1)
       Phi_0_Ot_NES_1_P  => P3D(:,:,1:nX,iP3D_Phi_0_Ot_NES_1)
@@ -1077,12 +1048,14 @@ CONTAINS
 
         CALL ArrayPack &
                ( nX, UnpackIndex, &
-                 Phi_0_In_NES(:,:,:,iS_1), Phi_0_Ot_NES(:,:,:,iS_1), &
-                 Phi_0_In_NES(:,:,:,iS_2), Phi_0_Ot_NES(:,:,:,iS_2), &
+                 Phi_0_In_NES (:,:,:,iS_1), Phi_0_Ot_NES (:,:,:,iS_1), &
+                 Phi_0_In_NES (:,:,:,iS_2), Phi_0_Ot_NES (:,:,:,iS_2), &
                  Phi_0_In_Pair(:,:,:,iS_1), Phi_0_Ot_Pair(:,:,:,iS_1), &
                  Phi_0_In_Pair(:,:,:,iS_2), Phi_0_Ot_Pair(:,:,:,iS_2), &
-                 Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
+                 Phi_0_In_NES_1_P , Phi_0_Ot_NES_1_P , &
+                 Phi_0_In_NES_2_P , Phi_0_Ot_NES_2_P , &
+                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+                 Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
 
       END IF
 
@@ -1141,10 +1114,14 @@ CONTAINS
 
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, &
-               Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P, &
-               Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P, &
-               Chi_NES(:,:,iS_1), Chi_NES(:,:,iS_2), Eta_NES(:,:,iS_1), Eta_NES(:,:,iS_2), &
-               Chi_Pair(:,:,iS_1), Chi_Pair(:,:,iS_2), Eta_Pair(:,:,iS_1), Eta_Pair(:,:,iS_2) )
+               Chi_NES_1_P , Chi_NES_2_P , &
+               Eta_NES_1_P , Eta_NES_2_P , &
+               Chi_Pair_1_P, Chi_Pair_2_P, &
+               Eta_Pair_1_P, Eta_Pair_2_P, &
+               Chi_NES (:,:,iS_1), Chi_NES (:,:,iS_2), &
+               Eta_NES (:,:,iS_1), Eta_NES (:,:,iS_2), &
+               Chi_Pair(:,:,iS_1), Chi_Pair(:,:,iS_2), &
+               Eta_Pair(:,:,iS_1), Eta_Pair(:,:,iS_2) )
 
     END IF
 
@@ -1165,7 +1142,7 @@ CONTAINS
 
     INTEGER  :: nX
 
-    IF ( PRESENT( nX_P ) ) THEN
+    IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
       nX = nX_G
@@ -1180,9 +1157,8 @@ CONTAINS
       T_P => P1D(1:nX,iP1D_T)
       E_P => P1D(1:nX,iP1D_E)
 
-      CALL ArrayPack &
-             ( nX, UnpackIndex, D, Y, T, E, &
-               D_P, Y_P, T_P, E_P )
+      CALL ArrayPack( nX, UnpackIndex, D, Y, T, E, D_P, Y_P, T_P, E_P )
+
     ELSE
 
       D_P => D(:)
@@ -1199,8 +1175,7 @@ CONTAINS
 
       ! --- Unpack Results ---
 
-      CALL ArrayUnpack &
-             ( nX, MASK, PackIndex, T_P, T )
+      CALL ArrayUnpack( nX, MASK, PackIndex, T_P, T )
 
     END IF
 
@@ -1227,7 +1202,6 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(out) :: CH2, H2new
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(in)  :: H_d_3, H3old
     REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(out) :: CH3, H3new
-
 
     REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: D
     REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: Y, Yold
@@ -1274,113 +1248,127 @@ CONTAINS
 
       DO iN_E = 1, nE_G
 
-        ! PRINT*, "iS = ", iS_1
-        ! PRINT*, "Jold = ", Jold(iN_E,iN_X,iS_1)
-        ! PRINT*, "H1old = ", H1old(iN_E,iN_X,iS_1)
-        ! PRINT*, "H2old = ", H2old(iN_E,iN_X,iS_1)
-        ! PRINT*, "H3old = ", H3old(iN_E,iN_X,iS_1)
-        !
-        ! PRINT*, "G11 = ", Gm_dd_11(iN_X)
-        ! PRINT*, "G22 = ", Gm_dd_22(iN_X)
-        ! PRINT*, "G33 = ", Gm_dd_33(iN_X)
+        k_dd = EddingtonTensorComponents_dd &
+                 ( Jold (iN_E,iN_X,iS_1), H1old(iN_E,iN_X,iS_1), &
+                   H2old(iN_E,iN_X,iS_1), H3old(iN_E,iN_X,iS_1), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+
+        vKJold(iN_E,iN_X,iS_1,1) &
+          = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+        vKJold(iN_E,iN_X,iS_1,2) &
+          = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+        vKJold(iN_E,iN_X,iS_1,3) &
+          = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+
+        vKJold(iN_E,iN_X,iS_1,:) &
+          = vKJold(iN_E,iN_X,iS_1,:) * Jold(iN_E,iN_X,iS_1)
 
         k_dd = EddingtonTensorComponents_dd &
-                    ( Jold(iN_E,iN_X,iS_1), &
-                     H1old(iN_E,iN_X,iS_1), H2old(iN_E,iN_X,iS_1), H3old(iN_E,iN_X,iS_1), &
-                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+                 ( Jold (iN_E,iN_X,iS_2), H1old(iN_E,iN_X,iS_2), &
+                   H2old(iN_E,iN_X,iS_2), H3old(iN_E,iN_X,iS_2), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-        vKJold(iN_E,iN_X,iS_1,1) = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
-        vKJold(iN_E,iN_X,iS_1,2) = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
-        vKJold(iN_E,iN_X,iS_1,3) = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
-        vKJold(iN_E,iN_X,iS_1,:) = vKJold(iN_E,iN_X,iS_1,:) * Jold(iN_E,iN_X,iS_1)
-        ! PRINT*, "iS = ", iS_2
-        ! PRINT*, "Jold = ", Jold(iN_E,iN_X,iS_2)
-        ! PRINT*, "H1old = ", H1old(iN_E,iN_X,iS_2)
-        ! PRINT*, "H2old = ", H2old(iN_E,iN_X,iS_2)
-        ! PRINT*, "H3old = ", H3old(iN_E,iN_X,iS_2)
-        !
-        ! PRINT*, "G11 = ", Gm_dd_11(iN_X)
-        ! PRINT*, "G22 = ", Gm_dd_22(iN_X)
-        ! PRINT*, "G33 = ", Gm_dd_33(iN_X)
+        vKJold(iN_E,iN_X,iS_2,1) &
+          = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+        vKJold(iN_E,iN_X,iS_2,2) &
+          = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+        vKJold(iN_E,iN_X,iS_2,3) &
+          = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
 
-        k_dd = EddingtonTensorComponents_dd &
-                    ( Jold(iN_E,iN_X,iS_2), &
-                     H1old(iN_E,iN_X,iS_2), H2old(iN_E,iN_X,iS_2), H3old(iN_E,iN_X,iS_2), &
-                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
-
-        vKJold(iN_E,iN_X,iS_2,1) = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
-        vKJold(iN_E,iN_X,iS_2,2) = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
-        vKJold(iN_E,iN_X,iS_2,3) = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
-        vKJold(iN_E,iN_X,iS_2,:) = vKJold(iN_E,iN_X,iS_2,:) * Jold(iN_E,iN_X,iS_2)
+        vKJold(iN_E,iN_X,iS_2,:) &
+          = vKJold(iN_E,iN_X,iS_2,:) * Jold(iN_E,iN_X,iS_2)
 
       END DO
 
-       CJ(:,iN_X,:) =  Jold(:,iN_X,:) + vHold(:,iN_X,:)
+      CJ (:,iN_X,:) =  Jold(:,iN_X,:) + vHold (:,iN_X,:)
       CH1(:,iN_X,:) = H1old(:,iN_X,:) + vKJold(:,iN_X,:,1)
       CH2(:,iN_X,:) = H2old(:,iN_X,:) + vKJold(:,iN_X,:,2)
       CH3(:,iN_X,:) = H3old(:,iN_X,:) + vKJold(:,iN_X,:,3)
 
     END DO
 
-
-
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,  Jold(:,:,iS_1), nE_G, W2_S, 1, Zero, C_Y, 1 )
+           ( 'T', nE_G, nX_G, + One,   Jold(:,:,iS_1  ), nE_G, W2_S, 1, &
+             Zero, C_Y, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, -One,  Jold(:,:,iS_2), nE_G, W2_S, 1,  One, C_Y, 1 )
+           ( 'T', nE_G, nX_G, - One,   Jold(:,:,iS_2  ), nE_G, W2_S, 1, &
+             One , C_Y, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vHold(:,:,iS_1), nE_G, W2_S, 1,  One, C_Y, 1 )
+           ( 'T', nE_G, nX_G, + One,  vHold(:,:,iS_1  ), nE_G, W2_S, 1, &
+             One , C_Y, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, -One, vHold(:,:,iS_2), nE_G, W2_S, 1,  One, C_Y, 1 )
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,  Jold(:,:,iS_1), nE_G, W3_S, 1, Zero, C_Ef, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,  Jold(:,:,iS_2), nE_G, W3_S, 1,  One, C_Ef, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +Two, vHold(:,:,iS_1), nE_G, W3_S, 1,  One, C_Ef, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +Two, vHold(:,:,iS_2), nE_G, W3_S, 1,  One, C_Ef, 1 )
+           ( 'T', nE_G, nX_G, - One,  vHold(:,:,iS_2  ), nE_G, W2_S, 1, &
+             One , C_Y, 1 )
 
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,   V1Jold(:,:,iS_1), nE_G, W3_S, 1, Zero, C_V_d_1, 1 )
+           ( 'T', nE_G, nX_G, + One,   Jold(:,:,iS_1  ), nE_G, W3_S, 1, &
+             Zero, C_Ef, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,   V1Jold(:,:,iS_2), nE_G, W3_S, 1,  One, C_V_d_1, 1 )
+           ( 'T', nE_G, nX_G, + One,   Jold(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_Ef, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,    H1old(:,:,iS_1), nE_G, W3_S, 1,  One, C_V_d_1, 1 )
+           ( 'T', nE_G, nX_G, + Two,  vHold(:,:,iS_1  ), nE_G, W3_S, 1, &
+             One , C_Ef, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,    H1old(:,:,iS_2), nE_G, W3_S, 1,  One, C_V_d_1, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vKJold(:,:,iS_1,1), nE_G, W3_S, 1,  One, C_V_d_1, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vKJold(:,:,iS_2,1), nE_G, W3_S, 1,  One, C_V_d_1, 1 )
+           ( 'T', nE_G, nX_G, + Two,  vHold(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_Ef, 1 )
 
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,   V2Jold(:,:,iS_1), nE_G, W3_S, 1, Zero, C_V_d_2, 1 )
+           ( 'T', nE_G, nX_G, + One, V1Jold(:,:,iS_1  ), nE_G, W3_S, 1, &
+             Zero, C_V_d_1, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,   V2Jold(:,:,iS_2), nE_G, W3_S, 1,  One, C_V_d_2, 1 )
+           ( 'T', nE_G, nX_G, + One, V1Jold(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_V_d_1, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,    H2old(:,:,iS_1), nE_G, W3_S, 1,  One, C_V_d_2, 1 )
+           ( 'T', nE_G, nX_G, + One,  H1old(:,:,iS_1  ), nE_G, W3_S, 1, &
+             One , C_V_d_1, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,    H2old(:,:,iS_2), nE_G, W3_S, 1,  One, C_V_d_2, 1 )
+           ( 'T', nE_G, nX_G, + One,  H1old(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_V_d_1, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vKJold(:,:,iS_1,2), nE_G, W3_S, 1,  One, C_V_d_2, 1 )
+           ( 'T', nE_G, nX_G, + One, vKJold(:,:,iS_1,1), nE_G, W3_S, 1, &
+             One , C_V_d_1, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vKJold(:,:,iS_2,2), nE_G, W3_S, 1,  One, C_V_d_2, 1 )
+           ( 'T', nE_G, nX_G, + One, vKJold(:,:,iS_2,1), nE_G, W3_S, 1, &
+             One , C_V_d_1, 1 )
 
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,   V3Jold(:,:,iS_1), nE_G, W3_S, 1, Zero, C_V_d_3, 1 )
+           ( 'T', nE_G, nX_G, + One, V2Jold(:,:,iS_1  ), nE_G, W3_S, 1, &
+             Zero, C_V_d_2, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,   V3Jold(:,:,iS_2), nE_G, W3_S, 1,  One, C_V_d_3, 1 )
+           ( 'T', nE_G, nX_G, + One, V2Jold(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_V_d_2, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,    H3old(:,:,iS_1), nE_G, W3_S, 1,  One, C_V_d_3, 1 )
+           ( 'T', nE_G, nX_G, + One,  H2old(:,:,iS_1  ), nE_G, W3_S, 1, &
+             One , C_V_d_2, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One,    H3old(:,:,iS_2), nE_G, W3_S, 1,  One, C_V_d_3, 1 )
+           ( 'T', nE_G, nX_G, + One,  H2old(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_V_d_2, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vKJold(:,:,iS_1,3), nE_G, W3_S, 1,  One, C_V_d_3, 1 )
+           ( 'T', nE_G, nX_G, + One, vKJold(:,:,iS_1,2), nE_G, W3_S, 1, &
+             One , C_V_d_2, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, vKJold(:,:,iS_2,3), nE_G, W3_S, 1,  One, C_V_d_3, 1 )
+           ( 'T', nE_G, nX_G, + One, vKJold(:,:,iS_2,2), nE_G, W3_S, 1, &
+             One, C_V_d_2, 1 )
 
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, + One, V3Jold(:,:,iS_1  ), nE_G, W3_S, 1, &
+             Zero, C_V_d_3, 1 )
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, + One, V3Jold(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_V_d_3, 1 )
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, + One,  H3old(:,:,iS_1  ), nE_G, W3_S, 1, &
+             One , C_V_d_3, 1 )
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, + One,  H3old(:,:,iS_2  ), nE_G, W3_S, 1, &
+             One , C_V_d_3, 1 )
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, + One, vKJold(:,:,iS_1,3), nE_G, W3_S, 1, &
+             One, C_V_d_3, 1 )
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, + One, vKJold(:,:,iS_2,3), nE_G, W3_S, 1, &
+             One, C_V_d_3, 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -1391,31 +1379,33 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      S_Y(iN_X) = One / ( D(iN_X) * Yold(iN_X) / AtomicMassUnit )
+      S_Y    (iN_X) = One / ( D(iN_X) * Yold(iN_X) / AtomicMassUnit )
       ! Ef may be negative, may need to change scaling
       ! A potential scaling is the lower bound in the table
-      S_Ef(iN_X) = One / ( D(iN_X) * Efold(iN_X) )
+      S_Ef   (iN_X) = One / ( D(iN_X) * Efold(iN_X) )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_3(iN_X) = One / ( D(iN_X) * SpeedOfLight )
 
       ! Initial guess is the old matter state
-      U_Y(iN_X)     = Y(iN_X)     / Yold(iN_X)
-      U_Ef(iN_X)    = Ef(iN_X)    / Efold(iN_X)
+
+      U_Y    (iN_X) = Y    (iN_X) / Yold (iN_X)
+      U_Ef   (iN_X) = Ef   (iN_X) / Efold(iN_X)
       U_V_d_1(iN_X) = V_d_1(iN_X) / SpeedOfLight
       U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
 
-      ! U_V_d_1(iN_X) = V_d_1(iN_X) / V_d_1old(iN_X) ! --- Initial Guess
-      ! U_V_d_2(iN_X) = V_d_2(iN_X) / V_d_2old(iN_X) ! --- Initial Guess
-      ! U_V_d_3(iN_X) = V_d_3(iN_X) / V_d_3old(iN_X) ! --- Initial Guess
-
       ! Now the old matter state is included in C terms
-      C_Y(iN_X)     = Yold(iN_X)     / Yold(iN_X)   + C_Y(iN_X)     * S_Y(iN_X)
-      C_Ef(iN_X)    = Efold(iN_X)    / Efold(iN_X)  + C_Ef(iN_X)    * S_Ef(iN_X)
-      C_V_d_1(iN_X) = V_d_1old(iN_X) / SpeedOfLight + C_V_d_1(iN_X) * S_V_d_1(iN_X)
-      C_V_d_2(iN_X) = V_d_2old(iN_X) / SpeedOfLight + C_V_d_2(iN_X) * S_V_d_2(iN_X)
-      C_V_d_3(iN_X) = V_d_3old(iN_X) / SpeedOfLight + C_V_d_3(iN_X) * S_V_d_3(iN_X)
+
+      C_Y (iN_X) = Yold (iN_X) / Yold (iN_X) + C_Y (iN_X) * S_Y (iN_X)
+      C_Ef(iN_X) = Efold(iN_X) / Efold(iN_X) + C_Ef(iN_X) * S_Ef(iN_X)
+
+      C_V_d_1(iN_X) &
+        = V_d_1old(iN_X) / SpeedOfLight + C_V_d_1(iN_X) * S_V_d_1(iN_X)
+      C_V_d_2(iN_X) &
+        = V_d_2old(iN_X) / SpeedOfLight + C_V_d_2(iN_X) * S_V_d_2(iN_X)
+      C_V_d_3(iN_X) &
+        = V_d_3old(iN_X) / SpeedOfLight + C_V_d_3(iN_X) * S_V_d_3(iN_X)
 
     END DO
 
@@ -1426,9 +1416,9 @@ CONTAINS
 
   SUBROUTINE ComputeJNorm( MASK, J, Jnorm )
 
-    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(in)    :: J
-    REAL(DP), DIMENSION(1:nX_G,1:nSpecies),        INTENT(inout) :: Jnorm
+    LOGICAL , INTENT(in)    :: MASK(1:nX_G)
+    REAL(DP), INTENT(in)    :: J(1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(inout) :: Jnorm(1:nX_G,1:nSpecies)
 
     INTEGER  :: iN_X
 
@@ -1440,11 +1430,15 @@ CONTAINS
     !$OMP PARALLEL DO SIMD
 #endif
     DO iN_X = 1, nX_G
+
       IF ( MASK(iN_X) ) THEN
+
         !!! --- TO DO: Change to weighted norm ---
         Jnorm(iN_X,iS_1) = SQRT( SUM( J(:,iN_X,iS_1)**2 ) )
         Jnorm(iN_X,iS_2) = SQRT( SUM( J(:,iN_X,iS_2)**2 ) )
+
       END IF
+
     END DO
 
   END SUBROUTINE ComputeJNorm

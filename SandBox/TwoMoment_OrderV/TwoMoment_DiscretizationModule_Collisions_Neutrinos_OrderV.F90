@@ -229,10 +229,10 @@ CONTAINS
     ! PRINT*, "--- Map primitive and auxillary quantities back to conserved ones ---"
     ! PRINT*, "--- and compute increment ---"
 
-
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
+
       CALL ComputeConserved_TwoMoment &
              ( PR_N(iN_E,iN_X,iS,iCR_N ), &
                PR_N(iN_E,iN_X,iS,iCR_G1), &
@@ -248,6 +248,7 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
+
     END DO
     END DO
     END DO
@@ -257,6 +258,7 @@ CONTAINS
              PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
 
     DO iN_X = 1, nX_G
+
       CALL ComputeConserved_Euler_NonRelativistic &
              ( PF_N(iN_X,iPF_D),  &
                PF_N(iN_X,iPF_V1), &
@@ -273,15 +275,16 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
+
     END DO
 
     !! compute increment
-    CALL ComputeAndMapIncrement( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
-
-
+    CALL ComputeAndMapIncrement &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
     ! PRINT*, "--- Finalizing implicit solve---"
+
     CALL FinalizeCollisions
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
@@ -515,9 +518,10 @@ CONTAINS
   SUBROUTINE ComputeAndMapIncrement &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in) :: dt
+    REAL(DP), INTENT(in) :: &
+      dt
     REAL(DP), INTENT(in) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
@@ -566,8 +570,8 @@ CONTAINS
       iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
       iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
 
-      dU_F(iNodeX,iX1,iX2,iX3,iCF) = ( CF_N(iN_X,iCF) &
-                                     - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
+      dU_F(iNodeX,iX1,iX2,iX3,iCF) &
+        = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
 
     END DO
     END DO
@@ -593,8 +597,8 @@ CONTAINS
 
       iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
-      dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = ( CR_N(iN_E,iN_X,iS,iCR) &
-                                           - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) /dt
+      dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
+        = ( CR_N(iN_E,iN_X,iS,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
 
     END DO
     END DO
