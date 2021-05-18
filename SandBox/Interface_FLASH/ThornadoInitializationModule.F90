@@ -160,15 +160,17 @@ contains
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
     END IF
 
-    WRITE(*,*)
+    IF(Verbose)THEN
+      WRITE(*,*)
 #ifdef TWOMOMENT_ORDER_V
-    IF(Verbose) WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_V'
+      WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_V'
 #elif TWOMOMENT_ORDER_1
-    IF(Verbose) WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_1'
+      WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_1'
 #else
-    IF(Verbose) WRITE(*,*) 'INFO: use Default TWOMOMENT_ORDER'
+      WRITE(*,*) 'INFO: use Default TWOMOMENT_ORDER'
 #endif
-    WRITE(*,*) '---------------------------------------'
+      WRITE(*,*) '---------------------------------------'
+    END IF
 
     ! --- Convert from MeV (expected) to thornado code units ---
 
@@ -237,7 +239,7 @@ contains
              UseSlopeLimiter_Option &
                = .FALSE., &
              Verbose_Option &
-               = .TRUE. )
+               = Verbose )
 #endif
 
     call InitializePositivityLimiter_TwoMoment &
