@@ -1,9 +1,14 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, &
+    Zero, &
+    One
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1, &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
@@ -12,12 +17,16 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
     Timer_Euler_UpdateFluid
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeSourceTerms_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    WriteSourceTerms
+    WriteSourceTerms, &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    IncrementOffGridTally_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -34,7 +43,7 @@ MODULE TimeSteppingModule_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
 
-  LOGICAL, PUBLIC :: WriteSourceTerms2
+  LOGICAL, PUBLIC :: WritePlotFile
 
   INTERFACE
     SUBROUTINE FluidIncrement &
@@ -49,7 +58,7 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(inout)        :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
@@ -77,7 +86,7 @@ CONTAINS
 
     INTEGER :: i
 
-WriteSourceTerms2 = .FALSE.
+    WritePlotFile = .FALSE.
 
     nStages_SSPRK = nStages
 
@@ -108,9 +117,9 @@ WriteSourceTerms2 = .FALSE.
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
   END SUBROUTINE InitializeFluid_SSPRK
@@ -194,14 +203,17 @@ WriteSourceTerms2 = .FALSE.
     PROCEDURE (GravitySolver), OPTIONAL :: &
       ComputeGravity
 
-    ! --- E, S, S^1, S^2, S^3 ---
+    ! --- E, S, S^1, S^2, S^3, Mg ---
     REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
                                  iX_B0(3):iX_E0(3),6)
 
     LOGICAL :: SolveGravity
-
     INTEGER :: iS, jS, iX1, iX2, iX3
+
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
@@ -247,13 +259,15 @@ WriteSourceTerms2 = .FALSE.
         END IF
 
         WriteSourceTerms = .FALSE.
-
-        IF( WriteSourceTerms2 .AND. iS .EQ. nStages_SSPRK ) &
+        IF( WritePlotFile .AND. iS .EQ. nStages_SSPRK ) &
           WriteSourceTerms = .TRUE.
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 
@@ -286,6 +300,8 @@ WriteSourceTerms2 = .FALSE.
 
     END IF
 
+    CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
+
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
@@ -298,7 +314,7 @@ WriteSourceTerms2 = .FALSE.
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     INTEGER :: iCF, iX1, iX2, iX3
 

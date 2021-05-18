@@ -12,8 +12,9 @@ default: $(LIBNAME)
 include ../../../Makefile.h
 
 # these should get defined by invoking the Makefile from FLASH
-MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+MOMENT_CLOSURE = MINERBO
 MICROPHYSICS = WEAKLIB
+TWOMOMENT_ORDER = ORDER_V
 
 # Import thornado Makefiles
 THORNADO_DIR = ../../
@@ -24,6 +25,11 @@ include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).
+
+ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+  VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
+endif
+
 ifdef BUILDFLAG
   FFLAGS = $(FFLAGS_$(BUILDFLAG))
 else
@@ -75,7 +81,7 @@ OBJS = \
        EquationOfStateModule_TABLE.o \
        EquationOfStateModule_IDEAL.o \
        TwoMoment_ClosureModule.o \
-       TwoMoment_PositivityLimiterModule_Old.o \
+       TwoMoment_PositivityLimiterModule.o \
        TwoMoment_DiscretizationModule_Streaming.o \
        TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
        TwoMoment_NeutrinoMatterSolverModule.o \
@@ -90,6 +96,33 @@ OBJS = \
        UnitsModule.o \
        ThornadoInitializationModule.o \
        TimeSteppingModule_Flash.o
+
+ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+OBJS += \
+       EquationOfStateModule.o \
+       Euler_BoundaryConditionsModule.o \
+       Euler_dgDiscretizationModule.o \
+       Euler_UtilitiesModule_NonRelativistic.o \
+       Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+       Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+       Euler_ErrorModule.o \
+       InputOutputModuleHDF.o \
+       ReferenceElementModuleZ.o \
+       PolynomialBasisMappingModule.o \
+       UtilitiesModule.o \
+       TimersModule_Euler.o \
+       TwoMoment_UtilitiesModule_OrderV.o \
+       TwoMoment_TroubledCellIndicatorModule.o \
+       TwoMoment_SlopeLimiterModule_OrderV.o \
+       TwoMoment_TimersModule_OrderV.o \
+       TwoMoment_PositivityLimiterModule_OrderV.o \
+       TwoMoment_OpacityModule_OrderV.o \
+       TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+       TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+       TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+       TwoMoment_DiscretizationModule_Streaming_OrderV.o
+endif
+
 ifeq ($(USE_GPU),TRUE)
 OBJS += \
        CudaModule.o
@@ -124,6 +157,8 @@ $(LIBNAME): $(OBJS)
 clean:
 	rm -f $(LIBNAME) $(LIBDIR)/$(LIBNAME) *.mod $(INCDIR)/*.mod *.o
 
+
+ifeq ($(TWOMOMENT_ORDER),ORDER_1)
 TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -132,7 +167,7 @@ TimeSteppingModule_Flash.o: \
   RadiationFieldsModule.o \
   TwoMoment_DiscretizationModule_Streaming.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
-  TwoMoment_PositivityLimiterModule_Old.o \
+  TwoMoment_PositivityLimiterModule.o \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
@@ -164,7 +199,79 @@ ThornadoInitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_PositivityLimiterModule_Old.o \
+  TwoMoment_PositivityLimiterModule.o \
   TwoMoment_MeshRefinementModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   ThornadoInitializationModule.F90
+else
+TimeSteppingModule_Flash.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  PolynomialBasisMappingModule.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
+  Euler_BoundaryConditionsModule.o \
+  TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+  ReferenceElementModuleZ.o \
+  TwoMoment_OpacityModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  InputOutputModuleHDF.o \
+  Euler_dgDiscretizationModule.o \
+  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+  PhysicalConstantsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o  \
+  TimeSteppingModule_Flash.F90
+
+ThornadoInitializationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  DeviceModule.o \
+  TimersModule.o \
+  QuadratureModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  PolynomialBasisModule_Lagrange.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModule_Lagrange.o \
+  SubcellReconstructionModule.o \
+  EquationOfStateModule_TABLE.o \
+  EquationOfStateModule_IDEAL.o \
+  OpacityModule_TABLE.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryComputationModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  PolynomialBasisMappingModule.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
+  Euler_BoundaryConditionsModule.o \
+  TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+  ReferenceElementModuleZ.o \
+  TwoMoment_OpacityModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  InputOutputModuleHDF.o \
+  Euler_dgDiscretizationModule.o \
+  TwoMoment_MeshRefinementModule.o \
+  ThornadoInitializationModule.F90
+endif

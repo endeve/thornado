@@ -1,13 +1,18 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_LA
+#endif
 MODULE LinearAlgebraModule
 
   USE, INTRINSIC :: ISO_C_BINDING
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    One
+    One, &
+    Pi
   USE DeviceModule, ONLY: &
     mydevice, &
-    device_is_present
+    device_is_present, &
+    dev_ptr
 
 #if defined(THORNADO_LA_CUBLAS)
   USE CudaModule, ONLY: &
@@ -73,10 +78,10 @@ MODULE LinearAlgebraModule
   PUBLIC :: VectorNorm2
   PUBLIC :: VectorNorm2_Kernel
   PUBLIC :: VectorVectorAdd
-  PUBLIC :: VectorGather
   PUBLIC :: LinearLeastSquares_LWORK
   PUBLIC :: LinearLeastSquares
   PUBLIC :: LinearSolveBatched
+  PUBLIC :: EigenvaluesSymmetric3
 
 CONTAINS
 
@@ -153,19 +158,9 @@ CONTAINS
       itransa = itrans_from_char( transa )
       itransb = itrans_from_char( transb )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dc = C_LOC( pc )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dc = dev_ptr( pc(1,1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgeam &
@@ -194,6 +189,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixAdd] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -202,6 +198,7 @@ CONTAINS
         WRITE(*,*) '[MatrixMatrixAdd]   B missing'
       IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
         WRITE(*,*) '[MatrixMatrixAdd]   C missing'
+#endif
 #endif
 
       IF ( alpha == 0.0_DP .AND. beta == 0.0_DP ) THEN
@@ -335,19 +332,9 @@ CONTAINS
       itransa = itrans_from_char( transa )
       itransb = itrans_from_char( transb )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dc = C_LOC( pc )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dc = dev_ptr( pc(1,1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemm_v2 &
@@ -361,6 +348,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixMultiply] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -369,6 +357,7 @@ CONTAINS
         WRITE(*,*) '[MatrixMatrixMultiply]   B missing'
       IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
         WRITE(*,*) '[MatrixMatrixMultiply]   C missing'
+#endif
 #endif
 
       CALL DGEMM &
@@ -433,19 +422,9 @@ CONTAINS
       itransa = itrans_from_char( transa )
       itransb = itrans_from_char( transb )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dc = C_LOC( pc )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dc = dev_ptr( pc(1,1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemmStridedBatched &
@@ -461,6 +440,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixMultiplyBatched] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -469,6 +449,7 @@ CONTAINS
         WRITE(*,*) '[MatrixMatrixMultiplyBatched]   B missing'
       IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
         WRITE(*,*) '[MatrixMatrixMultiplyBatched]   C missing'
+#endif
 #endif
 
       DO i = 1, batchcount
@@ -537,40 +518,26 @@ CONTAINS
       !$ACC CREATE( da, db, dipiv, da_array, db_array, dipiv_array )
 #endif
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pipiv, pinfo )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, pipiv, pinfo )
-#endif
-      dinfo = C_LOC( pinfo )
+      dinfo = dev_ptr( pinfo(1) )
       DO i = 1, batchcount
         osa = (i-1) * n + 1
         osb = (i-1) * nrhs + 1
-        da(i) = C_LOC( pa(1,osa) )
-        db(i) = C_LOC( pb(1,osb) )
-        dipiv(i) = C_LOC( pipiv(osa) )
+        da(i) = dev_ptr( pa(1,osa) )
+        db(i) = dev_ptr( pb(1,osb) )
+        dipiv(i) = dev_ptr( pipiv(osa) )
       END DO
 #if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
       !$OMP TARGET UPDATE TO( da, db, dipiv )
 #elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
       !$ACC UPDATE DEVICE( da, db, dipiv )
 #endif
 
+      da_array = dev_ptr( da(1) )
+      db_array = dev_ptr( db(1) )
+      dipiv_array = dev_ptr( dipiv(1) )
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( da, db, dipiv )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( da, db, dipiv )
-#endif
-      da_array = C_LOC( da )
-      db_array = C_LOC( db )
-      dipiv_array = C_LOC( dipiv )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
       !$OMP TARGET UPDATE TO( da_array, db_array, dipiv )
 #elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
       !$ACC UPDATE DEVICE( da_array, db_array, dipiv )
 #endif
 
@@ -598,6 +565,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[LinearSolveBatched] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -608,6 +576,7 @@ CONTAINS
         WRITE(*,*) '[LinearSolveBatched]   ipiv missing'
       IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
         WRITE(*,*) '[LinearSolveBatched]   info missing'
+#endif
 #endif
 
       DO i = 1, batchcount
@@ -672,19 +641,9 @@ CONTAINS
 
       itrans = itrans_from_char( trans )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, px, py )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, px, py )
-#endif
-      da = C_LOC( pa )
-      dx = C_LOC( px )
-      dy = C_LOC( py )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      dx = dev_ptr( px(1) )
+      dy = dev_ptr( py(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemv_v2 &
@@ -698,6 +657,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixVectorMultiply] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -706,6 +666,7 @@ CONTAINS
         WRITE(*,*) '[MatrixVectorMultiply]   x missing'
       IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
         WRITE(*,*) '[MatrixVectorMultiply]   y missing'
+#endif
 #endif
 
       CALL DGEMV &
@@ -752,19 +713,9 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pc, px )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pc, px )
-#endif
-      da = C_LOC( pa )
-      dc = C_LOC( pc )
-      dx = C_LOC( px )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      dc = dev_ptr( pc(1,1) )
+      dx = dev_ptr( px(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDdgmm &
@@ -780,6 +731,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixDiagScale] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -788,6 +740,7 @@ CONTAINS
         WRITE(*,*) '[MatrixDiagScale]   C missing'
       IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
         WRITE(*,*) '[MatrixDiagScale]   x missing'
+#endif
 #endif
 
       IF ( incx == 1 ) THEN
@@ -844,18 +797,8 @@ CONTAINS
     hb = C_LOC( pb )
     hwork = C_LOC( pwork )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb )
-#elif defined(THORNADO_OACC)
-    !$ACC HOST_DATA USE_DEVICE( pa, pb )
-#endif
-    da = C_LOC( pa )
-    db = C_LOC( pb )
-#if defined(THORNADO_OMP_OL)
-    !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-    !$ACC END HOST_DATA
-#endif
+    da = dev_ptr( pa(1,1) )
+    db = dev_ptr( pb(1,1) )
 
     itrans = itrans_from_char( trans )
 
@@ -927,21 +870,11 @@ CONTAINS
 
       itrans = itrans_from_char( trans )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, ptau, pwork, pinfo )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pa, pb, ptau, pwork, pinfo )
-#endif
-      da = C_LOC( pa )
-      db = C_LOC( pb )
-      dtau = C_LOC( ptau )
-      dwork = C_LOC( pwork )
-      dinfo = C_LOC( pinfo )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      da = dev_ptr( pa(1,1) )
+      db = dev_ptr( pb(1,1) )
+      dtau = dev_ptr( ptau(1) )
+      dwork = dev_ptr( pwork(1) )
+      dinfo = dev_ptr( pinfo )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cusolverDnDgeqrf &
@@ -950,7 +883,6 @@ CONTAINS
              ( cusolver_handle, &
                CUBLAS_SIDE_LEFT, CUBLAS_OP_T, &
                m, nrhs, n, da, lda, dtau, db, ldb, dwork, lwork, dinfo )
-      ierr = cudaStreamSynchronize( stream )
 
       IF ( nrhs == 1 ) THEN
 
@@ -976,6 +908,7 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[LinearLeastSquares] Data not present on device'
       IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
@@ -988,6 +921,7 @@ CONTAINS
         WRITE(*,*) '[LinearLeastSquares]   work missing'
       IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
         WRITE(*,*) '[LinearLeastSquares]   info missing'
+#endif
 #endif
 
       CALL DGELS &
@@ -1023,17 +957,7 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( px )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( px )
-#endif
-      dx = C_LOC( px )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      dx = dev_ptr( px(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
@@ -1045,10 +969,12 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[VectorNorm2] Data not present on device'
       IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
         WRITE(*,*) '[VectorNorm2]   x missing'
+#endif
 #endif
 
       xnorm = DNRM2( n, x, incx )
@@ -1125,18 +1051,8 @@ CONTAINS
 
     IF ( data_on_device ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( px, py )
-#elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( px, py )
-#endif
-      dx = C_LOC( px )
-      dy = C_LOC( py )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
-#endif
+      dx = dev_ptr( px(1) )
+      dy = dev_ptr( py(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
@@ -1148,10 +1064,12 @@ CONTAINS
 
     ELSE
 
+#if defined(THORNADO_DEBUG_LA)
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[VectorVectorAdd] Data not present on device'
       IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
         WRITE(*,*) '[VectorVectorAdd]   x missing'
+#endif
 #endif
 
       CALL DAXPY( n, alpha, x, incx, y, incy )
@@ -1161,77 +1079,67 @@ CONTAINS
   END SUBROUTINE VectorVectorAdd
 
 
-  SUBROUTINE VectorGather( nnz, y, xval, xind )
-
-    INTEGER                         :: nnz
-    REAL(DP), DIMENSION(*), TARGET  :: y, xval
-    INTEGER,  DIMENSION(*), TARGET  :: xind
-
-    INTEGER                         :: ierr, i
-    INTEGER(C_SIZE_T)               :: sizeof_xval, sizeof_xind, sizeof_y
-    REAL(DP), DIMENSION(:), POINTER :: pxval, py
-    INTEGER,  DIMENSION(:), POINTER :: pxind
-    TYPE(C_PTR)                     :: hxval, hxind, hy
-    TYPE(C_PTR)                     :: dxval, dxind, dy
-    LOGICAL                         :: data_on_device
-
-    data_on_device = .false.
-    sizeof_xval = nnz * c_sizeof(0.0_DP)
-    sizeof_xind = nnz * c_sizeof(0)
-    sizeof_y    = nnz * c_sizeof(0.0_DP)
-
-    pxval(1:nnz) => xval(1:nnz)
-    pxind(1:nnz) => xind(1:nnz)
-    py(1:nnz) => y(1:nnz)
-
-    hxval = C_LOC( pxval )
-    hxind = C_LOC( pxind )
-    hy = C_LOC( py )
-
-    data_on_device = device_is_present( hxval, mydevice, sizeof_xval ) &
-               .AND. device_is_present( hxind, mydevice, sizeof_xind ) &
-               .AND. device_is_present( hy,    mydevice, sizeof_y    )
-
-    IF ( data_on_device ) THEN
-
+  SUBROUTINE EigenvaluesSymmetric3( A, Lambda )
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pxval, pxind, py )
+    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( pxval, pxind, py )
-#endif
-      dxval = C_LOC( pxval )
-      dxind = C_LOC( pxind )
-      dy = C_LOC( py )
-#if defined(THORNADO_OMP_OL)
-      !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
-      !$ACC END HOST_DATA
+    !$ACC ROUTINE SEQ
 #endif
 
-#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
-      ierr = cusparseDgthr( cusparse_handle, nnz, dy, dxval, dxind, CUSPARSE_INDEX_BASE_ONE )
-      ierr = cudaStreamSynchronize( stream )
-#endif
+    REAL(DP), INTENT(in)  :: A(3,3)
+    REAL(DP), INTENT(out) :: Lambda(3)
+
+    REAL(DP) :: B11, B22, B33
+    REAL(DP) :: B12, B13, B21, B23, B31, B32
+    REAL(DP) :: P1, P2, P, Q, R, PHI, DETB
+
+    P1 = A(1,2)**2 + A(1,3)**2 + A(2,3)**2
+
+    IF ( P1 == Zero ) THEN
+
+      Lambda(1) = A(1,1)
+      Lambda(2) = A(2,2)
+      Lambda(3) = A(3,3)
 
     ELSE
 
-#if defined(THORNADO_GPU)
-      WRITE(*,*) '[VectorGather] Data not present on device'
-      IF ( .not. device_is_present( hxval, mydevice, sizeof_xval ) ) &
-        WRITE(*,*) '[VectorGather]   xval missing'
-      IF ( .not. device_is_present( hxind, mydevice, sizeof_xind ) ) &
-        WRITE(*,*) '[VectorGather]   xind missing'
-      IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
-        WRITE(*,*) '[VectorGather]   y missing'
-#endif
+      Q = ( A(1,1) + A(2,2) + A(3,3) ) / 3.0_DP
+      P2 = 2.0_DP * P1 &
+           + ( A(1,1) - Q )**2 &
+           + ( A(2,2) - Q )**2 &
+           + ( A(3,3) - Q )**2
+      P = SQRT( P2 / 6.0_DP )
 
-      DO i = 1, nnz
-        xval(i) = y(xind(i))
-      END DO
+      B11 = ( A(1,1) - Q ) / P
+      B22 = ( A(2,2) - Q ) / P
+      B33 = ( A(3,3) - Q ) / P
+      B12 = A(1,2) / P ; B21 = B12
+      B13 = A(1,3) / P ; B31 = B13
+      B23 = A(2,3) / P ; B32 = B23
+      DETB =   B11 * B22 * B33  &
+             - B11 * B23 * B32  &
+             - B12 * B21 * B33  &
+             + B12 * B23 * B31  &
+             + B13 * B21 * B32  &
+             - B13 * B22 * B31
+      R = DETB * 0.5_DP
+      IF ( R <= - One ) THEN
+        PHI = Pi
+      ELSE IF ( R >= One ) THEN
+        PHI = Zero
+      ELSE
+        PHI = ACOS( R ) / 3.0_DP
+      END IF
+
+      Lambda(1) = Q + 2.0_DP * P * COS( PHI )
+      Lambda(3) = Q + 2.0_DP * P * COS( PHI + ( 2.0_DP * Pi / 3.0_DP ) )
+      Lambda(2) = 3.0_DP * Q - Lambda(1) - Lambda(3)
 
     END IF
 
-  END SUBROUTINE VectorGather
+  END SUBROUTINE EigenvaluesSymmetric3
+
+
 
 
 END MODULE LinearAlgebraModule

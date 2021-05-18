@@ -1,29 +1,51 @@
 MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, &
+    Zero, &
+    Half, &
+    One
   USE UnitsModule, ONLY: &
-    Gram, Centimeter, Kelvin, AtomicMassUnit, Erg, Second
+    Gram, &
+    Centimeter, &
+    Kelvin, &
+    AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX
+    nNodesX, &
+    nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    NodesX_q, WeightsX_q, &
-    nDOFX_X1, NodesX1, &
-    nDOFX_X2, NodesX2, &
-    nDOFX_X3, NodesX3
+    WeightsX_q, &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, LX_X1_Up, &
-    LX_X2_Dn, LX_X2_Up, &
-    LX_X3_Dn, LX_X3_Up
+    LX_X1_Dn, &
+    LX_X1_Up, &
+    LX_X2_Dn, &
+    LX_X2_Up, &
+    LX_X3_Dn, &
+    LX_X3_Up
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_SqrtGm
+    nGF, &
+    iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    iDF_T1, iDF_T2, iDF_T3, iDF_MinE, iDF_MaxE
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
+    iDF_T1, &
+    iDF_T2, &
+    iDF_T3, &
+    iDF_MinE, &
+    iDF_MaxE
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE
@@ -202,7 +224,7 @@ CONTAINS
 
       END DO
 
-      Y_K = BaryonMass * U_K(iCF_Ne) / U_K(iCF_D) 
+      Y_K = BaryonMass * U_K(iCF_Ne) / U_K(iCF_D)
 
       IF( U_K(iCF_D) < Min_D .OR. U_K(iCF_D) > Max_D )THEN
 

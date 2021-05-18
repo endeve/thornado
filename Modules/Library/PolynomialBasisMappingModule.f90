@@ -27,8 +27,9 @@ MODULE PolynomialBasisMappingModule
   PUBLIC :: MapModalToNodal_Radiation_X
   PUBLIC :: MapModalToNodal_Radiation
 
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Kij_X, Kij_Z
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Pij_X, Pij_Z
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: Kij_X, Pij_X
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE         :: Kij_Z, Pij_Z
+
 
 CONTAINS
 

@@ -227,14 +227,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: L_X1_Dn, L_X2_Dn, L_X3_Dn, &
-    !$OMP          L_X1_Up, L_X2_Up, L_X3_Up, &
-    !$OMP          dLdX1_q, dLdX2_q, dLdX3_q )
+    !$OMP MAP( to: L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
+    !$OMP          L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
+    !$OMP          dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( L_X1_Dn, L_X2_Dn, L_X3_Dn, &
-    !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, &
-    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q )
+    !$ACC COPYIN( L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
+    !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
+    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
 #endif
 
   END SUBROUTINE InitializeReferenceElement_Lagrange
@@ -244,14 +244,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: L_X1_Dn, L_X2_Dn, L_X3_Dn, &
-    !$OMP               L_X1_Up, L_X2_Up, L_X3_Up, &
-    !$OMP               dLdX1_q, dLdX2_q, dLdX3_q )
+    !$OMP MAP( release: L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
+    !$OMP               L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
+    !$OMP               dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( L_X1_Dn, L_X2_Dn, L_X3_Dn, &
-    !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, &
-    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q )
+    !$ACC DELETE( L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
+    !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
+    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
 #endif
 
     DEALLOCATE( L_E_Dn )

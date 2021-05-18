@@ -82,9 +82,7 @@ CONTAINS
     END IF
 
 
-
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -105,7 +103,6 @@ CONTAINS
     END DO
     END DO
 
-
     ! --- Arrange Geometry Fields ---
 
     DO iN_X = 1, nX_G
@@ -120,7 +117,6 @@ CONTAINS
 
     END DO
     END DO
-
     ! --- Arrange Fluid Fields ---
 
     DO iN_X = 1, nX_G

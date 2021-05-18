@@ -43,7 +43,12 @@ MODULE MF_TimeSteppingModule_SSPRK
     MF_ApplyPositivityLimiter_Euler
   USE InputParsingModule,               ONLY: &
     nLevels, &
+    UseTiling, &
     DEBUG
+  USE MF_FieldsModule,                  ONLY: &
+    MF_OffGridFlux_Euler
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_IncrementOffGridTally_Euler
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimersStart_AMReX_Euler,       &
     TimersStop_AMReX_Euler,        &
@@ -134,12 +139,12 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( MF_D(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, 0 )
+               ( MF_D(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
       END DO
 
@@ -244,7 +249,11 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
 
+    REAL(AR) :: dM_OffGrid_Euler(0:nLevels-1,nCF)
+
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+
+    dM_OffGrid_Euler = Zero
 
     ! --- Set temporary MultiFabs U and dU to zero ---
 
@@ -270,7 +279,7 @@ CONTAINS
 
         CALL MF_U(iLevel) &
                % COPY( MF_uCF(iLevel), 1, 1, &
-                       MF_uCF(iLevel) % nComp(), swX(1) )
+                       MF_uCF(iLevel) % nComp(), swX )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
@@ -284,7 +293,7 @@ CONTAINS
 
         ! --- Copy ghost data from physical boundaries ---
 
-        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
         DO WHILE( MFI % next() )
 
@@ -306,7 +315,7 @@ CONTAINS
             CALL MF_U(iLevel) &
                    % LinComb( One, MF_U(iLevel), 1, &
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), 0 )
+                              1, MF_U(iLevel) % nComp(), swX )
 
         END DO
 
@@ -327,6 +336,14 @@ CONTAINS
 
         CALL MF_ComputeIncrement_Euler( GEOM, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
+        DO iLevel = 0, nLevels-1
+
+          dM_OffGrid_Euler(iLevel,:) &
+            = dM_OffGrid_Euler(iLevel,:) &
+                + dt(iLevel) * w_SSPRK(iS) * MF_OffGridFlux_Euler(iLevel,:)
+
+        END DO
+
       END IF
 
     END DO
@@ -339,7 +356,7 @@ CONTAINS
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iLevel,iS), 1, &
-                            1, MF_uCF(iLevel) % nComp(), 0 )
+                            1, MF_uCF(iLevel) % nComp(), swX )
 
       END DO
 
@@ -352,6 +369,12 @@ CONTAINS
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
 
     CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler(iLevel,:) )
+
+    END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

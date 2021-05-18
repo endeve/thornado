@@ -50,7 +50,7 @@ MODULE DeviceModule
     acc_get_device_num, &
     acc_on_device, &
     acc_is_present, &
-    acc_set_cuda_stream, &
+    acc_get_cuda_stream, &
     acc_get_default_async, &
     acc_device_host, &
     acc_device_nvidia, &
@@ -63,6 +63,12 @@ MODULE DeviceModule
   INCLUDE 'mpif.h'
 
   INTEGER, PUBLIC :: mydevice, ndevices
+
+  INTERFACE dev_ptr
+    MODULE PROCEDURE dev_ptr_int
+    MODULE PROCEDURE dev_ptr_dp
+    MODULE PROCEDURE dev_ptr_cptr
+  END INTERFACE
 
   INTERFACE QueryOnGPU
     MODULE PROCEDURE QueryOnGPU_3D_DP_1
@@ -85,6 +91,7 @@ MODULE DeviceModule
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
   PUBLIC :: on_device
+  PUBLIC :: dev_ptr
   PUBLIC :: QueryOnGpu
 
 CONTAINS
@@ -112,7 +119,12 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
     ierr = cublasCreate_v2( cublas_handle )
+
+#if defined(THORNADO_OACC)
+    stream = acc_get_cuda_stream( acc_async_default )
+#else
     ierr = cudaStreamCreate( stream )
+#endif
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
 
@@ -132,11 +144,6 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     CALL omp_set_default_device( mydevice )
-#endif
-
-#if defined(THORNADO_OACC)
-    acc_async_default = acc_get_default_async()
-    ierr = acc_set_cuda_stream( acc_async_default, stream )
 #endif
 
     RETURN
@@ -187,6 +194,51 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION on_device
+
+  TYPE(C_PTR) FUNCTION dev_ptr_int( a )
+    INTEGER, TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
+#endif
+    dev_ptr_int = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_int
+
+  TYPE(C_PTR) FUNCTION dev_ptr_dp( a )
+    REAL(DP), TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
+#endif
+    dev_ptr_dp = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_dp
+
+  TYPE(C_PTR) FUNCTION dev_ptr_cptr( a )
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
+#endif
+    dev_ptr_cptr = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_cptr
 
 
   FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )

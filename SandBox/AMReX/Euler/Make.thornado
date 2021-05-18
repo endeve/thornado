@@ -18,10 +18,11 @@ f90EXE_sources  += MF_Euler_BoundaryConditionsModule.f90
 f90EXE_sources  += MF_Euler_dgDiscretizationModule.f90
 f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
+f90EXE_sources  += MF_Euler_TallyModule.f90
 f90EXE_sources  += MF_UtilitiesModule.f90
 f90EXE_sources  += TimersModule_AMReX_Euler.f90
 CEXE_sources    += Restart.cpp
-f90EXE_sources  += MF_AccretionShockDiagnosticsModule.f90
+f90EXE_sources  += MF_AccretionShockUtilitiesModule.f90
 f90EXE_sources  += MF_Euler_PerturbationModule.f90
 #F90EXE_sources  += dgemv.F90 lsame.F90
 
@@ -32,6 +33,7 @@ f90EXE_sources  += QuadratureModule.f90
 F90EXE_sources  += ReferenceElementModule.F90
 F90EXE_sources  += ReferenceElementModuleX.F90
 F90EXE_sources  += ReferenceElementModuleX_Lagrange.F90
+F90EXE_sources  += LinearAlgebraModule.F90
 f90EXE_sources  += TimersModule_Euler.f90
 f90EXE_sources  += LagrangePolynomialsModule.f90
 f90EXE_sources  += PolynomialBasisMappingModule.f90
@@ -61,10 +63,10 @@ F90EXE_sources  += Euler_UtilitiesModule_NonRelativistic.F90
 F90EXE_sources  += Euler_UtilitiesModule_Relativistic.F90
 F90EXE_sources  += Euler_UtilitiesModule.F90
 F90EXE_sources  += Euler_BoundaryConditionsModule.F90
-f90EXE_sources  += Euler_DiscontinuityDetectionModule.f90
+F90EXE_sources  += Euler_DiscontinuityDetectionModule.F90
 f90EXE_sources  += Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.f90
 f90EXE_sources  += Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.f90
-f90EXE_sources  += Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
+F90EXE_sources  += Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.F90
 F90EXE_sources  += Euler_CharacteristicDecompositionModule.F90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
@@ -72,12 +74,15 @@ F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 F90EXE_sources  += Euler_SlopeLimiterModule.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.f90
-f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
+F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
+F90EXE_sources  += Euler_TallyModule.F90
+f90EXE_sources  += Euler_TallyModule_NonRelativistic.f90
+f90EXE_sources  += Euler_TallyModule_Relativistic.f90
 F90EXE_sources  += Euler_UtilitiesModule.F90
 f90EXE_sources  += Euler_ErrorModule.f90
 F90EXE_sources  += Euler_dgDiscretizationModule.F90
-f90EXE_sources  += AccretionShockDiagnosticsModule.f90
+f90EXE_sources  += AccretionShockUtilitiesModule.f90
 f90EXE_sources  += Euler_PerturbationModule.f90
 
 # thornado/Modules/ProgramHeader
@@ -104,7 +109,7 @@ f90EXE_sources  += InputOutputModuleAMReX.f90
 # thornado/Modules/Geometry
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
-f90EXE_sources  += GeometryFieldsModule.f90
+F90EXE_sources  += GeometryFieldsModule.F90
 F90EXE_sources  += GeometryComputationModule.F90
 f90EXE_sources  += GravitySolutionModule_Newtonian_PointMass.f90
 

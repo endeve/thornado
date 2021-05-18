@@ -89,6 +89,8 @@ MODULE InitializationModule
   USE UnitsModule,                      ONLY: &
     SolarMass, &
     UnitsDisplay
+  USE TimersModule_Euler,               ONLY: &
+    InitializeTimers_Euler
 
   ! --- Local modules ---
 
@@ -153,7 +155,11 @@ MODULE InitializationModule
     DM,                        &
     GEOM,                      &
     InitializeParameters
+  USE MF_Euler_TallyModule,     ONLY: &
+    MF_InitializeTally_Euler, &
+    MF_ComputeTally_Euler
   USE TimersModule_AMReX_Euler, ONLY: &
+    InitializeTimers_AMReX_Euler,  &
     TimersStart_AMReX_Euler,      &
     TimersStop_AMReX_Euler,       &
     Timer_AMReX_Euler_Initialize, &
@@ -183,12 +189,15 @@ CONTAINS
     LOGICAL               :: SolveGravity
     REAL(AR)              :: Mass
 
-
     ! --- Initialize AMReX ---
 
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
+
+    CALL InitializeTimers_AMReX_Euler
+
+    CALL InitializeTimers_Euler
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
@@ -229,23 +238,23 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
-               ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+               ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
         CALL MF_uGF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
         CALL MF_uCF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
         CALL MF_uPF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
         CALL MF_uAF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX(1) )
+               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
         CALL MF_uDF(iLevel) % SetVal( Zero )
 
       END DO
@@ -419,13 +428,15 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
+    CALL MF_InitializeTally_Euler
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     IF( iRestart .LT. 0 )THEN
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF, GEOM )
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 
@@ -448,6 +459,10 @@ CONTAINS
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     END IF
+
+    CALL MF_ComputeTally_Euler &
+           ( GEOM, MF_uGF, MF_uCF, t(0), &
+             SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

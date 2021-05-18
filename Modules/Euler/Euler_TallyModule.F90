@@ -2,16 +2,25 @@ MODULE Euler_TallyModule
 
   USE KindModule, ONLY: &
     DP
+  USE FluidFieldsModule, ONLY: &
+    nCF
 
-  USE Euler_TallyModule_NonRelativistic_IDEAL
-  USE Euler_TallyModule_NonRelativistic_TABLE
-  USE Euler_TallyModule_Relativistic_IDEAL
+#ifdef HYDRO_RELATIVISTIC
+
+  USE Euler_TallyModule_Relativistic
+
+#else
+
+  USE Euler_TallyModule_NonRelativistic
+
+#endif
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeTally_Euler
   PUBLIC :: FinalizeTally_Euler
+  PUBLIC :: IncrementOffGridTally_Euler
   PUBLIC :: ComputeTally_Euler
 
 
@@ -19,7 +28,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+      SuppressTally_Option, BaseFileName_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -29,41 +39,33 @@ CONTAINS
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
+    CHARACTER(LEN=*),  INTENT(in), OPTIONAL :: &
+      BaseFileName_Option
 
-    LOGICAL :: SuppressTally
+    LOGICAL        :: SuppressTally
+    CHARACTER(256) :: BaseFileName
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
       SuppressTally = SuppressTally_Option
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+    BaseFileName = '../Output/'
+    IF( PRESENT( BaseFileName_Option ) ) &
+      BaseFileName = TRIM( BaseFileName_Option )
 
-    CALL InitializeTally_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0,             &
-             G(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-             U(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-             SuppressTally )
+#ifdef HYDRO_RELATIVISTIC
 
-#elif defined HYDRO_RELATIVISTIC
-
-    CALL InitializeTally_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally )
+    CALL InitializeTally_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+             SuppressTally_Option = SuppressTally, &
+             BaseFileName_Option = TRIM( BaseFileName ) )
 
 #else
 
-    CALL InitializeTally_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0,             &
-             G(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-             U(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-             SuppressTally )
+    CALL InitializeTally_Euler_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+             SuppressTally_Option = SuppressTally, &
+             BaseFileName_Option = TRIM( BaseFileName ) )
 
 #endif
 
@@ -72,17 +74,13 @@ CONTAINS
 
   SUBROUTINE FinalizeTally_Euler
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+#ifdef HYDRO_RELATIVISTIC
 
-    CALL FinalizeTally_Euler_NonRelativistic_TABLE
-
-#elif defined HYDRO_RELATIVISTIC
-
-    CALL FinalizeTally_Euler_Relativistic_IDEAL
+    CALL FinalizeTally_Euler_Relativistic
 
 #else
 
-    CALL FinalizeTally_Euler_NonRelativistic_IDEAL
+    CALL FinalizeTally_Euler_NonRelativistic
 
 #endif
 
@@ -91,7 +89,7 @@ CONTAINS
 
   SUBROUTINE ComputeTally_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time, &
-      iState_Option, DisplayTally_Option )
+      SetInitialValues_Option, Verbose_Option )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -101,44 +99,53 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in) :: &
       Time
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iState_Option
     LOGICAL,  INTENT(in), OPTIONAL :: &
-      DisplayTally_Option
+      SetInitialValues_Option, Verbose_Option
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+    LOGICAL :: SetInitialValues, Verbose
 
-    CALL ComputeTally_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0,             &
-             G(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-             U(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-              Time, iState_Option, DisplayTally_Option )
+    SetInitialValues = .FALSE.
+    IF( PRESENT( SetInitialValues_Option ) ) &
+      SetInitialValues = SetInitialValues_Option
 
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
-#elif defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
-    CALL ComputeTally_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time )
+    CALL ComputeTally_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time, &
+             SetInitialValues_Option = SetInitialValues, &
+             Verbose_Option = Verbose )
 
 #else
 
-    CALL ComputeTally_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0,             &
-             G(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-             U(:,iX_B0(1):iX_E0(1),    &
-                 iX_B0(2):iX_E0(2),    &
-                 iX_B0(3):iX_E0(3),:), &
-              Time, iState_Option, DisplayTally_Option )
+    CALL ComputeTally_Euler_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Time, &
+             SetInitialValues_Option = SetInitialValues, &
+             Verbose_Option = Verbose )
 
 #endif
 
   END SUBROUTINE ComputeTally_Euler
+
+
+  SUBROUTINE IncrementOffGridTally_Euler( dM )
+
+    REAL(DP), INTENT(in) :: dM(nCF)
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL IncrementOffGridTally_Euler_Relativistic( dM )
+
+#else
+
+    CALL IncrementOffGridTally_Euler_NonRelativistic( dM )
+
+#endif
+
+  END SUBROUTINE IncrementOffGridTally_Euler
 
 
 END MODULE Euler_TallyModule

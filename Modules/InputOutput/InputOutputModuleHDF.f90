@@ -70,7 +70,7 @@ MODULE InputOutputModuleHDF
   ! --- Source Term Diagnostics ---
   CHARACTER(21), PARAMETER :: &
     BaseNameST = 'SourceTermDiagnostics'
-  INTEGER :: FileNumber_ST = 1
+  INTEGER :: FileNumber_ST = 0
 
   INTEGER :: HDFERR
 
@@ -1085,6 +1085,26 @@ CONTAINS
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
                / U % LengthX3Unit, DatasetName, FILE_ID )
 
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/X1_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Center(1:nX(1)) / U % LengthX1Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Center(1:nX(2)) / U % LengthX2Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
+             DatasetName, FILE_ID )
+
     END ASSOCIATE ! U
 
     ! --- Write Source Term Diagnostic Variables ---
@@ -1093,59 +1113,81 @@ CONTAINS
 
     CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
 
-    ! --- Pressure Tensor times Gradient of Shift Vector ---
+    ! --- Lapse Gradient ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Pressure times GradShift'
+    DatasetName = TRIM( GroupName ) // '/Lapse Gradient'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1), nX, nNodesX, &
+               ( SourceTerm(1,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( ( Erg / Centimeter**3 ) / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Pressure Tensor times Gradient of Shift Vector ---
+
+    DatasetName = TRIM( GroupName ) // '/Pressure times GradShift'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(2,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
     ! --- Christoffel Symbol ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Christoffel Symbol'
+    DatasetName = TRIM( GroupName ) // '/Christoffel Symbol'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),2), nX, nNodesX, &
+               ( SourceTerm(3,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
     ! --- Pressure Tensor times DivGridVolume ---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Pressure times DivGridVolume'
+    DatasetName = TRIM( GroupName ) // '/Pressure times DivGridVolume'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),3), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
-                   / ( ( Erg / Centimeter**3 ) / Second ), &
-             DatasetName, FILE_ID )
-
-    ! --- Lapse Gradient ---
-
-    DatasetName = TRIM( GroupName ) // '/' // 'Lapse Gradient'
-
-    CALL WriteDataset3DHDF &
-           ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),4), nX, nNodesX, &
+               ( SourceTerm(4,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
     ! --- Grid Volume Divergence---
 
-    DatasetName = TRIM( GroupName ) // '/' // 'Grid Volume Divergence'
+    DatasetName = TRIM( GroupName ) // '/Grid Volume Divergence'
 
     CALL WriteDataset3DHDF &
            ( Field3D &
-               ( SourceTerm(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),5), nX, nNodesX, &
+               ( SourceTerm(5,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
                  nDOFX, NodeNumberTableX ) &
-                   / ( ( Erg / Centimeter**3 ) / Second ), &
+                   / ( 1.0_DP / Second ), &
+             DatasetName, FILE_ID )
+
+    ! --- Square of Extrinsic Curvature (1D) ---
+
+    DatasetName = TRIM( GroupName ) // '/Square of Kij (1D)'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(6,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( Centimeter**( -2 ) ), &
+             DatasetName, FILE_ID )
+
+    ! --- Gradient of Conformal Factor ---
+
+    DatasetName = TRIM( GroupName ) // '/GradPsi'
+
+    CALL WriteDataset3DHDF &
+           ( Field3D &
+               ( SourceTerm(7,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
+                 nDOFX, NodeNumberTableX ) &
+                   / ( Centimeter**( -1 ) ), &
              DatasetName, FILE_ID )
 
     ! --- Additional diagnostics go here ---

@@ -6,6 +6,8 @@ MODULE MF_InitializationModule_NonRelativistic_TABLE
     AR => amrex_real
   USE amrex_box_module,        ONLY: &
     amrex_box
+  USE amrex_geometry_module,   ONLY: &
+    amrex_geometry
   USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
@@ -86,7 +88,8 @@ MODULE MF_InitializationModule_NonRelativistic_TABLE
     nLevels, &
     xL,      &
     xR,      &
-    Gamma_IDEAL
+    Gamma_IDEAL, &
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -105,11 +108,12 @@ CONTAINS
 
 
   SUBROUTINE MF_InitializeFields_NonRelativistic_TABLE &
-    ( ProgramName, MF_uGF, MF_uCF )
+    ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -213,7 +217,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -337,7 +341,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -469,7 +473,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -600,7 +604,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -734,7 +738,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -898,7 +902,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
