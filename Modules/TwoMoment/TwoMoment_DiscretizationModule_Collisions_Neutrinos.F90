@@ -605,7 +605,7 @@ CONTAINS
 
           dR_N(iN_E,iN_X,iCR_G3,iS) &
             = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G3)
-            
+
         END DO
       END DO
     END DO

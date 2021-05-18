@@ -69,6 +69,13 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   REAL(DP), ALLOCATABLE :: InterpMat_Z(:,:)
   REAL(DP), ALLOCATABLE :: InterpMat_X(:,:)
 
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( Min_1, Max_1, Min_2 )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( Min_1, Max_1, Min_2 )
+#endif
+
 CONTAINS
 
 
@@ -122,7 +129,7 @@ CONTAINS
       WRITE(*,'(A)') '  --------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)') &
-        '', 'Use Positivity Limiter: ', UsePositivityLimiter 
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter
       WRITE(*,*)
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Min_1: ', Min_1
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Max_1: ', Max_1
@@ -269,7 +276,7 @@ CONTAINS
     DO iNodeX1 = 1, nNodesX(1)
 
       iP_X = iP_X + 1
-    
+
       DO iNodeE  = 1, nNodesE
 
         iP_Z = iP_Z + 1
@@ -309,7 +316,7 @@ CONTAINS
       DO iNodeX3 = 1, nNodesX(3)
       DO iNodeX2 = 1, nNodesX(2)
       DO iNodeX1 = 1, nNodesX(1)
-      
+
         iP_Z = iP_Z + 1
         iP_X = iP_X + 1
 

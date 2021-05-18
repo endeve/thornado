@@ -954,17 +954,17 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-  
+
       DO iNodeX = 1, nDOFX
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
         iNodeX2 = NodeNumberTableX(2,iNodeX)
         iNodeX3 = NodeNumberTableX(3,iNodeX)
 
-        D_K = D(iNodeX,iZ2,iZ3,iZ4)      
-        T_K = T(iNodeX,iZ2,iZ3,iZ4)      
-        Y_K = Y(iNodeX,iZ2,iZ3,iZ4)      
-         
+        D_K = D(iNodeX,iZ2,iZ3,iZ4)
+        T_K = T(iNodeX,iZ2,iZ3,iZ4)
+        Y_K = Y(iNodeX,iZ2,iZ3,iZ4)
+
         ! --- Offset (Position) ---
 
         iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
@@ -989,7 +989,7 @@ CONTAINS
 
         END DO ! iNodeE
         END DO ! iZ1
- 
+
       END DO ! iNodeX
 
     END DO
@@ -1305,7 +1305,7 @@ CONTAINS
         ! --- Offset (Position) ---
 
         iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
- 
+
         DO iZ1 = iZ_B0(1), iZ_E0(1)
         DO iNodeE = 1, nDOFE
 
