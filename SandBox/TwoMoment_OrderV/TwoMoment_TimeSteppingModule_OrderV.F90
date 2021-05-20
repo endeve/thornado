@@ -12,7 +12,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, uDF
+    nCF, iCF_D, uDF
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
@@ -117,6 +117,27 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     END SUBROUTINE ImplicitIncrement
   END INTERFACE
 
+  INTERFACE
+    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, GX, D )
+      USE KindModule          , ONLY: DP
+      USE ProgramHeaderModule , ONLY: nDOFX
+      USE GeometryFieldsModule, ONLY: nGF
+      INTEGER,  INTENT(in) :: &
+        iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      REAL(DP), INTENT(in) :: &
+        GX(1:nDOFX, &
+           iX_B1(1):iX_E1(1), &
+           iX_B1(2):iX_E1(2), &
+           iX_B1(3):iX_E1(3), &
+           1:nGF)
+      REAL(DP), INTENT(in) :: &
+        D (1:nDOFX, &
+           iX_B1(1):iX_E1(1), &
+           iX_B1(2):iX_E1(2), &
+           iX_B1(3):iX_E1(3))
+    END SUBROUTINE GravitySolver
+  END INTERFACE
+
   INTERFACE AllocateArray
     MODULE PROCEDURE AllocateArray5D
     MODULE PROCEDURE AllocateArray7D
@@ -141,7 +162,7 @@ CONTAINS
 
 
   SUBROUTINE Update_IMEX_RK &
-    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit )
+    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit, SolveGravity )
 
     REAL(DP), INTENT(in) :: &
       dt
@@ -170,6 +191,8 @@ CONTAINS
         1:nCR,1:nSpecies)
     PROCEDURE(ImplicitIncrement) :: &
       ComputeIncrement_TwoMoment_Implicit
+    PROCEDURE(GravitySolver), OPTIONAL :: &
+      SolveGravity
 
     INTEGER  :: iS, jS
     REAL(DP) :: dU_OffGrid(nCF)
@@ -210,6 +233,13 @@ CONTAINS
 
             CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
+
+            IF( PRESENT( SolveGravity ) )THEN
+
+              CALL SolveGravity &
+                     ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
+
+            END IF
 
           END IF
 
@@ -311,6 +341,13 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+    END IF
+
+    IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
+
+      CALL SolveGravity &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
 
     END IF
 
