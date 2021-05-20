@@ -42,8 +42,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
-  PUBLIC :: Initialize_TwoMoment_Collisions_Neutrinos
-  PUBLIC :: Finalize_TwoMoment_Collisions_Neutrinos
 
   INTEGER               :: nE_G, nX_G
   INTEGER               :: nZ(4), nX(3), nE
@@ -189,7 +187,8 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
-             PositionIndexZ, nIterations_Prim )
+             PositionIndexZ, &
+             nIterations_Prim )
 
             ! PRINT*, "N_P = ", N_P(:)
             ! PRINT*, "G1_P = ", G1_P(:)
@@ -200,8 +199,6 @@ CONTAINS
             ! PRINT*, "H1_P = ", H1_P(:)
             ! PRINT*, "H2_P = ", H2_P(:)
             ! PRINT*, "H3_P = ", H3_P(:)
-
-    ! PRINT*, "--- EOS lookup ---"
 
     ! --- EOS Table Lookup ---
 
@@ -218,16 +215,24 @@ CONTAINS
     ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
-    ! PRINT*, "--- Solving nonlinear system ---"
     CALL SolveMatterEquations_FP_NestedAA &
-           ( dt, PR_N(:,:,:,iCR_N), PR_N(:,:,:,iCR_G1), PR_N(:,:,:,iCR_G2), PR_N(:,:,:,iCR_G3), &
-             PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
-             PF_N(:,iPF_D ), AF_N(:,iAF_T), AF_N(:,iAF_Ye), AF_N(:,iAF_E), &
-             GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), GX_N(:,iGF_Gm_dd_33), &
-             nIterations_Inner, nIterations_Outer )
-
-    ! PRINT*, "--- Map primitive and auxillary quantities back to conserved ones ---"
-    ! PRINT*, "--- and compute increment ---"
+           ( dt, &
+             PR_N(:,:,:,iCR_N ), &
+             PR_N(:,:,:,iCR_G1), &
+             PR_N(:,:,:,iCR_G2), &
+             PR_N(:,:,:,iCR_G3), &
+             PF_N(:,iPF_V1), &
+             PF_N(:,iPF_V2), &
+             PF_N(:,iPF_V3), &
+             PF_N(:,iPF_D ), &
+             AF_N(:,iAF_T ), &
+             AF_N(:,iAF_Ye), &
+             AF_N(:,iAF_E ), &
+             GX_N(:,iGF_Gm_dd_11), &
+             GX_N(:,iGF_Gm_dd_22), &
+             GX_N(:,iGF_Gm_dd_33), &
+             nIterations_Inner, &
+             nIterations_Outer )
 
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -278,8 +283,6 @@ CONTAINS
 
     END DO
 
-    !! compute increment
-
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
@@ -288,16 +291,6 @@ CONTAINS
     CALL FinalizeCollisions
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
-
-
-  SUBROUTINE Initialize_TwoMoment_Collisions_Neutrinos
-
-  END SUBROUTINE Initialize_TwoMoment_Collisions_Neutrinos
-
-
-  SUBROUTINE Finalize_TwoMoment_Collisions_Neutrinos
-
-  END SUBROUTINE Finalize_TwoMoment_Collisions_Neutrinos
 
 
   ! --- Private Subroutines ---
