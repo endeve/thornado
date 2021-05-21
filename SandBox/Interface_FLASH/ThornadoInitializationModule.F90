@@ -163,11 +163,11 @@ contains
     IF(Verbose)THEN
       WRITE(*,*)
 #ifdef TWOMOMENT_ORDER_V
-      WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_V'
+      WRITE(*,*) 'INFO: USE TWOMOMENT_ORDER_V'
 #elif TWOMOMENT_ORDER_1
-      WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_1'
+      WRITE(*,*) 'INFO: USE TWOMOMENT_ORDER_1'
 #else
-      WRITE(*,*) 'INFO: use Default TWOMOMENT_ORDER'
+      WRITE(*,*) 'INFO: USE Default TWOMOMENT_ORDER'
 #endif
       WRITE(*,*) '---------------------------------------'
     END IF
