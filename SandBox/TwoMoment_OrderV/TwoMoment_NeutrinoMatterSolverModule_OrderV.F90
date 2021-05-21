@@ -259,7 +259,7 @@ CONTAINS
     IF( PRESENT( M_inner_Option ) )THEN
       M_inner = M_inner_Option
     ELSE
-      M_inner = 3
+      M_inner = 2
     END IF
 
     IF( PRESENT( MaxIter_outer_Option ) )THEN
