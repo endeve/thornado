@@ -122,19 +122,19 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
       USE KindModule          , ONLY: DP
       USE ProgramHeaderModule , ONLY: nDOFX
       USE GeometryFieldsModule, ONLY: nGF
-      INTEGER,  INTENT(in) :: &
+      INTEGER,  INTENT(in)    :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in) :: &
-        GX(1:nDOFX, &
-           iX_B1(1):iX_E1(1), &
-           iX_B1(2):iX_E1(2), &
-           iX_B1(3):iX_E1(3), &
-           1:nGF)
-      REAL(DP), INTENT(in) :: &
-        D (1:nDOFX, &
-           iX_B1(1):iX_E1(1), &
-           iX_B1(2):iX_E1(2), &
-           iX_B1(3):iX_E1(3))
+      REAL(DP), INTENT(inout) :: &
+        GX(1:, &
+           iX_B1(1):, &
+           iX_B1(2):, &
+           iX_B1(3):, &
+           1:)
+      REAL(DP), INTENT(in)    :: &
+        D (1:, &
+           iX_B1(1):, &
+           iX_B1(2):, &
+           iX_B1(3):)
     END SUBROUTINE GravitySolver
   END INTERFACE
 
@@ -170,7 +170,7 @@ CONTAINS
       GE(1:nDOFE, &
          iE_B1:iE_E1, &
          1:nGE)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(inout) :: &
       GX(1:nDOFX, &
          iX_B1(1):iX_E1(1), &
          iX_B1(2):iX_E1(2), &
