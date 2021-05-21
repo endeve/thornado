@@ -67,7 +67,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
 
-  ProgramName = 'Deleptonization'
+  ProgramName = 'Relaxation'
 
   CoordinateSystem = 'CARTESIAN'
 
