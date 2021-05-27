@@ -112,7 +112,7 @@ CONTAINS
 
       PRINT '(A)', '# Geometry Fields'
 
-      PRINT '(A,ES24.16E3)',
+      PRINT*
 
       PRINT '(A,ES24.16E3)', 'Gmdd11        = ', Gmdd11
       PRINT '(A,ES24.16E3)', 'Gmdd22        = ', Gmdd22
