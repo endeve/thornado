@@ -282,13 +282,13 @@ CONTAINS
            END DO
            PRINT*
 
-!!$           PRINT '(4x,A)', 'invR - inv( R )'
-!!$           PRINT '(4x,A)', '---------------'
-!!$           LAMBDA = inv( R )
-!!$           DO iCF = 1, nCF
-!!$             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
-!!$           END DO
-!!$           PRINT*
+           PRINT '(4x,A)', 'invR - inv( R )'
+           PRINT '(4x,A)', '---------------'
+           LAMBDA = inv( R )
+           DO iCF = 1, nCF
+             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+           END DO
+           PRINT*
 
         END IF
 
@@ -438,13 +438,13 @@ CONTAINS
            END DO
            PRINT*
 
-!!$           PRINT '(4x,A)', 'invR - inv( R )'
-!!$           PRINT '(4x,A)', '---------------'
-!!$           LAMBDA = inv( R )
-!!$           DO iCF = 1, nCF
-!!$             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
-!!$           END DO
-!!$           PRINT*
+           PRINT '(4x,A)', 'invR - inv( R )'
+           PRINT '(4x,A)', '---------------'
+           LAMBDA = inv( R )
+           DO iCF = 1, nCF
+             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+           END DO
+           PRINT*
 
 
         END IF
@@ -595,13 +595,13 @@ CONTAINS
            END DO
            PRINT*
 
-!!$           PRINT '(4x,A)', 'invR - inv( R )'
-!!$           PRINT '(4x,A)', '---------------'
-!!$           LAMBDA = inv( R )
-!!$           DO iCF = 1, nCF
-!!$             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
-!!$           END DO
-!!$           PRINT*
+           PRINT '(4x,A)', 'invR - inv( R )'
+           PRINT '(4x,A)', '---------------'
+           LAMBDA = inv( R )
+           DO iCF = 1, nCF
+             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+           END DO
+           PRINT*
 
         END IF
 
@@ -626,40 +626,40 @@ CONTAINS
   ! --- Find the inverse of a matrix, function definition from
   !     http://fortranwiki.org/fortran/show/Matrix+inversion ---
 
-!!$  ! Returns the inverse of a matrix calculated by finding the LU
-!!$  ! decomposition.  Depends on LAPACK.
-!!$  FUNCTION inv(A) RESULT(Ainv)
-!!$    REAL(DP), DIMENSION(:,:), INTENT(in)     :: A
-!!$    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2)) :: Ainv
-!!$
-!!$    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
-!!$    INTEGER, DIMENSION(SIZE(A,1)) :: ipiv   ! pivot indices
-!!$    INTEGER :: n, info
-!!$
-!!$    ! External procedures defined in LAPACK
-!!$    EXTERNAL DGETRF
-!!$    EXTERNAL DGETRI
-!!$
-!!$    ! Store A in Ainv to prevent it from being overwritten by LAPACK
-!!$    Ainv = A
-!!$    n = SIZE(A,1)
-!!$
-!!$    ! DGETRF computes an LU factorization of a general M-by-N matrix A
-!!$    ! using partial pivoting with row interchanges.
-!!$    CALL DGETRF(n, n, Ainv, n, ipiv, info)
-!!$
-!!$    IF (info /= 0) THEN
-!!$       STOP 'Matrix is numerically singular!'
-!!$    END IF
-!!$
-!!$    ! DGETRI computes the inverse of a matrix using the LU factorization
-!!$    ! computed by DGETRF.
-!!$    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-!!$
-!!$    IF (info /= 0) THEN
-!!$       STOP 'Matrix inversion failed!'
-!!$    END IF
-!!$  END FUNCTION inv
+  ! Returns the inverse of a matrix calculated by finding the LU
+  ! decomposition.  Depends on LAPACK.
+  FUNCTION inv(A) RESULT(Ainv)
+    REAL(DP), DIMENSION(:,:), INTENT(in)     :: A
+    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2)) :: Ainv
+
+    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
+    INTEGER, DIMENSION(SIZE(A,1)) :: ipiv   ! pivot indices
+    INTEGER :: n, info
+
+    ! External procedures defined in LAPACK
+    EXTERNAL DGETRF
+    EXTERNAL DGETRI
+
+    ! Store A in Ainv to prevent it from being overwritten by LAPACK
+    Ainv = A
+    n = SIZE(A,1)
+
+    ! DGETRF computes an LU factorization of a general M-by-N matrix A
+    ! using partial pivoting with row interchanges.
+    CALL DGETRF(n, n, Ainv, n, ipiv, info)
+
+    IF (info /= 0) THEN
+       STOP 'Matrix is numerically singular!'
+    END IF
+
+    ! DGETRI computes the inverse of a matrix using the LU factorization
+    ! computed by DGETRF.
+    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+
+    IF (info /= 0) THEN
+       STOP 'Matrix inversion failed!'
+    END IF
+  END FUNCTION inv
 
 
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
@@ -1002,7 +1002,7 @@ CONTAINS
 
     END SELECT
 
-!!$    dFdU = MATMUL( dFdV, inv(dUdV) )
+    dFdU = MATMUL( dFdV, inv(dUdV) )
 
   END SUBROUTINE ComputeFluxJacConsMatrix
 
