@@ -1336,8 +1336,10 @@ CONTAINS
 
     Ye = Ne * AtomicMassUnit / D
 
-    CALL ComputeSpecificInternalEnergy_TABLE( rhoh, MinT, Ye, MinE )
-    CALL ComputeSpecificInternalEnergy_TABLE( rhoh, MaxT, Ye, MaxE )
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( rhoh, ( One + EPSILON( One ) ) * MinT, Ye, MinE )
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( rhoh, ( One - EPSILON( One ) ) * MaxT, Ye, MaxE )
 
     epsh = MAX( MIN( MaxE, epst ), MinE )
 
