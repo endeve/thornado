@@ -130,7 +130,7 @@ CONTAINS
       iErr
 
     REAL(DP) :: S, q, r, k, z0
-    REAL(DP) :: W, eps, p, h
+    REAL(DP) :: W, eps, p, h, DhW
 
     S = SQRT( CF_S1**2 / GF_Gm11 + CF_S2**2 / GF_Gm22 + CF_S3**2 / GF_Gm33 )
 
@@ -140,12 +140,36 @@ CONTAINS
     r = S    / CF_D
     k = r    / ( One + q )
 
+    ! --- Ensure primitive fields can be recovered ---
+
+    IF( CF_D .LT. MinD )THEN
+
+      PF_D  = 1.01_DP * MinD
+      PF_V1 = Zero
+      PF_V2 = Zero
+      PF_V3 = Zero
+      PF_E  = MAX( CF_E, SqrtTiny ) ! What to put here
+      PF_Ne = CF_Ne / CF_D
+
+      RETURN
+
+    END IF
+
+    IF( q .LT. Zero )THEN
+
+      r = k
+      q = Zero
+
+    END IF
+
+    ! --- Solve for primitive ---
+
     CALL SolveZ_Bisection( CF_D, CF_Ne, q, r, k, z0, iErr )
 
     ! --- Eq. C15 ---
 
     W     = SQRT( One + z0**2 )
-    PF_D  = CF_D / W
+    PF_D  = CF_D  / W
     PF_Ne = CF_Ne / W
 
     ! --- Eq. C16 ---
@@ -157,10 +181,12 @@ CONTAINS
 
     h = One + eps + p / PF_D
 
-    PF_V1 = ( CF_S1 / GF_Gm11 ) / ( CF_D * W * h )
-    PF_V2 = ( CF_S2 / GF_Gm22 ) / ( CF_D * W * h )
-    PF_V3 = ( CF_S3 / GF_Gm33 ) / ( CF_D * W * h )
-    PF_E  = CF_D * ( eps + p / PF_D ) / W - p
+    DhW = CF_D * h * W
+
+    PF_V1 = ( CF_S1 / GF_Gm11 ) / DhW
+    PF_V2 = ( CF_S2 / GF_Gm22 ) / DhW
+    PF_V3 = ( CF_S3 / GF_Gm33 ) / DhW
+    PF_E  = PF_D * eps
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -1292,50 +1318,57 @@ CONTAINS
     REAL(DP), INTENT(inout) :: q
     REAL(DP), INTENT(out)   :: FunZ
 
-    REAL(DP) :: Wt, rhot, rhoh, epst, epsh, pt, at, Ye, ht, MinE, MaxE
+    REAL(DP) :: epst, at, ht, Wt, epsh, rhoh, ph, Ye, MinE, MaxE
 
     ! --- Eq. C15 ---
 
     Wt = SQRT( One + z**2 )
-    rhot = D / Wt
 
     ! --- Eq. C16 ---
 
     epst = Wt * q - z * r + z**2 / ( One + Wt )
 
-    Ye = Ne * AtomicMassUnit / D
-
     ! --- Eq. C17 ---
 
-    rhoh = MAX( MIN( MaxD, rhot ), MinD )
+    rhoh = MAX( MIN( MaxD, D / Wt ), MinD )
 
     ! --- Eq. C18 ---
+
+    Ye = Ne * AtomicMassUnit / D
 
     CALL ComputeSpecificInternalEnergy_TABLE( rhoh, MinT, Ye, MinE )
     CALL ComputeSpecificInternalEnergy_TABLE( rhoh, MaxT, Ye, MaxE )
 
     epsh = MAX( MIN( MaxE, epst ), MinE )
 
-!    IF( epst .LT. MinE )THEN
-!
-!      ! --- Eq. C27 ---
-!
-!      q = ( One + MAX( q, SqrtTiny ) ) * ( One + MinE ) / ( One + epst ) - One
-!
-!      epst = MinE
-!
-!    END IF
+    ! --- Eq. C27 ---
+
+    IF( epst .LT. MinE )THEN
+
+      q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
+
+      epsh = 1.001_DP * epsh
+      epst = epsh
+
+    ELSE IF( epst .GT. MaxE )THEN
+
+      q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
+
+      epsh = 0.999_DP * epsh
+      epst = epsh
+
+    END IF
+
+    ! --- Eqs. C19/C20 ---
 
     CALL ComputePressureFromSpecificInternalEnergy &
-           ( rhoh, epsh, Ye, pt )
+           ( rhoh, epsh, Ye, ph )
 
-    ! --- Eq. C20 ---
-
-    at = pt / ( rhoh * ( One + epsh ) )
+    at = ph / ( rhoh * ( One + epsh ) )
 
     ! --- Eq. C21 ---
 
-    ht = ( One + epsh ) * ( One + at )
+    ht = ( One + epst ) * ( One + at )
 
     ! --- Eq. C22 ---
 
@@ -1477,7 +1510,7 @@ CONTAINS
 
       END IF
 
-      IF( ABS( dz / za ) .LT. dz_min ) CONVERGED = .TRUE.
+      IF( ABS( dz / zc ) .LT. dz_min ) CONVERGED = .TRUE.
 
 !!$      IF( ITERATION .GT. MAX_IT - 3 )THEN
 !!$
