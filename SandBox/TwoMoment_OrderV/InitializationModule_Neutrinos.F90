@@ -77,9 +77,10 @@ CONTAINS
     REAL(DP), PARAMETER :: V_u_1 = 0.0_DP * SpeedOfLight
     REAL(DP), PARAMETER :: V_u_2 = 0.0_DP * SpeedOfLight
     REAL(DP), PARAMETER :: V_u_3 = 0.0_DP * SpeedOfLight
+    REAL(DP), PARAMETER :: Mu_0  = - 1.0_DP ! \in [-1,1]
 
     INTEGER  :: iE, iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeZ
-    REAL(DP) :: kT, E
+    REAL(DP) :: kT, E, f_E
 
     ! --- Fluid Fields ---
 
@@ -161,11 +162,15 @@ CONTAINS
 
         E = NodeCoordinate( MeshE, iE, iNodeE )
 
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D,iS) &
-          = MAX( 0.99_DP * EXP( - ( E - Two*kT )**2 &
-                                  / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
+        f_E = MAX( 0.99_DP * EXP( - ( E - Two*kT )**2 &
+                                    / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
 
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
+        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D,iS) &
+          = f_E * 0.50_DP * ( One - Mu_0 )
+
+        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) &
+          = f_E * 0.25_DP * ( One - Mu_0**2 )
+
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 

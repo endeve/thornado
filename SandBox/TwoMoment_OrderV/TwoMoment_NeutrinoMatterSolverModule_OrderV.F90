@@ -48,7 +48,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions_Points, &
+    ComputeEquilibriumDistributions_DG_Points, &
     ComputeNeutrinoOpacities_EC_Points, &
     ComputeNeutrinoOpacities_ES_Points, &
     ComputeEquilibriumDistributionAndDerivatives_Points, &
@@ -259,7 +259,7 @@ CONTAINS
     IF( PRESENT( M_inner_Option ) )THEN
       M_inner = M_inner_Option
     ELSE
-      M_inner = 3
+      M_inner = 2
     END IF
 
     IF( PRESENT( MaxIter_outer_Option ) )THEN
@@ -334,9 +334,8 @@ CONTAINS
 
 
   SUBROUTINE SolveMatterEquations_FP_NestedAA &
-    ( dt, J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
-      D, T, Y, E, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      nIterations_Inner, nIterations_Outer )
+    ( dt, J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Inner, nIterations_Outer )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -389,7 +388,7 @@ CONTAINS
 
     INTEGER :: k_outer, Mk_outer, nX_P_outer
     INTEGER :: k_inner, Mk_inner, nX_P_inner
-    INTEGER :: iN_X
+    INTEGER :: iN_E, iN_X, iS
 
     ITERATE_OUTER(:) = .TRUE.
     ITERATE_INNER(:) = .TRUE.
@@ -431,24 +430,34 @@ CONTAINS
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
+    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
-      V_d_1(iN_X) = Gm_dd_11(iN_X) * V_u_1(iN_X)
-      V_d_2(iN_X) = Gm_dd_22(iN_X) * V_u_2(iN_X)
-      V_d_3(iN_X) = Gm_dd_33(iN_X) * V_u_3(iN_X)
-      H_d_1(:,iN_X,:) = Gm_dd_11(iN_X) * H_u_1(:,iN_X,:)
-      H_d_2(:,iN_X,:) = Gm_dd_22(iN_X) * H_u_2(:,iN_X,:)
-      H_d_3(:,iN_X,:) = Gm_dd_33(iN_X) * H_u_3(:,iN_X,:)
+    DO iN_E = 1, nE_G
+
+      H_d_1(iN_E,iN_X,iS) = Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS)
+      H_d_2(iN_E,iN_X,iS) = Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS)
+      H_d_3(iN_E,iN_X,iS) = Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS)
+
+    END DO
+    END DO
     END DO
 
     DO iN_X = 1, nX_G
-    ! Compute fluid energy density ***over the matter density***
 
-      ! Ef(iN_X) = D(iN_X) * (E(iN_X) + Half * (V_u_1(iN_X)*V_d_1(iN_X) &
-      !                      + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X)))
+      V_d_1(iN_X) = Gm_dd_11(iN_X) * V_u_1(iN_X)
+      V_d_2(iN_X) = Gm_dd_22(iN_X) * V_u_2(iN_X)
+      V_d_3(iN_X) = Gm_dd_33(iN_X) * V_u_3(iN_X)
 
-      NormVsq(iN_X) =  V_u_1(iN_X) * V_d_1(iN_X) &
-                     + V_u_2(iN_X) * V_d_2(iN_X) &
-                     + V_u_3(iN_X) * V_d_3(iN_X)
+    END DO
+
+    ! --- Specific Fluid Energy ---
+
+    DO iN_X = 1, nX_G
+
+      NormVsq(iN_X) &
+        =    V_u_1(iN_X) * V_d_1(iN_X) &
+           + V_u_2(iN_X) * V_d_2(iN_X) &
+           + V_u_3(iN_X) * V_d_3(iN_X)
 
       Ef(iN_X) = E(iN_X) + Half * NormVsq(iN_X)
 
@@ -473,11 +482,15 @@ CONTAINS
     ! --- Initial RHS ---
 
     CALL InitializeRHS_FP &
-           ( J, Jold, CJ, Jnew, H_d_1, H1old, CH1, H1new, &
-             H_d_2, H2old, CH2, H2new, H_d_3, H3old, CH3, H3new, &
-             D, Y, Yold, C_Y, S_Y, Unew_Y, Ef, Efold, C_Ef, S_Ef, Unew_Ef, &
-             V_d_1, V1old, C_V1, S_V1, Unew_V1, V_d_2, V2old, C_V2, S_V2, &
-             Unew_V2, V_d_3, V3old, C_V3, S_V3, Unew_V3, &
+           ( J    , Jold , CJ , Jnew , &
+             H_d_1, H1old, CH1, H1new, &
+             H_d_2, H2old, CH2, H2new, &
+             H_d_3, H3old, CH3, H3new, D, &
+             Y    , Yold , C_Y , S_Y , Unew_Y , &
+             Ef   , Efold, C_Ef, S_Ef, Unew_Ef, &
+             V_d_1, V1old, C_V1, S_V1, Unew_V1, &
+             V_d_2, V2old, C_V2, S_V2, Unew_V2, &
+             V_d_3, V3old, C_V3, S_V3, Unew_V3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     k_outer = 0
@@ -501,7 +514,6 @@ CONTAINS
       ! PRINT*, "V_d_1 = ", V_d_1(:)
       ! PRINT*, "V_d_2 = ", V_d_2(:)
       ! PRINT*, "V_d_3 = ", V_d_3(:)
-
 
       IF ( k_outer > 1 ) THEN
 
@@ -545,9 +557,13 @@ CONTAINS
 
 
         ! --- Compute Omega (Richardson damping coefficient) based on velocity
+
         DO iN_X = 1, nX_G
-          Omega(iN_X) = One / (One + SQRT(NormVsq(iN_X)))
+
+          Omega(iN_X) = One / ( One + SQRT( NormVsq(iN_X) ) )
+
         END DO
+
         ! --- Right-Hand Side Vectors and Residuals (inner) ---
 
         CALL ComputeNeutrinoRHS_FP &
@@ -581,7 +597,7 @@ CONTAINS
 
         ! --- Check Convergence (inner) ---
 
-        CALL CheckConvergenceInner &
+        CALL CheckConvergence_Inner &
                ( ITERATE_INNER, n_FP_inner, k_inner, Rtol, &
                  nIterations_Inner, FVECm_inner, Jnorm )
 
@@ -593,7 +609,7 @@ CONTAINS
 
         CALL TimersStop( Timer_Im_UpdateFP )
 
-      END DO
+      END DO ! --- Inner Loop ---
 
       CALL TimersStop( Timer_Im_NestInner )
 
@@ -612,8 +628,8 @@ CONTAINS
       CALL ComputeMatterRHS_FP &
              ( ITERATE_OUTER, n_FP_outer, FVECm_outer, GVECm_outer, &
                Jnew, H1new, H2new, H3new, &
-               C_Y, S_Y, Unew_Y, GVEC_Y, &
-               C_Ef, S_Ef, Unew_Ef, GVEC_Ef, &
+                      C_Y , S_Y , Unew_Y , GVEC_Y , &
+                      C_Ef, S_Ef, Unew_Ef, GVEC_Ef, &
                V_d_1, C_V1, S_V1, Unew_V1, GVEC_V1, &
                V_d_2, C_V2, S_V2, Unew_V2, GVEC_V2, &
                V_d_3, C_V3, S_V3, Unew_V3, GVEC_V3, &
@@ -636,29 +652,31 @@ CONTAINS
 
       CALL UpdateMatterRHS_FP &
              ( ITERATE_OUTER, n_FP_outer, &
-             Y, Yold, Unew_Y, &
-             Ef, Efold, Unew_Ef, &
-             V_d_1, V1old, Unew_V1, &
-             V_d_2, V2old, Unew_V2, &
-             V_d_3, V3old, Unew_V3, &
-             FVECm_outer, GVECm_outer )
+               Y    , Yold , Unew_Y , &
+               Ef   , Efold, Unew_Ef, &
+               V_d_1, V1old, Unew_V1, &
+               V_d_2, V2old, Unew_V2, &
+               V_d_3, V3old, Unew_V3, &
+               FVECm_outer, GVECm_outer )
 
       ! --- Update V upper ---
 
       DO iN_X = 1, nX_G
+
         V_u_1(iN_X) = V_d_1(iN_X) / Gm_dd_11(iN_X)
         V_u_2(iN_X) = V_d_2(iN_X) / Gm_dd_22(iN_X)
         V_u_3(iN_X) = V_d_3(iN_X) / Gm_dd_33(iN_X)
+
       END DO
 
       ! --- Compute E from Ef ---
 
       DO iN_X = 1, nX_G
-        ! E(iN_X) = Ef(iN_X) / D(iN_X) - Half * (V_u_1(iN_X)*V_d_1(iN_X) &
-        !                      + V_u_2(iN_X)*V_d_2(iN_X) + V_u_3(iN_X)*V_d_3(iN_X))
+
         NormVsq(iN_X) =  V_u_1(iN_X) * V_d_1(iN_X) &
                        + V_u_2(iN_X) * V_d_2(iN_X) &
                        + V_u_3(iN_X) * V_d_3(iN_X)
+
         E(iN_X) = Ef(iN_X) - Half * NormVsq(iN_X)
 
       END DO
@@ -681,28 +699,35 @@ CONTAINS
 
       ! --- Check Convergence (outer) ---
 
-      CALL CheckConvergenceOuter &
+      CALL CheckConvergence_Outer &
              ( ITERATE_OUTER, ITERATE_INNER, n_FP_outer, k_outer, &
                FVECm_outer, Rtol, nIterations_Outer )
 
       ! --- Shift History Arrays (outer) ---
 
       CALL ShiftRHS_FP &
-             ( ITERATE_OUTER, n_FP_outer, M_outer, Mk_outer, FVEC_outer, GVEC_outer )
+             ( ITERATE_OUTER, n_FP_outer, M_outer, Mk_outer, &
+               FVEC_outer, GVEC_outer )
 
       CALL TimersStop( Timer_Im_UpdateFP )
 
-    END DO
+    END DO ! --- Outer Loop ---
 
     nIterations_Inner &
       = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
 
     CALL ArrayCopy( Jnew, H1new, H2new, H3new, J, H_d_1, H_d_2, H_d_3 )
 
+    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
-      H_u_1(:,iN_X,:) = H_d_1(:,iN_X,:) / Gm_dd_11(iN_X)
-      H_u_2(:,iN_X,:) = H_d_2(:,iN_X,:) / Gm_dd_22(iN_X)
-      H_u_3(:,iN_X,:) = H_d_3(:,iN_X,:) / Gm_dd_33(iN_X)
+    DO iN_E = 1, nE_G
+
+      H_u_1(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
+      H_u_2(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
+      H_u_3(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
+
+    END DO
+    END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
@@ -745,8 +770,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_Packed &
-    ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
-      MASK, nX_P, PackIndex, UnpackIndex )
+    ( iS_1, iS_2, D, T, Y, J0_1, J0_2, MASK, nX_P, PackIndex, UnpackIndex )
 
     INTEGER,                                      INTENT(in)    :: iS_1, iS_2
     REAL(DP), DIMENSION(1:nX_G),        TARGET,   INTENT(in)    :: D, T, Y
@@ -776,8 +800,7 @@ CONTAINS
       Y_P => P1D(1:nX,iP1D_Y)
 
       CALL ArrayPack &
-             ( nX, UnpackIndex, &
-               D, T, Y, D_P, T_P, Y_P )
+             ( nX, UnpackIndex, D, T, Y, D_P, T_P, Y_P )
 
       J0_1_P => P2D(:,1:nX,iP2D_J0_1)
       J0_2_P => P2D(:,1:nX,iP2D_J0_2)
@@ -795,7 +818,7 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_Points &
+    CALL ComputeEquilibriumDistributions_DG_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     IF ( nX < nX_G ) THEN
@@ -803,8 +826,7 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
-             ( nX, MASK, PackIndex, &
-               J0_1_P, J0_2_P, J0_1, J0_2 )
+             ( nX, MASK, PackIndex, J0_1_P, J0_2_P, J0_1, J0_2 )
 
     END IF
 
@@ -907,7 +929,7 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_Points &
+    CALL ComputeEquilibriumDistributions_DG_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     ! --- EmAb ---
@@ -1186,9 +1208,9 @@ CONTAINS
     ( J, Jold, CJ, Jnew, &
       H_d_1, H1old, CH1, H1new, &
       H_d_2, H2old, CH2, H2new, &
-      H_d_3, H3old, CH3, H3new, &
-      D, Y, Yold, C_Y, S_Y, U_Y, &
-      Ef, Efold, C_Ef, S_Ef, U_Ef, &
+      H_d_3, H3old, CH3, H3new, D, &
+      Y    , Yold    , C_Y    , S_Y    , U_Y    , &
+      Ef   , Efold   , C_Ef   , S_Ef   , U_Ef   , &
       V_d_1, V_d_1old, C_V_d_1, S_V_d_1, U_V_d_1, &
       V_d_2, V_d_2old, C_V_d_2, S_V_d_2, U_V_d_2, &
       V_d_3, V_d_3old, C_V_d_3, S_V_d_3, U_V_d_3, &
@@ -1234,17 +1256,17 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      V_u_1 = V_d_1old(iN_X)/Gm_dd_11(iN_X)
-      V_u_2 = V_d_2old(iN_X)/Gm_dd_22(iN_X)
-      V_u_3 = V_d_3old(iN_X)/Gm_dd_33(iN_X)
+      V_u_1 = V_d_1old(iN_X) / Gm_dd_11(iN_X)
+      V_u_2 = V_d_2old(iN_X) / Gm_dd_22(iN_X)
+      V_u_3 = V_d_3old(iN_X) / Gm_dd_33(iN_X)
 
       vHold(:,iN_X,:) =  V_u_1 * H1old(:,iN_X,:) &
                        + V_u_2 * H2old(:,iN_X,:) &
                        + V_u_3 * H3old(:,iN_X,:)
 
-      V1Jold(:,iN_X,:) = V_d_1old(iN_X)*Jold(:,iN_X,:)
-      V2Jold(:,iN_X,:) = V_d_2old(iN_X)*Jold(:,iN_X,:)
-      V3Jold(:,iN_X,:) = V_d_3old(iN_X)*Jold(:,iN_X,:)
+      V1Jold(:,iN_X,:) = V_d_1old(iN_X) * Jold(:,iN_X,:)
+      V2Jold(:,iN_X,:) = V_d_2old(iN_X) * Jold(:,iN_X,:)
+      V3Jold(:,iN_X,:) = V_d_3old(iN_X) * Jold(:,iN_X,:)
 
       DO iN_E = 1, nE_G
 
@@ -1422,6 +1444,8 @@ CONTAINS
 
     INTEGER  :: iN_X
 
+    ! --- TO DO: we can loop over species here ---
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
@@ -1446,12 +1470,12 @@ CONTAINS
 
   SUBROUTINE ComputeMatterRHS_FP &
     ( MASK, n_FPVar, Fm, Gm, J, H1, H2, H3, &
-     C_Y, S_Y, U_Y, G_Y,&
-     C_Ef, S_Ef, U_Ef, G_Ef, &
-     V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, G_V_d_1, &
-     V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, G_V_d_2, &
-     V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, G_V_d_3, &
-     Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+             C_Y    , S_Y    , U_Y    , G_Y    , &
+             C_Ef   , S_Ef   , U_Ef   , G_Ef   , &
+      V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, G_V_d_1, &
+      V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, G_V_d_2, &
+      V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, G_V_d_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
     INTEGER,                            INTENT(in)    :: n_FPVar
@@ -1485,43 +1509,51 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      V_u_1 = V_d_1(iN_X)/Gm_dd_11(iN_X)
-      V_u_2 = V_d_2(iN_X)/Gm_dd_22(iN_X)
-      V_u_3 = V_d_3(iN_X)/Gm_dd_33(iN_X)
+      V_u_1 = V_d_1(iN_X) / Gm_dd_11(iN_X)
+      V_u_2 = V_d_2(iN_X) / Gm_dd_22(iN_X)
+      V_u_3 = V_d_3(iN_X) / Gm_dd_33(iN_X)
 
       vH(:,iN_X,:) =  V_u_1 * H1(:,iN_X,:) &
                     + V_u_2 * H2(:,iN_X,:) &
                     + V_u_3 * H3(:,iN_X,:)
 
-      V1J(:,iN_X,:) = V_d_1(iN_X)*J(:,iN_X,:)
-      V2J(:,iN_X,:) = V_d_2(iN_X)*J(:,iN_X,:)
-      V3J(:,iN_X,:) = V_d_3(iN_X)*J(:,iN_X,:)
+      V1J(:,iN_X,:) = V_d_1(iN_X) * J(:,iN_X,:)
+      V2J(:,iN_X,:) = V_d_2(iN_X) * J(:,iN_X,:)
+      V3J(:,iN_X,:) = V_d_3(iN_X) * J(:,iN_X,:)
 
       DO iN_E = 1, nE_G
 
         k_dd = EddingtonTensorComponents_dd &
-                    ( J(iN_E,iN_X,iS_1), &
-                     H1(iN_E,iN_X,iS_1), H2(iN_E,iN_X,iS_1), H3(iN_E,iN_X,iS_1), &
-                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+                 ( J (iN_E,iN_X,iS_1), H1(iN_E,iN_X,iS_1), &
+                   H2(iN_E,iN_X,iS_1), H3(iN_E,iN_X,iS_1), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-        vKJ(iN_E,iN_X,iS_1,1) = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
-        vKJ(iN_E,iN_X,iS_1,2) = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
-        vKJ(iN_E,iN_X,iS_1,3) = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+        vKJ(iN_E,iN_X,iS_1,1) &
+          = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+        vKJ(iN_E,iN_X,iS_1,2) &
+          = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+        vKJ(iN_E,iN_X,iS_1,3) &
+          = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+
         vKJ(iN_E,iN_X,iS_1,:) = vKJ(iN_E,iN_X,iS_1,:) * J(iN_E,iN_X,iS_1)
 
         k_dd = EddingtonTensorComponents_dd &
-                    ( J(iN_E,iN_X,iS_2), &
-                     H1(iN_E,iN_X,iS_2), H2(iN_E,iN_X,iS_2), H3(iN_E,iN_X,iS_2), &
-                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+                 ( J (iN_E,iN_X,iS_2), H1(iN_E,iN_X,iS_2), &
+                   H2(iN_E,iN_X,iS_2), H3(iN_E,iN_X,iS_2), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-        vKJ(iN_E,iN_X,iS_2,1) = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
-        vKJ(iN_E,iN_X,iS_2,2) = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
-        vKJ(iN_E,iN_X,iS_2,3) = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+        vKJ(iN_E,iN_X,iS_2,1) &
+          = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+        vKJ(iN_E,iN_X,iS_2,2) &
+          = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+        vKJ(iN_E,iN_X,iS_2,3) &
+          = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+
         vKJ(iN_E,iN_X,iS_2,:) = vKJ(iN_E,iN_X,iS_2,:) * J(iN_E,iN_X,iS_2)
+
       END DO
 
     END DO
-
 
     CALL MatrixVectorMultiply &
       ( 'T', nE_G, nX_G, +One, J(:,:,iS_1), nE_G, W2_S, 1, Zero, G_Y, 1 )
@@ -1590,21 +1622,20 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
 
-        G_Y(iN_X)      = C_Y(iN_X)     - G_Y(iN_X)     * S_Y(iN_X)
-        G_Ef(iN_X)     = C_Ef(iN_X)    - G_Ef(iN_X)    * S_Ef(iN_X)
+        G_Y    (iN_X)  = C_Y    (iN_X) - G_Y    (iN_X) * S_Y    (iN_X)
+        G_Ef   (iN_X)  = C_Ef   (iN_X) - G_Ef   (iN_X) * S_Ef   (iN_X)
         G_V_d_1(iN_X)  = C_V_d_1(iN_X) - G_V_d_1(iN_X) * S_V_d_1(iN_X)
         G_V_d_2(iN_X)  = C_V_d_2(iN_X) - G_V_d_2(iN_X) * S_V_d_2(iN_X)
         G_V_d_3(iN_X)  = C_V_d_3(iN_X) - G_V_d_3(iN_X) * S_V_d_3(iN_X)
 
-        Gm( iY,iN_X) = G_Y(iN_X)
-        Gm(iEf,iN_X) = G_Ef(iN_X)
+        Gm(iY ,iN_X) = G_Y    (iN_X)
+        Gm(iEf,iN_X) = G_Ef   (iN_X)
         Gm(iV1,iN_X) = G_V_d_1(iN_X)
         Gm(iV2,iN_X) = G_V_d_2(iN_X)
         Gm(iV3,iN_X) = G_V_d_3(iN_X)
 
-
-        Fm( iY,iN_X) = G_Y(iN_X)     - U_Y(iN_X)
-        Fm(iEf,iN_X) = G_Ef(iN_X)    - U_Ef(iN_X)
+        Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
+        Fm(iEf,iN_X) = G_Ef   (iN_X) - U_Ef   (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
@@ -1613,6 +1644,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeMatterRHS_FP
+
 
   SUBROUTINE ComputeNeutrinoRHS_FP &
     ( MASK, n_FPVar, Fm, Gm, &
@@ -1653,6 +1685,8 @@ CONTAINS
     INTEGER  :: iN_E, iN_X
     REAL(DP) :: vH, vKJ(3), k_dd(3,3)
 
+    ! --- TO DO: we can loop over species here ---
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( Eta, Eta_T, Chi_T, Kappa )
@@ -1664,85 +1698,158 @@ CONTAINS
     !$OMP PRIVATE( Eta, Eta_T, Chi_T, Kappa )
 #endif
     DO iN_X = 1, nX_G
-      DO iN_E = 1, nE_G
-        IF ( MASK(iN_X) ) THEN
-          vH =  V_u_1(iN_X) * H1new(iN_E,iN_X,iS_1) &
-              + V_u_2(iN_X) * H2new(iN_E,iN_X,iS_1) &
-              + V_u_3(iN_X) * H3new(iN_E,iN_X,iS_1)
-          k_dd = EddingtonTensorComponents_dd &
-                      ( Jnew(iN_E,iN_X,iS_1), &
-                       H1new(iN_E,iN_X,iS_1), H2new(iN_E,iN_X,iS_1), H3new(iN_E,iN_X,iS_1), &
-                       Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
-          vKJ(1) = V_u_1(iN_X) * k_dd(1,1) + V_u_2(iN_X) * k_dd(1,2) + V_u_3(iN_X) * k_dd(1,3)
-          vKJ(2) = V_u_1(iN_X) * k_dd(2,1) + V_u_2(iN_X) * k_dd(2,2) + V_u_3(iN_X) * k_dd(2,3)
-          vKJ(3) = V_u_1(iN_X) * k_dd(3,1) + V_u_2(iN_X) * k_dd(3,2) + V_u_3(iN_X) * k_dd(3,3)
-          vKJ = vKJ * Jnew(iN_E,iN_X,iS_1)
+    DO iN_E = 1, nE_G
 
-          Eta = Chi(iN_E,iN_X,iS_1) * J0(iN_E,iN_X,iS_1)
-          Eta_T = Eta + Eta_NES(iN_E,iN_X,iS_1) + Eta_Pair(iN_E,iN_X,iS_1)
-          Chi_T = Chi(iN_E,iN_X,iS_1) + Chi_NES(iN_E,iN_X,iS_1) + Chi_Pair(iN_E,iN_X,iS_1)
-          Kappa = Chi_T + Sig(iN_E,iN_X,iS_1)
+      IF( MASK(iN_X) )THEN
 
-          Gm(OS_JNuE+iN_E,iN_X) = (One - Omega(iN_X)) * Jnew(iN_E,iN_X,iS_1) &
-                                  + Omega(iN_X) / ( One + dt * Chi_T ) &
-                                  * ( CJ(iN_E,iN_X,iS_1) + dt * Eta_T - vH)
-          Fm(OS_JNuE+iN_E,iN_X) = Gm(OS_JNuE+iN_E,iN_X) - Jnew(iN_E,iN_X,iS_1)
+        ! --- Electron Neutrinos ---
 
-          Gm(OS_H1NuE+iN_E,iN_X) = (One - Omega(iN_X)) * H1new(iN_E,iN_X,iS_1) &
-                                   + Omega(iN_X) / ( One + dt * Kappa ) &
-                                   * ( CH1(iN_E,iN_X,iS_1) - vKJ(1))
-          Fm(OS_H1NuE+iN_E,iN_X) = Gm(OS_H1NuE+iN_E,iN_X) - H1new(iN_E,iN_X,iS_1)
-          Gm(OS_H2NuE+iN_E,iN_X) = (One - Omega(iN_X)) * H2new(iN_E,iN_X,iS_1) &
-                                   + Omega(iN_X) / ( One + dt * Kappa ) &
-                                   * ( CH2(iN_E,iN_X,iS_1) - vKJ(2))
-          Fm(OS_H2NuE+iN_E,iN_X) = Gm(OS_H2NuE+iN_E,iN_X) - H2new(iN_E,iN_X,iS_1)
-          Gm(OS_H3NuE+iN_E,iN_X) = (One - Omega(iN_X)) * H3new(iN_E,iN_X,iS_1) &
-                                   + Omega(iN_X) / ( One + dt * Kappa ) &
-                                   * ( CH3(iN_E,iN_X,iS_1) - vKJ(3))
-          Fm(OS_H3NuE+iN_E,iN_X) = Gm(OS_H3NuE+iN_E,iN_X) - H3new(iN_E,iN_X,iS_1)
+        vH =   V_u_1(iN_X) * H1new(iN_E,iN_X,iS_1) &
+             + V_u_2(iN_X) * H2new(iN_E,iN_X,iS_1) &
+             + V_u_3(iN_X) * H3new(iN_E,iN_X,iS_1)
 
+        k_dd = EddingtonTensorComponents_dd &
+                 (  Jnew(iN_E,iN_X,iS_1), H1new(iN_E,iN_X,iS_1), &
+                   H2new(iN_E,iN_X,iS_1), H3new(iN_E,iN_X,iS_1), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-          vH =  V_u_1(iN_X) * H1new(iN_E,iN_X,iS_2) &
-              + V_u_2(iN_X) * H2new(iN_E,iN_X,iS_2) &
-              + V_u_3(iN_X) * H3new(iN_E,iN_X,iS_2)
-          k_dd = EddingtonTensorComponents_dd &
-                      ( Jnew(iN_E,iN_X,iS_2), &
-                       H1new(iN_E,iN_X,iS_2), H2new(iN_E,iN_X,iS_2), H3new(iN_E,iN_X,iS_2), &
-                       Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
-          vKJ(1) = V_u_1(iN_X) * k_dd(1,1) + V_u_2(iN_X) * k_dd(1,2) + V_u_3(iN_X) * k_dd(1,3)
-          vKJ(2) = V_u_1(iN_X) * k_dd(2,1) + V_u_2(iN_X) * k_dd(2,2) + V_u_3(iN_X) * k_dd(2,3)
-          vKJ(3) = V_u_1(iN_X) * k_dd(3,1) + V_u_2(iN_X) * k_dd(3,2) + V_u_3(iN_X) * k_dd(3,3)
-          vKJ = vKJ * Jnew(iN_E,iN_X,iS_2)
+        vKJ(1) =   V_u_1(iN_X) * k_dd(1,1) &
+                 + V_u_2(iN_X) * k_dd(1,2) &
+                 + V_u_3(iN_X) * k_dd(1,3)
 
-          Eta = Chi(iN_E,iN_X,iS_2) * J0(iN_E,iN_X,iS_2)
-          Eta_T = Eta + Eta_NES(iN_E,iN_X,iS_2) + Eta_Pair(iN_E,iN_X,iS_2)
-          Chi_T = Chi(iN_E,iN_X,iS_2) + Chi_NES(iN_E,iN_X,iS_2) + Chi_Pair(iN_E,iN_X,iS_2)
-          Kappa = Chi_T + Sig(iN_E,iN_X,iS_2)
+        vKJ(2) =   V_u_1(iN_X) * k_dd(2,1) &
+                 + V_u_2(iN_X) * k_dd(2,2) &
+                 + V_u_3(iN_X) * k_dd(2,3)
 
-          Gm(OS_JNuE_Bar+iN_E,iN_X) = (One - Omega(iN_X)) * Jnew(iN_E,iN_X,iS_2) &
-                                      + Omega(iN_X) / ( One + dt * Chi_T ) &
-                                      * ( CJ(iN_E,iN_X,iS_2) + dt * Eta_T - vH)
-          Fm(OS_JNuE_Bar+iN_E,iN_X) = Gm(OS_JNuE_Bar+iN_E,iN_X) - Jnew(iN_E,iN_X,iS_2)
+        vKJ(3) =   V_u_1(iN_X) * k_dd(3,1) &
+                 + V_u_2(iN_X) * k_dd(3,2) &
+                 + V_u_3(iN_X) * k_dd(3,3)
 
-          Gm(OS_H1NuE_Bar+iN_E,iN_X) = (One - Omega(iN_X)) * H1new(iN_E,iN_X,iS_2) &
-                                       + Omega(iN_X) / ( One + dt * Kappa ) &
-                                       * ( CH1(iN_E,iN_X,iS_2) - vKJ(1))
-          Fm(OS_H1NuE_Bar+iN_E,iN_X) = Gm(OS_H1NuE_Bar+iN_E,iN_X) - H1new(iN_E,iN_X,iS_2)
-          Gm(OS_H2NuE_Bar+iN_E,iN_X) = (One - Omega(iN_X)) * H2new(iN_E,iN_X,iS_2) &
-                                       + Omega(iN_X) / ( One + dt * Kappa ) &
-                                       * ( CH2(iN_E,iN_X,iS_2) - vKJ(2))
-          Fm(OS_H2NuE_Bar+iN_E,iN_X) = Gm(OS_H2NuE_Bar+iN_E,iN_X) - H2new(iN_E,iN_X,iS_2)
-          Gm(OS_H3NuE_Bar+iN_E,iN_X) = (One - Omega(iN_X)) * H3new(iN_E,iN_X,iS_2) &
-                                       + Omega(iN_X) / ( One + dt * Kappa ) &
-                                       * ( CH3(iN_E,iN_X,iS_2) - vKJ(3))
-          Fm(OS_H3NuE_Bar+iN_E,iN_X) = Gm(OS_H3NuE_Bar+iN_E,iN_X) - H3new(iN_E,iN_X,iS_2)
+        vKJ = vKJ * Jnew(iN_E,iN_X,iS_1)
 
-        END IF
-      END DO
+        Eta   = Chi(iN_E,iN_X,iS_1) * J0(iN_E,iN_X,iS_1)
+        Eta_T = Eta + Eta_NES(iN_E,iN_X,iS_1) + Eta_Pair(iN_E,iN_X,iS_1)
+        Chi_T = Chi(iN_E,iN_X,iS_1) &
+                  + Chi_NES(iN_E,iN_X,iS_1) + Chi_Pair(iN_E,iN_X,iS_1)
+        Kappa = Chi_T + Sig(iN_E,iN_X,iS_1)
+
+        ! --- Number Equation (iNu_E) ---
+
+        Gm(OS_JNuE+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * Jnew(iN_E,iN_X,iS_1) &
+              + Omega(iN_X) / ( One + dt * Chi_T ) &
+                  * ( CJ(iN_E,iN_X,iS_1) + dt * Eta_T - vH )
+
+        Fm(OS_JNuE+iN_E,iN_X) &
+          = Gm(OS_JNuE+iN_E,iN_X) - Jnew(iN_E,iN_X,iS_1)
+
+        ! --- Number Flux 1 Equation (iNu_E) ---
+
+        Gm(OS_H1NuE+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * H1new(iN_E,iN_X,iS_1) &
+              + Omega(iN_X) / ( One + dt * Kappa ) &
+                  * ( CH1(iN_E,iN_X,iS_1) - vKJ(1) )
+
+        Fm(OS_H1NuE+iN_E,iN_X) &
+          = Gm(OS_H1NuE+iN_E,iN_X) - H1new(iN_E,iN_X,iS_1)
+
+        ! --- Number Flux 2 Equation (iNu_E) ---
+
+        Gm(OS_H2NuE+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * H2new(iN_E,iN_X,iS_1) &
+              + Omega(iN_X) / ( One + dt * Kappa ) &
+                  * ( CH2(iN_E,iN_X,iS_1) - vKJ(2))
+
+        Fm(OS_H2NuE+iN_E,iN_X) &
+          = Gm(OS_H2NuE+iN_E,iN_X) - H2new(iN_E,iN_X,iS_1)
+
+        ! --- Number Flux 3 Equation (iNu_E) ---
+
+        Gm(OS_H3NuE+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * H3new(iN_E,iN_X,iS_1) &
+              + Omega(iN_X) / ( One + dt * Kappa ) &
+                  * ( CH3(iN_E,iN_X,iS_1) - vKJ(3) )
+
+        Fm(OS_H3NuE+iN_E,iN_X) &
+          = Gm(OS_H3NuE+iN_E,iN_X) - H3new(iN_E,iN_X,iS_1)
+
+        ! --- Electron Antineutrinos ---
+
+        vH =   V_u_1(iN_X) * H1new(iN_E,iN_X,iS_2) &
+             + V_u_2(iN_X) * H2new(iN_E,iN_X,iS_2) &
+             + V_u_3(iN_X) * H3new(iN_E,iN_X,iS_2)
+
+        k_dd = EddingtonTensorComponents_dd &
+                 (  Jnew(iN_E,iN_X,iS_2), H1new(iN_E,iN_X,iS_2), &
+                   H2new(iN_E,iN_X,iS_2), H3new(iN_E,iN_X,iS_2), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+
+        vKJ(1) =   V_u_1(iN_X) * k_dd(1,1) &
+                 + V_u_2(iN_X) * k_dd(1,2) &
+                 + V_u_3(iN_X) * k_dd(1,3)
+
+        vKJ(2) =   V_u_1(iN_X) * k_dd(2,1) &
+                 + V_u_2(iN_X) * k_dd(2,2) &
+                 + V_u_3(iN_X) * k_dd(2,3)
+
+        vKJ(3) =   V_u_1(iN_X) * k_dd(3,1) &
+                 + V_u_2(iN_X) * k_dd(3,2) &
+                 + V_u_3(iN_X) * k_dd(3,3)
+
+        vKJ = vKJ * Jnew(iN_E,iN_X,iS_2)
+
+        Eta   = Chi(iN_E,iN_X,iS_2) * J0(iN_E,iN_X,iS_2)
+        Eta_T = Eta + Eta_NES(iN_E,iN_X,iS_2) + Eta_Pair(iN_E,iN_X,iS_2)
+        Chi_T = Chi(iN_E,iN_X,iS_2) &
+                  + Chi_NES(iN_E,iN_X,iS_2) + Chi_Pair(iN_E,iN_X,iS_2)
+        Kappa = Chi_T + Sig(iN_E,iN_X,iS_2)
+
+        ! --- Number Equation (iNu_E_Bar) ---
+
+        Gm(OS_JNuE_Bar+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * Jnew(iN_E,iN_X,iS_2) &
+              + Omega(iN_X) / ( One + dt * Chi_T ) &
+                  * ( CJ(iN_E,iN_X,iS_2) + dt * Eta_T - vH )
+
+        Fm(OS_JNuE_Bar+iN_E,iN_X) &
+          = Gm(OS_JNuE_Bar+iN_E,iN_X) - Jnew(iN_E,iN_X,iS_2)
+
+        ! --- Number Flux 1 Equation (iNu_E_Bar) ---
+
+        Gm(OS_H1NuE_Bar+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * H1new(iN_E,iN_X,iS_2) &
+              + Omega(iN_X) / ( One + dt * Kappa ) &
+                  * ( CH1(iN_E,iN_X,iS_2) - vKJ(1) )
+
+        Fm(OS_H1NuE_Bar+iN_E,iN_X) &
+          = Gm(OS_H1NuE_Bar+iN_E,iN_X) - H1new(iN_E,iN_X,iS_2)
+
+        ! --- Number Flux 2 Equation (iNu_E_Bar) ---
+
+        Gm(OS_H2NuE_Bar+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * H2new(iN_E,iN_X,iS_2) &
+              + Omega(iN_X) / ( One + dt * Kappa ) &
+                  * ( CH2(iN_E,iN_X,iS_2) - vKJ(2) )
+
+        Fm(OS_H2NuE_Bar+iN_E,iN_X) &
+          = Gm(OS_H2NuE_Bar+iN_E,iN_X) - H2new(iN_E,iN_X,iS_2)
+
+        ! --- Number Flux 3 Equation (iNu_E_Bar) ---
+
+        Gm(OS_H3NuE_Bar+iN_E,iN_X) &
+          = ( One - Omega(iN_X) ) * H3new(iN_E,iN_X,iS_2) &
+              + Omega(iN_X) / ( One + dt * Kappa ) &
+                  * ( CH3(iN_E,iN_X,iS_2) - vKJ(3) )
+
+        Fm(OS_H3NuE_Bar+iN_E,iN_X) &
+          = Gm(OS_H3NuE_Bar+iN_E,iN_X) - H3new(iN_E,iN_X,iS_2)
+
+      END IF
+
+    END DO
     END DO
 
   END SUBROUTINE ComputeNeutrinoRHS_FP
-
 
 
   SUBROUTINE UpdateMatterRHS_FP &
@@ -1774,27 +1881,23 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
 
-        Fm( iY,iN_X) = Gm( iY,iN_X) - U_Y(iN_X)
-        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Ef(iN_X)
+        Fm(iY ,iN_X) = Gm(iY ,iN_X) - U_Y    (iN_X)
+        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Ef   (iN_X)
         Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
 
-        U_Y(iN_X)     = Gm( iY,iN_X)
-        U_Ef(iN_X)    = Gm(iEf,iN_X)
+        U_Y    (iN_X) = Gm(iY ,iN_X)
+        U_Ef   (iN_X) = Gm(iEf,iN_X)
         U_V_d_1(iN_X) = Gm(iV1,iN_X)
         U_V_d_2(iN_X) = Gm(iV2,iN_X)
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
-        Y(iN_X)     = U_Y(iN_X)     * Yold(iN_X)
-        Ef(iN_X)    = U_Ef(iN_X)    * Efold(iN_X)
+        Y    (iN_X) = U_Y    (iN_X) * Yold (iN_X)
+        Ef   (iN_X) = U_Ef   (iN_X) * Efold(iN_X)
         V_d_1(iN_X) = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2(iN_X) = U_V_d_2(iN_X) * SpeedOfLight
         V_d_3(iN_X) = U_V_d_3(iN_X) * SpeedOfLight
-
-        ! V_d_1(iN_X) = U_V_d_1(iN_X) * V_d_1old(iN_X)
-        ! V_d_2(iN_X) = U_V_d_2(iN_X) * V_d_2old(iN_X)
-        ! V_d_3(iN_X) = U_V_d_3(iN_X) * V_d_3old(iN_X)
 
       END IF
     END DO
@@ -1820,30 +1923,40 @@ CONTAINS
     !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #endif
     DO iN_X = 1, nX_G
-      DO iN_E = 1, nE_G
-        IF ( MASK(iN_X) ) THEN
+    DO iN_E = 1, nE_G
 
-          Fm(OS_JNuE     +iN_E,iN_X) = Gm(OS_JNuE     +iN_E,iN_X) -  Jnew(iN_E,iN_X,iS_1)
-          Fm(OS_H1NuE    +iN_E,iN_X) = Gm(OS_H1NuE    +iN_E,iN_X) - H1new(iN_E,iN_X,iS_1)
-          Fm(OS_H2NuE    +iN_E,iN_X) = Gm(OS_H2NuE    +iN_E,iN_X) - H2new(iN_E,iN_X,iS_1)
-          Fm(OS_H3NuE    +iN_E,iN_X) = Gm(OS_H3NuE    +iN_E,iN_X) - H3new(iN_E,iN_X,iS_1)
-          Fm(OS_JNuE_Bar +iN_E,iN_X) = Gm(OS_JNuE_Bar +iN_E,iN_X) -  Jnew(iN_E,iN_X,iS_2)
-          Fm(OS_H1NuE_Bar+iN_E,iN_X) = Gm(OS_H1NuE_Bar+iN_E,iN_X) - H1new(iN_E,iN_X,iS_2)
-          Fm(OS_H2NuE_Bar+iN_E,iN_X) = Gm(OS_H2NuE_Bar+iN_E,iN_X) - H2new(iN_E,iN_X,iS_2)
-          Fm(OS_H3NuE_Bar+iN_E,iN_X) = Gm(OS_H3NuE_Bar+iN_E,iN_X) - H3new(iN_E,iN_X,iS_2)
+      IF( MASK(iN_X) )THEN
 
-           Jnew(iN_E,iN_X,iS_1) = Gm(OS_JNuE     +iN_E,iN_X)
-          H1new(iN_E,iN_X,iS_1) = Gm(OS_H1NuE    +iN_E,iN_X)
-          H2new(iN_E,iN_X,iS_1) = Gm(OS_H2NuE    +iN_E,iN_X)
-          H3new(iN_E,iN_X,iS_1) = Gm(OS_H3NuE    +iN_E,iN_X)
-           Jnew(iN_E,iN_X,iS_2) = Gm(OS_JNuE_Bar +iN_E,iN_X)
-          H1new(iN_E,iN_X,iS_2) = Gm(OS_H1NuE_Bar+iN_E,iN_X)
-          H2new(iN_E,iN_X,iS_2) = Gm(OS_H2NuE_Bar+iN_E,iN_X)
-          H3new(iN_E,iN_X,iS_2) = Gm(OS_H3NuE_Bar+iN_E,iN_X)
+        Fm    (OS_JNuE     +iN_E,iN_X) &
+          = Gm(OS_JNuE     +iN_E,iN_X) -  Jnew(iN_E,iN_X,iS_1)
+        Fm    (OS_H1NuE    +iN_E,iN_X) &
+          = Gm(OS_H1NuE    +iN_E,iN_X) - H1new(iN_E,iN_X,iS_1)
+        Fm    (OS_H2NuE    +iN_E,iN_X) &
+          = Gm(OS_H2NuE    +iN_E,iN_X) - H2new(iN_E,iN_X,iS_1)
+        Fm    (OS_H3NuE    +iN_E,iN_X) &
+          = Gm(OS_H3NuE    +iN_E,iN_X) - H3new(iN_E,iN_X,iS_1)
+        Fm    (OS_JNuE_Bar +iN_E,iN_X) &
+          = Gm(OS_JNuE_Bar +iN_E,iN_X) -  Jnew(iN_E,iN_X,iS_2)
+        Fm    (OS_H1NuE_Bar+iN_E,iN_X) &
+          = Gm(OS_H1NuE_Bar+iN_E,iN_X) - H1new(iN_E,iN_X,iS_2)
+        Fm    (OS_H2NuE_Bar+iN_E,iN_X) &
+          = Gm(OS_H2NuE_Bar+iN_E,iN_X) - H2new(iN_E,iN_X,iS_2)
+        Fm    (OS_H3NuE_Bar+iN_E,iN_X) &
+          = Gm(OS_H3NuE_Bar+iN_E,iN_X) - H3new(iN_E,iN_X,iS_2)
+
+         Jnew(iN_E,iN_X,iS_1) = Gm(OS_JNuE     +iN_E,iN_X)
+        H1new(iN_E,iN_X,iS_1) = Gm(OS_H1NuE    +iN_E,iN_X)
+        H2new(iN_E,iN_X,iS_1) = Gm(OS_H2NuE    +iN_E,iN_X)
+        H3new(iN_E,iN_X,iS_1) = Gm(OS_H3NuE    +iN_E,iN_X)
+         Jnew(iN_E,iN_X,iS_2) = Gm(OS_JNuE_Bar +iN_E,iN_X)
+        H1new(iN_E,iN_X,iS_2) = Gm(OS_H1NuE_Bar+iN_E,iN_X)
+        H2new(iN_E,iN_X,iS_2) = Gm(OS_H2NuE_Bar+iN_E,iN_X)
+        H3new(iN_E,iN_X,iS_2) = Gm(OS_H3NuE_Bar+iN_E,iN_X)
 
 
-        END IF
-      END DO
+      END IF
+
+    END DO
     END DO
 
   END SUBROUTINE UpdateNeutrinoRHS_FP
@@ -2096,7 +2209,6 @@ CONTAINS
   END SUBROUTINE SolveLS_FP
 
 
-
   SUBROUTINE ShiftRHS_FP &
     ( MASK, n_FPVar, M, Mk, F, G )
 
@@ -2154,7 +2266,7 @@ CONTAINS
   END SUBROUTINE ShiftRHS_FP
 
 
-  SUBROUTINE CheckConvergenceInner &
+  SUBROUTINE CheckConvergence_Inner &
     ( MASK, n_FPVar, k_inner, Rtol, nIterations_Inner, Fm, Jnorm )
 
     LOGICAL,  DIMENSION(1:nX_G),         INTENT(inout)  :: MASK
@@ -2201,10 +2313,10 @@ CONTAINS
     !$ACC UPDATE HOST( MASK )
 #endif
 
-  END SUBROUTINE CheckConvergenceInner
+  END SUBROUTINE CheckConvergence_Inner
 
 
-  SUBROUTINE CheckConvergenceOuter &
+  SUBROUTINE CheckConvergence_Outer &
     ( MASK_OUTER, MASK_INNER, n_FPVar, k_outer, Fm, Rtol, nIterations_Outer )
 
     LOGICAL,  DIMENSION(1:nX_G),           INTENT(inout) :: MASK_OUTER, MASK_INNER
@@ -2230,7 +2342,7 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF ( MASK_OUTER(iN_X) ) THEN
 
-        Fnorm_Y  = ABS( Fm(iY,iN_X) )
+        Fnorm_Y  = ABS( Fm(iY ,iN_X) )
         Fnorm_Ef = ABS( Fm(iEf,iN_X) )
         !!! --- Check if this norm makes sense ---
         Fnorm_V  = SQRT( Fm(iV1,iN_X)**2 + Fm(iV2,iN_X)**2 + Fm(iV3,iN_X)**2 )
@@ -2254,8 +2366,7 @@ CONTAINS
     !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
 #endif
 
-  END SUBROUTINE CheckConvergenceOuter
-
+  END SUBROUTINE CheckConvergence_Outer
 
 
 END MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV

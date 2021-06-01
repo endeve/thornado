@@ -5,7 +5,7 @@
 MODULE NeutrinoOpacitiesComputationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, Zero, One, SqrtTiny
   USE UnitsModule, ONLY: &
     BoltzmannConstant, &
     Centimeter, &
@@ -17,7 +17,12 @@ MODULE NeutrinoOpacitiesComputationModule
   USE DeviceModule, ONLY: &
     QueryOnGpu
   USE LinearAlgebraModule, ONLY: &
-    MatrixVectorMultiply
+    MatrixVectorMultiply, &
+    MatrixMatrixMultiply
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    LE_Dn, LE_Up
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     NodeNumberTableX
@@ -88,6 +93,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point
   PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeEquilibriumDistributions_Points
+  PUBLIC :: ComputeEquilibriumDistributions_DG_Points
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Point
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Points
   PUBLIC :: FermiDirac
@@ -120,6 +126,10 @@ MODULE NeutrinoOpacitiesComputationModule
     MODULE PROCEDURE ComputeEquilibriumDistributions_Points_1
     MODULE PROCEDURE ComputeEquilibriumDistributions_Points_2
   END INTERFACE
+
+  INTERFACE ComputeEquilibriumDistributions_DG_Points
+    MODULE PROCEDURE ComputeEquilibriumDistributions_DG_Points_2
+  END INTERFACE ComputeEquilibriumDistributions_DG_Points
 
   INTERFACE ComputeNeutrinoOpacities_NES_Point
     MODULE PROCEDURE ComputeNeutrinoOpacities_NES_Point_1
@@ -616,29 +626,41 @@ CONTAINS
     !$OMP PRIVATE( Mnu, kT )
 #endif
     DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
+    DO iE = iE_B, iE_E
 
-        kT = BoltzmannConstant * T(iX)
+      kT = BoltzmannConstant * T(iX)
 
-        Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
+      Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
 
-        IF ( iS_1 == iNuE ) THEN
-          f0_1(iE,iX) = FermiDirac( E(iE), +Mnu, kT )
-        ELSE IF ( iS_1 == iNuE_Bar ) THEN
-          f0_1(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
-        ELSE
-          f0_1(iE,iX) = FermiDirac( E(iE), Zero, kT )
-        END IF
+      IF ( iS_1 == iNuE ) THEN
 
-        IF ( iS_2 == iNuE ) THEN
-          f0_2(iE,iX) = FermiDirac( E(iE), +Mnu, kT )
-        ELSE IF ( iS_2 == iNuE_Bar ) THEN
-          f0_2(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
-        ELSE
-          f0_2(iE,iX) = FermiDirac( E(iE), Zero, kT )
-        END IF
+        f0_1(iE,iX) = FermiDirac( E(iE), + Mnu, kT )
 
-      END DO
+      ELSE IF ( iS_1 == iNuE_Bar ) THEN
+
+        f0_1(iE,iX) = FermiDirac( E(iE), - Mnu, kT )
+
+      ELSE
+
+        f0_1(iE,iX) = FermiDirac( E(iE),  Zero, kT )
+
+      END IF
+
+      IF ( iS_2 == iNuE ) THEN
+
+        f0_2(iE,iX) = FermiDirac( E(iE), + Mnu, kT )
+
+      ELSE IF ( iS_2 == iNuE_Bar ) THEN
+
+        f0_2(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
+
+      ELSE
+
+        f0_2(iE,iX) = FermiDirac( E(iE), Zero, kT )
+
+      END IF
+
+    END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
@@ -652,6 +674,179 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeEquilibriumDistributions_Points_2
+
+
+  SUBROUTINE ComputeEquilibriumDistributions_DG_Points_2 &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, f0_1, f0_2, iS_1, iS_2 )
+
+    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(out) :: f0_1(:,:), f0_2(:,:)
+    INTEGER,  INTENT(in)  :: iS_1, iS_2
+
+    INTEGER  :: iX, iE, iE_G, iNodeE, nE, nX
+    REAL(DP) :: V_K, f0_Min, f0_Max, Min_K, Max_K, Theta
+    REAL(DP) :: E_Q(1:nDOFE,1:(iE_E-iE_B+1)/nDOFE)
+    REAL(DP) :: InterpMat_E(1:nDOFE+2,1:nDOFE)
+    REAL(DP) :: f0_1_K(          1:(iE_E-iE_B+1)/nDOFE+1,iX_B:iX_E)
+    REAL(DP) :: f0_2_K(          1:(iE_E-iE_B+1)/nDOFE+1,iX_B:iX_E)
+    REAL(DP) :: f0_1_Q(1:nDOFE  ,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    REAL(DP) :: f0_2_Q(1:nDOFE  ,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    REAL(DP) :: f0_1_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    REAL(DP) :: f0_2_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+
+    CALL ComputeEquilibriumDistributions_Points_2 &
+           ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, f0_1, f0_2, iS_1, iS_2 )
+
+    nE = ( iE_E - iE_B + 1 ) / nDOFE
+    nX = ( iX_E - iX_B + 1 )
+
+    ! --- Permute Data ---
+
+    DO iE = 1, nE
+    DO iNodeE = 1, nDOFE
+
+      iE_G = ( iE - 1 ) * nDOFE + iNodeE
+
+      E_Q(iNodeE,iE) = E(iE_G)
+
+    END DO
+    END DO
+
+    DO iX = iX_B, iX_E
+    DO iE = 1, nE
+    DO iNodeE = 1, nDOFE
+
+      iE_G = ( iE - 1 ) * nDOFE + iNodeE
+
+      f0_1_Q(iNodeE,iE,iX) = f0_1(iE_G,iX)
+      f0_2_Q(iNodeE,iE,iX) = f0_2(iE_G,iX)
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Cell Average of Equilibrium Distributions ---
+
+    DO iX = iX_B, iX_E
+    DO iE = 1, nE
+
+      V_K = SUM( WeightsE * E_Q(:,iE)**2 )
+
+      f0_1_K(iE,iX) = SUM( WeightsE * f0_1_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
+
+      f0_2_K(iE,iX) = SUM( WeightsE * f0_2_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
+
+    END DO
+    END DO
+
+    ! --- Estimate Cell Average in Outer Ghost Element ---
+
+    DO iX = iX_B, iX_E
+
+      f0_1_K(nE+1,iX) = f0_1_K(nE,iX)**2 / f0_1_K(nE-1,iX)
+
+      f0_2_K(nE+1,iX) = f0_2_K(nE,iX)**2 / f0_2_K(nE-1,iX)
+
+    END DO
+
+    InterpMat_E = Zero
+    DO iNodeE = 1, nDOFE
+
+      InterpMat_E(iNodeE ,iNodeE) = One
+      InterpMat_E(nDOFE+1,iNodeE) = LE_Dn(iNodeE)
+      InterpMat_E(nDOFE+2,iNodeE) = LE_Up(iNodeE)
+
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFE+2, nX*nE, nDOFE, One, InterpMat_E, nDOFE+2, &
+             f0_1_Q(1,1,iX_B), nDOFE, Zero, f0_1_P(1,1,iX_B), nDOFE+2 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFE+2, nX*nE, nDOFE, One, InterpMat_E, nDOFE+2, &
+             f0_2_Q(1,1,iX_B), nDOFE, Zero, f0_2_P(1,1,iX_B), nDOFE+2 )
+
+    ! --- Limit Equilibrium Distributions ---
+
+    f0_Max = One
+
+    DO iX = iX_B, iX_E
+    DO iE = 1, nE
+
+      ! --- iS_1 ---
+
+      f0_Min = f0_1_K(iE+1,iX)
+
+      Max_K = f0_Max
+      Min_K = f0_Min
+      DO iNodeE = 1, nDOFE+2
+        Max_K = MAX( Max_K, f0_1_P(iNodeE,iE,iX) )
+        Min_K = MIN( Min_K, f0_1_P(iNodeE,iE,iX) )
+      END DO
+
+      IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
+
+        Theta &
+          = MIN( One, &
+                 ABS((f0_Min-f0_1_K(iE,iX))/(Min_K-f0_1_K(iE,iX)+SqrtTiny)), &
+                 ABS((f0_Max-f0_1_K(iE,iX))/(Max_K-f0_1_K(iE,iX)+SqrtTiny)) )
+
+
+
+        f0_1_Q(:,iE,iX) &
+          = ( One - Theta ) * f0_1_K(iE,iX) + Theta * f0_1_Q(:,iE,iX)
+
+      END IF
+
+      ! --- iS_2 ---
+
+      f0_Min = f0_2_K(iE+1,iX)
+
+      Max_K = f0_Max
+      Min_K = f0_Min
+      DO iNodeE = 1, nDOFE+2
+        Max_K = MAX( Max_K, f0_2_P(iNodeE,iE,iX) )
+        Min_K = MIN( Min_K, f0_2_P(iNodeE,iE,iX) )
+      END DO
+
+      IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
+
+        Theta &
+          = MIN( One, &
+                 ABS((f0_Min-f0_2_K(iE,iX))/(Min_K-f0_2_K(iE,iX)+SqrtTiny)), &
+                 ABS((f0_Max-f0_2_K(iE,iX))/(Max_K-f0_2_K(iE,iX)+SqrtTiny)) )
+
+        f0_2_Q(:,iE,iX) &
+          = ( One - Theta ) * f0_2_K(iE,iX) + Theta * f0_2_Q(:,iE,iX)
+
+      END IF
+
+    END DO
+    END DO
+
+    ! --- Permute Data ---
+
+    DO iX = iX_B, iX_E
+    DO iE = 1, nE
+    DO iNodeE = 1, nDOFE
+
+      iE_G = ( iE - 1 ) * nDOFE + iNodeE
+
+      f0_1(iE_G,iX) = f0_1_Q(iNodeE,iE,iX)
+      f0_2(iE_G,iX) = f0_2_Q(iNodeE,iE,iX)
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeEquilibriumDistributions_DG_Points_2
 
 
   SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Point &

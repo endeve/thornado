@@ -1,7 +1,7 @@
-PROGRAM ApplicationDriver_Neutrinos
+PROGRAM ApplicationDriver_CCSN
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, SqrtTiny
+    DP, Zero, One, Two, Pi, TwoPi, SqrtTiny
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -15,32 +15,35 @@ PROGRAM ApplicationDriver_Neutrinos
   USE GeometryFieldsModuleE, ONLY: &
     uGE
   USE FluidFieldsModule, ONLY: &
-    uCF, uPF, uAF, uDF
+    uCF, iCF_D, &
+    uPF, uAF, uDF
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputeFromConserved_Euler_NonRelativistic
+    ComputeFromConserved_Euler_NonRelativistic, &
+    ComputeTimeStep_Euler_NonRelativistic
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE RadiationFieldsModule, ONLY: &
     uCR, uPR
-  USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF, &
-    ReadFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
+    ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
+  USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+    SolveGravity_Newtonian_Poseidon
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK
-  USE InitializationModule_Neutrinos, ONLY: &
+  USE InputOutputModuleHDF, ONLY: &
+    WriteFieldsHDF, &
+    ReadFieldsHDF
+  USE InitializationModule_CCSN, ONLY: &
     InitializeFields
-  USE TwoMoment_TallyModule_OrderV, ONLY: &
-    ComputeTally
 
   IMPLICIT NONE
 
@@ -52,24 +55,27 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
+  CHARACTER(64) :: ProgenitorFileName
+  LOGICAL       :: wrt
   LOGICAL       :: EvolveEuler
   LOGICAL       :: UseSlopeLimiter_Euler
   LOGICAL       :: UseSlopeLimiter_TwoMoment
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
-  LOGICAL       :: FixedTimeStep
+  LOGICAL       :: RampTimeStep
   INTEGER       :: RestartFileNumber
-  INTEGER       :: nSpecies
-  INTEGER       :: nNodes
-  INTEGER       :: nE, bcE, nX(3), bcX(3)
-  INTEGER       :: iCycle, iCycleD, iCycleW
-  REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
-  REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
+  INTEGER       :: nNodes, nSpecies
+  INTEGER       :: nX(3), bcX(3), nE, bcE
+  INTEGER       :: iCycle, iCycleD, nEquidistantX
+  REAL(DP)      :: xL(3), xR(3), eL, eR
+  REAL(DP)      :: dEquidistantX, zoomE, CFL, RampFactor
+  REAL(DP)      :: t, t_wrt, t_end, dt, dt_wrt
+  REAL(DP)      :: dt_Fluid, dt_Neutrinos
+  REAL(DP)      :: dt_Initial, dt_Ramp
 
-  ProgramName = 'Relaxation'
+  ProgramName = 'CCSN'
 
-  CoordinateSystem = 'CARTESIAN'
+  CoordinateSystem = 'SPHERICAL'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
   OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
@@ -77,98 +83,72 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
 
-  FixedTimeStep = .FALSE.
+  ProgenitorFileName = 'WH07_15M_Sun.h5'
 
   RestartFileNumber = - 1
 
-  SELECT CASE( TRIM( ProgramName ) )
+  ! --- Evolution Parameters ---
 
-    CASE( 'Relaxation' )
+  t_end   = 3.00d+2 * Millisecond
+  dt_wrt  = 1.00d-0 * Millisecond
+  wrt     = .FALSE.
+  iCycleD = 1
 
-      nSpecies = 2
-      nNodes   = 2
+  ! --- Position Space Grid Parameters ---
 
-      nX  = [ 1, 1, 1 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
-      bcX = [ 0, 0, 0 ]
+  nX  = [ 200, 1, 1 ]
+  xL  = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ]
+  xR  = [ 8.0d3 * Kilometer, Pi   , TwoPi ]
+  bcX = [ 30, 0, 0 ]
 
-      nE    = 16
-      eL    = 0.0d0 * MeV
-      eR    = 3.0d2 * MeV
-      bcE   = 0
-      ZoomE = 1.266038160710160_DP
+  nEquidistantX = 50
+  dEquidistantX = 1.0d0 * Kilometer
 
-      TimeSteppingScheme = 'BackwardEuler'
+  ! --- Energy Space Grid Parameters ---
 
-      t_end = 1.0d0 * Millisecond
+  nE  = 16
+  eL  = 0.0d0 * MeV
+  eR  = 3.0d2 * MeV
+  bcE = 10
 
-      FixedTimeStep = .TRUE.
-      dt_FXD        = 1.0d-3 * Millisecond
-      iCycleD       = 1
-      iCycleW       = 10
+  zoomE = 1.290361891685686_DP
 
-      EvolveEuler                    = .FALSE.
-      UseSlopeLimiter_Euler          = .FALSE.
-      UseSlopeLimiter_TwoMoment      = .FALSE.
-      UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .FALSE.
+  ! --- Time Step Control ---
 
-    CASE( 'Deleptonization' )
+  RampTimeStep = .TRUE.
+  RampFactor   = 1.1_DP
+  dt_Initial   = 1.0d-6 * Millisecond
 
-      nSpecies = 2
-      nNodes   = 2
+  ! --- Solvers Parameters ---
 
-      nX  = [ 64, 1, 1 ]
-      xL  = [ - 50.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ + 50.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
-      bcX = [ 31, 1, 1 ]
+  nNodes   = 2
+  nSpecies = 2
+  CFL      = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One )
 
-      nE    = 16
-      eL    = 0.0d0 * MeV
-      eR    = 3.0d2 * MeV
-      bcE   = 10
-      ZoomE = 1.266038160710160_DP
+  EvolveEuler                    = .TRUE.
+  UseSlopeLimiter_Euler          = .FALSE.
+  UseSlopeLimiter_TwoMoment      = .FALSE.
+  UsePositivityLimiter_Euler     = .TRUE.
+  UsePositivityLimiter_TwoMoment = .TRUE.
 
-      TimeSteppingScheme = 'IMEX_PDARS'
+  TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end = 1.0d0 * Millisecond
-
-      iCycleD = 1
-      iCycleW = 10
-
-      EvolveEuler                    = .TRUE.
-      UseSlopeLimiter_Euler          = .FALSE.
-      UseSlopeLimiter_TwoMoment      = .FALSE.
-      UsePositivityLimiter_Euler     = .TRUE.
-      UsePositivityLimiter_TwoMoment = .TRUE.
-
-    CASE DEFAULT
-
-      WRITE(*,*)
-      WRITE(*,'(A6,A,A)') '', 'Unknown Program Name: ', TRIM( ProgramName )
-      WRITE(*,*)
-      STOP
-
-  END SELECT
+  ! --- Auxiliary Initialization ---
 
   CALL InitializeDriver
 
-  CALL InitializeFields
+  ! --- Initialize Fields ---
+
+  CALL InitializeFields( ProgenitorFileName )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
     t = Zero
 
-    ! --- Apply Slope Limiter to Initial Data ---
+    ! --- Apply Limiters to Initial Condition ---
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    CALL ApplySlopeLimiter_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
-
-    ! --- Apply Positivity Limiter to Initial Data ---
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
@@ -176,15 +156,24 @@ PROGRAM ApplicationDriver_Neutrinos
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
 
+    ! --- Solve for Gravitational Potential ---
+
+    CALL SolveGravity_Newtonian_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF(:,:,:,:,iCF_D) )
+
+    ! --- Write Initial Condition ---
+
+    CALL ComputeFromConserved_Euler_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+    CALL ComputeFromConserved_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+
     CALL WriteFieldsHDF &
-           ( Time = 0.0_DP, &
+           ( Time = t, &
              WriteGF_Option = .TRUE., &
              WriteFF_Option = .TRUE., &
              WriteRF_Option = .TRUE. )
-
-    CALL ComputeTally &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
-             SetInitialValues_Option = .TRUE. )
 
   ELSE
 
@@ -194,31 +183,52 @@ PROGRAM ApplicationDriver_Neutrinos
              ReadFF_Option = .TRUE., &
              ReadRF_Option = .TRUE. )
 
+    ! --- Solve for Gravitational Potential (To Fill Geometry Ghost Cells) ---
+
+    CALL SolveGravity_Newtonian_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+             uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
+
   END IF
 
   ! --- Evolve ---
 
-  WRITE(*,*)
-  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
-    '', 'Evolving from t = ', t / Millisecond, ' to t = ', t_end / Millisecond
-  WRITE(*,*)
-
+  t_wrt  = t + dt_wrt
+  wrt    = .FALSE.
   iCycle = 0
+
   DO WHILE( t < t_end )
 
     iCycle = iCycle + 1
 
-    IF( FixedTimeStep )THEN
+    ! --- Compute Time Step ---
 
-      dt = dt_FXD
+    IF( RampTimeStep )THEN
+
+      IF( iCycle == 1 )THEN
+
+        dt_Ramp = dt_Initial
+
+      ELSE
+
+        dt_Ramp = RampFactor * dt
+
+      END IF
 
     ELSE
 
-      dt_CFL = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
-
-      dt = dt_CFL
+      dt_Ramp = HUGE( One )
 
     END IF
+
+    CALL ComputeTimeStep_Euler_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, CFL, dt_Fluid )
+
+    CALL ComputeTimeStep_TwoMoment &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt_Neutrinos )
+
+    dt = MIN( dt_Fluid, dt_Neutrinos, dt_Ramp )
 
     IF( t + dt > t_end )THEN
 
@@ -226,21 +236,37 @@ PROGRAM ApplicationDriver_Neutrinos
 
     END IF
 
+    IF( t + dt > t_wrt )THEN
+
+      dt    = t_wrt - t
+      t_wrt = t_wrt + dt_wrt
+      wrt   = .TRUE.
+
+    END IF
+
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-      WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
-          '', 'Cycle = ', iCycle, &
-          '', 't = '    ,  t / Millisecond, &
-          '', 'dt = '   , dt / Millisecond
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
+        '', 'Cycle = ', iCycle, &
+        '', 't = ',  t / Millisecond, ' ms ', &
+        'dt = ', dt / Millisecond, ' ms'
+      WRITE(*,*)
+      WRITE(*,'(A10,A11,ES13.6E3,A4,A15,ES13.6E3,A4,A10,ES13.6E3,A3)') &
+        '', 'dt_Fluid = ', dt_Fluid / Millisecond, ' ms ', &
+        'dt_Neutrinos = ', dt_Neutrinos / Millisecond, ' ms ', &
+        'dt_Ramp = ', dt_Ramp / Millisecond, ' ms'
+      WRITE(*,*)
 
     END IF
 
     CALL Update_IMEX_RK &
-           ( dt, uGE, uGF, uCF, uCR, ComputeIncrement_TwoMoment_Implicit )
+           ( dt, uGE, uGF, uCF, uCR, &
+             ComputeIncrement_TwoMoment_Implicit, &
+             SolveGravity_Newtonian_Poseidon )
 
     t = t + dt
 
-    IF( MOD( iCycle, iCycleW ) == 0 )THEN
+    IF( wrt )THEN
 
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -249,13 +275,12 @@ PROGRAM ApplicationDriver_Neutrinos
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
       CALL WriteFieldsHDF &
-             ( Time = t, &
-               WriteGF_Option = .TRUE., &
-               WriteFF_Option = .TRUE., &
-               WriteRF_Option = .TRUE. )
+           ( Time = t, &
+             WriteGF_Option = .TRUE., &
+             WriteFF_Option = .TRUE., &
+             WriteRF_Option = .TRUE. )
 
-      CALL ComputeTally &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+      wrt = .FALSE.
 
     END IF
 
@@ -273,8 +298,7 @@ PROGRAM ApplicationDriver_Neutrinos
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
-  CALL ComputeTally &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+  ! --- Auxiliary Finalization ---
 
   CALL FinalizeDriver
 
@@ -287,6 +311,9 @@ CONTAINS
       InitializeTimers
     USE ProgramInitializationModule, ONLY: &
       InitializeProgram
+    USE MeshModule, ONLY: &
+      MeshX, &
+      CreateMesh_Custom
     USE ReferenceElementModuleX, ONLY: &
       InitializeReferenceElementX
     USE ReferenceElementModuleX_Lagrange, ONLY: &
@@ -322,6 +349,8 @@ CONTAINS
       InitializeSlopeLimiter_TwoMoment
     USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
       InitializePositivityLimiter_TwoMoment
+    USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+      InitializeGravitySolver_Newtonian_Poseidon
     USE TwoMoment_TallyModule_OrderV, ONLY: &
       InitializeTally
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
@@ -342,8 +371,6 @@ CONTAINS
                = xL, &
              xR_Option &
                = xR, &
-             zoomX_Option &
-               = zoomX, &
              nE_Option &
                = nE, &
              swE_Option &
@@ -366,6 +393,10 @@ CONTAINS
                = nSpecies, &
              BasicInitialization_Option &
                = .TRUE. )
+
+    CALL CreateMesh_Custom &
+           ( MeshX(1), nX(1), nNodes, 1, xL(1), xR(1), &
+             nEquidistantX, dEquidistantX, Verbose_Option = .TRUE. )
 
     ! --- Position Space Reference Element and Geometry ---
 
@@ -486,6 +517,10 @@ CONTAINS
              Verbose_Option &
                = .TRUE. )
 
+    ! --- Initialize Gravity Solver ---
+
+    CALL InitializeGravitySolver_Newtonian_Poseidon
+
     ! --- Initialize Tally ---
 
     CALL InitializeTally
@@ -518,6 +553,8 @@ CONTAINS
       FinalizeSlopeLimiter_TwoMoment
     USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
       FinalizePositivityLimiter_TwoMoment
+    USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+      FinalizeGravitySolver_Newtonian_Poseidon
     USE ReferenceElementModuleX, ONLY: &
       FinalizeReferenceElementX
     USE ReferenceElementModuleX_Lagrange, ONLY: &
@@ -534,7 +571,7 @@ CONTAINS
       FinalizeReferenceElement_Lagrange
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
-    USE TwoMoment_TimersModule_OrderV, ONLY: &
+    USE TimersModule, ONLY: &
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
@@ -554,6 +591,8 @@ CONTAINS
     CALL FinalizeSlopeLimiter_TwoMoment
 
     CALL FinalizePositivityLimiter_TwoMoment
+
+    CALL FinalizeGravitySolver_Newtonian_Poseidon
 
     CALL FinalizeReferenceElementX
 
@@ -576,4 +615,4 @@ CONTAINS
   END SUBROUTINE FinalizeDriver
 
 
-END PROGRAM ApplicationDriver_Neutrinos
+END PROGRAM ApplicationDriver_CCSN

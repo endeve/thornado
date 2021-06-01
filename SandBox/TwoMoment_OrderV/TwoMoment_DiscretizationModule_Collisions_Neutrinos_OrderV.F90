@@ -3,8 +3,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   USE KindModule, ONLY: &
     DP
   USE UnitsModule, ONLY: &
-    PlanckConstant, &
-    AtomicMassUnit, &
     Centimeter, &
     Gram, &
     MeV, &
@@ -22,7 +20,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_T, iAF_E , iAF_Ye
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, iNuE, iNuE_Bar, &
+    nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic, &

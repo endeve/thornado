@@ -1,11 +1,17 @@
 MODULE TwoMoment_UtilitiesModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, Three, Five
+    DP, Zero, Half, One, Two, Three, Five, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
@@ -41,6 +47,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: ComputePrimitive_TwoMoment_Scalar
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
+  PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Flux_E
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
@@ -1202,6 +1209,64 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeFromConserved_TwoMoment
+
+
+  SUBROUTINE ComputeTimeStep_TwoMoment &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, CFL, TimeStep )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX, &
+         iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: dt(3)
+
+    TimeStep = HUGE( One )
+    dt       = HUGE( One )
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dt(1) = dX1(iX1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
+
+      IF( iX_E0(2) .GT. iX_B0(2) )THEN
+
+        dt(2) = dX2(iX2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )
+
+      END IF
+
+      IF( iX_E0(3) .GT. iX_B0(3) )THEN
+
+        dt(3) = dX3(iX3) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_3) )
+
+      END IF
+
+      TimeStep = MIN( TimeStep, MINVAL( dt ) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc
+
+    TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+
+  END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
   FUNCTION Flux_E &

@@ -1,5 +1,6 @@
-MOMENT_CLOSURE = MINERBO
-MICROPHYSICS   = WEAKLIB
+MOMENT_CLOSURE  = MINERBO
+MICROPHYSICS   ?=
+GRAVITY_SOLVER ?=
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -111,6 +112,40 @@ ApplicationDriver_Neutrinos: \
 	ApplicationDriver_Neutrinos.o \
 	$(LIBRARIES)
 
+ApplicationDriver_CCSN: \
+	$(weaklib) \
+	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
+	TwoMoment_PositivityLimiterModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+	TwoMoment_TallyModule_OrderV.o \
+	TwoMoment_TimeSteppingModule_OrderV.o \
+	ProgenitorModule.o \
+	InitializationModule_CCSN.o \
+	ApplicationDriver_CCSN.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriver_CCSN_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	TwoMoment_TimersModule_OrderV.o \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
+	TwoMoment_PositivityLimiterModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+	TwoMoment_TallyModule_OrderV.o \
+	TwoMoment_TimeSteppingModule_OrderV.o \
+	ProgenitorModule.o \
+	InitializationModule_CCSN.o \
+	ApplicationDriver_CCSN.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
@@ -123,6 +158,8 @@ clobber: clean
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
 	rm -f  ApplicationDriver_Neutrinos_$(MACHINE)
 	rm -rf ApplicationDriver_Neutrinos_$(MACHINE).dSYM
+	rm -f  ApplicationDriver_CCSN_$(MACHINE)
+	rm -rf ApplicationDriver_CCSN_$(MACHINE).dSYM
 
 TwoMomentClosure.o: \
   KindModule.o \
@@ -191,6 +228,26 @@ ApplicationDriver_Neutrinos.o: \
   GeometryFieldsModuleE.o \
   InitializationModule_Neutrinos.o \
   ApplicationDriver_Neutrinos.f90
+
+ApplicationDriver_CCSN.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  RadiationFieldsModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+  GravitySolutionModule_Newtonian_Poseidon.o \
+  TwoMoment_TimeSteppingModule_OrderV.o \
+  InputOutputModuleHDF.o \
+  ApplicationDriver_CCSN.f90
 
 InitializationModule.o: \
   KindModule.o \
