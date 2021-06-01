@@ -48,7 +48,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions_Points, &
+    ComputeEquilibriumDistributions_DG_Points, &
     ComputeNeutrinoOpacities_EC_Points, &
     ComputeNeutrinoOpacities_ES_Points, &
     ComputeEquilibriumDistributionAndDerivatives_Points, &
@@ -770,8 +770,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_Packed &
-    ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
-      MASK, nX_P, PackIndex, UnpackIndex )
+    ( iS_1, iS_2, D, T, Y, J0_1, J0_2, MASK, nX_P, PackIndex, UnpackIndex )
 
     INTEGER,                                      INTENT(in)    :: iS_1, iS_2
     REAL(DP), DIMENSION(1:nX_G),        TARGET,   INTENT(in)    :: D, T, Y
@@ -819,7 +818,7 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_Points &
+    CALL ComputeEquilibriumDistributions_DG_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     IF ( nX < nX_G ) THEN
@@ -930,7 +929,7 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_Points &
+    CALL ComputeEquilibriumDistributions_DG_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     ! --- EmAb ---

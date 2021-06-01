@@ -1,7 +1,7 @@
 MODULE ReferenceElementModuleE_Lagrange
 
   USE KindModule, ONLY: &
-    DP
+    DP, Half
   USE ProgramHeaderModule, ONLY: &
     nNodesE, nDOFE
   USE ReferenceElementModuleE, ONLY: &
@@ -12,6 +12,8 @@ MODULE ReferenceElementModuleE_Lagrange
   IMPLICIT NONE
   PRIVATE
 
+  REAL(DP), DIMENSION(:)  , ALLOCATABLE, PUBLIC :: LE_Dn
+  REAL(DP), DIMENSION(:)  , ALLOCATABLE, PUBLIC :: LE_Up
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: LE_L2G
 
   PUBLIC :: InitializeReferenceElementE_Lagrange
@@ -24,17 +26,25 @@ CONTAINS
 
     INTEGER :: iNodeE, jNodeE
 
+    ALLOCATE( LE_Dn(nDOFE), LE_Up(nDOFE) )
+
+    DO iNodeE = 1, nDOFE
+
+      LE_Dn(iNodeE) = LagrangeP( - Half, iNodeE, NodesE, nNodesE )
+
+      LE_Up(iNodeE) = LagrangeP( + Half, iNodeE, NodesE, nNodesE )
+
+    END DO
+
     ALLOCATE( LE_L2G(nDOFE,nDOFE) )
 
     DO jNodeE = 1, nDOFE
+    DO iNodeE = 1, nDOFE
 
-      DO iNodeE = 1, nDOFE
+      LE_L2G(iNodeE,jNodeE) &
+        = LagrangeP( NodesE(iNodeE), jNodeE, NodesE_L, nNodesE )
 
-        LE_L2G(iNodeE,jNodeE) &
-          = LagrangeP( NodesE(iNodeE), jNodeE, NodesE_L, nNodesE )
-
-      END DO
-
+    END DO
     END DO
 
   END SUBROUTINE InitializeReferenceElementE_Lagrange
@@ -42,7 +52,7 @@ CONTAINS
 
   SUBROUTINE FinalizeReferenceElementE_Lagrange
 
-    DEALLOCATE( LE_L2G )
+    DEALLOCATE( LE_Dn, LE_Up, LE_L2G )
 
   END SUBROUTINE FinalizeReferenceElementE_Lagrange
 
