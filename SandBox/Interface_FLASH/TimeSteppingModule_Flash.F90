@@ -249,10 +249,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$OMP MAP( to: iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
     ! --- Explicit Step (Radiation Only) ---
@@ -437,6 +437,13 @@ CONTAINS
 
       iX_SW = [ 0, 0, 0 ]
       iZ_SW = [ 0, 0, 0, 0 ]
+      if (nDimsX .eq. 3) then
+         iZ_SW_P = [ 0, 1, 1, 1 ]
+      else if (nDimsX .eq. 2) then
+         iZ_SW_P = [ 0, 1, 1, 0 ]
+      else if (nDimsX .eq. 1) then
+         iZ_SW_P = [ 0, 1, 0, 0 ]
+      end if
 
       iX_B0_SW = iX_B0 - iX_SW
       iX_E0_SW = iX_E0 + iX_SW
@@ -445,10 +452,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET UPDATE &
-      !$OMP TO( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW )
+      !$OMP TO( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_SW_P )
 #elif defined(THORNADO_OACC)
       !$ACC UPDATE &
-      !$ACC DEVICE( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW )
+      !$ACC DEVICE( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_SW_P )
 #endif
 
       ! --- Explicit Step (Radiation Only) ---
@@ -456,7 +463,7 @@ CONTAINS
       IF( Explicit )THEN
 
         CALL ApplyBoundaryConditions_Radiation &
-               ( [0,1,0,0], iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
+               ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
 
 #ifdef TWOMOMENT_ORDER_1
         CALL ComputeIncrement_TwoMoment_Explicit &
@@ -626,12 +633,12 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: U_F, U_R ) &
     !$OMP MAP( release: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
-    !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT( U_F, U_R ) &
     !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
-    !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
   END SUBROUTINE Update_IMEX_PDARS
