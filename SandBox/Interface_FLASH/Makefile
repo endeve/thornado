@@ -86,7 +86,6 @@ OBJS = \
        TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
        TwoMoment_NeutrinoMatterSolverModule.o \
        TwoMoment_BoundaryConditionsModule.o \
-       TwoMoment_MeshRefinementModule.o \
        TwoMoment_UtilitiesModule.o \
        TwoMoment_MeshRefinementModule.o \
        NeutrinoOpacitiesModule.o \
