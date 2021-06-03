@@ -390,6 +390,8 @@ CONTAINS
       = FluidMomentum3_Interior &
           - ( FluidMomentum3_Initial       + FluidMomentum3_OffGrid       )
 
+    ! --- Gravitational ---
+
     GravitationalEnergy_Change &
       = GravitationalEnergy_Interior &
           - ( GravitationalEnergy_Initial  + GravitationalEnergy_OffGrid  )
