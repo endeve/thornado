@@ -50,6 +50,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   END TYPE StageDataType
 
   LOGICAL                          :: EvolveEuler
+  LOGICAL                          :: EvolveTwoMoment
   INTEGER                          :: nStages
   REAL(DP),            ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP),            ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
@@ -243,11 +244,15 @@ CONTAINS
 
           END IF
 
-          CALL ApplySLopeLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+          IF( EvolveTwoMoment )THEN
 
-          CALL ApplyPositivityLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+            CALL ApplySLopeLimiter_TwoMoment &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+            CALL ApplyPositivityLimiter_TwoMoment &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+          END IF
 
         END IF
 
@@ -271,8 +276,12 @@ CONTAINS
 
         END IF
 
-        CALL ApplyPositivityLimiter_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+        IF( EvolveTwoMoment )THEN
+
+          CALL ApplyPositivityLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+        END IF
 
       END IF
 
@@ -290,11 +299,15 @@ CONTAINS
 
         END IF
 
-        CALL ComputeIncrement_TwoMoment_Explicit &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-                 Ui, Mi, StageData(iS) % dM_EX )
+        IF( EvolveTwoMoment )THEN
 
-        StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
+          CALL ComputeIncrement_TwoMoment_Explicit &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                   Ui, Mi, StageData(iS) % dM_EX )
+
+          StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
+
+        END IF
 
       END IF
 
@@ -336,11 +349,15 @@ CONTAINS
 
       END IF
 
-      CALL ApplySlopeLimiter_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+      IF( EvolveTwoMoment )THEN
 
-      CALL ApplyPositivityLimiter_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+        CALL ApplySlopeLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+        CALL ApplyPositivityLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+      END IF
 
     END IF
 
@@ -354,33 +371,43 @@ CONTAINS
     CALL CopyArray( U, One, Ui )
     CALL CopyArray( M, One, Mi )
 
-    dU_OffGrid = Zero
-    DO iS = 1, nStages
+    IF( EvolveEuler )THEN
 
-      dU_OffGrid &
-        = dU_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_U
+      dU_OffGrid = Zero
+      DO iS = 1, nStages
 
-    END DO
+        dU_OffGrid &
+          = dU_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_U
 
-    CALL IncrementOffGridTally_Euler( dU_OffGrid )
+      END DO
 
-    dM_OffGrid = Zero
-    DO iS = 1, nStages
+      CALL IncrementOffGridTally_Euler( dU_OffGrid )
 
-      dM_OffGrid &
-        = dM_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_M
+    END IF
 
-    END DO
+    IF( EvolveTwoMoment )THEN
 
-    CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
+      dM_OffGrid = Zero
+      DO iS = 1, nStages
+
+        dM_OffGrid &
+          = dM_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_M
+
+      END DO
+
+      CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
+
+    END IF
 
   END SUBROUTINE Update_IMEX_RK
 
 
-  SUBROUTINE Initialize_IMEX_RK( Scheme, EvolveEuler_Option )
+  SUBROUTINE Initialize_IMEX_RK &
+    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option )
 
     CHARACTER(LEN=*), INTENT(in)           :: Scheme
     LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
 
     INTEGER :: i
 
@@ -389,9 +416,15 @@ CONTAINS
       EvolveEuler = EvolveEuler_Option
     END IF
 
+    EvolveTwoMoment = .TRUE.
+    IF( PRESENT( EvolveTwoMoment_Option ) )THEN
+      EvolveTwoMoment = EvolveTwoMoment_Option
+    END IF
+
     WRITE(*,*)
-    WRITE(*,'(A6,A16,A)' ) '', 'IMEX-RK Scheme: ', TRIM( Scheme )
-    WRITE(*,'(A6,A16,L1)') '', 'Evolve Euler: '  , EvolveEuler
+    WRITE(*,'(A6,A19,A)' ) '', 'IMEX-RK Scheme: '   , TRIM( Scheme )
+    WRITE(*,'(A6,A19,L1)') '', 'Evolve Euler: '     , EvolveEuler
+    WRITE(*,'(A6,A19,L1)') '', 'Evolve Two-Moment: ', EvolveTwoMoment
 
     SELECT CASE ( TRIM( Scheme ) )
 
