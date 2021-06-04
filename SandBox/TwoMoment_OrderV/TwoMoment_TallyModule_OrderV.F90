@@ -38,6 +38,7 @@ MODULE TwoMoment_TallyModule_OrderV
   PUBLIC :: InitializeTally
   PUBLIC :: ComputeTally
   PUBLIC :: IncrementOffGridTally_TwoMoment
+  PUBLIC :: IncrementPositivityLimiterTally_TwoMoment
   PUBLIC :: IncrementOffGridTally_Euler
   PUBLIC :: FinalizeTally
 
@@ -54,24 +55,32 @@ MODULE TwoMoment_TallyModule_OrderV
   REAL(DP)       :: NeutrinoEnergy_Initial
   REAL(DP)       :: NeutrinoEnergy_OffGrid
   REAL(DP)       :: NeutrinoEnergy_Change
+  CHARACTER(256) :: NeutrinoEnergy_PL_FileName
+  REAL(DP)       :: NeutrinoEnergy_PL
 
   CHARACTER(256) :: NeutrinoMomentum1_FileName
   REAL(DP)       :: NeutrinoMomentum1_Interior
   REAL(DP)       :: NeutrinoMomentum1_Initial
   REAL(DP)       :: NeutrinoMomentum1_OffGrid
   REAL(DP)       :: NeutrinoMomentum1_Change
+  CHARACTER(256) :: NeutrinoMomentum1_PL_FileName
+  REAL(DP)       :: NeutrinoMomentum1_PL
 
   CHARACTER(256) :: NeutrinoMomentum2_FileName
   REAL(DP)       :: NeutrinoMomentum2_Interior
   REAL(DP)       :: NeutrinoMomentum2_Initial
   REAL(DP)       :: NeutrinoMomentum2_OffGrid
   REAL(DP)       :: NeutrinoMomentum2_Change
+  CHARACTER(256) :: NeutrinoMomentum2_PL_FileName
+  REAL(DP)       :: NeutrinoMomentum2_PL
 
   CHARACTER(256) :: NeutrinoMomentum3_FileName
   REAL(DP)       :: NeutrinoMomentum3_Interior
   REAL(DP)       :: NeutrinoMomentum3_Initial
   REAL(DP)       :: NeutrinoMomentum3_OffGrid
   REAL(DP)       :: NeutrinoMomentum3_Change
+  CHARACTER(256) :: NeutrinoMomentum3_PL_FileName
+  REAL(DP)       :: NeutrinoMomentum3_PL
 
   CHARACTER(256) :: FluidLeptonNumber_FileName
   REAL(DP)       :: FluidLeptonNumber_Interior
@@ -137,10 +146,16 @@ CONTAINS
 
     CALL WriteTally_Header( NeutrinoEnergy_FileName )
 
+    NeutrinoEnergy_PL_FileName &
+      = TRIM( BaseFileName ) // '_Tally_NeutrinoEnergy_PL.dat'
+
+    CALL WriteLimiterTally_Header( NeutrinoEnergy_PL_FileName )
+
     NeutrinoEnergy_Interior = Zero
     NeutrinoEnergy_Initial  = Zero
     NeutrinoEnergy_OffGrid  = Zero
     NeutrinoEnergy_Change   = Zero
+    NeutrinoEnergy_PL       = Zero
 
     ! --- Neutrino Momentum 1 ---
 
@@ -149,10 +164,16 @@ CONTAINS
 
     CALL WriteTally_Header( NeutrinoMomentum1_FileName )
 
+    NeutrinoMomentum1_PL_FileName &
+      = TRIM( BaseFileName ) // '_Tally_NeutrinoMomentum1_PL.dat'
+
+    CALL WriteLimiterTally_Header( NeutrinoMomentum1_PL_FileName )
+
     NeutrinoMomentum1_Interior = Zero
     NeutrinoMomentum1_Initial  = Zero
     NeutrinoMomentum1_OffGrid  = Zero
     NeutrinoMomentum1_Change   = Zero
+    NeutrinoMomentum1_PL       = Zero
 
     ! --- Neutrino Momentum 2 ---
 
@@ -161,10 +182,16 @@ CONTAINS
 
     CALL WriteTally_Header( NeutrinoMomentum2_FileName )
 
+    NeutrinoMomentum2_PL_FileName &
+      = TRIM( BaseFileName ) // '_Tally_NeutrinoMomentum2_PL.dat'
+
+    CALL WriteLimiterTally_Header( NeutrinoMomentum2_PL_FileName )
+
     NeutrinoMomentum2_Interior = Zero
     NeutrinoMomentum2_Initial  = Zero
     NeutrinoMomentum2_OffGrid  = Zero
     NeutrinoMomentum2_Change   = Zero
+    NeutrinoMomentum2_PL       = Zero
 
     ! --- Neutrino Momentum 3 ---
 
@@ -173,10 +200,16 @@ CONTAINS
 
     CALL WriteTally_Header( NeutrinoMomentum3_FileName )
 
+    NeutrinoMomentum3_PL_FileName &
+      = TRIM( BaseFileName ) // '_Tally_NeutrinoMomentum3_PL.dat'
+
+    CALL WriteLimiterTally_Header( NeutrinoMomentum3_PL_FileName )
+
     NeutrinoMomentum3_Interior = Zero
     NeutrinoMomentum3_Initial  = Zero
     NeutrinoMomentum3_OffGrid  = Zero
     NeutrinoMomentum3_Change   = Zero
+    NeutrinoMomentum3_PL       = Zero
 
     ! --- Fluid Lepton Number ---
 
@@ -622,6 +655,18 @@ CONTAINS
   END SUBROUTINE IncrementOffGridTally_TwoMoment
 
 
+  SUBROUTINE IncrementPositivityLimiterTally_TwoMoment( dM )
+
+    REAL(DP), INTENT(in) :: dM(nCR)
+
+    NeutrinoEnergy_PL    = NeutrinoEnergy_PL    + dM(iCR_N )
+    NeutrinoMomentum1_PL = NeutrinoMomentum1_PL + dM(iCR_G1)
+    NeutrinoMomentum2_PL = NeutrinoMomentum2_PL + dM(iCR_G2)
+    NeutrinoMomentum3_PL = NeutrinoMomentum3_PL + dM(iCR_G3)
+
+  END SUBROUTINE IncrementPositivityLimiterTally_TwoMoment
+
+
   SUBROUTINE ComputeTally_Euler( iX_B0, iX_E0, iX_B1, iX_E1, GX, U )
 
     INTEGER, INTENT(in)  :: &
@@ -826,6 +871,11 @@ CONTAINS
              NeutrinoEnergy_Change   / U % EnergyGlobalUnit, &
              NeutrinoEnergy_FileName )
 
+    CALL WriteLimiterTally_Variable &
+           ( Time / U % TimeUnit, &
+             NeutrinoEnergy_PL / U % EnergyGlobalUnit, &
+             NeutrinoEnergy_PL_FileName )
+
     ! --- Neutrino Momentum 1 ---
 
     CALL WriteTally_Variable             &
@@ -835,6 +885,11 @@ CONTAINS
              NeutrinoMomentum1_Initial,  &
              NeutrinoMomentum1_Change,   &
              NeutrinoMomentum1_FileName )
+
+    CALL WriteLimiterTally_Variable &
+           ( Time / U % TimeUnit, &
+             NeutrinoMomentum1_PL, &
+             NeutrinoMomentum1_PL_FileName )
 
     ! --- Neutrino Momentum 2 ---
 
@@ -846,6 +901,11 @@ CONTAINS
              NeutrinoMomentum2_Change,   &
              NeutrinoMomentum2_FileName )
 
+    CALL WriteLimiterTally_Variable &
+           ( Time / U % TimeUnit, &
+             NeutrinoMomentum2_PL, &
+             NeutrinoMomentum2_PL_FileName )
+
     ! --- Neutrino Momentum 3 ---
 
     CALL WriteTally_Variable             &
@@ -855,6 +915,11 @@ CONTAINS
              NeutrinoMomentum3_Initial,  &
              NeutrinoMomentum3_Change,   &
              NeutrinoMomentum3_FileName )
+
+    CALL WriteLimiterTally_Variable &
+           ( Time / U % TimeUnit, &
+             NeutrinoMomentum3_PL, &
+             NeutrinoMomentum3_PL_FileName )
 
     ! --- Fluid Lepton Number ---
 
@@ -937,6 +1002,21 @@ CONTAINS
   END SUBROUTINE WriteTally_Header
 
 
+  SUBROUTINE WriteLimiterTally_Header( FileName )
+
+    CHARACTER(*), INTENT(in) :: FileName
+
+    INTEGER :: FileUnit
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ) )
+
+    WRITE( FileUnit, '(2(A20,x))' ) 'Time', 'Change'
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteLimiterTally_Header
+
+
   SUBROUTINE WriteTally_Variable &
     ( Time, Interior, OffGrid, Initial, Change, FileName )
 
@@ -954,6 +1034,23 @@ CONTAINS
     CLOSE( FileUnit )
 
   END SUBROUTINE WriteTally_Variable
+
+
+  SUBROUTINE WriteLimiterTally_Variable( Time, Change, FileName )
+
+    REAL(DP)    , INTENT(in) :: Time, Change
+    CHARACTER(*), INTENT(in) :: FileName
+
+    INTEGER :: FileUnit
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(2(ES20.12,x))' ) Time, Change
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteLimiterTally_Variable
 
 
   SUBROUTINE DisplayTally( Time )
@@ -991,6 +1088,9 @@ CONTAINS
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Energy Change..........: ', &
       NeutrinoEnergy_Change   / U % EnergyGlobalUnit
+    WRITE(*,'(A6,A40,ES16.8E3)') &
+      '', 'Neutrino Energy PL..............: ', &
+      NeutrinoEnergy_PL       / U % EnergyGlobalUnit
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Momentum 1 Interior....: ', &
@@ -1004,6 +1104,9 @@ CONTAINS
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Momentum 1 Change......: ', &
       NeutrinoMomentum1_Change
+    WRITE(*,'(A6,A40,ES16.8E3)') &
+      '', 'Neutrino Momentum 1 PL..........: ', &
+      NeutrinoMomentum1_PL
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Momentum 2 Interior....: ', &
@@ -1017,6 +1120,9 @@ CONTAINS
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Momentum 2 Change......: ', &
       NeutrinoMomentum2_Change
+    WRITE(*,'(A6,A40,ES16.8E3)') &
+      '', 'Neutrino Momentum 2 PL..........: ', &
+      NeutrinoMomentum2_PL
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Momentum 3 Interior....: ', &
@@ -1030,6 +1136,9 @@ CONTAINS
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Neutrino Momentum 3 Change......: ', &
       NeutrinoMomentum3_Change
+    WRITE(*,'(A6,A40,ES16.8E3)') &
+      '', 'Neutrino Momentum 2 PL..........: ', &
+      NeutrinoMomentum2_PL
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Fluid Lepton Number Interior....: ', &

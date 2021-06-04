@@ -29,13 +29,15 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
-    ApplyPositivityLimiter_TwoMoment
+    ApplyPositivityLimiter_TwoMoment, &
+    dEnergyMomentum_PL_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     OffGridFlux_TwoMoment
   USE TwoMoment_TallyModule_OrderV, ONLY: &
     IncrementOffGridTally_Euler, &
-    IncrementOffGridTally_TwoMoment
+    IncrementOffGridTally_TwoMoment, &
+    IncrementPositivityLimiterTally_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -198,6 +200,9 @@ CONTAINS
     INTEGER  :: iS, jS
     REAL(DP) :: dU_OffGrid(nCF)
     REAL(DP) :: dM_OffGrid(2*nCR)
+    REAL(DP) :: dM_PL(nCR)
+
+    dM_PL = Zero
 
     CALL CopyArray( U0, One, U )
     CALL CopyArray( M0, One, M )
@@ -252,6 +257,8 @@ CONTAINS
             CALL ApplyPositivityLimiter_TwoMoment &
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
+            dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
+
           END IF
 
         END IF
@@ -280,6 +287,8 @@ CONTAINS
 
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+          dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
         END IF
 
@@ -357,6 +366,8 @@ CONTAINS
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
+        dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
+
       END IF
 
     END IF
@@ -396,6 +407,8 @@ CONTAINS
       END DO
 
       CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
+
+      CALL IncrementPositivityLimiterTally_TwoMoment( dM_PL )
 
     END IF
 
