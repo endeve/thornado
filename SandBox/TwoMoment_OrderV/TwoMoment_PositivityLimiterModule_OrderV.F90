@@ -1419,6 +1419,7 @@ CONTAINS
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum )
 
     USE UnitsModule, ONLY: &
+      UnitsActive, &
       PlanckConstant, &
       SpeedOfLight
     USE MeshModule, ONLY: &
@@ -1569,7 +1570,15 @@ CONTAINS
 
     END ASSOCIATE
 
-    EnergyMomentum = FourPi * EnergyMomentum / hc3
+    IF( UnitsActive )THEN
+
+      EnergyMomentum = FourPi * EnergyMomentum / hc3
+
+    ELSE
+
+      EnergyMomentum = FourPi * EnergyMomentum
+
+    END IF
 
   END SUBROUTINE ComputeEnergyMomentum
 
