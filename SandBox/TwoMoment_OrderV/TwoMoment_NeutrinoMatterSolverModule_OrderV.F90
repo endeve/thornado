@@ -67,6 +67,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveMatterEquations_FP_NestedAA
 
+  LOGICAL, PARAMETER :: Include_NES  = .FALSE.
+  LOGICAL, PARAMETER :: Include_Pair = .FALSE.
+
   ! --- Units Only for Displaying to Screen ---
 
   REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
@@ -948,21 +951,43 @@ CONTAINS
     CALL ComputeNeutrinoOpacities_ES_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, Sig_2_P )
 
-    ! --- NES Kernels ---
+    IF( Include_NES )THEN
 
-    CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
-             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-             P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
+      ! --- NES Kernels ---
 
-    ! --- Pair Kernels ---
+      CALL ComputeNeutrinoOpacities_NES_Points &
+             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
+               Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
+               Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
+               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
-    CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
-             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-             P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
+    ELSE
+
+      Phi_0_In_NES_1_P = Zero
+      Phi_0_Ot_NES_1_P = Zero
+      Phi_0_In_NES_2_P = Zero
+      Phi_0_Ot_NES_2_P = Zero
+
+    END IF
+
+    IF( Include_Pair )THEN
+
+      ! --- Pair Kernels ---
+
+      CALL ComputeNeutrinoOpacities_Pair_Points &
+             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
+               Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+               Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
+
+    ELSE
+
+      Phi_0_In_Pair_1_P = Zero
+      Phi_0_Ot_Pair_1_P = Zero
+      Phi_0_In_Pair_2_P = Zero
+      Phi_0_Ot_Pair_2_P = Zero
+
+    END IF
 
     IF ( nX < nX_G ) THEN
 

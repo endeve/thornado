@@ -2,7 +2,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, &
-    SqrtTiny
+    SqrtTiny, FourPi
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nNodesZ, &
     nDOFE, nNodesE, &
@@ -38,11 +38,12 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE GeometryFieldsModuleE, ONLY: &
-    nGE, iGE_Ep2
+    nGE, iGE_Ep2, iGE_Ep3
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3
+    nGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3, &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -69,6 +70,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   REAL(DP), ALLOCATABLE :: InterpMat_Z(:,:)
   REAL(DP), ALLOCATABLE :: InterpMat_X(:,:)
 
+  REAL(DP), PUBLIC :: dEnergyMomentum_PL_TwoMoment(nCR)
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET( Min_1, Max_1, Min_2 )
@@ -517,6 +519,7 @@ CONTAINS
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP) :: EnergyMomentum(nCR,0:1)
     LOGICAL  :: &
       RealizableCellAverage &
         (iZ_B0(1):iZ_E0(1), &
@@ -640,6 +643,9 @@ CONTAINS
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
     CALL TimersStart( Timer_PL )
+
+    CALL ComputeEnergyMomentum &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum(:,0) )
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -960,6 +966,11 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_PL_Permute )
+
+    CALL ComputeEnergyMomentum &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum(:,1) )
+
+    dEnergyMomentum_PL_TwoMoment = EnergyMomentum(:,1) - EnergyMomentum(:,0)
 
     CALL TimersStop( Timer_PL )
 
@@ -1402,6 +1413,165 @@ CONTAINS
     END IF
 
   END SUBROUTINE SolveTheta_Bisection
+
+
+  SUBROUTINE ComputeEnergyMomentum &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum )
+
+    USE UnitsModule, ONLY: &
+      PlanckConstant, &
+      SpeedOfLight
+    USE MeshModule, ONLY: &
+      MeshE, MeshX
+    
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE (1:nDOFE, &
+          iZ_B1(1):iZ_E1(1), &
+          1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX (1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nGF)
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCF)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR, &
+          1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      EnergyMomentum(nCR)
+
+    REAL(DP), PARAMETER :: hc3 = ( PlanckConstant * SpeedOfLight )**3
+
+    INTEGER  :: iNodeE, iNodeX, iNodeZ
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: &
+      V_d_1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      V_d_2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      V_d_3(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      V_u_1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      V_u_2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      V_u_3(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        V_d_1(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S1) / U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D)
+
+        V_d_2(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S2) / U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D)
+
+        V_d_3(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3) / U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D)
+
+        V_u_1(iNodeX,iZ2,iZ3,iZ4) &
+          = V_d_1(iNodeX,iZ2,iZ3,iZ4) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
+
+        V_u_2(iNodeX,iZ2,iZ3,iZ4) &
+          = V_d_2(iNodeX,iZ2,iZ3,iZ4) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
+
+        V_u_3(iNodeX,iZ2,iZ3,iZ4) &
+          = V_d_3(iNodeX,iZ2,iZ3,iZ4) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ASSOCIATE &
+      ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
+        dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
+    EnergyMomentum = Zero
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        EnergyMomentum(iCR_N) &
+          = EnergyMomentum(iCR_N) &
+              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * Weights_q(iNodeZ) &
+                * GE(iNodeE,iZ1,iGE_Ep3) &
+                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) &
+                      + V_u_1(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G1,iS) &
+                      + V_u_2(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G2,iS) &
+                      + V_u_3(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G3,iS) )
+
+        EnergyMomentum(iCR_G1) &
+          = EnergyMomentum(iCR_G1) &
+              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * Weights_q(iNodeZ) &
+                * GE(iNodeE,iZ1,iGE_Ep3) &
+                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+                      + V_d_1(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_N,iS) )
+
+        EnergyMomentum(iCR_G2) &
+          = EnergyMomentum(iCR_G2) &
+              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * Weights_q(iNodeZ) &
+                * GE(iNodeE,iZ1,iGE_Ep3) &
+                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+                      + V_d_2(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_N,iS) )
+
+        EnergyMomentum(iCR_G3) &
+          = EnergyMomentum(iCR_G3) &
+              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * Weights_q(iNodeZ) &
+                * GE(iNodeE,iZ1,iGE_Ep3) &
+                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) &
+                      + V_d_3(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_N,iS) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE
+
+    EnergyMomentum = FourPi * EnergyMomentum / hc3
+
+  END SUBROUTINE ComputeEnergyMomentum
 
 
 END MODULE TwoMoment_PositivityLimiterModule_OrderV

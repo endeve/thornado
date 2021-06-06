@@ -44,6 +44,8 @@ PROGRAM ApplicationDriver_CCSN
     ReadFieldsHDF
   USE InitializationModule_CCSN, ONLY: &
     InitializeFields
+  USE TwoMoment_TallyModule_OrderV, ONLY: &
+    ComputeTally
 
   IMPLICIT NONE
 
@@ -175,6 +177,10 @@ PROGRAM ApplicationDriver_CCSN
              WriteFF_Option = .TRUE., &
              WriteRF_Option = .TRUE. )
 
+    CALL ComputeTally &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
+             SetInitialValues_Option = .TRUE. )
+
   ELSE
 
     CALL ReadFieldsHDF &
@@ -275,10 +281,13 @@ PROGRAM ApplicationDriver_CCSN
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
       CALL WriteFieldsHDF &
-           ( Time = t, &
-             WriteGF_Option = .TRUE., &
-             WriteFF_Option = .TRUE., &
-             WriteRF_Option = .TRUE. )
+             ( Time = t, &
+               WriteGF_Option = .TRUE., &
+               WriteFF_Option = .TRUE., &
+               WriteRF_Option = .TRUE. )
+
+      CALL ComputeTally &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
       wrt = .FALSE.
 
@@ -297,6 +306,9 @@ PROGRAM ApplicationDriver_CCSN
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
+
+  CALL ComputeTally &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
   ! --- Auxiliary Finalization ---
 
@@ -571,7 +583,7 @@ CONTAINS
       FinalizeReferenceElement_Lagrange
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
-    USE TimersModule, ONLY: &
+    USE TwoMoment_TimersModule_OrderV, ONLY: &
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
