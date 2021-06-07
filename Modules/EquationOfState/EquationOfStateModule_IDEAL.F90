@@ -51,14 +51,31 @@ MODULE EquationOfStateModule_IDEAL
 CONTAINS
 
 
-  SUBROUTINE InitializeEquationOfState_IDEAL( Gamma_IDEAL_Option )
+  SUBROUTINE InitializeEquationOfState_IDEAL &
+    ( Gamma_IDEAL_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
 
     IF( PRESENT( Gamma_IDEAL_Option ) )THEN
       Gamma_IDEAL = Gamma_IDEAL_Option
     ELSE
       Gamma_IDEAL = 5.0_DP / 3.0_DP
+    END IF
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = .TRUE.
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A7,A13,ES10.3E3)') &
+           '', 'Gamma_IDEAL: ', Gamma_IDEAL
+      WRITE(*,*)
+
     END IF
 
 #if defined(THORNADO_OMP_OL)
