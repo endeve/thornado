@@ -170,7 +170,8 @@ CONTAINS
 
         CALL InitializeEquationOfState_IDEAL &
                ( Gamma_IDEAL_Option &
-                   = Gamma_IDEAL_Option )
+                   = Gamma_IDEAL_Option, &
+                 Verbose_Option = .TRUE. )
 
       CASE ( 'TABLE' )
 
