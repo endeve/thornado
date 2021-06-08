@@ -17,7 +17,7 @@ MODULE TimeSteppingModule_Flash
     Timer_AddFieldsF, &
     Timer_AddFieldsR
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_Ne
+    nCF, iCF_Ne, uDF
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, iCR_N, iCR_G1
 #ifdef TWOMOMENT_ORDER_1
@@ -36,13 +36,20 @@ MODULE TimeSteppingModule_Flash
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY : &
     ApplySlopeLimiter_TwoMoment
+  USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
+
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: &
+    IEEE_IS_NAN
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Update_IMEX_PDARS
+
+  LOGICAL :: DEBUG = .false.
 
 CONTAINS
 
@@ -202,6 +209,11 @@ CONTAINS
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
+#ifdef TWOMOMENT_ORDER_V
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
     ! --- arXiv:1809.06949 -------------------------------------------
@@ -213,6 +225,13 @@ CONTAINS
     CALL AddFields_Radiation &
            ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
 
+    IF( DEBUG ) THEN
+      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
+        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
+        STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) when enter Update_IMEX_PDARS'
+      END IF
+    END IF
 
     ! ---------------
     ! --- Stage 1 ---
@@ -275,10 +294,26 @@ CONTAINS
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
+      IF( DEBUG ) THEN
+        IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
+          PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+          PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
+          STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied first limiter'
+        END IF
+      END IF
+
       ! --- Apply Boundary Condition ---
 
       CALL ApplyBoundaryConditions_Radiation &
              ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
+
+      IF( DEBUG ) THEN
+        IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
+          PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+          PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
+          STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) before ComputeIncrement_TwoMoment_Explicit'
+        END IF
+      END IF
 
       ! --- Explicit Solver ---
 
@@ -322,10 +357,28 @@ CONTAINS
 
     END IF
 
+    IF( DEBUG ) THEN
+      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
+        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
+      END IF
+    END IF
+
     ! --- Apply Increment ---
 
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R )
+
+    IF( DEBUG ) THEN
+      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
+        PRINT*, 'MIN N  =', MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+        PRINT*, 'MIN N1 =', MINVAL(U_R(:,:,:,1,1,iCR_N,1))
+        PRINT*, 'LOC  =', MINLOC(U_R(:,:,:,1,1,iCR_N,1))
+        PRINT*, ' Negative U_R(:,:,:,:,:,iCR_N,:) before applied second limiter'
+      END IF
+    END IF
+
+    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN before second limiter'
 
     ! --- Apply Limiter ---
 
@@ -342,6 +395,34 @@ CONTAINS
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
+
+    IF( DEBUG ) THEN
+      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) )THEN
+        PRINT*, 'Negative U_R(:,:,:,:,:,iCR_N,:) after applied second limiter'
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B1(4), iZ_E1(4)
+              DO iZ3 = iZ_B1(3), iZ_E1(3)
+                DO iZ2 = iZ_B1(2), iZ_E1(2)
+                  DO iZ1 = iZ_B1(1), iZ_E1(1)
+                    DO iNode = 1, nDOF
+                      IF( U_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) < Zero )THEN
+                        PRINT*, iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS
+                      END IF
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
+        STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied second limiter'
+      END IF
+    END IF
+
+    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN after second limiter'
 
     ! --- Implicit Step ---
 
@@ -422,12 +503,23 @@ CONTAINS
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 #elif TWOMOMENT_ORDER_V
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+
     CALL ApplySlopeLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
+
+    IF( DEBUG ) THEN
+      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
+        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
+        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
+        STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied limiter 441'
+      END IF
+    END IF
 
     IF( .NOT. SingleStage ) THEN
 
@@ -605,6 +697,8 @@ CONTAINS
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 #elif TWOMOMENT_ORDER_V
+      CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
       CALL ApplyPositivityLimiter_TwoMoment &
@@ -612,6 +706,8 @@ CONTAINS
 #endif
 
     END IF
+
+    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN @ end of [Update_IMEX_PDARS]'
 
 #ifdef THORNADO_DEBUG_IMEX
 #if defined(THORNADO_OMP_OL)
