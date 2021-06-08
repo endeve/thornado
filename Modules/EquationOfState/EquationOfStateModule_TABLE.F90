@@ -403,8 +403,8 @@ CONTAINS
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
-    !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T
-    !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
+    !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T, &
+    !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #endif
 
 #endif
