@@ -1,7 +1,7 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP, SqrtTiny
+    DP, SqrtTiny, One
   use UnitsModule, only : &
     MeV
   use ProgramHeaderModule, only: &
@@ -46,7 +46,8 @@ module ThornadoInitializationModule
 #ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
-    FinalizeEquationOfState_TABLE
+    FinalizeEquationOfState_TABLE, &
+    MinD, MaxD, MinT, MaxT, MinY, MaxY
   use wlEquationOfStateTableModule, only: &
     EquationOfStateTableType
 #else
@@ -92,6 +93,8 @@ module ThornadoInitializationModule
   use TwoMoment_PositivityLimiterModule_OrderV, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
+  use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
+    InitializePositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
   use TwoMoment_MeshRefinementModule, only : &
     InitializeMeshRefinement_TwoMoment, &
@@ -279,6 +282,26 @@ contains
     ! --- For refinement and coarsening of DG data
 
     call InitializeMeshRefinement_TwoMoment
+
+    ! --- For applying positivity limiter on fluid field
+
+    call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( UsePositivityLimiter_Option &
+               = .TRUE., &
+             Verbose_Option &
+               = Verbose, &
+             Min_1_Option &
+               = ( One + EPSILON( One ) ) * MinD, &
+             Min_2_Option &
+               = ( One + EPSILON( One ) ) * MinT, &
+             Min_3_Option &
+               = ( One + EPSILON( One ) ) * MinY, &
+             Max_1_Option &
+               = ( One - EPSILON( One ) ) * MaxD, &
+             Max_2_Option &
+               = ( One - EPSILON( One ) ) * MaxT, &
+             Max_3_Option &
+               = ( One - EPSILON( One ) ) * MaxY )
 
   end subroutine InitThornado
 
