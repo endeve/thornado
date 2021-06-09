@@ -1,7 +1,7 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP, SqrtTiny, One
+    DP, SqrtTiny, One, Zero
   use UnitsModule, only : &
     MeV
   use ProgramHeaderModule, only: &
@@ -82,6 +82,9 @@ module ThornadoInitializationModule
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
     InitializeClosure_TwoMoment
+  use TwoMoment_MeshRefinementModule, only : &
+    InitializeMeshRefinement_TwoMoment, &
+    FinalizeMeshRefinement_TwoMoment
 #ifdef TWOMOMENT_ORDER_1
   use TwoMoment_PositivityLimiterModule, only: &
     InitializePositivityLimiter_TwoMoment, &
@@ -93,12 +96,13 @@ module ThornadoInitializationModule
   use TwoMoment_PositivityLimiterModule_OrderV, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
+  use Euler_SlopeLimiterModule_NonRelativistic_TABLE, only: &
+    InitializeSlopeLimiter_Euler_NonRelativistic_TABLE, &
+    FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
   use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
-    InitializePositivityLimiter_Euler_NonRelativistic_TABLE
+    InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
+    FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
-  use TwoMoment_MeshRefinementModule, only : &
-    InitializeMeshRefinement_TwoMoment, &
-    FinalizeMeshRefinement_TwoMoment
 
   implicit none
   private
@@ -283,7 +287,20 @@ contains
 
     call InitializeMeshRefinement_TwoMoment
 
-    ! --- For applying positivity limiter on fluid field
+    ! --- For applying limiter on fluid field
+
+    call InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( BetaTVD_Option &
+               = 1.75_DP, &
+             SlopeTolerance_Option &
+               = 1.0d-6, &
+             UseSlopeLimiter_Option &
+               = .FALSE., &
+             UseTroubledCellIndicator_Option &
+               = .FALSE., &
+             LimiterThresholdParameter_Option &
+               = Zero, &
+             Verbose_Option = Verbose )
 
     call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
@@ -340,11 +357,15 @@ contains
 
     call FinalizeMeshRefinement_TwoMoment
 
-    call FinalizePositivityLimiter_TwoMoment
-
 #ifdef TWOMOMENT_ORDER_V
+    call FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
+
+    call FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+
     call FinalizeSlopeLimiter_TwoMoment
 #endif
+
+    call FinalizePositivityLimiter_TwoMoment
 
     call FinalizeDevice
 
