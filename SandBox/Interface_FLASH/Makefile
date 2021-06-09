@@ -100,7 +100,11 @@ ifeq ($(TWOMOMENT_ORDER),ORDER_V)
 OBJS += \
        EquationOfStateModule.o \
        Euler_BoundaryConditionsModule.o \
+       Euler_CharacteristicDecompositionModule.o \
+       Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
        Euler_dgDiscretizationModule.o \
+       Euler_DiscontinuityDetectionModule.o \
+       Euler_UtilitiesModule.o \
        Euler_UtilitiesModule_NonRelativistic.o \
        Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
        Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
@@ -108,6 +112,7 @@ OBJS += \
        InputOutputModuleHDF.o \
        ReferenceElementModuleZ.o \
        PolynomialBasisMappingModule.o \
+       PolynomialBasisModule_Legendre.o \
        UtilitiesModule.o \
        TimersModule_Euler.o \
        TwoMoment_UtilitiesModule_OrderV.o \
