@@ -36,6 +36,8 @@ MODULE TimeSteppingModule_Flash
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY : &
     ApplySlopeLimiter_TwoMoment
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
@@ -210,6 +212,9 @@ CONTAINS
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
 #ifdef TWOMOMENT_ORDER_V
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 #endif
@@ -229,7 +234,7 @@ CONTAINS
       IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
         PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
         PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-        STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) when enter Update_IMEX_PDARS'
+        STOP ' Negative U_R(iCR_N) when enter Update_IMEX_PDARS'
       END IF
     END IF
 
@@ -281,12 +286,10 @@ CONTAINS
       ! --- Apply Limiter ---
 
 #ifdef TWOMOMENT_ORDER_1
-
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
-
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
@@ -298,7 +301,7 @@ CONTAINS
         IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
           PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
           PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-          STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied first limiter'
+          STOP ' Negative U_R(iCR_N) after applied first limiter'
         END IF
       END IF
 
@@ -311,20 +314,18 @@ CONTAINS
         IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
           PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
           PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-          STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) before ComputeIncrement_TwoMoment_Explicit'
+          STOP ' Negative U_R(iCR_N) before ComputeIncrement_TwoMoment_Explicit'
         END IF
       END IF
 
       ! --- Explicit Solver ---
 
 #ifdef TWOMOMENT_ORDER_1
-
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                uGE, uGF, U_R, T0_R )
 
 #elif TWOMOMENT_ORDER_V
-
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                uGE, uGF, U_F, U_R, T0_R )
@@ -383,12 +384,10 @@ CONTAINS
     ! --- Apply Limiter ---
 
 #ifdef TWOMOMENT_ORDER_1
-
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
-
     CALL ApplySlopeLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
@@ -502,7 +501,11 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_1
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
 #elif TWOMOMENT_ORDER_V
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 
@@ -561,6 +564,7 @@ CONTAINS
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                  uGE, uGF, U_R, T1_R )
+
 #elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -614,11 +618,14 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_1
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
 #elif TWOMOMENT_ORDER_V
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
 #endif
 
       ! --- Implicit Step ---
@@ -631,6 +638,7 @@ CONTAINS
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R )
+
 #elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Implicit &
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
@@ -696,11 +704,17 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_1
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
 #elif TWOMOMENT_ORDER_V
+      CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+
       CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
