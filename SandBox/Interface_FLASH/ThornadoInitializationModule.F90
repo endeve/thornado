@@ -244,7 +244,7 @@ contains
            ( BetaTVD_Option &
                = 1.75_DP, &
              UseSlopeLimiter_Option &
-               = .FALSE., &
+               = .TRUE., &
              Verbose_Option &
                = Verbose )
 #endif
@@ -288,7 +288,7 @@ contains
     call InitializeMeshRefinement_TwoMoment
 
     ! --- For applying limiter on fluid field
-
+#ifdef TWOMOMENT_ORDER_V
     call InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
            ( BetaTVD_Option &
                = 1.75_DP, &
@@ -319,6 +319,7 @@ contains
                = ( One - EPSILON( One ) ) * MaxT, &
              Max_3_Option &
                = ( One - EPSILON( One ) ) * MaxY )
+#endif
 
   end subroutine InitThornado
 
