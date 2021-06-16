@@ -65,12 +65,12 @@ CONTAINS
     LOGICAL  :: DEBUG_X2 = .FALSE.
     LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
-    INTEGER  :: i, iErr
+    INTEGER  :: iCF, iErr
 
     Gmdd11         = G(1)
     Gmdd22         = G(2)
     Gmdd33         = G(3)
-    DetGm          = G(4)**2
+    DetGm          = G(4)
     LapseFunction  = G(5)
     ShiftVector(1) = G(6)
     ShiftVector(2) = G(7)
@@ -78,7 +78,7 @@ CONTAINS
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
-             D, V1, V2, V3, E, Ne,                                           &
+             D, V1, V2, V3, E, Ne, &
              Gmdd11, Gmdd22, Gmdd33, iErr )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
@@ -94,41 +94,45 @@ CONTAINS
     VSq = Vu1*Vd1 + Vu2*Vd2 + Vu3*Vd3
 
     ! --- Auxiliary quantities ---
+
     W = One / SQRT( One - VSq )
     h = One + ( E + P ) / D
 
     CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     ! --- Rezzolla, Eq. (7.244) ---
+
     K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs**2 )
 
-    IF( DEBUG )THEN
-
-!      WRITE(*,*)
-!      WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule...'
-!      WRITE(*,*)
-!
-!      ! --- Input for python program to compute eigenvectors ---
-!      WRITE(*,'(A)') '# Geometry'
-!      WRITE(*,'(A,ES24.16E3)') 'Gmdd11        = ', Gmdd11
-!      WRITE(*,'(A,ES24.16E3)') 'Gmdd22        = ', Gmdd22
-!      WRITE(*,'(A,ES24.16E3)') 'Gmdd33        = ', Gmdd33
-!      WRITE(*,'(A,ES24.16E3)') 'DetGm         = ', DetGm
-!      WRITE(*,'(A,ES24.16E3)') 'ShiftVector1  = ', ShiftVector(1)
-!      WRITE(*,'(A,ES24.16E3)') 'ShiftVector2  = ', ShiftVector(2)
-!      WRITE(*,'(A,ES24.16E3)') 'ShiftVector3  = ', ShiftVector(3)
-!      WRITE(*,'(A,ES24.16E3)') 'LapseFunction = ', LapseFunction
-!      WRITE(*,*)
-!      WRITE(*,'(A)') '# Fluid variables'
-!      WRITE(*,'(A,ES24.16E3)') 'Gamma  = ', Gamma_IDEAL
-!      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D
-!      WRITE(*,'(A,ES24.16E3)') 'Vu1    = ', Vu1
-!      WRITE(*,'(A,ES24.16E3)') 'Vu2    = ', Vu2
-!      WRITE(*,'(A,ES24.16E3)') 'Vu3    = ', Vu3
-!      WRITE(*,'(A,ES24.16E3)') 'e      = ', E
-!      WRITE(*,*)
-
-    END IF
+!!$    IF( DEBUG )THEN
+!!$
+!!$      PRINT*
+!!$      PRINT '(A)', 'Debugging CharacteristicDecompositionModule...'
+!!$      PRINT*
+!!$
+!!$      PRINT '(A)', '# Geometry Fields'
+!!$
+!!$      PRINT*
+!!$
+!!$      PRINT '(A,ES24.16E3)', 'Gmdd11        = ', Gmdd11
+!!$      PRINT '(A,ES24.16E3)', 'Gmdd22        = ', Gmdd22
+!!$      PRINT '(A,ES24.16E3)', 'Gmdd33        = ', Gmdd33
+!!$      PRINT '(A,ES24.16E3)', 'DetGm         = ', DetGm
+!!$      PRINT '(A,ES24.16E3)', 'ShiftVector1  = ', ShiftVector(1)
+!!$      PRINT '(A,ES24.16E3)', 'ShiftVector2  = ', ShiftVector(2)
+!!$      PRINT '(A,ES24.16E3)', 'ShiftVector3  = ', ShiftVector(3)
+!!$      PRINT '(A,ES24.16E3)', 'LapseFunction = ', LapseFunction
+!!$      PRINT*
+!!$      PRINT '(A)', '# Fluid Fields'
+!!$      PRINT '(A,ES24.16E3)', 'Gamma  = ', Gamma_IDEAL
+!!$      PRINT '(A,ES24.16E3)', 'rho    = ', D
+!!$      PRINT '(A,ES24.16E3)', 'Vu1    = ', Vu1
+!!$      PRINT '(A,ES24.16E3)', 'Vu2    = ', Vu2
+!!$      PRINT '(A,ES24.16E3)', 'Vu3    = ', Vu3
+!!$      PRINT '(A,ES24.16E3)', 'e      = ', E
+!!$      PRINT*
+!!$
+!!$    END IF
 
     SELECT CASE( iDim )
 
@@ -143,6 +147,7 @@ CONTAINS
         ! --- lambda_p = EigVals(3) ---
 
         ! --- Rezzolla, Eq. (7.245) ---
+
         LAMBDA_m = ( EigVals(1) + ShiftVector(1) ) / LapseFunction
         LAMBDA_p = ( EigVals(3) + ShiftVector(1) ) / LapseFunction
 
@@ -151,6 +156,8 @@ CONTAINS
 
         Am = ( One / Gmdd11 - Vu1 * Vu1 ) / ( One / Gmdd11 - Vu1 * LAMBDA_m )
         Ap = ( One / Gmdd11 - Vu1 * Vu1 ) / ( One / Gmdd11 - Vu1 * LAMBDA_p )
+
+        ! --- Rezzolla, Eqs. (7.240-7.241) ---
 
         R(:,1) = [ One, &
                    h * W * ( Vd1 - Vm ), &
@@ -185,21 +192,26 @@ CONTAINS
         R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
         ! --- Rezzolla, Eq. (7.251) ---
+
         GAMMA_11 = Gmdd22 * Gmdd33
         xi = GAMMA_11 - DetGm * Vu1**2
 
         ! --- Rezzolla, Eq. (7.249) ---
+
         Nm = ( One - K ) * ( -DetGm * Vu1 + Vp * ( W**2 * xi - GAMMA_11 ) ) &
                - K * W**2 * Vp * xi
         Np = ( One - K ) * ( -DetGm * Vu1 + Vm * ( W**2 * xi - GAMMA_11 ) ) &
                - K * W**2 * Vm * xi
 
         ! --- Rezzolla, Eq. (7.250) ---
+
         Cm = Vd1 - Vm
         Cp = Vd1 - Vp
         DELTA = h**3 * W * ( K - One ) * ( Cp - Cm ) * xi
 
-        ! --- Transpose of L ---
+        ! --- Transpose of L, i.e., inverse of R
+        !     Rezzolla, Eqs. (7.246-7.248) ---
+
         invR(1,:) = + h**2 / DELTA &
                       * [ h * W * Vp * xi + Nm, &
                           Vp * Vu1 * ( Two * K - One ) &
@@ -236,36 +248,49 @@ CONTAINS
                           Zero ]
         invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        IF( DEBUG_X1 )THEN
+!!$        invR = inv( R )
 
-!           WRITE(*,*)
-!           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X1)'
-!           WRITE(*,'(2x,A)') '-------------------------------------------'
-!           WRITE(*,*)
-!
-! !!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
-!
-!           WRITE(*,'(4x,A)') 'Eigenvalues'
-!           WRITE(*,'(4x,A)') '-----------'
-!           DO i = 1, nCF
-!             WRITE(*,'(6x,ES10.2E3)') EigVals(i)
-!           END DO
-!           WRITE(*,*)
-!
-! !!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-! !!$          WRITE(*,'(4x,A)') '--------------------------'
-! !!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-!           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-!           WRITE(*,'(4x,A)') '-----------------'
-!           LAMBDA = MATMUL( invR, R )
-!           DO i = 1, nCF
-!             WRITE(*,'(6x,6ES11.2E3)') &
-!               absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
-!               absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
-!           END DO
-!           WRITE(*,*)
-
-        END IF
+!!$        IF( DEBUG_X1 )THEN
+!!$
+!!$           PRINT*
+!!$           PRINT '(2x,A)', 'Debugging characteristic decomposition (X1)'
+!!$           PRINT '(2x,A)', '-------------------------------------------'
+!!$           PRINT*
+!!$
+!!$           CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!!$
+!!$           PRINT '(4x,A)', 'Eigenvalues'
+!!$           PRINT '(4x,A)', '-----------'
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,ES10.2E3)', EigVals(iCF)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'Diagonalized flux-jacobian'
+!!$           PRINT '(4x,A)', '--------------------------'
+!!$           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'MATMUL( invR, R )'
+!!$           PRINT '(4x,A)', '-----------------'
+!!$           LAMBDA = MATMUL( invR, R )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'invR - inv( R )'
+!!$           PRINT '(4x,A)', '---------------'
+!!$           LAMBDA = inv( R )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$        END IF
 
       CASE( 2 )
 
@@ -278,6 +303,7 @@ CONTAINS
         ! --- lambda_p = EigVals(3) ---
 
         ! --- Rezzolla, Eq. (7.245) ---
+
         LAMBDA_m = ( EigVals(1) + ShiftVector(2) ) / LapseFunction
         LAMBDA_p = ( EigVals(3) + ShiftVector(2) ) / LapseFunction
 
@@ -286,6 +312,8 @@ CONTAINS
 
         Am = ( One / Gmdd22 - Vu2 * Vu2 ) / ( One / Gmdd22 - Vu2 * LAMBDA_m )
         Ap = ( One / Gmdd22 - Vu2 * Vu2 ) / ( One / Gmdd22 - Vu2 * LAMBDA_p )
+
+        ! --- Rezzolla, Eqs. (7.240-7.241) ---
 
         R(:,1) = [ One, &
                    h * W * Vd1, &
@@ -320,21 +348,26 @@ CONTAINS
         R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
         ! --- Rezzolla, Eq. (7.251) ---
+
         GAMMA_22 = Gmdd11 * Gmdd33
         xi = GAMMA_22 - DetGm * Vu2**2
 
         ! --- Rezzolla, Eq. (7.249) ---
+
         Nm = ( One - K ) * ( -DetGm * Vu2 + Vp * ( W**2 * xi - GAMMA_22 ) ) &
                - K * W**2 * Vp * xi
         Np = ( One - K ) * ( -DetGm * Vu2 + Vm * ( W**2 * xi - GAMMA_22 ) ) &
                - K * W**2 * Vm * xi
 
         ! --- Rezzolla, Eq. (7.250) ---
+
         Cm = Vd2 - Vm
         Cp = Vd2 - Vp
         DELTA = h**3 * W * ( K - One ) * ( Cp - Cm ) * xi
 
-        ! --- Transpose of L, Eqs. (7.246-7.248) ---
+        ! --- Transpose of L, i.e., inverse of R
+        !     Rezzolla, Eqs. (7.246-7.248) ---
+
         invR(1,:) = + h**2 / DELTA &
                       * [ h * W * Vp * xi + Nm, &
                           Vp * Vu1 * ( Two * K - One ) * W**2 * xi, &
@@ -371,36 +404,49 @@ CONTAINS
                           Zero ]
         invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        IF( DEBUG_X2 )THEN
+!!$        invR = inv( R )
 
-!           WRITE(*,*)
-!           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X2)'
-!           WRITE(*,'(2x,A)') '-------------------------------------------'
-!           WRITE(*,*)
-!
-! !!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
-!
-!           WRITE(*,'(4x,A)') 'Eigenvalues'
-!           WRITE(*,'(4x,A)') '-----------'
-!           DO i = 1, nCF
-!             WRITE(*,'(6x,ES10.2E3)') EigVals(i)
-!           END DO
-!           WRITE(*,*)
-!
-! !!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-! !!$          WRITE(*,'(4x,A)') '--------------------------'
-! !!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-!           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-!           WRITE(*,'(4x,A)') '-----------------'
-!           LAMBDA = MATMUL( invR, R )
-!           DO i = 1, nCF
-!             WRITE(*,'(6x,6ES11.2E3)') &
-!               absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
-!               absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
-!           END DO
-!           WRITE(*,*)
-
-        END IF
+!!$        IF( DEBUG_X2 )THEN
+!!$
+!!$           PRINT*
+!!$           PRINT '(2x,A)', 'Debugging characteristic decomposition (X2)'
+!!$           PRINT '(2x,A)', '-------------------------------------------'
+!!$           PRINT*
+!!$
+!!$           CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!!$
+!!$           PRINT '(4x,A)', 'Eigenvalues'
+!!$           PRINT '(4x,A)', '-----------'
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,ES10.2E3)', EigVals(iCF)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'Diagonalized flux-jacobian'
+!!$           PRINT '(4x,A)', '--------------------------'
+!!$           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'MATMUL( invR, R )'
+!!$           PRINT '(4x,A)', '-----------------'
+!!$           LAMBDA = MATMUL( invR, R )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'invR - inv( R )'
+!!$           PRINT '(4x,A)', '---------------'
+!!$           LAMBDA = inv( R )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$        END IF
 
       CASE( 3 )
 
@@ -413,6 +459,7 @@ CONTAINS
         ! --- lambda_p = EigVals(3) ---
 
         ! --- Rezzolla, Eq. (7.245) ---
+
         LAMBDA_m = ( EigVals(1) + ShiftVector(2) ) / LapseFunction
         LAMBDA_p = ( EigVals(3) + ShiftVector(2) ) / LapseFunction
 
@@ -421,6 +468,8 @@ CONTAINS
 
         Am = ( One / Gmdd33 - Vu3 * Vu3 ) / ( One / Gmdd33 - Vu3 * LAMBDA_m )
         Ap = ( One / Gmdd33 - Vu3 * Vu3 ) / ( One / Gmdd33 - Vu3 * LAMBDA_p )
+
+        ! --- Rezzolla, Eqs. (7.240-7.241) ---
 
         R(:,1) = [ One, &
                    h * W * Vd1, &
@@ -455,21 +504,26 @@ CONTAINS
         R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
         ! --- Rezzolla, Eq. (7.251) ---
+
         GAMMA_33 = Gmdd11 * Gmdd22
         xi = GAMMA_33 - DetGm * Vu3**2
 
         ! --- Rezzolla, Eq. (7.249) ---
+
         Nm = ( One - K ) * ( -DetGm * Vu3 + Vp * ( W**2 * xi - GAMMA_33 ) ) &
                - K * W**2 * Vp * xi
         Np = ( One - K ) * ( -DetGm * Vu3 + Vm * ( W**2 * xi - GAMMA_33 ) ) &
                - K * W**2 * Vm * xi
 
         ! --- Rezzolla, Eq. (7.250) ---
+
         Cm = Vd3 - Vm
         Cp = Vd3 - Vp
         DELTA = h**3 * W * ( K - One ) * ( Cp - Cm ) * xi
 
-        ! --- Transpose of L, Eqs. (7.246-7.248) ---
+        ! --- Transpose of L, i.e., inverse of R
+        !     Rezzolla, Eqs. (7.246-7.248) ---
+
         invR(1,:) = + h**2 / DELTA &
                       * [ h * W * Vp * xi + Nm, &
                           Vp * Vu1 * ( Two * K - One ) * W**2 * xi, &
@@ -506,45 +560,49 @@ CONTAINS
                           Zero ]
         invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-!         IF( DEBUG_X3 )THEN
-!
-!           WRITE(*,*)
-!           WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X3)'
-!           WRITE(*,'(2x,A)') '-------------------------------------------'
-!           WRITE(*,*)
-!
-! !!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
-!
-!           WRITE(*,'(4x,A)') 'Eigenvalues'
-!           WRITE(*,'(4x,A)') '-----------'
-!           DO i = 1, nCF
-!             WRITE(*,'(6x,ES10.2E3)') EigVals(i)
-!           END DO
-!           WRITE(*,*)
-!
-! !!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
-! !!$          WRITE(*,'(4x,A)') '--------------------------'
-! !!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-!           WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
-!           WRITE(*,'(4x,A)') '-----------------'
-!           LAMBDA = MATMUL( invR, R )
-!           DO i = 1, nCF
-!             WRITE(*,'(6x,6ES11.2E3)') &
-!               absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
-!               absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
-!           END DO
-!           WRITE(*,*)
-!
-!         END IF
+!!$        invR = inv( R )
 
-      CASE DEFAULT
-
-!         WRITE(*,*)
-!         WRITE(*,'(5x,A,I1.1)') 'Dimension = ', iDim
-!         WRITE(*,'(5x,A)') &
-!           'Characteristic limiting not implemented for dimension > 2'
-!         WRITE(*,'(A5,A)') '', 'Stopping...'
-!         STOP
+!!$        IF( DEBUG_X3 )THEN
+!!$
+!!$           PRINT*
+!!$           PRINT '(2x,A)', 'Debugging characteristic decomposition (X3)'
+!!$           PRINT '(2x,A)', '-------------------------------------------'
+!!$           PRINT*
+!!$
+!!$           CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!!$
+!!$           PRINT '(4x,A)', 'Eigenvalues'
+!!$           PRINT '(4x,A)', '-----------'
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,ES10.2E3)', EigVals(iCF)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'Diagonalized flux-jacobian'
+!!$           PRINT '(4x,A)', '--------------------------'
+!!$           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'MATMUL( invR, R )'
+!!$           PRINT '(4x,A)', '-----------------'
+!!$           LAMBDA = MATMUL( invR, R )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$           PRINT '(4x,A)', 'invR - inv( R )'
+!!$           PRINT '(4x,A)', '---------------'
+!!$           LAMBDA = inv( R )
+!!$           DO iCF = 1, nCF
+!!$             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+!!$           END DO
+!!$           PRINT*
+!!$
+!!$        END IF
 
     END SELECT
 
@@ -564,43 +622,43 @@ CONTAINS
   END FUNCTION absX
 
 
-!!$  ! --- Find the inverse of a matrix, function definition from
-!!$  !     http://fortranwiki.org/fortran/show/Matrix+inversion ---
-!!$
-!!$  ! Returns the inverse of a matrix calculated by finding the LU
-!!$  ! decomposition.  Depends on LAPACK.
-!!$  FUNCTION inv(A) RESULT(Ainv)
-!!$    REAL(DP), DIMENSION(:,:), INTENT(in)     :: A
-!!$    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2)) :: Ainv
-!!$
-!!$    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
-!!$    INTEGER, DIMENSION(SIZE(A,1)) :: ipiv   ! pivot indices
-!!$    INTEGER :: n, info
-!!$
-!!$    ! External procedures defined in LAPACK
-!!$    EXTERNAL DGETRF
-!!$    EXTERNAL DGETRI
-!!$
-!!$    ! Store A in Ainv to prevent it from being overwritten by LAPACK
-!!$    Ainv = A
-!!$    n = SIZE(A,1)
-!!$
-!!$    ! DGETRF computes an LU factorization of a general M-by-N matrix A
-!!$    ! using partial pivoting with row interchanges.
-!!$    CALL DGETRF(n, n, Ainv, n, ipiv, info)
-!!$
-!!$    IF (info /= 0) THEN
-!!$       STOP 'Matrix is numerically singular!'
-!!$    END IF
-!!$
-!!$    ! DGETRI computes the inverse of a matrix using the LU factorization
-!!$    ! computed by DGETRF.
-!!$    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-!!$
-!!$    IF (info /= 0) THEN
-!!$       STOP 'Matrix inversion failed!'
-!!$    END IF
-!!$  END FUNCTION inv
+  ! --- Find the inverse of a matrix, function definition from
+  !     http://fortranwiki.org/fortran/show/Matrix+inversion ---
+
+  ! Returns the inverse of a matrix calculated by finding the LU
+  ! decomposition.  Depends on LAPACK.
+  FUNCTION inv(A) RESULT(Ainv)
+    REAL(DP), DIMENSION(:,:), INTENT(in)     :: A
+    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2)) :: Ainv
+
+    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
+    INTEGER, DIMENSION(SIZE(A,1)) :: ipiv   ! pivot indices
+    INTEGER :: n, info
+
+    ! External procedures defined in LAPACK
+    EXTERNAL DGETRF
+    EXTERNAL DGETRI
+
+    ! Store A in Ainv to prevent it from being overwritten by LAPACK
+    Ainv = A
+    n = SIZE(A,1)
+
+    ! DGETRF computes an LU factorization of a general M-by-N matrix A
+    ! using partial pivoting with row interchanges.
+    CALL DGETRF(n, n, Ainv, n, ipiv, info)
+
+    IF (info /= 0) THEN
+       STOP 'Matrix is numerically singular!'
+    END IF
+
+    ! DGETRI computes the inverse of a matrix using the LU factorization
+    ! computed by DGETRF.
+    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+
+    IF (info /= 0) THEN
+       STOP 'Matrix inversion failed!'
+    END IF
+  END FUNCTION inv
 
 
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
@@ -941,18 +999,9 @@ CONTAINS
 
         dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-      CASE DEFAULT
-
-!        WRITE(*,*)
-!        WRITE(*,'(A5,A,I2.2)') '', 'Dimension = ', iDim
-!        WRITE(*,'(A5,A)') &
-!          '', 'Characteristic limiting not implemented for dimension > 2'
-!        WRITE(*,'(A5,A)') '', 'Stopping...'
-!        STOP
-
     END SELECT
 
-!!$    dFdU = MATMUL( dFdV, inv(dUdV) )
+    dFdU = MATMUL( dFdV, inv(dUdV) )
 
   END SUBROUTINE ComputeFluxJacConsMatrix
 

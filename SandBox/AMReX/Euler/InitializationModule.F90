@@ -153,6 +153,9 @@ MODULE InitializationModule
     DM,                        &
     GEOM,                      &
     InitializeParameters
+  USE MF_Euler_TallyModule,     ONLY: &
+    MF_InitializeTally_Euler, &
+    MF_ComputeTally_Euler
   USE TimersModule_AMReX_Euler, ONLY: &
     InitializeTimers_AMReX_Euler,  &
     TimersStart_AMReX_Euler,      &
@@ -421,13 +424,15 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
+    CALL MF_InitializeTally_Euler
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     IF( iRestart .LT. 0 )THEN
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF, GEOM )
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 
@@ -450,6 +455,10 @@ CONTAINS
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     END IF
+
+    CALL MF_ComputeTally_Euler &
+           ( GEOM, MF_uGF, MF_uCF, t(0), &
+             SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

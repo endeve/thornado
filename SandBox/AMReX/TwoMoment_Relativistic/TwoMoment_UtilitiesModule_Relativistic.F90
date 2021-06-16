@@ -96,20 +96,6 @@ CONTAINS
 
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
-!    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
-!    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
-!    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
-!
-!    h_dd_11 = Gm_dd_11 + u_d_1 * u_d_1 
-!    h_dd_22 = Gm_dd_22 + u_d_2 * u_d_2 
-!    h_dd_33 = Gm_dd_33 + u_d_3 * u_d_3 
-!    h_dd_12 = u_d_1 * u_d_2 
-!    h_dd_13 = u_d_1 * u_d_2 
-!    h_dd_23 = u_d_1 * u_d_2 
-!
-!    DTG = ( -3.0_DP * W**2 + h_dd_11 * V_u_2**2 + 2.0_DP * h_dd_12 * V_u_1 * V_u_2 &
-!        + 2.0_DP * h_dd_13 * V_u_1 * V_u_3 + 2.0_DP * h_dd_22 * V_u_2 * V_u_2 &
-!        + 2.0_DP * h_dd_23 * V_u_2 * V_u_3 + 2.0_DP * h_dd_33 * V_u_3 * V_u_3  ) 
 !
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
@@ -118,25 +104,8 @@ CONTAINS
     I_u_1 = G_d_1
     I_u_2 = G_d_2
     I_u_3 = G_d_3
-!    D     = ( -3.0_DP * N + 3.0_DP * V_u_1 * G_d_1 + 3.0_DP * V_u_2 * G_d_2 + 3.0_DP * V_u_3 * G_d_3 ) / DTG
-!    I_d_1 = ( h_dd_11 * V_u_1 + h_dd_12 * V_u_2 + h_dd_13 * V_u_3 ) * N  &
-!          + ( h_dd_22*V_u_2**2 + 2*h_dd_23*V_u_2*V_u_3 + V_u_1*h_dd_12*V_u_2 &
-!          + h_dd_33*V_u_3**2 + V_u_1*h_dd_13*V_u_3 - 3*W**2 ) * G_d_1 &
-!          -(V_u_2**2*h_dd_12 + V_u_1*V_u_2*h_dd_11 + V_u_2*V_u_3*h_dd_13) * G_d_2  &
-!          -(V_u_3**2*h_dd_13 + V_u_1*V_u_3*h_dd_11 + V_u_2*V_u_3*h_dd_12) * G_d_3
-!    I_d_1 = I_d_1 / ( W * DTG )
-!    I_d_2 = (V_u_3*h_dd_23 + V_u_1*h_dd_12 + V_u_2*h_dd_22) * N  &
-!          -(V_u_1**2*h_dd_12 + V_u_1*V_u_3*h_dd_23 + V_u_1*V_u_2*h_dd_22) * G_d_1 &
-!          + (h_dd_11*V_u_1**2 + 2*h_dd_13*V_u_1*V_u_3 + V_u_2*h_dd_12*V_u_1 &
-!          + h_dd_33*V_u_3**2 + V_u_2*h_dd_23*V_u_3 - 3*W**2) * G_d_2 &
-!          -(V_u_3**2*h_dd_23 + V_u_1*V_u_3*h_dd_12 + V_u_2*V_u_3*h_dd_22) * G_d_3
-!    I_d_2 = I_d_2 / ( W * DTG )
-!    I_d_3 = (V_u_2*h_dd_23 + V_u_1*h_dd_13 + V_u_3*h_dd_33) * N &
-!          -(V_u_1**2*h_dd_13 + V_u_1*V_u_2*h_dd_23 + V_u_1*V_u_3*h_dd_33) *G_d_1 &
-!          -(V_u_2**2*h_dd_23 + V_u_1*V_u_2*h_dd_13 + V_u_2*V_u_3*h_dd_33) * G_d_2 &
-!          + (h_dd_11*V_u_1**2 + 2*h_dd_12*V_u_1*V_u_2 + V_u_3*h_dd_13*V_u_1 &
-!          + h_dd_22*V_u_2**2 + V_u_3*h_dd_23*V_u_2 - 3*W**2) * G_d_3 
-!    I_d_3 = I_d_3 / ( W * DTG ) 
+
+
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
           - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
@@ -501,7 +470,6 @@ CONTAINS
  
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
-
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
           - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
@@ -543,7 +511,6 @@ CONTAINS
  
     k_dd_ij(3,3) = k_dd_33
 
- 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
   SUBROUTINE ComputeEddingtonTensorComponents_uu &
@@ -608,7 +575,6 @@ CONTAINS
     k_uu_13 = a * u_u_1 * u_u_3 + b * h_u_1 * h_u_3
     k_uu_23 = a * u_u_2 * u_u_3 + b * h_u_2 * h_u_3
 
-
     k_uu_10 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_11 + V_d_2 * k_uu_12 + V_d_3 * k_uu_13 ) / alp
 
     k_uu_20 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_12 + V_d_2 * k_uu_22 + V_d_3 * k_uu_23 ) / alp
@@ -649,7 +615,6 @@ CONTAINS
     k_uu_munu(3,2) = k_uu_23
  
     k_uu_munu(3,3) = k_uu_33
-
 
 
   END SUBROUTINE ComputeEddingtonTensorComponents_uu
@@ -781,7 +746,6 @@ CONTAINS
     k_ud_munu(3,2) = k_ud_32
  
     k_ud_munu(3,3) = k_ud_33
- 
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
 
@@ -841,6 +805,7 @@ CONTAINS
           - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
 
     h_dd_11 = Gm_dd_11 + u_d_1 * u_d_1
     h_dd_22 = Gm_dd_22 + u_d_2 * u_d_2
@@ -1072,7 +1037,6 @@ CONTAINS
           - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-
 
     h_uu_11 = Gm_uu_11 + u_u_1 * u_u_1
     h_uu_22 = Gm_uu_22 + u_u_2 * u_u_2
@@ -1449,7 +1413,6 @@ CONTAINS
     l_uud_munurho(3,3,2) = l_uud_332
  
     l_uud_munurho(3,3,3) = l_uud_333
-
 
 
   END SUBROUTINE ComputeHeatFluxTensorComponents_uud_Lagrangian
@@ -2448,6 +2411,7 @@ CONTAINS
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
+
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
@@ -2456,10 +2420,6 @@ CONTAINS
     Flux_X1(2) = alp * k_ud_ij(1,1) * D + (alp * V_u_1 - B_u_1 ) * W * I_d_1
     Flux_X1(3) = alp * k_ud_ij(1,2) * D + (alp * V_u_1 - B_u_1 ) * W * I_d_2
     Flux_X1(4) = alp * k_ud_ij(1,3) * D + (alp * V_u_1 - B_u_1 ) * W * I_d_3
-
-
-
-
     RETURN
 
   END FUNCTION FLUX_X1
@@ -2623,7 +2583,6 @@ CONTAINS
     dU_dX(3,2) = dU_dX3(2) 
     dU_dX(3,3) = dU_dX3(3) 
 
-
     Flux_E = 0.0_DP
    
     DO mu = 0,3
@@ -2640,6 +2599,7 @@ CONTAINS
 
     Flux_E = - Flux_E
 
+
     RETURN
 
   END FUNCTION Flux_E
@@ -2647,7 +2607,7 @@ CONTAINS
   FUNCTION Source_E( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                       alp, B_u_1, B_u_2, B_u_3, U_u, U_d, dU_dX0, dU_dX1, dU_dX2, dU_dX3, &
                       dU_dX0_COV, dU_dX1_COV, dU_dX2_COV, dU_dX3_COV, &
-                      dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, E  )
+                      dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, E, R  )
 
 ! negative sign has been incorperated into Flux_E
 
@@ -2659,7 +2619,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3) 
     REAL(DP), INTENT(in) :: dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
     REAL(DP), INTENT(in) :: dU_dX0_COV(0:3), dU_dX1_COV(0:3), dU_dX2_COV(0:3), dU_dX3_COV(0:3)
-    REAL(DP), INTENT(in) :: dG_dd_dX1(0:3,0:3), dG_dd_dX2(0:3,0:3), dG_dd_dX3(0:3,0:3)
+    REAL(DP), INTENT(in) :: dG_dd_dX1(0:3,0:3), dG_dd_dX2(0:3,0:3), dG_dd_dX3(0:3,0:3), R
     REAL(DP) :: dG_dd_dX(1:3,0:3,0:3), E
     REAL(DP) :: V_0, B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3), dU_dX(0:3,0:3), dU_dX_COV(0:3,0:3)
@@ -2677,8 +2637,6 @@ CONTAINS
     CALL ComputeHeatFluxTensorComponents_uud_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_munurho )
-
-
 
     B_d_1 = Gm_dd_11 * B_u_1 
     B_d_2 = Gm_dd_22 * B_u_2 
@@ -2755,14 +2713,12 @@ CONTAINS
     END DO
     END DO
 
-
     DO j = 1,3
     DO mu = 0,3
     DO nu = 0,3
 
-      Source_E(j) = Source_E(j) + 0.5_DP * E * ( D * U_u(mu) * U_u(nu) + I(mu) * U_u(nu) &
+      Source_E(j) = Source_E(j) - 0.5_DP * ( D * U_u(mu) * U_u(nu) + I(mu) * U_u(nu) &
                                 + I(nu) * U_u(mu) + k_uu_munu(mu,nu) * D ) * dG_dd_dX(j,mu,nu)
-
     END DO
     END DO
     END DO
@@ -2774,9 +2730,7 @@ CONTAINS
 
     END DO
     END DO
-
     RETURN
-
   END FUNCTION Source_E
 
 

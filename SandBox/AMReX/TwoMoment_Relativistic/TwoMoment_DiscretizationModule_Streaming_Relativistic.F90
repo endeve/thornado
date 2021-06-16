@@ -176,6 +176,7 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+   ! apply(1) = 0
 
     CALL ApplyBoundaryConditions_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
@@ -185,7 +186,7 @@ CONTAINS
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
 
-!    CALL CheckRealizability(U_R, U_F, GX, iZ_B1, iZ_E1, iZ_B0, iZ_E0)
+    !CALL CheckRealizability(U_R, U_F, GX, iZ_B1, iZ_E1, iZ_B0, iZ_E0)
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -411,7 +412,6 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         GX_K(iNodeX,iGF,iZ3,iZ4,iZ2) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
-
       END DO
 
     END DO
@@ -483,8 +483,6 @@ CONTAINS
     DO iZ3  = iZ_B0(3), iZ_E0(3)
 
       DO iNodeX = 1, nDOFX_X1
-
-!this is where the issue is
 
         ! --- Left State ---
         CALL ComputePrimitive_Euler_Relativistic &
@@ -670,7 +668,6 @@ CONTAINS
                 GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
-
         CALL ComputeConserved_TwoMoment &
                 (uPR_R(iPR_D ), uPR_R(iPR_I1), &
                  uPR_R(iPR_I2), uPR_R(iPR_I3), &
@@ -687,9 +684,7 @@ CONTAINS
                  GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
-
         ! --- Numerical Flux ---
-
         DO iCR = 1, nCR
 
           NumericalFlux(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
@@ -703,8 +698,9 @@ CONTAINS
                 * Weights_X1(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
                 * GX_F(iNodeX,iGF_SqrtGm,iZ3,iZ4,iZ2) &
                 * NumericalFlux(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2)
-
         END DO
+
+
       END DO
       END DO
 
@@ -713,6 +709,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
     ! --- Surface Contributions ---
 
     ! --- Contribution from Left Face ---
@@ -757,14 +754,12 @@ CONTAINS
                  GX_K (iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                  GX_K (iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                  GX_K (iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
       END DO
 
     END DO
     END DO
     END DO
 
- 
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -809,7 +804,6 @@ CONTAINS
                 GX_K(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
                 GX_K(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
                 GX_K(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
-
         DO iCR = 1, nCR
 
           Flux_q(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
@@ -817,9 +811,7 @@ CONTAINS
                 * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
                 * GX_K(iNodeX,iGF_SqrtGm,iZ3,iZ4,iZ2) &
                 * Flux_K(iCR)
-
         END DO
-
       END DO
       END DO
 
@@ -828,7 +820,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
@@ -848,7 +839,6 @@ CONTAINS
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_X1(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2)
-
       END DO
 
     END DO
@@ -857,6 +847,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
     END ASSOCIATE ! dZ1, etc.
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
@@ -903,7 +894,7 @@ CONTAINS
     LOGICAL, INTENT(in), OPTIONAL :: &
       Verbose_Option
 
-    INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, INFO
+    INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, INFO, iNodeX1
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: nK(4), nK_Z1(4), nV, nV_Z1, i, j
     REAL(DP) :: EdgeEnergyCubed
@@ -916,7 +907,7 @@ CONTAINS
     REAL(DP) :: k_ud_11_R, k_ud_12_R, k_ud_13_R
     REAL(DP) ::            k_ud_22_R, k_ud_23_R
     REAL(DP) ::                       k_ud_33_R
-    REAL(DP) :: uPR_K(nPR), Flux_K(nCR), E
+    REAL(DP) :: uPR_K(nPR), Flux_K(nCR), E, X1
     REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
     REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
     REAL(DP) :: S_E(3)
@@ -1068,38 +1059,6 @@ CONTAINS
     CHARACTER(len=2)::nxn1
     CHARACTER(len=3)::nxn2
 
-!    IF ( nDOFX == 1) THEN
-!      nds="1"
-!    ELSE IF( nDOFX == 2) THEN
-!      nds="2"
-!    ELSE
-!      nds="3"
-!    END IF 
-!
-!    IF ( nX(1) == 32) THEN
-!      nxn1="32"
-!    ELSE IF( nX(1) == 64) THEN
-!      nxn1="64"
-!    ELSE IF (nX(1) == 128) THEN
-!      nxn2="128"
-!    ELSE
-!      nxn2="256"
-!    END IF 
-!
-!    
-!
-!    print*, name1
-!    IF (nX(1)==32 .OR. nX(1)==64) THEN
-!      name1='dU0'//nds//nxn1//'.txt'
-!      name2='dU1'//nds//nxn1//'.txt'
-!    ELSE
-!      name1='dU0'//nds//nxn2//'.txt'
-!      name1='dU1'//nds//nxn2//'.txt'
-!    END IF
-!    name1=trim(name1)
-!    name2=trim(name2)
-!
-!
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) )THEN
@@ -1136,7 +1095,7 @@ CONTAINS
     CALL ComputeWeakDerivatives_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, &
              Verbose_Option = Verbose )
-
+    
     CALL ComputeWeakDerivatives_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, Gamma_udd,  dU_d_dX2, dU_d_dX2_COV, &
              Verbose_Option = Verbose )
@@ -1151,8 +1110,6 @@ CONTAINS
 
 
 
-
-    !END DO
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
@@ -1252,9 +1209,7 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
       DO iNode = 1, nDOF_E ! = nDOFX
-
         ! --- Left State Primitive --
-
         CALL ComputePrimitive_TwoMoment &
                ( uCR_L(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
                  uCR_L(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
@@ -1294,7 +1249,6 @@ CONTAINS
                     dU_d_dX2_COV(iNode,:,iZ2,iZ3,iZ4), &
                     dU_d_dX3_COV(iNode,:,iZ2,iZ3,iZ4) )
         ! --- Right State Primitive ---
-
         CALL ComputePrimitive_TwoMoment &
                ( uCR_R(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
                  uCR_R(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
@@ -1403,8 +1357,6 @@ CONTAINS
 
         END IF
 
-
-
       END DO
 
     END DO
@@ -1412,7 +1364,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Surface Contributions ---
 
     ! --- Contributions from Left Face ---
@@ -1494,9 +1445,6 @@ CONTAINS
                 * Flux_K(iCR)
 
         END DO
-
-
-
       END DO
       END DO
 
@@ -1559,6 +1507,9 @@ CONTAINS
                  uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
                  uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4) )
 
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
 
          S_E = Source_E( uPR_K(iPR_D ), uPR_K(iPR_I1), &
                     uPR_K(iPR_I2), uPR_K(iPR_I3), &
@@ -1584,7 +1535,7 @@ CONTAINS
                     dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4), &
                     dG_dd_dX1(iNodeX,:,:,iZ2,iZ3,iZ4), &
                     dG_dd_dX2(iNodeX,:,:,iZ2,iZ3,iZ4), &
-                    dG_dd_dX3(iNodeX,:,:,iZ2,iZ3,iZ4), E )
+                    dG_dd_dX3(iNodeX,:,:,iZ2,iZ3,iZ4), E, X1 )
         ! --- iCR_G1 ---
 
         dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -1611,7 +1562,6 @@ CONTAINS
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
               * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
               * S_E(3)
-
       END DO
       END DO
 
@@ -3691,14 +3641,12 @@ CONTAINS
 
 
 
-!print*,iZ2, dG_dd_dX1(iNodeX,2,2,iZ2,iZ3,iZ4)
 
       END DO
 
     END DO
     END DO
     END DO
-!STOP
   END SUBROUTINE ComputeGeometryDerivatives_X1
 
   SUBROUTINE ComputeGeometryDerivatives_X2 &
@@ -4660,8 +4608,8 @@ CONTAINS
             iZ_B1(3):iZ_E1(3), &
             iZ_B1(4):iZ_E1(4))
 
-    REAL(DP) :: uPR_K(nPR), W
-    INTEGER:: n
+    REAL(DP) :: uPR_K(nPR), W, X1
+    INTEGER:: n, iNodeX1
     n=0
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -4699,6 +4647,11 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iNodeZ = 1, nDOFZ
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
+
         W = 1.0_DP / SQRT( 1.0_DP - uPF_K(iNodeX,iPF_V1,iZ2,iZ3,iZ4)**2)
 !        IF( iZ1 .EQ. 0 .AND. iZ2 .EQ. 0 ) THEN
  !         CYCLE
@@ -4719,7 +4672,7 @@ CONTAINS
         ! uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) = 1.d-8
       END IF 
       IF((W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) )) .LT. 0.0_DP) THEN
-         print*, iZ1, iZ2, W
+         print*, iZ1, iZ2, X1
          print*, "N ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) 
          print*, "G1 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS)  
          print*, "G2 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G2, iS) 
@@ -4749,7 +4702,7 @@ CONTAINS
                  GX_K(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_2  ), &
                  GX_K(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_3  ) )
       IF((W * uPR_K(iPR_D)-ABS(uPR_K(iPR_I1))) .LT. 0.0_DP) THEN
-         print*, iZ1, iZ2
+         print*, iZ1, iZ2, X1
          print*, "D ", uPR_K(iPR_D)
          print*, "I1 ", uPR_K(iPR_I1) 
          print*, "I2 ", uPR_K(iPR_I2) 

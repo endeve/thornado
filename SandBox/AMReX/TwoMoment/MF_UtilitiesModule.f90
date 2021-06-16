@@ -2,7 +2,7 @@ MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,     ONLY: &
-    amrex_real
+    AR => amrex_real
   USE amrex_box_module,      ONLY: &
     amrex_box
   USE amrex_parallel_module,             ONLY: &
@@ -96,36 +96,41 @@ MODULE MF_UtilitiesModule
 
   CONTAINS
 
-  SUBROUTINE amrex2thornado_Z( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE amrex2thornado_Z &
+    ( nVars, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_thornado )
 
-    INTEGER,          INTENT(in)  :: nVars, nS, nE
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
-    REAL(amrex_real), INTENT(in)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
-    REAL(amrex_real), INTENT(out) :: &
-      Data_thornado(1:,iE_B0:,iX_B(1):,iX_B(2):,iX_B(3):,1:,1:)
+    INTEGER,  INTENT(in)  :: nVars, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(AR), INTENT(in)  :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(AR), INTENT(out) :: &
+      Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iD, iNodeZ
-    !always want iE_E and iE_B to not include ghost cells
-    DO iZ4 = iX_B(3), iX_E(3)
-    DO iZ3 = iX_B(2), iX_E(2)
-    DO iZ2 = iX_B(1), iX_E(1)
 
-      DO iS = 1, nS
-      DO iVar = 1, nVars
-      DO iZ1 = iE_B0, iE_E0
+    DO iS = 1, nS
+    DO iVar = 1, nVars
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iZ1 = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeZ = 1, nDOFZ
 
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-           + ( iVar -1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+                + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
         Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
 
       END DO
       END DO
-      END DO
-      END DO
 
+    END DO
+    END DO
     END DO
     END DO
     END DO
@@ -133,63 +138,69 @@ MODULE MF_UtilitiesModule
   END SUBROUTINE amrex2thornado_Z
 
 
-  SUBROUTINE thornado2amrex_Z( nVars, nS, nE, iE_B0, iE_E0, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE thornado2amrex_Z &
+    ( nVars, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_thornado )
 
+    INTEGER,  INTENT(in)  :: nVars, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(AR), INTENT(out) :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(AR), INTENT(in)  :: &
+      Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
-    INTEGER,          INTENT(in)  :: nVars, nS, nE
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iE_B0, iE_E0
-    REAL(amrex_real), INTENT(out)  :: &
-      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
-    REAL(amrex_real), INTENT(in) :: &
-      Data_thornado(1:,iE_B0:,iX_B(1):,iX_B(2):,iX_B(3):,1:,1:)
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar, iNodeZ, iD
 
-    DO iZ4 = iX_B(3), iX_E(3)
-    DO iZ3 = iX_B(2), iX_E(2)
-    DO iZ2 = iX_B(1), iX_E(1)
+    DO iS = 1, nS
+    DO iVar = 1, nVars
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
 
-      DO iS = 1, nS
-      DO iVar = 1, nVars
       DO iZ1 = iE_B0, iE_E0
       DO iNodeZ = 1, nDOFZ
 
         iD = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-           + ( iVar -1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+               + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+               + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
         Data_amrex(iZ2,iZ3,iZ4,iD) &
-          =  Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS)
+          = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iVar,iS)
 
       END DO
       END DO
-      END DO
-      END DO
+
+    END DO
+    END DO
     END DO
     END DO
     END DO
 
   END SUBROUTINE thornado2amrex_Z
 
+
   SUBROUTINE amrex2thornado_X &
-    ( nVars, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
+    ( nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
 
-    INTEGER,          INTENT(in)  :: nVars
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iLo_MF(4)
-    REAL(amrex_real), INTENT(in)  :: &
+    INTEGER,  INTENT(in)  :: nFields
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
+    REAL(AR), INTENT(in)  :: &
       Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(amrex_real), INTENT(out) :: &
-      Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(AR), INTENT(out) :: &
+      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iVar
+    INTEGER :: iX1, iX2, iX3, iFd
 
+    DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      DO iVar = 1, nVars
-        Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar) &
-          = Data_amrex(iX1,iX2,iX3,nDOFX*(iVar-1)+1:nDOFX*iVar)
-      END DO
+      Data_thornado(1:nDOFX,iX1,iX2,iX3,iFd) &
+        = Data_amrex(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
 
+    END DO
     END DO
     END DO
     END DO
@@ -198,26 +209,26 @@ MODULE MF_UtilitiesModule
 
 
   SUBROUTINE thornado2amrex_X &
-    ( nVars, iX_B, iX_E, iLo_MF, Data_amrex, Data_thornado )
+    ( nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
 
-    INTEGER,          INTENT(in)  :: nVars
-    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3), iLo_MF(4)
-    REAL(amrex_real), INTENT(out) :: &
+    INTEGER,  INTENT(in)  :: nFields
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
+    REAL(AR), INTENT(out) :: &
       Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(amrex_real), INTENT(in)  :: &
-      Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(AR), INTENT(in)  :: &
+      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iVar
+    INTEGER :: iX1, iX2, iX3, iFd
 
+    DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      DO iVar = 1, nVars
-        Data_amrex(iX1,iX2,iX3,nDOFX*(iVar-1)+1:nDOFX*iVar) &
-          = Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar)
-      END DO
+      Data_amrex(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd) &
+        = Data_thornado(1:nDOFX,iX1,iX2,iX3,iFd)
 
+    END DO
     END DO
     END DO
     END DO
@@ -246,17 +257,17 @@ MODULE MF_UtilitiesModule
     TYPE(amrex_mfiter) :: MFI
     TYPE(EdgeMap)      :: Edge_Map
 
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
 
-    REAL(amrex_real), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: CF (:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: PF (:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: CR (:,:,:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: PR (:,:,:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: G (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: CF (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: PF (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: CR (:,:,:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: PR (:,:,:,:,:,:,:)
 
-    REAL(amrex_real) :: D, I1, I2, I3, N, G1, G2, G3
+    REAL(AR) :: D, I1, I2, I3, N, G1, G2, G3
 
     ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                         1-swX(2):nX(2)+swX(2), &
@@ -277,11 +288,11 @@ MODULE MF_UtilitiesModule
                         1-swX(1):nX(1)+swX(1), &
                         1-swX(2):nX(2)+swX(2), &
                         1-swX(3):nX(3)+swX(3),1:nPR,1:nSpecies) )
-    G = 0.0_amrex_real
-    CF = 0.0_amrex_real
-    PF = 0.0_amrex_real
-    CR = 0.0_amrex_real
-    PR = 0.0_amrex_real
+    G = 0.0_AR
+    CF = 0.0_AR
+    PF = 0.0_AR
+    CR = 0.0_AR
+    PR = 0.0_AR
 
     ! --- Convert AMReX MultiFabs to thornado arrays ---
 
@@ -366,20 +377,23 @@ MODULE MF_UtilitiesModule
           i = i + 1
         END DO
 
-        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, iX_B, iX_E, uGF, &
+                               G(1:nDOFX,iX_B(1):iX_E(1), &
+                                         iX_B(2):iX_E(2), &
+                                         iX_B(3):iX_E(3),1:nGF) )
 
-        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, uCF, CF )
+        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, iX_B, iX_E, uCF, &
+                               CF(1:nDOFX,iX_B(1):iX_E(1), &
+                                          iX_B(2):iX_E(2), &
+                                          iX_B(3):iX_E(3),1:nCF) )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 CR(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, &
+                 CR(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
+                            iZ_B1(2):iZ_E1(2), &
+                            iZ_B1(3):iZ_E1(3), &
+                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
@@ -492,7 +506,7 @@ MODULE MF_UtilitiesModule
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
-                 0.0_amrex_real, 0.0_amrex_real, 0.0_amrex_real,                &
+                 0.0_AR, 0.0_AR, 0.0_AR,                &
                  G(iNodeX ,iZ2,iZ3,iZ4,iGF_Alpha  ), &
                  G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_1  ), &
                  G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_2  ), &

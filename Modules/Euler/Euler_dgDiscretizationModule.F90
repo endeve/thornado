@@ -127,6 +127,7 @@ MODULE Euler_dgDiscretizationModule
   LOGICAL,  PUBLIC :: WriteSourceTerms
   REAL(DP), PUBLIC :: Time
 
+  REAL(DP), PUBLIC :: OffGridFlux_Euler(nCF)
 
 CONTAINS
 
@@ -211,6 +212,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    OffGridFlux_Euler = Zero
 
     CALL TimersStop_Euler( Timer_Euler_Increment )
 
@@ -1000,6 +1003,23 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iCF = 1, nCF
+    DO iNX_X1 = 1, nDOFX_X1
+
+      OffGridFlux_Euler(iCF) &
+        = OffGridFlux_Euler(iCF) &
+            - ( NumericalFlux(iNX_X1,iCF,iX2,iX3,iX_E0(1)+1) &
+                  - NumericalFlux(iNX_X1,iCF,iX2,iX3,iX_B0(1)) )
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -1799,6 +1819,23 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+    DO iNX_X2 = 1, nDOFX_X2
+
+      OffGridFlux_Euler(iCF) &
+        = OffGridFlux_Euler(iCF) &
+            - ( NumericalFlux(iNX_X2,iCF,iX1,iX3,iX_E0(2)+1) &
+                  - NumericalFlux(iNX_X2,iCF,iX1,iX3,iX_B0(2)) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
 #ifdef HYDRO_RELATIVISTIC
@@ -2596,6 +2633,23 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+    DO iNX_X3 = 1, nDOFX_X3
+
+      OffGridFlux_Euler(iCF) &
+        = OffGridFlux_Euler(iCF) &
+            - ( NumericalFlux(iNX_X3,iCF,iX1,iX2,iX_E0(3)+1) &
+                  - NumericalFlux(iNX_X3,iCF,iX1,iX2,iX_B0(3)) )
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -4215,33 +4269,33 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iNX = 1, nDOFX_X1
 
-      G_Up_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2
-      G_Up_X1    (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2
-      G_Up_X1    (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2
+      G_Up_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+        = MAX( G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_Up_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+        = MAX( G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_Up_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+        = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 
-      G_Up_X1        (iNX,iGF_SqrtGm  ,iX2,iX3,iX1) &
-        = G_Up_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-            * G_Up_X1(iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-            * G_Up_X1(iNX,iGF_Gm_dd_33,iX2,iX3,iX1)
+      G_Up_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+        = G_Up_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
+            * G_Up_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
+            * G_Up_X1(iNX,iGF_h_3   ,iX2,iX3,iX1)
 
       G_Up_X1        (iNX,nGF+1     ,iX2,iX3,iX1) &
         = G_Up_X1    (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
             * G_Up_X1(iNX,iGF_Beta_1,iX2,iX3,iX1)
 
-      G_Dn_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2
-      G_Dn_X1    (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2
-      G_Dn_X1    (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2
+      G_Dn_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+        = MAX( G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_Dn_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+        = MAX( G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+      G_Dn_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+        = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 
-      G_Dn_X1        (iNX,iGF_SqrtGm  ,iX2,iX3,iX1) &
-        = G_Dn_X1    (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-            * G_Dn_X1(iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-            * G_Dn_X1(iNX,iGF_Gm_dd_33,iX2,iX3,iX1)
+      G_Dn_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+        = G_Dn_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
+            * G_Dn_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
+            * G_Dn_X1(iNX,iGF_h_3   ,iX2,iX3,iX1)
 
       G_Dn_X1        (iNX,nGF+1     ,iX2,iX3,iX1) &
         = G_Dn_X1    (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
@@ -4287,33 +4341,33 @@ CONTAINS
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX_X2
 
-        G_Up_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2
-        G_Up_X2    (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2
-        G_Up_X2    (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2
+        G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
 
-        G_Up_X2        (iNX,iGF_SqrtGm  ,iX1,iX3,iX2) &
-          = G_Up_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-              * G_Up_X2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-              * G_Up_X2(iNX,iGF_Gm_dd_33,iX1,iX3,iX2)
+        G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+              * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+              * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2)
 
         G_Up_X2        (iNX,nGF+1     ,iX1,iX3,iX2) &
           = G_Up_X2    (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
               * G_Up_X2(iNX,iGF_Beta_2,iX1,iX3,iX2)
 
-        G_Dn_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2
-        G_Dn_X2    (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2
-        G_Dn_X2    (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2
+        G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
 
-        G_Dn_X2        (iNX,iGF_SqrtGm  ,iX1,iX3,iX2) &
-          = G_Dn_X2    (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-              * G_Dn_X2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-              * G_Dn_X2(iNX,iGF_Gm_dd_33,iX1,iX3,iX2)
+        G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+              * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+              * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2)
 
         G_Dn_X2        (iNX,nGF+1     ,iX1,iX3,iX2) &
           = G_Dn_X2    (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
@@ -4361,33 +4415,33 @@ CONTAINS
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX_X3
 
-        G_Up_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2
-        G_Up_X3    (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2
-        G_Up_X3    (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2
+        G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+        G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+        G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
 
-        G_Up_X3        (iNX,iGF_SqrtGm  ,iX1,iX2,iX3) &
-          = G_Up_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-              * G_Up_X3(iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-              * G_Up_X3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3)
+        G_Up_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+          = G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+              * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+              * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3)
 
         G_Up_X3        (iNX,nGF+1     ,iX1,iX2,iX3) &
           = G_Up_X3    (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
               * G_Up_X3(iNX,iGF_Beta_3,iX1,iX2,iX3)
 
-        G_Dn_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2
-        G_Dn_X3    (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2
-        G_Dn_X3    (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2
+        G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+        G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+        G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
 
-        G_Dn_X3        (iNX,iGF_SqrtGm  ,iX1,iX2,iX3) &
-          = G_Dn_X3    (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-              * G_Dn_X3(iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-              * G_Dn_X3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3)
+        G_Dn_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+          = G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+              * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+              * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3)
 
         G_Dn_X3        (iNX,nGF+1     ,iX1,iX2,iX3) &
           = G_Dn_X3    (iNX,iGF_SqrtGm,iX1,iX2,iX3) &

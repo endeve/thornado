@@ -66,6 +66,11 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
+  INTERFACE ComputePointValues
+    MODULE PROCEDURE ComputePointValues_SingleField
+    MODULE PROCEDURE ComputePointValues_ManyFields
+  END INTERFACE ComputePointValues
+
 
 CONTAINS
 
@@ -103,14 +108,14 @@ CONTAINS
       WRITE(*,'(A)') &
         '    -----------------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A6,A,L1)') &
+      WRITE(*,'(A6,A27,L1)') &
         '', 'UsePositivityLimiter: ', UsePositivityLimiter
       WRITE(*,*)
-      WRITE(*,'(A6,A,ES12.4E3)') &
-        '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A,ES12.4E3)') &
-        '', 'Min_2 = ', Min_2
-    END IF
+      WRITE(*,'(A6,A27,ES11.4E3)') &
+        '', 'Min_1: ', Min_1
+      WRITE(*,'(A6,A27,ES11.4E3)') &
+        '', 'Min_2: ', Min_2
+     END IF
 
     nPP(1:nPS) = 0
     nPP(1)     = PRODUCT( nNodesX(1:3) )
@@ -626,7 +631,24 @@ CONTAINS
   END SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE ComputePointValues( N, iX_B0, iX_E0, U_Q, U_P )
+  SUBROUTINE ComputePointValues_SingleField( N, iX_B0, iX_E0, h_Q, h_P )
+
+    INTEGER,  INTENT(in)  :: N, iX_B0(3), iX_E0(3)
+    REAL(DP), INTENT(in)  :: h_Q(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3) )
+    REAL(DP), INTENT(out) :: h_P(1:nPT  ,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3) )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nPT, N, nDOFX, One, L_X, nPT, &
+             h_Q, nDOFX, Zero, h_P, nPT )
+
+  END SUBROUTINE ComputePointValues_SingleField
+
+
+  SUBROUTINE ComputePointValues_ManyFields( N, iX_B0, iX_E0, U_Q, U_P )
 
     INTEGER,  INTENT(in)  :: N, iX_B0(3), iX_E0(3)
     REAL(DP), INTENT(in)  :: U_Q(1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
@@ -640,7 +662,7 @@ CONTAINS
            ( 'N', 'N', nPT, N, nDOFX, One, L_X, nPT, &
              U_Q, nDOFX, Zero, U_P, nPT )
 
-  END SUBROUTINE ComputePointValues
+  END SUBROUTINE ComputePointValues_ManyFields
 
 
   FUNCTION Computeq &

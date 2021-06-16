@@ -30,7 +30,8 @@ MODULE MF_GeometryModule
   ! --- Local Modules ---
 
   USE InputParsingModule,                        ONLY: &
-    nLevels
+    nLevels, &
+    UseTiling
   USE MF_UtilitiesModule,                        ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
@@ -64,7 +65,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -87,12 +88,10 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
-
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -124,7 +123,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -147,12 +146,12 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 

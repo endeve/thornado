@@ -30,13 +30,16 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nSpecies, &
     nE
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap, &
+    MF_ApplyBoundaryConditions_TwoMoment
 
 
   IMPLICIT NONE
@@ -77,6 +80,9 @@ CONTAINS
 
 
     LOGICAL :: Verbose
+
+
+    TYPE(EdgeMap) :: Edge_Map
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -149,33 +155,26 @@ CONTAINS
                              iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iX_B1, iX_E1,                    &
-                 uCR(      iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 U(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                           iZ_B1(2):iZ_E1(2), &
-                           iZ_B1(3):iZ_E1(3), &
-                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
+
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+
+        CALL MF_ApplyBoundaryConditions_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
+
 
         CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )
 
         CALL thornado2amrex_Z &
-               ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
-                 duCR(     iZ_B0(2):iZ_E0(2), &
-                           iZ_B0(3):iZ_E0(3), &
-                           iZ_B0(4):iZ_E0(4),1:nDOFZ*nCR*nSpecies*nE), &
-                 dU(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                            iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_E0(3), &
-                            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies) )
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_B0, duCR, dU )
 
       END DO
 

@@ -53,6 +53,18 @@ EigensystemTest: \
         EigensystemTest.o \
         $(LIBRARIES)
 
+ComputeLeftState_NuclearEOS: \
+	$(weaklib) \
+	$(thornado) \
+	UtilitiesModule_NuclearEOS.o \
+	ComputeLeftState_NuclearEOS.o
+	$(FLINKER) $(FLAGS) -o ComputeLeftState_NuclearEOS_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	UtilitiesModule_NuclearEOS.o \
+	ComputeLeftState_NuclearEOS.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
@@ -60,4 +72,5 @@ clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
 	rm -f ComputeEigensystem_NuclearEOS_$(MACHINE)
 	rm -f EigensystemTest_$(MACHINE)
+	rm -f ComputeLeftState_NuclearEOS_$(MACHINE)
 	rm -rf *.dSYM

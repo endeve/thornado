@@ -100,14 +100,18 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_BC_CopyIn
   REAL(DP), PUBLIC :: Timer_Euler_BC_CopyOut
 
-  ! --- Miscellaneous ---
+  ! --- Compute From Conserved ---
 
   REAL(DP), PUBLIC :: Timer_Euler_ComputeFromConserved
   REAL(DP), PUBLIC :: Timer_Euler_CFC_ComputePrimitive
   REAL(DP), PUBLIC :: Timer_Euler_CFC_ErrorCheck
   REAL(DP), PUBLIC :: Timer_Euler_CFC_CopyIn
   REAL(DP), PUBLIC :: Timer_Euler_CFC_CopyOut
+
+  ! --- Gravity Solver ---
+
   REAL(DP), PUBLIC :: Timer_GravitySolver
+  REAL(DP), PUBLIC :: Timer_GS_ComputeSourceTerms
 
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
@@ -195,13 +199,14 @@ CONTAINS
     Timer_Euler_BC_CopyIn          = SqrtTiny
     Timer_Euler_BC_CopyOut         = SqrtTiny
 
-    Timer_GravitySolver = SqrtTiny
-
     Timer_Euler_ComputeFromConserved = SqrtTiny
     Timer_Euler_CFC_ComputePrimitive = SqrtTiny
     Timer_Euler_CFC_ErrorCheck       = SqrtTiny
     Timer_Euler_CFC_CopyIn           = SqrtTiny
     Timer_Euler_CFC_CopyOut          = SqrtTiny
+
+    Timer_GravitySolver         = SqrtTiny
+    Timer_GS_ComputeSourceTerms = SqrtTiny
 
   END SUBROUTINE InitializeTimers_Euler
 
@@ -631,8 +636,8 @@ CONTAINS
         Timer_Euler_PL_ErrorCheck / Timer_Euler_PositivityLimiter
 
       WRITE(*,*)
-      WRITE(*,TRIM(Label)) 'ComputeFromConserved'
-      WRITE(*,TRIM(Label)) '--------------------'
+      WRITE(*,TRIM(Label)) 'Compute From Conserved'
+      WRITE(*,TRIM(Label)) '----------------------'
       WRITE(*,*)
 
       TotalTime = Timer_Euler_CFC_ComputePrimitive &
@@ -673,8 +678,8 @@ CONTAINS
         Timer_Euler_CFC_CopyOut / Timer_Euler_ComputeFromConserved
 
       WRITE(*,*)
-      WRITE(*,TRIM(Label)) 'ComputeTimeStep'
-      WRITE(*,TRIM(Label)) '---------------'
+      WRITE(*,TRIM(Label)) 'Compute Time Step'
+      WRITE(*,TRIM(Label)) '-----------------'
       WRITE(*,*)
 
       TotalTime = Timer_Euler_CTS_ComputeTimeStep &
@@ -787,14 +792,18 @@ CONTAINS
         Timer_Euler_Permute / Timer_Euler_Program
 
       WRITE(*,*)
-      WRITE(*,TRIM(Label)) 'Miscellaneous'
-      WRITE(*,TRIM(Label)) '-------------'
+      WRITE(*,TRIM(Label)) 'Gravity Solver'
+      WRITE(*,TRIM(Label)) '--------------'
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
-        'GravitySolver: ', &
+        'Solve Gravity:        ', &
         Timer_GravitySolver, ' s = ', &
         Timer_GravitySolver / Timer_Euler_Program
+      WRITE(*,TRIM(TimeL1)) &
+        'Compute Source Terms: ', &
+        Timer_GS_ComputeSourceTerms, ' s = ', &
+        Timer_GS_ComputeSourceTerms / Timer_Euler_Program
 
     END IF
 

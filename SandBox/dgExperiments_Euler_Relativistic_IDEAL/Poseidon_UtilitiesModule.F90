@@ -38,6 +38,10 @@ MODULE Poseidon_UtilitiesModule
     ComputePressureFromPrimitive_TABLE
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
+    Timer_GS_ComputeSourceTerms
 
   IMPLICIT NONE
   PRIVATE
@@ -63,6 +67,8 @@ CONTAINS
      INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
+
+     CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
 
      DO iX3 = iX_B0(3), iX_E0(3)
      DO iX2 = iX_B0(2), iX_E0(2)
@@ -173,6 +179,8 @@ CONTAINS
        END DO
 
      END IF
+
+     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
   END SUBROUTINE ComputeSourceTerms_Poseidon
 

@@ -90,4 +90,6 @@ TimeSteppingModule_SSPRK.o: \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
   TimersModule_Euler.o \
+  Euler_dgDiscretizationModule.o \
+  Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.F90

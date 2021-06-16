@@ -37,6 +37,7 @@ MODULE MF_Euler_SlopeLimiterModule
   USE InputParsingModule,                ONLY: &
     nLevels,         &
     UseSlopeLimiter, &
+    UseTiling,       &
     DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
@@ -97,7 +98,7 @@ CONTAINS
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -130,11 +131,11 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
-        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
         ! --- Apply boundary conditions to physical boundaries ---
 
@@ -153,9 +154,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
                  SuppressBC_Option = .TRUE., iApplyBC_Option = iApplyBC )
 
-        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, U )
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, uDF, D )
+        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
