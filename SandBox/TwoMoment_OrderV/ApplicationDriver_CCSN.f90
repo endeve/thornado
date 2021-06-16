@@ -60,6 +60,7 @@ PROGRAM ApplicationDriver_CCSN
   CHARACTER(64) :: ProgenitorFileName
   LOGICAL       :: wrt
   LOGICAL       :: EvolveEuler
+  LOGICAL       :: EvolveTwoMoment
   LOGICAL       :: UseSlopeLimiter_Euler
   LOGICAL       :: UseSlopeLimiter_TwoMoment
   LOGICAL       :: UsePositivityLimiter_Euler
@@ -129,8 +130,10 @@ PROGRAM ApplicationDriver_CCSN
 
   EvolveEuler                    = .TRUE.
   UseSlopeLimiter_Euler          = .FALSE.
-  UseSlopeLimiter_TwoMoment      = .FALSE.
   UsePositivityLimiter_Euler     = .TRUE.
+
+  EvolveTwoMoment                = .TRUE.
+  UseSlopeLimiter_TwoMoment      = .FALSE.
   UsePositivityLimiter_TwoMoment = .TRUE.
 
   TimeSteppingScheme = 'IMEX_PDARS'
@@ -196,6 +199,10 @@ PROGRAM ApplicationDriver_CCSN
              uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
+    CALL ComputeTally &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
+             SetInitialValues_Option = .TRUE. )
+
   END IF
 
   ! --- Evolve ---
@@ -234,7 +241,15 @@ PROGRAM ApplicationDriver_CCSN
     CALL ComputeTimeStep_TwoMoment &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt_Neutrinos )
 
-    dt = MIN( dt_Fluid, dt_Neutrinos, dt_Ramp )
+    IF( EvolveTwoMoment )THEN
+
+      dt = MIN( dt_Fluid, dt_Neutrinos, dt_Ramp )
+
+    ELSE
+
+      dt = MIN( dt_Fluid, dt_Ramp )
+
+    END IF
 
     IF( t + dt > t_end )THEN
 
@@ -540,7 +555,9 @@ CONTAINS
     ! --- Initialize Time Stepper ---
 
     CALL Initialize_IMEX_RK &
-           ( TRIM( TimeSteppingScheme ), EvolveEuler_Option = EvolveEuler )
+           ( TRIM( TimeSteppingScheme ), &
+             EvolveEuler_Option = EvolveEuler, &
+             EvolveTwoMoment_Option = EvolveTwoMoment )
 
   END SUBROUTINE InitializeDriver
 
