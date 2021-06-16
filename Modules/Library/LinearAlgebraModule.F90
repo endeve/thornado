@@ -44,9 +44,37 @@ MODULE LinearAlgebraModule
     cusparse_handle, &
     cusparseDgthr, &
     CUSPARSE_INDEX_BASE_ONE
-#endif
-
-#if defined(THORNADO_LA_MAGMA)
+#elif defined(THORNADO_LA_ROCM)
+  USE HipModule, ONLY: &
+    stream, &
+    hipStreamSynchronize
+  USE RocblasModule, ONLY: &
+    rocblas_handle, &
+    rocblas_dnrm2, &
+    rocblas_daxpy, &
+    rocblas_dgemm, &
+    rocblas_dgemm_strided_batched, &
+    rocblas_dgetrf_batched, &
+    rocblas_dgetrs_batched, &
+    rocblas_dgemv, &
+    rocblas_dtrsv, &
+    rocblas_dtrsm, &
+    rocblas_dgeam, &
+    rocblas_ddgmm, &
+    rocblas_operation_none, &
+    rocblas_operation_transpose, &
+    rocblas_side_left, &
+    rocblas_fill_upper, &
+    rocblas_diagonal_non_unit
+  USE RocsolverModule, ONLY: &
+    rocsolver_handle, &
+    rocsolver_dgeqrf, &
+    rocsolver_dormqr
+  USE RocsparseModule, ONLY: &
+    rocsparse_handle, &
+    rocsparse_dgthr, &
+    rocsparse_index_base_one
+#elif defined(THORNADO_LA_MAGMA)
   USE MagmaModule, ONLY: &
     magma_queue, &
     magma_queue_sync, &
@@ -92,6 +120,12 @@ CONTAINS
       itrans_from_char = CUBLAS_OP_T
     ELSE
       itrans_from_char = CUBLAS_OP_N
+    END IF
+#elif defined(THORNADO_LA_ROCM)
+    IF ( ctrans == 'T' ) THEN
+      itrans_from_char = rocblas_operation_transpose
+    ELSE
+      itrans_from_char = rocblas_operation_none
     END IF
 #elif defined(THORNADO_LA_MAGMA)
     IF ( ctrans == 'T' ) THEN
@@ -166,6 +200,10 @@ CONTAINS
       ierr = cublasDgeam &
              ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_dgeam &
+             ( rocblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
         CALL magmablas_dlacpy &
@@ -340,6 +378,10 @@ CONTAINS
       ierr = cublasDgemm_v2 &
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_dgemm &
+             ( rocblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemm &
              ( itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc, magma_queue )
@@ -431,6 +473,11 @@ CONTAINS
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_dgemm_strided_batched &
+             ( rocblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
+               db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
              ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
@@ -547,6 +594,12 @@ CONTAINS
       ierr = cublasDgetrsBatched &
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_dgetrf_batched &
+             ( rocblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
+      ierr = rocblas_dgetrs_batched &
+             ( rocblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
              ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
@@ -649,6 +702,10 @@ CONTAINS
       ierr = cublasDgemv_v2 &
              ( cublas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_dgemv &
+             ( rocblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
@@ -721,6 +778,10 @@ CONTAINS
       ierr = cublasDdgmm &
              ( cublas_handle, CUBLAS_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_ddgmm &
+             ( rocblas_handle, rocblas_side_left, m, n, da, lda, dx, incx, dc, ldc )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dlacpy &
              ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
@@ -805,6 +866,7 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
     ierr = cusolverDnDgeqrf_bufferSize &
            ( cusolver_handle, m, n, da, lda, lwork )
+#elif defined(THORNADO_LA_ROCM)
 #elif defined(THORNADO_LA_MAGMA)
     CALL magma_dgels_gpu &
            ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -900,6 +962,31 @@ CONTAINS
 
       END IF
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocsolver_dgeqrf &
+             ( rocsolver_handle, m, n, da, lda, dtau )
+      ierr = rocsolver_dormqr &
+             ( rocsolver_handle, &
+               rocblas_side_left, rocblas_operation_transpose, &
+               m, nrhs, n, da, lda, dtau, db, ldb, dwork )
+
+      IF ( nrhs == 1 ) THEN
+
+        ierr = rocblas_dtrsv &
+               ( rocblas_handle, &
+                 rocblas_fill_upper, rocblas_operation_none, rocblas_diagonal_non_unit, &
+                 n, da, lda, db, 1 )
+
+      ELSE
+
+        ierr = rocblas_dtrsm &
+               ( rocblas_handle, &
+                 rocblas_side_left, rocblas_fill_upper, &
+                 rocblas_operation_none, rocblas_diagonal_non_unit, &
+                 n, nrhs, One, da, lda, db, ldb )
+
+      END IF
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -962,6 +1049,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
       CALL magma_queue_sync( magma_queue )
@@ -1057,6 +1147,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_ROCM)
+      ierr = rocblas_daxpy( rocblas_handle, n, alpha, dx, incx, dy, incy )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
       CALL magma_queue_sync( magma_queue )
