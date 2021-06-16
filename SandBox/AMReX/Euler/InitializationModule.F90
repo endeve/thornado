@@ -89,8 +89,6 @@ MODULE InitializationModule
   USE UnitsModule,                      ONLY: &
     SolarMass, &
     UnitsDisplay
-  USE TimersModule_Euler,               ONLY: &
-    InitializeTimers_Euler
 
   ! --- Local modules ---
 
@@ -193,8 +191,6 @@ CONTAINS
     CALL amrex_amrcore_init()
 
     CALL InitializeTimers_AMReX_Euler
-
-    CALL InitializeTimers_Euler
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

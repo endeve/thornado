@@ -27,8 +27,6 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule,    ONLY: &
     FinalizePositivityLimiter_Euler
-  USE TimersModule_Euler,               ONLY: &
-    FinalizeTimers_Euler
 
   ! --- Local Modules ---
 
@@ -86,10 +84,6 @@ CONTAINS
     CALL FinalizeParameters
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
-
-    CALL FinalizeTimers_Euler &
-           ( Verbose_Option = amrex_parallel_ioprocessor(), &
-             SuppressApplicationDriver_Option = .TRUE. )
 
     CALL FinalizeTimers_AMReX_Euler
 
