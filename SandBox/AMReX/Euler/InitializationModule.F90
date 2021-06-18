@@ -410,7 +410,8 @@ CONTAINS
 
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
-               Gamma_IDEAL_Option = Gamma_IDEAL )
+               Gamma_IDEAL_Option = Gamma_IDEAL, &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
