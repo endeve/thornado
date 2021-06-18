@@ -67,7 +67,7 @@ CONTAINS
 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &
-      Verbose = .TRUE.
+      Verbose = Verbose_Option
 
     IF( Verbose )THEN
 
