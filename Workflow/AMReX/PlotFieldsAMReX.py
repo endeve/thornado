@@ -38,6 +38,9 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 # Specify name of problem
 ProblemName = 'KHI'
 
+# Specify title of figure
+FigTitle = ProblemName
+
 # Specify directory containing plotfiles
 DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
 
@@ -55,9 +58,6 @@ UsePhysicalUnits = False
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
 CoordinateSystem = 'cartesian'
-
-# Specify aspect ratio (relativistic KHI needs aspect = 0.5)
-aspect = 1.0
 
 # Specify colormap
 cmap = 'jet'
@@ -79,9 +79,9 @@ FigName      = 'fig.{:s}.png'.format( ID )
 # Append "/" to DataDirectory, if not present
 if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
 
-File, FileArray \
+File \
   = ChoosePlotFile( DataDirectory, PlotFileBaseName, argv, \
-                    ReturnFileArray = True, Verbose = False )
+                    ReturnFileArray = False, Verbose = False )
 
 TimeUnit = ''
 LengthUnit = ''
@@ -129,6 +129,7 @@ elif( nDims == 2 ):
     '''
 
     fig = plt.figure()
+    fig.suptitle( FigTitle )
 
     if not UseCustomLimits:
 
@@ -165,6 +166,10 @@ elif( nDims == 2 ):
 
         ax.set_xlabel( 'X1' + ' ' + LengthUnit )
         ax.set_ylabel( 'X2' + ' ' + LengthUnit )
+
+        ax.text( 0.4, 0.9, 'Time = {:.2e} {:}'.format \
+                 ( Time, TimeUnit ), \
+                   transform = ax.transAxes )
 
     cbar = fig.colorbar( im )
     cbar.set_label( Field + DataUnit )

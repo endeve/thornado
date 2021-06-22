@@ -135,7 +135,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
     MaxLevel = ds.index.max_level
-    Time     = ds.current_time
+    Time     = ds.current_time.to_ndarray()
     nX       = ds.domain_dimensions
     xL       = ds.domain_left_edge
     xU       = ds.domain_right_edge
