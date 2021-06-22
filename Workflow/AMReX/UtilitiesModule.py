@@ -73,6 +73,8 @@ def ChoosePlotFile( DataDirectory, PlotFileBaseName, argv = [ 'a' ], \
 
             File = PlotFileBaseName + '_{:}'.format( argv[1].zfill(8) )
 
+        FileArray = np.array( File )
+
     else:
 
         n = len( argv )
