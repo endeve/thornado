@@ -110,7 +110,6 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print(   '  ------------------' )
         print(   '    DataDirectory:    {:s}'.format( DataDirectory ) )
         print(   '    PlotFileBaseName: {:s}'.format( PlotFileBaseName ) )
-        print(   '    argv:            ', argv )
         print(   '    Field:            {:s}'.format( Field ) )
         print(   '    CoordinateSystem: {:s}'.format( CoordinateSystem ) )
         print(   '    ReturnTime:       {:}\n'.format( ReturnTime ) )
@@ -130,7 +129,10 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     yt.funcs.mylog.setLevel(40) # Suppress yt warnings
 
     File = ChoosePlotFile( DataDirectory, PlotFileBaseName, \
-                           argv = argv, Verbose = Verbose )
+                           argv = argv, Verbose = False )
+
+    if Verbose:
+        print(   '    File:             {:}\n'.format( File ) )
 
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 

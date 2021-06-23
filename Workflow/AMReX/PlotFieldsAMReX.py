@@ -6,7 +6,7 @@ from sys import argv
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-from UtilitiesModule import ChoosePlotFile, GetData, GetNorm
+from UtilitiesModule import GetData, GetNorm
 from MakeDataFile import MakeDataFile
 
 """
@@ -78,10 +78,6 @@ FigName      = 'fig.{:s}.png'.format( ID )
 
 # Append "/" to DataDirectory, if not present
 if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
-
-File \
-  = ChoosePlotFile( DataDirectory, PlotFileBaseName, argv, \
-                    ReturnFileArray = False, Verbose = False )
 
 TimeUnit = ''
 LengthUnit = ''
