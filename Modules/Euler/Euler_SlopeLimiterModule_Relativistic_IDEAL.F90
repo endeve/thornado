@@ -852,6 +852,8 @@ CONTAINS
 
       LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
 
+      IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
+
       IF( SlopeDifference(iCF,iX1,iX2,iX3) &
             .GT. SlopeTolerance * ABS( U_M(1,iCF,iX1,iX2,iX3) ) )THEN
 
