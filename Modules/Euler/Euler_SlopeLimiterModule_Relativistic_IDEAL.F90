@@ -1388,11 +1388,11 @@ CONTAINS
       CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
              ( 1, GK, UK, R, invR )
 
-      DO jCF = 1, nCF
       DO iCF = 1, nCF
+      DO jCF = 1, nCF
 
-        R_X1   (iCF,jCF,iX1,iX2,iX3) = R   (iCF,jCF)
-        invR_X1(iCF,jCF,iX1,iX2,iX3) = invR(iCF,jCF)
+        R_X1   (jCF,iCF,iX1,iX2,iX3) = R   (iCF,jCF)
+        invR_X1(jCF,iCF,iX1,iX2,iX3) = invR(iCF,jCF)
 
       END DO
       END DO
@@ -1433,11 +1433,11 @@ CONTAINS
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                ( 2, GK, UK, R, invR )
 
-        DO jCF = 1, nCF
         DO iCF = 1, nCF
+        DO jCF = 1, nCF
 
-          R_X2   (iCF,jCF,iX1,iX2,iX3) = R   (iCF,jCF)
-          invR_X2(iCF,jCF,iX1,iX2,iX3) = invR(iCF,jCF)
+          R_X2   (jCF,iCF,iX1,iX2,iX3) = R   (iCF,jCF)
+          invR_X2(jCF,iCF,iX1,iX2,iX3) = invR(iCF,jCF)
 
         END DO
         END DO
@@ -1480,11 +1480,11 @@ CONTAINS
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                ( 3, GK, UK, R, invR )
 
-        DO jCF = 1, nCF
         DO iCF = 1, nCF
+        DO jCF = 1, nCF
 
-          R_X3   (iCF,jCF,iX1,iX2,iX3) = R   (iCF,jCF)
-          invR_X3(iCF,jCF,iX1,iX2,iX3) = invR(iCF,jCF)
+          R_X3   (jCF,iCF,iX1,iX2,iX3) = R   (iCF,jCF)
+          invR_X3(jCF,iCF,iX1,iX2,iX3) = invR(iCF,jCF)
 
         END DO
         END DO
@@ -1574,6 +1574,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iCF, jCF
 
+    REAL(DP) :: Sum_a, Sum_b, Sum_c
+
     CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
 #if defined(THORNADO_OMP_OL)
@@ -1588,139 +1590,151 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t, &
-    !$ACC          a1, b1, c1 )
+    !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a2t, b2t, c2t, &
+    !$ACC          a3t, b3t, c3t, a1, b1, c1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iCF = 1, nCF
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
 
-        a1t(iCF,iX1,iX2,iX3) = a1(iCF,iX1,iX2,iX3)
-        b1t(iCF,iX1,iX2,iX3) = b1(iCF,iX1,iX2,iX3)
-        c1t(iCF,iX1,iX2,iX3) = c1(iCF,iX1,iX2,iX3)
-        a1 (iCF,iX1,iX2,iX3)  = Zero
-        b1 (iCF,iX1,iX2,iX3)  = Zero
-        c1 (iCF,iX1,iX2,iX3)  = Zero
+      a1t(iCF,iX1,iX2,iX3) = a1(iCF,iX1,iX2,iX3)
+      b1t(iCF,iX1,iX2,iX3) = b1(iCF,iX1,iX2,iX3)
+      c1t(iCF,iX1,iX2,iX3) = c1(iCF,iX1,iX2,iX3)
 
-        a2t(iCF,iX1,iX2,iX3) = a2(iCF,iX1,iX2,iX3)
-        b2t(iCF,iX1,iX2,iX3) = b2(iCF,iX1,iX2,iX3)
-        c2t(iCF,iX1,iX2,iX3) = c2(iCF,iX1,iX2,iX3)
-        a2 (iCF,iX1,iX2,iX3)  = Zero
-        b2 (iCF,iX1,iX2,iX3)  = Zero
-        c2 (iCF,iX1,iX2,iX3)  = Zero
+      a2t(iCF,iX1,iX2,iX3) = a2(iCF,iX1,iX2,iX3)
+      b2t(iCF,iX1,iX2,iX3) = b2(iCF,iX1,iX2,iX3)
+      c2t(iCF,iX1,iX2,iX3) = c2(iCF,iX1,iX2,iX3)
 
-        a3t(iCF,iX1,iX2,iX3) = a2(iCF,iX1,iX2,iX3)
-        b3t(iCF,iX1,iX2,iX3) = b2(iCF,iX1,iX2,iX3)
-        c3t(iCF,iX1,iX2,iX3) = c2(iCF,iX1,iX2,iX3)
-        a3 (iCF,iX1,iX2,iX3)  = Zero
-        b3 (iCF,iX1,iX2,iX3)  = Zero
-        c3 (iCF,iX1,iX2,iX3)  = Zero
+      a3t(iCF,iX1,iX2,iX3) = a2(iCF,iX1,iX2,iX3)
+      b3t(iCF,iX1,iX2,iX3) = b2(iCF,iX1,iX2,iX3)
+      c3t(iCF,iX1,iX2,iX3) = c2(iCF,iX1,iX2,iX3)
 
-      END DO
-      END DO
-      END DO
-      END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
     !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a1, b1, c1, invR_X1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      Sum_a = Zero
+      Sum_b = Zero
+      Sum_c = Zero
+
+      DO jCF = 1, nCF
+
+        Sum_a = Sum_a + invR_X1(jCF,iCF,iX1,iX2,iX3) * a1t(jCF,iX1,iX2,iX3)
+        Sum_b = Sum_b + invR_X1(jCF,iCF,iX1,iX2,iX3) * b1t(jCF,iX1,iX2,iX3)
+        Sum_c = Sum_c + invR_X1(jCF,iCF,iX1,iX2,iX3) * c1t(jCF,iX1,iX2,iX3)
+
+      END DO
+
+      a1(iCF,iX1,iX2,iX3) = Sum_a
+      b1(iCF,iX1,iX2,iX3) = Sum_b
+      c1(iCF,iX1,iX2,iX3) = Sum_c
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
+      !$ACC PRESENT( iX_B0, iX_E0, a2t, b2t, c2t, a2, b2, c2, invR_X2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO jCF = 1, nCF
       DO iCF = 1, nCF
 
-        a1(iCF,iX1,iX2,iX3) &
-          = a1(iCF,iX1,iX2,iX3) &
-              + invR_X1(iCF,jCF,iX1,iX2,iX3) * a1t(jCF,iX1,iX2,iX3)
-        b1(iCF,iX1,iX2,iX3) &
-          = b1(iCF,iX1,iX2,iX3) &
-              + invR_X1(iCF,jCF,iX1,iX2,iX3) * b1t(jCF,iX1,iX2,iX3)
-        c1(iCF,iX1,iX2,iX3) &
-          = c1(iCF,iX1,iX2,iX3) &
-              + invR_X1(iCF,jCF,iX1,iX2,iX3) * c1t(jCF,iX1,iX2,iX3)
+        Sum_a = Zero
+        Sum_b = Zero
+        Sum_c = Zero
 
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      IF( nDimsX .GT. 1 )THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, a2t, b2t, c2t, a2, b2, c2, invR_X2 )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
         DO jCF = 1, nCF
-        DO iCF = 1, nCF
 
-          a2(iCF,iX1,iX2,iX3) &
-            = a2(iCF,iX1,iX2,iX3) &
-                + invR_X2(iCF,jCF,iX1,iX2,iX3) * a2t(jCF,iX1,iX2,iX3)
-          b2(iCF,iX1,iX2,iX3) &
-            = b2(iCF,iX1,iX2,iX3) &
-                + invR_X2(iCF,jCF,iX1,iX2,iX3) * b2t(jCF,iX1,iX2,iX3)
-          c2(iCF,iX1,iX2,iX3) &
-            = c2(iCF,iX1,iX2,iX3) &
-                + invR_X2(iCF,jCF,iX1,iX2,iX3) * c2t(jCF,iX1,iX2,iX3)
+          Sum_a = Sum_a + invR_X2(jCF,iCF,iX1,iX2,iX3) * a2t(jCF,iX1,iX2,iX3)
+          Sum_b = Sum_b + invR_X2(jCF,iCF,iX1,iX2,iX3) * b2t(jCF,iX1,iX2,iX3)
+          Sum_c = Sum_c + invR_X2(jCF,iCF,iX1,iX2,iX3) * c2t(jCF,iX1,iX2,iX3)
 
         END DO
-        END DO
-        END DO
-        END DO
-        END DO
 
-      END IF
+        a2(iCF,iX1,iX2,iX3) = Sum_a
+        b2(iCF,iX1,iX2,iX3) = Sum_b
+        c2(iCF,iX1,iX2,iX3) = Sum_c
 
-      IF( nDimsX .GT. 2 )THEN
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
       !$ACC PRESENT( iX_B0, iX_E0, a3t, b3t, c3t, a3, b3, c3, invR_X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(5)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
 #endif
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        Sum_a = Zero
+        Sum_b = Zero
+        Sum_c = Zero
+
         DO jCF = 1, nCF
-        DO iCF = 1, nCF
 
-          a3(iCF,iX1,iX2,iX3) &
-            = a3(iCF,iX1,iX2,iX3) &
-                + invR_X3(iCF,jCF,iX1,iX2,iX3) * a3t(jCF,iX1,iX2,iX3)
-          b3(iCF,iX1,iX2,iX3) &
-            = b3(iCF,iX1,iX2,iX3) &
-                + invR_X3(iCF,jCF,iX1,iX2,iX3) * b3t(jCF,iX1,iX2,iX3)
-          c3(iCF,iX1,iX2,iX3) &
-            = c3(iCF,iX1,iX2,iX3) &
-                + invR_X3(iCF,jCF,iX1,iX2,iX3) * c3t(jCF,iX1,iX2,iX3)
+          Sum_a = Sum_a + invR_X3(jCF,iCF,iX1,iX2,iX3) * a3t(jCF,iX1,iX2,iX3)
+          Sum_b = Sum_b + invR_X3(jCF,iCF,iX1,iX2,iX3) * b3t(jCF,iX1,iX2,iX3)
+          Sum_c = Sum_c + invR_X3(jCF,iCF,iX1,iX2,iX3) * c3t(jCF,iX1,iX2,iX3)
 
         END DO
-        END DO
-        END DO
-        END DO
-        END DO
 
-      END IF
+        a3(iCF,iX1,iX2,iX3) = Sum_a
+        b3(iCF,iX1,iX2,iX3) = Sum_b
+        c3(iCF,iX1,iX2,iX3) = Sum_c
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1772,6 +1786,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iCF, jCF
 
+    REAL(DP) :: Sum_X1, Sum_X2, Sum_X3
+
     CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
 #if defined(THORNADO_OMP_OL)
@@ -1790,103 +1806,123 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iCF = 1, nCF
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
 
-        dU_X1t(iCF,iX1,iX2,iX3) = dU_X1(iCF,iX1,iX2,iX3)
-        dU_X2t(iCF,iX1,iX2,iX3) = dU_X2(iCF,iX1,iX2,iX3)
-        dU_X3t(iCF,iX1,iX2,iX3) = dU_X3(iCF,iX1,iX2,iX3)
+      dU_X1t(iCF,iX1,iX2,iX3) = dU_X1(iCF,iX1,iX2,iX3)
+      dU_X2t(iCF,iX1,iX2,iX3) = dU_X2(iCF,iX1,iX2,iX3)
+      dU_X3t(iCF,iX1,iX2,iX3) = dU_X3(iCF,iX1,iX2,iX3)
 
-        dU_X1(iCF,iX1,iX2,iX3) = Zero
-        dU_X2(iCF,iX1,iX2,iX3) = Zero
-        dU_X3(iCF,iX1,iX2,iX3) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_X1 )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( Sum_X1 ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU_X1, dU_X1t, R_X1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_X1 )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      Sum_X1 = Zero
+
+      DO jCF = 1, nCF
+
+        Sum_X1 &
+          = Sum_X1 + R_X1(jCF,iCF,iX1,iX2,iX3) * dU_X1t(jCF,iX1,iX2,iX3)
+
+      END DO
+
+      dU_X1(iCF,iX1,iX2,iX3) = Sum_X1
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X2 )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_X2 ) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X2, dU_X2t, R_X2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X2 )
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO jCF = 1, nCF
       DO iCF = 1, nCF
 
-        dU_X1(iCF,iX1,iX2,iX3) &
-          = dU_X1(iCF,iX1,iX2,iX3) &
-              + R_X1(iCF,jCF,iX1,iX2,iX3) * dU_X1t(jCF,iX1,iX2,iX3)
+        Sum_X2 = Zero
 
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      IF( nDimsX .GT. 1 )THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, dU_X2, dU_X2t, R_X2 )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
         DO jCF = 1, nCF
-        DO iCF = 1, nCF
 
-          dU_X2(iCF,iX1,iX2,iX3) &
-            = dU_X2(iCF,iX1,iX2,iX3) &
-                + R_X2(iCF,jCF,iX1,iX2,iX3) * dU_X2t(jCF,iX1,iX2,iX3)
+          Sum_X2 &
+            = Sum_X2 + R_X2(jCF,iCF,iX1,iX2,iX3) * dU_X2t(jCF,iX1,iX2,iX3)
 
         END DO
-        END DO
-        END DO
-        END DO
-        END DO
 
-      END IF
+        dU_X2(iCF,iX1,iX2,iX3) = Sum_X2
 
-      IF( nDimsX .GT. 2 )THEN
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X3 )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_X3 ) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X3, dU_X3t, R_X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(5)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X3 )
 #endif
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        Sum_X3 = Zero
+
         DO jCF = 1, nCF
-        DO iCF = 1, nCF
 
-          dU_X3(iCF,iX1,iX2,iX3) &
-            = dU_X3(iCF,iX1,iX2,iX3) &
-                + R_X3(iCF,jCF,iX1,iX2,iX3) * dU_X3t(jCF,iX1,iX2,iX3)
+          Sum_X3 &
+            = Sum_X3 + R_X3(jCF,iCF,iX1,iX2,iX3) * dU_X3t(jCF,iX1,iX2,iX3)
 
         END DO
-        END DO
-        END DO
-        END DO
-        END DO
 
-      END IF
+        dU_X3(iCF,iX1,iX2,iX3) = Sum_X3
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
