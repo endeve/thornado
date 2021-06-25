@@ -14,7 +14,7 @@ include ../../../Makefile.h
 # these should get defined by invoking the Makefile from FLASH
 MOMENT_CLOSURE = MINERBO
 MICROPHYSICS = WEAKLIB
-TWOMOMENT_ORDER = ORDER_V
+TWOMOMENT_ORDER = ORDER_1
 
 # Import thornado Makefiles
 THORNADO_DIR = ../../

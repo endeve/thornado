@@ -102,6 +102,9 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler_Relativistic
 
+  REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-16_DP
+  REAL(DP), PARAMETER :: Offset_Epsilon     = 1.0e-14_DP
+
 
 CONTAINS
 
@@ -1337,9 +1340,12 @@ CONTAINS
     Ye = Ne * AtomicMassUnit / D
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One + EPSILON( One ) ) * MinT, Ye, MinE )
+           ( rhoh, ( One + Offset_Temperature ) * MinT, Ye, MinE )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One - EPSILON( One ) ) * MaxT, Ye, MaxE )
+           ( rhoh, ( One - Offset_Temperature ) * MaxT, Ye, MaxE )
+
+    MinE = ( One + Offset_Epsilon ) * MinE
+    MaxE = ( One - Offset_Epsilon ) * MaxE
 
     epsh = MAX( MIN( MaxE, epst ), MinE )
 
@@ -1349,14 +1355,12 @@ CONTAINS
 
       q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
 
-      epsh = 1.001_DP * epsh
       epst = epsh
 
     ELSE IF( epst .GT. MaxE )THEN
 
       q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
 
-      epsh = 0.999_DP * epsh
       epst = epsh
 
     END IF
@@ -1512,7 +1516,8 @@ CONTAINS
 
       END IF
 
-      IF( ABS( dz / zc ) .LT. dz_min ) CONVERGED = .TRUE.
+      IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dz_min ) &
+        CONVERGED = .TRUE.
 
 !!$      IF( ITERATION .GT. MAX_IT - 3 )THEN
 !!$

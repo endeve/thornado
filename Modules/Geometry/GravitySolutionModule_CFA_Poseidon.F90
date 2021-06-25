@@ -66,8 +66,8 @@ MODULE GravitySolutionModule_CFA_Poseidon
   USE Variables_Functions, ONLY: &
     Calc_1D_CFA_Values
 
-  USE FP_Initial_Guess_Module, ONLY: &
-    Init_FP_Guess_Flat
+  USE Initial_Guess_Module, ONLY: &
+    Poseidon_Init_FlatGuess
 
   ! -----------------------------------------
 
@@ -108,7 +108,8 @@ CONTAINS
            dr_Option          = MeshX(1) % Width(1:nX(1)), &
            dt_Option          = MeshX(2) % Width(1:nX(2)), &
            dp_Option          = MeshX(3) % Width(1:nX(3)), &
-           Verbose_Option     = .FALSE. )
+           Method_Flag_Option = 1,                         &
+           Print_Setup_Option = .TRUE. )
 
 #endif
 
@@ -187,7 +188,7 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Init_FP_Guess_Flat() ! Possibly move this to init call
+    CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
 
     CALL Poseidon_Run()
 
