@@ -181,6 +181,11 @@ contains
 
     ! --- Convert from MeV (expected) to thornado code units ---
 
+    IF(Verbose)THEN
+      WRITE(*,'(A12,ES12.3,A4)') 'Emin = ', eL_MeV, 'MeV'
+      WRITE(*,'(A12,ES12.3,A4)') 'Emax = ', eR_MeV, 'MeV'
+    END IF
+
     eL = eL_MeV * MeV
     eR = eR_MeV * MeV
 
@@ -244,7 +249,7 @@ contains
            ( BetaTVD_Option &
                = 1.75_DP, &
              UseSlopeLimiter_Option &
-               = .TRUE., &
+               = .FALSE., &
              Verbose_Option &
                = Verbose )
 #endif
@@ -304,7 +309,7 @@ contains
 
     call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
-               = .TRUE., &
+               = .FALSE., &
              Verbose_Option &
                = Verbose, &
              Min_1_Option &
