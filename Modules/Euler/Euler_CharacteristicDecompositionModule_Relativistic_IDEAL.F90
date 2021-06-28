@@ -104,6 +104,7 @@ CONTAINS
 
     K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs**2 )
 
+#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
     IF( DEBUG )THEN
 
       PRINT*
@@ -112,7 +113,7 @@ CONTAINS
 
       PRINT '(A)', '# Geometry Fields'
 
-      PRINT '(A,ES24.16E3)',
+      PRINT*
 
       PRINT '(A,ES24.16E3)', 'Gmdd11        = ', Gmdd11
       PRINT '(A,ES24.16E3)', 'Gmdd22        = ', Gmdd22
@@ -133,6 +134,7 @@ CONTAINS
       PRINT*
 
     END IF
+#endif
 
     SELECT CASE( iDim )
 
@@ -250,6 +252,7 @@ CONTAINS
 
 !!$        invR = inv( R )
 
+#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
         IF( DEBUG_X1 )THEN
 
            PRINT*
@@ -291,6 +294,7 @@ CONTAINS
            PRINT*
 
         END IF
+#endif
 
       CASE( 2 )
 
@@ -406,6 +410,7 @@ CONTAINS
 
 !!$        invR = inv( R )
 
+#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
         IF( DEBUG_X2 )THEN
 
            PRINT*
@@ -448,6 +453,7 @@ CONTAINS
 
 
         END IF
+#endif
 
       CASE( 3 )
 
@@ -563,6 +569,7 @@ CONTAINS
 
 !!$        invR = inv( R )
 
+#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
         IF( DEBUG_X3 )THEN
 
            PRINT*
@@ -604,6 +611,7 @@ CONTAINS
            PRINT*
 
         END IF
+#endif
 
     END SELECT
 
