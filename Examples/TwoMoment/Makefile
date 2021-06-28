@@ -1,6 +1,7 @@
 MICROPHYSICS           = WEAKLIB
 MOMENT_CLOSURE         = MINERBO
 NEUTRINO_MATTER_SOLVER = FIXED_POINT_NESTED_AA
+TWOMOMENT_ORDER        = ORDER_1
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -35,7 +36,7 @@ ApplicationDriver: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.lst
 
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
