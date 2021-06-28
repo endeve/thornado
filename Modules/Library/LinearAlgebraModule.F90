@@ -115,6 +115,7 @@ CONTAINS
 
   INTEGER FUNCTION itrans_from_char( ctrans )
     CHARACTER, INTENT(in) :: ctrans
+    itrans_from_char = 0
 #if defined(THORNADO_LA_CUBLAS)
     IF ( ctrans == 'T' ) THEN
       itrans_from_char = CUBLAS_OP_T
