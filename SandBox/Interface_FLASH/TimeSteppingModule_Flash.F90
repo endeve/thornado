@@ -51,7 +51,7 @@ MODULE TimeSteppingModule_Flash
   PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Update_IMEX_PDARS
 
-  LOGICAL :: DEBUG = .false.
+  LOGICAL :: DEBUG = .FALSE.
 
 CONTAINS
 
@@ -197,6 +197,8 @@ CONTAINS
       BoundaryCondition = 0 ! No Boundary Condition
     END IF
 
+    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN when enter TimeStep'
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: U_F, U_R, uGE, uGF ) &
@@ -218,6 +220,8 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 #endif
+
+    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN before Copy U_R'
 
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
