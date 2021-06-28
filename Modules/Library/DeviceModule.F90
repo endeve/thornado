@@ -163,7 +163,7 @@ CONTAINS
 #elif defined(THORNADO_HIP)
     ierr = rocblas_set_stream( rocblas_handle, stream )
     rocsolver_handle = rocblas_handle
-    rocsprase_handle = rocblas_handle
+    rocsparse_handle = rocblas_handle
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
