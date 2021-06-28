@@ -10,7 +10,9 @@ module RocsolverModule
   use, intrinsic :: iso_c_binding
   use hipfort_rocsolver, only: &
     rocsolver_dgeqrf, &
-    rocsolver_dormqr
+    rocsolver_dormqr, &
+    rocsolver_dgetrf_batched, &
+    rocsolver_dgetrs_batched
 
   type(c_ptr) :: rocsolver_handle
   !!$omp threadprivate(rocsolver_handle)

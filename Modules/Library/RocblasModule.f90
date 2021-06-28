@@ -22,8 +22,6 @@ module RocblasModule
     rocblas_daxpy, &
     rocblas_dgemm, &
     rocblas_dgemm_strided_batched, &
-    rocblas_dgetrf_batched, &
-    rocblas_dgetrs_batched, &
     rocblas_dgemv, &
     rocblas_dtrsv, &
     rocblas_dtrsm, &

@@ -54,8 +54,6 @@ MODULE LinearAlgebraModule
     rocblas_daxpy, &
     rocblas_dgemm, &
     rocblas_dgemm_strided_batched, &
-    rocblas_dgetrf_batched, &
-    rocblas_dgetrs_batched, &
     rocblas_dgemv, &
     rocblas_dtrsv, &
     rocblas_dtrsm, &
@@ -69,7 +67,9 @@ MODULE LinearAlgebraModule
   USE RocsolverModule, ONLY: &
     rocsolver_handle, &
     rocsolver_dgeqrf, &
-    rocsolver_dormqr
+    rocsolver_dormqr, &
+    rocsolver_dgetrf_batched, &
+    rocsolver_dgetrs_batched
   USE RocsparseModule, ONLY: &
     rocsparse_handle, &
     rocsparse_dgthr, &
@@ -596,9 +596,9 @@ CONTAINS
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
-      ierr = rocblas_dgetrf_batched &
+      ierr = rocsolver_dgetrf_batched &
              ( rocblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
-      ierr = rocblas_dgetrs_batched &
+      ierr = rocsolver_dgetrs_batched &
              ( rocblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
       ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
