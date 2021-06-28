@@ -423,6 +423,7 @@ CONTAINS
 
     INTEGER                            :: ierr, i
     INTEGER(C_INT)                     :: itransa, itransb
+    INTEGER(C_INT64_T)                 :: stridea_64, strideb_64, stridec_64
     INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c
     REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb, pc
     TYPE(C_PTR)                        :: ha, hb, hc
@@ -475,9 +476,12 @@ CONTAINS
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
+      stridea_64 = stridea
+      strideb_64 = strideb
+      stridec_64 = stridec
       ierr = rocblas_dgemm_strided_batched &
-             ( rocblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
-               db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
+             ( rocblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea_64, &
+               db, ldb, strideb_64, beta, dc, ldc, stridec_64, batchcount )
       ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
@@ -524,6 +528,7 @@ CONTAINS
 
     INTEGER                                    :: ierr, i
     INTEGER(C_INT)                             :: itrans
+    INTEGER(C_INT64_T)                         :: strideP_64
     INTEGER(C_SIZE_T)                          :: sizeof_a, sizeof_b, sizeof_ipiv, sizeof_info
     REAL(DP), DIMENSION(:,:), POINTER          :: pa, pb
     INTEGER,  DIMENSION(:),   POINTER          :: pipiv, pinfo
@@ -596,10 +601,11 @@ CONTAINS
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
+      strideP_64 = n
       ierr = rocsolver_dgetrf_batched &
-             ( rocblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
+             ( rocsolver_handle, n, n, da_array, lda, dipiv(1), strideP_64, dinfo, batchcount )
       ierr = rocsolver_dgetrs_batched &
-             ( rocblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+             ( rocsolver_handle, itrans, n, nrhs, da_array, lda, dipiv(1), strideP_64, db_array, ldb, batchcount )
       ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
@@ -969,7 +975,7 @@ CONTAINS
       ierr = rocsolver_dormqr &
              ( rocsolver_handle, &
                rocblas_side_left, rocblas_operation_transpose, &
-               m, nrhs, n, da, lda, dtau, db, ldb, dwork )
+               m, nrhs, n, da, lda, dtau, db, ldb )
 
       IF ( nrhs == 1 ) THEN
 
@@ -1051,8 +1057,9 @@ CONTAINS
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
-      ierr = rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm )
-      ierr = hipStreamSynchronize( stream )
+      ! Currently unavailable
+      !ierr = rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm )
+      !ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
       CALL magma_queue_sync( magma_queue )
