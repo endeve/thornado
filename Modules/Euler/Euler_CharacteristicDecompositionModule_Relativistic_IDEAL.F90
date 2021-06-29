@@ -36,9 +36,9 @@ CONTAINS
   SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
     ( iDim, G, U, R, invR )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
