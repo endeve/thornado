@@ -1341,13 +1341,13 @@ CONTAINS
 
               uPF_K(iNX,iPF_V2) &
                 =  A0 * Vshear * SIN( TwoPi * X1 ) &
-                    * EXP( -( ( X2 - Half )**2 / sigma ) )
+                    * EXP( -( ( X2 - Half )**2 / sigma**2 ) )
 
             ELSE
 
               uPF_K(iNX,iPF_V2) &
                 = -A0 * Vshear * SIN( TwoPi * X1 ) &
-                    * EXP( -( ( X2 + Half )**2 / sigma ) )
+                    * EXP( -( ( X2 + Half )**2 / sigma**2 ) )
 
             END IF
 
@@ -1508,13 +1508,13 @@ CONTAINS
 
               uPF_K(iNX,iPF_V2) &
                 =  A0 * Vshear * SIN( TwoPi * X1 ) &
-                    * EXP( -( ( X2 - Half )**2 / sigma ) )
+                    * EXP( -( ( X2 - Half )**2 / sigma**2 ) )
 
             ELSE
 
               uPF_K(iNX,iPF_V2) &
                 = -A0 * Vshear * SIN( TwoPi * X1 ) &
-                    * EXP( -( ( X2 + Half )**2 / sigma ) )
+                    * EXP( -( ( X2 + Half )**2 / sigma**2 ) )
 
             END IF
 
