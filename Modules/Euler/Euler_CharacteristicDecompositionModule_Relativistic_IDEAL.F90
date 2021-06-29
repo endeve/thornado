@@ -104,7 +104,7 @@ CONTAINS
 
     K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs**2 )
 
-#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
+#if !defined(THORNADO_OMP_OL) && !defined(THORNADO_OACC)
     IF( DEBUG )THEN
 
       PRINT*
@@ -252,7 +252,7 @@ CONTAINS
 
 !!$        invR = inv( R )
 
-#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
+#if !defined(THORNADO_OMP_OL) && !defined(THORNADO_OACC)
         IF( DEBUG_X1 )THEN
 
            PRINT*
@@ -410,7 +410,7 @@ CONTAINS
 
 !!$        invR = inv( R )
 
-#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
+#if !defined(THORNADO_OMP_OL) && !defined(THORNADO_OACC)
         IF( DEBUG_X2 )THEN
 
            PRINT*
@@ -569,7 +569,7 @@ CONTAINS
 
 !!$        invR = inv( R )
 
-#if !defined(THORNADO_OMP_OL) || !defined(THORNADO_OACC)
+#if !defined(THORNADO_OMP_OL) && !defined(THORNADO_OACC)
         IF( DEBUG_X3 )THEN
 
            PRINT*
