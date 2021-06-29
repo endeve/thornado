@@ -107,8 +107,10 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
 
-  REAL(DP), PARAMETER :: C1(iNuE:iNuE_Bar) = [ ( cv + ca )**2, ( cv - ca )**2 ]
-  REAL(DP), PARAMETER :: C2(iNuE:iNuE_Bar) = [ ( cv - ca )**2, ( cv + ca )**2 ]
+  REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2
+  REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2
+  REAL(DP), PARAMETER :: C2_NuE     = ( cv - ca )**2
+  REAL(DP), PARAMETER :: C2_NuE_Bar = ( cv + ca )**2
 
   INTERFACE ComputeEquilibriumDistributions_Point
     MODULE PROCEDURE ComputeEquilibriumDistributions_Point_1
@@ -1627,12 +1629,24 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_Out(:,:)
 
     INTEGER  :: iE1, iE2, iH1, iH2
+    REAL(DP) :: C1, C2
     REAL(DP) :: H1(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: H2(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P, LogEta_P
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iSpecies == iNuE ) THEN
+      C1 = C1_NuE
+      C2 = C2_NuE
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      C1 = C1_NuE_Bar
+      C2 = C2_NuE_Bar
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iH1 = ( iMoment - 1 ) * 2 + 1
     iH2 = ( iMoment - 1 ) * 2 + 2
@@ -1665,10 +1679,10 @@ CONTAINS
         DetBal = EXP( - ABS( E(iE2) - E(iE1) ) / kT )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_Out(iE1,iE2) = ( C1(iSpecies) * H1(iE1,iE2) + C2(iSpecies) * H2(iE1,iE2) ) * UnitNES
+          Phi_Out(iE1,iE2) = ( C1 * H1(iE1,iE2) + C2 * H2(iE1,iE2) ) * UnitNES
           Phi_In (iE1,iE2) = Phi_Out(iE1,iE2) * DetBal
         ELSE
-          Phi_In (iE1,iE2) = ( C1(iSpecies) * H1(iE2,iE1) + C2(iSpecies) * H2(iE2,iE1) ) * UnitNES
+          Phi_In (iE1,iE2) = ( C1 * H1(iE2,iE1) + C2 * H2(iE2,iE1) ) * UnitNES
           Phi_Out(iE1,iE2) = Phi_In(iE1,iE2) * DetBal
         END IF
       END DO
@@ -1704,12 +1718,21 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_In_2(:,:), Phi_Out_2(:,:)
 
     INTEGER  :: iE1, iE2, iH1, iH2
+    REAL(DP) :: C1(iS_1:iS_2), C2(iS_1:iS_2)
     REAL(DP) :: H1(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: H2(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P, LogEta_P
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iS_1 == iNuE .AND. iS_2 == iNuE_Bar) THEN
+      C1 = [ C1_NuE, C1_NuE_Bar ]
+      C2 = [ C2_NuE, C2_NuE_Bar ]
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iH1 = ( iMoment - 1 ) * 2 + 1
     iH2 = ( iMoment - 1 ) * 2 + 2
@@ -1790,6 +1813,7 @@ CONTAINS
 
     REAL(DP), POINTER :: H1(:,:,:), H2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iH1, iH2, nE, nX
+    REAL(DP) :: C1, C2
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
@@ -1817,6 +1841,17 @@ CONTAINS
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iSpecies == iNuE ) THEN
+      C1 = C1_NuE
+      C2 = C2_NuE
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      C1 = C1_NuE_Bar
+      C2 = C2_NuE_Bar
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iH1 = ( iMoment - 1 ) * 2 + 1
     iH2 = ( iMoment - 1 ) * 2 + 2
@@ -1899,10 +1934,10 @@ CONTAINS
           DetBal = EXP( - ABS( E(iE2) - E(iE1) ) / kT )
 
           IF ( iE1 <= iE2 ) THEN
-            Phi_Out(iE1,iE2,iX) = ( C1(iSpecies) * H1(iE1,iE2,iX) + C2(iSpecies) * H2(iE1,iE2,iX) ) * UnitNES
+            Phi_Out(iE1,iE2,iX) = ( C1 * H1(iE1,iE2,iX) + C2 * H2(iE1,iE2,iX) ) * UnitNES
             Phi_In (iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * DetBal
           ELSE
-            Phi_In (iE1,iE2,iX) = ( C1(iSpecies) * H1(iE2,iE1,iX) + C2(iSpecies) * H2(iE2,iE1,iX) ) * UnitNES
+            Phi_In (iE1,iE2,iX) = ( C1 * H1(iE2,iE1,iX) + C2 * H2(iE2,iE1,iX) ) * UnitNES
             Phi_Out(iE1,iE2,iX) = Phi_In(iE1,iE2,iX) * DetBal
           END IF
         END DO
@@ -1969,6 +2004,7 @@ CONTAINS
 
     REAL(DP), POINTER :: H1(:,:,:), H2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iH1, iH2, nE, nX
+    REAL(DP) :: C1(iS_1:iS_2), C2(iS_1:iS_2)
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
@@ -2002,6 +2038,14 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+    IF ( iS_1 == iNuE .AND. iS_2 == iNuE_Bar) THEN
+      C1 = [ C1_NuE, C1_NuE_Bar ]
+      C2 = [ C2_NuE, C2_NuE_Bar ]
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
+
     iH1 = ( iMoment - 1 ) * 2 + 1
     iH2 = ( iMoment - 1 ) * 2 + 2
 
@@ -2022,10 +2066,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP IF( do_gpu ) &
+    !$OMP MAP( to: C1, C2 ) &
     !$OMP MAP( alloc: LogT_P, LogEta_P, H1, H2 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC IF( do_gpu ) &
+    !$ACC COPYIN( C1, C2 ) &
     !$ACC CREATE( LogT_P, LogEta_P, H1, H2 )
 #endif
 
@@ -2103,11 +2149,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: LogT_P, LogEta_P, H1, H2 )
+    !$OMP MAP( release: LogT_P, LogEta_P, H1, H2, C1, C2 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC IF( do_gpu ) &
-    !$ACC DELETE( LogT_P, LogEta_P, H1, H2 )
+    !$ACC DELETE( LogT_P, LogEta_P, H1, H2, C1, C2 )
 
     !$ACC WAIT(1)
 #endif
@@ -2165,6 +2211,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: dPhi_Out_dE(iE_B:iE_E,iE_B:iE_E)
 
     INTEGER  :: iE1, iE2, iH1, iH2
+    REAL(DP) :: C1, C2
     REAL(DP) :: kT, LogT, LogEta, C_Eta, C_T
     REAL(DP) :: M, dMdD, dMdT, dMdY
     REAL(DP) :: U, dUdD, dUdT, dUdY
@@ -2174,6 +2221,17 @@ CONTAINS
     REAL(DP) :: dPhidT(iE_B:iE_E,iE_B:iE_E), dPhidEta(iE_B:iE_E,iE_B:iE_E)
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iSpecies == iNuE ) THEN
+      C1 = C1_NuE
+      C2 = C2_NuE
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      C1 = C1_NuE_Bar
+      C2 = C2_NuE_Bar
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iH1 = ( iMoment - 1 ) * 2 + 1
     iH2 = ( iMoment - 1 ) * 2 + 2
@@ -2204,7 +2262,7 @@ CONTAINS
 
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE2
-      Phi_Out(iE1,iE2) = ( C1(iSpecies) * H1(iE1,iE2) + C2(iSpecies) * H2(iE1,iE2) ) * UnitNES
+      Phi_Out(iE1,iE2) = ( C1 * H1(iE1,iE2) + C2 * H2(iE1,iE2) ) * UnitNES
     END DO
     END DO
 
@@ -2227,7 +2285,7 @@ CONTAINS
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE2
       dPhidT(iE1,iE2) &
-        = ( C1(iSpecies) * dH1dT(iE1,iE2) + C2(iSpecies) * dH2dT(iE1,iE2) ) * UnitNES / UnitT
+        = ( C1 * dH1dT(iE1,iE2) + C2 * dH2dT(iE1,iE2) ) * UnitNES / UnitT
     END DO
     END DO
 
@@ -2245,7 +2303,7 @@ CONTAINS
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE2
       dPhidEta(iE1,iE2) &
-        = ( C1(iSpecies) * dH1dEta(iE1,iE2) + C2(iSpecies) * dH2dEta(iE1,iE2) ) * UnitNES
+        = ( C1 * dH1dEta(iE1,iE2) + C2 * dH2dEta(iE1,iE2) ) * UnitNES
     END DO
     END DO
 
@@ -2438,12 +2496,24 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_Out(:,:)
 
     INTEGER  :: iE1, iE2, iJ1, iJ2
+    REAL(DP) :: C1, C2
     REAL(DP) :: J1(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: J2(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P, LogEta_P
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iSpecies == iNuE ) THEN
+      C1 = C1_NuE
+      C2 = C2_NuE
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      C1 = C1_NuE_Bar
+      C2 = C2_NuE_Bar
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iJ1 = ( iMoment - 1 ) * 2 + 1
     iJ2 = ( iMoment - 1 ) * 2 + 2
@@ -2476,9 +2546,9 @@ CONTAINS
         DetBal = EXP( - ABS( E(iE1) + E(iE2) ) / kT )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_Out(iE1,iE2) = ( C1(iSpecies) * J1(iE1,iE2) + C2(iSpecies) * J2(iE1,iE2) ) * UnitPair
+          Phi_Out(iE1,iE2) = ( C1 * J1(iE1,iE2) + C2 * J2(iE1,iE2) ) * UnitPair
         ELSE
-          Phi_Out(iE1,iE2) = ( C1(iSpecies) * J2(iE2,iE1) + C2(iSpecies) * J1(iE2,iE1) ) * UnitPair
+          Phi_Out(iE1,iE2) = ( C1 * J2(iE2,iE1) + C2 * J1(iE2,iE1) ) * UnitPair
         END IF
         Phi_In(iE1,iE2) = Phi_Out(iE1,iE2) * DetBal
 
@@ -2515,12 +2585,21 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_In_2(:,:), Phi_Out_2(:,:)
 
     INTEGER  :: iE1, iE2, iJ1, iJ2
+    REAL(DP) :: C1(iS_1:iS_2), C2(iS_1:iS_2)
     REAL(DP) :: J1(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: J2(iE_B:iE_E,iE_B:iE_E)
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P, LogEta_P
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iS_1 == iNuE .AND. iS_2 == iNuE_Bar) THEN
+      C1 = [ C1_NuE, C1_NuE_Bar ]
+      C2 = [ C2_NuE, C2_NuE_Bar ]
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iJ1 = ( iMoment - 1 ) * 2 + 1
     iJ2 = ( iMoment - 1 ) * 2 + 2
@@ -2597,6 +2676,7 @@ CONTAINS
 
     REAL(DP), POINTER :: J1(:,:,:), J2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2, nE, nX
+    REAL(DP) :: C1, C2
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
@@ -2623,6 +2703,17 @@ CONTAINS
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iSpecies == iNuE ) THEN
+      C1 = C1_NuE
+      C2 = C2_NuE
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      C1 = C1_NuE_Bar
+      C2 = C2_NuE_Bar
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iJ1 = ( iMoment - 1 ) * 2 + 1
     iJ2 = ( iMoment - 1 ) * 2 + 2
@@ -2701,9 +2792,9 @@ CONTAINS
           DetBal = EXP( - ABS( E(iE1) + E(iE2) ) / kT )
 
           IF ( iE1 <= iE2 ) THEN
-            Phi_Out(iE1,iE2,iX) = ( C1(iSpecies) * J1(iE1,iE2,iX) + C2(iSpecies) * J2(iE1,iE2,iX) ) * UnitPair
+            Phi_Out(iE1,iE2,iX) = ( C1 * J1(iE1,iE2,iX) + C2 * J2(iE1,iE2,iX) ) * UnitPair
           ELSE
-            Phi_Out(iE1,iE2,iX) = ( C1(iSpecies) * J2(iE2,iE1,iX) + C2(iSpecies) * J1(iE2,iE1,iX) ) * UnitPair
+            Phi_Out(iE1,iE2,iX) = ( C1 * J2(iE2,iE1,iX) + C2 * J1(iE2,iE1,iX) ) * UnitPair
           END IF
           Phi_In(iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * DetBal
 
@@ -2771,6 +2862,7 @@ CONTAINS
 
     REAL(DP), POINTER :: J1(:,:,:), J2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2, nE, nX
+    REAL(DP) :: C1(iS_1:iS_2), C2(iS_1:iS_2)
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
@@ -2803,6 +2895,14 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+    IF ( iS_1 == iNuE .AND. iS_2 == iNuE_Bar) THEN
+      C1 = [ C1_NuE, C1_NuE_Bar ]
+      C2 = [ C2_NuE, C2_NuE_Bar ]
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
+
     iJ1 = ( iMoment - 1 ) * 2 + 1
     iJ2 = ( iMoment - 1 ) * 2 + 2
 
@@ -2823,10 +2923,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP IF( do_gpu ) &
+    !$OMP MAP( to: C1, C2 ) &
     !$OMP MAP( alloc: LogT_P, LogEta_P, J1, J2 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC IF( do_gpu ) &
+    !$ACC COPYIN( C1, C2 ) &
     !$ACC CREATE( LogT_P, LogEta_P, J1, J2 )
 #endif
 
@@ -2896,11 +2998,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: LogT_P, LogEta_P, J1, J2 )
+    !$OMP MAP( release: LogT_P, LogEta_P, J1, J2, C1, C2 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC IF( do_gpu ) &
-    !$ACC DELETE( LogT_P, LogEta_P, J1, J2 )
+    !$ACC DELETE( LogT_P, LogEta_P, J1, J2, C1, C2 )
 
     !$ACC WAIT(1)
 #endif
@@ -2958,6 +3060,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: dPhi_Out_dE(:,:)
 
     INTEGER  :: iE1, iE2, iJ1, iJ2
+    REAL(DP) :: C1, C2
     REAL(DP) :: kT, LogT, LogEta, C_Eta, C_T
     REAL(DP) :: M, dMdD, dMdT, dMdY
     REAL(DP) :: U, dUdD, dUdT, dUdY
@@ -2967,6 +3070,17 @@ CONTAINS
     REAL(DP) :: dPhidT(iE_B:iE_E,iE_B:iE_E), dPhidEta(iE_B:iE_E,iE_B:iE_E)
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF ( iSpecies == iNuE ) THEN
+      C1 = C1_NuE
+      C2 = C2_NuE
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      C1 = C1_NuE_Bar
+      C2 = C2_NuE_Bar
+    ELSE
+      C1 = Zero
+      C2 = Zero
+    END IF
 
     iJ1 = ( iMoment - 1 ) * 2 + 1
     iJ2 = ( iMoment - 1 ) * 2 + 2
@@ -2998,10 +3112,10 @@ CONTAINS
 
       IF( iE1 <= iE2 )THEN
         Phi_Out(iE1,iE2) &
-          = ( C1(iSpecies) * J1(iE1,iE2) + C2(iSpecies) * J2(iE1,iE2) ) * UnitPair
+          = ( C1 * J1(iE1,iE2) + C2 * J2(iE1,iE2) ) * UnitPair
       ELSE
         Phi_Out(iE1,iE2) &
-          = ( C1(iSpecies) * J2(iE2,iE1) + C2(iSpecies) * J1(iE2,iE1) ) * UnitPair
+          = ( C1 * J2(iE2,iE1) + C2 * J1(iE2,iE1) ) * UnitPair
       END IF
 
       Phi_In(iE1,iE2) &
@@ -3017,10 +3131,10 @@ CONTAINS
 
       IF( iE1 <= iE2 )THEN
         dPhidT(iE1,iE2) &
-          = ( C1(iSpecies) * dJ1dT(iE1,iE2) + C2(iSpecies) * dJ2dT(iE1,iE2) ) * UnitPair / UnitT
+          = ( C1 * dJ1dT(iE1,iE2) + C2 * dJ2dT(iE1,iE2) ) * UnitPair / UnitT
       ELSE
         dPhidT(iE1,iE2) &
-          = ( C1(iSpecies) * dJ2dT(iE2,iE1) + C2(iSpecies) * dJ1dT(iE2,iE1) ) * UnitPair / UnitT
+          = ( C1 * dJ2dT(iE2,iE1) + C2 * dJ1dT(iE2,iE1) ) * UnitPair / UnitT
       END IF
 
     END DO
@@ -3033,10 +3147,10 @@ CONTAINS
 
       IF( iE1 <= iE2 )THEN
         dPhidEta(iE1,iE2) &
-          = ( C1(iSpecies) * dJ1dEta(iE1,iE2) + C2(iSpecies) * dJ2dEta(iE1,iE2) ) * UnitPair
+          = ( C1 * dJ1dEta(iE1,iE2) + C2 * dJ2dEta(iE1,iE2) ) * UnitPair
       ELSE
         dPhidEta(iE1,iE2) &
-          = ( C1(iSpecies) * dJ2dEta(iE2,iE1) + C2(iSpecies) * dJ1dEta(iE2,iE1) ) * UnitPair
+          = ( C1 * dJ2dEta(iE2,iE1) + C2 * dJ1dEta(iE2,iE1) ) * UnitPair
       END IF
 
     END DO
