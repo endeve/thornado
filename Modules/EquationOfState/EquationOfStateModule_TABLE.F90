@@ -590,7 +590,7 @@ CONTAINS
     LOGICAL  :: do_gpu
     INTEGER  :: iP, nP
     INTEGER  :: Error(SIZE(D))
-    REAL(DP) :: T_Guess(SIZE(D))
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -616,21 +616,31 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP IF( do_gpu ) &
+    !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
     !$OMP MAP( from: Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP MAP( from: Error )
+    !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess )
 #endif
       DO iP = 1, nP
 
-        CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-               ( D(iP), E(iP), Y(iP), T(iP), Guess_Option = T(iP), &
+        D_P = D(iP) / ( Gram / Centimeter**3 )
+        E_P = E(iP) / ( Erg / Gram )
+        Y_P = Y(iP)
+
+        T_Guess = Guess_Option(iP) / Kelvin
+
+        CALL ComputeTemperatureWith_DEY &
+               ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, T_Guess, &
                  Error_Option = Error(iP) )
+
+        T(iP) = T_Lookup * Kelvin
 
       END DO
 
@@ -639,20 +649,29 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP IF( do_gpu ) &
+    !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
     !$OMP MAP( from: Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP MAP( from: Error )
+    !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup )
 #endif
       DO iP = 1, nP
 
-        CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-               ( D(iP), E(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+        D_P = D(iP) / ( Gram / Centimeter**3 )
+        E_P = E(iP) / ( Erg / Gram )
+        Y_P = Y(iP)
+
+        CALL ComputeTemperatureWith_DEY &
+               ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
+                 Error_Option = Error(iP) )
+
+        T(iP) = T_Lookup * Kelvin
 
       END DO
 
