@@ -119,6 +119,7 @@ contains
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
+      SlopeLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       Verbose_Option )
@@ -137,6 +138,7 @@ contains
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
     logical,          intent(in), optional :: PositivityLimiter_Option
+    logical,          intent(in), optional :: SlopeLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
@@ -144,7 +146,7 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
     logical,          intent(in), optional :: Verbose_Option
 
-    logical  :: PositivityLimiter, Verbose
+    logical  :: PositivityLimiter, SlopeLimiter, Verbose
     integer  :: nX(3), bcX(3)
     integer  :: i
     real(dp) :: eL, eR, UpperBry1
@@ -153,6 +155,12 @@ contains
       PositivityLimiter = PositivityLimiter_Option
     ELSE
       PositivityLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(PositivityLimiter_Option) )THEN
+      SlopeLimiter = SlopeLimiter_Option
+    ELSE
+      SlopeLimiter = .FALSE.
     END IF
 
     IF( PRESENT(Verbose_Option) )THEN
@@ -184,6 +192,7 @@ contains
     IF(Verbose)THEN
       WRITE(*,'(A12,ES12.3,A4)') 'Emin = ', eL_MeV, 'MeV'
       WRITE(*,'(A12,ES12.3,A4)') 'Emax = ', eR_MeV, 'MeV'
+      WRITE(*,'(A12,ES12.3)')   'ZoomE = ', zoomE
     END IF
 
     eL = eL_MeV * MeV
@@ -249,7 +258,7 @@ contains
            ( BetaTVD_Option &
                = 1.75_DP, &
              UseSlopeLimiter_Option &
-               = .FALSE., &
+               = SlopeLimiter, &
              Verbose_Option &
                = Verbose )
 #endif
@@ -309,7 +318,7 @@ contains
 
     call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
-               = .FALSE., &
+               = .TRUE., &
              Verbose_Option &
                = Verbose, &
              Min_1_Option &
