@@ -376,7 +376,7 @@ CONTAINS
     REAL(DP), PARAMETER :: D_0   = 3.0d14 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: T_0   = 1.2d11 * Kelvin
     REAL(DP), PARAMETER :: Y_0   = 0.3_DP
-    REAL(DP), PARAMETER :: V_u_1 = -0.1_DP * SpeedOfLight
+    REAL(DP), PARAMETER :: V_u_1 = 0.1_DP * SpeedOfLight
     REAL(DP), PARAMETER :: V_u_2 = 0.0_DP * SpeedOfLight
     REAL(DP), PARAMETER :: V_u_3 = 0.0_DP * SpeedOfLight
 
