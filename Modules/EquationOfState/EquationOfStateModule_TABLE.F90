@@ -61,7 +61,7 @@ MODULE EquationOfStateModule_TABLE
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, &
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
-  REAL(DP), PARAMETER :: &
+  REAL(DP), PUBLIC, PARAMETER :: &
     BaryonMass = AtomicMassUnit
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     Ds_T, Ts_T, Ys_T
