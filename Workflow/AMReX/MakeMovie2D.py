@@ -42,9 +42,6 @@ UsePhysicalUnits = True
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
 CoordinateSystem = 'spherical'
 
-# Specify aspect ratio (relativistic KHI needs aspect = 0.5)
-aspect = 1.0
-
 # Specify colormap
 cmap = 'cividis'
 
