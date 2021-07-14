@@ -623,8 +623,7 @@ CONTAINS
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP MAP( from: Error )
+    !$OMP PARALLEL DO
 #endif
       DO iP = 1, nP
 
@@ -646,8 +645,7 @@ CONTAINS
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP MAP( from: Error )
+    !$OMP PARALLEL DO
 #endif
       DO iP = 1, nP
 
@@ -1004,8 +1002,7 @@ CONTAINS
     !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP MAP( from: Error )
+    !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
 

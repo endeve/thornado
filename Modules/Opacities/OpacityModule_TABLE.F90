@@ -336,7 +336,6 @@ CONTAINS
     !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
     !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
     DO iS = 1, nSpecies
@@ -386,7 +385,6 @@ CONTAINS
     !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
     !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
     DO iS = 1, nSpecies
