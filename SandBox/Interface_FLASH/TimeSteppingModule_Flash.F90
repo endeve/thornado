@@ -319,7 +319,7 @@ CONTAINS
 
 #ifdef TWOMOMENT_ORDER_V
       CALL ApplyBoundaryConditions_Euler_FLASH &
-             ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+             ( iX_SW, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 #endif
 
       IF( DEBUG ) THEN
@@ -574,7 +574,7 @@ CONTAINS
 
 #ifdef TWOMOMENT_ORDER_V
         CALL ApplyBoundaryConditions_Euler_FLASH &
-               ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+               ( iX_SW, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 #endif
 
 #ifdef TWOMOMENT_ORDER_1
@@ -927,10 +927,10 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler_FLASH &
-    ( swZ, iX_B0, iX_E0, iX_B1, iX_E1, U )
+    ( swX, iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     INTEGER,  INTENT(in)           :: &
-      swZ(4), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      swX(3), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -940,7 +940,7 @@ CONTAINS
     !! For 1D Reflecting Inner Boundary ONLY
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swZ(2)
+        DO iX1 = 1, swX(1)
 
           DO iNodeX3 = 1, nNodesX(3)
           DO iNodeX2 = 1, nNodesX(2)
