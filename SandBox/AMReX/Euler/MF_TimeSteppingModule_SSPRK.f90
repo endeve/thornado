@@ -370,11 +370,7 @@ CONTAINS
 
     CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
 
-    DO iLevel = 0, nLevels-1
-
-      CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler(iLevel,:) )
-
-    END DO
+    CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
