@@ -203,6 +203,10 @@ contains
       nX(i) = nX(i) + 1
     END DO
 
+
+    ! bcX is for general thornado setting
+    ! flash calling thornado is handled differently
+    ! check TimeSteppingModule_Flash.F90 for details
     bcX = [ 0, 0, 0 ]
 
     call InitializeDevice
@@ -414,6 +418,9 @@ contains
       CoordinateSystem = 'CARTESIAN'
     END IF
 
+    ! bcX is for general thornado setting
+    ! flash calling thornado is handled differently
+    ! check TimeSteppingModule_Flash.F90 for details
     bcX = [ 0, 0, 0 ]
 
     call InitializeProgramHeaderX &

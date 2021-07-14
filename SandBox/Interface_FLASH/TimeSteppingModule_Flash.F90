@@ -7,17 +7,20 @@ MODULE TimeSteppingModule_Flash
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOFE, nDOF, nDOFZ, nNodesZ, &
-    iX_B0, iX_B1, iX_E0, iX_E1, &
+    iX_B0, iX_B1, iX_E0, iX_E1, nNodesX, &
     iZ_B0, iZ_B1, iZ_E0, iZ_E1
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_AddFieldsF, &
     Timer_AddFieldsR
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_Ne, uDF
+    nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
+    iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, iCR_N, iCR_G1
 #ifdef TWOMOMENT_ORDER_1
@@ -314,6 +317,11 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
 
+#ifdef TWOMOMENT_ORDER_V
+      CALL ApplyBoundaryConditions_Euler_FLASH &
+             ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+#endif
+
       IF( DEBUG ) THEN
         IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
           PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
@@ -564,6 +572,11 @@ CONTAINS
         CALL ApplyBoundaryConditions_Radiation &
                ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
 
+#ifdef TWOMOMENT_ORDER_V
+        CALL ApplyBoundaryConditions_Euler_FLASH &
+               ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+#endif
+
 #ifdef TWOMOMENT_ORDER_1
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -754,7 +767,7 @@ CONTAINS
     !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
     !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
-
+      
   END SUBROUTINE Update_IMEX_PDARS
 
 
@@ -911,6 +924,55 @@ CONTAINS
     END IF
 
   END SUBROUTINE ApplyBoundaryConditions_Radiation
+
+
+  SUBROUTINE ApplyBoundaryConditions_Euler_FLASH &
+    ( swZ, iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    INTEGER,  INTENT(in)           :: &
+      swZ(4), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout)        :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX1, iNodeX, jNodeX
+
+    !! For 1D Reflecting Inner Boundary ONLY
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swZ(2)
+
+          DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
+
+            jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+            jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+              = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
+            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+    
+  END SUBROUTINE ApplyBoundaryConditions_Euler_FLASH
 
 
   SUBROUTINE ApplyBoundaryConditions_Radiation_Reflecting &
