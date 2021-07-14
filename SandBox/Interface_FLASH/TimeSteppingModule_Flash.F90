@@ -319,7 +319,7 @@ CONTAINS
 
 #ifdef TWOMOMENT_ORDER_V
       CALL ApplyBoundaryConditions_Euler_FLASH &
-             ( iX_SW, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+             ( iX_SW, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
 #endif
 
       IF( DEBUG ) THEN
@@ -574,7 +574,7 @@ CONTAINS
 
 #ifdef TWOMOMENT_ORDER_V
         CALL ApplyBoundaryConditions_Euler_FLASH &
-               ( iX_SW, iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+               ( iX_SW, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
 #endif
 
 #ifdef TWOMOMENT_ORDER_1
@@ -927,50 +927,55 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler_FLASH &
-    ( swX, iX_B0, iX_E0, iX_B1, iX_E1, U )
+    ( swX, iX_B0, iX_E0, iX_B1, iX_E1, U, BoundaryCondition )
 
     INTEGER,  INTENT(in)           :: &
-      swX(3), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      swX(3), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), BoundaryCondition
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX1, iNodeX, jNodeX
 
+    IF( BoundaryCondition == 0 ) RETURN
+
+    IF( BoundaryCondition == 3 )THEN
     !! For 1D Reflecting Inner Boundary ONLY
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swX(1)
+       DO iX3 = iX_B0(3), iX_E0(3)
+       DO iX2 = iX_B0(2), iX_E0(2)
+       DO iX1 = 1, swX(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+         DO iNodeX3 = 1, nNodesX(3)
+         DO iNodeX2 = 1, nNodesX(2)
+         DO iNodeX1 = 1, nNodesX(1)
 
-            jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+           jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+           iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+           jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-              = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+             = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
 
-          END DO
-          END DO
-          END DO
+         END DO
+         END DO
+         END DO
 
-        END DO
-        END DO
-        END DO
+       END DO
+       END DO
+       END DO
+
+    END IF
     
   END SUBROUTINE ApplyBoundaryConditions_Euler_FLASH
 
