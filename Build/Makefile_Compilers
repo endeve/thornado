@@ -14,7 +14,7 @@ OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
 OPENMP_OL_corigpu_pgi= -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENMP_OL_poplar_cce = -homp
-OPENMP_OL_spock_cce  = -homp
+OPENMP_OL_spock_cce  = -h omp #-h acc_model=auto_async_none:deep_copy # -h wp -h pl=INLINE_$(MACHINE) # -h acc_model=auto_async_none:no_fast_addr:no_deep_copy
 OPENMP_OL_spock_gcc  = -fopenmp
 ifeq ($(USE_OMP),TRUE)
     OPENMP               = $(OPENMP_$(MACHINE))
@@ -32,8 +32,8 @@ OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
 OPENACC_summit_xl    =
 OPENACC_corigpu_pgi  = -acc -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENACC_poplar_cce   =
-OPENACC_spock_cce    =
-OPENACC_spock_gcc    = -fopenacc
+OPENACC_spock_cce    = -hacc -hacc_model=auto_async_kernel:fast_addr:deep_copy
+OPENACC_spock_gcc    = -fopenacc# --amdgpu-target=gfx908
 ifeq ($(USE_OACC),TRUE)
     OPENACC              = $(OPENACC_$(MACHINE))
 endif
@@ -190,7 +190,7 @@ DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp
 DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
 DEBUG_poplar_cce   = -G0 -eD -hfp0 -K trap=fp -h heap_allocate
 DEBUG_spock_cce    = -g -G0 -O0
-DEBUG_spock_gcc    = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace -fallow-argument-mismatch
+DEBUG_spock_gcc    = -g -Og -ggdb -fcheck=bounds,do,mem,pointer -fbacktrace -fallow-argument-mismatch
 DEBUG_acf_gnu      = -g -fbacktrace -ffpe-trap=invalid,zero -fbounds-check
 DEBUG_corigpu_pgi  = -g -O0 -traceback -Mbounds -Ktrap=fp
 DEBUG              = $(DEBUG_$(MACHINE))
@@ -227,7 +227,7 @@ OPTIMIZE_summit_gcc   = -g -O3 -mcpu=power9
 OPTIMIZE_summit_pgi   = -g -O3 -tp=pwr9
 OPTIMIZE_summit_xl    = -g -O3 -qnohot -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE_poplar_cce   = -h heap_allocate
-OPTIMIZE_spock_cce    = -G2 -O2
+OPTIMIZE_spock_cce    = -O2
 OPTIMIZE_spock_gcc    = -g -O3
 OPTIMIZE_acf_gnu      = -O2
 OPTIMIZE_corigpu_pgi  = -g -O2 -tp=skylake
@@ -434,8 +434,8 @@ LIBRARIES_CUDA_corigpu_pgi     = -cudalib
 LIBRARIES_CUDA_poplar_cce      = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -L$(CUDA_ROOT)/compat -lcuda
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
 
-LIBRARIES_ROCM_spock_cce       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
-LIBRARIES_ROCM_spock_gcc       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
+LIBRARIES_ROCM_spock_cce       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
+LIBRARIES_ROCM_spock_gcc       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
 LIBRARIES_ROCM                 = $(LIBRARIES_ROCM_$(MACHINE))
 
 LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
