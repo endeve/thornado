@@ -32,7 +32,16 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Collisions_Zero
   REAL(DP), PUBLIC :: Timer_Collisions_Permute
   REAL(DP), PUBLIC :: Timer_Collisions_PrimitiveFluid
+  REAL(DP), PUBLIC :: Timer_Collisions_PrimitiveTwoMoment
   REAL(DP), PUBLIC :: Timer_Collisions_Solve
+  REAL(DP), PUBLIC :: Timer_Collisions_InnerLoop
+  REAL(DP), PUBLIC :: Timer_Collisions_ComputeOpacity
+  REAL(DP), PUBLIC :: Timer_Collisions_ComputeRates
+  REAL(DP), PUBLIC :: Timer_Collisions_InitializeRHS
+  REAL(DP), PUBLIC :: Timer_Collisions_NeutrinoRHS
+  REAL(DP), PUBLIC :: Timer_Collisions_MatterRHS
+  REAL(DP), PUBLIC :: Timer_Collisions_SolveLS
+  REAL(DP), PUBLIC :: Timer_Collisions_UpdateFP
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_TCI_Permute
   REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
@@ -88,7 +97,16 @@ CONTAINS
     Timer_Collisions_Zero                = Zero
     Timer_Collisions_Permute             = Zero
     Timer_Collisions_PrimitiveFluid      = Zero
+    Timer_Collisions_PrimitiveTwoMoment  = Zero
     Timer_Collisions_Solve               = Zero
+    Timer_Collisions_InnerLoop           = Zero
+    Timer_Collisions_ComputeOpacity      = Zero
+    Timer_Collisions_ComputeRates        = Zero
+    Timer_Collisions_InitializeRHS       = Zero
+    Timer_Collisions_NeutrinoRHS         = Zero
+    Timer_Collisions_MatterRHS           = Zero
+    Timer_Collisions_SolveLS             = Zero
+    Timer_Collisions_UpdateFP            = Zero
 
     Timer_TCI                            = Zero
     Timer_TCI_Permute                    = Zero
@@ -180,7 +198,25 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Collisions_PrimitiveFluid      :', Timer_Collisions_PrimitiveFluid     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_PrimitiveTwoMoment  :', Timer_Collisions_PrimitiveTwoMoment , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Collisions_Solve               :', Timer_Collisions_Solve              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_InnerLoop           :', Timer_Collisions_InnerLoop          , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_ComputeOpacity      :', Timer_Collisions_ComputeOpacity     , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_ComputeRates        :', Timer_Collisions_ComputeRates       , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_InitializeRHS       :', Timer_Collisions_InitializeRHS      , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_NeutrinoRHS         :', Timer_Collisions_NeutrinoRHS        , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_MatterRHS           :', Timer_Collisions_MatterRHS          , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_SolveLS             :', Timer_Collisions_SolveLS            , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_UpdateFP            :', Timer_Collisions_UpdateFP           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &

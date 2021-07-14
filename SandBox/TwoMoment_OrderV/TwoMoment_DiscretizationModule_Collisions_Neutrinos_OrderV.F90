@@ -11,6 +11,13 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nDOFX, &
     nDOFE, &
     nDOFZ
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Collisions, &
+    Timer_Collisions_PrimitiveFluid, &
+    Timer_Collisions_PrimitiveTwoMoment, &
+    Timer_Collisions_Solve
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
@@ -29,13 +36,14 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE
   USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
-    SolveMatterEquations_FP_NestedAA, &
+    SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
     InitializeNeutrinoMatterSolverParameters
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
+
   IMPLICIT NONE
   PRIVATE
 
@@ -119,6 +127,8 @@ CONTAINS
 
     INTEGER :: iN_X, iN_E, iS
 
+    CALL TimersStart( Timer_Collisions )
+
     ! PRINT*, "--- In implicit solve ---"
     ! PRINT*, "--- Initializing ---"
 
@@ -137,6 +147,8 @@ CONTAINS
     ! PRINT*, "--- Computing primitive fluid ---"
 
     ! --- Compute Primitive Fluid ---
+
+    CALL TimersStart( Timer_Collisions_PrimitiveFluid )
 
     DO iN_X = 1, nX_G
 
@@ -159,6 +171,8 @@ CONTAINS
 
     END DO
 
+    CALL TimersStop( Timer_Collisions_PrimitiveFluid )
+
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
     ! PRINT*, "G22 = ", GX_N(:,iGF_Gm_dd_22)
@@ -176,6 +190,8 @@ CONTAINS
 
     ! PRINT*, "--- Computing primitive moments ---"
 
+    CALL TimersStart( Timer_Collisions_PrimitiveTwoMoment )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
@@ -187,6 +203,8 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_33), &
              PositionIndexZ, &
              nIterations_Prim )
+
+    CALL TimersStop( Timer_Collisions_PrimitiveTwoMoment )
 
             ! PRINT*, "N_P = ", N_P(:)
             ! PRINT*, "G1_P = ", G1_P(:)
@@ -213,7 +231,9 @@ CONTAINS
     ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
-    CALL SolveMatterEquations_FP_NestedAA &
+    CALL TimersStart( Timer_Collisions_Solve )
+
+    CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
            ( dt, &
              PR_N(:,:,:,iCR_N ), &
              PR_N(:,:,:,iCR_G1), &
@@ -231,6 +251,8 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_33), &
              nIterations_Inner, &
              nIterations_Outer )
+
+    CALL TimersStop( Timer_Collisions_Solve )
 
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -287,6 +309,8 @@ CONTAINS
     ! PRINT*, "--- Finalizing implicit solve---"
 
     CALL FinalizeCollisions
+
+    CALL TimersStop( Timer_Collisions )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
 

@@ -101,18 +101,18 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'BackwardEuler'
 
-      t_end = 1.0d0 * Millisecond
+      t_end = 1.0d1 * Millisecond
 
       FixedTimeStep = .TRUE.
       dt_FXD        = 1.0d-3 * Millisecond
       iCycleD       = 1
-      iCycleW       = 10
+      iCycleW       = 100
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .FALSE.
+      UsePositivityLimiter_TwoMoment = .TRUE.
 
     CASE( 'Deleptonization' )
 
@@ -136,6 +136,35 @@ PROGRAM ApplicationDriver_Neutrinos
 
       iCycleD = 1
       iCycleW = 10
+
+      EvolveEuler                    = .TRUE.
+      UseSlopeLimiter_Euler          = .FALSE.
+      UseSlopeLimiter_TwoMoment      = .FALSE.
+      UsePositivityLimiter_Euler     = .TRUE.
+      UsePositivityLimiter_TwoMoment = .TRUE.
+
+    CASE( 'EquilibriumAdvection' )
+
+      nSpecies = 2
+      nNodes   = 2
+
+      nX  = [ 8, 1, 1 ]
+      xL  = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR  = [ + 5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+      bcX = [ 1, 1, 1 ]
+
+      nE    = 16
+      eL    = 0.0d0 * MeV
+      eR    = 3.0d2 * MeV
+      bcE   = 10
+      ZoomE = 1.266038160710160_DP
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end = 1.0d1 * Millisecond
+
+      iCycleD = 1
+      iCycleW = 100
 
       EvolveEuler                    = .TRUE.
       UseSlopeLimiter_Euler          = .FALSE.
