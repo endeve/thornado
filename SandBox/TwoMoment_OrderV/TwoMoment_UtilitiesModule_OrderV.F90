@@ -489,7 +489,7 @@ CONTAINS
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
+      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -505,33 +505,39 @@ CONTAINS
                    ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
                      Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) )
 
-          vMag = SQRT(V_u_1(iX) * Gm_dd_11(iX) * V_u_1(iX) &
-                    + V_u_2(iX) * Gm_dd_22(iX) * V_u_2(iX) &
-                    + V_u_3(iX) * Gm_dd_33(iX) * V_u_3(iX))
+          vMag = SQRT(   V_u_1(iX) * Gm_dd_11(iX) * V_u_1(iX) &
+                       + V_u_2(iX) * Gm_dd_22(iX) * V_u_2(iX) &
+                       + V_u_3(iX) * Gm_dd_33(iX) * V_u_3(iX) )
 
-          Omega = One / (One + vMag)
+          Omega = One / ( One + vMag )
 
-          vI = V_u_1(iX) * UVEC(iPR_I1,iZ) &
-             + V_u_2(iX) * UVEC(iPR_I2,iZ) &
-             + V_u_3(iX) * UVEC(iPR_I3,iZ)
+          vI =   V_u_1(iX) * UVEC(iPR_I1,iZ) &
+               + V_u_2(iX) * UVEC(iPR_I2,iZ) &
+               + V_u_3(iX) * UVEC(iPR_I3,iZ)
 
-          GVECm(1,iZ) = (One - Omega) * UVEC(iPR_D,iZ) + &
-                      Omega * (CVEC(iCR_N,iZ) - vI)
+          GVECm(1,iZ) = (One - Omega) * UVEC(iPR_D,iZ) &
+                        + Omega * ( CVEC(iCR_N,iZ) - vI )
 
           DO j = 1, 3
-            vK = V_u_1(iX) * k_dd(j,1) &
-               + V_u_2(iX) * k_dd(j,2) &
-               + V_u_3(iX) * k_dd(j,3)
+
+            vK =   V_u_1(iX) * k_dd(j,1) &
+                 + V_u_2(iX) * k_dd(j,2) &
+                 + V_u_3(iX) * k_dd(j,3)
+
             GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
-                          + Omega * (CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ))
+                            + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
+
           END DO
 
           DO i = 1, 4
+
             FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
 
             GVEC(i,Mk,iZ) = GVECm(i,iZ)
             FVEC(i,Mk,iZ) = FVECm(i,iZ)
+
           END DO
+
         END IF
       END DO
 
@@ -540,6 +546,7 @@ CONTAINS
       CALL TimersStart( Timer_Streaming_NumericalFlux_LS )
 
       IF ( Mk > 1 ) THEN
+
         CALL Alpha_LS_Vector &
                ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
 
@@ -637,7 +644,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRESENT( nIterations, nIterations_Option )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
+      !$OMP PARALLEL DO
 #endif
       DO iZ = 1, nZ
         nIterations_Option(iZ) = nIterations(iZ)
@@ -708,7 +715,7 @@ CONTAINS
 
             END DO
 
-            Alpha(1,iZ) = AB1 / AA11
+            Alpha(1,iZ) = AB1 / ( AA11 + SqrtTiny )
             Alpha(2,iZ) = One - Alpha(1,iZ)
 
           END IF

@@ -156,8 +156,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER, PARAMETER :: iP3D_WORK2           = 10
   INTEGER, PARAMETER :: nP3D                 = 10
 
-  PUBLIC :: E_N ! --- Fix me: Does this need to be public?
-
 CONTAINS
 
 
@@ -286,7 +284,7 @@ CONTAINS
     IF( PRESENT( Utol_Option ) )THEN
       Utol = Utol_Option
     ELSE
-      Utol = 1.0d-10
+      Utol = 1.0d-08
     END IF
 
     M_FP = MAX( M_outer, M_inner )
@@ -486,6 +484,13 @@ CONTAINS
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
@@ -498,6 +503,13 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
     DO iN_X = 1, nX_G
 
       V_d_1(iN_X) = Gm_dd_11(iN_X) * V_u_1(iN_X)
@@ -508,6 +520,13 @@ CONTAINS
 
     ! --- Specific Fluid Energy ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
     DO iN_X = 1, nX_G
 
       NormVsq(iN_X) &
@@ -584,6 +603,8 @@ CONTAINS
 
       END IF
 
+      ! --- Move computation of Omega here
+
       ! --- Start Inner Loop ---
 
       CALL TimersStart( Timer_Collisions_InnerLoop )
@@ -611,9 +632,9 @@ CONTAINS
         CALL TimersStop( Timer_Collisions_ComputeRates )
 
 
-        ! --- Compute Omega (Richardson damping coefficient) based on velocity
+        ! --- Compute Omega (Richardson damping coefficient) based on velocity (must be consistent with initial guess of velocity)
 
-        DO iN_X = 1, nX_G ! Move outside inner loop?
+        DO iN_X = 1, nX_G ! --- Fix me: Move outside inner loop?
 
           Omega(iN_X) = One / ( One + SQRT( NormVsq(iN_X) ) )
 
@@ -712,6 +733,13 @@ CONTAINS
 
       ! --- Update Three-Velocity (Index Up) ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
       DO iN_X = 1, nX_G
 
         V_u_1(iN_X) = V_d_1(iN_X) / Gm_dd_11(iN_X)
@@ -722,11 +750,18 @@ CONTAINS
 
       ! --- Compute E from Ef ---
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
       DO iN_X = 1, nX_G
 
-        NormVsq(iN_X) =  V_u_1(iN_X) * V_d_1(iN_X) &
-                       + V_u_2(iN_X) * V_d_2(iN_X) &
-                       + V_u_3(iN_X) * V_d_3(iN_X)
+        NormVsq(iN_X) =   V_u_1(iN_X) * V_d_1(iN_X) &
+                        + V_u_2(iN_X) * V_d_2(iN_X) &
+                        + V_u_3(iN_X) * V_d_3(iN_X)
 
         E(iN_X) = Ef(iN_X) - Half * NormVsq(iN_X)
 
@@ -761,6 +796,13 @@ CONTAINS
            ( J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
              J    , H_d_1    , H_d_2    , H_d_3 )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
@@ -1289,13 +1331,15 @@ CONTAINS
     REAL(DP) :: F_nu_d_2(1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP) :: F_nu_d_3(1:nE_G,1:nX_G,1:nSpecies)
 
-    ! --- Fix me: These pragmas are stale ---
+    ! --- Fix me: GPU pragmas are stale ---
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( V_u_1, V_u_2, V_u_3, vDotH, H_u_1, H_u_2, H_u_3, &
+    !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -1361,6 +1405,13 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
     DO iN_X = 1, nX_G
 
       C_Y    (iN_X) = Zero
@@ -1401,7 +1452,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
 
@@ -1415,8 +1466,8 @@ CONTAINS
 
       ! --- Initial Guess is the Old Matter State ---
 
-      U_Y    (iN_X) = Y    (iN_X) / Y_old (iN_X)
-      U_Ef   (iN_X) = Ef   (iN_X) / Ef_old(iN_X)
+      U_Y    (iN_X) = Y    (iN_X) / Y_old (iN_X) ! = One
+      U_Ef   (iN_X) = Ef   (iN_X) / Ef_old(iN_X) ! = One
       U_V_d_1(iN_X) = V_d_1(iN_X) / SpeedOfLight
       U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
@@ -1451,13 +1502,13 @@ CONTAINS
 
     INTEGER  :: iN_X, iS
 
-    ! --- Fix me: these pragmas are stale
+    ! --- Fix me: GPU pragmas are stale
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -1495,26 +1546,26 @@ CONTAINS
     REAL(DP), INTENT(in)    :: C_Y     (1:nX_G)
     REAL(DP), INTENT(in)    :: S_Y     (1:nX_G)
     REAL(DP), INTENT(in)    :: U_Y     (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_Y     (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_Y     (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: C_Ef    (1:nX_G)
     REAL(DP), INTENT(in)    :: S_Ef    (1:nX_G)
     REAL(DP), INTENT(in)    :: U_Ef    (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_Ef    (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_Ef    (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: V_d_1   (1:nX_G)
     REAL(DP), INTENT(in)    :: C_V_d_1 (1:nX_G)
     REAL(DP), INTENT(in)    :: S_V_d_1 (1:nX_G)
     REAL(DP), INTENT(in)    :: U_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_V_d_1 (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_V_d_1 (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: V_d_2   (1:nX_G)
     REAL(DP), INTENT(in)    :: C_V_d_2 (1:nX_G)
     REAL(DP), INTENT(in)    :: S_V_d_2 (1:nX_G)
     REAL(DP), INTENT(in)    :: U_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_V_d_2 (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_V_d_2 (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: V_d_3   (1:nX_G)
     REAL(DP), INTENT(in)    :: C_V_d_3 (1:nX_G)
     REAL(DP), INTENT(in)    :: S_V_d_3 (1:nX_G)
     REAL(DP), INTENT(in)    :: U_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_V_d_3 (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_V_d_3 (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: Gm_dd_11(1:nX_G)
     REAL(DP), INTENT(in)    :: Gm_dd_22(1:nX_G)
     REAL(DP), INTENT(in)    :: Gm_dd_33(1:nX_G)
@@ -1529,13 +1580,15 @@ CONTAINS
     REAL(DP) :: F_nu_d_2(1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP) :: F_nu_d_3(1:nE_G,1:nX_G,1:nSpecies)
 
-    ! --- Fix me: These pragmas are stale
+    ! --- Fix me: GPU pragmas are stale
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( V_u_1, V_u_2, V_u_3, vDotH, H_u_1, H_u_2, H_u_3, &
+    !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -1591,6 +1644,13 @@ CONTAINS
     END DO
     END DO
 
+#if defined(THORNADO_OMP_OL)
+
+#elif defined(THORNADO_OACC)
+
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
     DO iN_X = 1, nX_G
 
       G_Y    (iN_X) = Zero
@@ -1631,7 +1691,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
@@ -1700,7 +1760,7 @@ CONTAINS
     REAL(DP) :: vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: Eta_T, Chi_T, Kappa
 
-    ! --- Fix me: These Pragmas are Stale ---
+    ! --- Fix me: GPU Pragmas are Stale ---
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( Eta, Eta_T, Chi_T, Kappa )
@@ -1708,8 +1768,9 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRIVATE( Eta, Eta_T, Chi_T, Kappa )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Eta, Eta_T, Chi_T, Kappa )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( vDotH, H_u_1, H_u_2, H_u_3, k_dd, vDotK_d_1, &
+    !$OMP          vDotK_d_2, vDotK_d_3, Eta_T, Chi_T, Kappa, iOS )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -1835,12 +1896,12 @@ CONTAINS
 
     INTEGER :: iN_X
 
-#if defined(THORNADO_OMP_OL)
+#if defined  ( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
 
@@ -1885,13 +1946,14 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS, iOS
 
-    ! --- Fix me: These Pragmas are Stale ---
-#if defined(THORNADO_OMP_OL)
+    ! --- Fix me: GPU Pragmas are Stale ---
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iOS )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -1947,7 +2009,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iN_X = 1, nX_G
     DO iFP  = 1, n_FP
@@ -1965,7 +2027,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP)
-      !$OMP DO SIMD COLLAPSE(2)
+      !$OMP DO COLLAPSE(2)
 #endif
       DO iN_X = 1, nX_G
       DO iFP  = 1, n_FP
@@ -1980,7 +2042,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined(THORNADO_OMP)
-      !$OMP DO SIMD COLLAPSE(3)
+      !$OMP DO COLLAPSE(3)
 #endif
       DO iN_X = 1, nX_G
       DO iM   = 1, Mk-1
@@ -2031,7 +2093,7 @@ CONTAINS
 
       ELSE IF ( Mk == 3 ) THEN
 
-        IF ( n_FP == 2 ) THEN ! --- Fix me: Can this happen?
+        IF ( n_FP == 2 ) THEN ! --- Fix me: Can this happen? No!
 
 #if defined(THORNADO_OMP_OL)
           !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2071,7 +2133,7 @@ CONTAINS
           !$ACC PARALLEL LOOP GANG &
           !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #elif defined( THORNADO_OMP    )
-          !$OMP PARALLEL DO SIMD &
+          !$OMP PARALLEL DO &
           !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #endif
           DO iN_X = 1, nX_G
@@ -2252,12 +2314,15 @@ CONTAINS
     INTEGER  :: iN_X, iS, iOS
     REAL(DP) :: Fnorm(1:nSpecies,1:nX_G)
 
+    ! Compute weighted norm in energy for each moment, then use inf norm across moments
+
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
-
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iOS )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -2278,7 +2343,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
-
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( CONVERGED )
 #endif
     DO iN_X = 1, nX_G
 
@@ -2330,15 +2396,16 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD &
-    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( Fnorm_Y, Fnorm_Ef, Fnorm_V, CONVERGED )
 #endif
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN
 
         Fnorm_Y  = ABS( Fm(iY ,iN_X) )
         Fnorm_Ef = ABS( Fm(iEf,iN_X) )
-        !!! --- Check if this norm makes sense ---
+        !!! --- Fix me: Check if this norm makes sense ---
+        ! Use inf norm across velocity components
         Fnorm_V  = SQRT( Fm(iV1,iN_X)**2 + Fm(iV2,iN_X)**2 + Fm(iV3,iN_X)**2 )
         CONVERGED = Fnorm_Y  <= Rtol .AND. &
                     Fnorm_Ef <= Rtol .AND. &
