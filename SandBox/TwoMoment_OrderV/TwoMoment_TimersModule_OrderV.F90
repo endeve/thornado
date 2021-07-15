@@ -42,6 +42,8 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Collisions_MatterRHS
   REAL(DP), PUBLIC :: Timer_Collisions_SolveLS
   REAL(DP), PUBLIC :: Timer_Collisions_UpdateFP
+  REAL(DP), PUBLIC :: Timer_Collisions_CheckOuter
+  REAL(DP), PUBLIC :: Timer_Collisions_CheckInner
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_TCI_Permute
   REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
@@ -107,6 +109,8 @@ CONTAINS
     Timer_Collisions_MatterRHS           = Zero
     Timer_Collisions_SolveLS             = Zero
     Timer_Collisions_UpdateFP            = Zero
+    Timer_Collisions_CheckOuter          = Zero
+    Timer_Collisions_CheckInner          = Zero
 
     Timer_TCI                            = Zero
     Timer_TCI_Permute                    = Zero
@@ -217,6 +221,10 @@ CONTAINS
       '    Timer_Collisions_SolveLS             :', Timer_Collisions_SolveLS            , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Collisions_UpdateFP            :', Timer_Collisions_UpdateFP           , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_CheckOuter          :', Timer_Collisions_CheckOuter         , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_CheckInner          :', Timer_Collisions_CheckInner         , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &

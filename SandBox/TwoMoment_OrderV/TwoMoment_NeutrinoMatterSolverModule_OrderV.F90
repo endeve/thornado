@@ -25,7 +25,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     Timer_Collisions_NeutrinoRHS, &
     Timer_Collisions_MatterRHS, &
     Timer_Collisions_SolveLS, &
-    Timer_Collisions_UpdateFP
+    Timer_Collisions_UpdateFP, &
+    Timer_Collisions_CheckOuter, &
+    Timer_Collisions_CheckInner
   USE ArrayUtilitiesModule, ONLY: &
     CreatePackIndex, &
     ArrayPack, &
@@ -101,12 +103,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   INTEGER  :: M_FP, M_outer, M_inner
   INTEGER  :: MaxIter_outer, MaxIter_inner
-  REAL(DP) :: Rtol, Utol
+  REAL(DP) :: Rtol_outer, Rtol_inner
 
   INTEGER :: iS_1 = iNuE
   INTEGER :: iS_2 = iNuE_Bar
-  INTEGER :: OS_JNuE    , OS_H1NuE    , OS_H2NuE    , OS_H3NuE
-  INTEGER :: OS_JNuE_Bar, OS_H1NuE_Bar, OS_H2NuE_Bar, OS_H3NuE_Bar
 
   INTEGER, PARAMETER :: iY  = 1
   INTEGER, PARAMETER :: iEf = 2
@@ -176,15 +176,6 @@ CONTAINS
     n_FP_inner = nE_G * nCR * nSpecies
     n_FP       = n_FP_outer + n_FP_Inner
 
-    OS_JNuE      = 0
-    OS_H1NuE     = OS_JNuE      + nE_G
-    OS_H2NuE     = OS_H1NuE     + nE_G
-    OS_H3NuE     = OS_H2NuE     + nE_G
-    OS_JNuE_Bar  = OS_H3NuE     + nE_G
-    OS_H1NuE_Bar = OS_JNuE_Bar  + nE_G
-    OS_H2NuE_Bar = OS_H1NuE_Bar + nE_G
-    OS_H3NuE_Bar = OS_H2NuE_Bar + nE_G
-
     ALLOCATE( E_N (nE_G) )
     ALLOCATE( W2_N(nE_G) )
     ALLOCATE( W3_N(nE_G) )
@@ -242,14 +233,14 @@ CONTAINS
 
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
-      MaxIter_inner_Option, Rtol_Option, Utol_Option )
+      MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_inner_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Rtol_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Utol_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Rtol_inner_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Rtol_outer_Option
 
     IF( PRESENT( M_outer_Option ) )THEN
       M_outer = M_outer_Option
@@ -275,16 +266,16 @@ CONTAINS
       MaxIter_inner = 100
     END IF
 
-    IF( PRESENT( Rtol_Option ) )THEN
-      Rtol = Rtol_Option
+    IF( PRESENT( Rtol_inner_Option ) )THEN
+      Rtol_inner = Rtol_inner_Option
     ELSE
-      Rtol = 1.0d-08
+      Rtol_inner = 1.0d-08
     END IF
 
-    IF( PRESENT( Utol_Option ) )THEN
-      Utol = Utol_Option
+    IF( PRESENT( Rtol_outer_Option ) )THEN
+      Rtol_outer = Rtol_outer_Option
     ELSE
-      Utol = 1.0d-08
+      Rtol_outer = 1.0d-08
     END IF
 
     M_FP = MAX( M_outer, M_inner )
@@ -410,11 +401,6 @@ CONTAINS
     REAL(DP) :: U_V_d_1  (1:nX_G)
     REAL(DP) :: U_V_d_2  (1:nX_G)
     REAL(DP) :: U_V_d_3  (1:nX_G)
-    REAL(DP) :: G_Y      (1:nX_G) ! --- These (G_*) don't seem to be used
-    REAL(DP) :: G_Ef     (1:nX_G)
-    REAL(DP) :: G_V_d_1  (1:nX_G)
-    REAL(DP) :: G_V_d_2  (1:nX_G)
-    REAL(DP) :: G_V_d_3  (1:nX_G)
 
     REAL(DP) :: J0                  (1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP) :: Chi                 (1:nE_G,1:nX_G,1:nSpecies)
@@ -561,18 +547,37 @@ CONTAINS
     CALL TimersStart( Timer_Collisions_InitializeRHS )
 
     CALL InitializeRHS_FP &
-           ( J    , J_old    , C_J    , J_new    , &
-             H_d_1, H_d_1_old, C_H_d_1, H_d_1_new, &
-             H_d_2, H_d_2_old, C_H_d_2, H_d_2_new, &
-             H_d_3, H_d_3_old, C_H_d_3, H_d_3_new, D, &
-             Y    , Y_old    , C_Y    , S_Y    , U_Y , &
-             Ef   , Ef_old   , C_Ef   , S_Ef   , U_Ef, &
-             V_d_1, V_d_1_old, C_V_d_1, S_V_d_1, U_V_d_1, &
-             V_d_2, V_d_2_old, C_V_d_2, S_V_d_2, U_V_d_2, &
-             V_d_3, V_d_3_old, C_V_d_3, S_V_d_3, U_V_d_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+           ( J_old, H_d_1_old, H_d_2_old, H_d_3_old, D, Y_old, Ef_old, &
+             V_d_1_old, V_d_2_old, V_d_3_old, C_J, C_H_d_1, C_H_d_2, &
+             C_H_d_3, C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, S_Y, S_Ef, &
+             S_V_d_1, S_V_d_2, S_V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     CALL TimersStop( Timer_Collisions_InitializeRHS )
+
+    ! --- Initial Guess for (Scaled) Matter State ---
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+
+      U_Y    (iN_X) = One
+      U_Ef   (iN_X) = One
+      U_V_d_1(iN_X) = V_d_1_old(iN_X) / SpeedOfLight
+      U_V_d_2(iN_X) = V_d_2_old(iN_X) / SpeedOfLight
+      U_V_d_3(iN_X) = V_d_3_old(iN_X) / SpeedOfLight
+
+    END DO
+
+    ! --- Initial Guess for Neutrino State ---
+
+    CALL ArrayCopy &
+           ( J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
+             J_new, H_d_1_new, H_d_2_new, H_d_3_new )
 
     ! --- Start Outer Loop ---
 
@@ -603,7 +608,14 @@ CONTAINS
 
       END IF
 
-      ! --- Move computation of Omega here
+      ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
+      ! --- For first interation: must be consistent with initial guess ---
+
+      DO iN_X = 1, nX_G
+
+        Omega(iN_X) = One / ( One + SQRT( NormVsq(iN_X) ) )
+
+      END DO
 
       ! --- Start Inner Loop ---
 
@@ -630,15 +642,6 @@ CONTAINS
                  UnpackIndex_inner, nX_P_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeRates )
-
-
-        ! --- Compute Omega (Richardson damping coefficient) based on velocity (must be consistent with initial guess of velocity)
-
-        DO iN_X = 1, nX_G ! --- Fix me: Move outside inner loop?
-
-          Omega(iN_X) = One / ( One + SQRT( NormVsq(iN_X) ) )
-
-        END DO
 
         ! --- Right-Hand Side Vectors and Residuals (inner) ---
 
@@ -675,9 +678,13 @@ CONTAINS
 
         ! --- Check Convergence (inner) ---
 
+        CALL TimersStart( Timer_Collisions_CheckInner )
+
         CALL CheckConvergence_Inner &
-               ( ITERATE_INNER, n_FP_inner, k_inner, Rtol, &
+               ( ITERATE_INNER, n_FP_inner, k_inner, &
                  nIterations_Inner, FVECm_inner, Jnorm )
+
+        CALL TimersStop( Timer_Collisions_CheckInner )
 
         ! --- Shift History Arrays (inner) ---
 
@@ -697,12 +704,12 @@ CONTAINS
 
       CALL ComputeMatterRHS_FP &
              ( ITERATE_OUTER, n_FP_outer, FVECm_outer, GVECm_outer, &
-               J_new, H_d_1_new, H_d_2_new, H_d_3_new   , &
-                      C_Y    , S_Y    , U_Y    , G_Y    , &
-                      C_Ef   , S_Ef   , U_Ef   , G_Ef   , &
-               V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, G_V_d_1, &
-               V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, G_V_d_2, &
-               V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, G_V_d_3, &
+               J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
+                      C_Y    , S_Y    , U_Y    , &
+                      C_Ef   , S_Ef   , U_Ef   , &
+               V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, &
+               V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, &
+               V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
       CALL TimersStop( Timer_Collisions_MatterRHS )
@@ -775,9 +782,13 @@ CONTAINS
 
       ! --- Check Convergence (outer) ---
 
+      CALL TimersStart( Timer_Collisions_CheckOuter )
+
       CALL CheckConvergence_Outer &
              ( ITERATE_OUTER, ITERATE_INNER, n_FP_outer, k_outer, &
-               FVECm_outer, Rtol, nIterations_Outer )
+               FVECm_outer, nIterations_Outer )
+
+      CALL TimersStop( Timer_Collisions_CheckOuter )
 
       ! --- Shift History Arrays (outer) ---
 
@@ -1260,66 +1271,37 @@ CONTAINS
 
 
   SUBROUTINE InitializeRHS_FP &
-    ( J    , J_old    , C_J    , J_new, &
-      H_d_1, H_d_1_old, C_H_d_1, H_d_1_new, &
-      H_d_2, H_d_2_old, C_H_d_2, H_d_2_new, &
-      H_d_3, H_d_3_old, C_H_d_3, H_d_3_new, D, &
-      Y    , Y_old    , C_Y    , S_Y    , U_Y    , &
-      Ef   , Ef_old   , C_Ef   , S_Ef   , U_Ef   , &
-      V_d_1, V_d_1_old, C_V_d_1, S_V_d_1, U_V_d_1, &
-      V_d_2, V_d_2_old, C_V_d_2, S_V_d_2, U_V_d_2, &
-      V_d_3, V_d_3_old, C_V_d_3, S_V_d_3, U_V_d_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( J, H_1_d, H_d_2, H_d_3, D, Y, Ef, V_d_1, V_d_2, V_d_3, &
+      C_J, C_H_d_1, C_H_d_2, C_H_d_3, C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+      S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    ! --- Fix me: Why send in J, H_d_1, H_d_2, H_d_3, Y, Ef, 
-    !             V_d_1, V_d_2, V_d_3?  These have already been copied 
-    !             into _old states
-
-    REAL(DP), INTENT(in)  :: J        (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: J_old    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_J      (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: J_new    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_1    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_1_old(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_H_d_1  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: H_d_1_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_2    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_2_old(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_H_d_2  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: H_d_2_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_3    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_3_old(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_H_d_3  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: H_d_3_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: D        (1:nX_G)
-    REAL(DP), INTENT(in)  :: Y        (1:nX_G)
-    REAL(DP), INTENT(in)  :: Y_old    (1:nX_G)
-    REAL(DP), INTENT(out) :: C_Y      (1:nX_G)
-    REAL(DP), INTENT(out) :: S_Y      (1:nX_G)
-    REAL(DP), INTENT(out) :: U_Y      (1:nX_G)
-    REAL(DP), INTENT(in)  :: Ef       (1:nX_G)
-    REAL(DP), INTENT(in)  :: Ef_old   (1:nX_G)
-    REAL(DP), INTENT(out) :: C_Ef     (1:nX_G)
-    REAL(DP), INTENT(out) :: S_Ef     (1:nX_G)
-    REAL(DP), INTENT(out) :: U_Ef     (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_1    (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_1_old(1:nX_G)
-    REAL(DP), INTENT(out) :: C_V_d_1  (1:nX_G)
-    REAL(DP), INTENT(out) :: S_V_d_1  (1:nX_G)
-    REAL(DP), INTENT(out) :: U_V_d_1  (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_2    (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_2_old(1:nX_G)
-    REAL(DP), INTENT(out) :: C_V_d_2  (1:nX_G)
-    REAL(DP), INTENT(out) :: S_V_d_2  (1:nX_G)
-    REAL(DP), INTENT(out) :: U_V_d_2  (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_3    (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_3_old(1:nX_G)
-    REAL(DP), INTENT(out) :: C_V_d_3  (1:nX_G)
-    REAL(DP), INTENT(out) :: S_V_d_3  (1:nX_G)
-    REAL(DP), INTENT(out) :: U_V_d_3  (1:nX_G)
-    REAL(DP), INTENT(in)  :: Gm_dd_11 (1:nX_G)
-    REAL(DP), INTENT(in)  :: Gm_dd_22 (1:nX_G)
-    REAL(DP), INTENT(in)  :: Gm_dd_33 (1:nX_G)
+    REAL(DP), INTENT(in)  :: J    (1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(in)  :: H_1_d(1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(in)  :: H_d_2(1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(in)  :: H_d_3(1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(in)  :: D    (1:nX_G)
+    REAL(DP), INTENT(in)  :: Y    (1:nX_G)
+    REAL(DP), INTENT(in)  :: Ef   (1:nX_G)
+    REAL(DP), INTENT(in)  :: V_d_1(1:nX_G)
+    REAL(DP), INTENT(in)  :: V_d_2(1:nX_G)
+    REAL(DP), INTENT(in)  :: V_d_3(1:nX_G)
+    REAL(DP), INTENT(out) :: C_J     (1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(out) :: C_H_d_1 (1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(out) :: C_H_d_2 (1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(out) :: C_H_d_3 (1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP), INTENT(out) :: C_Y     (1:nX_G)
+    REAL(DP), INTENT(out) :: C_Ef    (1:nX_G)
+    REAL(DP), INTENT(out) :: C_V_d_1 (1:nX_G)
+    REAL(DP), INTENT(out) :: C_V_d_2 (1:nX_G)
+    REAL(DP), INTENT(out) :: C_V_d_3 (1:nX_G)
+    REAL(DP), INTENT(out) :: S_Y     (1:nX_G)
+    REAL(DP), INTENT(out) :: S_Ef    (1:nX_G)
+    REAL(DP), INTENT(out) :: S_V_d_1 (1:nX_G)
+    REAL(DP), INTENT(out) :: S_V_d_2 (1:nX_G)
+    REAL(DP), INTENT(out) :: S_V_d_3 (1:nX_G)
+    REAL(DP), INTENT(in)  :: Gm_dd_11(1:nX_G)
+    REAL(DP), INTENT(in)  :: Gm_dd_22(1:nX_G)
+    REAL(DP), INTENT(in)  :: Gm_dd_33(1:nX_G)
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: V_u_1, V_u_2, V_u_3, k_dd(3,3)
@@ -1345,20 +1327,20 @@ CONTAINS
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
 
-      V_u_1 = V_d_1_old(iN_X) / Gm_dd_11(iN_X)
-      V_u_2 = V_d_2_old(iN_X) / Gm_dd_22(iN_X)
-      V_u_3 = V_d_3_old(iN_X) / Gm_dd_33(iN_X)
+      V_u_1 = V_d_1(iN_X) / Gm_dd_11(iN_X)
+      V_u_2 = V_d_2(iN_X) / Gm_dd_22(iN_X)
+      V_u_3 = V_d_3(iN_X) / Gm_dd_33(iN_X)
 
-      vDotH =   V_u_1 * H_d_1_old(iN_E,iN_X,iS) &
-              + V_u_2 * H_d_2_old(iN_E,iN_X,iS) &
-              + V_u_3 * H_d_3_old(iN_E,iN_X,iS)
+      vDotH =   V_u_1 * H_1_d(iN_E,iN_X,iS) &
+              + V_u_2 * H_d_2(iN_E,iN_X,iS) &
+              + V_u_3 * H_d_3(iN_E,iN_X,iS)
 
-      H_u_1 = H_d_1_old(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
-      H_u_2 = H_d_2_old(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
-      H_u_3 = H_d_3_old(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
+      H_u_1 = H_1_d(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
+      H_u_2 = H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
+      H_u_3 = H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
 
       k_dd = EddingtonTensorComponents_dd &
-               ( J_old(iN_E,iN_X,iS), H_u_1, H_u_2, H_u_3, &
+               ( J(iN_E,iN_X,iS), H_u_1, H_u_2, H_u_3, &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
       vDotK_d_1 &
@@ -1368,38 +1350,35 @@ CONTAINS
       vDotK_d_3 &
         = ( V_u_1 * k_dd(1,3) + V_u_2 * k_dd(2,3) + V_u_3 * k_dd(3,3) )
 
-      vDotK_d_1 = vDotK_d_1 * J_old(iN_E,iN_X,iS)
-      vDotK_d_2 = vDotK_d_2 * J_old(iN_E,iN_X,iS)
-      vDotK_d_3 = vDotK_d_3 * J_old(iN_E,iN_X,iS)
+      vDotK_d_1 = vDotK_d_1 * J(iN_E,iN_X,iS)
+      vDotK_d_2 = vDotK_d_2 * J(iN_E,iN_X,iS)
+      vDotK_d_3 = vDotK_d_3 * J(iN_E,iN_X,iS)
 
       ! --- Eulerian Neutrino Number Density ---
 
-      N_nu(iN_E,iN_X,iS) = J_old(iN_E,iN_X,iS) + vDotH
+      N_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + vDotH
 
       ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
 
-      E_nu(iN_E,iN_X,iS) = J_old(iN_E,iN_X,iS) + Two * vDotH
+      E_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + Two * vDotH
 
       ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
       F_nu_d_1(iN_E,iN_X,iS) &
-        = H_d_1_old(iN_E,iN_X,iS) &
-            + V_d_1_old(iN_X) * J_old(iN_E,iN_X,iS) + vDotK_d_1
+        = H_1_d(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
 
       F_nu_d_2(iN_E,iN_X,iS) &
-        = H_d_2_old(iN_E,iN_X,iS) &
-            + V_d_2_old(iN_X) * J_old(iN_E,iN_X,iS) + vDotK_d_2
+        = H_d_2(iN_E,iN_X,iS) + V_d_2(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_2
 
       F_nu_d_3(iN_E,iN_X,iS) &
-        = H_d_3_old(iN_E,iN_X,iS) &
-            + V_d_3_old(iN_X) * J_old(iN_E,iN_X,iS) + vDotK_d_3
+        = H_d_3(iN_E,iN_X,iS) + V_d_3(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_3
 
       ! --- Old States for Neutrino Number Density and Flux ---
 
-      C_J    (iN_E,iN_X,iS) = J_old    (iN_E,iN_X,iS) + vDotH
-      C_H_d_1(iN_E,iN_X,iS) = H_d_1_old(iN_E,iN_X,iS) + vDotK_d_1
-      C_H_d_2(iN_E,iN_X,iS) = H_d_2_old(iN_E,iN_X,iS) + vDotK_d_2
-      C_H_d_3(iN_E,iN_X,iS) = H_d_3_old(iN_E,iN_X,iS) + vDotK_d_3
+      C_J    (iN_E,iN_X,iS) = J    (iN_E,iN_X,iS) + vDotH
+      C_H_d_1(iN_E,iN_X,iS) = H_1_d(iN_E,iN_X,iS) + vDotK_d_1
+      C_H_d_2(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS) + vDotK_d_2
+      C_H_d_3(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS) + vDotK_d_3
 
     END DO
     END DO
@@ -1458,38 +1437,26 @@ CONTAINS
 
       ! --- Scaling Factors ---
 
-      S_Y    (iN_X) = One / ( D(iN_X) * Y_old (iN_X) / AtomicMassUnit )
-      S_Ef   (iN_X) = One / ( D(iN_X) * Ef_old(iN_X) )
+      S_Y    (iN_X) = One / ( D(iN_X) * Y (iN_X) / AtomicMassUnit )
+      S_Ef   (iN_X) = One / ( D(iN_X) * Ef(iN_X) )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_3(iN_X) = One / ( D(iN_X) * SpeedOfLight )
 
-      ! --- Initial Guess is the Old Matter State ---
-
-      U_Y    (iN_X) = Y    (iN_X) / Y_old (iN_X) ! = One
-      U_Ef   (iN_X) = Ef   (iN_X) / Ef_old(iN_X) ! = One
-      U_V_d_1(iN_X) = V_d_1(iN_X) / SpeedOfLight
-      U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
-      U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
-
       ! --- Include Old Matter State in Constant (C) Terms ---
 
       C_Y    (iN_X) &
-        = Y_old    (iN_X) / Y_old (iN_X) + C_Y    (iN_X) * S_Y    (iN_X)
+        = One                        + C_Y    (iN_X) * S_Y    (iN_X)
       C_Ef   (iN_X) &
-        = Ef_old   (iN_X) / Ef_old(iN_X) + C_Ef   (iN_X) * S_Ef   (iN_X)
+        = One                        + C_Ef   (iN_X) * S_Ef   (iN_X)
       C_V_d_1(iN_X) &
-        = V_d_1_old(iN_X) / SpeedOfLight + C_V_d_1(iN_X) * S_V_d_1(iN_X)
+        = V_d_1(iN_X) / SpeedOfLight + C_V_d_1(iN_X) * S_V_d_1(iN_X)
       C_V_d_2(iN_X) &
-        = V_d_2_old(iN_X) / SpeedOfLight + C_V_d_2(iN_X) * S_V_d_2(iN_X)
+        = V_d_2(iN_X) / SpeedOfLight + C_V_d_2(iN_X) * S_V_d_2(iN_X)
       C_V_d_3(iN_X) &
-        = V_d_3_old(iN_X) / SpeedOfLight + C_V_d_3(iN_X) * S_V_d_3(iN_X)
+        = V_d_3(iN_X) / SpeedOfLight + C_V_d_3(iN_X) * S_V_d_3(iN_X)
 
     END DO
-
-    CALL ArrayCopy &
-           ( J    , H_d_1    , H_d_2    , H_d_3, &
-             J_new, H_d_1_new, H_d_2_new, H_d_3_new )
 
   END SUBROUTINE InitializeRHS_FP
 
@@ -1500,7 +1467,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: J(1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP), INTENT(inout) :: Jnorm(1:nSpecies,1:nX_G)
 
-    INTEGER  :: iN_X, iS
+    INTEGER :: iN_X, iS
 
     ! --- Fix me: GPU pragmas are stale
 #if defined(THORNADO_OMP_OL)
@@ -1515,8 +1482,7 @@ CONTAINS
 
       IF ( MASK(iN_X) ) THEN
 
-        !!! --- TO DO: Change to weighted norm ---
-        Jnorm(iS,iN_X) = SQRT( SUM( J(:,iN_X,iS)**2 ) )
+        Jnorm(iS,iN_X) = WNORM( J(:,iN_X,iS), W2_S )
 
       END IF
 
@@ -1528,11 +1494,11 @@ CONTAINS
 
   SUBROUTINE ComputeMatterRHS_FP &
     ( MASK, n_FPVar, Fm, Gm, J, H_d_1, H_d_2, H_d_3, &
-             C_Y    , S_Y    , U_Y    , G_Y    , &
-             C_Ef   , S_Ef   , U_Ef   , G_Ef   , &
-      V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, G_V_d_1, &
-      V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, G_V_d_2, &
-      V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, G_V_d_3, &
+             C_Y    , S_Y    , U_Y    , &
+             C_Ef   , S_Ef   , U_Ef   , &
+      V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, &
+      V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, &
+      V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
@@ -1546,26 +1512,21 @@ CONTAINS
     REAL(DP), INTENT(in)    :: C_Y     (1:nX_G)
     REAL(DP), INTENT(in)    :: S_Y     (1:nX_G)
     REAL(DP), INTENT(in)    :: U_Y     (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_Y     (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: C_Ef    (1:nX_G)
     REAL(DP), INTENT(in)    :: S_Ef    (1:nX_G)
     REAL(DP), INTENT(in)    :: U_Ef    (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_Ef    (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: V_d_1   (1:nX_G)
     REAL(DP), INTENT(in)    :: C_V_d_1 (1:nX_G)
     REAL(DP), INTENT(in)    :: S_V_d_1 (1:nX_G)
     REAL(DP), INTENT(in)    :: U_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_V_d_1 (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: V_d_2   (1:nX_G)
     REAL(DP), INTENT(in)    :: C_V_d_2 (1:nX_G)
     REAL(DP), INTENT(in)    :: S_V_d_2 (1:nX_G)
     REAL(DP), INTENT(in)    :: U_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_V_d_2 (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: V_d_3   (1:nX_G)
     REAL(DP), INTENT(in)    :: C_V_d_3 (1:nX_G)
     REAL(DP), INTENT(in)    :: S_V_d_3 (1:nX_G)
     REAL(DP), INTENT(in)    :: U_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(out)   :: G_V_d_3 (1:nX_G) ! Make local
     REAL(DP), INTENT(in)    :: Gm_dd_11(1:nX_G)
     REAL(DP), INTENT(in)    :: Gm_dd_22(1:nX_G)
     REAL(DP), INTENT(in)    :: Gm_dd_33(1:nX_G)
@@ -1574,6 +1535,11 @@ CONTAINS
     REAL(DP) :: V_u_1, V_u_2, V_u_3, k_dd(3,3)
     REAL(DP) :: H_u_1, H_u_2, H_u_3, vDotH
     REAL(DP) :: vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: G_Y    (1:nX_G)
+    REAL(DP) :: G_Ef   (1:nX_G)
+    REAL(DP) :: G_V_d_1(1:nX_G)
+    REAL(DP) :: G_V_d_2(1:nX_G)
+    REAL(DP) :: G_V_d_3(1:nX_G)
     REAL(DP) :: N_nu    (1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP) :: E_nu    (1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP) :: F_nu_d_1(1:nE_G,1:nX_G,1:nSpecies)
@@ -2300,38 +2266,65 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Inner &
-    ( MASK, n_FPVar, k_inner, Rtol, nIterations_Inner, Fm, Jnorm )
+    ( MASK, n_FPVar, k_inner, nIterations_Inner, Fm, Jnorm )
 
     LOGICAL,  INTENT(inout) :: MASK(1:nX_G)
     INTEGER,  INTENT(in)    :: n_FPVar
     INTEGER,  INTENT(in)    :: k_inner
-    REAL(DP), INTENT(in)    :: Rtol
     INTEGER,  INTENT(inout) :: nIterations_Inner(1:nX_G)
     REAL(DP), INTENT(in)    :: Fm(1:n_FPVar,1:nX_G)
     REAL(DP), INTENT(in)    :: Jnorm(1:nSpecies,1:nX_G)
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: iN_X, iS, iOS
+    INTEGER  :: iN_X, iS, iCR, iN_E, iOS
     REAL(DP) :: Fnorm(1:nSpecies,1:nX_G)
+    REAL(DP) :: F(1:nE_G,1:nCR,1:nSpecies,1:nX_G)
 
-    ! Compute weighted norm in energy for each moment, then use inf norm across moments
+    ! --- Permute Fm ---
 
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )
 
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( iOS )
 #endif
-    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
+    DO iCR  = 1, nCR
+    DO iN_E = 1, nE_G
+
+      iOS = ( (iS-1) * nE_G + (iN_E-1) ) * nCR
+
+      F(iN_E,iCR,iS,iN_X) = Fm(iOS+iCR,iN_X)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Compute Norm of F (Use Maximum Across Moments) ---
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+    DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
 
       IF( MASK(iN_X) )THEN
+      
+        Fnorm(iS,iN_X) = Zero      
+        DO iCR  = 1, nCR
 
-        iOS = (iS-1) * nCR * nE_G
+          Fnorm(iS,iN_X) &
+            = MAX( Fnorm(iS,iN_X), WNORM( F(:,iCR,iS,iN_X), W2_S ) )
 
-        Fnorm(iS,iN_X) = SQRT( SUM( Fm(iOS+1:iOS+nCR*nE_G,iN_X)**2 ) )
+        END DO
 
       END IF
 
@@ -2350,7 +2343,7 @@ CONTAINS
 
       IF( MASK(iN_X) )THEN
 
-        CONVERGED = ALL( Fnorm(:,iN_X) <= Rtol * Jnorm(:,iN_X) )
+        CONVERGED = ALL( Fnorm(:,iN_X) <= Rtol_inner * Jnorm(:,iN_X) )
 
         IF( CONVERGED )THEN
 
@@ -2375,14 +2368,13 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Outer &
-    ( MASK_OUTER, MASK_INNER, n_FPVar, k_outer, Fm, Rtol, nIterations_Outer )
+    ( MASK_OUTER, MASK_INNER, n_FPVar, k_outer, Fm, nIterations_Outer )
 
     LOGICAL,  INTENT(inout) :: MASK_OUTER(1:nX_G)
     LOGICAL,  INTENT(inout) :: MASK_INNER(1:nX_G)
     INTEGER,  INTENT(in)    :: n_FPVar
     INTEGER,  INTENT(in)    :: k_outer
     REAL(DP), INTENT(in)    :: Fm(1:n_FPVar,1:nX_G)
-    REAL(DP), INTENT(in)    :: Rtol
     INTEGER,  INTENT(inout) :: nIterations_Outer(1:nX_G)
 
     LOGICAL  :: CONVERGED
@@ -2402,14 +2394,15 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN
 
-        Fnorm_Y  = ABS( Fm(iY ,iN_X) )
-        Fnorm_Ef = ABS( Fm(iEf,iN_X) )
-        !!! --- Fix me: Check if this norm makes sense ---
-        ! Use inf norm across velocity components
-        Fnorm_V  = SQRT( Fm(iV1,iN_X)**2 + Fm(iV2,iN_X)**2 + Fm(iV3,iN_X)**2 )
-        CONVERGED = Fnorm_Y  <= Rtol .AND. &
-                    Fnorm_Ef <= Rtol .AND. &
-                    Fnorm_V  <= Rtol
+        Fnorm_Y  =      ABS( Fm(iY ,iN_X) )
+        Fnorm_Ef =      ABS( Fm(iEf,iN_X) )
+        Fnorm_V  = MAX( ABS( Fm(iV1,iN_X) ), &
+                        ABS( Fm(iV2,iN_X) ), &
+                        ABS( Fm(iV3,iN_X) ) )
+
+        CONVERGED = Fnorm_Y  <= Rtol_outer .AND. &
+                    Fnorm_Ef <= Rtol_outer .AND. &
+                    Fnorm_V  <= Rtol_outer
 
         IF( CONVERGED )THEN
           MASK_OUTER(iN_X) = .FALSE.
@@ -2428,6 +2421,38 @@ CONTAINS
 #endif
 
   END SUBROUTINE CheckConvergence_Outer
+
+
+  FUNCTION ENORM( X )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP)             :: ENORM
+    REAL(DP), INTENT(in) :: X(:)
+
+    ENORM = SQRT( DOT_PRODUCT( X, X ) )
+
+    RETURN
+  END FUNCTION ENORM
+
+
+  FUNCTION WNORM( X, W )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP)             :: WNORM
+    REAL(DP), INTENT(in) :: X(:), W(:)
+
+    WNORM = SQRT( DOT_PRODUCT( W * X, X ) )
+
+    RETURN
+  END FUNCTION WNORM
 
 
 END MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
