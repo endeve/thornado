@@ -264,6 +264,7 @@ CONTAINS
 
       CALL ReadCheckpointFile( iRestart )
       t_chk = t(0) + dt_chk
+      t_wrt = t(0) + dt_wrt
 
     END IF
 

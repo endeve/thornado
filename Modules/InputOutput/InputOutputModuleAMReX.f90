@@ -93,26 +93,26 @@ MODULE InputOutputModuleAMReX
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, t_wrt, pBA, &
+                 ( StepNo, nLevels, dt, time, pBA, &
                    pMF_uGF, pMF_uCF ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int), INTENT(in) :: StepNo(*)
        INTEGER(c_int), VALUE      :: nLevels
-       REAL(AR),       INTENT(in) :: dt(*), time(*), t_wrt
+       REAL(AR),       INTENT(in) :: dt(*), time(*)
        TYPE(c_ptr),    INTENT(in) :: pBA(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uGF(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uCF(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, t_wrt, &
+                 ( FinestLevel, StepNo, dt, time, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), INTENT(out) :: FinestLevel
       INTEGER(c_int), INTENT(out) :: StepNo(*)
-      REAL(AR),       INTENT(out) :: dt(*), time(*), t_wrt
+      REAL(AR),       INTENT(out) :: dt(*), time(*)
       TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -204,7 +204,7 @@ CONTAINS
     FinestLevel = nLevels-1
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t, t_wrt, pBA, pDM, iChkFile )
+           ( FinestLevel, StepNo, dt, t, pBA, pDM, iChkFile )
 
     DO iLevel = 0, nLevels-1
 

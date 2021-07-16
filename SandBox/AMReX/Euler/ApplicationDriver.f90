@@ -148,7 +148,7 @@ PROGRAM ApplicationDriver
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, &
+             ( StepNo, nLevels, dt, t, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P )
@@ -177,6 +177,7 @@ PROGRAM ApplicationDriver
     ELSE
 
       IF( ALL( t + dt .GT. t_wrt ) )THEN
+
         t_wrt = t_wrt + dt_wrt
         wrt   = .TRUE.
 
@@ -224,7 +225,7 @@ PROGRAM ApplicationDriver
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t, t_wrt, &
+         ( StepNo, nLevels, dt, t, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
            MF_uCF % P )
