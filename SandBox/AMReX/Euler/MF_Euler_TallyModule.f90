@@ -310,6 +310,8 @@ CONTAINS
 
     INTEGER :: iLevel
 
+    IF( SuppressTally ) RETURN
+
     DO iLevel = 0, nLevels-1
 
       BaryonicMass_OffGrid(iLevel) &
@@ -324,6 +326,8 @@ CONTAINS
 
 
   SUBROUTINE MF_FinalizeTally_Euler
+
+    IF( SuppressTally ) RETURN
 
     DEALLOCATE( Energy_Change )
     DEALLOCATE( Energy_OffGrid )
