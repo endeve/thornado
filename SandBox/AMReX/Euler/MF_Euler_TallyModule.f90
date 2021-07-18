@@ -222,6 +222,9 @@ CONTAINS
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
+      BaryonicMass_Interior(iLevel) = Zero
+      Energy_Interior      (iLevel) = Zero
+
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
@@ -264,13 +267,7 @@ CONTAINS
 
     END DO
 
-    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior, nLevels )
-    CALL amrex_parallel_reduce_sum( Energy_Interior      , nLevels )
-
     IF( SetInitialValues )THEN
-
-      CALL amrex_parallel_reduce_sum( BaryonicMass_Initial, nLevels )
-      CALL amrex_parallel_reduce_sum( Energy_Initial      , nLevels )
 
       DO iLevel = 0, nLevels-1
 
@@ -279,7 +276,13 @@ CONTAINS
 
       END DO
 
+      CALL amrex_parallel_reduce_sum( BaryonicMass_Initial, nLevels )
+      CALL amrex_parallel_reduce_sum( Energy_Initial      , nLevels )
+
     END IF
+
+    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior, nLevels )
+    CALL amrex_parallel_reduce_sum( Energy_Interior      , nLevels )
 
     DO iLevel = 0, nLevels-1
 
@@ -306,7 +309,7 @@ CONTAINS
 
   SUBROUTINE MF_IncrementOffGridTally_Euler( dM )
 
-    REAL(AR), INTENT(in) :: dM(0:nLevels,nCF)
+    REAL(AR), INTENT(in) :: dM(0:nLevels-1,nCF)
 
     INTEGER :: iLevel
 
@@ -357,9 +360,6 @@ CONTAINS
     TYPE(MeshType) :: MeshX(3)
     INTEGER        :: iNX, iX1, iX2, iX3, iDim
     REAL(AR)       :: d3X
-
-    BaryonicMass_Interior(iLevel) = Zero
-    Energy_Interior      (iLevel) = Zero
 
     DO iDim = 1, 3
 
