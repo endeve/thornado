@@ -51,8 +51,8 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable, &
     LogInterpolateSingleVariable_4D_Custom, &
+    LogInterpolateSingleVariable_4D_Custom_Point, &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
@@ -947,7 +947,7 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
     INTEGER  :: iNodeX, iNodeE, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iOS_X, iOS_E
-    REAL(DP) :: D_K(1), T_K(1), Y_K(1), E_K(1), opEC_K(1,1)
+    REAL(DP) :: D_K, T_K, Y_K, E_K, opEC_K
 
     nZ = iZ_E0 - iZ_B0 + 1
 
@@ -980,14 +980,14 @@ CONTAINS
 
           iOS_E = (iZ1-1) * nDOFE
 
-          CALL LogInterpolateSingleVariable &
+          CALL LogInterpolateSingleVariable_4D_Custom_Point &
                  ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
                    LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
                    LogEs_T, LogDs_T, LogTs_T, Ys_T, &
                    OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_K )
 
           opEC(iOS_E+iNodeE,iSpecies,iOS_X+iNodeX) &
-            = opEC_K(1,1) * UnitEC
+            = opEC_K * UnitEC
 
         END DO ! iNodeE
         END DO ! iZ1
@@ -1234,7 +1234,8 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_4D_Custom &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_Points)
+             OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_Points, &
+             GPU_Option = do_gpu )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1284,7 +1285,7 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
     INTEGER  :: iNodeX, iNodeE, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iOS_X, iOS_E
-    REAL(DP) :: D_K(1), T_K(1), Y_K(1), E_K(1), opES_K(1,1)
+    REAL(DP) :: D_K, T_K, Y_K, E_K, opES_K
 
     nZ = iZ_E0 - iZ_B0 + 1
 
@@ -1317,7 +1318,7 @@ CONTAINS
 
           iOS_E = (iZ1-1) * nDOFE
 
-          CALL LogInterpolateSingleVariable &
+          CALL LogInterpolateSingleVariable_4D_Custom_Point &
                  ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
                    LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
                    LogEs_T, LogDs_T, LogTs_T, Ys_T, &
@@ -1326,7 +1327,7 @@ CONTAINS
                    opES_K )
 
           opES(iOS_E+iNodeE,iSpecies,iOS_X+iNodeX) &
-            = opES_K(1,1) * UnitES
+            = opES_K * UnitES
 
         END DO ! iNodeE
         END DO ! iZ1
@@ -1577,7 +1578,8 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_4D_Custom &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Points)
+             OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Points, &
+             GPU_Option = do_gpu )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2119,7 +2121,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) ASYNC(1) &
     !$ACC PRIVATE( kT, DetBal ) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( E, T, Phi_In_1, Phi_Out_1, Phi_In_2, Phi_Out_2, H1, H2 )
+    !$ACC PRESENT( E, T, Phi_In_1, Phi_Out_1, Phi_In_2, Phi_Out_2, H1, H2, C1, C2 )
 #endif
     DO iX = iX_B, iX_E
       DO iE2 = iE_B, iE_E
@@ -2972,7 +2974,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) ASYNC(1) &
     !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( kT, DetBal ) &
-    !$ACC PRESENT( E, T, Phi_In_1, Phi_Out_1, Phi_In_2, Phi_Out_2, J1, J2 )
+    !$ACC PRESENT( E, T, Phi_In_1, Phi_Out_1, Phi_In_2, Phi_Out_2, J1, J2, C1, C2 )
 #endif
     DO iX = iX_B, iX_E
       DO iE2 = iE_B, iE_E
@@ -3350,7 +3352,7 @@ CONTAINS
     T_P    = LOG10( T    / UnitT )
     Y_P    = Y / UnitY
 
-    CALL LogInterpolateSingleVariable &
+    CALL LogInterpolateSingleVariable_1D3D_Custom_Point &
            ( E_P, D_P, T_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, OS_Op, Op_T, Op_P )
 
     Op(:) = Op_P(:) * Units_Op
@@ -3387,7 +3389,7 @@ CONTAINS
     T_P = LOG10( T / UnitT )
     Y_P = Y / UnitY
 
-    CALL LogInterpolateSingleVariable &
+    CALL LogInterpolateSingleVariable_4D_Custom_Point &
            ( E_P, D_P, T_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, OS_Op, Op_T, Op_P )
 
     Op = Op_P * Units_Op
@@ -3424,7 +3426,7 @@ CONTAINS
     T_P   = LOG10( T / UnitT )
     Eta_P = LOG10( Eta / UnitEta )
 
-    CALL LogInterpolateSingleVariable &
+    CALL LogInterpolateSingleVariable_4D_Custom_Point &
            ( E1_P, E2_P, T_P, Eta_P, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, OS_Op, Op_T, Op_P )
 
     Op = Op_P * Units_Op
