@@ -61,6 +61,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
+    LogInterpolateSingleVariable_4D_Custom, &
     LogInterpolateSingleVariable_2D2D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
@@ -1702,6 +1703,104 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
+
+  SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
+    ( iP_B, ip_E, E, D, T, Y, iSpecies, iMoment, opES_Points )
+
+    ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
+    ! --- Modified by Sherwood Richers to take in particle data ---
+
+    INTEGER,  INTENT(in)  :: ip_B, ip_E
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: opES_Points(:)
+
+    INTEGER  :: ip
+    REAL(DP) :: LogE_P(ip_B:ip_E), LogD_P(ip_B:ip_E), LogT_P(ip_B:ip_E), Y_P(ip_B:ip_E)
+    LOGICAL  :: do_gpu
+
+    do_gpu = QueryOnGPU( E, D, T, Y ) &
+       .AND. QueryOnGPU( opES_Points )
+#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Points] Data not present on device'
+      IF ( .not. QueryOnGPU( E ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Points]   E missing'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Points]   D missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Points]   T missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Points]   Y missing'
+      IF ( .not. QueryOnGPU( opES_Points ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Points]   opES_Points missing'
+    END IF
+#endif
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P, E, LogE_P )
+#endif
+    DO iP = iP_B, iP_E
+      LogD_P(iP) = LOG10( D(iP) / UnitD )
+      LogT_P(iP) = LOG10( T(iP) / UnitT )
+      Y_P(iP) = Y(iP) / UnitY
+      LogE_P(iP) = LOG10( E(iP) / UnitE )
+    END DO
+
+    CALL LogInterpolateSingleVariable_4D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Points)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( opES_Points )
+#endif
+    DO iP = iP_B, iP_E
+       opES_Points(iP) = opES_Points(iP) * UnitES
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+#endif
+
+#else
+
+    opES_Points = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_ES_Vector
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
