@@ -82,7 +82,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), PARAMETER :: WFactor_FP = FourPi / PlanckConstant**3
 
   INTEGER  :: nE_G, nX_G, nZ(4)
-  INTEGER  :: n_FP, n_FP_inner, n_FP_outer
+  INTEGER  :: n_FP_inner, n_FP_outer
   INTEGER  :: iE_B, iE_E
 
   REAL(DP), ALLOCATABLE :: E_N(:)        ! --- Energy Grid
@@ -91,13 +91,19 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), ALLOCATABLE :: W2_S(:)
   REAL(DP), ALLOCATABLE :: W3_S(:)
 
-  REAL(DP), ALLOCATABLE :: AMAT(:,:,:) ! --- Fix me: Is AMAT used?
-  REAL(DP), ALLOCATABLE :: BVEC(:,:)
-  REAL(DP), ALLOCATABLE :: TAU (:,:)
-  REAL(DP), ALLOCATABLE :: WORK(:,:)
-  INTEGER,  ALLOCATABLE :: IPIV(:,:)
   INTEGER,  ALLOCATABLE :: INFO(:)
-  INTEGER               :: LWORK
+
+  INTEGER               :: LWORK_outer
+  REAL(DP), ALLOCATABLE :: WORK_outer(:,:)
+  REAL(DP), ALLOCATABLE :: TAU_outer (:,:)
+  REAL(DP), ALLOCATABLE :: BVEC_outer(:,:)
+  REAL(DP), ALLOCATABLE :: AMAT_outer(:,:,:)
+
+  INTEGER               :: LWORK_inner
+  REAL(DP), ALLOCATABLE :: WORK_inner(:,:)
+  REAL(DP), ALLOCATABLE :: TAU_inner (:,:)
+  REAL(DP), ALLOCATABLE :: BVEC_inner(:,:)
+  REAL(DP), ALLOCATABLE :: AMAT_inner(:,:,:)
 
   ! --- Solver Parameters to be initialized
 
@@ -174,7 +180,6 @@ CONTAINS
 
     n_FP_outer = 5
     n_FP_inner = nE_G * nCR * nSpecies
-    n_FP       = n_FP_outer + n_FP_Inner
 
     ALLOCATE( E_N (nE_G) )
     ALLOCATE( W2_N(nE_G) )
@@ -187,11 +192,43 @@ CONTAINS
     W2_S(:) = WFactor_FP * W2_N(:)
     W3_S(:) = WFactor_FP * W3_N(:)
 
-    ALLOCATE( AMAT(n_FP,M_FP,nX_G) )
-    ALLOCATE( BVEC(n_FP,nX_G) )
-    ALLOCATE( TAU (n_FP,nX_G) )
-    ALLOCATE( IPIV(n_FP,nX_G) )
-    ALLOCATE( INFO(nX_G) )
+    ALLOCATE( INFO(1:nX_G) )
+
+    ALLOCATE( TAU_outer (1:n_FP_outer,          1:nX_G) )
+    ALLOCATE( BVEC_outer(1:n_FP_outer,          1:nX_G) )
+    ALLOCATE( AMAT_outer(1:n_FP_outer,1:M_outer,1:nX_G) )
+
+    IF( M_outer > 3 )THEN
+
+      CALL LinearLeastSquares_LWORK &
+             ( 'N', n_FP_outer, M_outer-1, 1, AMAT_outer, n_FP_outer, &
+               BVEC_outer, n_FP_outer, TMP, LWORK_outer )
+
+    ELSE
+
+      LWORK_outer = 1
+
+    END IF
+
+    ALLOCATE( WORK_outer(LWORK_outer,nX_G) )
+
+    ALLOCATE( TAU_inner (1:n_FP_inner,          1:nX_G) )
+    ALLOCATE( BVEC_inner(1:n_FP_inner,          1:nX_G) )
+    ALLOCATE( AMAT_inner(1:n_FP_inner,1:M_inner,1:nX_G) )
+
+    IF( M_inner > 3 )THEN
+
+      CALL LinearLeastSquares_LWORK &
+             ( 'N', n_FP_inner, M_inner-1, 1, AMAT_inner, n_FP_inner, &
+               BVEC_inner, n_FP_inner, TMP, LWORK_inner )
+
+    ELSE
+
+      LWORK_inner = 1
+
+    END IF
+
+    ALLOCATE( WORK_inner(LWORK_inner,nX_G) )
 
     ALLOCATE( P1D(          nX_G,nP1D) )
     ALLOCATE( P2D(nE_G     ,nX_G,nP2D) )
@@ -205,27 +242,6 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S ) &
     !$ACC CREATE( AMAT, BVEC, TAU, IPIV, INFO, P1D, P2D, P3D )
-#endif
-
-    IF( M_FP > 3 )THEN
-
-      CALL LinearLeastSquares_LWORK &
-             ( 'N', n_FP, M_FP-1, 1, AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
-
-      ALLOCATE( WORK(LWORK,nX_G) )
-
-    ELSE
-
-      ALLOCATE( WORK(1,1) )
-
-    END IF
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: WORK )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC CREATE( WORK )
 #endif
 
   END SUBROUTINE InitializeNeutrinoMatterSolver
@@ -296,7 +312,10 @@ CONTAINS
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
-    DEALLOCATE( AMAT, BVEC, TAU, WORK, IPIV, INFO )
+!    DEALLOCATE( AMAT, BVEC, TAU, WORK, IPIV, INFO )
+    DEALLOCATE( INFO )
+    DEALLOCATE( TAU_outer, BVEC_outer, AMAT_outer, WORK_outer )
+    DEALLOCATE( TAU_inner, BVEC_inner, AMAT_inner, WORK_inner )
     DEALLOCATE( P1D, P2D, P3D )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
@@ -414,21 +433,17 @@ CONTAINS
     REAL(DP) :: Phi_0_In_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP) :: Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
 
-    REAL(DP) :: AMAT_outer (1:n_FP_outer,1:M_outer,1:nX_G)
-    REAL(DP) :: GVEC_outer (1:n_FP_outer,1:M_outer,1:nX_G)
-    REAL(DP) :: FVEC_outer (1:n_FP_outer,1:M_outer,1:nX_G)
+    REAL(DP) :: Alpha_outer(             1:M_outer,1:nX_G)
     REAL(DP) :: GVECm_outer(1:n_FP_outer,          1:nX_G)
     REAL(DP) :: FVECm_outer(1:n_FP_outer,          1:nX_G)
-    REAL(DP) :: BVEC_outer (1:n_FP_outer,          1:nX_G)
-    REAL(DP) :: Alpha_outer(             1:M_outer,1:nX_G)
+    REAL(DP) :: GVEC_outer (1:n_FP_outer,1:M_outer,1:nX_G)
+    REAL(DP) :: FVEC_outer (1:n_FP_outer,1:M_outer,1:nX_G)
 
-    REAL(DP) :: AMAT_inner (1:n_FP_inner,1:M_inner,1:nX_G)
-    REAL(DP) :: GVEC_inner (1:n_FP_inner,1:M_inner,1:nX_G)
-    REAL(DP) :: FVEC_inner (1:n_FP_inner,1:M_inner,1:nX_G)
+    REAL(DP) :: Alpha_inner(             1:M_inner,1:nX_G)
     REAL(DP) :: GVECm_inner(1:n_FP_inner,          1:nX_G)
     REAL(DP) :: FVECm_inner(1:n_FP_inner,          1:nX_G)
-    REAL(DP) :: BVEC_inner (1:n_FP_inner,          1:nX_G)
-    REAL(DP) :: Alpha_inner(             1:M_inner,1:nX_G)
+    REAL(DP) :: GVEC_inner (1:n_FP_inner,1:M_inner,1:nX_G)
+    REAL(DP) :: FVEC_inner (1:n_FP_inner,1:M_inner,1:nX_G)
 
     ITERATE_OUTER(:) = .TRUE.
     ITERATE_INNER(:) = .TRUE.
@@ -664,7 +679,8 @@ CONTAINS
         CALL SolveLS_FP &
                ( ITERATE_INNER, n_FP_inner, M_inner, Mk_inner, &
                  FVECm_inner, GVECm_inner, FVEC_inner, GVEC_inner, &
-                 AMAT_inner, BVEC_inner, Alpha_inner )
+                 AMAT_inner, BVEC_inner, Alpha_inner, TAU_inner, &
+                 LWORK_inner, WORK_inner )
 
         CALL TimersStop( Timer_Collisions_SolveLS )
 
@@ -721,7 +737,8 @@ CONTAINS
       CALL SolveLS_FP &
              ( ITERATE_OUTER, n_FP_outer, M_outer, Mk_outer, &
                FVECm_outer, GVECm_outer, FVEC_outer, GVEC_outer, &
-               AMAT_outer, BVEC_outer, Alpha_outer )
+               AMAT_outer, BVEC_outer, Alpha_outer, TAU_outer, &
+               LWORK_outer, WORK_outer )
 
       CALL TimersStop( Timer_Collisions_SolveLS )
 
@@ -900,7 +917,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
     ! --- to be changed to handle cases when iSpecies > 2 ---
 
-    INTEGER :: nX, nX0
+    INTEGER :: nX, nX0, iX, iE1, iE2
 
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
@@ -977,7 +994,7 @@ CONTAINS
     CALL ComputeNeutrinoOpacities_EC_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, Chi_2_P )
 
-    ! --- Isoenergetic scattering---
+    ! --- Isoenergetic scattering ---
 
     CALL ComputeNeutrinoOpacities_ES_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, Sig_1_P )
@@ -995,12 +1012,70 @@ CONTAINS
                Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
                P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
+      ! --- Enforce Detailed Balance (Again) Based on J0 ---
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX  = 1, nX
+      DO iE2 = 1, nE_G
+      DO iE1 = 1, nE_G
+
+        IF( iE1 <= iE2 )THEN
+
+          Phi_0_In_NES_1_P(iE1,iE2,iX) &
+            = Phi_0_Ot_NES_1_P(iE1,iE2,iX) &
+              * ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) ) &
+              / ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) )
+
+          Phi_0_In_NES_2_P(iE1,iE2,iX) &
+            = Phi_0_Ot_NES_2_P(iE1,iE2,iX) &
+              * ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) ) &
+              / ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) )
+
+        ELSE
+
+          Phi_0_Ot_NES_1_P(iE1,iE2,iX) &
+            = Phi_0_In_NES_1_P(iE1,iE2,iX) &
+              * ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) ) &
+              / ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) )
+
+          Phi_0_Ot_NES_2_P(iE1,iE2,iX) &
+            = Phi_0_In_NES_2_P(iE1,iE2,iX) &
+              * ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) ) &
+              / ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+
     ELSE
 
-      Phi_0_In_NES_1_P = Zero
-      Phi_0_Ot_NES_1_P = Zero
-      Phi_0_In_NES_2_P = Zero
-      Phi_0_Ot_NES_2_P = Zero
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX  = 1, nX
+      DO iE2 = 1, nE_G
+      DO iE1 = 1, nE_G
+
+        Phi_0_In_NES_1_P(iE1,iE2,iX) = Zero
+        Phi_0_Ot_NES_1_P(iE1,iE2,iX) = Zero
+        Phi_0_In_NES_2_P(iE1,iE2,iX) = Zero
+        Phi_0_Ot_NES_2_P(iE1,iE2,iX) = Zero
+
+      END DO
+      END DO
+      END DO
 
     END IF
 
@@ -1014,12 +1089,54 @@ CONTAINS
                Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
                P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
+      ! --- Enforce Detailed Balance (Again) Based on J0 ---
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX  = 1, nX
+      DO iE2 = 1, nE_G
+      DO iE1 = 1, nE_G
+
+        Phi_0_In_Pair_1_P(iE1,iE2,iX) &
+          = Phi_0_Ot_Pair_1_P(iE1,iE2,iX) &
+            * (         J0_1_P(iE2,iX)   *         J0_2_P(iE1,iX)   ) &
+            / ( ( One - J0_1_P(iE2,iX) ) * ( One - J0_2_P(iE1,iX) ) )
+
+        Phi_0_In_Pair_2_P(iE1,iE2,iX) &
+          = Phi_0_Ot_Pair_2_P(iE1,iE2,iX) &
+            * (         J0_2_P(iE2,iX)   *         J0_1_P(iE1,iX)   ) &
+            / ( ( One - J0_2_P(iE2,iX) ) * ( One - J0_1_P(iE1,iX) ) )
+
+      END DO
+      END DO
+      END DO
+
     ELSE
 
-      Phi_0_In_Pair_1_P = Zero
-      Phi_0_Ot_Pair_1_P = Zero
-      Phi_0_In_Pair_2_P = Zero
-      Phi_0_Ot_Pair_2_P = Zero
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX  = 1, nX
+      DO iE2 = 1, nE_G
+      DO iE1 = 1, nE_G
+
+        Phi_0_In_Pair_1_P(iE1,iE2,iX) = Zero
+        Phi_0_Ot_Pair_1_P(iE1,iE2,iX) = Zero
+        Phi_0_In_Pair_2_P(iE1,iE2,iX) = Zero
+        Phi_0_Ot_Pair_2_P(iE1,iE2,iX) = Zero
+
+      END DO
+      END DO
+      END DO
 
     END IF
 
@@ -1493,7 +1610,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeMatterRHS_FP &
-    ( MASK, n_FPVar, Fm, Gm, J, H_d_1, H_d_2, H_d_3, &
+    ( MASK, n_FP, Fm, Gm, J, H_d_1, H_d_2, H_d_3, &
              C_Y    , S_Y    , U_Y    , &
              C_Ef   , S_Ef   , U_Ef   , &
       V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, &
@@ -1502,9 +1619,9 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
-    REAL(DP), INTENT(inout) :: Fm(1:n_FPVar,1:nX_G)
-    REAL(DP), INTENT(inout) :: Gm(1:n_FPVar,1:nX_G)
+    INTEGER,  INTENT(in)    :: n_FP
+    REAL(DP), INTENT(inout) :: Fm(1:n_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: Gm(1:n_FP,1:nX_G)
     REAL(DP), INTENT(in)    :: J    (1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP), INTENT(in)    :: H_d_1(1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP), INTENT(in)    :: H_d_2(1:nE_G,1:nX_G,1:nSpecies)
@@ -1687,16 +1804,16 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoRHS_FP &
-    ( MASK, n_FPVar, FVECm, GVECm, dt, Omega, V_u_1, V_u_2, V_u_3, &
+    ( MASK, n_FP, FVECm, GVECm, dt, Omega, V_u_1, V_u_2, V_u_3, &
       C_J  , C_H_d_1  , C_H_d_2  , C_H_d_3  , &
       J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
       J0, Chi, Sig, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
-    REAL(DP), INTENT(inout) :: FVECm(1:n_FPVar,1:nX_G)
-    REAL(DP), INTENT(inout) :: GVECm(1:n_FPVar,1:nX_G)
+    INTEGER,  INTENT(in)    :: n_FP
+    REAL(DP), INTENT(inout) :: FVECm(1:n_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: GVECm(1:n_FP,1:nX_G)
     REAL(DP), INTENT(in)    :: dt
     REAL(DP), INTENT(in)    :: Omega(1:nX_G)
     REAL(DP), INTENT(in)    :: V_u_1(1:nX_G)
@@ -1836,12 +1953,12 @@ CONTAINS
 
 
   SUBROUTINE UpdateMatterRHS_FP &
-    ( MASK, n_FPVar, Y, Y_old, U_Y, Ef, Ef_old, U_Ef, &
+    ( MASK, n_FP, Y, Y_old, U_Y, Ef, Ef_old, U_Ef, &
       V_d_1, V_d_1_old, U_V_d_1, V_d_2, V_d_2_old, U_V_d_2, &
       V_d_3, V_d_3_old, U_V_d_3, FVECm, GVECm )
 
     LOGICAL,  INTENT(in)    :: MASK     (1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
+    INTEGER,  INTENT(in)    :: n_FP
     REAL(DP), INTENT(inout) :: Y        (1:nX_G)
     REAL(DP), INTENT(in)    :: Y_old    (1:nX_G)
     REAL(DP), INTENT(inout) :: U_Y      (1:nX_G)
@@ -1857,8 +1974,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: V_d_3    (1:nX_G)
     REAL(DP), INTENT(in)    :: V_d_3_old(1:nX_G)
     REAL(DP), INTENT(inout) :: U_V_d_3  (1:nX_G)
-    REAL(DP), INTENT(inout) :: FVECm(1:n_FPVar,1:nX_G)
-    REAL(DP), INTENT(inout) :: GVECm(1:n_FPVar,1:nX_G)
+    REAL(DP), INTENT(inout) :: FVECm(1:n_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: GVECm(1:n_FP,1:nX_G)
 
     INTEGER :: iN_X
 
@@ -1899,12 +2016,12 @@ CONTAINS
 
 
   SUBROUTINE UpdateNeutrinoRHS_FP &
-    ( MASK, n_FPVar, FVECm, GVECm, J_new, H_d_1_new, H_d_2_new, H_d_3_new )
+    ( MASK, n_FP, FVECm, GVECm, J_new, H_d_1_new, H_d_2_new, H_d_3_new )
 
     LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
-    REAL(DP), INTENT(inout) :: FVECm(1:n_FPVar,1:nX_G)
-    REAL(DP), INTENT(inout) :: GVECm(1:n_FPVar,1:nX_G)
+    INTEGER,  INTENT(in)    :: n_FP
+    REAL(DP), INTENT(inout) :: FVECm(1:n_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: GVECm(1:n_FP,1:nX_G)
     REAL(DP), INTENT(inout) :: J_new    (1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP), INTENT(inout) :: H_d_1_new(1:nE_G,1:nX_G,1:nSpecies)
     REAL(DP), INTENT(inout) :: H_d_2_new(1:nE_G,1:nX_G,1:nSpecies)
@@ -1953,7 +2070,7 @@ CONTAINS
 
 
   SUBROUTINE SolveLS_FP &
-    ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha )
+    ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha, TAU, LWORK, WORK )
 
     LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
     INTEGER,  INTENT(in)    :: n_FP
@@ -1966,9 +2083,12 @@ CONTAINS
     REAL(DP), INTENT(inout) :: G    (1:n_FP,1:M,1:nX_G)
     REAL(DP), INTENT(inout) :: A    (1:n_FP,1:M,1:nX_G)
     REAL(DP), INTENT(inout) :: Alpha(       1:M,1:nX_G)
+    REAL(DP), INTENT(inout) :: TAU  (1:n_FP    ,1:nX_G)
+    INTEGER,  INTENT(inout) :: LWORK
+    REAL(DP), INTENT(inout) :: WORK(1:LWORK    ,1:nX_G)
 
     INTEGER  :: iN_X, iFP, iM
-    REAL(DP) :: AA11, AA12, AA21, AA22, AB1, AB2, DET_AA, SUM1
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -2059,85 +2179,50 @@ CONTAINS
 
       ELSE IF ( Mk == 3 ) THEN
 
-        IF ( n_FP == 2 ) THEN ! --- Fix me: Can this happen? No!
-
-#if defined(THORNADO_OMP_OL)
-          !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-          !$OMP PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA )
-#elif defined(THORNADO_OACC)
-          !$ACC PARALLEL LOOP GANG VECTOR &
-          !$ACC PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA )
-#elif defined(THORNADO_OMP)
-          !$OMP PARALLEL DO SIMD &
-          !$OMP PRIVATE( AA11, AA12, AA21, AA22, AB1, AB2, DET_AA )
-#endif
-          DO iN_X = 1, nX_G
-            IF ( MASK(iN_X) ) THEN
-
-              AA11 = A(1,1,iN_X)
-              AA21 = A(2,1,iN_X)
-              AA12 = A(1,2,iN_X)
-              AA22 = A(2,2,iN_X)
-
-              AB1 = B(1,iN_X)
-              AB2 = B(2,iN_X)
-
-              DET_AA = AA11*AA22 - AA21*AA12
-
-              B(1,iN_X) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-              B(2,iN_X) = ( - AA21 * AB1 + AA11 * AB2 ) / DET_AA
-
-            END IF
-          END DO
-
-        ELSE
-
 #if defined  ( THORNADO_OMP_OL )
-          !$OMP TARGET TEAMS DISTRIBUTE &
-          !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
+        !$OMP TARGET TEAMS DISTRIBUTE &
+        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #elif defined( THORNADO_OACC   )
-          !$ACC PARALLEL LOOP GANG &
-          !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
+        !$ACC PARALLEL LOOP GANG &
+        !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #elif defined( THORNADO_OMP    )
-          !$OMP PARALLEL DO &
-          !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
+        !$OMP PARALLEL DO &
+        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #endif
-          DO iN_X = 1, nX_G
-            IF ( MASK(iN_X) ) THEN
+        DO iN_X = 1, nX_G
+          IF ( MASK(iN_X) ) THEN
 
-              AA11 = Zero
-              AA12 = Zero
-              AA22 = Zero
-              AB1  = Zero
-              AB2  = Zero
+            AA11 = Zero
+            AA12 = Zero
+            AA22 = Zero
+            AB1  = Zero
+            AB2  = Zero
 
 #if defined(THORNADO_OMP_OL)
-              !$OMP PARALLEL DO SIMD &
-              !$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
+            !$OMP PARALLEL DO SIMD &
+            !$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
 #elif defined(THORNADO_OACC)
-              !$ACC LOOP VECTOR &
-              !$ACC REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
+            !$ACC LOOP VECTOR &
+            !$ACC REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
 #endif
-              DO iFP = 1, n_FP
+            DO iFP = 1, n_FP
 
-                AA11 = AA11 + A(iFP,1,iN_X) * A(iFP,1,iN_X)
-                AA12 = AA12 + A(iFP,1,iN_X) * A(iFP,2,iN_X)
-                AA22 = AA22 + A(iFP,2,iN_X) * A(iFP,2,iN_X)
+              AA11 = AA11 + A(iFP,1,iN_X) * A(iFP,1,iN_X)
+              AA12 = AA12 + A(iFP,1,iN_X) * A(iFP,2,iN_X)
+              AA22 = AA22 + A(iFP,2,iN_X) * A(iFP,2,iN_X)
 
-                AB1  = AB1  + A(iFP,1,iN_X) * B(iFP,iN_X)
-                AB2  = AB2  + A(iFP,2,iN_X) * B(iFP,iN_X)
+              AB1  = AB1  + A(iFP,1,iN_X) * B(iFP,iN_X)
+              AB2  = AB2  + A(iFP,2,iN_X) * B(iFP,iN_X)
 
-              END DO
+            END DO
 
-              DET_AA = AA11 * AA22 - AA12 * AA12
+            DET_AA = AA11 * AA22 - AA12 * AA12
 
-              B(1,iN_X) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-              B(2,iN_X) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+            B(1,iN_X) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+            B(2,iN_X) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
 
-            END IF
-          END DO
-
-        END IF
+          END IF
+        END DO
 
       ELSE IF ( Mk > 3 ) THEN
 
@@ -2205,18 +2290,18 @@ CONTAINS
   END SUBROUTINE SolveLS_FP
 
 
-  SUBROUTINE ShiftRHS_FP( MASK, n_FPVar, M, Mk, F, G )
+  SUBROUTINE ShiftRHS_FP( MASK, n_FP, M, Mk, F, G )
 
     LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
+    INTEGER,  INTENT(in)    :: n_FP
     INTEGER,  INTENT(in)    :: M
     INTEGER,  INTENT(in)    :: Mk
-    REAL(DP), INTENT(inout) :: F(1:n_FPVar,1:M,1:nX_G)
-    REAL(DP), INTENT(inout) :: G(1:n_FPVar,1:M,1:nX_G)
+    REAL(DP), INTENT(inout) :: F(1:n_FP,1:M,1:nX_G)
+    REAL(DP), INTENT(inout) :: G(1:n_FP,1:M,1:nX_G)
 
     INTEGER  :: iN_X, iFP, iM
-    REAL(DP) :: FTMP(1:n_FPVar,1:M)
-    REAL(DP) :: GTMP(1:n_FPVar,1:M)
+    REAL(DP) :: FTMP(1:n_FP,1:M)
+    REAL(DP) :: GTMP(1:n_FP,1:M)
 
     IF ( Mk == M ) THEN
 
@@ -2239,7 +2324,7 @@ CONTAINS
           !$ACC LOOP VECTOR COLLAPSE(2)
 #endif
           DO iM  = 1, Mk-1
-          DO iFP = 1, n_FPVar
+          DO iFP = 1, n_FP
             FTMP(iFP,iM) = F(iFP,iM+1,iN_X)
             GTMP(iFP,iM) = G(iFP,iM+1,iN_X)
           END DO
@@ -2251,7 +2336,7 @@ CONTAINS
           !$ACC LOOP VECTOR COLLAPSE(2)
 #endif
           DO iM  = 1, Mk-1
-          DO iFP = 1, n_FPVar
+          DO iFP = 1, n_FP
             F(iFP,iM,iN_X) = FTMP(iFP,iM)
             G(iFP,iM,iN_X) = GTMP(iFP,iM)
           END DO
@@ -2266,13 +2351,13 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Inner &
-    ( MASK, n_FPVar, k_inner, nIterations_Inner, Fm, Jnorm )
+    ( MASK, n_FP, k_inner, nIterations_Inner, Fm, Jnorm )
 
     LOGICAL,  INTENT(inout) :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
+    INTEGER,  INTENT(in)    :: n_FP
     INTEGER,  INTENT(in)    :: k_inner
     INTEGER,  INTENT(inout) :: nIterations_Inner(1:nX_G)
-    REAL(DP), INTENT(in)    :: Fm(1:n_FPVar,1:nX_G)
+    REAL(DP), INTENT(in)    :: Fm(1:n_FP,1:nX_G)
     REAL(DP), INTENT(in)    :: Jnorm(1:nSpecies,1:nX_G)
 
     LOGICAL  :: CONVERGED
@@ -2368,13 +2453,13 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Outer &
-    ( MASK_OUTER, MASK_INNER, n_FPVar, k_outer, Fm, nIterations_Outer )
+    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, Fm, nIterations_Outer )
 
     LOGICAL,  INTENT(inout) :: MASK_OUTER(1:nX_G)
     LOGICAL,  INTENT(inout) :: MASK_INNER(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FPVar
+    INTEGER,  INTENT(in)    :: n_FP
     INTEGER,  INTENT(in)    :: k_outer
-    REAL(DP), INTENT(in)    :: Fm(1:n_FPVar,1:nX_G)
+    REAL(DP), INTENT(in)    :: Fm(1:n_FP,1:nX_G)
     INTEGER,  INTENT(inout) :: nIterations_Outer(1:nX_G)
 
     LOGICAL  :: CONVERGED

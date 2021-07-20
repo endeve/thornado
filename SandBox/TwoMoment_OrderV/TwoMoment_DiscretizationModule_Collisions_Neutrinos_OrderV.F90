@@ -323,7 +323,6 @@ CONTAINS
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
 
-
     INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
 
     iE_B0 = iZ_B0(1)  ; iE_E0 = iZ_E0(1)
@@ -382,11 +381,12 @@ CONTAINS
     H2_P(1:nZ_G) => PR_N(:,:,:,iCR_G2)
     H3_P(1:nZ_G) => PR_N(:,:,:,iCR_G3)
 
-    CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
-
-    ! --- parameter initialization can be moved to the program init
+    ! --- Neutrino-Matter Solver Parameter Initialization ---
+    ! --- ( can be moved to the program init ) --------------
 
     CALL InitializeNeutrinoMatterSolverParameters()
+
+    CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
 
   END SUBROUTINE InitializeCollisions
 
