@@ -17,12 +17,14 @@ MODULE EquationOfStateModule_TABLE
     EquationOfStateTableType
   USE wlEOSInversionModule, ONLY: &
     InitializeEOSInversion, &
-    ComputeTemperatureWith_DEY, &
-    ComputeTemperatureWith_DPY, &
-    DescribeEOSInversionError
+    ComputeTemperatureWith_DEY_Single_Guess, &
+    ComputeTemperatureWith_DEY_Single_NoGuess, &
+    ComputeTemperatureWith_DPY_Single_NoGuess, &
+    DescribeEOSInversionError, &
+    MinD, MaxD, MinT, MaxT, MinY, MaxY
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable, &
-    LogInterpolateDifferentiateSingleVariable
+    LogInterpolateSingleVariable_3D_Custom_Point, &
+    LogInterpolateDifferentiateSingleVariable_3D_Custom_Point
 
   ! ----------------------------------------------
 
@@ -52,8 +54,6 @@ MODULE EquationOfStateModule_TABLE
     iD_T, iT_T, iY_T, &
     iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, &
     iXp_T, iXn_T, iXa_T, iXh_T, iGm_T
-  INTEGER, DIMENSION(3) :: &
-    LogInterp
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
     UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
@@ -63,18 +63,15 @@ MODULE EquationOfStateModule_TABLE
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
-  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
-    Ds_T, Ts_T, Ys_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: &
-    Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, &
-    Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: &
+    D_T, T_T, Y_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
+    P_T, S_T, E_T, Me_T, Mp_T, Mn_T, &
+    Xp_T, Xn_T, Xa_T, Xh_T, Gm_T
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateTableType), POINTER :: EOS
 #endif
-
-  REAL(DP), PUBLIC :: MinD, MinT, MinY
-  REAL(DP), PUBLIC :: MaxD, MaxT, MaxY
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -92,6 +89,8 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
+
+  PUBLIC :: MinD, MaxD, MinT, MaxT, MinY, MaxY
 
   INTERFACE ApplyEquationOfState_TABLE
     MODULE PROCEDURE ApplyEquationOfState_Table_Scalar
@@ -175,24 +174,22 @@ MODULE EquationOfStateModule_TABLE
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
-  !$OMP ( Ds_T, Ts_T, Ys_T, &
+  !$OMP ( D_T, T_T, Y_T, &
   !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
   !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, &
   !$OMP   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$OMP   OS_Xa, OS_Xh, OS_Gm, &
-  !$OMP   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
-  !$OMP   Xas_T, Xhs_T, Gms_T, &
-  !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
+  !$OMP   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
+  !$OMP   Xa_T, Xh_T, Gm_T )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
-  !$ACC ( Ds_T, Ts_T, Ys_T, &
+  !$ACC ( D_T, T_T, Y_T, &
   !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
   !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, &
   !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$ACC   OS_Xa, OS_Xh, OS_Gm, &
-  !$ACC   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
-  !$ACC   Xas_T, Xhs_T, Gms_T, &
-  !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
+  !$ACC   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
+  !$ACC   Xa_T, Xh_T, Gm_T )
 #endif
 
 CONTAINS
@@ -277,26 +274,14 @@ CONTAINS
 
     ! --- Thermodynamic States ---
 
-    ALLOCATE( Ds_T(EOS % TS % nPoints(iD_T)) )
-    Ds_T = EOS % TS % States(iD_T) % Values
+    ALLOCATE( D_T(EOS % TS % nPoints(iD_T)) )
+    D_T = EOS % TS % States(iD_T) % Values
 
-    MinD = MINVAL( Ds_T ) * Gram / Centimeter**3
-    MaxD = MAXVAL( Ds_T ) * Gram / Centimeter**3
+    ALLOCATE( T_T(EOS % TS % nPoints(iT_T)) )
+    T_T = EOS % TS % States(iT_T) % Values
 
-    ALLOCATE( Ts_T(EOS % TS % nPoints(iT_T)) )
-    Ts_T = EOS % TS % States(iT_T) % Values
-
-    MinT = MINVAL( Ts_T ) * Kelvin
-    MaxT = MAXVAL( Ts_T ) * Kelvin
-
-    ALLOCATE( Ys_T(EOS % TS % nPoints(iY_T)) )
-    Ys_T = EOS % TS % States(iY_T) % Values
-
-    MinY = MINVAL( Ys_T )
-    MaxY = MAXVAL( Ys_T )
-
-    LogInterp &
-      = EOS % TS % LogInterp
+    ALLOCATE( Y_T(EOS % TS % nPoints(iY_T)) )
+    Y_T = EOS % TS % States(iY_T) % Values
 
     ! --- Dependent Variables Indices ---
 
@@ -327,85 +312,86 @@ CONTAINS
     OS_Gm = EOS % DV % Offsets(iGm_T)
 
     ALLOCATE &
-      ( Ps_T (1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( P_T (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Ss_T (1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( S_T (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Es_T (1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( E_T (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Mes_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Me_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Mps_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Mp_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Mns_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Mn_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Xps_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Xp_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Xns_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Xn_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Xas_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Xa_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Xhs_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Xh_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
     ALLOCATE &
-      ( Gms_T(1:EOS % DV % nPoints(1), &
-              1:EOS % DV % nPoints(2), &
-              1:EOS % DV % nPoints(3)) )
+      ( Gm_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
 
-    Ps_T (:,:,:) = EOS % DV % Variables(iP_T ) % Values(:,:,:)
-    Ss_T (:,:,:) = EOS % DV % Variables(iS_T ) % Values(:,:,:)
-    Es_T (:,:,:) = EOS % DV % Variables(iE_T ) % Values(:,:,:)
-    Mes_T(:,:,:) = EOS % DV % Variables(iMe_T) % Values(:,:,:)
-    Mps_T(:,:,:) = EOS % DV % Variables(iMp_T) % Values(:,:,:)
-    Mns_T(:,:,:) = EOS % DV % Variables(iMn_T) % Values(:,:,:)
-    Xps_T(:,:,:) = EOS % DV % Variables(iXp_T) % Values(:,:,:)
-    Xns_T(:,:,:) = EOS % DV % Variables(iXn_T) % Values(:,:,:)
-    Xas_T(:,:,:) = EOS % DV % Variables(iXa_T) % Values(:,:,:)
-    Xhs_T(:,:,:) = EOS % DV % Variables(iXh_T) % Values(:,:,:)
-    Gms_T(:,:,:) = EOS % DV % Variables(iGm_T) % Values(:,:,:)
+    P_T  = EOS % DV % Variables(iP_T ) % Values
+    S_T  = EOS % DV % Variables(iS_T ) % Values
+    E_T  = EOS % DV % Variables(iE_T ) % Values
+    Me_T = EOS % DV % Variables(iMe_T) % Values
+    Mp_T = EOS % DV % Variables(iMp_T) % Values
+    Mn_T = EOS % DV % Variables(iMn_T) % Values
+    Xp_T = EOS % DV % Variables(iXp_T) % Values
+    Xn_T = EOS % DV % Variables(iXn_T) % Values
+    Xa_T = EOS % DV % Variables(iXa_T) % Values
+    Xh_T = EOS % DV % Variables(iXh_T) % Values
+    Gm_T = EOS % DV % Variables(iGm_T) % Values
 
     CALL InitializeEOSInversion &
-           ( Ds_T, Ts_T, Ys_T, &
-             10.0d0**( Es_T ) - OS_E, &
-             10.0d0**( Ps_T ) - OS_P, &
-             10.0d0**( Ss_T ) - OS_S, &
+           ( D_T, T_T, Y_T, &
+             10.0d0**( E_T ) - OS_E, &
+             10.0d0**( P_T ) - OS_P, &
+             10.0d0**( S_T ) - OS_S, &
              Verbose_Option = Verbose )
 
 #if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: D_T, T_T, Y_T, &
+    !$OMP          P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
+    !$OMP          Xa_T, Xh_T, Gm_T )
+
     !$OMP TARGET UPDATE TO &
-    !$OMP ( Ds_T, Ts_T, Ys_T, &
-    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
+    !$OMP ( UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
-    !$OMP   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T, &
-    !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
-    !$ACC ( Ds_T, Ts_T, Ys_T, &
+    !$ACC ( D_T, T_T, Y_T, &
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
-    !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T, &
-    !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
+    !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
+    !$ACC   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
 #endif
 
 #endif
@@ -417,19 +403,26 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    DEALLOCATE( Ds_T, Ts_T, Ys_T )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: D_T, T_T, Y_T, &
+    !$OMP               P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
+    !$OMP               Xa_T, Xh_T, Gm_T )
+#endif
 
-    DEALLOCATE( Ps_T  )
-    DEALLOCATE( Ss_T  )
-    DEALLOCATE( Es_T  )
-    DEALLOCATE( Mes_T )
-    DEALLOCATE( Mps_T )
-    DEALLOCATE( Mns_T )
-    DEALLOCATE( Xps_T )
-    DEALLOCATE( Xns_T )
-    DEALLOCATE( Xas_T )
-    DEALLOCATE( Xhs_T )
-    DEALLOCATE( Gms_T )
+    DEALLOCATE( D_T, T_T, Y_T )
+
+    DEALLOCATE( P_T  )
+    DEALLOCATE( S_T  )
+    DEALLOCATE( E_T  )
+    DEALLOCATE( Me_T )
+    DEALLOCATE( Mp_T )
+    DEALLOCATE( Mn_T )
+    DEALLOCATE( Xp_T )
+    DEALLOCATE( Xn_T )
+    DEALLOCATE( Xa_T )
+    DEALLOCATE( Xh_T )
+    DEALLOCATE( Gm_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
        DEALLOCATE( EOS )
@@ -454,58 +447,58 @@ CONTAINS
 
     ! --- Interpolate Pressure ----------------------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, S, Ss_T, OS_S, Units_V = UnitS )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, S, S_T, OS_S, Units_V = UnitS )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, E, Es_T, OS_E, Units_V = UnitE )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, E, E_T, OS_E, Units_V = UnitE )
 
     ! --- Interpolate Electron Chemical Potential ---------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Me, Mes_T, OS_Me, Units_V = UnitMe )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Me, Me_T, OS_Me, Units_V = UnitMe )
 
     ! --- Interpolate Proton Chemical Potential -----------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Mp, Mps_T, OS_Mp, Units_V = UnitMp )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Mp, Mp_T, OS_Mp, Units_V = UnitMp )
 
     ! --- Interpolate Neutron Chemical Potential ----------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Mn, Mns_T, OS_Mn, Units_V = UnitMn )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Mn, Mn_T, OS_Mn, Units_V = UnitMn )
 
     ! --- Interpolate Proton Mass Fraction ----------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Xp, Xps_T, OS_Xp, Units_V = UnitXp )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Xp, Xp_T, OS_Xp, Units_V = UnitXp )
 
     ! --- Interpolate Neutron Mass Fraction ---------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Xn, Xns_T, OS_Xn, Units_V = UnitXn )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Xn, Xn_T, OS_Xn, Units_V = UnitXn )
 
     ! --- Interpolate Alpha Mass Fraction -----------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Xa, Xas_T, OS_Xa, Units_V = UnitXa )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Xa, Xa_T, OS_Xa, Units_V = UnitXa )
 
     ! --- Interpolate Heavy Mass Fraction -----------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Xh, Xhs_T, OS_Xh, Units_V = UnitXh )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Xh, Xh_T, OS_Xh, Units_V = UnitXh )
 
     ! --- Gamma1 ------------------------------------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = UnitGm )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Gm, Gm_T, OS_Gm, Units_V = UnitGm )
 
   END SUBROUTINE ApplyEquationOfState_TABLE_Scalar
 
@@ -523,7 +516,7 @@ CONTAINS
 
     DO iP = 1, nP
 
-      CALL ApplyEquationOfState_TABLE &
+      CALL ApplyEquationOfState_TABLE_Scalar &
              ( D (iP), T (iP), Y (iP), P (iP), S (iP), E (iP), Me(iP), &
                Mp(iP), Mn(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP), Gm(iP) )
 
@@ -547,7 +540,7 @@ CONTAINS
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option
 
     REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
-    INTEGER :: Error
+    INTEGER  :: Error
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -559,14 +552,14 @@ CONTAINS
 
       T_Guess = Guess_Option / Kelvin
 
-      CALL ComputeTemperatureWith_DEY &
-             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, T_Guess, &
+      CALL ComputeTemperatureWith_DEY_Single_Guess &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
                Error_Option = Error )
 
     ELSE
 
-      CALL ComputeTemperatureWith_DEY &
-             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
                Error_Option = Error )
 
     END IF
@@ -622,7 +615,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
-    !$ACC PRESENT( D, E, Y, T ) &
+    !$ACC PRESENT( D, E, Y, T, D_T, T_T, Y_T, E_T, Guess_Option ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -636,8 +629,8 @@ CONTAINS
 
         T_Guess = Guess_Option(iP) / Kelvin
 
-        CALL ComputeTemperatureWith_DEY &
-               ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, T_Guess, &
+        CALL ComputeTemperatureWith_DEY_Single_Guess &
+               ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
                  Error_Option = Error(iP) )
 
         T(iP) = T_Lookup * Kelvin
@@ -655,7 +648,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
-    !$ACC PRESENT( D, E, Y, T ) &
+    !$ACC PRESENT( D, E, Y, T, D_T, T_T, Y_T, E_T ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -667,8 +660,8 @@ CONTAINS
         E_P = E(iP) / ( Erg / Gram )
         Y_P = Y(iP)
 
-        CALL ComputeTemperatureWith_DEY &
-               ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
+        CALL ComputeTemperatureWith_DEY_Single_NoGuess &
+               ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
                  Error_Option = Error(iP) )
 
         T(iP) = T_Lookup * Kelvin
@@ -678,6 +671,13 @@ CONTAINS
     END IF
 
 #endif
+
+    IF ( ANY( Error > 0 ) ) THEN
+      DO iP = 1, nP
+        IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
+      END DO
+      STOP
+    END IF
 
     IF( PRESENT( Error_Option ) ) Error_Option = Error
 
@@ -700,10 +700,10 @@ CONTAINS
     Em = Ev / D              ! --- Internal Energy per Mass
     Y  = Ne / D * BaryonMass ! --- Electron Fraction
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Y, T )
 
-    CALL ComputePressure_TABLE &
+    CALL ComputePressure_TABLE_Scalar &
            ( D, T, Y, P )
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
@@ -720,7 +720,8 @@ CONTAINS
 
     DO iP = 1, nP
 
-      CALL ComputePressureFromPrimitive_TABLE( D(iP), Ev(iP), Ne(iP), P(iP) )
+      CALL ComputePressureFromPrimitive_TABLE_Scalar &
+             ( D(iP), Ev(iP), Ne(iP), P(iP) )
 
     END DO
 
@@ -747,13 +748,13 @@ CONTAINS
     E_P = Em / UnitE
     Y_P = Y  / UnitY
 
-    CALL ComputeTemperatureWith_DEY &
-           ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_P )
+    CALL ComputeTemperatureWith_DEY_Single_NoGuess &
+           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_P )
 
     T = T_P * UnitT
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
 
 #endif
 
@@ -772,7 +773,7 @@ CONTAINS
 
     DO iP = 1, nP
 
-      CALL ComputePressureFromSpecificInternalEnergy_TABLE &
+      CALL ComputePressureFromSpecificInternalEnergy_TABLE_Scalar &
              ( D(iP), Em(iP), Y(iP), P(iP) )
 
     END DO
@@ -796,14 +797,14 @@ CONTAINS
     Em = Ev / D
     Y  = Ne * ( BaryonMass / D )
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Y, T )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, P, Ps_T, OS_P, Units_V = Dyne / Centimeter**2 )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, P, P_T, OS_P, Units_V = Dyne / Centimeter**2 )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = 1.0_DP )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Gm, Gm_T, OS_Gm, Units_V = 1.0_DP )
 
     Cs = SQRT( Gm * P / D )
 
@@ -820,14 +821,14 @@ CONTAINS
     Em = Ev / D
     Y  = Ne * ( BaryonMass / D )
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
            ( D, Em, Y, T )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, P, Ps_T, OS_P, Units_V = Dyne / Centimeter**2 )
+    CALL ComputeDependentVariable_TABLE_Vector &
+           ( D, T, Y, P, P_T, OS_P, Units_V = Dyne / Centimeter**2 )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = 1.0_DP )
+    CALL ComputeDependentVariable_TABLE_Vector &
+           ( D, T, Y, Gm, Gm_T, OS_Gm, Units_V = 1.0_DP )
 
     Cs = SQRT( Gm * P / D )
 
@@ -853,8 +854,8 @@ CONTAINS
     P_P = P / UnitP
     Y_P = Y / UnitY
 
-    CALL ComputeTemperatureWith_DPY &
-           ( D_P, P_P, Y_P, Ds_T, Ts_T, Ys_T, Ps_T, OS_P, T_P, &
+    CALL ComputeTemperatureWith_DPY_Single_NoGuess &
+           ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
              Error_Option = Error )
 
     T = T_P * UnitT
@@ -877,7 +878,7 @@ CONTAINS
 
     DO iP = 1, nP
 
-      CALL ComputeTemperatureFromPressure_TABLE &
+      CALL ComputeTemperatureFromPressure_TABLE_Scalar &
              ( D(iP), P(iP), Y(iP), T(iP) )
 
     END DO
@@ -901,8 +902,8 @@ CONTAINS
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Em, Es_T, OS_E, Units_V = UnitE )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Em, E_T, OS_E, Units_V = UnitE )
 
       Ev = Em * D              ! --- Internal Energy per Unit Volume
       Ne = Y  * D / BaryonMass ! --- Electrons per Unit Volume
@@ -952,7 +953,7 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      CALL ComputeThermodynamicStates_Primitive_TABLE &
+      CALL ComputeThermodynamicStates_Primitive_TABLE_Scalar &
              ( D(iP), T(iP), Y(iP), Ev(iP), Em(iP), Ne(iP) )
 
     END DO
@@ -975,7 +976,7 @@ CONTAINS
     Em = Ev / D              ! --- Internal Energy per Mass
     Y  = Ne / D * BaryonMass ! --- Electron Fraction
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Y, T )
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar
@@ -1023,20 +1024,19 @@ CONTAINS
     !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP MAP( from: Error )
+    !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
 
       Em(iP) = Ev(iP) / D(iP)              ! --- Internal Energy per Mass
       Y (iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
 
-      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
              ( D(iP), Em(iP), Y(iP), T(iP), Error_Option = Error(iP) )
 
     END DO
 
-    IF ( ANY( Error(:) > 0 ) ) THEN
+    IF ( ANY( Error > 0 ) ) THEN
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
       END DO
@@ -1063,17 +1063,17 @@ CONTAINS
     Em = Ev / D
     Y  = Ne * ( BaryonMass / D )
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Y, T )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, S, Ss_T, OS_S, Units_V = UnitS )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, S, S_T, OS_S, Units_V = UnitS )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = UnitGm )
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Gm, Gm_T, OS_Gm, Units_V = UnitGm )
 
     Cs = SQRT( Gm * P / D )
 
@@ -1092,7 +1092,7 @@ CONTAINS
 
     DO iP = 1, nP
 
-      CALL ComputeAuxiliary_Fluid_TABLE &
+      CALL ComputeAuxiliary_Fluid_TABLE_Scalar &
              ( D(iP), Ev(iP), Ne(iP), &
                P(iP), T (iP), Y (iP), S(iP), Em(iP), Gm(iP), Cs(iP) )
 
@@ -1145,13 +1145,13 @@ CONTAINS
         dPdY => dPdY_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, P, dPdD, dPdT, dPdY, Ps_T, OS_P, Units_V = UnitP )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, P, dPdD, dPdT, dPdY, P_T, OS_P, Units_V = UnitP )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
 
     END IF
 
@@ -1201,13 +1201,13 @@ CONTAINS
         dPdY(1:nP) => dPdY_Local(:)
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, P, dPdD, dPdT, dPdY, Ps_T, OS_P, Units_V = UnitP )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, P, dPdD, dPdT, dPdY, P_T, OS_P, Units_V = UnitP )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
 
     END IF
 
@@ -1258,13 +1258,13 @@ CONTAINS
         dEdY => dEdY_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, E, dEdD, dEdT, dEdY, Es_T, OS_E, Units_V = UnitE )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, E, dEdD, dEdT, dEdY, E_T, OS_E, Units_V = UnitE )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, E, Es_T, OS_E, Units_V = UnitE )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, E, E_T, OS_E, Units_V = UnitE )
 
     END IF
 
@@ -1314,13 +1314,13 @@ CONTAINS
         dEdY(1:nP) => dEdY_Local(:)
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, E, dEdD, dEdT, dEdY, Es_T, OS_E, Units_V = UnitE )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, E, dEdD, dEdT, dEdY, E_T, OS_E, Units_V = UnitE )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, E, Es_T, OS_E, Units_V = UnitE )
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, E, E_T, OS_E, Units_V = UnitE )
 
     END IF
 
@@ -1371,13 +1371,13 @@ CONTAINS
         dMdY => dMdY_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mes_T, OS_Me, Units_V = UnitMe )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Me_T, OS_Me, Units_V = UnitMe )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mes_T, OS_Me, Units_V = UnitMe )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, M, Me_T, OS_Me, Units_V = UnitMe )
 
     END IF
 
@@ -1427,13 +1427,13 @@ CONTAINS
         dMdY(1:nP) => dMdY_Local(:)
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mes_T, OS_Me, Units_V = UnitMe )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Me_T, OS_Me, Units_V = UnitMe )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mes_T, OS_Me, Units_V = UnitMe )
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, M, Me_T, OS_Me, Units_V = UnitMe )
 
     END IF
 
@@ -1484,13 +1484,13 @@ CONTAINS
         dMdY => dMdY_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mps_T, Os_Mp, Units_V = UnitMp )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mp_T, Os_Mp, Units_V = UnitMp )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mps_T, Os_Mp, Units_V = UnitMp )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, M, Mp_T, Os_Mp, Units_V = UnitMp )
 
     END IF
 
@@ -1540,13 +1540,13 @@ CONTAINS
         dMdY(1:nP) => dMdY_Local(:)
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mps_T, OS_Mp, Units_V = UnitMp )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mp_T, OS_Mp, Units_V = UnitMp )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mps_T, OS_Mp, Units_V = UnitMp )
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, M, Mp_T, OS_Mp, Units_V = UnitMp )
 
     END IF
 
@@ -1597,13 +1597,13 @@ CONTAINS
         dMdY => dMdY_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mns_T, OS_Mn, Units_V = UnitMn )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mn_T, OS_Mn, Units_V = UnitMn )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mns_T, OS_Mn, Units_V = UnitMn )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, M, Mn_T, OS_Mn, Units_V = UnitMn )
 
     END IF
 
@@ -1653,13 +1653,13 @@ CONTAINS
         dMdY(1:nP) => dMdY_Local(:)
       END IF
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mns_T, OS_Mn, Units_V = UnitMn )
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mn_T, OS_Mn, Units_V = UnitMn )
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mns_T, OS_Mn, Units_V = UnitMn )
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, M, Mn_T, OS_Mn, Units_V = UnitMn )
 
     END IF
 
@@ -1688,8 +1688,8 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateSingleVariable &
-           ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P )
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
 
     V = V_P * Units_V
 
@@ -1744,7 +1744,7 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      CALL ComputeDependentVariable_TABLE &
+      CALL ComputeDependentVariable_TABLE_Scalar &
              ( D(iP), T(iP), Y(iP), V(iP), V_T, OS_V, Units_V )
 
     END DO
@@ -1776,8 +1776,8 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateDifferentiateSingleVariable &
-           ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P, dV_P )
+    CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P, dV_P )
 
     V = V_P * Units_V
 
@@ -1845,7 +1845,7 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
              ( D(iP), T(iP), Y(iP), V(iP), dVdD(iP), dVdT(iP), dVdY(iP), &
                V_T, OS_V, Units_V )
 
