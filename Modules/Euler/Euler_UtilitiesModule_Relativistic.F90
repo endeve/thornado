@@ -114,9 +114,9 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm11, GF_Gm22, GF_Gm33, iErr )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1410,8 +1410,10 @@ CONTAINS
 
     ! --- Eq. C23 ---
 
-    za = Half * k / SQRT( One - Fourth * k**2 ) - SqrtTiny
-    zb = k        / SQRT( One - k**2 )          + SqrtTiny
+    za = SQRT( One - Fourth * k**2 )
+    zb = SQRT( One - k**2 )
+    za = Half * k / za - SqrtTiny
+    zb = k        / zb + SqrtTiny
 
     ! --- Compute FunZ for upper and lower bounds ---
 
