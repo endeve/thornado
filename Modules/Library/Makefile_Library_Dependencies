@@ -11,7 +11,7 @@ endif
 ifeq ($(USE_CUBLAS),TRUE)
 DeviceModule_prereqs += CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_ROCM),TRUE)
-DeviceModule_prereqs += RocblasModule.o RocsolverModule.o RocsparseModule.o
+DeviceModule_prereqs += RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
 endif
 ifeq ($(USE_MAGMA),TRUE)
 DeviceModule_prereqs += MagmaModule.o

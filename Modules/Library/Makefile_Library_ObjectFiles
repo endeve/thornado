@@ -45,7 +45,7 @@ LIBRARY += \
   CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_ROCM),TRUE)
 LIBRARY += \
-  RocblasModule.o RocsolverModule.o RocsparseModule.o
+  RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
 endif
 
 ifeq ($(USE_MAGMA),TRUE)
