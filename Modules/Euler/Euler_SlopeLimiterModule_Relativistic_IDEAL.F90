@@ -484,7 +484,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B1, iX_E1, U_N, U )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -506,7 +506,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, SqrtGm, U_X, G, U_N )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -557,7 +557,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U_K, Vol )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -593,7 +593,7 @@ CONTAINS
     !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell, dU, &
     !$ACC          a, b, c, SlopeDifference )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -777,7 +777,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B1, iX_E1, U, U_N )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -1002,7 +1002,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B1, iX_E1, U_N, U )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -1024,7 +1024,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, SqrtGm, U_X, G_X, G, U_N )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1088,7 +1088,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U_K, Vol )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1125,7 +1125,7 @@ CONTAINS
     !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 ) &
     !$ACC PRIVATE( R, invR, UK, GK )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( R, invR, UK, GK )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -1207,7 +1207,7 @@ CONTAINS
 !    !$ACC          a, b, c, SlopeDifference, &
 !    !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU_C )
 !#elif defined(THORNADO_OMP)
-!    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+!    !$OMP PARALLEL DO COLLAPSE(3)
 !#endif
 !    DO iX3 = iX_B0(3), iX_E0(3)
 !    DO iX2 = iX_B0(2), iX_E0(2)
@@ -1443,7 +1443,7 @@ CONTAINS
 !    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
 !    !$ACC PRESENT( iX_B0, iX_E0, D, U_M, LimitedCell, dU, SlopeDifference )
 !#elif defined(THORNADO_OMP)
-!    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+!    !$OMP PARALLEL DO COLLAPSE(4)
 !#endif
 !    DO iX3 = iX_B0(3), iX_E0(3)
 !    DO iX2 = iX_B0(2), iX_E0(2)
@@ -1521,7 +1521,7 @@ CONTAINS
 !    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
 !    !$ACC PRESENT( iX_B1, iX_E1, U, U_N )
 !#elif defined(THORNADO_OMP)
-!    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+!    !$OMP PARALLEL DO COLLAPSE(5)
 !#endif
 !    DO iX3 = iX_B1(3), iX_E1(3)
 !    DO iX2 = iX_B1(2), iX_E1(2)
@@ -1627,7 +1627,7 @@ CONTAINS
     !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, WeightsX_q, LegendreX, SqrtGm, &
     !$ACC          U_M, Vol, U_K )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
