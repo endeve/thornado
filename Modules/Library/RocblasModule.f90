@@ -13,11 +13,13 @@ module RocblasModule
     rocblas_operation_transpose, &
     rocblas_side_left, &
     rocblas_fill_upper, &
-    rocblas_diagonal_non_unit
+    rocblas_diagonal_non_unit, &
+    rocblas_pointer_mode_device
   use hipfort_rocblas, only: &
     rocblas_create_handle, &
     rocblas_get_stream, &
     rocblas_set_stream, &
+    rocblas_set_pointer_mode, &
     rocblas_dnrm2, &
     rocblas_daxpy, &
     rocblas_dgemm, &
@@ -26,7 +28,8 @@ module RocblasModule
     rocblas_dtrsv, &
     rocblas_dtrsm, &
     rocblas_dgeam, &
-    rocblas_ddgmm
+    rocblas_ddgmm, &
+    rocblas_ddot_strided_batched
 
   type(c_ptr) :: rocblas_handle
 
