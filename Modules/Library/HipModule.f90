@@ -8,11 +8,19 @@ module HipModule
   ! Interface to hip Runtime API
   !-------------------------------------------------------------------------------------------------
   use, intrinsic :: iso_c_binding
+  use hipfort_check, only: &
+    hipCheck, &
+    hipblasCheck, &
+    hipsparseCheck, &
+    rocblasCheck, &
+    rocsparseCheck, &
+    rocsolverCheck
   use hipfort, only: &
     hipGetDeviceCount, &
     hipSetDevice, &
     hipStreamCreate, &
-    hipStreamSynchronize
+    hipStreamSynchronize, &
+    hipDeviceSynchronize
 
   integer :: mystream
   type(c_ptr) :: stream, event
