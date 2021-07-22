@@ -21,7 +21,7 @@ MODULE FillPatchModule
 
   ! --- Local Modules ---
 
-  USE AMReX_KindModule, ONLY: &
+  USE MF_KindModule, ONLY: &
     DP
   USE InputParsingModule, ONLY: &
     UseTiling

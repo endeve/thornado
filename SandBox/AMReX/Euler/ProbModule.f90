@@ -34,7 +34,7 @@ MODULE ProbModule
 
   ! --- Local Modules ---
 
-  USE AMReX_KindModule, ONLY: &
+  USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
     One, &

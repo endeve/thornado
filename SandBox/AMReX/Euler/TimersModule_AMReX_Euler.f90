@@ -30,7 +30,8 @@ MODULE TimersModule_AMReX_Euler
   ! --- Local Modules ---
 
   USE MF_KindModule,         ONLY: &
-    DP
+    DP, &
+    Zero
   USE InputParsingModule,    ONLY: &
     nLevels
 

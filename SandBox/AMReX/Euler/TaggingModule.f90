@@ -12,7 +12,7 @@ MODULE TaggingModule
 
   ! --- Local Modules ---
 
-  USE AMReX_KindModule, ONLY: &
+  USE MF_KindModule, ONLY: &
     DP
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X

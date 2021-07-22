@@ -55,7 +55,7 @@ MODULE InputParsingModule
 
   ! --- thornado ---
   REAL(DP)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
-  REAL(DP)         , ALLOCATABLE :: t(:), dt(:)
+  REAL(DP)         , ALLOCATABLE :: t(:), dt(:), t_old(:), t_new(:)
   REAL(DP)                       :: CFL
   INTEGER                        :: nNodes, nStages
   INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
@@ -302,6 +302,12 @@ CONTAINS
     ALLOCATE( t(0:nLevels-1) )
     t = 0.0e0_DP
 
+    ALLOCATE( t_old(0:nLevels-1) )
+    t_old = 0.0e0_DP
+
+    ALLOCATE( t_new(0:nLevels-1) )
+    t_new = 0.0e0_DP
+
     CALL CreateFields_MF( nLevels )
 
   END SUBROUTINE InitializeParameters
@@ -315,6 +321,8 @@ CONTAINS
     DEALLOCATE( DM   )
     DEALLOCATE( BA   )
 
+    DEALLOCATE( t_new  )
+    DEALLOCATE( t_old  )
     DEALLOCATE( t      )
     DEALLOCATE( dt     )
     DEALLOCATE( StepNo )
