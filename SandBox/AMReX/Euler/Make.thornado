@@ -24,6 +24,7 @@ f90EXE_sources  += TimersModule_AMReX_Euler.f90
 CEXE_sources    += Restart.cpp
 f90EXE_sources  += MF_AccretionShockUtilitiesModule.f90
 f90EXE_sources  += MF_Euler_PerturbationModule.f90
+f90EXE_sources  += MF_KindModule.f90
 #F90EXE_sources  += dgemv.F90 lsame.F90
 
 # thornado/Modules/Library

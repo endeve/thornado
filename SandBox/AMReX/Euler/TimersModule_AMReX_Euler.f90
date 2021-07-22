@@ -2,8 +2,6 @@ MODULE TimersModule_AMReX_Euler
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
-    AR => amrex_real
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor,  &
     amrex_parallel_reduce_min,   &
@@ -31,6 +29,9 @@ MODULE TimersModule_AMReX_Euler
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,         ONLY: &
+    DP, &
+    Zero
   USE InputParsingModule,    ONLY: &
     nLevels
 
@@ -47,23 +48,23 @@ MODULE TimersModule_AMReX_Euler
 
   LOGICAL,  PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
 
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_Program;          INTEGER :: iT_P   = 1
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Program;          INTEGER :: iT_P   = 1
 
   ! --- fmain ---
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_Initialize;       INTEGER :: iT_I   = 2
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_MPI_Barrier;      INTEGER :: iT_B   = 3
-  REAL(AR), PUBLIC :: Timer_AMReX_ComputeTimeStep_Euler;  INTEGER :: iT_CTS = 4
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_UpdateFluid;      INTEGER :: iT_UF  = 5
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_InputOutput;      INTEGER :: iT_IO  = 6
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_Finalize;         INTEGER :: iT_F   = 7
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Initialize;       INTEGER :: iT_I   = 2
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_MPI_Barrier;      INTEGER :: iT_B   = 3
+  REAL(DP), PUBLIC :: Timer_AMReX_ComputeTimeStep_Euler;  INTEGER :: iT_CTS = 4
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_UpdateFluid;      INTEGER :: iT_UF  = 5
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_InputOutput;      INTEGER :: iT_IO  = 6
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Finalize;         INTEGER :: iT_F   = 7
 
   ! --- AMReX-specific ---
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_DataTransfer;     INTEGER :: iT_DT  = 8
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_Allocate;         INTEGER :: iT_AL  = 9
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_InteriorBC;       INTEGER :: iT_IBC = 10
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_CopyMultiFab;     INTEGER :: iT_CMF = 11
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap; INTEGER :: iT_CEM = 12
-  REAL(AR), PUBLIC :: Timer_AMReX_Euler_GetBC;            INTEGER :: iT_GBC = 13
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_DataTransfer;     INTEGER :: iT_DT  = 8
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Allocate;         INTEGER :: iT_AL  = 9
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_InteriorBC;       INTEGER :: iT_IBC = 10
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_CopyMultiFab;     INTEGER :: iT_CMF = 11
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap; INTEGER :: iT_CEM = 12
+  REAL(DP), PUBLIC :: Timer_AMReX_Euler_GetBC;            INTEGER :: iT_GBC = 13
 
   ! --- Thornado Modules ---
   INTEGER :: iT_DG  = 14
@@ -78,13 +79,12 @@ MODULE TimersModule_AMReX_Euler
   INTEGER :: iT_PL  = 23
   INTEGER :: iT_BC  = 24
   INTEGER :: iT_CD  = 25
-  
+
   INTEGER :: nTimers = 25
 
   INTEGER :: nProcs
 
-  REAL(AR), PARAMETER :: Zero    = 0.0_AR
-  REAL(AR), PARAMETER :: Hundred = 100.0_AR
+  REAL(DP), PARAMETER :: Hundred = 100.0_DP
 
 
 CONTAINS
@@ -111,7 +111,7 @@ CONTAINS
     Timer_AMReX_Euler_CopyMultiFab     = Zero
     Timer_AMReX_Euler_ConstructEdgeMap = Zero
     Timer_AMReX_Euler_GetBC            = Zero
-    
+
     Timer_Euler_DG                     = Zero
     Timer_Euler_Increment              = Zero
     Timer_Euler_Divergence             = Zero
@@ -137,8 +137,8 @@ CONTAINS
 
     LOGICAL, INTENT(in), OPTIONAL :: WriteAtIntermediateTime_Option
 
-    REAL(AR) :: Timer(nTimers), TotalTime
-    REAL(AR) :: TimerSum(nTimers), TimerMin(nTimers), &
+    REAL(DP) :: Timer(nTimers), TotalTime
+    REAL(DP) :: TimerSum(nTimers), TimerMin(nTimers), &
                 TimerMax(nTimers), TimerAve(nTimers)
 
     CHARACTER(32) :: &
@@ -478,7 +478,7 @@ CONTAINS
 
   SUBROUTINE TimersStart_AMReX_Euler( Timer )
 
-    REAL(AR), INTENT(inout) :: Timer
+    REAL(DP), INTENT(inout) :: Timer
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
@@ -490,7 +490,7 @@ CONTAINS
 
   SUBROUTINE TimersStop_AMReX_Euler( Timer )
 
-    REAL(AR), INTENT(inout) :: Timer
+    REAL(DP), INTENT(inout) :: Timer
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
@@ -500,7 +500,7 @@ CONTAINS
   END SUBROUTINE TimersStop_AMReX_Euler
 
 
-  REAL(AR) FUNCTION TimersWtime_AMReX()
+  REAL(DP) FUNCTION TimersWtime_AMReX()
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
@@ -513,8 +513,8 @@ CONTAINS
   SUBROUTINE SumMinMaxAve &
     ( Timer, TimerSum, TimerMin, TimerMax, TimerAve )
 
-    REAL(AR), INTENT(in)    :: Timer
-    REAL(AR), INTENT(inout) :: TimerSum, TimerMin, TimerMax, TimerAve
+    REAL(DP), INTENT(in)    :: Timer
+    REAL(DP), INTENT(inout) :: TimerSum, TimerMin, TimerMax, TimerAve
 
     TimerSum = Timer
     CALL amrex_parallel_reduce_sum( TimerSum )

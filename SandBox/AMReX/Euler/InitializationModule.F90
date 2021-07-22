@@ -3,7 +3,6 @@ MODULE InitializationModule
   ! --- AMReX Modules ---
 
   USE amrex_fort_module,      ONLY: &
-    AR => amrex_real, &
     amrex_spacedim
   USE amrex_init_module,      ONLY: &
     amrex_init
@@ -92,6 +91,11 @@ MODULE InitializationModule
 
   ! --- Local modules ---
 
+  USE MF_KindModule,                    ONLY: &
+    DP, &
+    Zero, &
+    One, &
+    Two
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved
   USE MF_GeometryModule,                ONLY: &
@@ -170,10 +174,6 @@ MODULE InitializationModule
 
   LOGICAL, PUBLIC :: wrt, chk
 
-  REAL(AR), PARAMETER :: Zero = 0.0_AR
-  REAL(AR), PARAMETER :: One  = 1.0_AR
-  REAL(AR), PARAMETER :: Two  = 2.0_AR
-
 
 CONTAINS
 
@@ -185,7 +185,7 @@ CONTAINS
     TYPE(amrex_box)       :: BX
 
     LOGICAL               :: SolveGravity
-    REAL(AR)              :: Mass
+    REAL(DP)              :: Mass
 
     ! --- Initialize AMReX ---
 

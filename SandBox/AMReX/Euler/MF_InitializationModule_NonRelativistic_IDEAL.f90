@@ -2,8 +2,6 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,       ONLY: &
-    AR => amrex_real
   USE amrex_box_module,        ONLY: &
     amrex_box
   USE amrex_geometry_module,   ONLY: &
@@ -79,6 +77,18 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- Local Modules ---
 
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    Half, &
+    One, &
+    Two, &
+    Three, &
+    Four, &
+    Five, &
+    Pi, &
+    TwoPi, &
+    FourPi
   USE InputParsingModule,      ONLY: &
     nLevels, &
     xL,      &
@@ -95,17 +105,6 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
   PRIVATE
 
   PUBLIC :: MF_InitializeFields_NonRelativistic_IDEAL
-
-  REAL(AR), PARAMETER :: Zero   = 0.0_AR
-  REAL(AR), PARAMETER :: Half   = 0.5_AR
-  REAL(AR), PARAMETER :: One    = 1.0_AR
-  REAL(AR), PARAMETER :: Two    = 2.0_AR
-  REAL(AR), PARAMETER :: Three  = 3.0_AR
-  REAL(AR), PARAMETER :: Four   = 4.0_AR
-  REAL(AR), PARAMETER :: Five   = 5.0_AR
-  REAL(AR), PARAMETER :: Pi     = ACOS( -1.0_AR )
-  REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
-  REAL(AR), PARAMETER :: FourPi = 4.0_AR * Pi
 
 
 CONTAINS
@@ -201,11 +200,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -214,12 +213,12 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR), PARAMETER :: Beta = 5.0_AR
-    REAL(AR)            :: R
+    REAL(DP), PARAMETER :: Beta = 5.0_DP
+    REAL(DP)            :: R
 
     uGF_K = Zero
     uCF_K = Zero
@@ -270,7 +269,7 @@ CONTAINS
 
             uPF_K(iNodeX,iPF_D) &
               = ( One - ( Gamma_IDEAL - One ) * Beta**2 &
-                        / ( 8.0_AR * Gamma_IDEAL * Pi**2 ) * EXP( One - R**2 ) &
+                        / ( 8.0_DP * Gamma_IDEAL * Pi**2 ) * EXP( One - R**2 ) &
                 )**( One / ( Gamma_IDEAL - One ) )
 
             uPF_K(iNodeX,iPF_V1) &
@@ -332,11 +331,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -345,8 +344,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -401,11 +400,11 @@ CONTAINS
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D)  = 0.125_AR
+              uPF_K(iNodeX,iPF_D)  = 0.125_DP
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = Zero
               uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = 0.1_AR / (Gamma_IDEAL - One)
+              uPF_K(iNodeX,iPF_E)  = 0.1_DP / (Gamma_IDEAL - One)
 
             END IF
 
@@ -456,11 +455,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -469,8 +468,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -525,11 +524,11 @@ CONTAINS
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D)  = 0.125_AR
+              uPF_K(iNodeX,iPF_D)  = 0.125_DP
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = Zero
               uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = 0.1_AR / ( Gamma_IDEAL - One )
+              uPF_K(iNodeX,iPF_E)  = 0.1_DP / ( Gamma_IDEAL - One )
 
             END IF
 
@@ -580,11 +579,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -593,8 +592,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -639,7 +638,7 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            IF( ABS( X1 - Half ) .LE. 0.25_AR )THEN
+            IF( ABS( X1 - Half ) .LE. 0.25_DP )THEN
 
               uPF_K(iNodeX,iPF_D) = Two
 
@@ -654,7 +653,7 @@ CONTAINS
           uPF_K(:,iPF_V1) = One
           uPF_K(:,iPF_V2) = Zero
           uPF_K(:,iPF_V3) = Zero
-          uPF_K(:,iPF_E)  = 0.01_AR
+          uPF_K(:,iPF_E)  = 0.01_DP
 
           CALL ComputePressureFromPrimitive &
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
@@ -701,11 +700,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -714,15 +713,15 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR), PARAMETER :: Beta = 5.0_AR
-    REAL(AR), PARAMETER :: D_0  = 0.125_AR
-    REAL(AR), PARAMETER :: E_0  = 0.350_AR
-    REAL(AR), PARAMETER :: D_1  = 1.000_AR
-    REAL(AR), PARAMETER :: E_1  = 2.500_AR
+    REAL(DP), PARAMETER :: Beta = 5.0_DP
+    REAL(DP), PARAMETER :: D_0  = 0.125_DP
+    REAL(DP), PARAMETER :: E_0  = 0.350_DP
+    REAL(DP), PARAMETER :: D_1  = 1.000_DP
+    REAL(DP), PARAMETER :: E_1  = 2.500_DP
 
     uGF_K = Zero
     uCF_K = Zero
@@ -769,7 +768,7 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-            IF( X1 + X2 .LT. 0.15_AR )THEN
+            IF( X1 + X2 .LT. 0.15_DP )THEN
 
               uPF_K(iNodeX,iPF_D) = D_0
               uPF_K(iNodeX,iPF_E) = E_0
@@ -835,11 +834,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -848,16 +847,16 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR) :: Alpha, Speed, D_Prime, V1_Prime, P_Prime
-    REAL(AR) :: mDot, Mass, rShock, Mach
+    REAL(DP) :: Alpha, Speed, D_Prime, V1_Prime, P_Prime
+    REAL(DP) :: mDot, Mass, rShock, Mach
 
     LOGICAL  :: Perturb
     INTEGER  :: PerturbOrder
-    REAL(AR) :: ShellIn, ShellOut, PerturbAmplitude
+    REAL(DP) :: ShellIn, ShellOut, PerturbAmplitude
 
     TYPE(amrex_parmparse) :: PP
 
@@ -880,7 +879,7 @@ CONTAINS
 
     mDot = mDot * Pi
 
-    Alpha = 4.0_AR * Gamma_IDEAL &
+    Alpha = 4.0_DP * Gamma_IDEAL &
               / ( ( Gamma_IDEAL + One ) &
                   * ( Gamma_IDEAL - One ) ) &
               * ( ( Gamma_IDEAL - One ) &
@@ -956,7 +955,7 @@ CONTAINS
                 = Two / ( Gamma_IDEAL + One ) &
                     * ( mDot / FourPi ) &
                     * SQRT( Two * GravitationalConstant &
-                              * Mass ) * rShock**(-2.5_AR)
+                              * Mass ) * rShock**(-2.5_DP)
 
               uPF_K(iNodeX,iPF_E)  &
                 = P_Prime &
@@ -1055,11 +1054,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -1068,13 +1067,13 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     TYPE(amrex_parmparse) :: PP
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR) :: Alpha, Speed, D_Prime, V1_Prime, P_Prime
-    REAL(AR) :: mDot, Mass, rShock, Mach
+    REAL(DP) :: Alpha, Speed, D_Prime, V1_Prime, P_Prime
+    REAL(DP) :: mDot, Mass, rShock, Mach
 
     uGF_K = Zero
     uCF_K = Zero
@@ -1168,7 +1167,7 @@ CONTAINS
                 = Two / ( Gamma_IDEAL + One ) &
                     * ( mDot / FourPi ) &
                     * SQRT( Two * GravitationalConstant &
-                            * Mass ) * rShock**(-2.5_AR)
+                            * Mass ) * rShock**(-2.5_DP)
 
               uPF_K(iNodeX,iPF_E)  &
                 = P_Prime &
@@ -1246,10 +1245,10 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -1258,17 +1257,17 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     TYPE(amrex_parmparse) :: PP
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR) :: mDot, Mass, rShock, Entropy
+    REAL(DP) :: mDot, Mass, rShock, Entropy
 
     INTEGER  :: iX_B1(3), iX_E1(3)
-    REAL(AR) :: BernoulliConstant
+    REAL(DP) :: BernoulliConstant
 
-    REAL(AR), ALLOCATABLE :: R(:,:), D(:,:), V(:,:), P(:,:)
+    REAL(DP), ALLOCATABLE :: R(:,:), D(:,:), V(:,:), P(:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -1314,7 +1313,7 @@ CONTAINS
       END DO
     END DO
 
-    BernoulliConstant = 0.0_AR
+    BernoulliConstant = 0.0_DP
 
     CALL ComputeInitialConditions_NewtonRaphson &
            ( R, mDot, Mass, rShock, Entropy, &
@@ -1406,11 +1405,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNX, iNX1, iNX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -1420,27 +1419,27 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     TYPE(amrex_parmparse)         :: PP
 
     ! --- Problem-dependent Parameters ---
 
-    REAL(AR) :: MassPNS, ShockRadius, AccretionRate, PolytropicConstant
+    REAL(DP) :: MassPNS, ShockRadius, AccretionRate, PolytropicConstant
     LOGICAL  :: ApplyPerturbation
     INTEGER  :: PerturbationOrder
-    REAL(AR) :: PerturbationAmplitude
-    REAL(AR) :: rPerturbationInner
-    REAL(AR) :: rPerturbationOuter
+    REAL(DP) :: PerturbationAmplitude
+    REAL(DP) :: rPerturbationInner
+    REAL(DP) :: rPerturbationOuter
 
     INTEGER  :: iX1_1, iX1_2, iNX1_1, iNX1_2
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
-    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2
-    REAL(AR) :: D0, V0, P0
-    REAL(AR) :: Ka, Kb, Mdot, AdvectionTime
-    REAL(AR), ALLOCATABLE :: D(:,:)
-    REAL(AR), ALLOCATABLE :: V(:,:)
-    REAL(AR), ALLOCATABLE :: P(:,:)
+    REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2
+    REAL(DP) :: D0, V0, P0
+    REAL(DP) :: Ka, Kb, Mdot, AdvectionTime
+    REAL(DP), ALLOCATABLE :: D(:,:)
+    REAL(DP), ALLOCATABLE :: V(:,:)
+    REAL(DP), ALLOCATABLE :: P(:,:)
     LOGICAL               :: InitializeFromFile, ResetEndTime
 
     ApplyPerturbation                 = .FALSE.
@@ -1485,7 +1484,7 @@ CONTAINS
     MassPNS            = MassPNS            * SolarMass
     AccretionRate      = AccretionRate      * ( SolarMass / Second )
     ShockRadius        = ShockRadius        * Kilometer
-    PolytropicConstant = 2.0e14_AR &
+    PolytropicConstant = 2.0e14_DP &
                            * ( Erg / Centimeter**3 &
                            / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
     rPerturbationInner = rPerturbationInner * Kilometer
@@ -1697,7 +1696,7 @@ CONTAINS
       END DO
 
       IF( ResetEndTime ) &
-        t_end = 4.0_AR * AdvectionTime
+        t_end = 4.0_DP * AdvectionTime
 
     END IF
 
@@ -1829,21 +1828,21 @@ CONTAINS
 
   SUBROUTINE ComputeSettlingSpeed_Bisection( r, Alpha, Mass, rShock, V1 )
 
-    REAL(AR), INTENT(in) :: r, Alpha, Mass, rShock
+    REAL(DP), INTENT(in) :: r, Alpha, Mass, rShock
 
     LOGICAL             :: Converged
     INTEGER             :: Iter
-    REAL(AR)            :: a, b, c, ab, F_a, F_b, F_c, F_0
+    REAL(DP)            :: a, b, c, ab, F_a, F_b, F_c, F_0
     INTEGER,  PARAMETER :: MaxIter = 128
-    REAL(AR), PARAMETER :: Tol_ab  = 1.0e-8_AR
-    REAL(AR), PARAMETER :: Tol_F   = 1.0e-8_AR
+    REAL(DP), PARAMETER :: Tol_ab  = 1.0e-8_DP
+    REAL(DP), PARAMETER :: Tol_F   = 1.0e-8_DP
 
-    REAL(AR), INTENT(out) :: V1
+    REAL(DP), INTENT(out) :: V1
 
-    a = 1.0e-6_AR
+    a = 1.0e-6_DP
     F_a = SettlingSpeedFun( a, r, Alpha, Mass, rShock )
 
-    b = 1.0e-1_AR
+    b = 1.0e-1_DP
     F_b = SettlingSpeedFun( b, r, Alpha, Mass, rShock )
 
     F_0 = F_a
@@ -1885,9 +1884,9 @@ CONTAINS
   END SUBROUTINE ComputeSettlingSpeed_Bisection
 
 
-  REAL(AR) FUNCTION SettlingSpeedFun( u, r, Alpha, Mass, rShock )
+  REAL(DP) FUNCTION SettlingSpeedFun( u, r, Alpha, Mass, rShock )
 
-    REAL(AR), INTENT(in) :: u, r, Alpha, Mass, rShock
+    REAL(DP), INTENT(in) :: u, r, Alpha, Mass, rShock
 
     SettlingSpeedFun &
       = r * u**2 &
@@ -1906,13 +1905,13 @@ CONTAINS
                ( R, mDot, Mass, rShock, EntropyConstant, &
                  BernoulliConstant, D, V, P )
 
-    REAL(AR), INTENT(in)    :: mDot, Mass, rShock
-    REAL(AR), INTENT(inout) :: BernoulliConstant
-    REAL(AR), INTENT(inout) :: EntropyConstant
-    REAL(AR), INTENT(in)    :: R(1:,0:)
-    REAL(AR), INTENT(out)   :: D(1:,0:)
-    REAL(AR), INTENT(out)   :: V(1:,0:)
-    REAL(AR), INTENT(out)   :: P(1:,0:)
+    REAL(DP), INTENT(in)    :: mDot, Mass, rShock
+    REAL(DP), INTENT(inout) :: BernoulliConstant
+    REAL(DP), INTENT(inout) :: EntropyConstant
+    REAL(DP), INTENT(in)    :: R(1:,0:)
+    REAL(DP), INTENT(out)   :: D(1:,0:)
+    REAL(DP), INTENT(out)   :: V(1:,0:)
+    REAL(DP), INTENT(out)   :: P(1:,0:)
     INTEGER, PARAMETER :: iD = 1, iV = 2, iP = 3
 
     LOGICAL                  :: Converged
@@ -1922,12 +1921,12 @@ CONTAINS
     INTEGER                  :: iNodeX, iNodeX1
     INTEGER                  :: Iter, INFO
     INTEGER,  DIMENSION(3)   :: IPIV
-    REAL(AR), PARAMETER      :: Tol = 1.0d-10
-    REAL(AR)                 :: D_Previous, V_Previous, P_Previous
-    REAL(AR)                 :: E, S
-    REAL(AR)                 :: dEdD, dEdP, dSdD, dSdP
-    REAL(AR), DIMENSION(3)   :: FVEC, UVEC, dUVEC
-    REAL(AR), DIMENSION(3,3) :: FJAC
+    REAL(DP), PARAMETER      :: Tol = 1.0d-10
+    REAL(DP)                 :: D_Previous, V_Previous, P_Previous
+    REAL(DP)                 :: E, S
+    REAL(DP)                 :: dEdD, dEdP, dSdD, dSdP
+    REAL(DP), DIMENSION(3)   :: FVEC, UVEC, dUVEC
+    REAL(DP), DIMENSION(3,3) :: FJAC
 
     iX_B1 = [1,1,1] - swX
     iX_E1 = nX      + swX
@@ -2028,12 +2027,12 @@ CONTAINS
           !WRITE(*,'(A6,A12,4ES20.10E3)') '', '|FVEC| = ', &
           !  ABS( FVEC )
           !WRITE(*,'(A6,A12,4ES20.10E3)') '', '|dU/U| = ', &
-          !  ABS(  dUVEC / ( UVEC + TINY(1.0_AR) ) )
+          !  ABS(  dUVEC / ( UVEC + TINY(1.0_DP) ) )
           !WRITE(*,*)
 
           UVEC = UVEC - dUVEC
 
-          IF( ALL( ABS( dUVEC / ( UVEC + TINY(1.0_AR) ) ) < Tol ) ) &
+          IF( ALL( ABS( dUVEC / ( UVEC + TINY(1.0_DP) ) ) < Tol ) ) &
             Converged = .TRUE.
 
         END DO
@@ -2052,11 +2051,11 @@ CONTAINS
                ( r, mDot, Mass, BernoulliConstant, EntropyConstant, &
                  D, V, P, S, E, FVEC )
 
-    REAL(AR), INTENT(in)  :: mDot, Mass, r
-    REAL(AR), INTENT(in)  :: BernoulliConstant
-    REAL(AR), INTENT(in)  :: EntropyConstant
-    REAL(AR), INTENT(in)  :: D, V, P, S, E
-    REAL(AR), INTENT(out) :: FVEC(3)
+    REAL(DP), INTENT(in)  :: mDot, Mass, r
+    REAL(DP), INTENT(in)  :: BernoulliConstant
+    REAL(DP), INTENT(in)  :: EntropyConstant
+    REAL(DP), INTENT(in)  :: D, V, P, S, E
+    REAL(DP), INTENT(out) :: FVEC(3)
 
     FVEC(1) = FourPi * r**2 * D * V - mDot
     FVEC(2) = Half * V**2 + E + P / D - Mass / r - BernoulliConstant
@@ -2071,21 +2070,21 @@ CONTAINS
                  dSdD, dSdP, &
                  FJAC )
 
-    REAL(AR), INTENT(in)  :: r, D, V, E, P
-    REAL(AR), INTENT(in)  :: dEdD, dEdP
-    REAL(AR), INTENT(in)  :: dSdD, dSdP
-    REAL(AR), INTENT(out) :: FJAC(3,3)
+    REAL(DP), INTENT(in)  :: r, D, V, E, P
+    REAL(DP), INTENT(in)  :: dEdD, dEdP
+    REAL(DP), INTENT(in)  :: dSdD, dSdP
+    REAL(DP), INTENT(out) :: FJAC(3,3)
 
     FJAC(1,1) = FourPi * r**2 * V
     FJAC(1,2) = FourPi * r**2 * D
-    FJAC(1,3) = 0.0_AR
+    FJAC(1,3) = 0.0_DP
 
     FJAC(2,1) = ( dEdD - ( P / D**2 ) )
     FJAC(2,2) = V
-    FJAC(2,3) = ( dEdP + ( 1.0_AR / D ) )
+    FJAC(2,3) = ( dEdP + ( 1.0_DP / D ) )
 
     FJAC(3,1) = dSdD
-    FJAC(3,2) = 0.0_AR
+    FJAC(3,2) = 0.0_DP
     FJAC(3,3) = dSdP
 
   END SUBROUTINE ComputeFJAC_InitialConditions
@@ -2096,14 +2095,14 @@ CONTAINS
     LOGICAL                  :: Converged
     INTEGER                  :: Iter, INFO
     INTEGER,  DIMENSION(3)   :: IPIV
-    REAL(AR), PARAMETER      :: Tol = 1.0d-10
-    REAL(AR), INTENT(inout)  :: D_L, V_L, P_L
-    REAL(AR) :: E_L
-    REAL(AR), INTENT(inout)  :: D_R, V_R, P_R
-    REAL(AR) :: E_R
-    REAL(AR) :: dEdD_L, dEdP_L
-    REAL(AR), DIMENSION(3)   :: FVEC, UVEC, dUVEC
-    REAL(AR), DIMENSION(3,3) :: FJAC
+    REAL(DP), PARAMETER      :: Tol = 1.0d-10
+    REAL(DP), INTENT(inout)  :: D_L, V_L, P_L
+    REAL(DP) :: E_L
+    REAL(DP), INTENT(inout)  :: D_R, V_R, P_R
+    REAL(DP) :: E_R
+    REAL(DP) :: dEdD_L, dEdP_L
+    REAL(DP), DIMENSION(3)   :: FVEC, UVEC, dUVEC
+    REAL(DP), DIMENSION(3,3) :: FJAC
 
     ! --- Right State ---
 
@@ -2159,14 +2158,14 @@ CONTAINS
       !WRITE(*,'(A6,A12,4ES20.10E3)') '', '|FVEC| = ', &
       !  ABS( FVEC )
       !WRITE(*,'(A6,A12,4ES20.10E3)') '', '|dU/U| = ', &
-      !  ABS(  dUVEC / ( UVEC + TINY(1.0_AR) ) )
+      !  ABS(  dUVEC / ( UVEC + TINY(1.0_DP) ) )
       !WRITE(*,*)
 
       D_L = UVEC(1) - dUVEC(1)
       V_L = UVEC(2) - dUVEC(2)
       P_L = UVEC(3) - dUVEC(3)
 
-      IF( ALL( ABS(  dUVEC / ( UVEC + TINY(1.0_AR) ) ) < Tol ) ) &
+      IF( ALL( ABS(  dUVEC / ( UVEC + TINY(1.0_DP) ) ) < Tol ) ) &
         Converged = .TRUE.
 
     END DO
@@ -2186,9 +2185,9 @@ CONTAINS
   SUBROUTINE ComputeFVEC_LeftState &
                ( D_R, V_R, P_R, E_R, D_L, V_L, P_L, E_L, FVEC )
 
-    REAL(AR),               INTENT(in)  :: D_R, V_R, P_R, E_R
-    REAL(AR),               INTENT(in)  :: D_L, V_L, P_L, E_L
-    REAL(AR), DIMENSION(3), INTENT(out) :: FVEC
+    REAL(DP),               INTENT(in)  :: D_R, V_R, P_R, E_R
+    REAL(DP),               INTENT(in)  :: D_L, V_L, P_L, E_L
+    REAL(DP), DIMENSION(3), INTENT(out) :: FVEC
 
     FVEC(1) = D_L * V_L - D_R * V_R
     FVEC(2) = D_L * V_L**2 - D_R * V_R**2 + P_L - P_R
@@ -2201,17 +2200,17 @@ CONTAINS
                ( D_R, V_R, P_R, E_R, D_L, V_L, P_L, E_L, &
                  dEdD_L, dEdP_L, FJAC )
 
-    REAL(AR),                 INTENT(in)  :: D_R, V_R, P_R, E_R
-    REAL(AR),                 INTENT(in)  :: D_L, V_L, P_L, E_L
-    REAL(AR),                 INTENT(in)  :: dEdD_L, dEdP_L
-    REAL(AR), DIMENSION(3,3), INTENT(out) :: FJAC
+    REAL(DP),                 INTENT(in)  :: D_R, V_R, P_R, E_R
+    REAL(DP),                 INTENT(in)  :: D_L, V_L, P_L, E_L
+    REAL(DP),                 INTENT(in)  :: dEdD_L, dEdP_L
+    REAL(DP), DIMENSION(3,3), INTENT(out) :: FJAC
 
     FJAC(1,1) = V_L
     FJAC(1,2) = D_L
-    FJAC(1,3) = 0.0_AR
+    FJAC(1,3) = 0.0_DP
 
     FJAC(2,1) = V_L**2
-    FJAC(2,2) = 2.0_AR * D_L * V_L
+    FJAC(2,2) = 2.0_DP * D_L * V_L
     FJAC(2,3) = One
 
     FJAC(3,1) = dEdD_L - ( P_L / D_L**2 )
@@ -2227,7 +2226,7 @@ CONTAINS
   SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
 
     INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(AR), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
 
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
@@ -2252,20 +2251,20 @@ CONTAINS
   SUBROUTINE NewtonRaphson_SAS &
     ( X1, MassPNS, K, Mdot, D0, V0, P0, D, V, P )
 
-    REAL(AR), INTENT(in)  :: X1, MassPNS, K, Mdot, D0, V0, P0
-    REAL(AR), INTENT(out) :: D ,V ,P
+    REAL(DP), INTENT(in)  :: X1, MassPNS, K, Mdot, D0, V0, P0
+    REAL(DP), INTENT(out) :: D ,V ,P
 
-    REAL(AR) :: Jac(3,3), invJac(3,3)
-    REAL(AR) :: f(3), uO(3), uN(3), du(3)
+    REAL(DP) :: Jac(3,3), invJac(3,3)
+    REAL(DP) :: f(3), uO(3), uN(3), du(3)
 
     LOGICAL             :: CONVERGED
     INTEGER             :: ITER
-    REAL(AR), PARAMETER :: Tolu = 1.0e-16_AR
-    REAL(AR), PARAMETER :: Tolf = 1.0e-16_AR
+    REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
+    REAL(DP), PARAMETER :: Tolf = 1.0e-16_DP
     INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
 
-    REAL(AR) :: Phi
-    REAL(AR) :: tau
+    REAL(DP) :: Phi
+    REAL(DP) :: tau
 
     Phi = -MassPNS * GravitationalConstant / X1
     tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
@@ -2320,9 +2319,9 @@ CONTAINS
   SUBROUTINE ApplyJumpConditions_SAS &
     ( MassPNS, AccretionRate, ShockRadius, D_1, V_1, P_1, D_2, V_2, P_2 )
 
-    REAL(AR), INTENT(in)  :: MassPNS, AccretionRate, ShockRadius, &
+    REAL(DP), INTENT(in)  :: MassPNS, AccretionRate, ShockRadius, &
                              D_1, V_1, P_1
-    REAL(AR), INTENT(out) :: D_2, V_2, P_2
+    REAL(DP), INTENT(out) :: D_2, V_2, P_2
 
     V_2 &
       = - ( Gamma_IDEAL - One ) / ( Gamma_IDEAL + One ) &
@@ -2349,9 +2348,9 @@ CONTAINS
 
     ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
 
-    REAL(AR), INTENT(in) :: A   (3,3)
-    REAL(AR)             :: invA(3,3)
-    REAL(AR)             :: InvDet
+    REAL(DP), INTENT(in) :: A   (3,3)
+    REAL(DP)             :: invA(3,3)
+    REAL(DP)             :: InvDet
 
     ! --- Calculate the inverse of the determinant of the matrix ---
 
@@ -2380,12 +2379,12 @@ CONTAINS
       iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
 
     INTEGER,        INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(AR),       INTENT(in)  :: ShockRadius
+    REAL(DP),       INTENT(in)  :: ShockRadius
     TYPE(MeshType), INTENT(in)  :: MeshX(3)
     INTEGER,        INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
-    REAL(AR),       INTENT(out) :: X1_1, X1_2
+    REAL(DP),       INTENT(out) :: X1_1, X1_2
 
-    REAL(AR) :: X1, dX1
+    REAL(DP) :: X1, dX1
     INTEGER  :: iX1, iNX1
     LOGICAL  :: FirstPreShockElement = .FALSE.
 

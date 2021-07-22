@@ -2,8 +2,6 @@ MODULE MF_FieldsModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    AR => amrex_real
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_destroy
@@ -12,6 +10,11 @@ MODULE MF_FieldsModule
 
   USE FluidFieldsModule, ONLY: &
     nCF
+
+  ! --- Local Modules ---
+
+  USE MF_KindModule, ONLY: &
+    DP
 
   IMPLICIT NONE
   PRIVATE
@@ -39,7 +42,7 @@ MODULE MF_FieldsModule
   PUBLIC :: CreateFields_MF
   PUBLIC :: DestroyFields_MF
 
-  REAL(AR), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Euler(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Euler(:,:)
 
 
 CONTAINS

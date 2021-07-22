@@ -2,8 +2,6 @@ MODULE MF_Euler_TallyModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    AR => amrex_real
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_geometry_module, ONLY: &
@@ -42,6 +40,10 @@ MODULE MF_Euler_TallyModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    FourPi
   USE InputParsingModule, ONLY: &
     nX, &
     nLevels, &
@@ -67,19 +69,16 @@ MODULE MF_Euler_TallyModule
   LOGICAL :: SuppressTally
 
   CHARACTER(256) :: BaryonicMass_FileName
-  REAL(AR), ALLOCATABLE :: BaryonicMass_Interior(:)
-  REAL(AR), ALLOCATABLE :: BaryonicMass_Initial (:)
-  REAL(AR), ALLOCATABLE :: BaryonicMass_OffGrid (:)
-  REAL(AR), ALLOCATABLE :: BaryonicMass_Change  (:)
+  REAL(DP), ALLOCATABLE :: BaryonicMass_Interior(:)
+  REAL(DP), ALLOCATABLE :: BaryonicMass_Initial (:)
+  REAL(DP), ALLOCATABLE :: BaryonicMass_OffGrid (:)
+  REAL(DP), ALLOCATABLE :: BaryonicMass_Change  (:)
 
   CHARACTER(256) :: Energy_FileName
-  REAL(AR), ALLOCATABLE :: Energy_Interior(:)
-  REAL(AR), ALLOCATABLE :: Energy_Initial (:)
-  REAL(AR), ALLOCATABLE :: Energy_OffGrid (:)
-  REAL(AR), ALLOCATABLE :: Energy_Change  (:)
-
-  REAL(AR), PARAMETER :: Zero   = 0.0_AR
-  REAL(AR), PARAMETER :: FourPi = 4.0_AR * ACOS( -1.0_AR )
+  REAL(DP), ALLOCATABLE :: Energy_Interior(:)
+  REAL(DP), ALLOCATABLE :: Energy_Initial (:)
+  REAL(DP), ALLOCATABLE :: Energy_OffGrid (:)
+  REAL(DP), ALLOCATABLE :: Energy_Change  (:)
 
 
 CONTAINS
@@ -192,7 +191,7 @@ CONTAINS
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
-    REAL(AR),             INTENT(in) :: Time
+    REAL(DP),             INTENT(in) :: Time
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
@@ -203,10 +202,10 @@ CONTAINS
     INTEGER                       :: iLevel, iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: U(:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: U(:,:,:,:,:)
 
     IF( SuppressTally ) RETURN
 
@@ -309,7 +308,7 @@ CONTAINS
 
   SUBROUTINE MF_IncrementOffGridTally_Euler( dM )
 
-    REAL(AR), INTENT(in) :: dM(0:nLevels-1,nCF)
+    REAL(DP), INTENT(in) :: dM(0:nLevels-1,nCF)
 
     INTEGER :: iLevel
 
@@ -352,14 +351,14 @@ CONTAINS
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iLevel
-    REAL(AR), INTENT(in) :: &
+    REAL(DP), INTENT(in) :: &
       G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(AR), INTENT(in) :: &
+    REAL(DP), INTENT(in) :: &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     TYPE(MeshType) :: MeshX(3)
     INTEGER        :: iNX, iX1, iX2, iX3, iDim
-    REAL(AR)       :: d3X
+    REAL(DP)       :: d3X
 
     DO iDim = 1, 3
 
@@ -416,7 +415,7 @@ CONTAINS
 
   SUBROUTINE WriteTally_Euler( Time )
 
-    REAL(AR), INTENT(in) :: Time
+    REAL(DP), INTENT(in) :: Time
 
     INTEGER :: FileUnit
 
@@ -457,7 +456,7 @@ CONTAINS
 
   SUBROUTINE DisplayTally( Time )
 
-    REAL(AR), INTENT(in) :: Time
+    REAL(DP), INTENT(in) :: Time
 
     IF( amrex_parallel_ioprocessor() )THEN
 
