@@ -2,8 +2,6 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,                ONLY: &
-    AR => amrex_real
   USE amrex_box_module,                 ONLY: &
     amrex_box
   USE amrex_geometry_module,            ONLY: &
@@ -37,6 +35,10 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                    ONLY: &
+    DP, &
+    Zero, &
+    One
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
     MF_ApplySlopeLimiter_Euler
   USE MF_Euler_PositivityLimiterModule, ONLY: &
@@ -64,17 +66,14 @@ MODULE MF_TimeSteppingModule_SSPRK
   PUBLIC :: MF_FinalizeFluid_SSPRK
 
   INTEGER :: nStages_SSPRK
-  REAL(AR), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
-  REAL(AR), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
-  REAL(AR), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
+  REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
+  REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
   TYPE(amrex_multifab), DIMENSION(:),   ALLOCATABLE :: MF_U
   TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_D
 
   LOGICAL :: Verbose
-
-  REAL(AR), PARAMETER :: Zero = 0.0_AR
-  REAL(AR), PARAMETER :: One  = 1.0_AR
 
   INTERFACE
     SUBROUTINE MF_Euler_Increment &
@@ -189,23 +188,23 @@ CONTAINS
 
       CASE ( 1 )
 
-        a_SSPRK(1,1) = 0.0_AR
-        w_SSPRK(1)   = 1.0_AR
+        a_SSPRK(1,1) = 0.0_DP
+        w_SSPRK(1)   = 1.0_DP
 
       CASE ( 2 )
 
-        a_SSPRK(1,1:2) = [ 0.0_AR, 0.0_AR ]
-        a_SSPRK(2,1:2) = [ 1.0_AR, 0.0_AR ]
-        w_SSPRK(1:2)   = [ 0.5_AR, 0.5_AR ]
+        a_SSPRK(1,1:2) = [ 0.0_DP, 0.0_DP ]
+        a_SSPRK(2,1:2) = [ 1.0_DP, 0.0_DP ]
+        w_SSPRK(1:2)   = [ 0.5_DP, 0.5_DP ]
 
       CASE ( 3 )
 
-        a_SSPRK(1,1:3) = [ 0.00_AR, 0.00_AR, 0.00_AR ]
-        a_SSPRK(2,1:3) = [ 1.00_AR, 0.00_AR, 0.00_AR ]
-        a_SSPRK(3,1:3) = [ 0.25_AR, 0.25_AR, 0.00_AR ]
-        w_SSPRK(1:3)   = [ 1.0_AR / 6.0_AR, &
-                           1.0_AR / 6.0_AR, &
-                           2.0_AR / 3.0_AR ]
+        a_SSPRK(1,1:3) = [ 0.00_DP, 0.00_DP, 0.00_DP ]
+        a_SSPRK(2,1:3) = [ 1.00_DP, 0.00_DP, 0.00_DP ]
+        a_SSPRK(3,1:3) = [ 0.25_DP, 0.25_DP, 0.00_DP ]
+        w_SSPRK(1:3)   = [ 1.0_DP / 6.0_DP, &
+                           1.0_DP / 6.0_DP, &
+                           2.0_DP / 3.0_DP ]
 
     END SELECT
 
@@ -236,7 +235,7 @@ CONTAINS
   SUBROUTINE MF_UpdateFluid_SSPRK &
     ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
-    REAL(AR),             INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
+    REAL(DP),             INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
@@ -247,9 +246,9 @@ CONTAINS
 
     INTEGER                       :: iLevel
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
 
-    REAL(AR) :: dM_OffGrid_Euler(0:nLevels-1,nCF)
+    REAL(DP) :: dM_OffGrid_Euler(0:nLevels-1,nCF)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

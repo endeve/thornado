@@ -2,8 +2,6 @@ MODULE MF_AccretionShockUtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    AR => amrex_real
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
@@ -70,6 +68,10 @@ MODULE MF_AccretionShockUtilitiesModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_X_Global
@@ -103,20 +105,20 @@ CONTAINS
 
   SUBROUTINE MF_ComputeAccretionShockDiagnostics( Time, MF_uGF, MF_uCF )
 
-    REAL(AR),             INTENT(in) :: Time  (0:nLevels-1)
+    REAL(DP),             INTENT(in) :: Time  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: P(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: A(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: P(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iLo_MF(4), &
                iNX, iNX1, iX1, iX2, iX3, iDim
@@ -125,10 +127,10 @@ CONTAINS
 
     INTEGER, PARAMETER    :: nLegModes = 3
     INTEGER               :: iLegMode
-    REAL(AR)              :: Power(0:nLegModes-1)
-    REAL(AR)              :: AngleAveragedShockRadius
-    REAL(AR), ALLOCATABLE :: PowerIntegrand(:,:,:,:)
-    REAL(AR), ALLOCATABLE :: ShockRadius   (:,:,:,:)
+    REAL(DP)              :: Power(0:nLegModes-1)
+    REAL(DP)              :: AngleAveragedShockRadius
+    REAL(DP), ALLOCATABLE :: PowerIntegrand(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: ShockRadius   (:,:,:,:)
 
     INTEGER :: FileUnit
     LOGICAL :: IsFile
@@ -193,8 +195,8 @@ CONTAINS
 
     ALLOCATE( ShockRadius(0:nLevels-1,nDOFX_X1,nX(2),nX(3)) )
 
-    PowerIntegrand = 0.0_AR
-    ShockRadius    = HUGE( 1.0_AR )
+    PowerIntegrand = Zero
+    ShockRadius    = HUGE( One )
 
     DO iLevel = 0, nLevels-1
 
@@ -361,13 +363,13 @@ CONTAINS
     INTEGER           :: iLo(3), iHi(3), iNX, iX1, iX2, iX3
     CHARACTER(LEN=16) :: FMT
 
-    REAL(AR) :: P(1:nDOFX,1:nPF)
-    REAL(AR) :: A(1:nDOFX,1:nAF)
-    REAL(AR) :: G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+    REAL(DP) :: P(1:nDOFX,1:nPF)
+    REAL(DP) :: A(1:nDOFX,1:nAF)
+    REAL(DP) :: G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                           1-swX(2):nX(2)+swX(2), &
                           1-swX(3):nX(3)+swX(3), &
                   1:nGF)
-    REAL(AR) :: U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+    REAL(DP) :: U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                           1-swX(2):nX(2)+swX(2), &
                           1-swX(3):nX(3)+swX(3), &
                   1:nCF)
