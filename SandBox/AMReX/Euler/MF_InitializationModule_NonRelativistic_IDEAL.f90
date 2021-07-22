@@ -77,7 +77,7 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- Local Modules ---
 
-  USE MF_KindModule,           ONLY: &
+  USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
     Half, &
