@@ -67,6 +67,7 @@ OBJS = \
        ReferenceElementModuleE.o \
        ReferenceElementModuleX.o \
        ReferenceElementModule.o \
+       UtilitiesModule.o \
        PolynomialBasisModule_Lagrange.o \
        ReferenceElementModuleX_Lagrange.o \
        ReferenceElementModuleE_Lagrange.o \
@@ -113,7 +114,6 @@ OBJS += \
        ReferenceElementModuleZ.o \
        PolynomialBasisMappingModule.o \
        PolynomialBasisModule_Legendre.o \
-       UtilitiesModule.o \
        TimersModule_Euler.o \
        TwoMoment_UtilitiesModule_OrderV.o \
        TwoMoment_TroubledCellIndicatorModule.o \
@@ -166,6 +166,8 @@ ifeq ($(TWOMOMENT_ORDER),ORDER_1)
 TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  UtilitiesModule.o \
   TimersModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
@@ -210,6 +212,8 @@ else
 TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  UtilitiesModule.o \
   TimersModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
