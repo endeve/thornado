@@ -422,9 +422,11 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_NonRelativistic &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+  CALL ComputeTally_Euler_NonRelativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+         SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -476,10 +478,8 @@ PROGRAM ApplicationDriver
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
       CALL ComputeTally_Euler_NonRelativistic &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+               Verbose_Option = .TRUE. )
 
       wrt = .FALSE.
 
@@ -497,10 +497,8 @@ PROGRAM ApplicationDriver
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL ComputeTally_Euler_NonRelativistic &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+           Verbose_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 

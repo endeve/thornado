@@ -104,9 +104,6 @@ elif [[ $THORNADO_MACHINE == accre* ]]; then
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
   module purge
-  module load GCC/6.4.0-2.28
-  module load OpenMPI/2.1.1
-  module load HDF5/1.10.1
 
 elif [[ $THORNADO_MACHINE == ranchu* ]]; then
 
@@ -258,9 +255,15 @@ elif [[ $THORNADO_MACHINE == rmurph ]]; then
 
   echo
 
-elif [[ $THORNADO_MACHINE == accre ]]; then
+elif [[ $THORNADO_MACHINE == accre_gnu ]]; then
 
   echo
+
+  module load GCC/6.4.0-2.28
+  module load OpenMPI/2.1.1
+  module load HDF5/1.10.1
+
+  export LAPACK_DIR=$EBROOTSCALAPACK
 
 elif [[ $THORNADO_MACHINE == ranchu ]]; then
 

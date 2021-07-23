@@ -161,7 +161,9 @@ CONTAINS
 
     LOGICAL  :: ReadGF, ReadFF, ReadRF
 
-    FileNumber = ReadFileNumber
+    FileNumber    = ReadFileNumber
+    FileNumber_AS = ReadFileNumber
+    FileNumber_ST = ReadFileNumber
 
     ReadGF = .FALSE.
     IF( PRESENT( ReadGF_Option ) ) ReadGF = ReadGF_Option

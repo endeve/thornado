@@ -74,7 +74,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U (:,:,:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iZ1, iZ2, iZ3, iZ4, iNodeZ
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
 
@@ -172,9 +172,10 @@ CONTAINS
         CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )
 
+ 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_B0, duCR, dU )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
 
       END DO
 

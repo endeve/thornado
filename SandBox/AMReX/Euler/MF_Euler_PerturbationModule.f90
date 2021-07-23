@@ -2,8 +2,6 @@ MODULE MF_Euler_PerturbationModule
 
   ! ---AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
-    AR => amrex_real
   USE amrex_box_module,      ONLY: &
     amrex_box
   USE amrex_geometry_module, ONLY: &
@@ -35,6 +33,8 @@ MODULE MF_Euler_PerturbationModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                     ONLY: &
+    DP
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
@@ -53,6 +53,7 @@ MODULE MF_Euler_PerturbationModule
 
 CONTAINS
 
+
   SUBROUTINE MF_InitializePerturbations_Euler
 
 
@@ -64,11 +65,11 @@ CONTAINS
     INTEGER  :: MJ_D_Nodes
     INTEGER  :: MJ_V_RadNodes
     INTEGER  :: MJ_V_AngNodes
-    REAL(AR) :: ShellWidth
-    REAL(AR) :: BD_Amplitude
-    REAL(AR) :: CO_V_Amplitude
-    REAL(AR) :: MJ_D_Amplitude
-    REAL(AR) :: MJ_V_Amplitude
+    REAL(DP) :: ShellWidth
+    REAL(DP) :: BD_Amplitude
+    REAL(DP) :: CO_V_Amplitude
+    REAL(DP) :: MJ_D_Amplitude
+    REAL(DP) :: MJ_V_Amplitude
 
     TYPE(amrex_parmparse) :: PP
 
@@ -175,18 +176,18 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_geometry), INTENT(in   ) :: GEOM  (0:nLevels-1)
 
-    REAL(AR)            , INTENT(in   ) :: Time(0:nLevels-1)
+    REAL(DP)            , INTENT(in   ) :: Time(0:nLevels-1)
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
 
     INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 

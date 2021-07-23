@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 
 """
 Generate a movie from data files created in MakeDataFiles.py.

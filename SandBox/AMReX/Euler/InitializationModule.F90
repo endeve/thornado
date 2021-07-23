@@ -3,7 +3,6 @@ MODULE InitializationModule
   ! --- AMReX Modules ---
 
   USE amrex_fort_module,      ONLY: &
-    AR => amrex_real, &
     amrex_spacedim
   USE amrex_init_module,      ONLY: &
     amrex_init
@@ -89,11 +88,14 @@ MODULE InitializationModule
   USE UnitsModule,                      ONLY: &
     SolarMass, &
     UnitsDisplay
-  USE TimersModule_Euler,               ONLY: &
-    InitializeTimers_Euler
 
   ! --- Local modules ---
 
+  USE MF_KindModule,                    ONLY: &
+    DP, &
+    Zero, &
+    One, &
+    Two
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved
   USE MF_GeometryModule,                ONLY: &
@@ -155,6 +157,9 @@ MODULE InitializationModule
     DM,                        &
     GEOM,                      &
     InitializeParameters
+  USE MF_Euler_TallyModule,     ONLY: &
+    MF_InitializeTally_Euler, &
+    MF_ComputeTally_Euler
   USE TimersModule_AMReX_Euler, ONLY: &
     InitializeTimers_AMReX_Euler,  &
     TimersStart_AMReX_Euler,      &
@@ -169,10 +174,6 @@ MODULE InitializationModule
 
   LOGICAL, PUBLIC :: wrt, chk
 
-  REAL(AR), PARAMETER :: Zero = 0.0_AR
-  REAL(AR), PARAMETER :: One  = 1.0_AR
-  REAL(AR), PARAMETER :: Two  = 2.0_AR
-
 
 CONTAINS
 
@@ -184,7 +185,7 @@ CONTAINS
     TYPE(amrex_box)       :: BX
 
     LOGICAL               :: SolveGravity
-    REAL(AR)              :: Mass
+    REAL(DP)              :: Mass
 
     ! --- Initialize AMReX ---
 
@@ -193,8 +194,6 @@ CONTAINS
     CALL amrex_amrcore_init()
 
     CALL InitializeTimers_AMReX_Euler
-
-    CALL InitializeTimers_Euler
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
@@ -265,6 +264,7 @@ CONTAINS
 
       CALL ReadCheckpointFile( iRestart )
       t_chk = t(0) + dt_chk
+      t_wrt = t(0) + dt_wrt
 
     END IF
 
@@ -407,7 +407,8 @@ CONTAINS
 
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
-               Gamma_IDEAL_Option = Gamma_IDEAL )
+               Gamma_IDEAL_Option = Gamma_IDEAL, &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
@@ -425,13 +426,15 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
+    CALL MF_InitializeTally_Euler
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     IF( iRestart .LT. 0 )THEN
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF, GEOM )
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 
@@ -454,6 +457,10 @@ CONTAINS
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     END IF
+
+    CALL MF_ComputeTally_Euler &
+           ( GEOM, MF_uGF, MF_uCF, t(0), &
+             SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

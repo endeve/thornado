@@ -205,6 +205,10 @@ CONTAINS
              ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
                G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
 
+      G(:,iX1,iX2,iX3,iGF_Beta_1) = Zero
+      G(:,iX1,iX2,iX3,iGF_Beta_2) = Zero
+      G(:,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
     END DO
     END DO
     END DO

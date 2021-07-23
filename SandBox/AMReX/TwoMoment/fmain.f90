@@ -10,6 +10,7 @@ PROGRAM main
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
     MF_ComputeTimeStep,                &
+    MF_ComputeTimeStep_Fancy,                &
     MF_ComputeFromConserved
   USE MF_UtilitiesModule,     ONLY: & 
     WriteNodalDataToFile
@@ -64,8 +65,8 @@ PROGRAM main
 
   IMPLICIT NONE
 
-  REAL(amrex_real) :: n, m
-
+  REAL(amrex_real) :: n, m, dt_Fancy
+  
   n = 1.0_amrex_real
   CALL InitializeProgram
 
@@ -73,13 +74,16 @@ PROGRAM main
 !      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
 !        MF_uCR % P,  &
 !        MF_uPR % P  )
-print*, t_wrt / UnitsDisplay % TimeUnit, t_end / UnitsDisplay % TimeUnit
-print*, xL / kilometer, xR / kilometer
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
  
-    CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
+    CALL MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
+ !   dt_Fancy = dt(0)
+ !   CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
+
+ !   print*, dt(0) / UnitsDisplay % TimeUnit, dt_Fancy / UnitsDisplay % TimeUnit
+!STOP
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE

@@ -39,6 +39,11 @@ MODULE Euler_UtilitiesModule
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_Euler
 
+  INTERFACE ComputeConserved_Euler
+    MODULE PROCEDURE ComputeConserved_Scalar
+    MODULE PROCEDURE ComputeConserved_Vector
+  END INTERFACE ComputeConserved_Euler
+
 
 CONTAINS
 
@@ -119,7 +124,43 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector
 
 
-  SUBROUTINE ComputeConserved_Euler &
+  SUBROUTINE ComputeConserved_Scalar &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+      AF_P )
+
+    REAL(DP), INTENT(in)  :: &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+    REAL(DP), INTENT(out) :: &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), INTENT(in)  :: &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+
+    ! --- Only needed for relativistic code ---
+    REAL(DP), INTENT(in) :: AF_P
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL ComputeConserved_Euler_Relativistic &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+             AF_P )
+
+#else
+
+    CALL ComputeConserved_Euler_NonRelativistic &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+#endif
+
+  END SUBROUTINE ComputeConserved_Scalar
+
+
+  SUBROUTINE ComputeConserved_Vector &
     ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
@@ -152,7 +193,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeConserved_Euler
+  END SUBROUTINE ComputeConserved_Vector
 
 
   SUBROUTINE ComputeFromConserved_Euler &
