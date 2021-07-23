@@ -69,6 +69,15 @@ CONTAINS
     ALLOCATE( Mesh % Nodes(1:nN) )
     Mesh % Nodes = xQ
 
+! Requires deep copy (not supported on all compilers)
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP TARGET ENTER DATA &
+!    !$OMP MAP( to: Mesh )
+!#elif defined(THORNADO_OACC)
+!    !$ACC ENTER DATA &
+!    !$ACC COPYIN( Mesh )
+!#endif
+
   END SUBROUTINE CreateMesh
 
 
@@ -258,6 +267,15 @@ CONTAINS
 
     TYPE(MeshType) :: Mesh
 
+! Requires deep copy (not supported on all compilers)
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP TARGET EXIT DATA &
+!    !$OMP MAP( release: Mesh )
+!#elif defined(THORNADO_OACC)
+!    !$ACC EXIT DATA &
+!    !$ACC DELETE( Mesh )
+!#endif
+
     IF (ALLOCATED( Mesh % Center )) THEN
        DEALLOCATE( Mesh % Center )
     END IF
@@ -274,6 +292,12 @@ CONTAINS
 
 
   REAL(DP) FUNCTION NodeCoordinate_INT( Mesh, iC, iN )
+! Requires deep copy (not supported on all compilers)
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP DECLARE TARGET
+!#elif defined(THORNADO_OACC)
+!    !$ACC ROUTINE SEQ
+!#endif
 
     TYPE(MeshType), INTENT(in) :: Mesh
     INTEGER,        INTENT(in) :: iC, iN
