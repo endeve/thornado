@@ -27,16 +27,16 @@ MODULE Euler_TallyModule_Relativistic
 
   PUBLIC :: InitializeTally_Euler_Relativistic
   PUBLIC :: ComputeTally_Euler_Relativistic
-  PUBLIC :: IncrementOffGridTally_Euler
+  PUBLIC :: IncrementOffGridTally_Euler_Relativistic
   PUBLIC :: FinalizeTally_Euler_Relativistic
 
   LOGICAL :: SuppressTally
 
-  CHARACTER(256) :: Mass_FileName
-  REAL(DP)       :: Mass_Interior
-  REAL(DP)       :: Mass_Initial
-  REAL(DP)       :: Mass_OffGrid
-  REAL(DP)       :: Mass_Change
+  CHARACTER(256) :: BaryonicMass_FileName
+  REAL(DP)       :: BaryonicMass_Interior
+  REAL(DP)       :: BaryonicMass_Initial
+  REAL(DP)       :: BaryonicMass_OffGrid
+  REAL(DP)       :: BaryonicMass_Change
 
   CHARACTER(256) :: Energy_FileName
   REAL(DP)       :: Energy_Interior
@@ -49,7 +49,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressTally_Option, &
+      BaseFileName_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -59,6 +60,8 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressTally_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      BaseFileName_Option
 
     CHARACTER(256) :: BaseFileName
     INTEGER        :: FileUnit
@@ -72,17 +75,21 @@ CONTAINS
 
     IF( SuppressTally ) RETURN
 
-    BaseFileName = '../Output/' // TRIM( ProgramName )
+    BaseFileName = '../Output/'
+    IF( PRESENT( BaseFileName_Option ) ) &
+      BaseFileName = TRIM( BaseFileName_Option )
+
+    BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
 
     ! --- Baryonic Mass ---
 
-    Mass_FileName &
-      = TRIM( BaseFileName ) // '_Tally_Mass.dat'
+    BaryonicMass_FileName &
+      = TRIM( BaseFileName ) // '_Tally_BaryonicMass.dat'
 
-    Mass_Interior = Zero
-    Mass_Initial  = Zero
-    Mass_OffGrid  = Zero
-    Mass_Change   = Zero
+    BaryonicMass_Interior = Zero
+    BaryonicMass_Initial  = Zero
+    BaryonicMass_OffGrid  = Zero
+    BaryonicMass_Change   = Zero
 
     TimeLabel     &
       = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -95,7 +102,7 @@ CONTAINS
     ChangeLabel   &
       = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
 
-    OPEN( NEWUNIT = FileUnit, FILE = TRIM( Mass_FileName ) )
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ) )
 
     WRITE(FileUnit,'(5(A25,x))') &
       TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
@@ -167,14 +174,14 @@ CONTAINS
 
     IF( SetInitialValues )THEN
 
-      Mass_Initial   = Mass_Interior
-      Energy_Initial = Energy_Interior
+      BaryonicMass_Initial = BaryonicMass_Interior
+      Energy_Initial       = Energy_Interior
 
     END IF
 
-    Mass_Change &
-      = Mass_Interior &
-          - ( Mass_Initial + Mass_OffGrid )
+    BaryonicMass_Change &
+      = BaryonicMass_Interior &
+          - ( BaryonicMass_Initial + BaryonicMass_OffGrid )
 
     Energy_Change &
       = Energy_Interior &
@@ -207,8 +214,8 @@ CONTAINS
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-    Mass_Interior   = Zero
-    Energy_Interior = Zero
+    BaryonicMass_Interior = Zero
+    Energy_Interior       = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -225,8 +232,8 @@ CONTAINS
 
       END IF
 
-      Mass_Interior &
-        = Mass_Interior &
+      BaryonicMass_Interior &
+        = BaryonicMass_Interior &
             + d3X &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
@@ -249,17 +256,17 @@ CONTAINS
   END SUBROUTINE ComputeTally_Euler
 
 
-  SUBROUTINE IncrementOffGridTally_Euler( dM )
+  SUBROUTINE IncrementOffGridTally_Euler_Relativistic( dM )
 
     REAL(DP), INTENT(in) :: dM(nCF)
 
-    Mass_OffGrid &
-      = Mass_OffGrid + dM(iCF_D)
+    BaryonicMass_OffGrid &
+      = BaryonicMass_OffGrid + dM(iCF_D)
 
     Energy_OffGrid &
       = Energy_OffGrid + dM(iCF_E)
 
-  END SUBROUTINE IncrementOffGridTally_Euler
+  END SUBROUTINE IncrementOffGridTally_Euler_Relativistic
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -270,15 +277,15 @@ CONTAINS
 
     ! --- Baryonic Mass ---
 
-    OPEN( NEWUNIT = FileUnit, FILE = TRIM( Mass_FileName ), &
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ), &
           POSITION = 'APPEND', ACTION = 'WRITE' )
 
     WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
       Time / UnitsDisplay % TimeUnit, &
-      Mass_Interior / UnitsDisplay % MassUnit, &
-      Mass_OffGrid  / UnitsDisplay % MassUnit, &
-      Mass_Initial  / UnitsDisplay % MassUnit, &
-      Mass_Change   / UnitsDisplay % MassUnit
+      BaryonicMass_Interior / UnitsDisplay % MassUnit, &
+      BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
+      BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
+      BaryonicMass_Change   / UnitsDisplay % MassUnit
 
     CLOSE( FileUnit )
 
@@ -310,20 +317,20 @@ CONTAINS
       UnitsDisplay % TimeLabel
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-      '', 'Mass Interior.: ', &
-      Mass_Interior / UnitsDisplay % MassUnit, &
+      '', 'Baryonic Mass Interior.: ', &
+      BaryonicMass_Interior / UnitsDisplay % MassUnit, &
       UnitsDisplay % MassLabel
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-      '', 'Mass Initial..: ', &
-      Mass_Initial  / UnitsDisplay % MassUnit, &
+      '', 'Baryonic Mass Initial..: ', &
+      BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
       UnitsDisplay % MassLabel
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-      '', 'Mass Off Grid.: ', &
-      Mass_OffGrid  / UnitsDisplay % MassUnit, &
+      '', 'Baryonic Mass Off Grid.: ', &
+      BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
       UnitsDisplay % MassLabel
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-      '', 'Mass Change...: ', &
-      Mass_Change   / UnitsDisplay % MassUnit, &
+      '', 'Baryonic Mass Change...: ', &
+      BaryonicMass_Change   / UnitsDisplay % MassUnit, &
       UnitsDisplay % MassLabel
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &

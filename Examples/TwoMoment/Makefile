@@ -1,6 +1,7 @@
 MICROPHYSICS           = WEAKLIB
 MOMENT_CLOSURE         = MINERBO
 NEUTRINO_MATTER_SOLVER = FIXED_POINT_NESTED_AA
+TWOMOMENT_ORDER        = ORDER_1
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -15,6 +16,7 @@ VPATH += $(THORNADO_DIR)/Examples/TwoMoment
 VPATH += $(THORNADO_DIR)/SandBox/Interface_FLASH
 
 #DEFINES += $(PP)-DTHORNADO_DEBUG
+DEFINES += $(PP)THORNADO_EULER_NOGPU
 
 .DEFAULT_GOAL := all
 
@@ -35,10 +37,11 @@ ApplicationDriver: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.lst *.acc.s
 
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
+	rm -rf INLINE_$(MACHINE)
 
 ApplicationDriver.o: \
   KindModule.o \

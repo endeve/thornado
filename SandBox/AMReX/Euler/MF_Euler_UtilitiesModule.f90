@@ -2,8 +2,6 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,        ONLY: &
-    AR => amrex_real
   USE amrex_box_module,         ONLY: &
     amrex_box
   USE amrex_multifab_module,    ONLY: &
@@ -35,6 +33,9 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,            ONLY: &
+    DP, &
+    One
   USE InputParsingModule,       ONLY: &
     nLevels, &
     UseTiling
@@ -67,15 +68,15 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: P(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: A(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: P(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
@@ -159,25 +160,25 @@ CONTAINS
 
     TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1), &
                                          MF_uCF(0:nLevels-1)
-    REAL(AR),             INTENT(in)  :: CFL
-    REAL(AR),             INTENT(out) :: TimeStepMin(0:nLevels-1)
+    REAL(DP),             INTENT(in)  :: CFL
+    REAL(DP),             INTENT(out) :: TimeStepMin(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
-    REAL(AR) :: TimeStep(0:nLevels-1)
+    REAL(DP) :: TimeStep(0:nLevels-1)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
-    TimeStepMin = HUGE( 1.0e0_AR )
+    TimeStepMin = HUGE( One )
 
     DO iLevel = 0, nLevels-1
 

@@ -23,7 +23,7 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_dgDiscretizationModule, ONLY: &
     OffGridFlux_Euler
   USE Euler_TallyModule_Relativistic, ONLY: &
-    IncrementOffGridTally_Euler
+    IncrementOffGridTally_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -298,7 +298,7 @@ CONTAINS
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G )
 #endif
 
-    CALL IncrementOffGridTally_Euler( dM_OffGrid_Euler )
+    CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

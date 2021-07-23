@@ -25,11 +25,13 @@ MODULE MF_TwoMoment_UtilitiesModule
     iPF_D, iPF_E, iPF_Ne, iPF_V1, iPF_V2, iPF_V3
   USE GeometryFieldsModule,     ONLY: &
     nGF, iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, iGF_Gm_dd_33
+    iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_h_1, iGF_h_2, iGF_h_3
   USE TwoMoment_UtilitiesModule_Relativistic,  ONLY: &
     ComputePrimitive_TwoMoment
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
+  USE MeshModule, ONLY: &
+    MeshX
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, nSpecies, nE
@@ -50,9 +52,11 @@ CONTAINS
 
 
 
-  SUBROUTINE MF_ComputeTimeStep_Fancy( MF_uGF, MF_uCR, CFL, TimeStepMin )
+  SUBROUTINE MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, TimeStepMin )
 
-    TYPE(amrex_multifab),  INTENT(in)  :: MF_uGF(0:nLevels-1), MF_uCR(0:nLevels-1)
+    TYPE(amrex_multifab),  INTENT(in)  :: MF_uGF(0:nLevels-1)
+    INTEGER,              INTENT(in)  :: nX(:), nNodes
+    REAL(amrex_real),     INTENT(in)  :: xR(:), xL(:)
     REAL(amrex_real),     INTENT(in)  :: CFL
     REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels-1)
 
@@ -60,15 +64,13 @@ CONTAINS
     TYPE(amrex_box)    :: BX
 
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
 
 
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:,:,:)
 
     REAL(amrex_real) :: TimeStep(0:nLevels-1)
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), iLo_MF(4)
+    INTEGER :: iLo_MF(4)
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -80,7 +82,6 @@ CONTAINS
 
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCR => MF_uCR(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -91,40 +92,18 @@ CONTAINS
         iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
-        iZ_B0(1) = iE_B0
-        iZ_E0(1) = iE_E0
-
-        iZ_B0(2:4) = iX_B0
-        iZ_E0(2:4) = iX_E0
-
-        iZ_B1(1) = iE_B1
-        iZ_E1(1) = iE_E1
-
-        iZ_B1(2:4) = iX_B1
-        iZ_E1(2:4) = iX_E1
 
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        ALLOCATE( U(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
-                            iZ_B1(2):iZ_E1(2), &
-                            iZ_B1(3):iZ_E1(3), &
-                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
-        CALL amrex2thornado_Z &
-               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
-
-!put compute timestep here
-
-        TimeStep( iLevel ) = 0.01_amrex_real
+        CALL CalculateTimeStep( iX_B1, iX_E1, iX_B0, iX_E0, CFL, G, TimeStep( iLevel) )
 
         TimeStepMin( iLevel ) = MIN( TimeStepMin( iLevel ), TimeStep( iLevel ) )
 
-        DEALLOCATE( U )
         DEALLOCATE( G )
 
 
@@ -136,11 +115,9 @@ CONTAINS
     END DO ! --- Loop over levels ---
 
 
-
   END SUBROUTINE MF_ComputeTimeStep_Fancy
 
   SUBROUTINE MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, TimeStepMin )
-
     INTEGER,              INTENT(in)  :: nX(:), nNodes
     REAL(amrex_real),     INTENT(in)  :: xR(:), xL(:), CFL
     REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels-1)
@@ -160,10 +137,6 @@ CONTAINS
       TimeStepMin( iLevel ) = MIN( TimeStepMin( iLevel ), TimeStep( iLevel ) )
 
     END DO
-
-
-
-
 
 
   END SUBROUTINE MF_ComputeTimeStep
@@ -382,6 +355,102 @@ CONTAINS
 
   END SUBROUTINE MF_ComputeFromConserved
 
+
+  SUBROUTINE CalculateTimeStep( iX_B1, iX_E1, iX_B0, iX_E0, CFL, G, dt)
+
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iX_B0(3), iX_E0(3)
+    REAL(amrex_real),     INTENT(in)  :: CFL
+    REAL(amrex_real),     INTENT(in) ::  &
+      G (1:nDOFX,iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3),1:nGF)     
+    REAL(amrex_real),     INTENT(out) :: dt
+
+
+    REAL(amrex_real) ::   dX(3)
+    INTEGER :: iX1, iX2, iX3, iNodeX, iD
+    REAL(amrex_real) :: dt_min(3), dt_s
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
+
+
+    dt_min = 100000.0_amrex_real
+    dt_s = 0.0_amrex_real
+ 
+    
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+ 
+      DO iNodeX = 1, nDOFX
+    
+        dX(1) = dX1(iX1) 
+
+        dt_s = ( dX(1) * G(iNodeX,iX1,iX2,iX3,iGF_h_1) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+        IF ( dt_s .LT. dt_min(1) ) THEN
+          
+          dt_min(1) = dt_s
+      
+        END IF
+
+      END DO 
+ 
+
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+ 
+      DO iNodeX = 1, nDOFX
+    
+        dX(2) = dX2(iX2) 
+
+        dt_s = ( dX(2) * G(iNodeX,iX1,iX2,iX3,iGF_h_2) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+        IF ( dt_s .LT. dt_min(2) ) THEN
+          
+          dt_min(2) = dt_s
+      
+        END IF
+
+      END DO 
+ 
+
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+ 
+      DO iNodeX = 1, nDOFX
+    
+        dX(3) = dX3(iX3) 
+
+        dt_s = ( dX(3) * G(iNodeX,iX1,iX2,iX3,iGF_h_3) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+        IF ( dt_s .LT. dt_min(3) ) THEN
+          
+          dt_min(3) = dt_s
+      
+        END IF
+
+      END DO 
+ 
+
+    END DO
+    END DO
+    END DO
+
+    dt = MINVAL( dt_min )
+    END ASSOCIATE 
+  END SUBROUTINE CalculateTimeStep
 
 
 END MODULE MF_TwoMoment_UtilitiesModule

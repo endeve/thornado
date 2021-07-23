@@ -275,6 +275,7 @@ Euler_TallyModule_Relativistic.o: \
 
 Euler_TallyModule.o: \
   KindModule.o \
+  FluidFieldsModule.o \
   Euler_TallyModule_NonRelativistic.o \
   Euler_TallyModule_Relativistic.o \
   Euler_TallyModule.F90

@@ -2599,7 +2599,6 @@ CONTAINS
 
     Flux_E = - Flux_E
 
-
     RETURN
 
   END FUNCTION Flux_E

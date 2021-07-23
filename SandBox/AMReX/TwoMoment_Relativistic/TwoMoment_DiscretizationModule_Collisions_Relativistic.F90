@@ -224,11 +224,12 @@ CONTAINS
                  dCR_N(iCR_G1,iS,iN_E,iN_X), &
                  dCR_N(iCR_G2,iS,iN_E,iN_X), &
                  dCR_N(iCR_G3,iS,iN_E,iN_X) )
+                 
+
       END DO
       END DO
 
     END DO
-
 
     ! --- Revert Radiation Increment ---
 
@@ -262,7 +263,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
 
     CALL FinalizeCollisions
     
@@ -323,11 +323,11 @@ CONTAINS
 
     Kappa = Chi + Sigma
 
-    D_00 = W + dt * Chi
-    D_ii = W + dt * Kappa
+    D_00 = W + alp * dt * Chi
+    D_ii = W + alp * dt * Kappa
     ! --- Constant Vector ---
 
-    CVEC = [ N + dt * Chi * D_0, G_d_1, G_d_2, G_d_3 ]
+    CVEC = [ N + alp * dt * Chi * D_0, G_d_1, G_d_2, G_d_3 ]
 
     ! --- Initial Guess ---
 
@@ -448,10 +448,10 @@ CONTAINS
             - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
 
     END DO
-    dN     = Chi * ( D_0 - D )
-    dG_d_1 = - Kappa * I_d_1
-    dG_d_2 = - Kappa * I_d_2
-    dG_d_3 = - Kappa * I_d_3
+    dN     = alp * Chi * ( D_0 - D )
+    dG_d_1 = - alp * Kappa * I_d_1
+    dG_d_2 = - alp * Kappa * I_d_2
+    dG_d_3 = - alp * Kappa * I_d_3
     IF( k == MaxIterations )THEN
 
       PRINT*

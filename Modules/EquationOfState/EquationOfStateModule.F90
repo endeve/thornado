@@ -170,14 +170,15 @@ CONTAINS
 
         CALL InitializeEquationOfState_IDEAL &
                ( Gamma_IDEAL_Option &
-                   = Gamma_IDEAL_Option )
+                   = Gamma_IDEAL_Option, &
+                 Verbose_Option = Verbose )
 
       CASE ( 'TABLE' )
 
         CALL InitializeEquationOfState_TABLE &
                ( EquationOfStateTableName_Option &
                    = EquationOfStateTableName_Option, &
-                 Verbose_Option = .TRUE. )
+                 Verbose_Option = Verbose )
 
       CASE DEFAULT
 

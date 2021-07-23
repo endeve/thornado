@@ -28,6 +28,8 @@ thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
 
 thornado.UsePhysicalUnits = 1
 
+thornado.SolveGravity = 1
+
 thornado.PlotFileBaseName = "plt"
 thornado.t_end   = 6.0e+2
 thornado.iCycleD = 10

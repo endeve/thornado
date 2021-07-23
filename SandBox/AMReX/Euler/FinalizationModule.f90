@@ -27,8 +27,6 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule,    ONLY: &
     FinalizePositivityLimiter_Euler
-  USE TimersModule_Euler,               ONLY: &
-    FinalizeTimers_Euler
 
   ! --- Local Modules ---
 
@@ -37,6 +35,8 @@ MODULE FinalizationModule
     FinalizeParameters
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_FinalizeFluid_SSPRK
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_FinalizeTally_Euler
   USE TimersModule_AMReX_Euler,         ONLY: &
     FinalizeTimers_AMReX_Euler,    &
     TimersStart_AMReX_Euler, &
@@ -59,6 +59,8 @@ CONTAINS
     INTEGER :: iLevel, iDim
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
+    CALL MF_FinalizeTally_Euler
 
     CALL MF_FinalizeFluid_SSPRK
 
@@ -86,10 +88,6 @@ CONTAINS
     CALL FinalizeParameters
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
-
-    CALL FinalizeTimers_Euler &
-           ( Verbose_Option = amrex_parallel_ioprocessor(), &
-             SuppressApplicationDriver_Option = .TRUE. )
 
     CALL FinalizeTimers_AMReX_Euler
 

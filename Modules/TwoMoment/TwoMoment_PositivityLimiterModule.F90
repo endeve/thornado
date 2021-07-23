@@ -770,12 +770,12 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, U, iZ_B0, iZ_E0 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, U )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(6)
 #endif
 
     DO iS = 1, nSpecies
@@ -783,14 +783,16 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iNode = 1, nDOF
 
       ! --- Copy Data ---
 
-      U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
-      U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
-      U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
-      U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) = U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+      U_Q_N (iNode,iZ1,iZ2,iZ3,iZ4,iS) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
+      U_Q_G1(iNode,iZ1,iZ2,iZ3,iZ4,iS) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+      U_Q_G2(iNode,iZ1,iZ2,iZ3,iZ4,iS) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+      U_Q_G3(iNode,iZ1,iZ2,iZ3,iZ4,iS) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
 
+    END DO
     END DO
     END DO
     END DO
@@ -864,9 +866,11 @@ CONTAINS
                     ABS( (Max_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) &
                           / (Max_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny) ) )
 
-                U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) &
-                  =   U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_1 &
-                    + U_K_N(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_1 )
+                DO iNode = 1, nDOF
+                  U_Q_N(iNode,iZ1,iZ2,iZ3,iZ4,iS) &
+                    =   U_Q_N(iNode,iZ1,iZ2,iZ3,iZ4,iS) * Theta_1 &
+                      + U_K_N(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_1 )
+                END DO
 
                 Min_K_S(iZ1,iZ2,iZ3,iZ4,iS) = Min_K
                 Max_K_S(iZ1,iZ2,iZ3,iZ4,iS) = Max_K
@@ -965,7 +969,7 @@ CONTAINS
     !$ACC          U_K_N, U_K_G1, U_K_G2, U_K_G3, &
     !$ACC          U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
     !$ACC          NegativeStates, Min_Gam_S, Theta_2_S, &
-    !$ACC          MinTheta_2, iError, iZ_B0, iZ_E0 )
+    !$ACC          MinTheta_2, iError, iZ_B0, iZ_E0, PointZ2X )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
@@ -1027,21 +1031,23 @@ CONTAINS
                 !Theta_2 = Theta_Eps * MINVAL( Theta_P(:) )
                 Theta_2 = Theta_Eps * Theta_2
 
-                U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) &
-                  =   U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
-                    + U_K_N (iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
+                DO iNode = 1, nDOF
+                  U_Q_N (iNode,iZ1,iZ2,iZ3,iZ4,iS) &
+                    =   U_Q_N (iNode,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
+                      + U_K_N (iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
 
-                U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) &
-                  =   U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
-                    + U_K_G1(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
+                  U_Q_G1(iNode,iZ1,iZ2,iZ3,iZ4,iS) &
+                    =   U_Q_G1(iNode,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
+                      + U_K_G1(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
 
-                U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) &
-                  =   U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
-                    + U_K_G2(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
+                  U_Q_G2(iNode,iZ1,iZ2,iZ3,iZ4,iS) &
+                    =   U_Q_G2(iNode,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
+                      + U_K_G2(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
 
-                U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) &
-                  =   U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
-                    + U_K_G3(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
+                  U_Q_G3(iNode,iZ1,iZ2,iZ3,iZ4,iS) &
+                    =   U_Q_G3(iNode,iZ1,iZ2,iZ3,iZ4,iS) * Theta_2 &
+                      + U_K_G3(iZ1,iZ2,iZ3,iZ4,iS) * ( One - Theta_2 )
+                END DO
 
                 Min_Gam_S(iZ1,iZ2,iZ3,iZ4,iS) = Min_Gam
                 Theta_2_S(iZ1,iZ2,iZ3,iZ4,iS) = Theta_2
@@ -1304,15 +1310,19 @@ CONTAINS
     REAL(DP), INTENT(in)  :: U_Q(nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP), INTENT(out) :: U_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNode
+    REAL(DP) :: SUM1, SUM2
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( SUM1, SUM2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( U_K, Tau_Q, iZ_B0, iZ_E0 )
+    !$ACC PRIVATE( SUM1, SUM2 ) &
+    !$ACC PRESENT( U_K, Weights_q, Tau_Q, U_Q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( SUM1, SUM2 )
 #endif
 
     DO iS = 1, nSpecies
@@ -1320,11 +1330,13 @@ CONTAINS
         DO iZ3 = iZ_B0(3), iZ_E0(3)
           DO iZ2 = iZ_B0(2), iZ_E0(2)
             DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-              U_K(iZ1,iZ2,iZ3,iZ4,iS) &
-                = SUM( Weights_q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) &
-                         * U_Q(:,iZ1,iZ2,iZ3,iZ4,iS) ) &
-                  / SUM( Weights_q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) )
+              SUM1 = Zero
+              SUM2 = Zero
+              DO iNode = 1, nDOF
+                SUM1 = SUM1 + Weights_q(iNode) * Tau_Q(iNode,iZ1,iZ2,iZ3,iZ4) * U_Q(iNode,iZ1,iZ2,iZ3,iZ4,iS)
+                SUM2 = SUM2 + Weights_q(iNode) * Tau_Q(iNode,iZ1,iZ2,iZ3,iZ4)
+              END DO
+              U_K(iZ1,iZ2,iZ3,iZ4,iS) = SUM1 / SUM2
 
             END DO
           END DO

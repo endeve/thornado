@@ -3,8 +3,6 @@ MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    AR => amrex_real
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_parallel_module, ONLY: &
@@ -68,6 +66,9 @@ MODULE MF_UtilitiesModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero
   USE InputParsingModule, ONLY: &
     nLevels, &
     nX, &
@@ -92,8 +93,6 @@ MODULE MF_UtilitiesModule
   PUBLIC :: WriteNodalDataToFile
   PUBLIC :: CombineGridData
 
-  REAL(AR), PARAMETER, PUBLIC :: Zero = 0.0_AR
-
 
 CONTAINS
 
@@ -103,9 +102,9 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: nFields
     INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
-    REAL(AR), INTENT(in)  :: &
+    REAL(DP), INTENT(in)  :: &
       Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(AR), INTENT(out) :: &
+    REAL(DP), INTENT(out) :: &
       Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3, iFd
@@ -135,9 +134,9 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: nFields
     INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
-    REAL(AR), INTENT(out) :: &
+    REAL(DP), INTENT(out) :: &
       Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(AR), INTENT(in)  :: &
+    REAL(DP), INTENT(in)  :: &
       Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3, iFd
@@ -167,7 +166,7 @@ CONTAINS
     TYPE(amrex_geometry), INTENT(in)  :: GEOM(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
     INTEGER,              INTENT(in)  :: nF
-    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):,1:)
+    REAL(DP),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):,1:)
     LOGICAL,              INTENT(in), OPTIONAL :: ApplyBC_Option
 
     INTEGER                       :: iNX, iX1, iX2, iX3, iFd, iLevel, &
@@ -177,7 +176,8 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     TYPE(EdgeMap)                 :: Edge_Map
     LOGICAL                       :: ApplyBC
-    REAL(AR), CONTIGUOUS, POINTER :: uF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uA(:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: uT(:,:,:,:,:)
 
     ApplyBC = .FALSE.
     IF( PRESENT( ApplyBC_Option ) ) &
@@ -189,9 +189,11 @@ CONTAINS
 
       CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
 
+      U = Zero
+
       DO WHILE( MFI % next() )
 
-        uF => MF(iLevel) % DataPtr( MFI )
+        uA => MF(iLevel) % DataPtr( MFI )
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
@@ -201,32 +203,25 @@ CONTAINS
 
         IF( ApplyBC )THEN
 
+          ALLOCATE( uT(nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3), &
+                       nF) )
+
           CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
           CALL amrex2thornado_X &
-                 ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
-                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), &
-                     1:nF) )
+                 ( nF, iX_B1, iX_E1, LBOUND( uA ), iX_B1, iX_E1, uA, uT )
 
           CALL MF_ApplyBoundaryConditions_Euler &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), &
-                     1:nF), Edge_Map )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uT, Edge_Map )
 
           CALL thornado2amrex_X &
-                 ( nF, iX_B1, iX_E1, LBOUND( uF ), iX_B1, iX_E1, uF, &
-                   U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), &
-                     1:nF) )
+                 ( nF, iX_B1, iX_E1, LBOUND( uA ), iX_B1, iX_E1, uA, uT )
+
+          DEALLOCATE( uT )
 
         END IF
-
-        U = Zero
 
         iX_B = iX_B0
         iX_E = iX_E0
@@ -244,7 +239,7 @@ CONTAINS
         DO iX1 = iX_B(1), iX_E(1)
 
           U(1:nDOFX,iX1,iX2,iX3,iFd) &
-            = uF(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
+            = uA(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd)
 
         END DO
         END DO
@@ -284,7 +279,7 @@ CONTAINS
     INTEGER                       :: lo(4), hi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: U(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U(:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
@@ -330,17 +325,17 @@ CONTAINS
     INTEGER           :: iLo(3), iHi(3), iNX, iNX1, iX1, iX2, iX3
     CHARACTER(LEN=16) :: FMT
 
-    REAL(AR) :: P(1:nDOFX,1:nPF)
-    REAL(AR) :: A(1:nDOFX,1:nAF)
-    REAL(AR) :: G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+    REAL(DP) :: P(1:nDOFX,1:nPF)
+    REAL(DP) :: A(1:nDOFX,1:nAF)
+    REAL(DP) :: G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                           1-swX(2):nX(2)+swX(2), &
                           1-swX(3):nX(3)+swX(3), &
                   1:nGF)
-    REAL(AR) :: U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+    REAL(DP) :: U(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                           1-swX(2):nX(2)+swX(2), &
                           1-swX(3):nX(3)+swX(3), &
                   1:nCF)
-    REAL(AR) :: D(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+    REAL(DP) :: D(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                           1-swX(2):nX(2)+swX(2), &
                           1-swX(3):nX(3)+swX(3), &
                   1:nDF)
@@ -474,15 +469,15 @@ CONTAINS
 
     TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
     INTEGER,              INTENT(in)  :: nF, iField
-    REAL(AR),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):)
+    REAL(DP),             INTENT(out) :: U(1:,1-swX(1):,1-swX(2):,1-swX(3):)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(AR), CONTIGUOUS, POINTER :: U_P(:,:,:,:)
-    REAL(AR)                      :: U_K(nDOFX,nF)
+    REAL(DP), CONTIGUOUS, POINTER :: U_P(:,:,:,:)
+    REAL(DP)                      :: U_K(nDOFX,nF)
 
-    REAL(AR) :: U0(nDOFX,1-swX(1):nX(1)+swX(1), &
+    REAL(DP) :: U0(nDOFX,1-swX(1):nX(1)+swX(1), &
                          1-swX(2):nX(2)+swX(2), &
                          1-swX(3):nX(3)+swX(3),0:nLevels-1)
 

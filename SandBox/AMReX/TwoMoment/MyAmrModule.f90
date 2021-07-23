@@ -142,6 +142,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
           
 
+    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )

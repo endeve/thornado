@@ -14,6 +14,10 @@ MODULE TimeSteppingModule_SSPRK
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_UpdateFluid
+  USE Euler_dgDiscretizationModule, ONLY: &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_NonRelativistic, ONLY: &
+    IncrementOffGridTally_Euler_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -195,6 +199,10 @@ CONTAINS
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS
 
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
+
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     IF( PRESENT( ComputeGravitationalPotential ) )THEN
@@ -242,6 +250,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+
       END IF
 
     END DO
@@ -270,6 +281,8 @@ CONTAINS
                G, U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
     END IF
+
+    CALL IncrementOffGridTally_Euler_NonRelativistic( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
