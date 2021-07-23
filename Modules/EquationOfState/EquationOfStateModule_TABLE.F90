@@ -1052,7 +1052,7 @@ CONTAINS
             WRITE(*,'(A,ES12.3,A)') '  Enforce T = MinT =', MinT / UnitT, ' K'
             T(iP) = MinT * (1.0_DP + 1.0e-6) ! Using the min T in Eos table
             CALL ComputeDependentVariable_TABLE &
-                   ( D(iP), T(iP), Y(iP), Em(iP), Es_T, OS_E, Units_V = UnitE )
+                   ( D(iP), T(iP), Y(iP), Em(iP), E_T, OS_E, Units_V = UnitE )
             WRITE(*,'(A,ES12.3,A)') &
             '   and corresponding Em =', Em(iP) / UnitE, 'Erg / Gram'
             Error(iP) = 0 ! Erase the error flag is able to find Em
