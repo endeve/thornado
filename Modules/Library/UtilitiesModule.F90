@@ -46,6 +46,21 @@ MODULE UtilitiesModule
     MODULE PROCEDURE Map1DTo4D
   END INTERFACE MapFrom1D
 
+  INTERFACE MinMod2
+    MODULE PROCEDURE MinMod2_Scalar
+    MODULE PROCEDURE MinMod2_Vector
+  END INTERFACE MinMod2
+
+  INTERFACE MinMod
+    MODULE PROCEDURE MinMod_Scalar
+    MODULE PROCEDURE MinMod_Vector
+  END INTERFACE MinMod
+
+  INTERFACE MinModB
+    MODULE PROCEDURE MinModB_Scalar
+    MODULE PROCEDURE MinModB_Vector
+  END INTERFACE MinModB
+
 CONTAINS
 
 
@@ -105,7 +120,7 @@ CONTAINS
   END FUNCTION NodeNumber_X1
 
 
-  PURE INTEGER FUNCTION NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+  INTEGER FUNCTION NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -300,7 +315,8 @@ CONTAINS
   END SUBROUTINE GetRoots_Quadratic
 
 
-  REAL(DP) PURE ELEMENTAL FUNCTION MinMod2( a, b )
+  FUNCTION MinMod2_Scalar( a, b ) &
+    RESULT( MinMod2 )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
@@ -309,6 +325,7 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in) :: a, b
+    REAL(DP) :: MinMod2
 
     IF( a * b > 0.0_DP )THEN
       IF( ABS( a ) < ABS( b ) )THEN
@@ -321,10 +338,41 @@ CONTAINS
     END IF
 
     RETURN
-  END FUNCTION MinMod2
+  END FUNCTION MinMod2_Scalar
 
 
-  REAL(DP) PURE ELEMENTAL FUNCTION MinMod( a, b, c )
+  FUNCTION MinMod2_Vector( a, b ) &
+    RESULT( MinMod2 )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: a(:), b(:)
+    REAL(DP) :: MinMod2(SIZE(a))
+
+    INTEGER :: i
+
+    DO i = 1, SIZE(a)
+      IF( a(i) * b(i) > 0.0_DP )THEN
+        IF( ABS( a(i) ) < ABS( b(i) ) )THEN
+          MinMod2(i) = a(i)
+        ELSE
+          MinMod2(i) = b(i)
+        END IF
+      ELSE
+        MinMod2(i) = 0.0_DP
+      END IF
+    END DO
+
+    RETURN
+  END FUNCTION MinMod2_Vector
+
+
+  FUNCTION MinMod_Scalar( a, b, c ) &
+    RESULT( MinMod )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
@@ -333,14 +381,34 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in) :: a, b, c
+    REAL(DP) :: MinMod
 
     MinMod = MinMod2( a, MinMod2( b, c ) )
 
     RETURN
-  END FUNCTION MinMod
+  END FUNCTION MinMod_Scalar
 
 
-  REAL(DP) PURE ELEMENTAL FUNCTION MinModB( a, b, c, dx, M )
+  FUNCTION MinMod_Vector( a, b, c ) &
+    RESULT( MinMod )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: a(:), b(:), c(:)
+    REAL(DP) :: MinMod(SIZE(a))
+
+    MinMod = MinMod2( a, MinMod2( b, c ) )
+
+    RETURN
+  END FUNCTION MinMod_Vector
+
+
+  FUNCTION MinModB_Scalar( a, b, c, dx, M ) &
+    RESULT( MinModB )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
@@ -349,6 +417,7 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in) :: a, b, c, dx, M
+    REAL(DP) :: MinModB
 
     IF( ABS( a ) < M * dx**2 )THEN
 
@@ -360,7 +429,24 @@ CONTAINS
 
     END IF
 
-  END FUNCTION MinModB
+  END FUNCTION MinModB_Scalar
+
+
+  FUNCTION MinModB_Vector( a, b, c, dx, M ) &
+    RESULT( MinModB )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: a(:), b(:), c(:), dx, M
+    REAL(DP) :: MinModB(SIZE(a))
+
+    MinModB = MERGE( a, MinMod( a, b, c ), ABS( a ) < M * dx**2 )
+
+  END FUNCTION MinModB_Vector
 
 
   SUBROUTINE WriteVector( N, Vec, FileName )

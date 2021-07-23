@@ -93,12 +93,12 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL_WENO
 
   REAL(DP), ALLOCATABLE :: LegendreX(:,:)
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
   !$OMP DECLARE TARGET &
   !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$OMP     UseConservativeCorrection, &
   !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
   !$ACC DECLARE CREATE &
   !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$ACC     UseConservativeCorrection, &
@@ -247,12 +247,12 @@ CONTAINS
 
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET UPDATE TO &
     !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
     !$OMP     UseConservativeCorrection, &
     !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC UPDATE DEVICE &
     !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
     !$ACC     UseConservativeCorrection, &
@@ -1338,11 +1338,11 @@ CONTAINS
 
     IF( .NOT. UseConservativeCorrection ) RETURN
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, SqrtGm, Vol, U_K, &
     !$OMP          LimitedCell, U_M )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC COPYIN(  iX_B0, iX_E0, iX_B1, iX_E1, SqrtGm, Vol, U_K, &
     !$ACC          LimitedCell, U_M )
@@ -1351,9 +1351,9 @@ CONTAINS
     ! --- Applies a correction to the 0-th order ---
     ! --- mode to maintain the cell average.     ---
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, WeightsX_q, LegendreX, SqrtGm, &
     !$ACC          U_M, Vol, U_K )
@@ -1397,12 +1397,12 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U_M ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, SqrtGm, Vol, U_K, &
     !$OMP               LimitedCell )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U_M ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, SqrtGm, Vol, U_K, &

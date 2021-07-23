@@ -172,10 +172,10 @@ CONTAINS
 
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: L_X )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC COPYIN(  L_X )
 #endif
@@ -185,10 +185,10 @@ CONTAINS
 
   SUBROUTINE FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: L_X )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC DELETE(       L_X )
 #endif
@@ -285,13 +285,13 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_CopyIn )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, G, U ) &
     !$OMP MAP( alloc: iErr, NegativeStates, Theta_q, SqrtGm, &
     !$OMP             U_Q, U_P, U_K, &
     !$OMP             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, G, U ) &
     !$ACC CREATE(     iErr, NegativeStates, Theta_q, SqrtGm, &
@@ -303,9 +303,9 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( SqrtGm, h1Q, h2Q, h3Q, G )
 #elif defined(THORNADO_OMP)
@@ -327,9 +327,9 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( U_Q, U )
 #elif defined(THORNADO_OMP)
@@ -363,9 +363,9 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT(  iX_B0, iX_E0, g1P, g2P, g3P, h1P, h2P, h3P )
 #elif defined(THORNADO_OMP)
@@ -385,9 +385,9 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( U_K, WeightsX_q, SqrtGm, U_Q )
 #elif defined(THORNADO_OMP)
@@ -413,10 +413,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_LimitCells )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( Min_D, Min_K, Theta_D )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U_K, U_Q, U_P, NegativeStates ) &
     !$ACC PRIVATE( Min_D, Min_K, Theta_D )
@@ -477,10 +477,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_LimitCells )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( Min_ESq, Theta_P )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U_K, U_Q, U_P, g1P, g2P, g3P, Theta_q, &
     !$ACC          iErr, NegativeStates ) &
@@ -550,9 +550,9 @@ CONTAINS
 
     ! --- Limit all variables towards cell-average ---
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates )
 #elif defined(THORNADO_OMP)
@@ -595,13 +595,13 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_CopyOut )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U, iErr ) &
     !$OMP MAP( release: NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
     !$OMP               G, U_Q, U_P, U_K, &
     !$OMP               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, iErr ) &
     !$ACC DELETE(       NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
@@ -668,9 +668,9 @@ CONTAINS
   FUNCTION Computeq &
     ( D, S1, S2, S3, tau, g1, g2, g3, Min_ESq ) RESULT( q )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -691,9 +691,9 @@ CONTAINS
       D_K, S1_K, S2_K, S3_K, E_K, &
       g1_P, g2_P, g3_P, Min_ESq, Theta_P, iErr )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 

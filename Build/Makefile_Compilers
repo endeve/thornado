@@ -14,7 +14,7 @@ OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
 OPENMP_OL_corigpu_pgi= -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENMP_OL_poplar_cce = -homp
-OPENMP_OL_spock_cce  = -homp
+OPENMP_OL_spock_cce  = -fopenmp
 OPENMP_OL_spock_gcc  = -fopenmp
 ifeq ($(USE_OMP),TRUE)
     OPENMP               = $(OPENMP_$(MACHINE))
@@ -32,24 +32,24 @@ OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
 OPENACC_summit_xl    =
 OPENACC_corigpu_pgi  = -acc -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENACC_poplar_cce   =
-OPENACC_spock_cce    =
-OPENACC_spock_gcc    = -fopenacc
+OPENACC_spock_cce    = -hacc -hacc_model=auto_async_kernel:fast_addr:deep_copy
+OPENACC_spock_gcc    = -fopenacc# --amdgpu-target=gfx908
 ifeq ($(USE_OACC),TRUE)
     OPENACC              = $(OPENACC_$(MACHINE))
 endif
 
-C_titan_gnu          = CC -std=c++11 $(OPENMP)
-C_titan_pgi          = CC --c++11 $(OPENMP)
-C_summitdev_gcc      = mpic++ -std=c++11 $(OPENMP)
-C_summitdev_pgi      = mpic++ --c++11 $(OPENMP)
-C_summitdev_xl       = mpic++ -std=c++11 $(OPENMP)
-C_summit_gcc         = mpic++ -std=c++11 $(OPENMP)
-C_summit_pgi         = mpic++ --c++11 $(OPENMP)
-C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
-C_corigpu_pgi        = mpic++ --c++11 $(OPENMP)
-C_poplar_cce         = CC $(OPENMP)
-C_spock_cce          = CC $(OPENMP)
-C_spock_gcc          = CC $(OPENMP)
+C_titan_gnu          = CC -std=c++11
+C_titan_pgi          = CC --c++11
+C_summitdev_gcc      = mpic++ -std=c++11
+C_summitdev_pgi      = mpic++ --c++11
+C_summitdev_xl       = mpic++ -std=c++11
+C_summit_gcc         = mpic++ -std=c++11
+C_summit_pgi         = mpic++ --c++11
+C_summit_xl          = mpic++ -std=c++11
+C_corigpu_pgi        = mpic++ --c++11
+C_poplar_cce         = CC
+C_spock_cce          = CC
+C_spock_gcc          = CC
 C                    = $(C_$(MACHINE))
 
 FORTRAN_mac_gnu      = mpif90 -fopenmp -cpp
@@ -87,7 +87,7 @@ FORTRAN_spock_cce    = ftn
 FORTRAN_spock_gcc    = ftn
 FORTRAN_acf_gnu      = mpif90
 FORTRAN_corigpu_pgi  = mpifort -Mpreprocess
-FORTRAN              = $(FORTRAN_$(MACHINE)) $(OPENMP) $(OPENACC)
+FORTRAN              = $(FORTRAN_$(MACHINE))
 
 SUFFIX_f90_mac_gnu      =
 SUFFIX_f90_sn1987b      =
@@ -159,9 +159,9 @@ FLINKER_spock_cce    = ftn
 FLINKER_spock_gcc    = ftn
 FLINKER_acf_gnu      = mpif90
 FLINKER_corigpu_pgi  = mpifort -Mpreprocess
-FLINKER              = $(FLINKER_$(MACHINE)) $(OPENMP) $(OPENACC)
+FLINKER              = $(FLINKER_$(MACHINE))
 
-FLAGS_DEBUG        = $(DEBUG)
+FLAGS_DEBUG        = $(DEBUG) $(OPENMP) $(OPENACC)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_endeve       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -Wunused -fallow-argument-mismatch
@@ -199,7 +199,7 @@ DEBUG_acf_gnu      = -g -fbacktrace -ffpe-trap=invalid,zero -fbounds-check
 DEBUG_corigpu_pgi  = -g -O0 -traceback -Mbounds -Ktrap=fp
 DEBUG              = $(DEBUG_$(MACHINE))
 
-FLAGS_OPTIMIZE        = $(OPTIMIZE)
+FLAGS_OPTIMIZE        = $(OPTIMIZE) $(OPENMP) $(OPENACC)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
 OPTIMIZE_endeve       = -O2 -framework Accelerate -fallow-argument-mismatch
@@ -229,8 +229,8 @@ OPTIMIZE_summitdev_gcc= -g -O3 -mcpu=power8
 OPTIMIZE_summitdev_pgi= -g -O3 -tp=pwr8
 OPTIMIZE_summitdev_xl = -g -O3 -qnohot -qarch=pwr8 -qtune=pwr8 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE_summit_gcc   = -g -O3 -mcpu=power9
-OPTIMIZE_summit_pgi   = -g -O3 -tp=pwr9
-OPTIMIZE_summit_xl    = -g -O3 -qnohot -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
+OPTIMIZE_summit_pgi   = -g -O2 -tp=pwr9
+OPTIMIZE_summit_xl    = -g -O2 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE_poplar_cce   = -h heap_allocate
 OPTIMIZE_spock_cce    = -G2 -O2
 OPTIMIZE_spock_gcc    = -g -O3
@@ -381,7 +381,7 @@ LIBRARIES_HDF5_summit_gcc      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_pgi      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_poplar_cce      = -L/home/users/coe0194/sw/poplar/cce/11.0.0/hdf5-1.12.0/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_spock_cce       =
+LIBRARIES_HDF5_spock_cce       = -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_spock_gcc       =
 LIBRARIES_HDF5_acf_gnu         = $(HDF5_LIB) -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_corigpu_pgi     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
@@ -445,8 +445,8 @@ LIBRARIES_CUDA_corigpu_pgi     = -cudalib
 LIBRARIES_CUDA_poplar_cce      = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -L$(CUDA_ROOT)/compat -lcuda
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
 
-LIBRARIES_ROCM_spock_cce       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
-LIBRARIES_ROCM_spock_gcc       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
+LIBRARIES_ROCM_spock_cce       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
+LIBRARIES_ROCM_spock_gcc       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
 LIBRARIES_ROCM                 = $(LIBRARIES_ROCM_$(MACHINE))
 
 LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma

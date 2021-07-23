@@ -286,10 +286,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CopyIn )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC COPYIN(  G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
@@ -298,11 +298,11 @@ CONTAINS
 
     TimeStep = HUGE( One )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
@@ -361,10 +361,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CopyOut )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
@@ -381,9 +381,9 @@ CONTAINS
   FUNCTION Eigenvalues_Euler_NonRelativistic &
     ( Vi, Cs, Gmii )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -404,9 +404,9 @@ CONTAINS
     ( D_L, S_L, E_L, FD_L, FS_L, FE_L, D_R, S_R, E_R, FD_R, FS_R, FE_R, &
       Gmii, aP, aM )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -428,9 +428,9 @@ CONTAINS
   FUNCTION Flux_X1_Euler_NonRelativistic &
     ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -456,9 +456,9 @@ CONTAINS
   FUNCTION Flux_X2_Euler_NonRelativistic &
     ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -484,9 +484,9 @@ CONTAINS
   FUNCTION Flux_X3_Euler_NonRelativistic &
     ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -503,9 +503,9 @@ CONTAINS
   FUNCTION StressTensor_Diagonal_Euler_NonRelativistic &
     ( S1, S2, S3, V1, V2, V3, P )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -524,9 +524,9 @@ CONTAINS
   FUNCTION NumericalFlux_HLL_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -544,9 +544,9 @@ CONTAINS
   FUNCTION NumericalFlux_X1_HLLC_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -615,9 +615,9 @@ CONTAINS
   FUNCTION NumericalFlux_X2_HLLC_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -686,9 +686,9 @@ CONTAINS
   FUNCTION NumericalFlux_X3_HLLC_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
