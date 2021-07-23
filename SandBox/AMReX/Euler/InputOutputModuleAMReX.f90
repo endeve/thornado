@@ -79,7 +79,9 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, StepNo, MF_uGF, MF_uGF_Option, MF_uCF_Option )
+    ( Time, StepNo, MF_uGF, &
+      MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
+      MF_uAF_Option, MF_uDF_Option )
 
     REAL(DP),             INTENT(in) :: Time
     INTEGER,              INTENT(in) :: StepNo(0:amrex_max_level)
@@ -88,11 +90,20 @@ CONTAINS
       MF_uGF_Option(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
       MF_uCF_Option(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
+      MF_uPF_Option(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
+      MF_uAF_Option(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
+      MF_uDF_Option(0:amrex_max_level)
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C
+    LOGICAL                         :: WriteFF_P
+    LOGICAL                         :: WriteFF_A
+    LOGICAL                         :: WriteFF_D
     INTEGER                         :: iComp, iOS, iLevel, nF
     TYPE(amrex_multifab)            :: MF_plt(0:amrex_max_level)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
@@ -115,6 +126,30 @@ CONTAINS
 
     END IF
 
+    WriteFF_P = .FALSE.
+    IF( PRESENT( MF_uPF_Option ) )THEN
+
+      WriteFF_P = .TRUE.
+      nF = nF + nPF
+
+    END IF
+
+    WriteFF_A = .FALSE.
+    IF( PRESENT( MF_uAF_Option ) )THEN
+
+      WriteFF_A = .TRUE.
+      nF = nF + nAF
+
+    END IF
+
+    WriteFF_D = .FALSE.
+    IF( PRESENT( MF_uDF_Option ) )THEN
+
+      WriteFF_D = .TRUE.
+      nF = nF + nDF
+
+    END IF
+
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -122,15 +157,7 @@ CONTAINS
 
     END IF
 
-    IF( amrex_max_level .EQ. 0 )THEN
-
-      WRITE(NumberString,'(I8.8)') StepNo(:)
-
-    ELSE
-
-      WRITE(NumberString,'(I8.8)') StepNo(0)
-
-    END IF
+    WRITE(NumberString,'(I8.8)') StepNo(0)
 
     PlotFileName = TRIM( PlotFileBaseName ) // '_' // NumberString
 
@@ -164,6 +191,45 @@ CONTAINS
 
     END IF
 
+    IF( WriteFF_P )THEN
+
+      DO iComp = 1, nPF
+
+        CALL amrex_string_build &
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesPF(iComp) ) )
+
+      END DO
+
+      iOS = iOS + nPF
+
+    END IF
+
+    IF( WriteFF_A )THEN
+
+      DO iComp = 1, nAF
+
+        CALL amrex_string_build &
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesAF(iComp) ) )
+
+      END DO
+
+      iOS = iOS + nAF
+
+    END IF
+
+    IF( WriteFF_D )THEN
+
+      DO iComp = 1, nDF
+
+        CALL amrex_string_build &
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesDF(iComp) ) )
+
+      END DO
+
+      iOS = iOS + nDF
+
+    END IF
+
     DO iLevel = 0, amrex_max_level
 
       CALL amrex_multifab_build &
@@ -191,6 +257,36 @@ CONTAINS
                  iOS, 'CF', MF_plt(iLevel) )
 
         iOS = iOS + nCF
+
+      END IF
+
+      IF( WriteFF_P )THEN
+
+        CALL ComputeCellAverage_MF &
+               ( nPF, MF_uGF(iLevel), MF_uPF_Option(iLevel), &
+                 iOS, 'PF', MF_plt(iLevel) )
+
+        iOS = iOS + nPF
+
+      END IF
+
+      IF( WriteFF_A )THEN
+
+        CALL ComputeCellAverage_MF &
+               ( nAF, MF_uGF(iLevel), MF_uAF_Option(iLevel), &
+                 iOS, 'AF', MF_plt(iLevel) )
+
+        iOS = iOS + nAF
+
+      END IF
+
+      IF( WriteFF_D )THEN
+
+        CALL ComputeCellAverage_MF &
+               ( nDF, MF_uGF(iLevel), MF_uDF_Option(iLevel), &
+                 iOS, 'DF', MF_plt(iLevel) )
+
+        iOS = iOS + nDF
 
       END IF
 

@@ -3,6 +3,8 @@ MODULE Euler_UtilitiesModule
   USE KindModule, ONLY: &
     DP, &
     Half
+  USE MeshModule, ONLY: &
+    MeshType
   USE FluidFieldsModule, ONLY: &
     nCF
 
@@ -224,7 +226,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimeStep_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, MeshX_Option )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -235,11 +237,18 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
+    TYPE(MeshType), INTENT(in), OPTIONAL :: MeshX_Option(3)
+
+    TYPE(MeshType) :: MeshX(3)
+
+    IF( PRESENT( MeshX_Option ) ) &
+      MeshX = MeshX_Option
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeTimeStep_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, &
+             MeshX_Option = MeshX )
 
 #else
 

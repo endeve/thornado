@@ -33,6 +33,10 @@ MODULE MF_GeometryModule
   USE InputParsingModule, ONLY: &
     swX, &
     iOS_CPP
+  USE MF_Euler_TimersModule, ONLY: &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
@@ -85,6 +89,8 @@ CONTAINS
       iLo_G = iX_B1 + iOS_CPP
       iHi_G = iX_E1 + iOS_CPP
 
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
       ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3), &
@@ -94,6 +100,8 @@ CONTAINS
                            iLo_G(2):iHi_G(2), &
                            iLo_G(3):iHi_G(3), &
                    1:nGF) )
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
 #if defined HYDRO_RELATIVISTIC
 
@@ -125,8 +133,12 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
       DEALLOCATE( Gt )
       DEALLOCATE( G  )
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
     END DO
 

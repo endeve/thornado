@@ -17,7 +17,7 @@ MODULE InitializationModule
     amrex_init_virtual_functions, &
     amrex_init_from_scratch, &
     amrex_ref_ratio, &
-    amrex_geom
+    amrex_max_level
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
@@ -53,9 +53,6 @@ MODULE InitializationModule
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
   USE MeshModule, ONLY: &
-    MeshType, &
-    CreateMesh, &
-    DestroyMesh, &
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
@@ -65,6 +62,8 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
+  USE EquationOfStateModule, ONLY: &
+    InitializeEquationOfState
 
   ! --- Local Modules ---
 
@@ -87,9 +86,13 @@ MODULE InitializationModule
     MF_uDF_old, &
     MF_uDF_new, &
     FluxRegister
+  USE MF_Euler_UtilitiesModule, ONLY: &
+    ComputeFromConserved_Euler_MF
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
-    nLevels, &
     swX, &
     StepNo, &
     dt, &
@@ -98,13 +101,23 @@ MODULE InitializationModule
     xL, &
     UseTiling, &
     do_reflux, &
-    nX, &
     MaxGridSizeX, &
     xL, &
     xR, &
-    CoordSys
+    CoordSys, &
+    EquationOfState, &
+    Gamma_IDEAL, &
+    EosTableName
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
+  USE MF_Euler_ErrorModule, ONLY: &
+    DescribeError_Euler_MF
+  USE MF_Euler_TimersModule, ONLY: &
+    InitializeTimers_AMReX_Euler, &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_Initialize, &
+    Timer_AMReX_Euler_InputOutput
 
   IMPLICIT NONE
   PRIVATE
@@ -120,6 +133,10 @@ CONTAINS
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
+
+    CALL InitializeTimers_AMReX_Euler
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     CALL InitializeParameters
 
@@ -137,13 +154,9 @@ CONTAINS
 
     ELSE
 
-      PRINT*, 'Invalid coordinate system: ', CoordSys
-      PRINT*, 'Valid choices'
-      PRINT*, '-------------'
-      PRINT*, '  0 (CARTESIAN)'
-      PRINT*, '  1 (CYLINDRICAL)'
-      PRINT*, '  2 (SPHERICAL)'
-      STOP ''
+      CALL DescribeError_Euler_MF &
+             ( 02, Message_Option = 'Invalid CoordSys:', &
+                   Int_Option = [ CoordSys ] )
 
     END IF
 
@@ -156,6 +169,22 @@ CONTAINS
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
+    IF( EquationOfState .EQ. 'TABLE' )THEN
+
+        CALL InitializeEquationOfState &
+               ( EquationOfState_Option = EquationOfState, &
+                 EquationOfStateTableName_Option &
+                   = EosTableName )
+
+    ELSE
+
+      CALL InitializeEquationOfState &
+               ( EquationOfState_Option = EquationOfState, &
+                 Gamma_IDEAL_Option = Gamma_IDEAL, &
+                 Verbose_Option = amrex_parallel_ioprocessor() )
+
+    END IF
+
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &
              MakeNewLevelFromCoarse, &
@@ -163,10 +192,10 @@ CONTAINS
              ClearLevel, &
              ErrorEstimate )
 
-    ALLOCATE( StepNo(0:nLevels-1) )
-    ALLOCATE( dt    (0:nLevels-1) )
-    ALLOCATE( t_old (0:nLevels-1) )
-    ALLOCATE( t_new (0:nLevels-1) )
+    ALLOCATE( StepNo(0:amrex_max_level) )
+    ALLOCATE( dt    (0:amrex_max_level) )
+    ALLOCATE( t_old (0:amrex_max_level) )
+    ALLOCATE( t_new (0:amrex_max_level) )
 
     StepNo = 0
     dt     = 0.0_DP
@@ -175,10 +204,22 @@ CONTAINS
 
     CALL amrex_init_from_scratch( 0.0_DP )
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+    CALL ComputeFromConserved_Euler_MF &
+           ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF_new, &
              MF_uGF_Option = MF_uGF_new, &
-             MF_uCF_Option = MF_uCF_new )
+             MF_uCF_Option = MF_uCF_new, &
+             MF_uPF_Option = MF_uPF_new, &
+             MF_uAF_Option = MF_uAF_new, &
+             MF_uDF_Option = MF_uDF_new )
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   END SUBROUTINE InitializeProgram
 
@@ -198,8 +239,7 @@ CONTAINS
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
 
-    INTEGER :: nCompCF, iDim
-    INTEGER :: nXX(3)
+    INTEGER :: nCompCF
 
     BA = pBA
     DM = pDM
@@ -211,18 +251,28 @@ CONTAINS
 
     CALL amrex_multifab_build( MF_uGF_new(iLevel), BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uGF_old(iLevel), BA, DM, nDOFX * nGF, swX )
+    CALL MF_uGF_new(iLevel) % SetVal( Zero )
+    CALL MF_uGF_old(iLevel) % SetVal( Zero )
 
     CALL amrex_multifab_build( MF_uCF_new(iLevel), BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uCF_old(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL MF_uCF_new(iLevel) % SetVal( Zero )
+    CALL MF_uCF_old(iLevel) % SetVal( Zero )
 
     CALL amrex_multifab_build( MF_uPF_new(iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uPF_old(iLevel), BA, DM, nDOFX * nPF, swX )
+    CALL MF_uPF_new(iLevel) % SetVal( Zero )
+    CALL MF_uPF_old(iLevel) % SetVal( Zero )
 
     CALL amrex_multifab_build( MF_uAF_new(iLevel), BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uAF_old(iLevel), BA, DM, nDOFX * nAF, swX )
+    CALL MF_uAF_new(iLevel) % SetVal( Zero )
+    CALL MF_uAF_old(iLevel) % SetVal( Zero )
 
     CALL amrex_multifab_build( MF_uDF_new(iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uDF_old(iLevel), BA, DM, nDOFX * nDF, swX )
+    CALL MF_uDF_new(iLevel) % SetVal( Zero )
+    CALL MF_uDF_old(iLevel) % SetVal( Zero )
 
     nCompCF = MF_uCF_new(iLevel) % nComp()
 
@@ -231,28 +281,12 @@ CONTAINS
              ( FluxRegister(iLevel), BA, DM, &
                amrex_ref_ratio(iLevel-1), iLevel, nCompCF )
 
-    nXX = nX
-
-    nXX(1) = 2**( iLevel ) * nX(1)
-    IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
-    IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nXX(iDim), nNodesX(iDim), swX(iDim), &
-               xL(iDim), xR(iDim) )
-
-    END DO
+    CALL CreateMesh_MF( iLevel, MeshX )
 
     CALL ComputeGeometryX_MF( MF_uGF_new(iLevel) )
     CALL InitializeFields_MF( iLevel, MF_uGF_new(iLevel), MF_uCF_new(iLevel) )
 
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
 
@@ -430,8 +464,6 @@ CONTAINS
     REAL(DP),               CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
 
-    INTEGER :: nXX(3), iDim
-
     IF( .NOT. ALLOCATED( TagCriteria ) )THEN
 
        CALL amrex_parmparse_build( PP, "amr" )
@@ -444,19 +476,7 @@ CONTAINS
 
     Tag = cp
 
-    nXX = nX
-
-    nXX(1) = 2**( iLevel ) * nX(1)
-    IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
-    IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nXX(iDim), nNodesX(iDim), swX(iDim), &
-               xL(iDim), xR(iDim) )
-
-    END DO
+    CALL CreateMesh_MF( iLevel, MeshX )
 
     !$OMP PARALLEL PRIVATE( MFI, BX, uCF, TagArr )
     CALL amrex_mfiter_build( MFI, MF_uCF_new( iLevel ), Tiling = UseTiling )
@@ -480,11 +500,7 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
     !$OMP END PARALLEL
 
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
 

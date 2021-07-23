@@ -8,6 +8,11 @@ thornado.nNodes = 03
 thornado.swX = 01 01 00
 thornado.Gamma_IDEAL = 1.3333333333333333
 thornado.bcX = 01 01 01
+thornado.t_end = 1.0e1
+thornado.iCycleD = 1
+thornado.CFL = 0.5
+thornado.iCycleW = 10
+thornado.iCycleChk = 10
 
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 

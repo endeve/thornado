@@ -21,11 +21,16 @@ MODULE InputParsingModule
 
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader
+  USE UtilitiesModule, ONLY: &
+    thornado_abort
 
   ! --- Local modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    Zero, &
+    One, &
+    Two
 
   IMPLICIT NONE
 
@@ -35,7 +40,13 @@ MODULE InputParsingModule
   INTEGER, ALLOCATABLE  :: swX(:)
   INTEGER, ALLOCATABLE  :: bcX(:)
   INTEGER               :: nNodes
+  REAL(DP)              :: dt_wrt, dt_chk
+  INTEGER               :: iCycleW, iCycleChk, iCycleD
+  REAL(DP)              :: t_end
   REAL(DP)              :: Gamma_IDEAL
+  REAL(DP)              :: CFL
+  CHARACTER(:), ALLOCATABLE :: EquationOfState
+  CHARACTER(:), ALLOCATABLE :: EosTableName
 
   ! --- geometry ---
 
@@ -80,16 +91,50 @@ CONTAINS
 
     ! --- thornado paramaters thornado.* ---
 
-    Gamma_IDEAL = 4.0_DP / 3.0_DP
+    EquationOfState  = 'IDEAL'
+    Gamma_IDEAL      = 4.0_DP / 3.0_DP
+    EosTableName     = ''
     PlotFileBaseName = 'plt'
+    iCycleD          = 10
+    iCycleW          = -1
+    iCycleChk        = -1
+    dt_wrt           = -1.0_DP
+    dt_chk           = -1.0_DP
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', ProgramName )
       CALL PP % get   ( 'nNodes', nNodes )
       CALL PP % getarr( 'swX', swX )
       CALL PP % getarr( 'bcX', bcX )
+      CALL PP % get   ( 't_end', t_end )
+      CALL PP % get   ( 'CFL', CFL )
+      CALL PP % query ( 'EquationOfState', EquationOfState )
       CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
+      CALL PP % query ( 'iCycleD', iCycleD )
+      CALL PP % query ( 'EosTableName', EosTableName )
       CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
+      CALL PP % query ( 'iCycleW', iCycleW )
+      CALL PP % query ( 'iCycleChk', iCycleChk )
+      CALL PP % query ( 'dt_wrt', dt_wrt )
+      CALL PP % query ( 'dt_chk', dt_chk )
     CALL amrex_parmparse_destroy( PP )
+
+    IF( iCycleW * dt_wrt .GT. Zero )THEN
+
+      WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
+      WRITE(*,'(A)') 'Stopping...'
+      CALL thornado_abort
+
+    END IF
+
+    IF( iCycleChk * dt_chk .GT. Zero )THEN
+
+      WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
+      WRITE(*,'(A)') 'Stopping...'
+      CALL thornado_abort
+
+    END IF
+
+    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     ! --- Parameters geometry.* ---
 

@@ -1,11 +1,6 @@
 !> Module for operations on MultiFabs
 MODULE MF_UtilitiesModule
 
-  ! --- AMReX Modules ---
-
-  USE amrex_fort_module, ONLY: &
-    AR => amrex_real
-
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
@@ -13,10 +8,12 @@ MODULE MF_UtilitiesModule
 
   ! --- Local Modules ---
 
-  USE InputParsingModule, ONLY: &
-    nLevels, &
-    nX, &
-    swX
+  USE MF_KindModule, ONLY: &
+    DP
+  USE MF_Euler_TimersModule, ONLY: &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
@@ -33,12 +30,14 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: nFields
     INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
-    REAL(AR), INTENT(in)  :: &
+    REAL(DP), INTENT(in)  :: &
       Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(AR), INTENT(out) :: &
+    REAL(DP), INTENT(out) :: &
       Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3, iFd
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
@@ -53,6 +52,8 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
   END SUBROUTINE amrex2thornado_X
 
 
@@ -61,12 +62,14 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: nFields
     INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
-    REAL(AR), INTENT(out) :: &
+    REAL(DP), INTENT(out) :: &
       Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(AR), INTENT(in)  :: &
+    REAL(DP), INTENT(in)  :: &
       Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3, iFd
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
@@ -80,6 +83,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
   END SUBROUTINE thornado2amrex_X
 
