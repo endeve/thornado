@@ -6,8 +6,6 @@ MODULE TaggingModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX
-  USE MeshModule, ONLY: &
-    MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D
@@ -22,26 +20,24 @@ MODULE TaggingModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: TagElements_uCF
-
+  PUBLIC :: TagError_MF_uCF
 
 CONTAINS
 
 
-  SUBROUTINE TagElements_uCF &
-    ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, TagCriteria, &
-      SetTag, ClearTag, TagLo, TagHi, Tag )
+  SUBROUTINE TagError_MF_uCF &
+    ( iX_B0, iX_E0, iLo, iHi, uCF, uCFerr, &
+      SetTag, ClearTag, Tag, TagLo, TagHi )
 
-    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
-                            TagLo(4), TagHi(4)
+    INTEGER,  INTENT(in) :: iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
+                            TagLo(3), TagHi(3)
     REAL(DP), INTENT(in) :: uCF(iLo(1):iHi(1),iLo(2):iHi(2), &
                                 iLo(3):iHi(3),iLo(4):iHi(4))
-    REAL(DP), INTENT(in) :: TagCriteria
+    REAL(DP), INTENT(in) :: uCFerr
     CHARACTER(KIND=c_char), INTENT(in)    :: SetTag, ClearTag
     CHARACTER(KIND=c_char), INTENT(inout) :: Tag(TagLo(1):TagHi(1), &
                                                  TagLo(2):TagHi(2), &
-                                                 TagLo(3):TagHi(3), &
-                                                 TagLo(4):TagHi(4))
+                                                 TagLo(3):TagHi(3))
 
     REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
                           iX_B0(2):iX_E0(2), &
@@ -50,9 +46,9 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3
 
-    REAL(DP) :: TagCriteria_this
+    REAL(DP) :: uCFerr_this
 
-    TagCriteria_this = TagCriteria
+    uCFerr_this = uCFerr
 
     CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
 
@@ -60,15 +56,13 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-!      IF( ANY( U(:,iX1,iX2,iX3,iCF_D) .GE. TagCriteria_this ) )THEN
+      IF( ANY( U(:,iX1,iX2,iX3,iCF_D) .GE. uCFerr_this ) )THEN
 
-      IF( MeshX(1) % Center(iX1+1) .GT. TagCriteria_this )THEN
-
-        Tag(iX1,iX2,iX3,1) = SetTag
+        Tag(iX1,iX2,iX3) = SetTag
 
       ELSE
 
-        Tag(iX1,iX2,iX3,1) = ClearTag
+        Tag(iX1,iX2,iX3) = ClearTag
 
       END IF
 
@@ -76,6 +70,6 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE TagElements_uCF
+  END SUBROUTINE TagError_MF_uCF
 
 END MODULE TaggingModule

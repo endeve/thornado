@@ -2,170 +2,137 @@ MODULE MF_GeometryModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_box_module,                          ONLY: &
+  USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_multifab_module,                     ONLY: &
-    amrex_multifab,     &
-    amrex_mfiter,       &
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module,                     ONLY: &
-    amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,                       ONLY: &
-    nDOFX, &
-    swX
-  USE GeometryFieldsModule,                      ONLY: &
-    nGF, &
-    iGF_Phi_N
-  USE GeometryComputationModule,                 ONLY: &
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
+  USE GeometryFieldsModule, ONLY: &
+    nGF
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
-    ComputeGravitationalPotential
 
   ! --- Local Modules ---
 
-  USE MF_KindModule,                             ONLY: &
-    DP
-  USE InputParsingModule,                        ONLY: &
-    nLevels, &
-    UseTiling
-  USE MF_UtilitiesModule,                        ONLY: &
-    amrex2thornado_X, &
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero
+  USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X
-  USE TimersModule_AMReX_Euler,                  ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler,  &
-    Timer_AMReX_Euler_Allocate
+  USE InputParsingModule, ONLY: &
+    swX, &
+    iOS_CPP
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_ComputeGeometryX
-  PUBLIC :: MF_ComputeGravitationalPotential
+  PUBLIC :: ComputeGeometryX_MF
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
+  SUBROUTINE ComputeGeometryX_MF( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(DP),             INTENT(in)    :: Mass
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF
 
-    INTEGER                       :: iLevel
-    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                                     iLo_MF(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_parmparse) :: PP
+
+    INTEGER :: iNX, iX1, iX2, iX3, iGF
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
+    REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Gt(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
 
-    DO iLevel = 0, nLevels-1
+    INTEGER :: iLo_G(3), iHi_G(3)
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+    REAL(DP) :: Mass
 
-      DO WHILE( MFI % next() )
+    Mass = Zero
+    CALL amrex_parmparse_build( PP, 'thornado' )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+      CALL PP % query( 'Mass', Mass )
 
-        iLo_MF = LBOUND( uGF )
+    CALL amrex_parmparse_destroy( PP )
 
-        BX = MFI % tilebox()
+    CALL amrex_mfiter_build( MFI, MF_uGF )
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
+    DO WHILE( MFI % next() )
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      uGF => MF_uGF % DataPtr( MFI )
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+      BX = MFI % TileBox()
 
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
 
-        CALL ComputeGeometryX &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
+      iLo_G = iX_B1 + iOS_CPP
+      iHi_G = iX_E1 + iOS_CPP
 
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
+      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nGF) )
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      ALLOCATE( Gt(1:nDOFX,iLo_G(1):iHi_G(1), &
+                           iLo_G(2):iHi_G(2), &
+                           iLo_G(3):iHi_G(3), &
+                   1:nGF) )
 
-        DEALLOCATE( G )
+#if defined HYDRO_RELATIVISTIC
 
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL ComputeGeometryX &
+             ( iX_B0, iX_E0, iLo_G, iHi_G, Gt, Mass_Option = Mass )
+
+#else
+
+      CALL ComputeGeometryX &
+             ( iX_B0, iX_E0, iLo_G, iHi_G, Gt )
+
+#endif
+
+      DO iGF = 1, nGF
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nDOFX
+
+        G(iNX,iX1,iX2,iX3,iGF) &
+          = Gt(iNX,iX1+iOS_CPP(1),iX2+iOS_CPP(2),iX3+iOS_CPP(3),iGF)
 
       END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
-      CALL amrex_mfiter_destroy( MFI )
+      CALL thornado2amrex_X &
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+
+      DEALLOCATE( Gt )
+      DEALLOCATE( G  )
 
     END DO
 
-  END SUBROUTINE MF_ComputeGeometryX
+    CALL amrex_mfiter_destroy( MFI )
 
-
-  SUBROUTINE MF_ComputeGravitationalPotential( MF_uGF, Mass )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(DP),             INTENT(in)    :: Mass
-
-    INTEGER                       :: iLevel
-    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                                     iLo_MF(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-
-        iLo_MF = LBOUND( uGF )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
-
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
-
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-
-        CALL ComputeGravitationalPotential &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
-
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-        DEALLOCATE( G )
-
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-  END SUBROUTINE MF_ComputeGravitationalPotential
+  END SUBROUTINE ComputeGeometryX_MF
 
 
 END MODULE MF_GeometryModule

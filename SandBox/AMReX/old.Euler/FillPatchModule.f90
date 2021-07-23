@@ -32,11 +32,10 @@ MODULE FillPatchModule
   PUBLIC :: FillPatch
   PUBLIC :: FillCoarsePatch
 
-
 CONTAINS
 
 
-  SUBROUTINE FillPatch( iLevel, Time, MF_uCF )
+  SUBROUTINE FillPatch( iLevel, Time, MF )
 
     USE MF_FieldsModule, ONLY: &
       MF_uCF_old, &
@@ -50,29 +49,29 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(inout) :: MF
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
-    INTEGER :: nCompCF
+    INTEGER :: nComp
 
-    nCompCF = MF_uCF_old(iLevel) % nComp()
+    nComp = MF_uCF_old(iLevel) % nComp()
 
     IF( iLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch( MF_uCF, t_old (iLevel), MF_uCF_old(iLevel), &
-                                    t_new (iLevel), MF_uCF_new(iLevel), &
+      CALL amrex_fillpatch( MF, t_old (iLevel), MF_uCF_old(iLevel), &
+                                t_new (iLevel), MF_uCF_new(iLevel), &
                             amrex_geom(iLevel), FillPhysicalBC, &
-                            Time, sComp, dComp, nCompCF )
+                            Time, sComp, dComp, nComp )
 
     ELSE
 
-      CALL amrex_fillpatch( MF_uCF, t_old (iLevel-1), MF_uCF_old(iLevel-1), &
-                                    t_new (iLevel-1), MF_uCF_new(iLevel-1), &
+      CALL amrex_fillpatch( MF, t_old (iLevel-1), MF_uCF_old(iLevel-1), &
+                                t_new (iLevel-1), MF_uCF_new(iLevel-1), &
                             amrex_geom(iLevel-1), FillPhysicalBC, &
                                 t_old (iLevel  ), MF_uCF_old(iLevel  ), &
                                 t_new (iLevel  ), MF_uCF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC, &
-                            Time, sComp, dComp, nCompCF, &
+                            Time, sComp, dComp, nComp, &
                             amrex_ref_ratio(iLevel-1), amrex_interp_dg, &
                             lo_bc, hi_bc )
 
@@ -81,7 +80,7 @@ CONTAINS
   END SUBROUTINE FillPatch
 
 
-  SUBROUTINE FillCoarsePatch( iLevel, Time, MF_uCF )
+  SUBROUTINE FillCoarsePatch( iLevel, Time, MF )
 
     USE MF_FieldsModule, ONLY: &
       MF_uCF_old, &
@@ -95,7 +94,7 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(inout) :: MF
 
   END SUBROUTINE FillCoarsePatch
 

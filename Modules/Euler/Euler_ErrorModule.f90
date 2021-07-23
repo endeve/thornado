@@ -31,139 +31,158 @@ CONTAINS
 
       CASE( 01 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') 'U_K(iCF_E) < 0'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') 'U_K(iCF_E) < 0'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 02 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') 'SolveTheta_Bisection: No root in interval'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') 'SolveTheta_Bisection: No root in interval'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 03 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') 'SolveTheta_Bisection: Failure to converge'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') 'SolveTheta_Bisection: Failure to converge'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 04 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') 'q < 0 after all limiting'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') 'q < 0 after all limiting'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 05 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_BoundaryConditionsModule'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyBC_Euler_X1'
-           WRITE(*,'(2x,A)') &
-            'Invalid Boundary Condition for Fluid X1'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_BoundaryConditionsModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyBC_Euler_X1'
+         WRITE(*,'(2x,A)') &
+          'Invalid Boundary Condition for Fluid X1'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 06 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_BoundaryConditionsModule'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyBC_Euler_X2'
-           WRITE(*,'(2x,A)') &
-            'Invalid Boundary Condition for Fluid X2'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_BoundaryConditionsModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyBC_Euler_X2'
+         WRITE(*,'(2x,A)') &
+          'Invalid Boundary Condition for Fluid X2'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 07 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_BoundaryConditionsModule'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyBC_Euler_X3'
-           WRITE(*,'(2x,A)') &
-            'Invalid Boundary Condition for Fluid X3'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_BoundaryConditionsModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyBC_Euler_X3'
+         WRITE(*,'(2x,A)') &
+          'Invalid Boundary Condition for Fluid X3'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 08 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_UtilitiesModule_Relativistic'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: SolveZ_Bisection'
-           WRITE(*,'(2x,A)') &
-            'No Root in Interval'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_UtilitiesModule_Relativistic'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: SolveZ_Bisection'
+         WRITE(*,'(2x,A)') &
+          'No Root in Interval'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 09 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: Euler_UtilitiesModule_Relativistic'
-          WRITE(*,'(2x,A)') &
-            'FUNCTION: AlphaMiddle_Euler_Relativistic'
-           WRITE(*,'(2x,A)') &
-            'AlphaMiddle Undefined'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: Euler_UtilitiesModule_Relativistic'
+        WRITE(*,'(2x,A)') &
+          'FUNCTION: AlphaMiddle_Euler_Relativistic'
+         WRITE(*,'(2x,A)') &
+          'AlphaMiddle Undefined'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
 
       CASE( 10 )
 
-          WRITE(*,*)
-          WRITE(*,'(2x,A)') 'FATAL ERROR'
-          WRITE(*,'(2x,A)') &
-            'MODULE: MF_InitializationModule_Relativistic_IDEAL'
-          WRITE(*,'(2x,A)') &
-            'SUBROUTINE: ApplyJumpConditions_LeftState'
-           WRITE(*,'(2x,A)') &
-            'Root not bracketed'
-          WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: ApplyJumpConditions_LeftState'
+         WRITE(*,'(2x,A)') &
+          'Root not bracketed'
+        WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL thornado_abort
+        CALL thornado_abort
+
+      CASE( 11 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeFields_MF'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)')   'Valid choices'
+        WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  Advection2D'
+        WRITE(*,*)
+        WRITE(*,'(A)') 'Stopping...'
+
+        CALL thornado_abort
 
       CASE DEFAULT
 

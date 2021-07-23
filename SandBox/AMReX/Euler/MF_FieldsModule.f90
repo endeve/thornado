@@ -5,95 +5,112 @@ MODULE MF_FieldsModule
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_destroy
-
-  ! --- thornado Modules ---
-
-  USE FluidFieldsModule, ONLY: &
-    nCF
-
-  ! --- Local Modules ---
-
-  USE MF_KindModule, ONLY: &
-    DP
+  USE amrex_fluxregister_module, ONLY: &
+    amrex_fluxregister, &
+    amrex_fluxregister_destroy
+  USE amrex_amrcore_module, ONLY: &
+    amrex_max_level
 
   IMPLICIT NONE
   PRIVATE
 
   ! --- Geometry Fields ---
 
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF_old(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF_new(:)
 
   ! --- Conserved Fluid Fields ---
 
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF(:)
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF_new(:)
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF_old(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF_new(:)
 
   ! --- Primitive Fluid Fields ---
 
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPF_old(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPF_new(:)
 
   ! --- Auxiliary Fluid Fields ---
 
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uAF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uAF_old(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uAF_new(:)
 
-  ! --- Diagnostic Fields ---
+  ! --- Diagnostic Fluid Fields ---
 
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF_old(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF_new(:)
+
+  TYPE(amrex_fluxregister), ALLOCATABLE, PUBLIC :: FluxRegister(:)
 
   PUBLIC :: CreateFields_MF
   PUBLIC :: DestroyFields_MF
-
-  REAL(DP), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Euler(:,:)
 
 
 CONTAINS
 
 
-  SUBROUTINE CreateFields_MF( nLevels )
+  SUBROUTINE CreateFields_MF
 
-    INTEGER, INTENT(in) :: nLevels
+    ALLOCATE( MF_uGF_old(0:amrex_max_level) )
+    ALLOCATE( MF_uGF_new(0:amrex_max_level) )
 
-    ALLOCATE( MF_uGF(0:nLevels-1) )
-    ALLOCATE( MF_uCF(0:nLevels-1) )
-    ALLOCATE( MF_uCF_old(0:nLevels-1) )
-    ALLOCATE( MF_uCF_new(0:nLevels-1) )
-    ALLOCATE( MF_uPF(0:nLevels-1) )
-    ALLOCATE( MF_uAF(0:nLevels-1) )
-    ALLOCATE( MF_uDF(0:nLevels-1) )
+    ALLOCATE( MF_uCF_old(0:amrex_max_level) )
+    ALLOCATE( MF_uCF_new(0:amrex_max_level) )
 
-    ALLOCATE( MF_OffGridFlux_Euler(0:nLevels-1,nCF) )
+    ALLOCATE( MF_uPF_old(0:amrex_max_level) )
+    ALLOCATE( MF_uPF_new(0:amrex_max_level) )
+
+    ALLOCATE( MF_uAF_old(0:amrex_max_level) )
+    ALLOCATE( MF_uAF_new(0:amrex_max_level) )
+
+    ALLOCATE( MF_uDF_old(0:amrex_max_level) )
+    ALLOCATE( MF_uDF_new(0:amrex_max_level) )
+
+    ALLOCATE( FluxRegister(0:amrex_max_level) )
 
   END SUBROUTINE CreateFields_MF
 
 
-  SUBROUTINE DestroyFields_MF( nLevels )
-
-    INTEGER, INTENT(in) :: nLevels
+  SUBROUTINE DestroyFields_MF
 
     INTEGER :: iLevel
 
-    DEALLOCATE( MF_OffGridFlux_Euler )
+    DO iLevel = 0, amrex_max_level
 
-    DO iLevel = 0, nLevels-1
+      CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
 
-      CALL amrex_multifab_destroy( MF_uDF(iLevel) )
-      CALL amrex_multifab_destroy( MF_uAF(iLevel) )
-      CALL amrex_multifab_destroy( MF_uPF(iLevel) )
+      CALL amrex_multifab_destroy( MF_uDF_new(iLevel) )
+      CALL amrex_multifab_destroy( MF_uDF_old(iLevel) )
+
+      CALL amrex_multifab_destroy( MF_uAF_new(iLevel) )
+      CALL amrex_multifab_destroy( MF_uAF_old(iLevel) )
+
+      CALL amrex_multifab_destroy( MF_uPF_new(iLevel) )
+      CALL amrex_multifab_destroy( MF_uPF_old(iLevel) )
+
       CALL amrex_multifab_destroy( MF_uCF_new(iLevel) )
       CALL amrex_multifab_destroy( MF_uCF_old(iLevel) )
-      CALL amrex_multifab_destroy( MF_uCF(iLevel) )
-      CALL amrex_multifab_destroy( MF_uGF(iLevel) )
+
+      CALL amrex_multifab_destroy( MF_uGF_new(iLevel) )
+      CALL amrex_multifab_destroy( MF_uGF_old(iLevel) )
 
     END DO
 
-    DEALLOCATE( MF_uDF )
-    DEALLOCATE( MF_uAF )
-    DEALLOCATE( MF_uPF )
+    DEALLOCATE( FluxRegister )
+
+    DEALLOCATE( MF_uDF_new )
+    DEALLOCATE( MF_uDF_old )
+
+    DEALLOCATE( MF_uAF_new )
+    DEALLOCATE( MF_uAF_old )
+
+    DEALLOCATE( MF_uPF_new )
+    DEALLOCATE( MF_uPF_old )
+
     DEALLOCATE( MF_uCF_new )
     DEALLOCATE( MF_uCF_old )
-    DEALLOCATE( MF_uCF )
-    DEALLOCATE( MF_uGF )
+
+    DEALLOCATE( MF_uGF_new )
+    DEALLOCATE( MF_uGF_old )
 
   END SUBROUTINE DestroyFields_MF
 
