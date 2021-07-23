@@ -1358,10 +1358,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( R, invR, UK, GK )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X1, invR_X1 ) &
     !$ACC PRIVATE( R, invR, UK, GK )
@@ -1403,10 +1403,10 @@ CONTAINS
 
     IF( nDimsX .GT. 1 )THEN
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( R, invR, UK, GK )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X2, invR_X2 ) &
       !$ACC PRIVATE( R, invR, UK, GK )
@@ -1450,10 +1450,10 @@ CONTAINS
 
     IF( nDimsX .GT. 2 )THEN
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( R, invR, UK, GK )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X3, invR_X3 ) &
       !$ACC PRIVATE( R, invR, UK, GK )
@@ -1578,17 +1578,17 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC CREATE(     a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t )
 #endif
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a2t, b2t, c2t, &
     !$ACC          a3t, b3t, c3t, a1, b1, c1 )
@@ -1617,10 +1617,10 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
     !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a1, b1, c1, invR_X1 )
@@ -1820,10 +1820,10 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Sum_X1 )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( Sum_X1 ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU_X1, dU_X1t, R_X1 )
@@ -1890,10 +1890,10 @@ CONTAINS
 
     IF( nDimsX .GT. 2 )THEN
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
       !$OMP PRIVATE( Sum_X3 )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC PRIVATE( Sum_X3 ) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X3, dU_X3t, R_X3 )
@@ -1924,10 +1924,10 @@ CONTAINS
 
     END IF
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dU_X1t, dU_X2t, dU_X3t )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC DELETE(       dU_X1t, dU_X2t, dU_X3t )
 #endif
