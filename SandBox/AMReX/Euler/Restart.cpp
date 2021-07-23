@@ -26,7 +26,7 @@ extern "C"
 {
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
-           Real dt[], Real time[], Real t_wrt[],
+           Real dt[], Real time[],
            BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF )
   {
 
@@ -108,9 +108,6 @@ extern "C"
       }
       HeaderFile << "\n";
 
-      // Write out t_wrt
-      HeaderFile << t_wrt[0] << "\n";
-
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
       {
@@ -138,7 +135,7 @@ extern "C"
 
   void readheaderandboxarraydata
          ( int nLevels, int stepno[],
-	   Real dt[], Real time[], Real t_wrt[],
+	   Real dt[], Real time[],
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
 
@@ -204,17 +201,6 @@ extern "C"
       while( lis >> word )
       {
         time[i++] = std::stod( word );
-      }
-    }
-
-    // Read in t_wrt
-    std::getline( is, line );
-    {
-      std::istringstream lis( line );
-      int i = 0;
-      while( lis >> word )
-      {
-        t_wrt[i++] = std::stod( word );
       }
     }
 

@@ -68,6 +68,10 @@ MODULE InputOutputModuleAMReX
     UnitsDisplay
 
   ! --- Local Modules ---
+
+  USE MF_KindModule,           ONLY: &
+    DP, &
+    Zero
   USE InputParsingModule,      ONLY: &
     nLevels,          &
     MaxGridSizeX,     &
@@ -88,31 +92,29 @@ MODULE InputOutputModuleAMReX
   PUBLIC :: WriteFieldsAMReX_Checkpoint
   PUBLIC :: WriteFieldsAMReX_PlotFile
 
-  REAL(AR), PARAMETER :: Zero = 0.0_AR
-
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, t_wrt, pBA, &
+                 ( StepNo, nLevels, dt, time, pBA, &
                    pMF_uGF, pMF_uCF ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int), INTENT(in) :: StepNo(*)
        INTEGER(c_int), VALUE      :: nLevels
-       REAL(AR),       INTENT(in) :: dt(*), time(*), t_wrt
+       REAL(DP),       INTENT(in) :: dt(*), time(*)
        TYPE(c_ptr),    INTENT(in) :: pBA(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uGF(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uCF(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, t_wrt, &
+                 ( FinestLevel, StepNo, dt, time, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), INTENT(out) :: FinestLevel
       INTEGER(c_int), INTENT(out) :: StepNo(*)
-      REAL(AR),       INTENT(out) :: dt(*), time(*), t_wrt
+      REAL(DP),       INTENT(out) :: dt(*), time(*)
       TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -204,7 +206,7 @@ CONTAINS
     FinestLevel = nLevels-1
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t, t_wrt, pBA, pDM, iChkFile )
+           ( FinestLevel, StepNo, dt, t, pBA, pDM, iChkFile )
 
     DO iLevel = 0, nLevels-1
 
@@ -223,21 +225,21 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
 
       CALL amrex_multifab_build &
-             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
       CALL amrex_multifab_build &
-             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
       CALL MF_uPF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
-             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
       CALL MF_uAF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
-             ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX(1) )
+             ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
       CALL MF_uDF(iLevel) % SetVal( Zero )
 
     END DO
@@ -264,7 +266,7 @@ CONTAINS
     ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
       MF_uAF_Option, MF_uDF_Option )
 
-    REAL(AR),             INTENT(in)           :: Time
+    REAL(DP),             INTENT(in)           :: Time
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels-1)
@@ -537,13 +539,13 @@ CONTAINS
     INTEGER                       :: iX1, iX2, iX3, iComp
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
-    REAL(AR)                      :: G_K(nDOFX,nGF  )
-    REAL(AR)                      :: U_K(nDOFX,nComp)
+    REAL(DP)                      :: G_K(nDOFX,nGF  )
+    REAL(DP)                      :: U_K(nDOFX,nComp)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: G    (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: U    (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
 
     CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 
@@ -592,7 +594,7 @@ CONTAINS
   SUBROUTINE ConvertUnits( nComp, iOS, U_plt, Field )
 
     INTEGER,      INTENT(in)    :: nComp, iOS
-    REAL(AR),     INTENT(inout) :: U_plt(:,:,:,:)
+    REAL(DP),     INTENT(inout) :: U_plt(:,:,:,:)
     CHARACTER(2), INTENT(in)    :: Field
 
     INTEGER  :: iComp

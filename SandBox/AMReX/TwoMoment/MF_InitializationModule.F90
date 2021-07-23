@@ -116,6 +116,7 @@ MODULE MF_InitializationModule
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_TwoMoment
   USE UnitsModule,             ONLY: &
+    UnitsDisplay, &
     Kilometer,    &
     SolarMass,    &
     SpeedOfLight, &
@@ -1270,7 +1271,9 @@ CONTAINS
             iNodeX2 = NodeNumberTableX(2,iNodeX)
 
             R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
+IF (iX1 .NE. 0 .AND. iX1 .NE. nX(1)+1) THEN
+print*, R / UnitsDisplay % LengthX1Unit
+END IF
             theta = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
             uPF_K(iNodeX,iPF_D ) = 1.0d12 * Gram / Centimeter**3
@@ -1321,7 +1324,7 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 10d-8  
+                = 10d-20  
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                  = 0.0_AR
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
@@ -1371,7 +1374,6 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
   END SUBROUTINE InitializeFields_HomogeneousSphereGR
 
 
@@ -1417,7 +1419,6 @@ CONTAINS
 
     G(iGF_SqrtGm) = SQRT( G(iGF_Gm_dd_11) * G(iGF_Gm_dd_22) * G(iGF_Gm_dd_33) )   
 
-  
 
   END SUBROUTINE ComputeAlphaPsi
 

@@ -13,6 +13,9 @@ MODULE TwoMoment_OpacityModule_Relativistic
     NodeCoordinate
   USE RadiationFieldsModule, ONLY: &
     nSpecies
+  USE UnitsModule,            ONLY: &
+    UnitsDisplay, &
+    Centimeter
 
   IMPLICIT NONE
   PRIVATE
@@ -127,7 +130,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
   END SUBROUTINE SetOpacities_HomogeneousSphere1D
 
 
@@ -202,9 +204,9 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       D0, Chi, kT, E0, mu0, R0
 
-    REAL(DP), PARAMETER :: L_R = 1.0d-04 ! --- Smoothing Lenght
+    REAL(DP), PARAMETER :: L_R = 10000.00_DP!1.0d-04  --- Smoothing Lenght
 
-    INTEGER  :: iNodeZ, iNodeZ2, iZ1, iZ2, iZ3, iZ4, iS, iNodeE
+    INTEGER  :: iNodeZ, iNodeZ2, iZ1, iZ2, iZ3, iZ4, iS, iNodeE, iNodeX
     REAL(DP) :: Radius, E, Spectrum
 
     DO iS  = 1, nSpecies
@@ -218,6 +220,7 @@ CONTAINS
         iNodeE = MOD( (iNodeZ-1), nDOFE ) + 1
  
         E = NodeCoordinate( MeshE, iZ1, iNodeE )
+!print*, E / UnitsDisplay % EnergyUnit
 
         Spectrum = One / ( EXP( ( E - mu0 ) / kT  ) + One )
 

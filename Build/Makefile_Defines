@@ -4,7 +4,7 @@ PP ?= -D
 HYDRO                  ?= NONRELATIVISTIC
 HYDRO_RIEMANN_SOLVER   ?= HLL
 NEUTRINO_MATTER_SOLVER ?= EMAB
-TWOMOMENT_ORDER        ?= ORDER_V
+TWOMOMENT_ORDER        ?= ORDER_1
 
 USE_AMREX ?= FALSE
 
@@ -20,6 +20,11 @@ $(MDEFS)$(PP)USE_AMREX_$(USE_AMREX)
 
 ifeq ($(USE_GPU),TRUE)
    DEFINES      += $(MDEFS)$(PP)THORNADO_GPU
+   ifeq ($(USE_CUDA),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_CUDA
+   else ifeq ($(USE_HIP),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_HIP
+   endif
    ifeq ($(USE_OACC),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_OACC
       DEFINES   += $(MDEFS)$(PP)$(MICROPHYSICS)_OACC
@@ -29,6 +34,8 @@ ifeq ($(USE_GPU),TRUE)
    endif
    ifeq ($(USE_MAGMA),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_MAGMA
+   else ifeq ($(USE_ROCM),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_ROCM
    else ifeq ($(USE_CUBLAS),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_CUBLAS
    endif

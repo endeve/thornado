@@ -3,7 +3,6 @@ MODULE MF_Euler_BoundaryConditionsModule
   ! --- AMReX Modules ---
 
   USE amrex_fort_module,              ONLY: &
-    AR => amrex_real, &
     amrex_spacedim
   USE amrex_box_module,               ONLY: &
     amrex_box
@@ -21,6 +20,8 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                  ONLY: &
+    DP
   USE InputParsingModule,             ONLY: &
     DEBUG
   USE TimersModule_AMReX_Euler,       ONLY: &
@@ -51,7 +52,7 @@ CONTAINS
 
     INTEGER,       INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(AR),      INTENT(inout) :: &
+    REAL(DP),      INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     TYPE(EdgeMap), INTENT(in)    :: &
       Edge_Map

@@ -2,8 +2,6 @@ PROGRAM ApplicationDriver
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,                ONLY: &
-    AR => amrex_real
   USE amrex_parallel_module,            ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
@@ -21,6 +19,8 @@ PROGRAM ApplicationDriver
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                    ONLY: &
+    DP
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
@@ -70,7 +70,7 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   INTEGER  :: iErr
-  REAL(AR) :: Timer_Evolution
+  REAL(DP) :: Timer_Evolution
 
   TimeIt_AMReX_Euler = .TRUE.
 
@@ -148,7 +148,7 @@ PROGRAM ApplicationDriver
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, &
+             ( StepNo, nLevels, dt, t, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P )
@@ -177,6 +177,7 @@ PROGRAM ApplicationDriver
     ELSE
 
       IF( ALL( t + dt .GT. t_wrt ) )THEN
+
         t_wrt = t_wrt + dt_wrt
         wrt   = .TRUE.
 
@@ -224,7 +225,7 @@ PROGRAM ApplicationDriver
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t, t_wrt, &
+         ( StepNo, nLevels, dt, t, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
            MF_uCF % P )

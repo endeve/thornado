@@ -225,7 +225,6 @@ CONTAINS
         !set Ui to U0 again ask about this
       DO iS = 1, nStages
 
-
         IF( w_IM(iS) .NE. 0.0_AR )THEN
 
           CALL MF_U(iLevel) &
