@@ -61,7 +61,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
-    LogInterpolateSingleVariable_4D_Custom, &
+    LogInterpolateSingleVariable_4D, &
     LogInterpolateSingleVariable_2D2D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
@@ -1378,6 +1378,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: opEC_Points(:)
 
     INTEGER  :: iP
+    INTEGER,  DIMENSION(4) :: LogInterp
     REAL(DP) :: LogE_P(iP_B:iP_E), LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     LOGICAL  :: do_gpu
 
@@ -1426,9 +1427,11 @@ CONTAINS
       LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
-    CALL LogInterpolateSingleVariable_4D_Custom &
+    ! linear interpolation of logarithmic quantities
+    LogInterp = (/0,0,0,0/)
+    CALL LogInterpolateSingleVariable_4D &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_Points)
+             LogInterp, OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_Points)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1720,6 +1723,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: opES_Points(:)
 
     INTEGER  :: iP
+    INTEGER,  DIMENSION(4) :: LogInterp
     REAL(DP) :: LogE_P(ip_B:ip_E), LogD_P(ip_B:ip_E), LogT_P(ip_B:ip_E), Y_P(ip_B:ip_E)
     LOGICAL  :: do_gpu
 
@@ -1768,9 +1772,11 @@ CONTAINS
       LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
-    CALL LogInterpolateSingleVariable_4D_Custom &
+    ! linear interpolation of logarithmic quantities
+    LogInterp = (/0,0,0,0/)
+    CALL LogInterpolateSingleVariable_4D &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Points)
+             LogInterp, OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Points)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
