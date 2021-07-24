@@ -40,6 +40,7 @@ MODULE InputParsingModule
   INTEGER, ALLOCATABLE  :: swX(:)
   INTEGER, ALLOCATABLE  :: bcX(:)
   INTEGER               :: nNodes
+  INTEGER               :: nStages
   REAL(DP)              :: dt_wrt, dt_chk
   INTEGER               :: iCycleW, iCycleChk, iCycleD
   REAL(DP)              :: t_end
@@ -103,6 +104,7 @@ CONTAINS
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', ProgramName )
       CALL PP % get   ( 'nNodes', nNodes )
+      CALL PP % get   ( 'nStages', nStages )
       CALL PP % getarr( 'swX', swX )
       CALL PP % getarr( 'bcX', bcX )
       CALL PP % get   ( 't_end', t_end )

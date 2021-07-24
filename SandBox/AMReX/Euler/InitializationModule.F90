@@ -86,6 +86,8 @@ MODULE InitializationModule
     MF_uDF_old, &
     MF_uDF_new, &
     FluxRegister
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+    InitializeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_MeshModule, ONLY: &
@@ -203,6 +205,9 @@ CONTAINS
     t_new  = 0.0_DP
 
     CALL amrex_init_from_scratch( 0.0_DP )
+
+    CALL InitializeFluid_SSPRK_MF &
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

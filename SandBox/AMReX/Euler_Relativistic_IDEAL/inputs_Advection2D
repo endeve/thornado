@@ -5,6 +5,7 @@
 
 thornado.ProgramName = "Advection2D"
 thornado.nNodes = 03
+thornado.nStages = 03
 thornado.swX = 01 01 00
 thornado.Gamma_IDEAL = 1.3333333333333333
 thornado.bcX = 01 01 01

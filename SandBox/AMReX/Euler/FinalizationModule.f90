@@ -23,6 +23,8 @@ MODULE FinalizationModule
     MF_uAF_new, &
     MF_uDF_new, &
     DestroyFields_MF
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+    FinalizeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE InputOutputModuleAMReX, ONLY: &

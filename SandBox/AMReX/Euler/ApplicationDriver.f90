@@ -34,6 +34,10 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
+!  USE MF_Euler_dgDiscretizationModule, ONLY: &
+!    ComputeIncrement_Euler_MF
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+    UpdateFluid_SSPRK_MF
   USE InputParsingModule, ONLY: &
     StepNo, &
     t_end, &
@@ -132,8 +136,9 @@ PROGRAM ApplicationDriver
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
-    ! CALL MF_UpdateFluid_SSPRK &
-    !       ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
+    CALL UpdateFluid_SSPRK_MF &
+          ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )!, &
+!            ComputeIncrement_Euler_MF )
 
     IF( chk )THEN
 
