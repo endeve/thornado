@@ -20,8 +20,7 @@ MODULE EquationOfStateModule_TABLE
     ComputeTemperatureWith_DEY_Single_Guess, &
     ComputeTemperatureWith_DEY_Single_NoGuess, &
     ComputeTemperatureWith_DPY_Single_NoGuess, &
-    DescribeEOSInversionError, &
-    MinD, MaxD, MinT, MaxT, MinY, MaxY
+    DescribeEOSInversionError
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_3D_Custom_Point, &
     LogInterpolateDifferentiateSingleVariable_3D_Custom_Point
@@ -90,7 +89,8 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
 
-  PUBLIC :: MinD, MaxD, MinT, MaxT, MinY, MaxY
+  REAL(DP), PUBLIC :: MinD, MinT, MinY
+  REAL(DP), PUBLIC :: MaxD, MaxT, MaxY
 
   INTERFACE ApplyEquationOfState_TABLE
     MODULE PROCEDURE ApplyEquationOfState_Table_Scalar
@@ -180,7 +180,8 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$OMP   OS_Xa, OS_Xh, OS_Gm, &
   !$OMP   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$OMP   Xa_T, Xh_T, Gm_T )
+  !$OMP   Xa_T, Xh_T, Gm_T, &
+  !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Y_T, &
@@ -189,7 +190,8 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$ACC   OS_Xa, OS_Xh, OS_Gm, &
   !$ACC   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$ACC   Xa_T, Xh_T, Gm_T )
+  !$ACC   Xa_T, Xh_T, Gm_T, &
+  !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #endif
 
 CONTAINS
@@ -277,11 +279,20 @@ CONTAINS
     ALLOCATE( D_T(EOS % TS % nPoints(iD_T)) )
     D_T = EOS % TS % States(iD_T) % Values
 
+    MinD = MINVAL( D_T ) * Gram / Centimeter**3
+    MaxD = MAXVAL( D_T ) * Gram / Centimeter**3
+
     ALLOCATE( T_T(EOS % TS % nPoints(iT_T)) )
     T_T = EOS % TS % States(iT_T) % Values
 
+    MinT = MINVAL( T_T ) * Kelvin
+    MaxT = MAXVAL( T_T ) * Kelvin
+
     ALLOCATE( Y_T(EOS % TS % nPoints(iY_T)) )
     Y_T = EOS % TS % States(iY_T) % Values
+
+    MinY = MINVAL( Y_T )
+    MaxY = MAXVAL( Y_T )
 
     ! --- Dependent Variables Indices ---
 
@@ -384,14 +395,16 @@ CONTAINS
     !$OMP TARGET UPDATE TO &
     !$OMP ( UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+    !$OMP   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Y_T, &
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
-    !$ACC   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+    !$ACC   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
+    !$ACC   MinD, MinT, MinY, MaxD, MaxT, MaxY )
 #endif
 
 #endif
