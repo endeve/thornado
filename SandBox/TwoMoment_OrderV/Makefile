@@ -257,7 +257,7 @@ ApplicationDriver_Neutrinos.o: \
   GeometryComputationModule.o \
   GeometryComputationModuleE.o \
   TwoMoment_ClosureModule.o \
-  ApplicationDriver_Neutrinos.f90
+  ApplicationDriver_Neutrinos.F90
 
 ApplicationDriver_CCSN.o: \
   KindModule.o \
