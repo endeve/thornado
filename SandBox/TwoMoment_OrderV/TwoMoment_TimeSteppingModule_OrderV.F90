@@ -66,6 +66,10 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   PUBLIC :: Finalize_IMEX_RK
   PUBLIC :: Update_IMEX_RK
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#endif
+
   INTERFACE
     SUBROUTINE ImplicitIncrement &
       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
@@ -204,6 +208,14 @@ CONTAINS
 
     dM_PL = Zero
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GE, GX, U, M )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( GE, GX, U, M )
+#endif
+
     CALL CopyArray( U0, One, U )
     CALL CopyArray( M0, One, M )
 
@@ -251,11 +263,21 @@ CONTAINS
 
           IF( EvolveTwoMoment )THEN
 
-            CALL ApplySLopeLimiter_TwoMoment &
+#if   defined( THORNADO_OMP_OL )
+            !$OMP TARGET UPDATE FROM( Ui, Mi )
+#elif defined( THORNADO_OACC   )
+            !$ACC UPDATE HOST( Ui, Mi )
+#endif
+            CALL ApplySlopeLimiter_TwoMoment &
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
             CALL ApplyPositivityLimiter_TwoMoment &
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+            !$OMP TARGET UPDATE TO( Mi )
+#elif defined( THORNADO_OACC   )
+            !$ACC UPDATE DEVICE( Mi )
+#endif
 
             dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -285,8 +307,18 @@ CONTAINS
 
         IF( EvolveTwoMoment )THEN
 
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE FROM( Ui, Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE HOST( Ui, Mi )
+#endif
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE TO( Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE DEVICE( Mi )
+#endif
 
           dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -360,11 +392,21 @@ CONTAINS
 
       IF( EvolveTwoMoment )THEN
 
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE FROM( Ui, Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE HOST( Ui, Mi )
+#endif
         CALL ApplySlopeLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE TO( Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE DEVICE( Mi )
+#endif
 
         dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -411,6 +453,16 @@ CONTAINS
       CALL IncrementPositivityLimiterTally_TwoMoment( dM_PL )
 
     END IF
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U, M ) &
+    !$OMP MAP( release: GE, GX )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U, M ) &
+    !$ACC DELETE( GE, GX )
+#endif
 
   END SUBROUTINE Update_IMEX_RK
 
@@ -574,12 +626,28 @@ CONTAINS
 
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#endif
+
   END SUBROUTINE Initialize_IMEX_RK
 
 
   SUBROUTINE Finalize_IMEX_RK
 
     INTEGER :: i
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#endif
 
     DEALLOCATE( c_IM, w_IM, a_IM )
     DEALLOCATE( c_EX, w_EX, a_EX )
@@ -643,6 +711,14 @@ CONTAINS
 
     Array5D = Zero
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Array5D )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Array5D )
+#endif
+
     CALL TimersStop( Timer_TimeStepper )
 
   END SUBROUTINE AllocateArray5D
@@ -653,6 +729,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
 
     CALL TimersStart( Timer_TimeStepper )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Array5D )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Array5D )
+#endif
 
     DEALLOCATE( Array5D )
 
@@ -677,6 +761,14 @@ CONTAINS
 
     Array7D = Zero
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Array7D )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Array7D )
+#endif
+
     CALL TimersStop( Timer_TimeStepper )
 
   END SUBROUTINE AllocateArray7D
@@ -687,6 +779,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
 
     CALL TimersStart( Timer_TimeStepper )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Array7D )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Array7D )
+#endif
 
     DEALLOCATE( Array7D )
 
@@ -717,9 +817,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U, V, iX_B1, iX_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iCF = 1, nCF
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -767,9 +870,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( U, V, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -821,9 +927,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U, V, iX_B1, iX_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iCF = 1, nCF
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -874,9 +983,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( U, V, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
