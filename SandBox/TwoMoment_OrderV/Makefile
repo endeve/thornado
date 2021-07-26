@@ -229,7 +229,34 @@ ApplicationDriver_Neutrinos.o: \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
   GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  RadiationFieldsModule.o \
+  InputOutputModuleHDF.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+  TwoMoment_TimeSteppingModule_OrderV.o \
   InitializationModule_Neutrinos.o \
+  TwoMoment_TallyModule_OrderV.o \
+  EquationOfStateModule_TABLE.o \
+  OpacityModule_TABLE.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModuleZ.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  ProgramInitializationModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  GeometryComputationModule.o \
+  GeometryComputationModuleE.o \
+  TwoMoment_ClosureModule.o \
   ApplicationDriver_Neutrinos.f90
 
 ApplicationDriver_CCSN.o: \
