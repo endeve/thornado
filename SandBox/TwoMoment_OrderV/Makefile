@@ -267,6 +267,17 @@ InitializationModule.o: \
   InitializationModule.F90
 
 InitializationModule_Neutrinos.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  EquationOfStateModule_TABLE.o \
   InitializationModule_Neutrinos.F90
 
 TwoMoment_TimersModule_OrderV.o: \
@@ -397,6 +408,17 @@ TwoMoment_NeutrinoMatterSolverModule_OrderV.o: \
   TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
 
 TwoMoment_TallyModule_OrderV.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
   TwoMoment_TallyModule_OrderV.F90
 
 TwoMoment_TimeSteppingModule_OrderV.o: \
