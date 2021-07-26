@@ -1,6 +1,7 @@
 MOMENT_CLOSURE  = MINERBO
 MICROPHYSICS   ?=
 GRAVITY_SOLVER ?=
+TWOMOMENT_ORDER = ORDER_V
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -14,6 +15,8 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
+
+DEFINES += $(PP)THORNADO_EULER_NOGPU
 
 .DEFAULT_GOAL := all
 
