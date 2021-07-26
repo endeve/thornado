@@ -683,14 +683,14 @@ CONTAINS
 
     END IF
 
-#endif
-
     IF ( ANY( Error > 0 ) ) THEN
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
       END DO
       STOP
     END IF
+
+#endif
 
     IF( PRESENT( Error_Option ) ) Error_Option = Error
 
