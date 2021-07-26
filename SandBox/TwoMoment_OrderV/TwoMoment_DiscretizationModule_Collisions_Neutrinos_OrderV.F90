@@ -82,33 +82,33 @@ CONTAINS
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in)  :: &
       dt
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in) :: &
       GE  (1:nDOFE, &
            iZ_B1(1):iZ_E1(1), &
            1:nGE)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in) :: &
       GX  (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nGF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_F(1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       U_R (1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -116,7 +116,7 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_R(1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -133,6 +133,16 @@ CONTAINS
     ! PRINT*, "--- Initializing ---"
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$OMP MAP( alloc: dU_F, dU_R )
+#elif defined(THORNADO_OACC  )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$ACC CREATE( dU_F, dU_R )
+#endif
 
     ! PRINT*, "--- Mapping data ---"
 
@@ -306,6 +316,16 @@ CONTAINS
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: dU_F, dU_R ) &
+    !$OMP MAP( release: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OACC  )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( dU_F, dU_R ) &
+    !$ACC DELETE( GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#endif
+
     ! PRINT*, "--- Finalizing implicit solve---"
 
     CALL FinalizeCollisions
@@ -388,10 +408,34 @@ CONTAINS
 
     CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
 
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
+    !$OMP          nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$OMP MAP( alloc: GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+#elif defined(THORNADO_OACC  )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
+    !$ACC         nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$ACC CREATE( GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+#endif
+
   END SUBROUTINE InitializeCollisions
 
 
   SUBROUTINE FinalizeCollisions
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
+    !$OMP               GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+#elif defined(THORNADO_OACC  )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
+    !$ACC         GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+#endif
 
     DEALLOCATE( GE_N, GX_N )
     DEALLOCATE( CF_N, PF_N, AF_N )
@@ -412,25 +456,25 @@ CONTAINS
   SUBROUTINE MapDataForCollisions &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in) :: &
       GE  (1:nDOFE, &
            iZ_B1(1):iZ_E1(1), &
            1:nGE)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in) :: &
       GX  (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nGF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       U_R (1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -447,8 +491,15 @@ CONTAINS
     ! --- Momentum Space Geometry ---
 
 #if   defined(THORNADO_OMP_OL)
-#elif defined(THORNADO_OACC)
-#elif defined(THORNADO_OMP)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iE, iNodeE )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iE, iNodeE ) &
+    !$ACC PRESENT( GE_N, GE )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iE, iNodeE )
 #endif
     DO iGE  = 1, nGE
     DO iN_E = 1, nE_G
@@ -464,8 +515,15 @@ CONTAINS
     ! --- Position Space Geometry ---
 
 #if   defined(THORNADO_OMP_OL)
-#elif defined(THORNADO_OACC)
-#elif defined(THORNADO_OMP)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nX, iX_B0, GX_N, GX )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
 #endif
     DO iGF  = 1, nGF
     DO iN_X = 1, nX_G
@@ -483,8 +541,15 @@ CONTAINS
     ! --- Fluid Fields ---
 
 #if   defined(THORNADO_OMP_OL)
-#elif defined(THORNADO_OACC)
-#elif defined(THORNADO_OMP)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nX, iX_B0, CF_N, U_F )
+#elif defined(THORNADO_OMP  )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
 #endif
     DO iCF  = 1, nCF
     DO iN_X = 1, nX_G
@@ -502,8 +567,15 @@ CONTAINS
     ! --- Radiation Fields ---
 
 #if   defined(THORNADO_OMP_OL)
-#elif defined(THORNADO_OACC)
-#elif defined(THORNADO_OMP)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeZ, iNodeX, iNodeE, iE, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( iNodeZ, iNodeX, iNodeE, iE, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nZ, nX, iX_B0, CR_N, U_R )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeZ, iNodeX, iNodeE, iE, iX1, iX2, iX3 )
 #endif
     DO iS   = 1, nSpecies
     DO iCR  = 1, nCR
@@ -551,13 +623,13 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_F(1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_R(1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -574,47 +646,73 @@ CONTAINS
     ! --- Fluid Fields ---
 
 #if   defined(THORNADO_OMP_OL)
-#elif defined(THORNADO_OACC)
-#elif defined(THORNADO_OMP)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iN_X )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iN_X ) &
+    !$ACC PRESENT( nX, iX_B0, iX_E0, dU_F, CF_N, U_F )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( iN_X )
 #endif
-    DO iCF  = 1, nCF
-    DO iN_X = 1, nX_G
+    DO iCF = 1, nCF
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
 
-      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
-      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
-      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
-      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+      iN_X = iNodeX &
+             + ( iX1 - iX_B0(1) ) * nDOFX &
+             + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+             + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
       dU_F(iNodeX,iX1,iX2,iX3,iCF) &
         = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
 
     END DO
     END DO
+    END DO
+    END DO
+    END DO
 
     ! --- Radiation Fields ---
 
 #if   defined(THORNADO_OMP_OL)
-#elif defined(THORNADO_OACC)
-#elif defined(THORNADO_OMP)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeX, iNodeE, iN_X, iN_E )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeX, iNodeE, iN_X, iN_E ) &
+    !$ACC PRESENT( nX, iX_B0, dU_R, CR_N, U_R )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeX, iNodeE, iN_X, iN_E )
 #endif
-    DO iS   = 1, nSpecies
-    DO iCR  = 1, nCR
-    DO iN_X = 1, nX_G
-    DO iN_E = 1, nE_G
+    DO iS = 1, nSpecies
+    DO iCR = 1, nCR
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE = iE_B0, iE_E0
+    DO iNodeZ = 1, nDOFZ
 
-      iE     = MOD( (iN_E-1) / nDOFE, nZ(1) ) + iE_B0
-      iNodeE = MOD( (iN_E-1)        , nDOFE ) + 1
+      iNodeX = MOD( (iNode-1) / nNodesE, nDOFX   ) + 1
+      iNodeE = MOD( (iNode-1)          , nNodesE ) + 1
 
-      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
-      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
-      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
-      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
-
-      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+      iN_X = iNodeX &
+             + ( iX1 - iX_B0(1) ) * nDOFX &
+             + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+             + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+      iN_E = iNodeE &
+             + ( iE  - iE_B0    ) * nDOFE
 
       dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
         = ( CR_N(iN_E,iN_X,iS,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
 
+    END DO
+    END DO
+    END DO
     END DO
     END DO
     END DO
