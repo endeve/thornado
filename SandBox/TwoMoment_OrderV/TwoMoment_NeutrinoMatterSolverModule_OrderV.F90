@@ -192,11 +192,33 @@ CONTAINS
     W2_S(:) = WFactor_FP * W2_N(:)
     W3_S(:) = WFactor_FP * W3_N(:)
 
-    ALLOCATE( INFO(1:nX_G) )
+    ALLOCATE( INFO(nX_G) )
 
-    ALLOCATE( TAU_outer (1:n_FP_outer,          1:nX_G) )
-    ALLOCATE( BVEC_outer(1:n_FP_outer,          1:nX_G) )
-    ALLOCATE( AMAT_outer(1:n_FP_outer,1:M_outer,1:nX_G) )
+    ALLOCATE( P1D(          nX_G,nP1D) )
+    ALLOCATE( P2D(nE_G     ,nX_G,nP2D) )
+    ALLOCATE( P3D(nE_G,nE_G,nX_G,nP3D) )
+
+    ALLOCATE( TAU_outer (n_FP_outer,        nX_G) )
+    ALLOCATE( BVEC_outer(n_FP_outer,        nX_G) )
+    ALLOCATE( AMAT_outer(n_FP_outer,M_outer,nX_G) )
+
+    ALLOCATE( TAU_inner (n_FP_inner,        nX_G) )
+    ALLOCATE( BVEC_inner(n_FP_inner,        nX_G) )
+    ALLOCATE( AMAT_inner(n_FP_inner,M_inner,nX_G) )
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S ) &
+    !$OMP MAP( alloc: INFO, P1D, P2D, P3D, &
+    !$OMP             AMAT_outer, BVEC_outer, TAU_outer, &
+    !$OMP             AMAT_inner, BVEC_inner, TAU_inner )
+#elif defined(THORNADO_OACC  )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S ) &
+    !$ACC CREATE( INFO, P1D, P2D, P3D, &
+    !$ACC         AMAT_outer, BVEC_outer, TAU_outer, &
+    !$ACC         AMAT_inner, BVEC_inner, TAU_inner )
+#endif
 
     IF( M_outer > 3 )THEN
 
@@ -210,12 +232,6 @@ CONTAINS
 
     END IF
 
-    ALLOCATE( WORK_outer(LWORK_outer,nX_G) )
-
-    ALLOCATE( TAU_inner (1:n_FP_inner,          1:nX_G) )
-    ALLOCATE( BVEC_inner(1:n_FP_inner,          1:nX_G) )
-    ALLOCATE( AMAT_inner(1:n_FP_inner,1:M_inner,1:nX_G) )
-
     IF( M_inner > 3 )THEN
 
       CALL LinearLeastSquares_LWORK &
@@ -228,20 +244,15 @@ CONTAINS
 
     END IF
 
+    ALLOCATE( WORK_outer(LWORK_outer,nX_G) )
     ALLOCATE( WORK_inner(LWORK_inner,nX_G) )
-
-    ALLOCATE( P1D(          nX_G,nP1D) )
-    ALLOCATE( P2D(nE_G     ,nX_G,nP2D) )
-    ALLOCATE( P3D(nE_G,nE_G,nX_G,nP3D) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S ) &
-    !$OMP MAP( alloc: AMAT, BVEC, TAU, IPIV, INFO, P1D, P2D, P3D )
+    !$OMP MAP( alloc: WORK_outer, WORK_inner )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S ) &
-    !$ACC CREATE( AMAT, BVEC, TAU, IPIV, INFO, P1D, P2D, P3D )
+    !$ACC CREATE( WORK_outer, WORK_inner )
 #endif
 
   END SUBROUTINE InitializeNeutrinoMatterSolver
@@ -301,18 +312,21 @@ CONTAINS
 
   SUBROUTINE FinalizeNeutrinoMatterSolver
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, &
-    !$OMP               AMAT, BVEC, TAU, WORK, IPIV, INFO, P1D, P2D, P3D )
-#elif defined(THORNADO_OACC)
+    !$OMP               INFO, P1D, P2D, P3D, &
+    !$OMP               AMAT_outer, BVEC_outer, TAU_outer, WORK_outer, &
+    !$OMP               AMAT_inner, BVEC_inner, TAU_inner, WORK_inner )
+#elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, &
-    !$ACC         AMAT, BVEC, TAU, WORK, IPIV, INFO, P1D, P2D, P3D )
+    !$ACC         INFO, P1D, P2D, P3D, &
+    !$ACC         AMAT_outer, BVEC_outer, TAU_outer, WORK_outer, &
+    !$ACC         AMAT_inner, BVEC_inner, TAU_inner, WORK_inner )
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
-!    DEALLOCATE( AMAT, BVEC, TAU, WORK, IPIV, INFO )
     DEALLOCATE( INFO )
     DEALLOCATE( TAU_outer, BVEC_outer, AMAT_outer, WORK_outer )
     DEALLOCATE( TAU_inner, BVEC_inner, AMAT_inner, WORK_inner )
@@ -449,7 +463,7 @@ CONTAINS
     ITERATE_INNER(:) = .TRUE.
 
 ! --- These pragmas have NOT been updated ---
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: ITERATE_OUTER, ITERATE_INNER ) &
     !$OMP MAP( alloc: Y_old, S_Y, C_Y, U_Y, G_Y, &
@@ -466,7 +480,7 @@ CONTAINS
     !$OMP             GVECm_outer, FVECm_outer, Alpha_outer, &
     !$OMP             AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
     !$OMP             GVECm_inner, FVECm_inner, Alpha_inner )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( ITERATE_OUTER, ITERATE_INNER ) &
     !$ACC CREATE( Y_old, S_Y, C_Y, U_Y, G_Y, &
@@ -843,7 +857,7 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: ITERATE_OUTER, ITERATE_INNER, &
     !$OMP               Y_old, S_Y, C_Y, U_Y, G_Y, &
@@ -860,7 +874,7 @@ CONTAINS
     !$OMP               GVECm_outer, FVECm_outer, Alpha_outer, &
     !$OMP               AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
     !$OMP               GVECm_inner, FVECm_inner, Alpha_inner )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( ITERATE_OUTER, ITERATE_INNER, &
     !$ACC         Y_old, S_Y, C_Y, U_Y, G_Y, &
@@ -1587,11 +1601,11 @@ CONTAINS
     INTEGER :: iN_X, iS
 
     ! --- Fix me: GPU pragmas are stale
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
     !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iS   = 1, nSpecies
@@ -1664,11 +1678,11 @@ CONTAINS
     REAL(DP) :: F_nu_d_3(1:nE_G,1:nX_G,1:nSpecies)
 
     ! --- Fix me: GPU pragmas are stale
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
     !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( V_u_1, V_u_2, V_u_3, vDotH, H_u_1, H_u_2, H_u_3, &
     !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
@@ -1727,11 +1741,11 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
 
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
 
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
@@ -1844,13 +1858,13 @@ CONTAINS
     REAL(DP) :: Eta_T, Chi_T, Kappa
 
     ! --- Fix me: GPU Pragmas are Stale ---
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( Eta, Eta_T, Chi_T, Kappa )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRIVATE( Eta, Eta_T, Chi_T, Kappa )
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( vDotH, H_u_1, H_u_2, H_u_3, k_dd, vDotK_d_1, &
     !$OMP          vDotK_d_2, vDotK_d_3, Eta_T, Chi_T, Kappa, iOS )
@@ -2090,11 +2104,11 @@ CONTAINS
     INTEGER  :: iN_X, iFP, iM
     REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iN_X = 1, nX_G
@@ -2108,11 +2122,11 @@ CONTAINS
 
     IF ( Mk > 1 ) THEN
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
       !$OMP DO COLLAPSE(2)
 #endif
       DO iN_X = 1, nX_G
@@ -2123,11 +2137,11 @@ CONTAINS
       END DO
       END DO
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
-#elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP   )
       !$OMP DO COLLAPSE(3)
 #endif
       DO iN_X = 1, nX_G
@@ -2158,10 +2172,10 @@ CONTAINS
             AA11 = Zero
             AB1  = Zero
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
             !$OMP PARALLEL DO SIMD &
             !$OMP REDUCTION( +: AA11, AB1 )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
             !$ACC LOOP VECTOR &
             !$ACC REDUCTION( +: AA11, AB1 )
 #endif
@@ -2198,10 +2212,10 @@ CONTAINS
             AB1  = Zero
             AB2  = Zero
 
-#if defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
             !$OMP PARALLEL DO SIMD &
             !$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC  )
             !$ACC LOOP VECTOR &
             !$ACC REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
 #endif
