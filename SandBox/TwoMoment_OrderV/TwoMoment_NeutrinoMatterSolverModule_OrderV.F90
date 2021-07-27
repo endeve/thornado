@@ -382,127 +382,98 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    LOGICAL  :: ITERATE_OUTER(1:nX_G)
-    LOGICAL  :: ITERATE_INNER(1:nX_G)
-
     INTEGER  :: iN_E, iN_X, iS
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
-    INTEGER  :: PackIndex_outer  (1:nX_G)
-    INTEGER  :: PackIndex_inner  (1:nX_G)
-    INTEGER  :: UnpackIndex_outer(1:nX_G)
-    INTEGER  :: UnpackIndex_inner(1:nX_G)
-    REAL(DP) :: Jnorm(1:nSpecies,1:nX_G)
-    REAL(DP) :: J_old    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: J_new    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_1    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_2    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_3    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_1_old(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_2_old(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_3_old(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_1_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_2_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: H_d_3_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: C_J      (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: C_H_d_1  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: C_H_d_2  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: C_H_d_3  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Omega    (1:nX_G)
-    REAL(DP) :: NormVsq  (1:nX_G)
-    REAL(DP) :: Ef       (1:nX_G)
-    REAL(DP) :: V_d_1    (1:nX_G)
-    REAL(DP) :: V_d_2    (1:nX_G)
-    REAL(DP) :: V_d_3    (1:nX_G)
-    REAL(DP) :: Y_old    (1:nX_G)
-    REAL(DP) :: Ef_old   (1:nX_G)
-    REAL(DP) :: V_d_1_old(1:nX_G)
-    REAL(DP) :: V_d_2_old(1:nX_G)
-    REAL(DP) :: V_d_3_old(1:nX_G)
-    REAL(DP) :: S_Y      (1:nX_G)
-    REAL(DP) :: S_Ef     (1:nX_G)
-    REAL(DP) :: S_V_d_1  (1:nX_G)
-    REAL(DP) :: S_V_d_2  (1:nX_G)
-    REAL(DP) :: S_V_d_3  (1:nX_G)
-    REAL(DP) :: C_Y      (1:nX_G)
-    REAL(DP) :: C_Ef     (1:nX_G)
-    REAL(DP) :: C_V_d_1  (1:nX_G)
-    REAL(DP) :: C_V_d_2  (1:nX_G)
-    REAL(DP) :: C_V_d_3  (1:nX_G)
-    REAL(DP) :: U_Y      (1:nX_G)
-    REAL(DP) :: U_Ef     (1:nX_G)
-    REAL(DP) :: U_V_d_1  (1:nX_G)
-    REAL(DP) :: U_V_d_2  (1:nX_G)
-    REAL(DP) :: U_V_d_3  (1:nX_G)
 
-    REAL(DP) :: J0                  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Chi                 (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Sig                 (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Chi_NES             (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Eta_NES             (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Chi_Pair            (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Eta_Pair            (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Phi_0_In_NES (1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Phi_0_Ot_NES (1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Phi_0_In_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
+    LOGICAL,  DIMENSION(1:nX_G) :: ITERATE_OUTER, ITERATE_INNER
+    INTEGER,  DIMENSION(1:nX_G) :: PackIndex_outer, UnpackIndex_outer
+    INTEGER,  DIMENSION(1:nX_G) :: PackIndex_inner, UnpackIndex_inner
 
-    REAL(DP) :: Alpha_outer(             1:M_outer,1:nX_G)
-    REAL(DP) :: GVECm_outer(1:n_FP_outer,          1:nX_G)
-    REAL(DP) :: FVECm_outer(1:n_FP_outer,          1:nX_G)
-    REAL(DP) :: GVEC_outer (1:n_FP_outer,1:M_outer,1:nX_G)
-    REAL(DP) :: FVEC_outer (1:n_FP_outer,1:M_outer,1:nX_G)
+    REAL(DP), DIMENSION(1:nX_G) :: Omega, NormVsq
 
-    REAL(DP) :: Alpha_inner(             1:M_inner,1:nX_G)
-    REAL(DP) :: GVECm_inner(1:n_FP_inner,          1:nX_G)
-    REAL(DP) :: FVECm_inner(1:n_FP_inner,          1:nX_G)
-    REAL(DP) :: GVEC_inner (1:n_FP_inner,1:M_inner,1:nX_G)
-    REAL(DP) :: FVEC_inner (1:n_FP_inner,1:M_inner,1:nX_G)
+    REAL(DP), DIMENSION(1:nSpecies,1:nX_G) :: Jnorm
+
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: H_d_1, H_d_2, H_d_3
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: J_old, H_d_1_old, H_d_2_old, H_d_3_old
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: J_new, H_d_1_new, H_d_2_new, H_d_3_new
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: C_J, C_H_d_1, C_H_d_2, C_H_d_3
+
+    REAL(DP), DIMENSION(1:nX_G) :: Ef, V_d_1, V_d_2, V_d_3
+    REAL(DP), DIMENSION(1:nX_G) :: Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old
+    REAL(DP), DIMENSION(1:nX_G) :: S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3
+    REAL(DP), DIMENSION(1:nX_G) :: C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3
+    REAL(DP), DIMENSION(1:nX_G) :: U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3
+
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G,1:nSpecies) :: J0, Chi, Eta
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G,1:nSpecies) :: Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G,1:nSpecies) :: Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair
+
+    REAL(DP), DIMENSION(1:n_FP_outer,1:M_outer,1:nX_G) :: GVEC_outer, FVEC_outer
+    REAL(DP), DIMENSION(1:n_FP_outer,          1:nX_G) :: GVECm_outer, FVECm_outer
+    REAL(DP), DIMENSION(             1:M_outer,1:nX_G) :: Alpha_outer
+
+    REAL(DP), DIMENSION(1:n_FP_inner,1:M_inner,1:nX_G) :: GVEC_inner, FVEC_inner
+    REAL(DP), DIMENSION(1:n_FP_inner,          1:nX_G) :: GVECm_inner, FVECm_inner
+    REAL(DP), DIMENSION(             1:M_inner,1:nX_G) :: Alpha_inner
 
     ITERATE_OUTER(:) = .TRUE.
     ITERATE_INNER(:) = .TRUE.
 
-! --- These pragmas have NOT been updated ---
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: ITERATE_OUTER, ITERATE_INNER ) &
-    !$OMP MAP( alloc: Y_old, S_Y, C_Y, U_Y, G_Y, &
-    !$OMP             Eold, S_E, C_E, Unew_E, G_E, &
-    !$OMP             J_old_1, J_new_1, Jnorm_1, &
-    !$OMP             J_old_2, J_new_2, Jnorm_2, &
-    !$OMP             Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
-    !$OMP             Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
-    !$OMP             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
-    !$OMP             Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$OMP             PackIndex_outer, UnpackIndex_outer, &
-    !$OMP             PackIndex_inner, UnpackIndex_inner, &
-    !$OMP             AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
+    !$OMP MAP( alloc: Omega, NormVsq, Jnorm, &
+    !$OMP             H_d_1, H_d_2, H_d_3, &
+    !$OMP             J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
+    !$OMP             J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
+    !$OMP             C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
+    !$OMP             Ef, V_d_1, V_d_2, V_d_3, &
+    !$OMP             Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
+    !$OMP             S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+    !$OMP             C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+    !$OMP             U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
+    !$OMP             J0, Chi, Eta, &
+    !$OMP             Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$OMP             Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$OMP             PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
     !$OMP             GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$OMP             AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
+    !$OMP             PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
     !$OMP             GVECm_inner, FVECm_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( ITERATE_OUTER, ITERATE_INNER ) &
-    !$ACC CREATE( Y_old, S_Y, C_Y, U_Y, G_Y, &
-    !$ACC         Eold, S_E, C_E, Unew_E, G_E, &
-    !$ACC         J_old_1, J_new_1, Jnorm_1, &
-    !$ACC         J_old_2, J_new_2, Jnorm_2, &
-    !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
-    !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
-    !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
-    !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$ACC         PackIndex_outer, UnpackIndex_outer, &
-    !$ACC         PackIndex_inner, UnpackIndex_inner, &
-    !$ACC         AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
+    !$ACC CREATE( Omega, NormVsq, Jnorm, &
+    !$ACC         H_d_1, H_d_2, H_d_3, &
+    !$ACC         J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
+    !$ACC         J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
+    !$ACC         C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
+    !$ACC         Ef, V_d_1, V_d_2, V_d_3, &
+    !$ACC         Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
+    !$ACC         S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+    !$ACC         C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+    !$ACC         U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
+    !$ACC         J0, Chi, Eta, &
+    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$ACC         PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
     !$ACC         GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$ACC         AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
+    !$ACC         PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
+    ! --- Initialize Neutrino States ---
+
+    ! CALL InitializeNeutrinos_FP
+
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( H_u_1, H_u_2, H_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 &
+    !$ACC          J, H_d_1, H_d_2, H_d_3, &
+    !$ACC          J_old, H_u_1_old, H_u_2_old, H_u_3_old, &
+    !$ACC          J_new, H_u_1_new, H_u_2_new, H_u_3_new )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -514,14 +485,36 @@ CONTAINS
       H_d_2(iN_E,iN_X,iS) = Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS)
       H_d_3(iN_E,iN_X,iS) = Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS)
 
+      ! --- Store Initial Neutrino State ---
+
+      J_old    (iN_E,iN_X,iS) = J    (iN_E,iN_X,iS)
+      H_d_1_old(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS)
+      H_d_2_old(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS)
+      H_d_3_old(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS)
+
+      ! --- Initial Guess for Neutrino State ---
+
+      J_new    (iN_E,iN_X,iS) = J_old    (iN_E,iN_X,iS)
+      H_d_1_new(iN_E,iN_X,iS) = H_d_1_old(iN_E,iN_X,iS)
+      H_d_2_new(iN_E,iN_X,iS) = H_d_2_old(iN_E,iN_X,iS)
+      H_d_3_new(iN_E,iN_X,iS) = H_d_3_old(iN_E,iN_X,iS)
+
     END DO
     END DO
     END DO
+
+    ! --- Initialize Matter States ---
+
+    ! CALL InitializeMatter_FP
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, NormVsq, E, &
+    !$ACC          Y, Ef, V_d_1, V_d_2, V_d_3, &
+    !$ACC          Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
+    !$ACC          U_Y, U_Ef, U_V_d_1, U_V_d_2, U_V_d_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO
 #endif
@@ -531,35 +524,32 @@ CONTAINS
       V_d_2(iN_X) = Gm_dd_22(iN_X) * V_u_2(iN_X)
       V_d_3(iN_X) = Gm_dd_33(iN_X) * V_u_3(iN_X)
 
-    END DO
-
-    ! --- Specific Fluid Energy ---
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
       NormVsq(iN_X) &
         =    V_u_1(iN_X) * V_d_1(iN_X) &
            + V_u_2(iN_X) * V_d_2(iN_X) &
            + V_u_3(iN_X) * V_d_3(iN_X)
 
+      ! --- Specific Fluid Energy ---
+
       Ef(iN_X) = E(iN_X) + Half * NormVsq(iN_X)
 
+      ! --- Store Initial Matter State ---
+
+      Y_old    (iN_X) = Y    (iN_X)
+      Ef_old   (iN_X) = Ef   (iN_X)
+      V_d_1_old(iN_X) = V_d_1(iN_X)
+      V_d_2_old(iN_X) = V_d_2(iN_X)
+      V_d_3_old(iN_X) = V_d_3(iN_X)
+
+      ! --- Initial Guess for Matter State ---
+
+      U_Y    (iN_X) = One
+      U_Ef   (iN_X) = One
+      U_V_d_1(iN_X) = V_d_1_old(iN_X) / SpeedOfLight
+      U_V_d_2(iN_X) = V_d_2_old(iN_X) / SpeedOfLight
+      U_V_d_3(iN_X) = V_d_3_old(iN_X) / SpeedOfLight
+
     END DO
-
-    CALL ArrayCopy &
-           ( Y    , Ef    , V_d_1    , V_d_2    , V_d_3, &
-             Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old )
-
-    CALL ArrayCopy &
-           ( J    , H_d_1    , H_d_2    , H_d_3, &
-             J_old, H_d_1_old, H_d_2_old, H_d_3_old )
 
     ! --- Compute Opacity Kernels ---
 
@@ -582,31 +572,6 @@ CONTAINS
              S_V_d_1, S_V_d_2, S_V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     CALL TimersStop( Timer_Collisions_InitializeRHS )
-
-    ! --- Initial Guess for (Scaled) Matter State ---
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      U_Y    (iN_X) = One
-      U_Ef   (iN_X) = One
-      U_V_d_1(iN_X) = V_d_1_old(iN_X) / SpeedOfLight
-      U_V_d_2(iN_X) = V_d_2_old(iN_X) / SpeedOfLight
-      U_V_d_3(iN_X) = V_d_3_old(iN_X) / SpeedOfLight
-
-    END DO
-
-    ! --- Initial Guess for Neutrino State ---
-
-    CALL ArrayCopy &
-           ( J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
-             J_new, H_d_1_new, H_d_2_new, H_d_3_new )
 
     ! --- Start Outer Loop ---
 
@@ -860,36 +825,42 @@ CONTAINS
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: ITERATE_OUTER, ITERATE_INNER, &
-    !$OMP               Y_old, S_Y, C_Y, U_Y, G_Y, &
-    !$OMP               Eold, S_E, C_E, Unew_E, G_E, &
-    !$OMP               J_old_1, J_new_1, Jnorm_1, &
-    !$OMP               J_old_2, J_new_2, Jnorm_2, &
-    !$OMP               Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
-    !$OMP               Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
-    !$OMP               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
-    !$OMP               Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$OMP               PackIndex_outer, UnpackIndex_outer, &
-    !$OMP               PackIndex_inner, UnpackIndex_inner, &
-    !$OMP               AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
+    !$OMP               Omega, NormVsq, Jnorm, &
+    !$OMP               H_d_1, H_d_2, H_d_3, &
+    !$OMP               J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
+    !$OMP               J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
+    !$OMP               C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
+    !$OMP               Ef, V_d_1, V_d_2, V_d_3, &
+    !$OMP               Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
+    !$OMP               S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+    !$OMP               C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+    !$OMP               U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
+    !$OMP               J0, Chi, Eta, &
+    !$OMP               Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$OMP               Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$OMP               PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
     !$OMP               GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$OMP               AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
+    !$OMP               PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
     !$OMP               GVECm_inner, FVECm_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( ITERATE_OUTER, ITERATE_INNER, &
-    !$ACC         Y_old, S_Y, C_Y, U_Y, G_Y, &
-    !$ACC         Eold, S_E, C_E, Unew_E, G_E, &
-    !$ACC         J_old_1, J_new_1, Jnorm_1, &
-    !$ACC         J_old_2, J_new_2, Jnorm_2, &
-    !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
-    !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
-    !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
-    !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$ACC         PackIndex_outer, UnpackIndex_outer, &
-    !$ACC         PackIndex_inner, UnpackIndex_inner, &
-    !$ACC         AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
+    !$ACC         Omega, NormVsq, Jnorm, &
+    !$ACC         H_d_1, H_d_2, H_d_3, &
+    !$ACC         J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
+    !$ACC         J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
+    !$ACC         C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
+    !$ACC         Ef, V_d_1, V_d_2, V_d_3, &
+    !$ACC         Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
+    !$ACC         S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+    !$ACC         C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+    !$ACC         U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
+    !$ACC         J0, Chi, Eta, &
+    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$ACC         PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
     !$ACC         GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$ACC         AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
+    !$ACC         PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
