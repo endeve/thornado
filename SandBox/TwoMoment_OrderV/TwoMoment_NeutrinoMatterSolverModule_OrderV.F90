@@ -362,23 +362,12 @@ CONTAINS
     ( dt, J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Inner, nIterations_Outer )
 
-    REAL(DP), INTENT(in)    :: dt
-    REAL(DP), INTENT(inout) :: J    (1:nE_G,1:nX_G,1:nSpecies) 
-    REAL(DP), INTENT(inout) :: H_u_1(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: H_u_2(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: H_u_3(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: V_u_1(1:nX_G)
-    REAL(DP), INTENT(inout) :: V_u_2(1:nX_G)
-    REAL(DP), INTENT(inout) :: V_u_3(1:nX_G)
-    REAL(DP), INTENT(inout) :: D(1:nX_G)
-    REAL(DP), INTENT(inout) :: T(1:nX_G)
-    REAL(DP), INTENT(inout) :: Y(1:nX_G)
-    REAL(DP), INTENT(inout) :: E(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_11(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_22(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_33(1:nX_G)
-    INTEGER , INTENT(out)   :: nIterations_Inner(1:nX_G)
-    INTEGER , INTENT(out)   :: nIterations_Outer(1:nX_G)
+    REAL(DP),                                      INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(inout) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(inout) :: D, T, Y, E
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(1:nX_G),                   INTENT(out)   :: nIterations_Inner, nIterations_Outer
 
     ! --- Local Variables ---
 
@@ -462,94 +451,39 @@ CONTAINS
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
-    ! --- Initialize Neutrino States ---
+    ! --- Initial RHS ---
 
-    ! CALL InitializeNeutrinos_FP
+    CALL TimersStart( Timer_Collisions_InitializeRHS )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( H_u_1, H_u_2, H_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 &
-    !$ACC          J, H_d_1, H_d_2, H_d_3, &
-    !$ACC          J_old, H_u_1_old, H_u_2_old, H_u_3_old, &
-    !$ACC          J_new, H_u_1_new, H_u_2_new, H_u_3_new )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iS   = 1, nSpecies
-    DO iN_X = 1, nX_G
-    DO iN_E = 1, nE_G
+    CALL InitializeRHS_FP &
+           ( J, H_u_1, H_u_2, H_u_3, &
+             H_d_1, H_d_2, H_d_3, &
+             C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
+             D, Y, E, V_u_1, V_u_2, V_u_3, &
+             Ef, V_d_1, V_d_2, V_d_3, &
+             C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+             S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-      H_d_1(iN_E,iN_X,iS) = Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS)
-      H_d_2(iN_E,iN_X,iS) = Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS)
-      H_d_3(iN_E,iN_X,iS) = Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS)
+    CALL TimersStop( Timer_Collisions_InitializeRHS )
 
-      ! --- Store Initial Neutrino State ---
+    ! --- Store Initial Matter State ---
 
-      J_old    (iN_E,iN_X,iS) = J    (iN_E,iN_X,iS)
-      H_d_1_old(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS)
-      H_d_2_old(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS)
-      H_d_3_old(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS)
+    CALL ArrayCopy &
+           ( Y    , Ef    , V_d_1    , V_d_2    , V_d_3, &
+             Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old )
 
-      ! --- Initial Guess for Neutrino State ---
+    ! --- Store Initial Neutrino State ---
 
-      J_new    (iN_E,iN_X,iS) = J_old    (iN_E,iN_X,iS)
-      H_d_1_new(iN_E,iN_X,iS) = H_d_1_old(iN_E,iN_X,iS)
-      H_d_2_new(iN_E,iN_X,iS) = H_d_2_old(iN_E,iN_X,iS)
-      H_d_3_new(iN_E,iN_X,iS) = H_d_3_old(iN_E,iN_X,iS)
+    CALL ArrayCopy &
+           ( J    , H_d_1    , H_d_2    , H_d_3, &
+             J_old, H_d_1_old, H_d_2_old, H_d_3_old )
 
-    END DO
-    END DO
-    END DO
+    ! --- Initial Guess for Neutrino State ---
 
-    ! --- Initialize Matter States ---
-
-    ! CALL InitializeMatter_FP
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, NormVsq, E, &
-    !$ACC          Y, Ef, V_d_1, V_d_2, V_d_3, &
-    !$ACC          Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
-    !$ACC          U_Y, U_Ef, U_V_d_1, U_V_d_2, U_V_d_3 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      V_d_1(iN_X) = Gm_dd_11(iN_X) * V_u_1(iN_X)
-      V_d_2(iN_X) = Gm_dd_22(iN_X) * V_u_2(iN_X)
-      V_d_3(iN_X) = Gm_dd_33(iN_X) * V_u_3(iN_X)
-
-      NormVsq(iN_X) &
-        =    V_u_1(iN_X) * V_d_1(iN_X) &
-           + V_u_2(iN_X) * V_d_2(iN_X) &
-           + V_u_3(iN_X) * V_d_3(iN_X)
-
-      ! --- Specific Fluid Energy ---
-
-      Ef(iN_X) = E(iN_X) + Half * NormVsq(iN_X)
-
-      ! --- Store Initial Matter State ---
-
-      Y_old    (iN_X) = Y    (iN_X)
-      Ef_old   (iN_X) = Ef   (iN_X)
-      V_d_1_old(iN_X) = V_d_1(iN_X)
-      V_d_2_old(iN_X) = V_d_2(iN_X)
-      V_d_3_old(iN_X) = V_d_3(iN_X)
-
-      ! --- Initial Guess for Matter State ---
-
-      U_Y    (iN_X) = One
-      U_Ef   (iN_X) = One
-      U_V_d_1(iN_X) = V_d_1_old(iN_X) / SpeedOfLight
-      U_V_d_2(iN_X) = V_d_2_old(iN_X) / SpeedOfLight
-      U_V_d_3(iN_X) = V_d_3_old(iN_X) / SpeedOfLight
-
-    END DO
+    CALL ArrayCopy &
+           ( J    , H_d_1    , H_d_2    , H_d_3, &
+             J_new, H_d_1_new, H_d_2_new, H_d_3_new )
 
     ! --- Compute Opacity Kernels ---
 
@@ -560,18 +494,6 @@ CONTAINS
              Phi_0_In_Pair, Phi_0_Ot_Pair )
 
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
-
-    ! --- Initial RHS ---
-
-    CALL TimersStart( Timer_Collisions_InitializeRHS )
-
-    CALL InitializeRHS_FP &
-           ( J_old, H_d_1_old, H_d_2_old, H_d_3_old, D, Y_old, Ef_old, &
-             V_d_1_old, V_d_2_old, V_d_3_old, C_J, C_H_d_1, C_H_d_2, &
-             C_H_d_3, C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, S_Y, S_Ef, &
-             S_V_d_1, S_V_d_2, S_V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    CALL TimersStop( Timer_Collisions_InitializeRHS )
 
     ! --- Start Outer Loop ---
 
@@ -1373,88 +1295,129 @@ CONTAINS
 
 
   SUBROUTINE InitializeRHS_FP &
-    ( J, H_1_d, H_d_2, H_d_3, D, Y, Ef, V_d_1, V_d_2, V_d_3, &
-      C_J, C_H_d_1, C_H_d_2, C_H_d_3, C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-      S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( J, H_u_1, H_u_2, H_u_3, &
+      H_d_1, H_d_2, H_d_3, &
+      C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
+      D, Y, E, V_u_1, V_u_2, V_u_3, &
+      Ef, V_d_1, V_d_2, V_d_3, &
+      C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, &
+      S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP), INTENT(in)  :: J    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_1_d(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_2(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: H_d_3(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)  :: D    (1:nX_G)
-    REAL(DP), INTENT(in)  :: Y    (1:nX_G)
-    REAL(DP), INTENT(in)  :: Ef   (1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_1(1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_2(1:nX_G)
-    REAL(DP), INTENT(in)  :: V_d_3(1:nX_G)
-    REAL(DP), INTENT(out) :: C_J     (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_H_d_1 (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_H_d_2 (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_H_d_3 (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(out) :: C_Y     (1:nX_G)
-    REAL(DP), INTENT(out) :: C_Ef    (1:nX_G)
-    REAL(DP), INTENT(out) :: C_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(out) :: C_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(out) :: C_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(out) :: S_Y     (1:nX_G)
-    REAL(DP), INTENT(out) :: S_Ef    (1:nX_G)
-    REAL(DP), INTENT(out) :: S_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(out) :: S_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(out) :: S_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(in)  :: Gm_dd_11(1:nX_G)
-    REAL(DP), INTENT(in)  :: Gm_dd_22(1:nX_G)
-    REAL(DP), INTENT(in)  :: Gm_dd_33(1:nX_G)
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(in)  :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(out) :: H_d_1, H_d_2, H_d_3
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(out) :: C_J, C_H_d_1, C_H_2_d, C_H_3_d
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(in)  :: D, Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(out) :: Ef, V_d_1, V_d_2, V_d_3
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(out) :: C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(out) :: S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3
+    REAL(DP), DIMENSION(1:nX_G),                   INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: V_u_1, V_u_2, V_u_3, k_dd(3,3)
-    REAL(DP) :: H_u_1, H_u_2, H_u_3, vDotH
-    REAL(DP) :: vDotK_d_1, vDotK_d_2, vDotK_d_3
-    REAL(DP) :: N_nu    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: E_nu    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: F_nu_d_1(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: F_nu_d_2(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: F_nu_d_3(1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
 
-    ! --- Fix me: GPU pragmas are stale ---
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+#endif
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( V_u_1, V_u_2, V_u_3, NormVsq, E, &
+    !$ACC          Y, Ef, V_d_1, V_d_2, V_d_3, &
+    !$ACC          U_Y, U_Ef, U_V_d_1, U_V_d_2, U_V_d_3, &
+    !$ACC          S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+
+      V_d_1(iN_X) = Gm_dd_11(iN_X) * V_u_1(iN_X)
+      V_d_2(iN_X) = Gm_dd_22(iN_X) * V_u_2(iN_X)
+      V_d_3(iN_X) = Gm_dd_33(iN_X) * V_u_3(iN_X)
+
+      ! --- Specific Fluid Energy ---
+
+      NormVsq(iN_X) &
+        =    V_u_1(iN_X) * V_d_1(iN_X) &
+           + V_u_2(iN_X) * V_d_2(iN_X) &
+           + V_u_3(iN_X) * V_d_3(iN_X)
+
+      Ef(iN_X) = E(iN_X) + Half * NormVsq(iN_X)
+
+      ! --- Scaling Factors ---
+
+      S_Y    (iN_X) = One / ( D(iN_X) * Y (iN_X) / AtomicMassUnit )
+      S_Ef   (iN_X) = One / ( D(iN_X) * Ef(iN_X) )
+      S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
+      S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
+      S_V_d_3(iN_X) = One / ( D(iN_X) * SpeedOfLight )
+
+      ! --- Initial Guess for Matter State ---
+
+      U_Y    (iN_X) = One
+      U_Ef   (iN_X) = One
+      U_V_d_1(iN_X) = V_d_1(iN_X) / SpeedOfLight
+      U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
+      U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
+
+      ! --- Include Old Matter State in Constant (C) Terms ---
+
+      C_Y    (iN_X) = Zero
+      C_Ef   (iN_X) = Zero
+      C_V_d_1(iN_X) = Zero
+      C_V_d_2(iN_X) = Zero
+      C_V_d_3(iN_X) = Zero
+
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( V_u_1, V_u_2, V_u_3, vDotH, H_u_1, H_u_2, H_u_3, &
-    !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
 
-      V_u_1 = V_d_1(iN_X) / Gm_dd_11(iN_X)
-      V_u_2 = V_d_2(iN_X) / Gm_dd_22(iN_X)
-      V_u_3 = V_d_3(iN_X) / Gm_dd_33(iN_X)
+      H_d_1(iN_E,iN_X,iS) = Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS)
+      H_d_2(iN_E,iN_X,iS) = Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS)
+      H_d_3(iN_E,iN_X,iS) = Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS)
 
-      vDotH =   V_u_1 * H_1_d(iN_E,iN_X,iS) &
-              + V_u_2 * H_d_2(iN_E,iN_X,iS) &
-              + V_u_3 * H_d_3(iN_E,iN_X,iS)
-
-      H_u_1 = H_1_d(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
-      H_u_2 = H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
-      H_u_3 = H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
+      vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iN_X,iS) &
+              + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
+              + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
       k_dd = EddingtonTensorComponents_dd &
-               ( J(iN_E,iN_X,iS), H_u_1, H_u_2, H_u_3, &
+               ( J    (iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
+                 H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
       vDotK_d_1 &
-        = ( V_u_1 * k_dd(1,1) + V_u_2 * k_dd(2,1) + V_u_3 * k_dd(3,1) )
-      vDotK_d_2 &
-        = ( V_u_1 * k_dd(1,2) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(3,2) )
-      vDotK_d_3 &
-        = ( V_u_1 * k_dd(1,3) + V_u_2 * k_dd(2,3) + V_u_3 * k_dd(3,3) )
-
-      vDotK_d_1 = vDotK_d_1 * J(iN_E,iN_X,iS)
-      vDotK_d_2 = vDotK_d_2 * J(iN_E,iN_X,iS)
-      vDotK_d_3 = vDotK_d_3 * J(iN_E,iN_X,iS)
+        = ( V_u_1(iN_X) * k_dd(1,1) &
+          + V_u_2(iN_X) * k_dd(2,1) &
+          + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iN_X,iS)
+      vDotK_d_2 &                                                    
+        = ( V_u_1(iN_X) * k_dd(1,2) &
+          + V_u_2(iN_X) * k_dd(2,2) &
+          + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iN_X,iS)
+      vDotK_d_3 &                                                    
+        = ( V_u_1(iN_X) * k_dd(1,3) &
+          + V_u_2(iN_X) * k_dd(2,3) &
+          + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iN_X,iS)
 
       ! --- Eulerian Neutrino Number Density ---
 
@@ -1467,7 +1430,7 @@ CONTAINS
       ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
       F_nu_d_1(iN_E,iN_X,iS) &
-        = H_1_d(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
+        = H_d_1(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
 
       F_nu_d_2(iN_E,iN_X,iS) &
         = H_d_2(iN_E,iN_X,iS) + V_d_2(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_2
@@ -1478,29 +1441,12 @@ CONTAINS
       ! --- Old States for Neutrino Number Density and Flux ---
 
       C_J    (iN_E,iN_X,iS) = J    (iN_E,iN_X,iS) + vDotH
-      C_H_d_1(iN_E,iN_X,iS) = H_1_d(iN_E,iN_X,iS) + vDotK_d_1
+      C_H_d_1(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS) + vDotK_d_1
       C_H_d_2(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS) + vDotK_d_2
       C_H_d_3(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS) + vDotK_d_3
 
     END DO
     END DO
-    END DO
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      C_Y    (iN_X) = Zero
-      C_Ef   (iN_X) = Zero
-      C_V_d_1(iN_X) = Zero
-      C_V_d_2(iN_X) = Zero
-      C_V_d_3(iN_X) = Zero
-
     END DO
 
     DO iS = iNuE, iNuE_Bar
@@ -1537,28 +1483,54 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      ! --- Scaling Factors ---
+      !SUM_Y  = Zero
+      !DO iS = iNuE, iNuE_Bar
+      !DO iN_E = 1, nE_G
+      !  SUM_Y  = SUM_Y  + N_nu    (iN_E,iN_X,iS) * W2_S(iN_E) * LeptonNumber(iS)
+      !END DO
+      !END DO
+      !C_Y    (iN_X) = SUM_Y
 
-      S_Y    (iN_X) = One / ( D(iN_X) * Y (iN_X) / AtomicMassUnit )
-      S_Ef   (iN_X) = One / ( D(iN_X) * Ef(iN_X) )
-      S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
-      S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
-      S_V_d_3(iN_X) = One / ( D(iN_X) * SpeedOfLight )
+      !SUM_Ef = Zero
+      !SUM_V1 = Zero
+      !SUM_V2 = Zero
+      !SUM_V3 = Zero
+      !DO iS = 1, nSpecies
+      !DO iN_E = 1, nE_G
+      !  SUM_Ef = SUM_Ef + E_nu    (iN_E,iN_X,iS) * W3_S(iN_E)
+      !  SUM_V1 = SUM_V1 + F_nu_d_1(iN_E,iN_X,iS) * W3_S(iN_E)
+      !  SUM_V2 = SUM_V2 + F_nu_d_2(iN_E,iN_X,iS) * W3_S(iN_E)
+      !  SUM_V3 = SUM_V3 + F_nu_d_3(iN_E,iN_X,iS) * W3_S(iN_E)
+      !END DO
+      !END DO
+
+      !C_Ef   (iN_X) = SUM_Ef
+      !C_V_d_1(iN_X) = SUM_V1
+      !C_V_d_2(iN_X) = SUM_V2
+      !C_V_d_3(iN_X) = SUM_V3
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
       C_Y    (iN_X) &
-        = One                        + C_Y    (iN_X) * S_Y    (iN_X)
+        = U_Y    (iN_X) + C_Y    (iN_X) * S_Y    (iN_X)
       C_Ef   (iN_X) &
-        = One                        + C_Ef   (iN_X) * S_Ef   (iN_X)
+        = U_Ef   (iN_X) + C_Ef   (iN_X) * S_Ef   (iN_X)
       C_V_d_1(iN_X) &
-        = V_d_1(iN_X) / SpeedOfLight + C_V_d_1(iN_X) * S_V_d_1(iN_X)
+        = U_V_d_1(iN_X) + C_V_d_1(iN_X) * S_V_d_1(iN_X)
       C_V_d_2(iN_X) &
-        = V_d_2(iN_X) / SpeedOfLight + C_V_d_2(iN_X) * S_V_d_2(iN_X)
+        = U_V_d_2(iN_X) + C_V_d_2(iN_X) * S_V_d_2(iN_X)
       C_V_d_3(iN_X) &
-        = V_d_3(iN_X) / SpeedOfLight + C_V_d_3(iN_X) * S_V_d_3(iN_X)
+        = U_V_d_3(iN_X) + C_V_d_3(iN_X) * S_V_d_3(iN_X)
 
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+#endif
 
   END SUBROUTINE InitializeRHS_FP
 
