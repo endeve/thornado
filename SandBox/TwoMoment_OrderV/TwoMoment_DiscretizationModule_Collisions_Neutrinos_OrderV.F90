@@ -412,12 +412,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
     !$OMP          nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
-    !$OMP MAP( alloc: GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+    !$OMP MAP( alloc: GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
     !$ACC         nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
-    !$ACC CREATE( GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+    !$ACC CREATE( GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #endif
 
   END SUBROUTINE InitializeCollisions
@@ -429,12 +429,12 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
-    !$OMP               GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+    !$OMP               GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
     !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
-    !$ACC         GE_N, GX_N, CF_N, PF_N, AF_N, CR_N )
+    !$ACC         GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #endif
 
     DEALLOCATE( GE_N, GX_N )
