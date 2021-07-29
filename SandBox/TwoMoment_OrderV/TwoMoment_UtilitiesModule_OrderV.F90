@@ -450,9 +450,8 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-    !$ACC PRESENT( CVEC, UVEC, N, G_d_1, G_d_2, G_d_3, &
-    !$ACC          D, I_u_1, I_u_2, I_u_3, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3, &
+    !$ACC          D, I_u_1, I_u_2, I_u_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO
 #endif
@@ -480,10 +479,10 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
+      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-      !$ACC PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT ) &
+      !$ACC PRIVATE( iX, k_dd, vMag, Omega, vI, vK ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
