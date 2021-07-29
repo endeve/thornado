@@ -160,6 +160,14 @@ CONTAINS
 
     CALL TimersStart( Timer_Collisions_PrimitiveFluid )
 
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( CF_N, PF_N, GX_N )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO
+#endif
     DO iN_X = 1, nX_G
 
       CALL ComputePrimitive_Euler_NonRelativistic &
@@ -264,6 +272,14 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_Solve )
 
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( PR_N, CR_N, PF_N, GX_N )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
@@ -292,6 +308,14 @@ CONTAINS
            ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
              PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
 
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( PF_N, CF_N, GX_N )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO
+#endif
     DO iN_X = 1, nX_G
 
       CALL ComputeConserved_Euler_NonRelativistic &
