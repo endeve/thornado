@@ -91,19 +91,46 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), ALLOCATABLE :: W2_S(:)
   REAL(DP), ALLOCATABLE :: W3_S(:)
 
-  INTEGER,  ALLOCATABLE :: INFO(:)
+  ! --- Solver scratch arrays ---
 
-  INTEGER               :: LWORK_outer
-  REAL(DP), ALLOCATABLE :: WORK_outer(:,:)
-  REAL(DP), ALLOCATABLE :: TAU_outer (:,:)
-  REAL(DP), ALLOCATABLE :: BVEC_outer(:,:)
-  REAL(DP), ALLOCATABLE :: AMAT_outer(:,:,:)
+  LOGICAL,  DIMENSION(:), ALLOCATABLE :: ITERATE_outer, ITERATE_inner
+  INTEGER,  DIMENSION(:), ALLOCATABLE :: PackIndex_outer, UnpackIndex_outer
+  INTEGER,  DIMENSION(:), ALLOCATABLE :: PackIndex_inner, UnpackIndex_inner
 
-  INTEGER               :: LWORK_inner
-  REAL(DP), ALLOCATABLE :: WORK_inner(:,:)
-  REAL(DP), ALLOCATABLE :: TAU_inner (:,:)
-  REAL(DP), ALLOCATABLE :: BVEC_inner(:,:)
-  REAL(DP), ALLOCATABLE :: AMAT_inner(:,:,:)
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: Jnorm
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_J
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_H_d_1, H_d_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_H_d_2, H_d_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_H_d_3, H_d_3
+
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
+
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: Omega
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: Y_old, C_Y, S_Y, G_Y, U_Y
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3
+
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J0, Chi, Sig
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_In_NES, Phi_0_Ot_NES
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_In_Pair, Phi_0_Ot_Pair
+
+  ! --- Least-squares scratch arrays ---
+
+  INTEGER                                 :: LWORK_outer
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: AMAT_outer, GVEC_outer, FVEC_outer
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: BVEC_outer, GVECm_outer, FVECm_outer
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: WORK_outer, TAU_outer, Alpha_outer
+
+  INTEGER                                 :: LWORK_inner
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: AMAT_inner, GVEC_inner, FVEC_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: BVEC_inner, GVECm_inner, FVECm_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: WORK_inner, TAU_inner, Alpha_inner
+
+  INTEGER,  DIMENSION(:)    , ALLOCATABLE :: INFO
 
   ! --- Solver Parameters to be initialized
 
@@ -192,32 +219,161 @@ CONTAINS
     W2_S(:) = WFactor_FP * W2_N(:)
     W3_S(:) = WFactor_FP * W3_N(:)
 
+    ALLOCATE(     ITERATE_outer(nX_G) )
+    ALLOCATE(   PackIndex_outer(nX_G) )
+    ALLOCATE( UnpackIndex_outer(nX_G) )
+
+    ALLOCATE(     ITERATE_inner(nX_G) )
+    ALLOCATE(   PackIndex_inner(nX_G) )
+    ALLOCATE( UnpackIndex_inner(nX_G) )
+
+    ITERATE_outer(:) = .TRUE.
+    ITERATE_inner(:) = .TRUE.
+
+    ALLOCATE( Jnorm(nSpecies,nX_G) )
+
+    ALLOCATE( C_J  (nE_G,nX_G,nSpecies) )
+
+    ALLOCATE( C_H_d_1    (nE_G,nX_G,nSpecies) )
+    ALLOCATE(   H_d_1    (nE_G,nX_G,nSpecies) )
+
+    ALLOCATE( C_H_d_2    (nE_G,nX_G,nSpecies) )
+    ALLOCATE(   H_d_2    (nE_G,nX_G,nSpecies) )
+
+    ALLOCATE( C_H_d_3    (nE_G,nX_G,nSpecies) )
+    ALLOCATE(   H_d_3    (nE_G,nX_G,nSpecies) )
+
+    ALLOCATE( N_nu    (nE_G,nX_G,nSpecies) )
+    ALLOCATE( E_nu    (nE_G,nX_G,nSpecies) )
+    ALLOCATE( F_nu_d_1(nE_G,nX_G,nSpecies) )
+    ALLOCATE( F_nu_d_2(nE_G,nX_G,nSpecies) )
+    ALLOCATE( F_nu_d_3(nE_G,nX_G,nSpecies) )
+
+    ALLOCATE( Omega  (nX_G) )
+
+    ALLOCATE(   Ef_old(nX_G) )
+    ALLOCATE( C_Ef    (nX_G) )
+    ALLOCATE( S_Ef    (nX_G) )
+    ALLOCATE( G_Ef    (nX_G) )
+    ALLOCATE( U_Ef    (nX_G) )
+    ALLOCATE(   Ef    (nX_G) )
+
+    ALLOCATE(   Y_old(nX_G) )
+    ALLOCATE( C_Y    (nX_G) )
+    ALLOCATE( S_Y    (nX_G) )
+    ALLOCATE( G_Y    (nX_G) )
+    ALLOCATE( U_Y    (nX_G) )
+
+    ALLOCATE( C_V_d_1    (nX_G) )
+    ALLOCATE( S_V_d_1    (nX_G) )
+    ALLOCATE( G_V_d_1    (nX_G) )
+    ALLOCATE( U_V_d_1    (nX_G) )
+    ALLOCATE(   V_d_1    (nX_G) )
+
+    ALLOCATE( C_V_d_2    (nX_G) )
+    ALLOCATE( S_V_d_2    (nX_G) )
+    ALLOCATE( G_V_d_2    (nX_G) )
+    ALLOCATE( U_V_d_2    (nX_G) )
+    ALLOCATE(   V_d_2    (nX_G) )
+
+    ALLOCATE( C_V_d_3    (nX_G) )
+    ALLOCATE( S_V_d_3    (nX_G) )
+    ALLOCATE( G_V_d_3    (nX_G) )
+    ALLOCATE( U_V_d_3    (nX_G) )
+    ALLOCATE(   V_d_3    (nX_G) )
+
+    ALLOCATE(  J0(nE_G,nX_G,nSpecies) )
+    ALLOCATE( Chi(nE_G,nX_G,nSpecies) )
+    ALLOCATE( Sig(nE_G,nX_G,nSpecies) )
+
+    ALLOCATE(      Chi_NES(     nE_G,nX_G,nSpecies) )
+    ALLOCATE(      Eta_NES(     nE_G,nX_G,nSpecies) )
+    ALLOCATE( Phi_0_In_NES(nE_G,nE_G,nX_G,nSpecies) )
+    ALLOCATE( Phi_0_Ot_NES(nE_G,nE_G,nX_G,nSpecies) )
+
+    ALLOCATE(      Chi_Pair(     nE_G,nX_G,nSpecies) )
+    ALLOCATE(      Eta_Pair(     nE_G,nX_G,nSpecies) )
+    ALLOCATE( Phi_0_In_Pair(nE_G,nE_G,nX_G,nSpecies) )
+    ALLOCATE( Phi_0_Ot_Pair(nE_G,nE_G,nX_G,nSpecies) )
+
+    ALLOCATE(  AMAT_outer(n_FP_outer,M_outer,nX_G) )
+    ALLOCATE(  GVEC_outer(n_FP_outer,M_outer,nX_G) )
+    ALLOCATE(  FVEC_outer(n_FP_outer,M_outer,nX_G) )
+    ALLOCATE(  BVEC_outer(n_FP_outer,        nX_G) )
+    ALLOCATE( GVECm_outer(n_FP_outer,        nX_G) )
+    ALLOCATE( FVECm_outer(n_FP_outer,        nX_G) )
+    ALLOCATE(   TAU_outer(n_FP_outer,        nX_G) )
+    ALLOCATE( Alpha_outer(           M_outer,nX_G) )
+
+    ALLOCATE(  AMAT_inner(n_FP_inner,M_inner,nX_G) )
+    ALLOCATE(  GVEC_inner(n_FP_inner,M_inner,nX_G) )
+    ALLOCATE(  FVEC_inner(n_FP_inner,M_inner,nX_G) )
+    ALLOCATE(  BVEC_inner(n_FP_inner,        nX_G) )
+    ALLOCATE( GVECm_inner(n_FP_inner,        nX_G) )
+    ALLOCATE( FVECm_inner(n_FP_inner,        nX_G) )
+    ALLOCATE(   TAU_inner(n_FP_inner,        nX_G) )
+    ALLOCATE( Alpha_inner(           M_inner,nX_G) )
+
     ALLOCATE( INFO(nX_G) )
 
     ALLOCATE( P1D(          nX_G,nP1D) )
     ALLOCATE( P2D(nE_G     ,nX_G,nP2D) )
     ALLOCATE( P3D(nE_G,nE_G,nX_G,nP3D) )
 
-    ALLOCATE( TAU_outer (n_FP_outer,        nX_G) )
-    ALLOCATE( BVEC_outer(n_FP_outer,        nX_G) )
-    ALLOCATE( AMAT_outer(n_FP_outer,M_outer,nX_G) )
-
-    ALLOCATE( TAU_inner (n_FP_inner,        nX_G) )
-    ALLOCATE( BVEC_inner(n_FP_inner,        nX_G) )
-    ALLOCATE( AMAT_inner(n_FP_inner,M_inner,nX_G) )
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S ) &
+    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, &
+    !$OMP          ITERATE_outer, ITERATE_inner ) &
     !$OMP MAP( alloc: INFO, P1D, P2D, P3D, &
-    !$OMP             AMAT_outer, BVEC_outer, TAU_outer, &
-    !$OMP             AMAT_inner, BVEC_inner, TAU_inner )
+    !$OMP             Omega, Jnorm, &
+    !$OMP             C_J, &
+    !$OMP             C_H_d_1, H_d_1, &
+    !$OMP             C_H_d_2, H_d_2, &
+    !$OMP             C_H_d_3, H_d_3, &
+    !$OMP             N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$OMP             Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
+    !$OMP             Y_old, C_Y, S_Y, G_Y, U_Y, &
+    !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
+    !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
+    !$OMP             C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
+    !$OMP             J0, Chi, Sig, &
+    !$OMP             Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$OMP             Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$OMP             PackIndex_outer, UnpackIndex_outer, &
+    !$OMP             AMAT_outer, GVEC_outer, FVEC_outer, &
+    !$OMP             BVEC_outer, GVECm_outer, FVECm_outer, &
+    !$OMP             TAU_outer, Alpha_outer, &
+    !$OMP             PackIndex_inner, UnpackIndex_inner, &
+    !$OMP             AMAT_inner, GVEC_inner, FVEC_inner, &
+    !$OMP             BVEC_inner, GVECm_inner, FVECm_inner, &
+    !$OMP             TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S ) &
+    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, &
+    !$ACC         ITERATE_outer, ITERATE_inner ) &
     !$ACC CREATE( INFO, P1D, P2D, P3D, &
-    !$ACC         AMAT_outer, BVEC_outer, TAU_outer, &
-    !$ACC         AMAT_inner, BVEC_inner, TAU_inner )
+    !$ACC         Omega, Jnorm, &
+    !$ACC         C_J, &
+    !$ACC         C_H_d_1, H_d_1, &
+    !$ACC         C_H_d_2, H_d_2, &
+    !$ACC         C_H_d_3, H_d_3, &
+    !$ACC         N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
+    !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
+    !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
+    !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
+    !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
+    !$ACC         J0, Chi, Sig, &
+    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$ACC         PackIndex_outer, UnpackIndex_outer, &
+    !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
+    !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
+    !$ACC         TAU_outer, Alpha_outer, &
+    !$ACC         PackIndex_inner, UnpackIndex_inner, &
+    !$ACC         AMAT_inner, GVEC_inner, FVEC_inner, &
+    !$ACC         BVEC_inner, GVECm_inner, FVECm_inner, &
+    !$ACC         TAU_inner, Alpha_inner )
 #endif
 
     IF( M_outer > 3 )THEN
@@ -316,21 +472,80 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, &
     !$OMP               INFO, P1D, P2D, P3D, &
-    !$OMP               AMAT_outer, BVEC_outer, TAU_outer, WORK_outer, &
-    !$OMP               AMAT_inner, BVEC_inner, TAU_inner, WORK_inner )
+    !$OMP               Omega, Jnorm, &
+    !$OMP               C_J, &
+    !$OMP               C_H_d_1, H_d_1, &
+    !$OMP               C_H_d_2, H_d_2, &
+    !$OMP               C_H_d_3, H_d_3, &
+    !$OMP               N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$OMP               Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
+    !$OMP               Y_old, C_Y, S_Y, G_Y, U_Y, &
+    !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
+    !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
+    !$OMP               C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
+    !$OMP               J0, Chi, Sig, &
+    !$OMP               Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$OMP               Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$OMP               ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
+    !$OMP               AMAT_outer, GVEC_outer, FVEC_outer, &
+    !$OMP               BVEC_outer, GVECm_outer, FVECm_outer, &
+    !$OMP               WORK_outer, TAU_outer, Alpha_outer, &
+    !$OMP               ITERATE_inner, PackIndex_inner, UnpackIndex_inner, &
+    !$OMP               AMAT_inner, GVEC_inner, FVEC_inner, &
+    !$OMP               BVEC_inner, GVECm_inner, FVECm_inner, &
+    !$OMP               WORK_inner, TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, &
     !$ACC         INFO, P1D, P2D, P3D, &
-    !$ACC         AMAT_outer, BVEC_outer, TAU_outer, WORK_outer, &
-    !$ACC         AMAT_inner, BVEC_inner, TAU_inner, WORK_inner )
+    !$ACC         Omega, Jnorm, &
+    !$ACC         C_J, &
+    !$ACC         C_H_d_1, H_d_1, &
+    !$ACC         C_H_d_2, H_d_2, &
+    !$ACC         C_H_d_3, H_d_3, &
+    !$ACC         N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
+    !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
+    !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
+    !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
+    !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
+    !$ACC         J0, Chi, Sig, &
+    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
+    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$ACC         ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
+    !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
+    !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
+    !$ACC         WORK_outer, TAU_outer, Alpha_outer, &
+    !$ACC         ITERATE_inner, PackIndex_inner, UnpackIndex_inner, &
+    !$ACC         AMAT_inner, GVEC_inner, FVEC_inner, &
+    !$ACC         BVEC_inner, GVECm_inner, FVECm_inner, &
+    !$ACC         WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
-    DEALLOCATE( INFO )
-    DEALLOCATE( TAU_outer, BVEC_outer, AMAT_outer, WORK_outer )
-    DEALLOCATE( TAU_inner, BVEC_inner, AMAT_inner, WORK_inner )
-    DEALLOCATE( P1D, P2D, P3D )
+    DEALLOCATE( INFO, P1D, P2D, P3D )
+    DEALLOCATE( Omega, Jnorm )
+    DEALLOCATE( C_J )
+    DEALLOCATE( C_H_d_1, H_d_1 )
+    DEALLOCATE( C_H_d_2, H_d_2 )
+    DEALLOCATE( C_H_d_3, H_d_3 )
+    DEALLOCATE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+    DEALLOCATE( Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef )
+    DEALLOCATE( Y_old, C_Y, S_Y, G_Y, U_Y )
+    DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1 )
+    DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2 )
+    DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3 )
+    DEALLOCATE( J0, Chi, Sig )
+    DEALLOCATE( Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES )
+    DEALLOCATE( Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair )
+    DEALLOCATE( ITERATE_outer, PackIndex_outer, UnpackIndex_outer )
+    DEALLOCATE( AMAT_outer, GVEC_outer, FVEC_outer )
+    DEALLOCATE( BVEC_outer, GVECm_outer, FVECm_outer )
+    DEALLOCATE( WORK_outer, TAU_outer, Alpha_outer )
+    DEALLOCATE( ITERATE_inner, PackIndex_inner, UnpackIndex_inner )
+    DEALLOCATE( AMAT_inner, GVEC_inner, FVEC_inner )
+    DEALLOCATE( BVEC_inner, GVECm_inner, FVECm_inner )
+    DEALLOCATE( WORK_inner, TAU_inner, Alpha_inner )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -362,12 +577,12 @@ CONTAINS
     ( dt, J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Inner, nIterations_Outer )
 
-    REAL(DP),                                      INTENT(in)    :: dt
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(inout) :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(inout) :: D, T, Y, E
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    INTEGER,  DIMENSION(1:nX_G),                   INTENT(out)   :: nIterations_Inner, nIterations_Outer
+    REAL(DP),                   INTENT(in)    :: dt
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: D, T, Y, E
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner, nIterations_Outer
 
     ! --- Local Variables ---
 
@@ -375,139 +590,40 @@ CONTAINS
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
 
-    LOGICAL,  DIMENSION(1:nX_G) :: ITERATE_OUTER, ITERATE_INNER
-    INTEGER,  DIMENSION(1:nX_G) :: PackIndex_outer, UnpackIndex_outer
-    INTEGER,  DIMENSION(1:nX_G) :: PackIndex_inner, UnpackIndex_inner
-
-    REAL(DP), DIMENSION(1:nX_G) :: Omega, NormVsq
-
-    REAL(DP), DIMENSION(1:nSpecies,1:nX_G) :: Jnorm
-
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: H_d_1, H_d_2, H_d_3
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: J_old, H_d_1_old, H_d_2_old, H_d_3_old
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: J_new, H_d_1_new, H_d_2_new, H_d_3_new
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: C_J, C_H_d_1, C_H_d_2, C_H_d_3
-
-    REAL(DP), DIMENSION(1:nX_G) :: Ef, V_d_1, V_d_2, V_d_3
-    REAL(DP), DIMENSION(1:nX_G) :: Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old
-    REAL(DP), DIMENSION(1:nX_G) :: S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3
-    REAL(DP), DIMENSION(1:nX_G) :: C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3
-    REAL(DP), DIMENSION(1:nX_G) :: U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3
-
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G,1:nSpecies) :: J0, Chi, Eta
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G,1:nSpecies) :: Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G,1:nSpecies) :: Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair
-
-    REAL(DP), DIMENSION(1:n_FP_outer,1:M_outer,1:nX_G) :: GVEC_outer, FVEC_outer
-    REAL(DP), DIMENSION(1:n_FP_outer,          1:nX_G) :: GVECm_outer, FVECm_outer
-    REAL(DP), DIMENSION(             1:M_outer,1:nX_G) :: Alpha_outer
-
-    REAL(DP), DIMENSION(1:n_FP_inner,1:M_inner,1:nX_G) :: GVEC_inner, FVEC_inner
-    REAL(DP), DIMENSION(1:n_FP_inner,          1:nX_G) :: GVECm_inner, FVECm_inner
-    REAL(DP), DIMENSION(             1:M_inner,1:nX_G) :: Alpha_inner
-
-    ITERATE_OUTER(:) = .TRUE.
-    ITERATE_INNER(:) = .TRUE.
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: ITERATE_OUTER, ITERATE_INNER ) &
-    !$OMP MAP( alloc: Omega, NormVsq, Jnorm, &
-    !$OMP             H_d_1, H_d_2, H_d_3, &
-    !$OMP             J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
-    !$OMP             J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-    !$OMP             C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-    !$OMP             Ef, V_d_1, V_d_2, V_d_3, &
-    !$OMP             Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
-    !$OMP             S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
-    !$OMP             C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-    !$OMP             U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
-    !$OMP             J0, Chi, Eta, &
-    !$OMP             Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$OMP             Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
-    !$OMP             PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
-    !$OMP             GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$OMP             PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
-    !$OMP             GVECm_inner, FVECm_inner, Alpha_inner )
-#elif defined(THORNADO_OACC  )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( ITERATE_OUTER, ITERATE_INNER ) &
-    !$ACC CREATE( Omega, NormVsq, Jnorm, &
-    !$ACC         H_d_1, H_d_2, H_d_3, &
-    !$ACC         J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
-    !$ACC         J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-    !$ACC         C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-    !$ACC         Ef, V_d_1, V_d_2, V_d_3, &
-    !$ACC         Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
-    !$ACC         S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
-    !$ACC         C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-    !$ACC         U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
-    !$ACC         J0, Chi, Eta, &
-    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
-    !$ACC         PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
-    !$ACC         GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$ACC         PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
-    !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
-#endif
+    REAL(DP) :: vDotV
 
     ! --- Initial RHS ---
 
     CALL TimersStart( Timer_Collisions_InitializeRHS )
 
     CALL InitializeRHS_FP &
-           ( J, H_u_1, H_u_2, H_u_3, &
-             H_d_1, H_d_2, H_d_3, &
-             C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-             D, Y, E, V_u_1, V_u_2, V_u_3, &
-             Ef, V_d_1, V_d_2, V_d_3, &
-             C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-             S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+           ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     CALL TimersStop( Timer_Collisions_InitializeRHS )
-
-    ! --- Store Initial Matter State ---
-
-    CALL ArrayCopy &
-           ( Y    , Ef    , V_d_1    , V_d_2    , V_d_3, &
-             Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old )
-
-    ! --- Store Initial Neutrino State ---
-
-    CALL ArrayCopy &
-           ( J    , H_d_1    , H_d_2    , H_d_3, &
-             J_old, H_d_1_old, H_d_2_old, H_d_3_old )
-
-    ! --- Initial Guess for Neutrino State ---
-
-    CALL ArrayCopy &
-           ( J    , H_d_1    , H_d_2    , H_d_3, &
-             J_new, H_d_1_new, H_d_2_new, H_d_3_new )
 
     ! --- Compute Opacity Kernels ---
 
     CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
     CALL ComputeOpacities_Packed &
-           ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, &
-             Phi_0_In_Pair, Phi_0_Ot_Pair )
+           ( D, T, Y )
 
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
     ! --- Start Outer Loop ---
 
     k_outer = 0
-    DO WHILE( ANY( ITERATE_OUTER(:) ) .AND. k_outer < MaxIter_outer )
+    DO WHILE( ANY( ITERATE_outer(:) ) .AND. k_outer < MaxIter_outer )
 
       k_outer  = k_outer + 1
       Mk_outer = MIN( M_outer, k_outer )
 
       CALL ComputeJNorm &
-             ( ITERATE_OUTER, J_new, Jnorm )
+             ( ITERATE_outer, J )
 
       CALL CreatePackIndex &
-             ( ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+             ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
       IF ( k_outer > 1 ) THEN
 
@@ -516,45 +632,32 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
-               ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, &
-                 Phi_0_In_Pair, Phi_0_Ot_Pair, &
-                 ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+               ( D, T, Y, &
+                 ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
       END IF
-
-      ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
-      ! --- For first interation: must be consistent with initial guess ---
-
-      DO iN_X = 1, nX_G
-
-        Omega(iN_X) = One / ( One + SQRT( NormVsq(iN_X) ) )
-
-      END DO
 
       ! --- Start Inner Loop ---
 
       CALL TimersStart( Timer_Collisions_InnerLoop )
 
       k_inner = 0
-      DO WHILE( ANY( ITERATE_INNER(:) ) .AND. k_inner < MaxIter_inner )
+      DO WHILE( ANY( ITERATE_inner(:) ) .AND. k_inner < MaxIter_inner )
 
         k_inner  = k_inner + 1
         Mk_inner = MIN( M_inner, k_inner )
 
         CALL CreatePackIndex &
-               ( ITERATE_INNER, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
+               ( ITERATE_inner, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
         ! --- Compute Neutrino Rates ---
 
         CALL TimersStart( Timer_Collisions_ComputeRates )
 
         CALL ComputeRates_Packed &
-               ( J_new, &
-                 Phi_0_In_NES, Phi_0_Ot_NES, Phi_0_In_Pair, Phi_0_Ot_Pair, &
-                 Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-                 ITERATE_INNER, nX_P_inner, PackIndex_inner, &
+               ( J, ITERATE_inner, nX_P_inner, PackIndex_inner, &
                  UnpackIndex_inner, nX_P_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeRates )
@@ -564,11 +667,8 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_NeutrinoRHS )
 
         CALL ComputeNeutrinoRHS_FP &
-               ( ITERATE_INNER, n_FP_inner, FVECm_inner, GVECm_inner, &
-                 dt, Omega, V_u_1, V_u_2, V_u_3, &
-                 C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-                 J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-                 J0, Chi, Sig, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
+               ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
+                 J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
         CALL TimersStop( Timer_Collisions_NeutrinoRHS )
@@ -578,7 +678,7 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_SolveLS )
 
         CALL SolveLS_FP &
-               ( ITERATE_INNER, n_FP_inner, M_inner, Mk_inner, &
+               ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
                  FVECm_inner, GVECm_inner, FVEC_inner, GVEC_inner, &
                  AMAT_inner, BVEC_inner, Alpha_inner, TAU_inner, &
                  LWORK_inner, WORK_inner )
@@ -590,23 +690,24 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_UpdateFP )
 
         CALL UpdateNeutrinoRHS_FP &
-               ( ITERATE_INNER, n_FP_inner, FVECm_inner, GVECm_inner, &
-                 J_new, H_d_1_new, H_d_2_new, H_d_3_new )
+               ( ITERATE_inner, FVECm_inner, GVECm_inner, &
+                 J, H_u_1, H_u_2, H_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
         ! --- Check Convergence (inner) ---
 
         CALL TimersStart( Timer_Collisions_CheckInner )
 
         CALL CheckConvergence_Inner &
-               ( ITERATE_INNER, n_FP_inner, k_inner, &
-                 nIterations_Inner, FVECm_inner, Jnorm )
+               ( ITERATE_inner, n_FP_inner, k_inner, &
+                 nIterations_Inner, FVECm_inner )
 
         CALL TimersStop( Timer_Collisions_CheckInner )
 
         ! --- Shift History Arrays (inner) ---
 
         CALL ShiftRHS_FP &
-               ( ITERATE_INNER, n_FP_inner, M_inner, Mk_inner, &
+               ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
                  FVEC_inner, GVEC_inner )
 
         CALL TimersStop( Timer_Collisions_UpdateFP )
@@ -620,13 +721,8 @@ CONTAINS
       CALL TimersStart( Timer_Collisions_MatterRHS )
 
       CALL ComputeMatterRHS_FP &
-             ( ITERATE_OUTER, n_FP_outer, FVECm_outer, GVECm_outer, &
-               J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-                      C_Y    , S_Y    , U_Y    , &
-                      C_Ef   , S_Ef   , U_Ef   , &
-               V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, &
-               V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, &
-               V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, &
+             ( ITERATE_outer, FVECm_outer, GVECm_outer, &
+               J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
       CALL TimersStop( Timer_Collisions_MatterRHS )
@@ -636,7 +732,7 @@ CONTAINS
       CALL TimersStart( Timer_Collisions_SolveLS )
 
       CALL SolveLS_FP &
-             ( ITERATE_OUTER, n_FP_outer, M_outer, Mk_outer, &
+             ( ITERATE_outer, n_FP_outer, M_outer, Mk_outer, &
                FVECm_outer, GVECm_outer, FVEC_outer, GVEC_outer, &
                AMAT_outer, BVEC_outer, Alpha_outer, TAU_outer, &
                LWORK_outer, WORK_outer )
@@ -648,49 +744,9 @@ CONTAINS
       CALL TimersStart( Timer_Collisions_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE_OUTER, n_FP_outer, &
-               Y    , Y_old , U_Y , &
-               Ef   , Ef_old, U_Ef, &
-               V_d_1, V_d_1_old, U_V_d_1, &
-               V_d_2, V_d_2_old, U_V_d_2, &
-               V_d_3, V_d_3_old, U_V_d_3, &
-               FVECm_outer, GVECm_outer )
-
-      ! --- Update Three-Velocity (Index Up) ---
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-      DO iN_X = 1, nX_G
-
-        V_u_1(iN_X) = V_d_1(iN_X) / Gm_dd_11(iN_X)
-        V_u_2(iN_X) = V_d_2(iN_X) / Gm_dd_22(iN_X)
-        V_u_3(iN_X) = V_d_3(iN_X) / Gm_dd_33(iN_X)
-
-      END DO
-
-      ! --- Compute E from Ef ---
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-      DO iN_X = 1, nX_G
-
-        NormVsq(iN_X) =   V_u_1(iN_X) * V_d_1(iN_X) &
-                        + V_u_2(iN_X) * V_d_2(iN_X) &
-                        + V_u_3(iN_X) * V_d_3(iN_X)
-
-        E(iN_X) = Ef(iN_X) - Half * NormVsq(iN_X)
-
-      END DO
+             ( ITERATE_outer, FVECm_outer, GVECm_outer, &
+               Y, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
       ! --- Update Temperature ---
 
@@ -703,15 +759,15 @@ CONTAINS
       CALL TimersStart( Timer_Collisions_CheckOuter )
 
       CALL CheckConvergence_Outer &
-             ( ITERATE_OUTER, ITERATE_INNER, n_FP_outer, k_outer, &
-               FVECm_outer, nIterations_Outer )
+             ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
+               nIterations_Outer, FVECm_outer )
 
       CALL TimersStop( Timer_Collisions_CheckOuter )
 
       ! --- Shift History Arrays (outer) ---
 
       CALL ShiftRHS_FP &
-             ( ITERATE_OUTER, n_FP_outer, M_outer, Mk_outer, &
+             ( ITERATE_outer, n_FP_outer, M_outer, Mk_outer, &
                FVEC_outer, GVEC_outer )
 
       CALL TimersStop( Timer_Collisions_UpdateFP )
@@ -721,97 +777,17 @@ CONTAINS
     nIterations_Inner &
       = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
 
-    CALL ArrayCopy &
-           ( J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-             J    , H_d_1    , H_d_2    , H_d_3 )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iS   = 1, nSpecies
-    DO iN_X = 1, nX_G
-    DO iN_E = 1, nE_G
-
-      H_u_1(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
-      H_u_2(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
-      H_u_3(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
-
-    END DO
-    END DO
-    END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: ITERATE_OUTER, ITERATE_INNER, &
-    !$OMP               Omega, NormVsq, Jnorm, &
-    !$OMP               H_d_1, H_d_2, H_d_3, &
-    !$OMP               J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
-    !$OMP               J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-    !$OMP               C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-    !$OMP               Ef, V_d_1, V_d_2, V_d_3, &
-    !$OMP               Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
-    !$OMP               S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
-    !$OMP               C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-    !$OMP               U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
-    !$OMP               J0, Chi, Eta, &
-    !$OMP               Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$OMP               Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
-    !$OMP               PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
-    !$OMP               GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$OMP               PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
-    !$OMP               GVECm_inner, FVECm_inner, Alpha_inner )
-#elif defined(THORNADO_OACC  )
-    !$ACC EXIT DATA &
-    !$ACC DELETE( ITERATE_OUTER, ITERATE_INNER, &
-    !$ACC         Omega, NormVsq, Jnorm, &
-    !$ACC         H_d_1, H_d_2, H_d_3, &
-    !$ACC         J_old, H_d_1_old, H_d_2_old, H_d_3_old, &
-    !$ACC         J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-    !$ACC         C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-    !$ACC         Ef, V_d_1, V_d_2, V_d_3, &
-    !$ACC         Y_old, Ef_old, V_d_1_old, V_d_2_old, V_d_3_old, &
-    !$ACC         S_Y, S_ef, S_V_d_1, S_V_d_2, S_V_d_3, &
-    !$ACC         C_Y, C_ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-    !$ACC         U_Y, U_ef, U_V_d_1, U_V_d_2, U_V_d_3, &
-    !$ACC         J0, Chi, Eta, &
-    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
-    !$ACC         PackIndex_outer, UnpackIndex_outer, GVEC_outer, FVEC_outer, &
-    !$ACC         GVECm_outer, FVECm_outer, Alpha_outer, &
-    !$ACC         PackIndex_inner, UnpackIndex_inner, GVEC_inner, FVEC_inner, &
-    !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
-#endif
-
   END SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA
 
 
   SUBROUTINE ComputeOpacities_Packed &
-    ( D, T, Y, J0, Chi, Sig, Phi_0_In_NES, Phi_0_Ot_NES, Phi_0_In_Pair, &
-      Phi_0_Ot_Pair, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, T, Y, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    REAL(DP), INTENT(in)   , TARGET   :: D(1:nX_G)
-    REAL(DP), INTENT(in)   , TARGET   :: T(1:nX_G)
-    REAL(DP), INTENT(in)   , TARGET   :: Y(1:nX_G)
-    REAL(DP), INTENT(inout), TARGET   :: J0 (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: Chi(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: Sig(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: &
-      Phi_0_In_NES (1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: &
-      Phi_0_Ot_NES (1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: &
-      Phi_0_In_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: &
-      Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    LOGICAL,  INTENT(in)   , OPTIONAL :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: nX_P
-    INTEGER,  INTENT(in)   , OPTIONAL :: PackIndex  (1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: UnpackIndex(1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: nX_P0
+    REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y
+    LOGICAL,  DIMENSION(:), INTENT(in), OPTIONAL :: MASK
+    INTEGER,                INTENT(in), OPTIONAL :: nX_P
+    INTEGER,  DIMENSION(:), INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
+    INTEGER,                INTENT(in), OPTIONAL :: nX_P0
 
     REAL(DP), DIMENSION(:),     POINTER :: D_P, T_P, Y_P
     ! --- to be changed to handle cases when iSpecies > 2 ---
@@ -922,9 +898,9 @@ CONTAINS
       ! --- Enforce Detailed Balance (Again) Based on J0 ---
 
 #if   defined( THORNADO_OMP_OL )
-
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -965,9 +941,9 @@ CONTAINS
     ELSE
 
 #if   defined( THORNADO_OMP_OL )
-
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -999,9 +975,9 @@ CONTAINS
       ! --- Enforce Detailed Balance (Again) Based on J0 ---
 
 #if   defined( THORNADO_OMP_OL )
-
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -1026,9 +1002,9 @@ CONTAINS
     ELSE
 
 #if   defined( THORNADO_OMP_OL )
-
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -1080,28 +1056,13 @@ CONTAINS
 
 
   SUBROUTINE ComputeRates_Packed &
-    ( J, Phi_0_In_NES, Phi_0_Ot_NES, Phi_0_In_Pair, Phi_0_Ot_Pair, &
-      Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, MASK, nX_P, PackIndex, &
-      UnpackIndex, nX_P0 )
+    ( J, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    REAL(DP), INTENT(in)   , TARGET   :: J(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)   , TARGET   :: &
-      Phi_0_In_NES (1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)   , TARGET   :: &
-      Phi_0_Ot_NES (1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)   , TARGET   :: &
-      Phi_0_In_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)   , TARGET   :: &
-      Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: Chi_NES (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: Eta_NES (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: Chi_Pair(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout), TARGET   :: Eta_Pair(1:nE_G,1:nX_G,1:nSpecies)
-    LOGICAL,  INTENT(in)   , OPTIONAL :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: nX_P
-    INTEGER,  INTENT(in)   , OPTIONAL :: PackIndex  (1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: UnpackIndex(1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: nX_P0
+    REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: J
+    LOGICAL,  DIMENSION(:),     INTENT(in), OPTIONAL :: MASK
+    INTEGER,                    INTENT(in), OPTIONAL :: nX_P
+    INTEGER,  DIMENSION(:),     INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
+    INTEGER,                    INTENT(in), OPTIONAL :: nX_P0
 
     REAL(DP), DIMENSION(:,:),   POINTER :: J_1_P, J_2_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
@@ -1242,17 +1203,15 @@ CONTAINS
   SUBROUTINE UpdateTemperature_Packed &
     ( D, E, Y, T, MASK, nX_P, PackIndex, UnpackIndex )
 
-    REAL(DP), INTENT(in)   , TARGET   :: D(1:nX_G)
-    REAL(DP), INTENT(in)   , TARGET   :: E(1:nX_G)
-    REAL(DP), INTENT(in)   , TARGET   :: Y(1:nX_G)
-    REAL(DP), INTENT(inout), TARGET   :: T(1:nX_G)
-    LOGICAL,  INTENT(in)   , OPTIONAL :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: nX_P
-    INTEGER,  INTENT(in)   , OPTIONAL :: PackIndex  (1:nX_G)
-    INTEGER,  INTENT(in)   , OPTIONAL :: UnpackIndex(1:nX_G)
+    REAL(DP), DIMENSION(:), INTENT(in)   , TARGET   :: D, E, Y
+    REAL(DP), DIMENSION(:), INTENT(inout), TARGET   :: T
+    LOGICAL,  DIMENSION(:), INTENT(in)   , OPTIONAL :: MASK
+    INTEGER,                INTENT(in)   , OPTIONAL :: nX_P
+    INTEGER,  DIMENSION(:), INTENT(in)   , OPTIONAL :: PackIndex, UnpackIndex
 
-    INTEGER           :: nX
-    REAL(DP), POINTER :: D_P(:), E_P(:), Y_P(:), T_P(:)
+    REAL(DP), DIMENSION(:), POINTER :: D_P, E_P, Y_P, T_P
+
+    INTEGER :: nX
 
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
@@ -1295,48 +1254,25 @@ CONTAINS
 
 
   SUBROUTINE InitializeRHS_FP &
-    ( J, H_u_1, H_u_2, H_u_3, &
-      H_d_1, H_d_2, H_d_3, &
-      C_J, C_H_d_1, C_H_d_2, C_H_d_3, &
-      D, Y, E, V_u_1, V_u_2, V_u_3, &
-      Ef, V_d_1, V_d_2, V_d_3, &
-      C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3, &
-      S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, &
+    ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(in)  :: J, H_u_1, H_u_2, H_u_3
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(out) :: H_d_1, H_d_2, H_d_3
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies), INTENT(out) :: C_J, C_H_d_1, C_H_2_d, C_H_3_d
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(in)  :: D, Y, E, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(out) :: Ef, V_d_1, V_d_2, V_d_3
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(out) :: C_Y, C_Ef, C_V_d_1, C_V_d_2, C_V_d_3
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(out) :: S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3
-    REAL(DP), DIMENSION(1:nX_G),                   INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
-
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G,1:nSpecies) :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
+    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC CREATE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
-#endif
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( vDotV )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( V_u_1, V_u_2, V_u_3, NormVsq, E, &
-    !$ACC          Y, Ef, V_d_1, V_d_2, V_d_3, &
-    !$ACC          U_Y, U_Ef, U_V_d_1, U_V_d_2, U_V_d_3, &
-    !$ACC          S_Y, S_Ef, S_V_d_1, S_V_d_2, S_V_d_3, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$ACC PRIVATE( vDotV )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( vDotV )
 #endif
     DO iN_X = 1, nX_G
 
@@ -1346,12 +1282,21 @@ CONTAINS
 
       ! --- Specific Fluid Energy ---
 
-      NormVsq(iN_X) &
-        =    V_u_1(iN_X) * V_d_1(iN_X) &
-           + V_u_2(iN_X) * V_d_2(iN_X) &
-           + V_u_3(iN_X) * V_d_3(iN_X)
+      vDotV =   V_u_1(iN_X) * V_d_1(iN_X) &
+              + V_u_2(iN_X) * V_d_2(iN_X) &
+              + V_u_3(iN_X) * V_d_3(iN_X)
 
-      Ef(iN_X) = E(iN_X) + Half * NormVsq(iN_X)
+      Ef(iN_X) = E(iN_X) + Half * vDotV
+
+      ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
+      ! --- For first interation: must be consistent with initial guess ---
+
+      Omega(iN_X) = One / ( One + SQRT( vDotV ) )
+
+      ! --- Store Initial Matter State ---
+
+      Y_old (iN_X) = Y (iN_X)
+      Ef_old(iN_X) = Ef(iN_X)
 
       ! --- Scaling Factors ---
 
@@ -1524,35 +1469,25 @@ CONTAINS
 
     END DO
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
-#elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA &
-    !$ACC DELETE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
-#endif
-
   END SUBROUTINE InitializeRHS_FP
 
 
-  SUBROUTINE ComputeJNorm( MASK, J, Jnorm )
+  SUBROUTINE ComputeJNorm( MASK, J )
 
-    LOGICAL , INTENT(in)    :: MASK(1:nX_G)
-    REAL(DP), INTENT(in)    :: J(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: Jnorm(1:nSpecies,1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J
 
     INTEGER :: iN_X, iS
 
-    ! --- Fix me: GPU pragmas are stale
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC  )
-    !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
-    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
 
       IF ( MASK(iN_X) ) THEN
 
@@ -1567,138 +1502,99 @@ CONTAINS
 
 
   SUBROUTINE ComputeMatterRHS_FP &
-    ( MASK, n_FP, Fm, Gm, J, H_d_1, H_d_2, H_d_3, &
-             C_Y    , S_Y    , U_Y    , &
-             C_Ef   , S_Ef   , U_Ef   , &
-      V_d_1, C_V_d_1, S_V_d_1, U_V_d_1, &
-      V_d_2, C_V_d_2, S_V_d_2, U_V_d_2, &
-      V_d_3, C_V_d_3, S_V_d_3, U_V_d_3, &
+    ( MASK, Fm, Gm, &
+      J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    REAL(DP), INTENT(inout) :: Fm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: Gm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(in)    :: J    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: H_d_1(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: H_d_2(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: H_d_3(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: C_Y     (1:nX_G)
-    REAL(DP), INTENT(in)    :: S_Y     (1:nX_G)
-    REAL(DP), INTENT(in)    :: U_Y     (1:nX_G)
-    REAL(DP), INTENT(in)    :: C_Ef    (1:nX_G)
-    REAL(DP), INTENT(in)    :: S_Ef    (1:nX_G)
-    REAL(DP), INTENT(in)    :: U_Ef    (1:nX_G)
-    REAL(DP), INTENT(in)    :: V_d_1   (1:nX_G)
-    REAL(DP), INTENT(in)    :: C_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(in)    :: S_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(in)    :: U_V_d_1 (1:nX_G)
-    REAL(DP), INTENT(in)    :: V_d_2   (1:nX_G)
-    REAL(DP), INTENT(in)    :: C_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(in)    :: S_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(in)    :: U_V_d_2 (1:nX_G)
-    REAL(DP), INTENT(in)    :: V_d_3   (1:nX_G)
-    REAL(DP), INTENT(in)    :: C_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(in)    :: S_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(in)    :: U_V_d_3 (1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_11(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_22(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_33(1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: V_u_1, V_u_2, V_u_3, k_dd(3,3)
-    REAL(DP) :: H_u_1, H_u_2, H_u_3, vDotH
-    REAL(DP) :: vDotK_d_1, vDotK_d_2, vDotK_d_3
-    REAL(DP) :: G_Y    (1:nX_G)
-    REAL(DP) :: G_Ef   (1:nX_G)
-    REAL(DP) :: G_V_d_1(1:nX_G)
-    REAL(DP) :: G_V_d_2(1:nX_G)
-    REAL(DP) :: G_V_d_3(1:nX_G)
-    REAL(DP) :: N_nu    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: E_nu    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: F_nu_d_1(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: F_nu_d_2(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP) :: F_nu_d_3(1:nE_G,1:nX_G,1:nSpecies)
+    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
 
-    ! --- Fix me: GPU pragmas are stale
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC  )
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP   )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( V_u_1, V_u_2, V_u_3, vDotH, H_u_1, H_u_2, H_u_3, &
-    !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
 
-      V_u_1 = V_d_1(iN_X) / Gm_dd_11(iN_X)
-      V_u_2 = V_d_2(iN_X) / Gm_dd_22(iN_X)
-      V_u_3 = V_d_3(iN_X) / Gm_dd_33(iN_X)
+      IF ( MASK(iN_X) ) THEN
 
-      vDotH =   V_u_1 * H_d_1(iN_E,iN_X,iS) &
-              + V_u_2 * H_d_2(iN_E,iN_X,iS) &
-              + V_u_3 * H_d_3(iN_E,iN_X,iS)
+        vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iN_X,iS) &
+                + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
+                + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
-      H_u_1 = H_d_1(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
-      H_u_2 = H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
-      H_u_3 = H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
+        k_dd = EddingtonTensorComponents_dd &
+                 ( J    (iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
+                   H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-      k_dd = EddingtonTensorComponents_dd &
-               ( J(iN_E,iN_X,iS), H_u_1, H_u_2, H_u_3, &
-                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+        vDotK_d_1 &
+          = ( V_u_1(iN_X) * k_dd(1,1) &
+            + V_u_2(iN_X) * k_dd(2,1) &
+            + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iN_X,iS)
+        vDotK_d_2 &                                                  
+          = ( V_u_1(iN_X) * k_dd(1,2) &
+            + V_u_2(iN_X) * k_dd(2,2) &
+            + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iN_X,iS)
+        vDotK_d_3 &                                                  
+          = ( V_u_1(iN_X) * k_dd(1,3) &
+            + V_u_2(iN_X) * k_dd(2,3) &
+            + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iN_X,iS)
 
-      vDotK_d_1 &
-        = ( V_u_1 * k_dd(1,1) + V_u_2 * k_dd(2,1) + V_u_3 * k_dd(3,1) )
-      vDotK_d_2 &
-        = ( V_u_1 * k_dd(1,2) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(3,2) )
-      vDotK_d_3 &
-        = ( V_u_1 * k_dd(1,3) + V_u_2 * k_dd(2,3) + V_u_3 * k_dd(3,3) )
+        ! --- Eulerian Neutrino Number Density ---
 
-      vDotK_d_1 = vDotK_d_1 * J(iN_E,iN_X,iS)
-      vDotK_d_2 = vDotK_d_2 * J(iN_E,iN_X,iS)
-      vDotK_d_3 = vDotK_d_3 * J(iN_E,iN_X,iS)
+        N_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + vDotH
 
-      ! --- Eulerian Neutrino Number Density ---
+        ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
 
-      N_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + vDotH
+        E_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + Two * vDotH
 
-      ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
+        ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
-      E_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + Two * vDotH
+        F_nu_d_1(iN_E,iN_X,iS) &
+          = H_d_1(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
 
-      ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
+        F_nu_d_2(iN_E,iN_X,iS) &
+          = H_d_2(iN_E,iN_X,iS) + V_d_2(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_2
 
-      F_nu_d_1(iN_E,iN_X,iS) &
-        = H_d_1(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
+        F_nu_d_3(iN_E,iN_X,iS) &
+          = H_d_3(iN_E,iN_X,iS) + V_d_3(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_3
 
-      F_nu_d_2(iN_E,iN_X,iS) &
-        = H_d_2(iN_E,iN_X,iS) + V_d_2(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_2
-
-      F_nu_d_3(iN_E,iN_X,iS) &
-        = H_d_3(iN_E,iN_X,iS) + V_d_3(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_3
+      END IF
 
     END DO
     END DO
     END DO
 
 #if   defined(THORNADO_OMP_OL)
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
-
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
+      IF ( MASK(iN_X) ) THEN
 
-      G_Y    (iN_X) = Zero
-      G_Ef   (iN_X) = Zero
-      G_V_d_1(iN_X) = Zero
-      G_V_d_2(iN_X) = Zero
-      G_V_d_3(iN_X) = Zero
+        G_Y    (iN_X) = Zero
+        G_Ef   (iN_X) = Zero
+        G_V_d_1(iN_X) = Zero
+        G_V_d_2(iN_X) = Zero
+        G_V_d_3(iN_X) = Zero
 
+      END IF
     END DO
 
     DO iS = iNuE, iNuE_Bar
@@ -1761,56 +1657,33 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoRHS_FP &
-    ( MASK, n_FP, FVECm, GVECm, dt, Omega, V_u_1, V_u_2, V_u_3, &
-      C_J  , C_H_d_1  , C_H_d_2  , C_H_d_3  , &
-      J_new, H_d_1_new, H_d_2_new, H_d_3_new, &
-      J0, Chi, Sig, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
+    ( MASK, Fm, Gm, dt, &
+      J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    REAL(DP), INTENT(inout) :: FVECm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: GVECm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(in)    :: dt
-    REAL(DP), INTENT(in)    :: Omega(1:nX_G)
-    REAL(DP), INTENT(in)    :: V_u_1(1:nX_G)
-    REAL(DP), INTENT(in)    :: V_u_2(1:nX_G)
-    REAL(DP), INTENT(in)    :: V_u_3(1:nX_G)
-    REAL(DP), INTENT(in)    :: C_J      (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: C_H_d_1  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: C_H_d_2  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: C_H_d_3  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: J_new    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: H_d_1_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: H_d_2_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: H_d_3_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: J0       (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Chi      (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Sig      (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Chi_NES  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Eta_NES  (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Chi_Pair (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Eta_Pair (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(in)    :: Gm_dd_11(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_22(1:nX_G)
-    REAL(DP), INTENT(in)    :: Gm_dd_33(1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP),                   INTENT(in)    :: dt
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS, iOS
-    REAL(DP) :: H_u_1, H_u_2, H_u_3, vDotH, k_dd(3,3)
-    REAL(DP) :: vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: Eta_T, Chi_T, Kappa
 
-    ! --- Fix me: GPU Pragmas are Stale ---
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Eta, Eta_T, Chi_T, Kappa )
-#elif defined(THORNADO_OACC  )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( Eta, Eta_T, Chi_T, Kappa )
-#elif defined(THORNADO_OMP   )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$ACC          Eta_T, Chi_T, Kappa, iOS )
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( vDotH, H_u_1, H_u_2, H_u_3, k_dd, vDotK_d_1, &
-    !$OMP          vDotK_d_2, vDotK_d_3, Eta_T, Chi_T, Kappa, iOS )
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$OMP          Eta_T, Chi_T, Kappa, iOS )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -1818,39 +1691,37 @@ CONTAINS
 
       IF( MASK(iN_X) )THEN
 
-        vDotH =   V_u_1(iN_X) * H_d_1_new(iN_E,iN_X,iS) &
-                + V_u_2(iN_X) * H_d_2_new(iN_E,iN_X,iS) &
-                + V_u_3(iN_X) * H_d_3_new(iN_E,iN_X,iS)
-
-        H_u_1 = H_d_1_new(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
-        H_u_2 = H_d_2_new(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
-        H_u_3 = H_d_3_new(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
+        vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iN_X,iS) &
+                + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
+                + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
         k_dd = EddingtonTensorComponents_dd &
-                 (  J_new(iN_E,iN_X,iS), H_u_1, H_u_2, H_u_3, &
-                    Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+                 ( J    (iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
+                   H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-        vDotK_d_1 = (   V_u_1(iN_X) * k_dd(1,1) &
-                      + V_u_2(iN_X) * k_dd(2,1) &
-                      + V_u_3(iN_X) * k_dd(3,1) ) * J_new(iN_E,iN_X,iS)
-
-        vDotK_d_2 = (   V_u_1(iN_X) * k_dd(1,2) &
-                      + V_u_2(iN_X) * k_dd(2,2) &
-                      + V_u_3(iN_X) * k_dd(3,2) ) * J_new(iN_E,iN_X,iS)
-
-        vDotK_d_3 = (   V_u_1(iN_X) * k_dd(1,3) &
-                      + V_u_2(iN_X) * k_dd(2,3) &
-                      + V_u_3(iN_X) * k_dd(3,3) ) * J_new(iN_E,iN_X,iS)
+        vDotK_d_1 &
+          = ( V_u_1(iN_X) * k_dd(1,1) &
+            + V_u_2(iN_X) * k_dd(2,1) &
+            + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iN_X,iS)
+        vDotK_d_2 &                                                  
+          = ( V_u_1(iN_X) * k_dd(1,2) &
+            + V_u_2(iN_X) * k_dd(2,2) &
+            + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iN_X,iS)
+        vDotK_d_3 &                                                  
+          = ( V_u_1(iN_X) * k_dd(1,3) &
+            + V_u_2(iN_X) * k_dd(2,3) &
+            + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iN_X,iS)
 
         ! --- Emissivity ---
 
-        Eta_T = Chi       (iN_E,iN_X,iS) * J0(iN_E,iN_X,iS) &
+        Eta_T =   Chi     (iN_E,iN_X,iS) * J0(iN_E,iN_X,iS) &
                 + Eta_NES (iN_E,iN_X,iS) &
                 + Eta_Pair(iN_E,iN_X,iS)
 
         ! --- Number Opacity ---
 
-        Chi_T = Chi       (iN_E,iN_X,iS) &
+        Chi_T =   Chi     (iN_E,iN_X,iS) &
                 + Chi_NES (iN_E,iN_X,iS) &
                 + Chi_Pair(iN_E,iN_X,iS)
 
@@ -1862,43 +1733,43 @@ CONTAINS
 
         ! --- Number Equation ---
 
-        GVECm(iOS+iCR_N,iN_X) &
-          = ( One - Omega(iN_X) ) * J_new(iN_E,iN_X,iS) &
-            + Omega(iN_X) * ( C_J(iN_E,iN_X,iS) - vDotH + dt * Eta_T ) &
-                            / ( One + dt * Chi_T )
+        Gm(iOS+iCR_N,iN_X) &
+          = ( One - Omega(iN_X) ) *     J(iN_E,iN_X,iS) &
+            +       Omega(iN_X)   * ( C_J(iN_E,iN_X,iS) - vDotH + dt * Eta_T ) &
+                                    / ( One + dt * Chi_T )
 
-        FVECm(iOS+iCR_N,iN_X) &
-          = GVECm(iOS+iCR_N,iN_X) - J_new(iN_E,iN_X,iS)
+        Fm(iOS+iCR_N,iN_X) &
+          = Gm(iOS+iCR_N,iN_X) - J(iN_E,iN_X,iS)
 
         ! --- Number Flux 1 Equation ---
 
-        GVECm(iOS+iCR_G1,iN_X) &
-          = ( One - Omega(iN_X) ) * H_d_1_new(iN_E,iN_X,iS) &
-            + Omega(iN_X) * ( C_H_d_1(iN_E,iN_X,iS) - vDotK_d_1 ) &
-                            / ( One + dt * Kappa )
+        Gm(iOS+iCR_G1,iN_X) &
+          = ( One - Omega(iN_X) ) *     H_d_1(iN_E,iN_X,iS) &
+            +       Omega(iN_X)   * ( C_H_d_1(iN_E,iN_X,iS) - vDotK_d_1 ) &
+                                    / ( One + dt * Kappa )
 
-        FVECm(iOS+iCR_G1,iN_X) &
-          = GVECm(iOS+iCR_G1,iN_X) - H_d_1_new(iN_E,iN_X,iS)
+        Fm(iOS+iCR_G1,iN_X) &
+          = Gm(iOS+iCR_G1,iN_X) - H_d_1(iN_E,iN_X,iS)
 
         ! --- Number Flux 2 Equation ---
 
-        GVECm(iOS+iCR_G2,iN_X) &
-          = ( One - Omega(iN_X) ) * H_d_2_new(iN_E,iN_X,iS) &
-            + Omega(iN_X) * ( C_H_d_2(iN_E,iN_X,iS) - vDotK_d_2 ) &
-                            / ( One + dt * Kappa )
+        Gm(iOS+iCR_G2,iN_X) &
+          = ( One - Omega(iN_X) ) *     H_d_2(iN_E,iN_X,iS) &
+            +       Omega(iN_X)   * ( C_H_d_2(iN_E,iN_X,iS) - vDotK_d_2 ) &
+                                    / ( One + dt * Kappa )
 
-        FVECm(iOS+iCR_G2,iN_X) &
-          = GVECm(iOS+iCR_G2,iN_X) - H_d_2_new(iN_E,iN_X,iS)
+        Fm(iOS+iCR_G2,iN_X) &
+          = Gm(iOS+iCR_G2,iN_X) - H_d_2(iN_E,iN_X,iS)
 
         ! --- Number Flux 3 Equation ---
 
-        GVECm(iOS+iCR_G3,iN_X) &
-          = ( One - Omega(iN_X) ) * H_d_3_new(iN_E,iN_X,iS) &
-            + Omega(iN_X) * ( C_H_d_3(iN_E,iN_X,iS) - vDotK_d_3 ) &
-                            / ( One + dt * Kappa )
+        Gm(iOS+iCR_G3,iN_X) &
+          = ( One - Omega(iN_X) ) *     H_d_3(iN_E,iN_X,iS) &
+            +       Omega(iN_X)   * ( C_H_d_3(iN_E,iN_X,iS) - vDotK_d_3 ) &
+                                    / ( One + dt * Kappa )
 
-        FVECm(iOS+iCR_G3,iN_X) &
-          = GVECm(iOS+iCR_G3,iN_X) - H_d_3_new(iN_E,iN_X,iS)
+        Fm(iOS+iCR_G3,iN_X) &
+          = Gm(iOS+iCR_G3,iN_X) - H_d_3(iN_E,iN_X,iS)
 
       END IF
 
@@ -1910,60 +1781,66 @@ CONTAINS
 
 
   SUBROUTINE UpdateMatterRHS_FP &
-    ( MASK, n_FP, Y, Y_old, U_Y, Ef, Ef_old, U_Ef, &
-      V_d_1, V_d_1_old, U_V_d_1, V_d_2, V_d_2_old, U_V_d_2, &
-      V_d_3, V_d_3_old, U_V_d_3, FVECm, GVECm )
+    ( MASK, Fm, Gm, Y, E, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    LOGICAL,  INTENT(in)    :: MASK     (1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    REAL(DP), INTENT(inout) :: Y        (1:nX_G)
-    REAL(DP), INTENT(in)    :: Y_old    (1:nX_G)
-    REAL(DP), INTENT(inout) :: U_Y      (1:nX_G)
-    REAL(DP), INTENT(inout) :: Ef       (1:nX_G)
-    REAL(DP), INTENT(in)    :: Ef_old   (1:nX_G)
-    REAL(DP), INTENT(inout) :: U_Ef     (1:nX_G)
-    REAL(DP), INTENT(inout) :: V_d_1    (1:nX_G)
-    REAL(DP), INTENT(in)    :: V_d_1_old(1:nX_G)
-    REAL(DP), INTENT(inout) :: U_V_d_1  (1:nX_G)
-    REAL(DP), INTENT(inout) :: V_d_2    (1:nX_G)
-    REAL(DP), INTENT(in)    :: V_d_2_old(1:nX_G)
-    REAL(DP), INTENT(inout) :: U_V_d_2  (1:nX_G)
-    REAL(DP), INTENT(inout) :: V_d_3    (1:nX_G)
-    REAL(DP), INTENT(in)    :: V_d_3_old(1:nX_G)
-    REAL(DP), INTENT(inout) :: U_V_d_3  (1:nX_G)
-    REAL(DP), INTENT(inout) :: FVECm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: GVECm(1:n_FP,1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    INTEGER :: iN_X
+    INTEGER  :: iN_X
+    REAL(DP) :: vDotV
 
-#if defined  ( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( vDotV )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( vDotV )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( vDotV )
 #endif
     DO iN_X = 1, nX_G
 
       IF ( MASK(iN_X) ) THEN
 
-        FVECm(iY ,iN_X) = GVECm(iY ,iN_X) - U_Y    (iN_X)
-        FVECm(iEf,iN_X) = GVECm(iEf,iN_X) - U_Ef   (iN_X)
-        FVECm(iV1,iN_X) = GVECm(iV1,iN_X) - U_V_d_1(iN_X)
-        FVECm(iV2,iN_X) = GVECm(iV2,iN_X) - U_V_d_2(iN_X)
-        FVECm(iV3,iN_X) = GVECm(iV3,iN_X) - U_V_d_3(iN_X)
+        Fm(iY ,iN_X) = Gm(iY ,iN_X) - U_Y    (iN_X)
+        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Ef   (iN_X)
+        Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
+        Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
+        Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
 
-        U_Y    (iN_X) = GVECm(iY ,iN_X)
-        U_Ef   (iN_X) = GVECm(iEf,iN_X)
-        U_V_d_1(iN_X) = GVECm(iV1,iN_X)
-        U_V_d_2(iN_X) = GVECm(iV2,iN_X)
-        U_V_d_3(iN_X) = GVECm(iV3,iN_X)
+        U_Y    (iN_X) = Gm(iY ,iN_X)
+        U_Ef   (iN_X) = Gm(iEf,iN_X)
+        U_V_d_1(iN_X) = Gm(iV1,iN_X)
+        U_V_d_2(iN_X) = Gm(iV2,iN_X)
+        U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
         Y    (iN_X) = U_Y    (iN_X) * Y_old (iN_X)
         Ef   (iN_X) = U_Ef   (iN_X) * Ef_old(iN_X)
         V_d_1(iN_X) = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2(iN_X) = U_V_d_2(iN_X) * SpeedOfLight
         V_d_3(iN_X) = U_V_d_3(iN_X) * SpeedOfLight
+
+        ! --- Update Three-Velocity (Index Up) ---
+
+        V_u_1(iN_X) = V_d_1(iN_X) / Gm_dd_11(iN_X)
+        V_u_2(iN_X) = V_d_2(iN_X) / Gm_dd_22(iN_X)
+        V_u_3(iN_X) = V_d_3(iN_X) / Gm_dd_33(iN_X)
+
+        ! --- Compute E from Ef ---
+
+        vDotV =   V_u_1(iN_X) * V_d_1(iN_X) &
+                + V_u_2(iN_X) * V_d_2(iN_X) &
+                + V_u_3(iN_X) * V_d_3(iN_X)
+
+        E(iN_X) = Ef(iN_X) - Half * vDotV
+
+        ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
+
+        Omega(iN_X) = One / ( One + SQRT( vDotV ) )
 
       END IF
 
@@ -1973,24 +1850,22 @@ CONTAINS
 
 
   SUBROUTINE UpdateNeutrinoRHS_FP &
-    ( MASK, n_FP, FVECm, GVECm, J_new, H_d_1_new, H_d_2_new, H_d_3_new )
+    ( MASK, Fm, Gm, J, H_u_1, H_u_2, H_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    REAL(DP), INTENT(inout) :: FVECm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: GVECm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: J_new    (1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: H_d_1_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: H_d_2_new(1:nE_G,1:nX_G,1:nSpecies)
-    REAL(DP), INTENT(inout) :: H_d_3_new(1:nE_G,1:nX_G,1:nSpecies)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS, iOS
 
-    ! --- Fix me: GPU Pragmas are Stale ---
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iOS )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iOS )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iOS )
@@ -2003,19 +1878,19 @@ CONTAINS
 
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
-        FVECm    (iOS+iCR_N ,iN_X) &
-          = GVECm(iOS+iCR_N ,iN_X) - J_new    (iN_E,iN_X,iS)
-        FVECm    (iOS+iCR_G1,iN_X) &
-          = GVECm(iOS+iCR_G1,iN_X) - H_d_1_new(iN_E,iN_X,iS)
-        FVECm    (iOS+iCR_G2,iN_X) &
-          = GVECm(iOS+iCR_G2,iN_X) - H_d_2_new(iN_E,iN_X,iS)
-        FVECm    (iOS+iCR_G3,iN_X) &
-          = GVECm(iOS+iCR_G3,iN_X) - H_d_3_new(iN_E,iN_X,iS)
+        Fm(iOS+iCR_N ,iN_X) = Gm(iOS+iCR_N ,iN_X) - J    (iN_E,iN_X,iS)
+        Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - H_d_1(iN_E,iN_X,iS)
+        Fm(iOS+iCR_G2,iN_X) = Gm(iOS+iCR_G2,iN_X) - H_d_2(iN_E,iN_X,iS)
+        Fm(iOS+iCR_G3,iN_X) = Gm(iOS+iCR_G3,iN_X) - H_d_3(iN_E,iN_X,iS)
 
-        J_new    (iN_E,iN_X,iS) = GVECm(iOS+iCR_N ,iN_X)
-        H_d_1_new(iN_E,iN_X,iS) = GVECm(iOS+iCR_G1,iN_X)
-        H_d_2_new(iN_E,iN_X,iS) = GVECm(iOS+iCR_G2,iN_X)
-        H_d_3_new(iN_E,iN_X,iS) = GVECm(iOS+iCR_G3,iN_X)
+        J    (iN_E,iN_X,iS) = Gm(iOS+iCR_N ,iN_X)
+        H_d_1(iN_E,iN_X,iS) = Gm(iOS+iCR_G1,iN_X)
+        H_d_2(iN_E,iN_X,iS) = Gm(iOS+iCR_G2,iN_X)
+        H_d_3(iN_E,iN_X,iS) = Gm(iOS+iCR_G3,iN_X)
+
+        H_u_1(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS) / Gm_dd_11(iN_X)
+        H_u_2(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)
+        H_u_3(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)
 
       END IF
 
@@ -2029,20 +1904,13 @@ CONTAINS
   SUBROUTINE SolveLS_FP &
     ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha, TAU, LWORK, WORK )
 
-    LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    INTEGER,  INTENT(in)    :: M
-    INTEGER,  INTENT(in)    :: Mk
-    REAL(DP), INTENT(inout) :: Fm   (1:n_FP    ,1:nX_G)
-    REAL(DP), INTENT(inout) :: Gm   (1:n_FP    ,1:nX_G)
-    REAL(DP), INTENT(inout) :: B    (1:n_FP    ,1:nX_G)
-    REAL(DP), INTENT(inout) :: F    (1:n_FP,1:M,1:nX_G)
-    REAL(DP), INTENT(inout) :: G    (1:n_FP,1:M,1:nX_G)
-    REAL(DP), INTENT(inout) :: A    (1:n_FP,1:M,1:nX_G)
-    REAL(DP), INTENT(inout) :: Alpha(       1:M,1:nX_G)
-    REAL(DP), INTENT(inout) :: TAU  (1:n_FP    ,1:nX_G)
-    INTEGER,  INTENT(inout) :: LWORK
-    REAL(DP), INTENT(inout) :: WORK(1:LWORK    ,1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm, B
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G, A
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Alpha, TAU
+    INTEGER,                    INTENT(in)    :: LWORK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: WORK
 
     INTEGER  :: iN_X, iFP, iM
     REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
@@ -2249,12 +2117,9 @@ CONTAINS
 
   SUBROUTINE ShiftRHS_FP( MASK, n_FP, M, Mk, F, G )
 
-    LOGICAL,  INTENT(in)    :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    INTEGER,  INTENT(in)    :: M
-    INTEGER,  INTENT(in)    :: Mk
-    REAL(DP), INTENT(inout) :: F(1:n_FP,1:M,1:nX_G)
-    REAL(DP), INTENT(inout) :: G(1:n_FP,1:M,1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
 
     INTEGER  :: iN_X, iFP, iM
     REAL(DP) :: FTMP(1:n_FP,1:M)
@@ -2308,84 +2173,58 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Inner &
-    ( MASK, n_FP, k_inner, nIterations_Inner, Fm, Jnorm )
+    ( MASK, n_FP, k_inner, nIterations_Inner, Fm )
 
-    LOGICAL,  INTENT(inout) :: MASK(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    INTEGER,  INTENT(in)    :: k_inner
-    INTEGER,  INTENT(inout) :: nIterations_Inner(1:nX_G)
-    REAL(DP), INTENT(in)    :: Fm(1:n_FP,1:nX_G)
-    REAL(DP), INTENT(in)    :: Jnorm(1:nSpecies,1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK
+    INTEGER,                    INTENT(in)    :: n_FP, k_inner
+    INTEGER,  DIMENSION(:)    , INTENT(inout) :: nIterations_Inner
+    REAL(DP), DIMENSION(:,:)  , INTENT(in)    :: Fm
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: iN_X, iS, iCR, iN_E, iOS
-    REAL(DP) :: Fnorm(1:nSpecies,1:nX_G)
-    REAL(DP) :: F(1:nE_G,1:nCR,1:nSpecies,1:nX_G)
-
-    ! --- Permute Fm ---
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( iOS )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iCR  = 1, nCR
-    DO iN_E = 1, nE_G
-
-      iOS = ( (iS-1) * nE_G + (iN_E-1) ) * nCR
-
-      F(iN_E,iCR,iS,iN_X) = Fm(iOS+iCR,iN_X)
-
-    END DO
-    END DO
-    END DO
-    END DO
+    INTEGER  :: iN_X, iS, iN_E, iOS
+    REAL(DP) :: Fnorm, Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3
 
     ! --- Compute Norm of F (Use Maximum Across Moments) ---
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( CONVERGED, iOS, Fnorm, Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 )
 #elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(2)
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-
-      IF( MASK(iN_X) )THEN
-      
-        Fnorm(iS,iN_X) = Zero      
-        DO iCR  = 1, nCR
-
-          Fnorm(iS,iN_X) &
-            = MAX( Fnorm(iS,iN_X), WNORM( F(:,iCR,iS,iN_X), W2_S ) )
-
-        END DO
-
-      END IF
-
-    END DO
-    END DO
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$OMP PRIVATE( CONVERGED, iOS, Fnorm, Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( CONVERGED )
+    !$OMP PRIVATE( CONVERGED, iOS, Fnorm, Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 )
 #endif
     DO iN_X = 1, nX_G
 
       IF( MASK(iN_X) )THEN
 
-        CONVERGED = ALL( Fnorm(:,iN_X) <= Rtol_inner * Jnorm(:,iN_X) )
+        CONVERGED = .TRUE.
+
+        DO iS   = 1, nSpecies
+
+          Fnorm_N  = Zero
+          Fnorm_G1 = Zero
+          Fnorm_G2 = Zero
+          Fnorm_G3 = Zero
+
+          DO iN_E = 1, nE_G
+
+            iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
+
+            Fnorm_N  = Fnorm_N  + W2_S(iN_E) * Fm(iOS+iCR_N ,iN_X)**2
+            Fnorm_G1 = Fnorm_G1 + W2_S(iN_E) * Fm(iOS+iCR_G1,iN_X)**2
+            Fnorm_G2 = Fnorm_G2 + W2_S(iN_E) * Fm(iOS+iCR_G2,iN_X)**2
+            Fnorm_G3 = Fnorm_G3 + W2_S(iN_E) * Fm(iOS+iCR_G3,iN_X)**2
+
+          END DO
+
+          Fnorm = SQRT( MAX( Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 ) )
+
+          CONVERGED = CONVERGED .AND. ( Fnorm <= Rtol_inner * Jnorm(iS,iN_X) )
+
+        END DO
 
         IF( CONVERGED )THEN
 
@@ -2410,14 +2249,12 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Outer &
-    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, Fm, nIterations_Outer )
+    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, nIterations_Outer, Fm )
 
-    LOGICAL,  INTENT(inout) :: MASK_OUTER(1:nX_G)
-    LOGICAL,  INTENT(inout) :: MASK_INNER(1:nX_G)
-    INTEGER,  INTENT(in)    :: n_FP
-    INTEGER,  INTENT(in)    :: k_outer
-    REAL(DP), INTENT(in)    :: Fm(1:n_FP,1:nX_G)
-    INTEGER,  INTENT(inout) :: nIterations_Outer(1:nX_G)
+    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER, MASK_INNER
+    INTEGER,                    INTENT(in)    :: n_FP, k_outer
+    INTEGER,  DIMENSION(:)    , INTENT(inout) :: nIterations_Outer
+    REAL(DP), DIMENSION(:,:)  , INTENT(in)    :: Fm
 
     LOGICAL  :: CONVERGED
     INTEGER  :: iN_X
@@ -2425,13 +2262,13 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E )
+    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E )
+    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Fnorm_Y, Fnorm_Ef, Fnorm_V, CONVERGED )
+    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 #endif
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN

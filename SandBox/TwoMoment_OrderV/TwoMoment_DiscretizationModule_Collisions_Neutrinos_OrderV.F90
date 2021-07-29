@@ -697,8 +697,8 @@ CONTAINS
     DO iE = iE_B0, iE_E0
     DO iNodeZ = 1, nDOFZ
 
-      iNodeX = MOD( (iNode-1) / nNodesE, nDOFX   ) + 1
-      iNodeE = MOD( (iNode-1)          , nNodesE ) + 1
+      iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX   ) + 1
+      iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
 
       iN_X = iNodeX &
              + ( iX1 - iX_B0(1) ) * nDOFX &
