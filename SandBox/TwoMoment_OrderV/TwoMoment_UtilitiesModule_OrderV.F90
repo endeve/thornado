@@ -638,7 +638,7 @@ CONTAINS
 
     IF( PRESENT( nIterations_Option ) ) THEN
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
       !$ACC PRESENT( nIterations, nIterations_Option )

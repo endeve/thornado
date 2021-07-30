@@ -2056,7 +2056,7 @@ CONTAINS
 
             CALL LinearLeastSquares &
                    ( 'N', n_FP, Mk-1, 1, A(:,:,iN_X), n_FP, B(:,iN_X), n_FP, &
-                     TAU(1,iN_X), WORK(1,iN_X), LWORK, INFO(iN_X) )
+                     TAU(:,iN_X), WORK(:,iN_X), LWORK, INFO(iN_X) )
 
           END IF
         END DO
