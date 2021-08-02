@@ -56,15 +56,19 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     Initialize_Poseidon
 
   USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Run, &
     Poseidon_Close, &
     Poseidon_CFA_Set_Uniform_Boundary_Conditions
 
-  USE Source_Input_Module, ONLY: &
-    Poseidon_Input_Sources
+  USE Poseidon_XCFC_Interface_Module, &
+    Poseidon_XCFC_Run_Part1, &
+    Poseidon_XCFC_Run_Part2
 
-  USE Variables_Functions, ONLY: &
-    Calc_1D_CFA_Values
+  USE Source_Input_Module, ONLY: &
+    Poseidon_XCFC_Input_Sources1,   &
+    Poseidon_XCFC_Input_Sources2,   &
+    Poseidon_Return_ConFactor,      &
+    Poseidon_Return_Lapse,          &
+    Poseidon_Return_Shift
 
   USE Initial_Guess_Module, ONLY: &
     Poseidon_Init_FlatGuess
