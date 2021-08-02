@@ -41,11 +41,14 @@ MODULE InitializationModule_Neutrinos
     ComputeTemperatureFromPressure_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
     ApplyEquationOfState_TABLE
+  USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeEquilibriumDistributions_DG_Points
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeFields
+  PUBLIC :: ComputeError
 
 CONTAINS
 
@@ -512,6 +515,161 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_EquilibriumAdvection
+
+
+  SUBROUTINE ComputeError( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    SELECT CASE( TRIM( ProgramName ) )
+
+       CASE( 'Relaxation' )
+
+         CALL ComputeError_Relaxation
+
+       CASE( 'Deleptonization' )
+
+         CALL ComputeError_Deleptonization
+
+       CASE( 'EquilibriumAdvection' )
+
+         CALL ComputeError_EquilibriumAdvection
+
+    END SELECT
+
+  END SUBROUTINE ComputeError
+
+
+  SUBROUTINE ComputeError_Relaxation
+
+    INTEGER  :: iE, iX1, iX2, iX3, iS
+    INTEGER  :: iNodeE, iNodeX, iNodeZ
+    INTEGER  :: nE, nX(3), nE_P, nX_P, iE_P, iX_P
+    REAL(DP), ALLOCATABLE :: E_P(:), D_P(:), T_P(:), Y_P(:), f0_P(:,:,:)
+    REAL(DP) :: MaxError(nSpecies), N0, kT, Mnu, E
+
+    nE = iE_E0 - iE_B0 + 1
+    nX = iX_E0 - iX_B0 + 1
+
+    nE_P = nE * nDOFE
+    nX_P = PRODUCT( nX ) * nDOFX
+
+    ALLOCATE( E_P(nE_P) )
+
+    DO iE = iE_B0, iE_E0
+    DO iNodeE = 1, nDOFE
+      iE_P = iNodeE + ( iE - iE_B0 ) * nDOFE
+      E_P(iE_P) = NodeCoordinate( MeshE, iE, iNodeE )
+    END DO
+    END DO
+
+    ALLOCATE( D_P(nX_P) )
+    ALLOCATE( T_P(nX_P) )
+    ALLOCATE( Y_P(nX_P) )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
+      iX_P = iNodeX &
+             + ( iX1 - iX_B0(1) ) * nDOFX &
+             + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+             + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+      D_P(iX_P) = uPF(iNodeX,iX1,iX2,iX3,iPF_D )
+      T_P(iX_P) = uAF(iNodeX,iX1,iX2,iX3,iAF_T )
+      Y_P(iX_P) = uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ALLOCATE( f0_P(nE_P,nX_P,nSpecies) )
+
+    CALL ComputeEquilibriumDistributions_DG_Points &
+           ( 1, nE_P, 1, nX_P, E_P, D_P, T_P, Y_P, &
+             f0_P(:,:,iNuE), f0_P(:,:,iNuE_Bar), iNuE, iNuE_Bar )
+
+    MaxError = Zero
+
+    DO iS = 1       , nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0   , iE_E0
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iE_P = iNodeE + ( iE - iE_B0 ) * nDOFE
+        iX_P = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        N0 = f0_P(iE_P,iX_P,iS)
+
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+        MaxError(iS) &
+          = MAX( ABS(N0-uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS))/N0, MaxError(iS) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A)') '', 'INFO: Error Check'
+    WRITE(*,*)
+    DO iS = 1, nSpecies
+      WRITE(*,'(A4,A10,I2.2,A14,ES10.4E2)') &
+      '', 'Species = ', iS, ', Inf Error = ', MaxError(iS)
+    END DO
+    WRITE(*,*)
+
+  END SUBROUTINE ComputeError_Relaxation
+
+
+  SUBROUTINE ComputeError_Deleptonization
+
+    INTEGER  :: iS
+    REAL(DP) :: MaxError(nSpecies)
+
+    MaxError = Zero
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A)') '', 'INFO: Error Check'
+    WRITE(*,*)
+    DO iS = 1, nSpecies
+      WRITE(*,'(A4,A10,I2.2,A14,ES10.4E2)') &
+      '', 'Species = ', iS, ', Inf Error = ', MaxError(iS)
+    END DO
+    WRITE(*,*)
+
+  END SUBROUTINE ComputeError_Deleptonization
+
+
+  SUBROUTINE ComputeError_EquilibriumAdvection
+
+    INTEGER  :: iS
+    REAL(DP) :: MaxError(nSpecies)
+
+    MaxError = Zero
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A)') '', 'INFO: Error Check'
+    WRITE(*,*)
+    DO iS = 1, nSpecies
+      WRITE(*,'(A4,A10,I2.2,A14,ES10.4E2)') &
+      '', 'Species = ', iS, ', Inf Error = ', MaxError(iS)
+    END DO
+    WRITE(*,*)
+
+  END SUBROUTINE ComputeError_EquilibriumAdvection
 
 
 END MODULE InitializationModule_Neutrinos

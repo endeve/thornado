@@ -38,7 +38,8 @@ PROGRAM ApplicationDriver_Neutrinos
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK
   USE InitializationModule_Neutrinos, ONLY: &
-    InitializeFields
+    InitializeFields, &
+    ComputeError
   USE TwoMoment_TallyModule_OrderV, ONLY: &
     ComputeTally
 
@@ -316,6 +317,8 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL ComputeTally &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+
+  CALL ComputeError( t )
 
   CALL FinalizeDriver
 
