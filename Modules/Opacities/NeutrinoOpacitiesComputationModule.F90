@@ -813,7 +813,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta )
+    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta ) &
     !$ACC PRESENT( f0_1_K, f0_2_K, f0_1_Q, f0_2_Q, f0_1_P, f0_2_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
