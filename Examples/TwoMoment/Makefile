@@ -16,6 +16,7 @@ VPATH += $(THORNADO_DIR)/Examples/TwoMoment
 VPATH += $(THORNADO_DIR)/SandBox/Interface_FLASH
 
 #DEFINES += $(PP)-DTHORNADO_DEBUG
+DEFINES += $(PP)THORNADO_EULER_NOGPU
 
 .DEFAULT_GOAL := all
 
@@ -36,10 +37,11 @@ ApplicationDriver: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.lst *.acc.s
 
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
+	rm -rf INLINE_$(MACHINE)
 
 ApplicationDriver.o: \
   KindModule.o \

@@ -1,15 +1,20 @@
-ifeq ($(USE_GPU),TRUE)
+ifeq ($(USE_CUDA),TRUE)
 DeviceModule_prereqs += CudaModule.o
+else ifeq ($(USE_HIP),TRUE)
+DeviceModule_prereqs += HipModule.o
 endif
 ifeq ($(USE_OACC),TRUE)
 DeviceModule_prereqs += OpenACCModule.o
 else ifeq ($(USE_OMP_OL),TRUE)
 DeviceModule_prereqs += OpenMPModule.o
 endif
-ifeq ($(USE_MAGMA),TRUE)
-DeviceModule_prereqs += MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
-else ifeq ($(USE_CUBLAS),TRUE)
+ifeq ($(USE_CUBLAS),TRUE)
 DeviceModule_prereqs += CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_ROCM),TRUE)
+DeviceModule_prereqs += RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
+endif
+ifeq ($(USE_MAGMA),TRUE)
+DeviceModule_prereqs += MagmaModule.o
 endif
 
 ArrayUtilitiesModule.o: \

@@ -85,7 +85,6 @@ MODULE DeviceModule
     acc_get_default_async, &
     acc_device_host, &
     acc_device_default, &
-    acc_async_default, &
     acc_async_sync
 #endif
 
@@ -156,9 +155,7 @@ CONTAINS
     mydevice = -1
     ndevices = 0
 #endif
-#if defined(THORNADO_OACC)
-    CALL acc_set_device_num( mydevice, acc_device_default )
-#elif defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL)
     CALL omp_set_default_device( mydevice )
 #endif
 
@@ -204,6 +201,7 @@ CONTAINS
 #endif
 
 #if defined(THORNADO_OACC)
+    !CALL acc_set_device_num( mydevice, acc_device_default )
     ierr = acc_set_cuda_stream( acc_async_sync, stream )
 #endif
 
@@ -261,7 +259,7 @@ CONTAINS
     INTEGER, TARGET, INTENT(IN) :: a
     !$OMP TARGET DATA USE_DEVICE_PTR( a )
 #elif defined(THORNADO_OACC)
-    INTEGER, POINTER, INTENT(IN) :: a
+    INTEGER, TARGET, INTENT(IN) :: a
     !$ACC HOST_DATA USE_DEVICE( a )
 #else
     INTEGER, TARGET, INTENT(IN) :: a
@@ -279,7 +277,7 @@ CONTAINS
     REAL(DP), TARGET, INTENT(IN) :: a
     !$OMP TARGET DATA USE_DEVICE_PTR( a )
 #elif defined(THORNADO_OACC)
-    REAL(DP), POINTER, INTENT(IN) :: a
+    REAL(DP), TARGET, INTENT(IN) :: a
     !$ACC HOST_DATA USE_DEVICE( a )
 #else
     REAL(DP), TARGET, INTENT(IN) :: a
@@ -297,7 +295,7 @@ CONTAINS
     TYPE(C_PTR), TARGET, INTENT(IN) :: a
     !$OMP TARGET DATA USE_DEVICE_PTR( a )
 #elif defined(THORNADO_OACC)
-    TYPE(C_PTR), POINTER, INTENT(IN) :: a
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
     !$ACC HOST_DATA USE_DEVICE( a )
 #else
     TYPE(C_PTR), TARGET, INTENT(IN) :: a
