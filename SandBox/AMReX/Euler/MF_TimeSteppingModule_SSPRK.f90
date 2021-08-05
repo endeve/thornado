@@ -169,15 +169,14 @@ CONTAINS
 
 
   SUBROUTINE UpdateFluid_SSPRK_MF &
-    ( t, dt, MF_uGF, MF_uCF, MF_uDF )
-!    ( t, dt, MF_uGF, MF_uCF, MF_uDF, MF_ComputeIncrement_Euler )
+    ( t, dt, MF_uGF, MF_uCF, MF_uDF, MF_ComputeIncrement_Euler )
 
     REAL(DP),             INTENT(in)    :: t (0:amrex_max_level), &
                                            dt(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
-!    PROCEDURE(MF_Euler_Increment)       :: MF_ComputeIncrement_Euler
+    PROCEDURE(Increment_Euler_MF)       :: MF_ComputeIncrement_Euler
 
     INTEGER :: iS, jS
 
@@ -264,7 +263,7 @@ CONTAINS
 
 !        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U, MF_uDF )
 
-!        CALL MF_ComputeIncrement_Euler( MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
+        CALL MF_ComputeIncrement_Euler( MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
 !        DO iLevel = 0, amrex_max_level
 !
