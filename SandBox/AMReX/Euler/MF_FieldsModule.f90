@@ -11,6 +11,16 @@ MODULE MF_FieldsModule
   USE amrex_amrcore_module, ONLY: &
     amrex_max_level
 
+  ! --- thornado Modules ---
+
+  USE FluidFieldsModule, ONLY: &
+    nCF
+
+  ! --- Local Modules ---
+
+  USE MF_KindModule, ONLY: &
+    DP
+
   IMPLICIT NONE
   PRIVATE
 
@@ -41,6 +51,8 @@ MODULE MF_FieldsModule
 
   TYPE(amrex_fluxregister), ALLOCATABLE, PUBLIC :: FluxRegister(:)
 
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Euler(:,:)
+
   PUBLIC :: CreateFields_MF
   PUBLIC :: DestroyFields_MF
 
@@ -67,12 +79,16 @@ CONTAINS
 
     ALLOCATE( FluxRegister(0:amrex_max_level) )
 
+    ALLOCATE( MF_OffGridFlux_Euler(0:amrex_max_level,1:nCF) )
+
   END SUBROUTINE CreateFields_MF
 
 
   SUBROUTINE DestroyFields_MF
 
     INTEGER :: iLevel
+
+    DEALLOCATE( MF_OffGridFlux_Euler )
 
     DO iLevel = 0, amrex_max_level
 

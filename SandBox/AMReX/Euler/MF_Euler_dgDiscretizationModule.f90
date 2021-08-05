@@ -38,8 +38,8 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
-!  USE MF_FieldsModule, ONLY: &
-!    MF_OffGridFlux_Euler
+  USE MF_FieldsModule, ONLY: &
+    MF_OffGridFlux_Euler
   USE InputParsingModule, ONLY: &
     UseTiling, &
     swX
@@ -87,7 +87,7 @@ CONTAINS
 
     TYPE(EdgeMap) :: Edge_Map
 
-!!$    MF_OffGridFlux_Euler = Zero
+    MF_OffGridFlux_Euler = Zero
 
     DO iLevel = 0, amrex_max_level
 
