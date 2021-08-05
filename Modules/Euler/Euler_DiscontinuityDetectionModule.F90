@@ -19,7 +19,7 @@ MODULE Euler_DiscontinuityDetectionModule
     NodesX3
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
-  USE PolynomialBasisModule_Lagrange, ONLY: &
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
     L_X1, &
     L_X2, &
     L_X3

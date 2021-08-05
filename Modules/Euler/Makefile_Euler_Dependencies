@@ -149,7 +149,7 @@ Euler_DiscontinuityDetectionModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   LinearAlgebraModule.o \
-  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule.o \
