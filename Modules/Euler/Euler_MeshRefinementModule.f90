@@ -120,6 +120,23 @@ CONTAINS
     END DO
     END DO
 
+!open(100,file='/Users/dunhamsj/Desktop/WeightsX_q.txt')
+!do in1=1,ndofx
+!write(100,*) weightsx_q(in1)
+!enddo
+!close(100)
+!
+!open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix.txt')
+!write(100,*)ndofx
+!do ifine=1,4
+!do i=1,ndofx
+!do k=1,ndofx
+!write(100,*)ProjectionMatrix(i,k,iFine)
+!enddo
+!enddo
+!enddo
+!close(100)
+
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
     DEALLOCATE( xiX3 )

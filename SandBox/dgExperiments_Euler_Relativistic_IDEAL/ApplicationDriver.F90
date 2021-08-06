@@ -72,6 +72,9 @@ PROGRAM ApplicationDriver
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
 
+use euler_meshrefinementmodule,only:&
+initializemeshrefinement_euler
+
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
@@ -116,8 +119,8 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'Advection'
-!!$  ProgramName = 'Advection2D'
+!!$  ProgramName = 'Advection'
+  ProgramName = 'Advection2D'
 !!$  ProgramName = 'RiemannProblem'
 !!$  ProgramName = 'RiemannProblem2D'
 !!$  ProgramName = 'RiemannProblemSpherical'
@@ -318,7 +321,7 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -377,6 +380,9 @@ PROGRAM ApplicationDriver
   CALL InitializeReferenceElementX
 
   CALL InitializeReferenceElementX_Lagrange
+
+call InitializeMeshRefinement_Euler
+stop
 
   CALL ComputeGeometryX &
        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
