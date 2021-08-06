@@ -47,8 +47,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     nNodes, &
     nStages
   USE MF_FieldsModule, ONLY: &
-    MF_uGF_new
-!    MF_OffGridFlux_Euler
+    MF_uGF_new, &
+    MF_OffGridFlux_Euler
 !  USE MF_Euler_TallyModule, ONLY: &
 !    MF_IncrementOffGridTally_Euler
   USE MF_Euler_TimersModule, ONLY: &
@@ -82,7 +82,7 @@ MODULE MF_TimeSteppingModule_SSPRK
       USE amrex_multifab_module, ONLY: &
         amrex_multifab
       TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:amrex_max_level)
-      TYPE(amrex_multifab), INTENT(in)    :: MF_U   (0:amrex_max_level)
+      TYPE(amrex_multifab), INTENT(inout)    :: MF_U   (0:amrex_max_level)
       TYPE(amrex_multifab), INTENT(in)    :: MF_uDF (0:amrex_max_level)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:amrex_max_level)
     END SUBROUTINE Increment_Euler_MF

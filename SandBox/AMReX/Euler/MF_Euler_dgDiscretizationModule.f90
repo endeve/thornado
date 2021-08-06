@@ -47,6 +47,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
+  USE FillPatchModule, ONLY: &
+    FillPatch
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -65,7 +67,7 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF( MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout)    :: MF_uCF (0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uDF (0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:amrex_max_level)
 
@@ -97,9 +99,11 @@ CONTAINS
 
       CALL MF_uGF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 
-      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+!      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 
       CALL MF_uDF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+
+      CALL FillPatch( iLevel, 0.0e0_DP, MF_uCF(iLevel) )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -107,9 +111,9 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-        uCF  => MF_uCF (iLevel) % DataPtr( MFI )
-        uDF  => MF_uDF (iLevel) % DataPtr( MFI )
+        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
+        uDF  => MF_uDF(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -149,7 +153,9 @@ CONTAINS
         CALL ApplyBoundaryConditions_Euler_MF &
                ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
+print*,'a'
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+print*,'b'
 
         CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
