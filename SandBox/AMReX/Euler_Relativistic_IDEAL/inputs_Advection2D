@@ -4,7 +4,7 @@
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 thornado.ProgramName = "Advection2D"
-thornado.nNodes = 03
+thornado.nNodes = 02
 thornado.nStages = 03
 thornado.swX = 01 01 00
 thornado.Gamma_IDEAL = 1.3333333333333333
