@@ -4267,8 +4267,6 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
-#ifdef HYDRO_RELATIVISTIC
-
     IF( ANY( iErr .NE. 0 ) )THEN
 
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -4292,8 +4290,6 @@ CONTAINS
       END DO
 
     END IF
-
-#endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
