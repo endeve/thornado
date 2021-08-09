@@ -1,16 +1,9 @@
-OPENMP_titan_gnu     = -fopenmp
-OPENMP_titan_pgi     = -mp
-OPENMP_summitdev_gcc = -fopenmp
-OPENMP_summitdev_pgi = -mp
-OPENMP_summitdev_xl  = -qsmp=omp:noauto
 OPENMP_summit_gcc    = -fopenmp
-OPENMP_summit_pgi    = -mp
 OPENMP_summit_xl     = -qsmp=omp:noauto
 OPENMP_corigpu_pgi   = -mp
 OPENMP_poplar_cce    = -homp
 OPENMP_spock_cce     = -homp
 OPENMP_spock_gcc     = -fopenmp
-OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
 OPENMP_OL_corigpu_pgi= -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 OPENMP_OL_poplar_cce = -homp
@@ -22,11 +15,6 @@ else ifeq ($(USE_OMP_OL),TRUE)
     OPENMP               = $(OPENMP_OL_$(MACHINE))
 endif
 
-OPENACC_titan_gnu    = -fopenacc
-OPENACC_titan_pgi    = -acc -ta=tesla:cc35,cuda9.1,ptxinfo -Minfo=accel
-OPENACC_summitdev_gcc= -fopenacc
-OPENACC_summitdev_pgi= -acc -ta=tesla:cc60,cuda9.2,ptxinfo -Minfo=accel
-OPENACC_summitdev_xl =
 OPENACC_summit_gcc   = -fopenacc
 OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
 OPENACC_summit_xl    =
@@ -38,13 +26,10 @@ ifeq ($(USE_OACC),TRUE)
     OPENACC              = $(OPENACC_$(MACHINE))
 endif
 
-C_titan_gnu          = CC -std=c++11
-C_titan_pgi          = CC --c++11
 C_summitdev_gcc      = mpic++ -std=c++11
 C_summitdev_pgi      = mpic++ --c++11
 C_summitdev_xl       = mpic++ -std=c++11
 C_summit_gcc         = mpic++ -std=c++11
-C_summit_pgi         = mpic++ --c++11
 C_summit_xl          = mpic++ -std=c++11
 C_corigpu_pgi        = mpic++ --c++11
 C_poplar_cce         = CC
@@ -69,17 +54,10 @@ FORTRAN_zelledge     = mpif90
 FORTRAN_dpochik      = mpif90
 FORTRAN_lucalin      = mpif90 -fopenmp -cpp
 FORTRAN_bison        = mpif90
-FORTRAN_titan_gnu    = ftn -cpp
-FORTRAN_titan_pgi    = ftn -Mpreprocess
-FORTRAN_titan_cray   = ftn
 FORTRAN_paullaiu_gnu = mpif90
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
-FORTRAN_summitdev_gcc= mpifort -cpp
-FORTRAN_summitdev_pgi= mpifort -Mpreprocess
-FORTRAN_summitdev_xl = mpifort -qpreprocess
 FORTRAN_summit_gcc   = mpifort -cpp
-FORTRAN_summit_pgi   = mpifort -Mpreprocess
 FORTRAN_summit_xl    = mpifort -qpreprocess
 FORTRAN_poplar_cce   = ftn
 FORTRAN_spock_cce    = ftn
@@ -106,15 +84,8 @@ SUFFIX_f90_dpochik      =
 SUFFIX_f90_lucalin	=
 SUFFIX_f90_bison        =
 SUFFIX_paullaiu_gnu     =
-SUFFIX_f90_titan_gnu    =
-SUFFIX_f90_titan_pgi    =
-SUFFIX_f90_titan_cray   =
 SUFFIX_f90_beacon_intel =
-SUFFIX_f90_summitdev_gcc=
-SUFFIX_f90_summitdev_pgi=
-SUFFIX_f90_summitdev_xl =
 SUFFIX_f90_summit_gcc   =
-SUFFIX_f90_summit_pgi   =
 SUFFIX_f90_summit_xl    =
 SUFFIX_f90_poplar_cce   =
 SUFFIX_f90_spock_cce    =
@@ -139,17 +110,10 @@ FLINKER_zelledge     = mpif90
 FLINKER_dpochik      = mpif90
 FLINKER_lucalin	     = mpif90 -fopenmp
 FLINKER_bison        = mpif90
-FLINKER_titan_gnu    = ftn -cpp
-FLINKER_titan_pgi    = ftn -Mpreprocess
-FLINKER_titan_cray   = ftn
 FLINKER_paullaiu_gnu = mpif90
 FLINKER_beacon_intel = mpiifort -mkl
 FLINKER_mcarpe21     = mpiifort
-FLINKER_summitdev_gcc= mpifort -cpp
-FLINKER_summitdev_pgi= mpifort -Mpreprocess
-FLINKER_summitdev_xl = mpifort -qpreprocess
 FLINKER_summit_gcc   = mpifort -cpp
-FLINKER_summit_pgi   = mpifort -Mpreprocess
 FLINKER_summit_xl    = mpifort -qpreprocess
 FLINKER_poplar_cce   = ftn
 FLINKER_spock_cce    = ftn
@@ -158,7 +122,6 @@ FLINKER_acf_gnu      = mpif90
 FLINKER_corigpu_pgi  = mpifort -Mpreprocess
 FLINKER              = $(FLINKER_$(MACHINE))
 
-FLAGS_DEBUG        = $(DEBUG) $(OPENMP) $(OPENACC)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_endeve       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -Wunused -fallow-argument-mismatch
@@ -176,17 +139,10 @@ DEBUG_rmurph	   = -g -framework Accelerate -ffpe-trap=invalid,zero,overflow -Wal
 DEBUG_sjdunham     = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
 DEBUG_jrober       = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
 DEBUG_accre_gnu    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
-DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
-DEBUG_titan_pgi    = -g -O0 -traceback -Mbounds -Ktrap=fp -Mnoopenmp
-DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
 DEBUG_paullaiu_gnu = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_beacon_intel = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
 DEBUG_mcarpe21     = -g
-DEBUG_summitdev_gcc= -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
-DEBUG_summitdev_pgi= -O0 -Mbounds -Mnoopenmp -Ktrap=fp
-DEBUG_summitdev_xl = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
 DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
-DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp
 DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
 DEBUG_poplar_cce   = -G0 -eD -hfp0 -K trap=fp -h heap_allocate
 DEBUG_spock_cce    = -g -G0 -O0
@@ -195,7 +151,6 @@ DEBUG_acf_gnu      = -g -fbacktrace -ffpe-trap=invalid,zero -fbounds-check
 DEBUG_corigpu_pgi  = -g -O0 -traceback -Mbounds -Ktrap=fp
 DEBUG              = $(DEBUG_$(MACHINE))
 
-FLAGS_OPTIMIZE        = $(OPTIMIZE) $(OPENMP) $(OPENACC)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
 OPTIMIZE_endeve       = -O2 -framework Accelerate -fallow-argument-mismatch
@@ -214,17 +169,10 @@ OPTIMIZE_zelledge     = -O2
 OPTIMIZE_dpochik      = -O2
 OPTIMIZE_lucalin      = -O2
 OPTIMIZE_bison        = -O2
-OPTIMIZE_titan_gnu    = -O3 -march=bdver1
-OPTIMIZE_titan_pgi    = -fastsse
-OPTIMIZE_titan_cray   =
 OPTIMIZE_paullaiu_gnu = -O2
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
-OPTIMIZE_summitdev_gcc= -g -O3 -mcpu=power8
-OPTIMIZE_summitdev_pgi= -g -O3 -tp=pwr8
-OPTIMIZE_summitdev_xl = -g -O3 -qnohot -qarch=pwr8 -qtune=pwr8 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE_summit_gcc   = -g -O3 -mcpu=power9
-OPTIMIZE_summit_pgi   = -g -O2 -tp=pwr9
 OPTIMIZE_summit_xl    = -g -O2 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE_poplar_cce   = -h heap_allocate
 OPTIMIZE_spock_cce    = -G2 -O2
@@ -252,16 +200,9 @@ INCLUDE_HDF5_dpochik           = -I/usr/include/hdf5/serial
 INCLUDE_HDF5_lucalin           = -I/usr/local/hdf5-1.10.5/hdf5/include
 INCLUDE_HDF5_paullaiu_gnu      = -I/usr/lib/hdf5/include
 INCLUDE_HDF5_bison             = -I/usr/include/hdf5/serial
-INCLUDE_HDF5_titan_gnu         = # Use Module Load
-INCLUDE_HDF5_titan_pgi         = # Use Module Load
-INCLUDE_HDF5_titan_cray        = # Use Module Load
 INCLUDE_HDF5_beacon_intel      = $(HDF5_INC)
 INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
-INCLUDE_HDF5_summitdev_gcc     = -I$(OLCF_HDF5_ROOT)/include
-INCLUDE_HDF5_summitdev_pgi     = -I$(OLCF_HDF5_ROOT)/include
-INCLUDE_HDF5_summitdev_xl      = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_summit_gcc        = -I$(OLCF_HDF5_ROOT)/include
-INCLUDE_HDF5_summit_pgi        = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_summit_xl         = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_poplar_cce        = -I/home/users/coe0194/sw/poplar/cce/11.0.0/hdf5-1.12.0/include
 INCLUDE_HDF5_spock_cce         =
@@ -290,13 +231,7 @@ INCLUDE_LAPACK_lucalin         = -I/usr/include
 INCLUDE_LAPACK_bison           = -I/usr/include
 INCLUDE_LAPACK_paullaiu_gnu    = -I/usr/include
 INCLUDE_LAPACK_accre_gnu       = -I$(LAPACK_DIR)/include
-INCLUDE_LAPACK_titan_gnu       =
-INCLUDE_LAPACK_titan_pgi       =
-INCLUDE_LAPACK_summitdev_gcc   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
-INCLUDE_LAPACK_summitdev_pgi   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
-INCLUDE_LAPACK_summitdev_xl    = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
-INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_poplar_cce      =
 INCLUDE_LAPACK_spock_cce       =
@@ -305,13 +240,7 @@ INCLUDE_LAPACK_acf_gnu         =
 INCLUDE_LAPACK_corigpu_pgi     =
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
-INCLUDE_CUDA_titan_gnu         = -I$(CUDATOOLKIT_HOME)/include
-INCLUDE_CUDA_titan_pgi         = -I$(CUDATOOLKIT_HOME)/include
-INCLUDE_CUDA_summitdev_gcc     = -I$(OLCF_CUDA_ROOT)/include
-INCLUDE_CUDA_summitdev_pgi     = -I$(OLCF_CUDA_ROOT)/include
-INCLUDE_CUDA_summitdev_xl      = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_gcc        = -I$(OLCF_CUDA_ROOT)/include
-INCLUDE_CUDA_summit_pgi        = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_xl         = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_poplar_cce        = -I$(CUDA_ROOT)/include
 INCLUDE_CUDA                   = $(INCLUDE_CUDA_$(MACHINE))
@@ -320,13 +249,7 @@ INCLUDE_ROCM_spock_cce         = -I$(ROCM_PATH)/include -I$(OLCF_HIPFORT_ROOT)/i
 INCLUDE_ROCM_spock_gcc         = -I$(ROCM_PATH)/include -I$(OLCF_HIPFORT_ROOT)/include/amdgcn
 INCLUDE_ROCM                   = $(INCLUDE_ROCM_$(MACHINE))
 
-INCLUDE_MAGMA_titan_gnu        = -I$(OLCF_MAGMA_ROOT)/include
-INCLUDE_MAGMA_titan_pgi        = -I$(OLCF_MAGMA_ROOT)/include
-INCLUDE_MAGMA_summitdev_gcc    = -I$(OLCF_MAGMA_ROOT)/include
-INCLUDE_MAGMA_summitdev_pgi    = -I$(OLCF_MAGMA_ROOT)/include
-INCLUDE_MAGMA_summitdev_xl     = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_gcc       = -I$(OLCF_MAGMA_ROOT)/include
-INCLUDE_MAGMA_summit_pgi       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_xl        = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_corigpu_pgi      = -I$(MAGMA_ROOT)/include
 INCLUDE_MAGMA_poplar_cce       = -I$(MAGMA_ROOT)/include
@@ -337,8 +260,6 @@ INCLUDE_MAGMA                  = $(INCLUDE_MAGMA_$(MACHINE))
 INCLUDE_PETSC_jrober           = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
 INCLUDE_PETSC_sjdunham         = -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include
 INCLUDE_PETSC                  = $(INCLUDE_PETSC_$(MACHINE))
-
-INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON) $(INCLUDE_PETSC)
 
 LIBRARIES_HDF5_mac_gnu         = -L/usr/local/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.10.5/lib -lhdf5_fortran -lhdf5
@@ -358,18 +279,9 @@ LIBRARIES_HDF5_lucalin         = -L/usr/local/hdf5-1.10.5/hdf5/lib -lhdf5_fortra
 LIBRARIES_HDF5_paullaiu_gnu    = -L/usr/lib/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_bison           = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_accre_gnu       = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_titan_gnu       = # Use Module Load
-LIBRARIES_HDF5_titan_pgi       = # Use Module Load
-LIBRARIES_HDF5_titan_cray      = # Use Module Load
-LIBRARIES_HDF5_darter_gnu      = # Use Module Load
-LIBRARIES_HDF5_darter_cray     = # Use Module Load
 LIBRARIES_HDF5_beacon_intel    = $(HDF5_LIB) -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_mcarpe21	       = -L/opt/hdf5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_summitdev_gcc   = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_summitdev_pgi   = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_summitdev_xl    = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_gcc      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_summit_pgi      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_poplar_cce      = -L/home/users/coe0194/sw/poplar/cce/11.0.0/hdf5-1.12.0/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_spock_cce       = -lhdf5_fortran -lhdf5
@@ -401,17 +313,7 @@ LIBRARIES_LAPACK_paullaiu_gnu  = -L/usr/lib/lapack  -llapack -lblas
 LIBRARIES_LAPACK_accre_gnu     = -L$(LAPACK_DIR)/lib -lscalapack -lopenblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 				 -L/usr/lib/libblas -lblas
-LIBRARIES_LAPACK_titan_gnu     =
-LIBRARIES_LAPACK_titan_pgi     =
-LIBRARIES_LAPACK_summitdev_gcc = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
-				                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
-LIBRARIES_LAPACK_summitdev_pgi = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
-				                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
-LIBRARIES_LAPACK_summitdev_xl  = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
-				                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK_summit_gcc    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
-				                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
-LIBRARIES_LAPACK_summit_pgi    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
 				                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
 				                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
@@ -422,13 +324,7 @@ LIBRARIES_LAPACK_acf_gnu       = $(LAPACK_LIB) -llapack -lblas
 LIBRARIES_LAPACK_corigpu_pgi   = -llapack -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
-LIBRARIES_CUDA_titan_gnu       = -L$(CUDATOOLKIT_HOME)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_titan_pgi       = -L$(CUDATOOLKIT_HOME)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summitdev_gcc   = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summitdev_pgi   = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summitdev_xl    = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_gcc      = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summit_pgi      = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_xl       = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_corigpu_pgi     = -cudalib
 LIBRARIES_CUDA_poplar_cce      = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -L$(CUDA_ROOT)/compat -lcuda
@@ -438,13 +334,7 @@ LIBRARIES_ROCM_spock_cce       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lro
 LIBRARIES_ROCM_spock_gcc       = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
 LIBRARIES_ROCM                 = $(LIBRARIES_ROCM_$(MACHINE))
 
-LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
-LIBRARIES_MAGMA_titan_pgi      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
-LIBRARIES_MAGMA_summitdev_gcc  = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
-LIBRARIES_MAGMA_summitdev_pgi  = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
-LIBRARIES_MAGMA_summitdev_xl   = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_gcc     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
-LIBRARIES_MAGMA_summit_pgi     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_xl      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_corigpu_pgi    = -L$(MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_poplar_cce     = -L$(MAGMA_ROOT)/lib -lmagma
@@ -455,17 +345,6 @@ LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 LIBRARIES_PETSC_jrober         = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
 LIBRARIES_PETSC_sjdunham       = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
 LIBRARIES_PETSC                = $(LIBRARIES_PETSC_$(MACHINE))
-
-LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON) $(LIBRARIES_PETSC)
-
-MDEFS_titan_gnu                   =
-MDEFS_titan_pgi                   =
-MDEFS_summitdev_gcc               =
-MDEFS_summitdev_pgi               =
-MDEFS_summitdev_xl                = -WF,
-MDEFS_summit_gcc                  =
-MDEFS_summit_pgi                  =
-MDEFS                             = $(MDEFS_$(MACHINE))
 
 PP_mac_gnu      = -D
 PP_sn1987b      = -D
@@ -516,23 +395,23 @@ MDEFS_bison        =
 MDEFS_ranchuair    =
 MDEFS_sjdunham     =
 MDEFS_accre_gnu    =
-MDEFS_titan_gnu    =
-MDEFS_titan_pgi    =
-MDEFS_titan_cray   =
 MDEFS_paullaiu_gnu =
 MDEFS_beacon_intel =
 MDEFS_mcarpe21     =
-MDEFS_summitdev_gcc=
-MDEFS_summitdev_pgi=
-MDEFS_summitdev_xl = -WF,
 MDEFS_summit_gcc   =
-MDEFS_summit_pgi   =
 MDEFS_summit_xl    = -WF,
 MDEFS_poplar_cce   =
 MDEFS_spock_cce    =
 MDEFS_spock_gcc    =
 MDEFS_acf_gnu      =
 MDEFS              = $(MDEFS_$(MACHINE))
+
+include $(THORNADO_DIR)/Build/Machines/Makefile_$(MACHINE)
+
+FLAGS_$(OPT_LEVEL) = $(OPT_LEVEL) $(OPENMP) $(OPENACC)
+
+INCLUDE            = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON) $(INCLUDE_PETSC)
+LIBRARIES          = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON) $(LIBRARIES_PETSC)
 
 ifeq ($(USE_GPU),TRUE)
     ifeq ($(USE_CUDA),TRUE)
