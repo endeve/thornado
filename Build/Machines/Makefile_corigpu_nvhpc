@@ -14,7 +14,7 @@ PP    = -D
 
 ifeq ($(USE_OMP),TRUE)
   OPENMP = -mp
-ifeq ($(USE_OMP_OL),TRUE)
+else ifeq ($(USE_OMP_OL),TRUE)
   OPENMP = -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
 endif
 
