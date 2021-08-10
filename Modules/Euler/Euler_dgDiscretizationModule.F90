@@ -321,7 +321,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Geometry )
 
     CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Geometry )
 
@@ -2809,20 +2809,22 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(in)    :: &
+      tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
 #else
 
@@ -3042,13 +3044,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+    REAL(DP), INTENT(in)    :: &
+      tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
@@ -3137,7 +3141,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, dX1, dX2, dX3 ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, dX1, dX2, dX3, tau ) &
     !$OMP MAP( alloc: PressureTensor, PressureTensorTrace, &
     !$OMP             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$OMP             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
@@ -3147,7 +3151,7 @@ CONTAINS
     !$OMP             iErr )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, dX1, dX2, dX3 ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, dX1, dX2, dX3, tau ) &
     !$ACC CREATE(     PressureTensor, PressureTensorTrace, &
     !$ACC             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$ACC             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
@@ -4244,7 +4248,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    EnergyDensitySourceTerms, iErr ) &
-    !$OMP MAP( release: iX_B0, iX_E0, dX1, dX2, dX3, &
+    !$OMP MAP( release: iX_B0, iX_E0, dX1, dX2, dX3, tau, &
     !$OMP               PressureTensor, PressureTensorTrace, &
     !$OMP               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$OMP               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
@@ -4253,7 +4257,7 @@ CONTAINS
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      EnergyDensitySourceTerms, iErr ) &
-    !$ACC DELETE(       iX_B0, iX_E0, dX1, dX2, dX3, &
+    !$ACC DELETE(       iX_B0, iX_E0, dX1, dX2, dX3, tau, &
     !$ACC               PressureTensor, PressureTensorTrace, &
     !$ACC               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$ACC               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
