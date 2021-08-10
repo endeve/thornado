@@ -14,7 +14,7 @@ PP    = -D
 
 ifeq ($(USE_OMP),TRUE)
   OPENMP = -qsmp=omp:noauto
-ifeq ($(USE_OMP_OL),TRUE)
+else ifeq ($(USE_OMP_OL),TRUE)
   OPENMP = -qsmp=omp:noauto -qoffload
 endif
 
