@@ -102,7 +102,7 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler_Relativistic
 
-  REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-16_DP
+  REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-13_DP
   REAL(DP), PARAMETER :: Offset_Epsilon     = 1.0e-14_DP
 
 
