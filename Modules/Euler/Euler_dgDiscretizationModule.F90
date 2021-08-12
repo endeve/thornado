@@ -321,7 +321,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Geometry )
 
     CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Geometry )
 
@@ -2809,7 +2809,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -2818,13 +2818,15 @@ CONTAINS
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    LOGICAL,  INTENT(in)    :: &
+      UseXCFC
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
 
 #else
 
@@ -3044,7 +3046,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3053,6 +3055,8 @@ CONTAINS
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(in)    :: &
       tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    LOGICAL,  INTENT(in)    :: &
+      UseXCFC
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
@@ -4230,6 +4234,33 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( UseXCFC )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B1, iX_E1, dU, tau )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iCF = 1, nCF
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nDOFX
+
+        dU(iNX,iX1,iX2,iX3,iCF) &
+          = tau(iNX,iX1,iX2,iX3) * dU(iNX,iX1,iX2,iX3,iCF)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     ! --- GradPsiF ---
 
