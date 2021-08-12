@@ -3133,6 +3133,7 @@ CONTAINS
                                           iX_B0(3):iX_E0(3))
 
     REAL(DP) :: GradPsiF(nDOFX)
+    REAL(DP) :: eps
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -4089,6 +4090,9 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
+    eps = One
+    IF( UseXCFC ) eps = Zero
+
     ! --- Contributions from time-dependent metric ---
 
     CALL ComputeChristoffelSymbols_3D &
@@ -4226,7 +4230,7 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCF) &
           = dU(iNX,iX1,iX2,iX3,iCF) &
-              - U(iNX,iX1,iX2,iX3,iCF) * DivGridVolume
+              - eps * U(iNX,iX1,iX2,iX3,iCF) * DivGridVolume
 
       END DO
 
