@@ -3133,7 +3133,6 @@ CONTAINS
                                           iX_B0(3):iX_E0(3))
 
     REAL(DP) :: GradPsiF(nDOFX)
-    REAL(DP) :: eps
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -3908,7 +3907,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( P, Pressure ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, &
-    !$ACC          PressureTensor, PressureTensorTrace, &
+    !$ACC          PressureTensor, PressureTensorTrace, tau, &
     !$ACC          dGdX1, dGdX2, dGdX3, EnergyDensitySourceTerms, iErr )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4) &
@@ -3987,24 +3986,25 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCF_S1) &
         = dU(iNX,iX1,iX2,iX3,iCF_S1) &
-            + G(iNX,iX1,iX2,iX3,iGF_Alpha) &
-                * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
-                        * G    (iNX,iX1,iX2,iX3,iGF_h_1) &
-                        * dGdX1(iNX,iGF_h_1,iX2,iX3,iX1) &
-                    + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
-                        * G    (iNX,iX1,iX2,iX3,iGF_h_2) &
-                        * dGdX1(iNX,iGF_h_2,iX2,iX3,iX1) &
-                    + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
-                        * G    (iNX,iX1,iX2,iX3,iGF_h_3) &
-                        * dGdX1(iNX,iGF_h_3,iX2,iX3,iX1) ) &
-            + U(iNX,iX1,iX2,iX3,iCF_S1) &
-                * dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
-            + U(iNX,iX1,iX2,iX3,iCF_S2) &
-                * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) &
-            + U(iNX,iX1,iX2,iX3,iCF_S3) &
-                * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) &
-            - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
-                * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
+            + tau(iNX,iX1,iX2,iX3) &
+                * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                      * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
+                              * G    (iNX,iX1,iX2,iX3,iGF_h_1) &
+                              * dGdX1(iNX,iGF_h_1,iX2,iX3,iX1) &
+                          + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
+                              * G    (iNX,iX1,iX2,iX3,iGF_h_2) &
+                              * dGdX1(iNX,iGF_h_2,iX2,iX3,iX1) &
+                          + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
+                              * G    (iNX,iX1,iX2,iX3,iGF_h_3) &
+                              * dGdX1(iNX,iGF_h_3,iX2,iX3,iX1) ) &
+                  + U(iNX,iX1,iX2,iX3,iCF_S1) &
+                      * dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
+                  + U(iNX,iX1,iX2,iX3,iCF_S2) &
+                      * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) &
+                  + U(iNX,iX1,iX2,iX3,iCF_S3) &
+                      * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) &
+                  - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
+                      * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1) )
 
       ! --- Energy increment ---
 
@@ -4019,24 +4019,25 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCF_S2) &
           = dU(iNX,iX1,iX2,iX3,iCF_S2) &
-              + G(iNX,iX1,iX2,iX3,iGF_Alpha) &
-                  * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
-                          * G(iNX,iX1,iX2,iX3,iGF_h_1) &
-                            * dGdX2(iNX,iGF_h_1,iX1,iX3,iX2) &
-                      + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
-                          * G(iNX,iX1,iX2,iX3,iGF_h_2) &
-                            * dGdX2(iNX,iGF_h_2,iX1,iX3,iX2) &
-                      + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
-                          * G(iNX,iX1,iX2,iX3,iGF_h_3) &
-                            * dGdX2(iNX,iGF_h_3,iX1,iX3,iX2) ) &
-              + U(iNX,iX1,iX2,iX3,iCF_S1) &
-                  * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) &
-              + U(iNX,iX1,iX2,iX3,iCF_S2) &
-                  * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
-              + U(iNX,iX1,iX2,iX3,iCF_S3) &
-                  * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) &
-              - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
-                  * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
+              + tau(iNX,iX1,iX2,iX3) &
+                  * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                        * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_1) &
+                                  * dGdX2(iNX,iGF_h_1,iX1,iX3,iX2) &
+                            + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_2) &
+                                  * dGdX2(iNX,iGF_h_2,iX1,iX3,iX2) &
+                            + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_3) &
+                                  * dGdX2(iNX,iGF_h_3,iX1,iX3,iX2) ) &
+                    + U(iNX,iX1,iX2,iX3,iCF_S1) &
+                        * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) &
+                    + U(iNX,iX1,iX2,iX3,iCF_S2) &
+                        * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
+                    + U(iNX,iX1,iX2,iX3,iCF_S3) &
+                        * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) &
+                    - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
+                        * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) )
 
         EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
           = EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
@@ -4052,24 +4053,25 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCF_S3) &
           = dU(iNX,iX1,iX2,iX3,iCF_S3) &
-              + G(iNX,iX1,iX2,iX3,iGF_Alpha) &
-                  * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
-                          * G(iNX,iX1,iX2,iX3,iGF_h_1) &
-                            * dGdX3(iNX,iGF_h_1,iX1,iX2,iX3) &
-                      + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
-                          * G(iNX,iX1,iX2,iX3,iGF_h_2) &
-                            * dGdX3(iNX,iGF_h_2,iX1,iX2,iX3) &
-                      + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
-                          * G(iNX,iX1,iX2,iX3,iGF_h_3) &
-                            * dGdX3(iNX,iGF_h_3,iX1,iX2,iX3) ) &
-              + U(iNX,iX1,iX2,iX3,iCF_S1) &
-                  * dGdX3(iNX,iGF_Beta_1,iX1,iX2,iX3) &
-              + U(iNX,iX1,iX2,iX3,iCF_S2) &
-                  * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) &
-              + U(iNX,iX1,iX2,iX3,iCF_S3) &
-                  * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
-              - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
-                  * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
+              + tau(iNX,iX1,iX2,iX3) &
+                  * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                        * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_1) &
+                                  * dGdX3(iNX,iGF_h_1,iX1,iX2,iX3) &
+                            + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_2) &
+                                  * dGdX3(iNX,iGF_h_2,iX1,iX2,iX3) &
+                            + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_3) &
+                                  * dGdX3(iNX,iGF_h_3,iX1,iX2,iX3) ) &
+                    + U(iNX,iX1,iX2,iX3,iCF_S1) &
+                        * dGdX3(iNX,iGF_Beta_1,iX1,iX2,iX3) &
+                    + U(iNX,iX1,iX2,iX3,iCF_S2) &
+                        * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) &
+                    + U(iNX,iX1,iX2,iX3,iCF_S3) &
+                        * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
+                    - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
+                        * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3) )
 
         EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
           = EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
@@ -4081,7 +4083,7 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCF_E) &
         = dU(iNX,iX1,iX2,iX3,iCF_E) &
-            + EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3)
+            + tau(iNX,iX1,iX2,iX3) * EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3)
 
     END DO
     END DO
@@ -4089,9 +4091,6 @@ CONTAINS
     END DO
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
-    eps = One
-    IF( UseXCFC ) eps = Zero
 
     ! --- Contributions from time-dependent metric ---
 
@@ -4106,7 +4105,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( PressureTensor_ud, DivGridVolume ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, dGdX1, dGdX2, dGdX3, &
-    !$ACC          EnergyDensitySourceTerms, &
+    !$ACC          EnergyDensitySourceTerms, tau, &
     !$ACC          PressureTensor, PressureTensorTrace, &
     !$ACC          Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #elif defined(THORNADO_OMP)
@@ -4222,49 +4221,27 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCF_E) &
         = dU(iNX,iX1,iX2,iX3,iCF_E) &
-            + EnergyDensitySourceTerms(2,iNX,iX1,iX2,iX3) &
-            + EnergyDensitySourceTerms(3,iNX,iX1,iX2,iX3) &
-            + EnergyDensitySourceTerms(4,iNX,iX1,iX2,iX3)
+            + tau(iNX,iX1,iX2,iX3) &
+                * ( EnergyDensitySourceTerms(2,iNX,iX1,iX2,iX3) &
+                      + EnergyDensitySourceTerms(3,iNX,iX1,iX2,iX3) &
+                      + EnergyDensitySourceTerms(4,iNX,iX1,iX2,iX3) )
 
-      DO iCF = 1, nCF
+      IF( .NOT. UseXCFC )THEN
 
-        dU(iNX,iX1,iX2,iX3,iCF) &
-          = dU(iNX,iX1,iX2,iX3,iCF) &
-              - eps * U(iNX,iX1,iX2,iX3,iCF) * DivGridVolume
+        DO iCF = 1, nCF
 
-      END DO
+          dU(iNX,iX1,iX2,iX3,iCF) &
+            = dU(iNX,iX1,iX2,iX3,iCF) &
+                - U(iNX,iX1,iX2,iX3,iCF) * DivGridVolume
+
+        END DO
+
+      END IF
 
     END DO
     END DO
     END DO
     END DO
-
-    IF( UseXCFC )THEN
-
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B1, iX_E1, dU, tau )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iCF = 1, nCF
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        dU(iNX,iX1,iX2,iX3,iCF) &
-          = tau(iNX,iX1,iX2,iX3) * dU(iNX,iX1,iX2,iX3,iCF)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
 
     ! --- GradPsiF ---
 
@@ -4471,77 +4448,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
   END SUBROUTINE ComputeIncrement_Gravity_Relativistic
-
-
-  SUBROUTINE InterpolateToFace &
-    ( nDOFX_X, LX_Up, LX_Dn, &
-      InterpolantP, InterpolantK, InterpolantN, &
-      Answer_Dn, Answer_Up )
-
-    INTEGER,  INTENT(in)  :: nDOFX_X
-    REAL(DP), INTENT(in)  :: LX_Up(:,:)
-    REAL(DP), INTENT(in)  :: LX_Dn(:,:)
-    REAL(DP), INTENT(in)  :: InterpolantP(:), InterpolantK(:), InterpolantN(:)
-    REAL(DP), INTENT(out) :: Answer_Dn(:), Answer_Up(:)
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X, nDOFX, One,  LX_Up, nDOFX_X, &
-             InterpolantP, 1, Zero, Answer_Dn, 1 )
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X, nDOFX, Half, LX_Dn, nDOFX_X, &
-             InterpolantK, 1, Half, Answer_Dn, 1 )
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X, nDOFX, One,  LX_Up, nDOFX_X, &
-             InterpolantK, 1, Zero, Answer_Up, 1 )
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X, nDOFX, Half, LX_Dn, nDOFX_X, &
-             InterpolantN, 1, Half, Answer_Up, 1 )
-
-  END SUBROUTINE InterpolateToFace
-
-
-  SUBROUTINE ComputeDerivative &
-    ( nDOFX_X, dX, LX_Up, LX_Dn, dLX, WeightsX_X, &
-      UpperFaceValues, LowerFaceValues, VolumeValues, &
-      Answer, Alpha_Option, Beta_Option )
-
-    INTEGER,  INTENT(in)  :: nDOFX_X
-    REAL(DP), INTENT(in)  :: dX
-    REAL(DP), INTENT(in)  :: LX_Up(:,:)
-    REAL(DP), INTENT(in)  :: LX_Dn(:,:)
-    REAL(DP), INTENT(in)  :: dLX  (:,:)
-    REAL(DP), INTENT(in)  :: WeightsX_X(:)
-    REAL(DP), INTENT(in)  :: UpperFaceValues(:)
-    REAL(DP), INTENT(in)  :: LowerFaceValues(:)
-    REAL(DP), INTENT(in)  :: VolumeValues   (:)
-    REAL(DP), INTENT(out) :: Answer(:)
-    REAL(DP), INTENT(in), OPTIONAL :: Alpha_Option, Beta_Option
-
-    REAL(DP) :: Alpha, Beta
-
-    Alpha = One
-    IF( PRESENT( Alpha_Option ) ) Alpha = Alpha_Option
-
-    Beta = Zero
-    IF( PRESENT( Beta_Option ) ) Beta = Beta_Option
-
-    Answer = Zero
-
-    CALL DGEMV( 'T', nDOFX_X, nDOFX, + Alpha, LX_Up, nDOFX_X, &
-                WeightsX_X * UpperFaceValues, 1, Beta, Answer, 1 )
-
-    CALL DGEMV( 'T', nDOFX_X, nDOFX, - Alpha, LX_Dn, nDOFX_X, &
-                WeightsX_X * LowerFaceValues, 1, One , Answer, 1 )
-
-    CALL DGEMV( 'T', nDOFX,    nDOFX, - Alpha, dLX, nDOFX,    &
-                WeightsX_q  * VolumeValues  , 1, One , Answer, 1 )
-
-    Answer = Answer / ( WeightsX_q * dX )
-
-  END SUBROUTINE ComputeDerivative
 
 
   SUBROUTINE ComputeChristoffelSymbols_3D &
