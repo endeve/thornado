@@ -5,7 +5,7 @@
 MODULE NeutrinoOpacitiesComputationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, Zero, One, SqrtTiny
   USE UnitsModule, ONLY: &
     BoltzmannConstant, &
     Centimeter, &
@@ -17,7 +17,12 @@ MODULE NeutrinoOpacitiesComputationModule
   USE DeviceModule, ONLY: &
     QueryOnGpu
   USE LinearAlgebraModule, ONLY: &
-    MatrixVectorMultiply
+    MatrixVectorMultiply, &
+    MatrixMatrixMultiply
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    LE_Dn, LE_Up, InterpMat_E
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     NodeNumberTableX
@@ -88,6 +93,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point
   PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeEquilibriumDistributions_Points
+  PUBLIC :: ComputeEquilibriumDistributions_DG_Points
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Point
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Points
   PUBLIC :: FermiDirac
@@ -122,6 +128,10 @@ MODULE NeutrinoOpacitiesComputationModule
     MODULE PROCEDURE ComputeEquilibriumDistributions_Points_1
     MODULE PROCEDURE ComputeEquilibriumDistributions_Points_2
   END INTERFACE
+
+  INTERFACE ComputeEquilibriumDistributions_DG_Points
+    MODULE PROCEDURE ComputeEquilibriumDistributions_DG_Points_2
+  END INTERFACE ComputeEquilibriumDistributions_DG_Points
 
   INTERFACE ComputeNeutrinoOpacities_NES_Point
     MODULE PROCEDURE ComputeNeutrinoOpacities_NES_Point_1
@@ -618,29 +628,41 @@ CONTAINS
     !$OMP PRIVATE( Mnu, kT )
 #endif
     DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
+    DO iE = iE_B, iE_E
 
-        kT = BoltzmannConstant * T(iX)
+      kT = BoltzmannConstant * T(iX)
 
-        Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
+      Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
 
-        IF ( iS_1 == iNuE ) THEN
-          f0_1(iE,iX) = FermiDirac( E(iE), +Mnu, kT )
-        ELSE IF ( iS_1 == iNuE_Bar ) THEN
-          f0_1(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
-        ELSE
-          f0_1(iE,iX) = FermiDirac( E(iE), Zero, kT )
-        END IF
+      IF ( iS_1 == iNuE ) THEN
 
-        IF ( iS_2 == iNuE ) THEN
-          f0_2(iE,iX) = FermiDirac( E(iE), +Mnu, kT )
-        ELSE IF ( iS_2 == iNuE_Bar ) THEN
-          f0_2(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
-        ELSE
-          f0_2(iE,iX) = FermiDirac( E(iE), Zero, kT )
-        END IF
+        f0_1(iE,iX) = FermiDirac( E(iE), + Mnu, kT )
 
-      END DO
+      ELSE IF ( iS_1 == iNuE_Bar ) THEN
+
+        f0_1(iE,iX) = FermiDirac( E(iE), - Mnu, kT )
+
+      ELSE
+
+        f0_1(iE,iX) = FermiDirac( E(iE),  Zero, kT )
+
+      END IF
+
+      IF ( iS_2 == iNuE ) THEN
+
+        f0_2(iE,iX) = FermiDirac( E(iE), + Mnu, kT )
+
+      ELSE IF ( iS_2 == iNuE_Bar ) THEN
+
+        f0_2(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
+
+      ELSE
+
+        f0_2(iE,iX) = FermiDirac( E(iE), Zero, kT )
+
+      END IF
+
+    END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
@@ -654,6 +676,220 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeEquilibriumDistributions_Points_2
+
+
+  SUBROUTINE ComputeEquilibriumDistributions_DG_Points_2 &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, f0_1, f0_2, iS_1, iS_2 )
+
+    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in) , TARGET :: E(:)
+    REAL(DP), INTENT(in) , TARGET :: D(:)
+    REAL(DP), INTENT(in) , TARGET :: T(:)
+    REAL(DP), INTENT(in) , TARGET :: Y(:)
+    REAL(DP), INTENT(out), TARGET :: f0_1(:,:), f0_2(:,:)
+    INTEGER,  INTENT(in)  :: iS_1, iS_2
+
+    REAL(DP), PARAMETER :: f0_Max = One
+    INTEGER  :: iX, iE, iE_G, iNodeE, nE, nX
+    REAL(DP) :: V_K, f0_Min, Min_K, Max_K, Theta
+    REAL(DP), POINTER :: E_Q(:,:), f0_1_Q(:,:,:), f0_2_Q(:,:,:)
+    !REAL(DP) :: E_Q(1:nDOFE,1:(iE_E-iE_B+1)/nDOFE)
+    REAL(DP) :: f0_1_K(          1:(iE_E-iE_B+1)/nDOFE+1,iX_B:iX_E)
+    REAL(DP) :: f0_2_K(          1:(iE_E-iE_B+1)/nDOFE+1,iX_B:iX_E)
+    !REAL(DP) :: f0_1_Q(1:nDOFE  ,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    !REAL(DP) :: f0_2_Q(1:nDOFE  ,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    REAL(DP) :: f0_1_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    REAL(DP) :: f0_2_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,iX_B:iX_E)
+    LOGICAL  :: do_gpu
+
+    do_gpu = QueryOnGPU( E, D, T, Y ) &
+       .AND. QueryOnGPU( f0_1, f0_2 )
+#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points] Data not present on device'
+      IF ( .not. QueryOnGPU( E ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points]   E missing'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points]   D missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points]   T missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points]   Y missing'
+      IF ( .not. QueryOnGPU( f0_1 ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points]   f0_1 missing'
+      IF ( .not. QueryOnGPU( f0_2 ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_DG_Points]   f0_2 missing'
+    END IF
+#endif
+
+    CALL ComputeEquilibriumDistributions_Points_2 &
+           ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, f0_1, f0_2, iS_1, iS_2 )
+
+    nE = ( iE_E - iE_B + 1 ) / nDOFE
+    nX = ( iX_E - iX_B + 1 )
+
+    ! --- Permute Data ---
+
+    E_Q(1:nDOFE,1:nE) => E(:)
+    f0_1_Q(1:nDOFE,1:nE,iX_B:iX_E) => f0_1(:,:)
+    f0_2_Q(1:nDOFE,1:nE,iX_B:iX_E) => f0_2(:,:)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( alloc: E_Q, &
+    !$OMP             f0_1_K, f0_2_K, f0_1_Q, f0_2_Q, f0_1_P, f0_2_P )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC CREATE( E_Q, &
+    !$ACC         f0_1_K, f0_2_K, f0_1_Q, f0_2_Q, f0_1_P, f0_2_P )
+#endif
+
+    ! --- Cell Average of Equilibrium Distributions ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP IF( do_gpu ) &
+    !$OMP PRIVATE( V_K )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( V_K ) &
+    !$ACC PRESENT( WeightsE, E_Q, f0_1_K, f0_2_K, f0_1_Q, f0_2_Q )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( V_K )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = 1, nE
+
+      V_K = SUM( WeightsE * E_Q(:,iE)**2 )
+
+      f0_1_K(iE,iX) = SUM( WeightsE * f0_1_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
+
+      f0_2_K(iE,iX) = SUM( WeightsE * f0_2_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
+
+    END DO
+    END DO
+
+    ! --- Estimate Cell Average in Outer Ghost Element ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( f0_1_K, f0_2_K )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+
+      f0_1_K(nE+1,iX) = f0_1_K(nE,iX)**2 / f0_1_K(nE-1,iX)
+
+      f0_2_K(nE+1,iX) = f0_2_K(nE,iX)**2 / f0_2_K(nE-1,iX)
+
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFE+2, nX*nE, nDOFE, One, InterpMat_E, nDOFE+2, &
+             f0_1_Q(1,1,iX_B), nDOFE, Zero, f0_1_P(1,1,iX_B), nDOFE+2 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFE+2, nX*nE, nDOFE, One, InterpMat_E, nDOFE+2, &
+             f0_2_Q(1,1,iX_B), nDOFE, Zero, f0_2_P(1,1,iX_B), nDOFE+2 )
+
+    ! --- Limit Equilibrium Distributions ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP IF( do_gpu ) &
+    !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta ) &
+    !$ACC PRESENT( f0_1_K, f0_2_K, f0_1_Q, f0_2_Q, f0_1_P, f0_2_P )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = 1, nE
+
+      ! --- iS_1 ---
+
+      f0_Min = f0_1_K(iE+1,iX)
+
+      Max_K = f0_Max
+      Min_K = f0_Min
+      DO iNodeE = 1, nDOFE+2
+        Max_K = MAX( Max_K, f0_1_P(iNodeE,iE,iX) )
+        Min_K = MIN( Min_K, f0_1_P(iNodeE,iE,iX) )
+      END DO
+
+      IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
+
+        Theta &
+          = MIN( One, &
+                 ABS((f0_Min-f0_1_K(iE,iX))/(Min_K-f0_1_K(iE,iX)+SqrtTiny)), &
+                 ABS((f0_Max-f0_1_K(iE,iX))/(Max_K-f0_1_K(iE,iX)+SqrtTiny)) )
+
+        DO iNodeE = 1, nDOFE
+          f0_1_Q(iNodeE,iE,iX) &
+            = ( One - Theta ) * f0_1_K(iE,iX) &
+              +       Theta   * f0_1_Q(iNodeE,iE,iX)
+        END DO
+
+      END IF
+
+      ! --- iS_2 ---
+
+      f0_Min = f0_2_K(iE+1,iX)
+
+      Max_K = f0_Max
+      Min_K = f0_Min
+      DO iNodeE = 1, nDOFE+2
+        Max_K = MAX( Max_K, f0_2_P(iNodeE,iE,iX) )
+        Min_K = MIN( Min_K, f0_2_P(iNodeE,iE,iX) )
+      END DO
+
+      IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
+
+        Theta &
+          = MIN( One, &
+                 ABS((f0_Min-f0_2_K(iE,iX))/(Min_K-f0_2_K(iE,iX)+SqrtTiny)), &
+                 ABS((f0_Max-f0_2_K(iE,iX))/(Max_K-f0_2_K(iE,iX)+SqrtTiny)) )
+
+        DO iNodeE = 1, nDOFE
+          f0_2_Q(iNodeE,iE,iX) &
+            = ( One - Theta ) * f0_2_K(iE,iX) &
+              +       Theta   * f0_2_Q(iNodeE,iE,iX)
+        END DO
+
+      END IF
+
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( release: E_Q, &
+    !$OMP               f0_1_K, f0_2_K, f0_1_Q, f0_2_Q, f0_1_P, f0_2_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC DELETE( E_Q, &
+    !$ACC         f0_1_K, f0_2_K, f0_1_Q, f0_2_Q, f0_1_P, f0_2_P )
+#endif
+
+  END SUBROUTINE ComputeEquilibriumDistributions_DG_Points_2
 
 
   SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Point &
@@ -956,17 +1192,17 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-  
+
       DO iNodeX = 1, nDOFX
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
         iNodeX2 = NodeNumberTableX(2,iNodeX)
         iNodeX3 = NodeNumberTableX(3,iNodeX)
 
-        D_K = D(iNodeX,iZ2,iZ3,iZ4)      
-        T_K = T(iNodeX,iZ2,iZ3,iZ4)      
-        Y_K = Y(iNodeX,iZ2,iZ3,iZ4)      
-         
+        D_K = D(iNodeX,iZ2,iZ3,iZ4)
+        T_K = T(iNodeX,iZ2,iZ3,iZ4)
+        Y_K = Y(iNodeX,iZ2,iZ3,iZ4)
+
         ! --- Offset (Position) ---
 
         iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
@@ -991,7 +1227,7 @@ CONTAINS
 
         END DO ! iNodeE
         END DO ! iZ1
- 
+
       END DO ! iNodeX
 
     END DO
@@ -1308,7 +1544,7 @@ CONTAINS
         ! --- Offset (Position) ---
 
         iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
- 
+
         DO iZ1 = iZ_B0(1), iZ_E0(1)
         DO iNodeE = 1, nDOFE
 
