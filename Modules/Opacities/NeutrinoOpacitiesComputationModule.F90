@@ -685,11 +685,11 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in) , TARGET :: E(:)
+    REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: E(:)
     REAL(DP), INTENT(in) , TARGET :: D(:)
     REAL(DP), INTENT(in) , TARGET :: T(:)
     REAL(DP), INTENT(in) , TARGET :: Y(:)
-    REAL(DP), INTENT(out), TARGET :: f0_1(:,:), f0_2(:,:)
+    REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0_1(:,:), f0_2(:,:)
     INTEGER,  INTENT(in)  :: iS_1, iS_2
 
     REAL(DP), PARAMETER :: f0_Max = One
@@ -798,11 +798,11 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFE+2, nX*nE, nDOFE, One, InterpMat_E, nDOFE+2, &
-             f0_1_Q(1,1,iX_B), nDOFE, Zero, f0_1_P(1,1,iX_B), nDOFE+2 )
+             f0_1_Q, nDOFE, Zero, f0_1_P, nDOFE+2 )
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFE+2, nX*nE, nDOFE, One, InterpMat_E, nDOFE+2, &
-             f0_2_Q(1,1,iX_B), nDOFE, Zero, f0_2_P(1,1,iX_B), nDOFE+2 )
+             f0_2_Q, nDOFE, Zero, f0_2_P, nDOFE+2 )
 
     ! --- Limit Equilibrium Distributions ---
 
