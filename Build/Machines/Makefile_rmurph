@@ -32,7 +32,7 @@ INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
 LIBRARIES_HDF5     = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
-LIBRARIES_LAPACK   = -llapack -lblas
+LIBRARIES_LAPACK   = -framework Accelerate
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
