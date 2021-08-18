@@ -31,8 +31,7 @@ MODULE MF_GeometryModule
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
-    swX, &
-    iOS_CPP
+    swX
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -86,57 +85,36 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      iLo_G = iX_B1 + iOS_CPP
-      iHi_G = iX_E1 + iOS_CPP
+      iLo_G = iX_B1
+      iHi_G = iX_E1
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nGF) )
-
-      ALLOCATE( Gt(1:nDOFX,iLo_G(1):iHi_G(1), &
-                           iLo_G(2):iHi_G(2), &
-                           iLo_G(3):iHi_G(3), &
-                   1:nGF) )
+      ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                          iX_B1(2):iX_E1(2), &
+                          iX_B1(3):iX_E1(3), &
+                  1:nGF) )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
 #if defined HYDRO_RELATIVISTIC
 
       CALL ComputeGeometryX &
-             ( iX_B0, iX_E0, iLo_G, iHi_G, Gt, Mass_Option = Mass )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
 #else
 
       CALL ComputeGeometryX &
-             ( iX_B0, iX_E0, iLo_G, iHi_G, Gt )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
 #endif
-
-      DO iGF = 1, nGF
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        G(iNX,iX1,iX2,iX3,iGF) &
-          = Gt(iNX,iX1+iOS_CPP(1),iX2+iOS_CPP(2),iX3+iOS_CPP(3),iGF)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
 
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-      DEALLOCATE( Gt )
-      DEALLOCATE( G  )
+      DEALLOCATE( G )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 

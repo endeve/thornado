@@ -16,8 +16,7 @@ MODULE Euler_UtilitiesModule_Relativistic
     nDOFX, &
     nDimsX
   USE MeshModule, ONLY: &
-    MeshX, &
-    MeshType
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -468,7 +467,7 @@ CONTAINS
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, MeshX_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -479,8 +478,6 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
-    TYPE(MeshType), INTENT(in), OPTIONAL :: &
-      MeshX_Option(3)
 
     INTEGER  :: iX1, iX2, iX3, iNX, iDimX
     REAL(DP) :: dX(3), dt
@@ -489,16 +486,10 @@ CONTAINS
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
 
-    TYPE(MeshType) :: MeshXX(3)
-
-    MeshXX = MeshX
-    IF( PRESENT( MeshX_Option ) ) &
-      MeshXX = MeshX_Option
-
     ASSOCIATE &
-      ( dX1 => MeshXX(1) % Width, &
-        dX2 => MeshXX(2) % Width, &
-        dX3 => MeshXX(3) % Width )
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
 

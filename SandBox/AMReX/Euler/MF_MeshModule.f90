@@ -20,7 +20,8 @@ MODULE MF_MeshModule
     nX, &
     swX, &
     xL, &
-    xR
+    xR, &
+    iOS_CPP
 
   IMPLICIT NONE
   PRIVATE
@@ -48,7 +49,7 @@ CONTAINS
 
       CALL CreateMesh &
              ( MeshX(iDim), nXX(iDim), nNodesX(iDim), swX(iDim), &
-               xL(iDim), xR(iDim) )
+               xL(iDim), xR(iDim), iOS_Option = iOS_CPP(iDim) )
 
     END DO
 

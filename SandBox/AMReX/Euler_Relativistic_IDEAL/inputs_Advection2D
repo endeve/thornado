@@ -3,19 +3,19 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
-amr.n_error_buf = 0
-
 thornado.ProgramName = "Advection2D"
-thornado.nNodes = 02
-thornado.nStages = 03
-thornado.swX = 01 01 00
+thornado.AdvectionProfile = "SineWaveX1"
+
+thornado.nNodes      = 02
+thornado.nStages     = 03
+thornado.swX         = 01 01 00
 thornado.Gamma_IDEAL = 1.3333333333333333
-thornado.bcX = 01 01 01
-thornado.t_end = 1.0e1
-thornado.iCycleD = 1
-thornado.CFL = 0.5
-thornado.iCycleW = 10
-thornado.iCycleChk = 10
+thornado.bcX         = 01 01 01
+thornado.t_end       = 1.0e1
+thornado.iCycleD     = 1
+thornado.CFL         = 0.5
+thornado.iCycleW     = 10
+thornado.iCycleChk   = 10
 
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 
@@ -23,17 +23,13 @@ geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-amr.n_cell            = 64 64 01 # Number of cells in each dimension
-#amr.max_grid_size_x   = 16
-#amr.max_grid_size_y   = 16
-#amr.blocking_factor_x = 8
-#amr.blocking_factor_y = 8
-amr.max_grid_size     = 8
-amr.blocking_factor   = 4
-amr.max_level         = 1
-amr.UseTiling         = 1
-amr.do_reflux         = 1
-amr.TagCriteria       = 0.5
-#amr.grid_eff          = 0.1
-#amr.n_error_buf       = 3 3 3
-amr.ref_ratio         = 2 2
+amr.n_cell          = 32 32 01 # Number of cells in each dimension
+amr.max_grid_size   = 8
+amr.blocking_factor = 4
+amr.max_level       = 2
+amr.UseTiling       = 0
+amr.do_reflux       = 0
+amr.TagCriteria     = 0.5 0.75
+#amr.grid_eff        = 0.1
+amr.n_error_buf     = 0
+amr.ref_ratio       = 2 2

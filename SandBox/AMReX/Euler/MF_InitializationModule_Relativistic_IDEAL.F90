@@ -64,7 +64,6 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     nX, &
     swX, &
     Gamma_IDEAL, &
-    iOS_CPP, &
     ProgramName
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
@@ -131,8 +130,8 @@ CONTAINS
     REAL(DP), PARAMETER :: D_0    = 2.0_DP
     REAL(DP), PARAMETER :: X1_0   = 0.5_DP
     REAL(DP), PARAMETER :: X2_0   = 0.5_DP
-    REAL(DP), PARAMETER :: Radius = 0.3_DP
-    REAL(DP), PARAMETER :: sigma  = 0.3_DP
+    REAL(DP), PARAMETER :: Radius = 0.1_DP
+    REAL(DP), PARAMETER :: sigma  = 0.1_DP
 
     AdvectionProfile = 'Gaussian'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -178,28 +177,41 @@ CONTAINS
       DO iNX = 1, nDOFX
 
         iNX1 = NodeNumberTableX(1,iNX)
-        X1   = NodeCoordinate( MeshX(1), iX1+iOS_CPP(1), iNX1 )
+        X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
         iNX2 = NodeNumberTableX(2,iNX)
-        X2   = NodeCoordinate( MeshX(2), iX2+iOS_CPP(2), iNX2 )
+        X2   = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-        IF( ( X1 - X1_0 )**2 + ( X2 - X2_0 )**2 .LT. Radius**2 )THEN
+        IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
-          uPF(iNX,iPF_D) &
-            = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
+          IF( ( X1 - X1_0 )**2 + ( X2 - X2_0 )**2 .LT. Radius**2 )THEN
 
-        ELSE
+            uPF(iNX,iPF_D) &
+              = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                    * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
 
-          uPF(iNX,iPF_D) = 1.0_DP
+          ELSE
+
+            uPF(iNX,iPF_D) = 1.0_DP
+
+          END IF
+
+          uPF(iNX,iPF_V1) = 0.5_DP
+          uPF(iNX,iPF_V2) = 0.0_DP
+          uPF(iNX,iPF_V3) = 0.0_DP
+          uPF(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Zero
+
+        ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
+
+          uPF(iNX,iPF_D ) = 1.0_DP + 0.1_DP * SIN( TwoPi * X1 )
+          uPF(iNX,iPF_V1) = 0.1_DP
+          uPF(iNX,iPF_V2) = 0.0_DP
+          uPF(iNX,iPF_V3) = 0.0_DP
+          uPF(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Zero
 
         END IF
-
-        uPF(iNX,iPF_V1) = 0.5_DP
-        uPF(iNX,iPF_V2) = 0.0_DP
-        uPF(iNX,iPF_V3) = 0.0_DP
-        uPF(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
-        uPF(iNX,iPF_Ne) = Zero
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &

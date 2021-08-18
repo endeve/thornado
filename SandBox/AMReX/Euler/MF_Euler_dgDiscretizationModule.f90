@@ -19,6 +19,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nDF
@@ -43,6 +45,9 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE InputParsingModule, ONLY: &
     UseTiling, &
     swX
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap, &
@@ -99,11 +104,11 @@ CONTAINS
 
       CALL MF_uGF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 
-!      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 
       CALL MF_uDF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 
-      CALL FillPatch( iLevel, 0.0e0_DP, MF_uCF(iLevel) )
+      CALL FillPatch( iLevel, 0.0e0_DP, MF_uCF(iLevel) ) ! replace 0.0 with Time
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -153,9 +158,7 @@ CONTAINS
         CALL ApplyBoundaryConditions_Euler_MF &
                ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-print*,'a'
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-print*,'b'
 
         CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
@@ -175,110 +178,116 @@ print*,'b'
 
     END DO
 
-!!$    DO iLevel = 0, amrex_max_level
-!!$
-!!$      ! --- Maybe don't need to apply boudnary conditions since
-!!$      !     they're applied in the shock detector ---
-!!$
-!!$      ! --- Apply boundary conditions to interior domains ---
-!!$
-!!$      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
-!!$
-!!$      CALL MF_uGF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
-!!$
-!!$      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
-!!$
-!!$      CALL MF_uDF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
-!!$
-!!$      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
-!!$
-!!$      CALL MF_duCF(iLevel) % SetVal( Zero )
-!!$
-!!$      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-!!$
-!!$      DO WHILE( MFI % next() )
-!!$
-!!$        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-!!$        uCF  => MF_uCF (iLevel) % DataPtr( MFI )
-!!$        uDF  => MF_uDF (iLevel) % DataPtr( MFI )
-!!$        duCF => MF_duCF(iLevel) % DataPtr( MFI )
-!!$
-!!$        iLo_MF = LBOUND( uGF )
-!!$
-!!$        BX = MFI % tilebox()
-!!$
-!!$        iX_B0 = BX % lo
-!!$        iX_E0 = BX % hi
-!!$        iX_B1 = BX % lo - swX
-!!$        iX_E1 = BX % hi + swX
-!!$
-!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-!!$
-!!$        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-!!$                             iX_B1(2):iX_E1(2), &
-!!$                             iX_B1(3):iX_E1(3),1:nGF) )
-!!$
-!!$        ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-!!$                             iX_B1(2):iX_E1(2), &
-!!$                             iX_B1(3):iX_E1(3),1:nCF) )
-!!$
-!!$        ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
-!!$                             iX_B1(2):iX_E1(2), &
-!!$                             iX_B1(3):iX_E1(3),1:nDF) )
-!!$
-!!$        ALLOCATE( dU(1:nDOFX,iX_B1(1):iX_E1(1), &
-!!$                             iX_B1(2):iX_E1(2), &
-!!$                             iX_B1(3):iX_E1(3),1:nCF) )
-!!$
-!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-!!$
-!!$        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-!!$
-!!$        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
-!!$
-!!$        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
-!!$
-!!$        ! --- Apply boundary conditions to physical boundaries ---
-!!$
-!!$        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
-!!$
-!!$        CALL ApplyBoundaryConditions_Euler_MF &
-!!$               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
-!!$
-!!$        CALL ComputeIncrement_Euler_DG_Explicit &
-!!$               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-!!$                 SuppressBC_Option = .TRUE. )
-!!$
-!!$        MF_OffGridFlux_Euler(iLevel,:) &
-!!$          = MF_OffGridFlux_Euler(iLevel,:) + OffGridFlux_Euler
-!!$
-!!$        CALL thornado2amrex_X &
-!!$               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
-!!$
-!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-!!$
-!!$        DEALLOCATE( dU )
-!!$
-!!$        DEALLOCATE( D  )
-!!$
-!!$        DEALLOCATE( U  )
-!!$
-!!$        DEALLOCATE( G  )
-!!$
-!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-!!$
-!!$      END DO
-!!$
-!!$      CALL amrex_mfiter_destroy( MFI )
-!!$
-!!$    END DO
-!!$
-!!$    DO iCF = 1, nCF
-!!$
-!!$      CALL amrex_parallel_reduce_sum &
-!!$             ( MF_OffGridFlux_Euler(:,iCF), amrex_max_level+1 )
-!!$
-!!$    END DO
+    DO iLevel = 0, amrex_max_level
+
+      ! --- Maybe don't need to apply boudnary conditions since
+      !     they're applied in the shock detector ---
+
+      ! --- Apply boundary conditions to interior domains ---
+
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+
+      CALL MF_uDF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+
+      CALL FillPatch( iLevel, 0.0e0_DP, MF_uCF(iLevel) ) ! replace 0.0 with Time
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+      CALL MF_duCF(iLevel) % SetVal( Zero )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
+        uCF  => MF_uCF (iLevel) % DataPtr( MFI )
+        uDF  => MF_uDF (iLevel) % DataPtr( MFI )
+        duCF => MF_duCF(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nGF) )
+
+        ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF) )
+
+        ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nDF) )
+
+        ALLOCATE( dU(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF) )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
+
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
+
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
+
+        ! --- Apply boundary conditions to physical boundaries ---
+
+        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+        CALL ApplyBoundaryConditions_Euler_MF &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+        CALL ComputeIncrement_Euler_DG_Explicit &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+                 SuppressBC_Option = .TRUE. )
+
+        MF_OffGridFlux_Euler(iLevel,:) &
+          = MF_OffGridFlux_Euler(iLevel,:) + OffGridFlux_Euler
+
+        CALL thornado2amrex_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
+
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+        DEALLOCATE( dU )
+
+        DEALLOCATE( D  )
+
+        DEALLOCATE( U  )
+
+        DEALLOCATE( G  )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyMesh_MF( MeshX )
+
+    END DO
+
+    DO iCF = 1, nCF
+
+      CALL amrex_parallel_reduce_sum &
+             ( MF_OffGridFlux_Euler(:,iCF), amrex_max_level+1 )
+
+    END DO
 
   END SUBROUTINE ComputeIncrement_Euler_MF
 

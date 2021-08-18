@@ -34,7 +34,6 @@ Euler_UtilitiesModule_Relativistic.o: \
 
 Euler_UtilitiesModule.o: \
   KindModule.o \
-  MeshModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   Euler_UtilitiesModule_Relativistic.o \

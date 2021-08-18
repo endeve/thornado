@@ -23,7 +23,7 @@ MODULE MF_Euler_UtilitiesModule
     nDOFX, &
     nNodesX
   USE MeshModule, ONLY: &
-    MeshType
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
@@ -189,8 +189,6 @@ CONTAINS
 
     REAL(DP) :: TimeStep(0:amrex_max_level)
 
-    TYPE(MeshType) :: MeshX(3)
-
     CALL TimersStart_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
     TimeStepMin = HUGE( One )
@@ -232,8 +230,7 @@ CONTAINS
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
         CALL ComputeTimeStep_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), &
-                 MeshX_Option = MeshX )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel) )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
