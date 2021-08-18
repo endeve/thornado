@@ -120,22 +120,45 @@ CONTAINS
     END DO
     END DO
 
-!open(100,file='/Users/dunhamsj/Desktop/WeightsX_q.txt')
-!do in1=1,ndofx
-!write(100,*) weightsx_q(in1)
-!enddo
-!close(100)
-!
-!open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix.txt')
-!write(100,*)ndofx
-!do ifine=1,4
-!do i=1,ndofx
-!do k=1,ndofx
-!write(100,*)ProjectionMatrix(i,k,iFine)
-!enddo
-!enddo
-!enddo
-!close(100)
+open(100,file='/Users/dunhamsj/Desktop/WeightsX_q.txt')
+write(100,'(A)') '{'
+do in1=1,ndofx
+if(.not.in1.eq.ndofx)then
+write(100,'(2x,SP,ES24.16E3,A)') weightsx_q(in1),','
+else
+write(100,'(2x,SP,ES24.16E3)') weightsx_q(in1)
+endif
+enddo
+write(100,'(A)') '};'
+close(100)
+
+open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix.txt')
+write(100,'(A)') '{'
+do ifine=1,4
+write(100,'(A)') '  {'
+do i=1,ndofx
+write(100,'(A)') '    {'
+do k=1,ndofx
+if(.not.k.eq.ndofx)then
+write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix(i,k,iFine), ','
+else
+write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix(i,k,iFine)
+endif
+enddo
+if(.not.i.eq.ndofx)then
+write(100,'(A)') '    },'
+else
+write(100,'(A)') '    }'
+endif
+enddo
+if(.not.ifine.eq.4)then
+write(100,'(A)') '  },'
+else
+write(100,'(A)') '  }'
+endif
+enddo
+write(100,'(A)') '};'
+close(100)
 
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
