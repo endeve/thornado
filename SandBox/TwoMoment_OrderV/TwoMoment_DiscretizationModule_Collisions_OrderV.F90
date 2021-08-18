@@ -72,26 +72,26 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nGF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_F(1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in) :: &
       U_R (1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCR,1:nSpecies)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_R(1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
