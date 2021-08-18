@@ -12,13 +12,14 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, uDF
+    nCF, iCF_D, uDF
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    OffGridFlux_Euler
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
   USE TwoMoment_TimersModule_OrderV, ONLY: &
@@ -28,14 +29,22 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
-    ApplyPositivityLimiter_TwoMoment
+    ApplyPositivityLimiter_TwoMoment, &
+    dEnergyMomentum_PL_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+    ComputeIncrement_TwoMoment_Explicit, &
+    OffGridFlux_TwoMoment
+  USE TwoMoment_TallyModule_OrderV, ONLY: &
+    IncrementOffGridTally_Euler, &
+    IncrementOffGridTally_TwoMoment, &
+    IncrementPositivityLimiterTally_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
 
   TYPE :: StageDataType
+    REAL(DP)              :: OffGridFlux_U(nCF)
+    REAL(DP)              :: OffGridFlux_M(2*nCR)
     REAL(DP), ALLOCATABLE :: dU_IM(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dU_EX(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dM_IM(:,:,:,:,:,:,:)
@@ -43,6 +52,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   END TYPE StageDataType
 
   LOGICAL                          :: EvolveEuler
+  LOGICAL                          :: EvolveTwoMoment
   INTEGER                          :: nStages
   REAL(DP),            ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP),            ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
@@ -55,6 +65,10 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   PUBLIC :: Initialize_IMEX_RK
   PUBLIC :: Finalize_IMEX_RK
   PUBLIC :: Update_IMEX_RK
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+#endif
 
   INTERFACE
     SUBROUTINE ImplicitIncrement &
@@ -110,6 +124,27 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     END SUBROUTINE ImplicitIncrement
   END INTERFACE
 
+  INTERFACE
+    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, GX, D )
+      USE KindModule          , ONLY: DP
+      USE ProgramHeaderModule , ONLY: nDOFX
+      USE GeometryFieldsModule, ONLY: nGF
+      INTEGER,  INTENT(in)    :: &
+        iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      REAL(DP), INTENT(inout) :: &
+        GX(1:, &
+           iX_B1(1):, &
+           iX_B1(2):, &
+           iX_B1(3):, &
+           1:)
+      REAL(DP), INTENT(in)    :: &
+        D (1:, &
+           iX_B1(1):, &
+           iX_B1(2):, &
+           iX_B1(3):)
+    END SUBROUTINE GravitySolver
+  END INTERFACE
+
   INTERFACE AllocateArray
     MODULE PROCEDURE AllocateArray5D
     MODULE PROCEDURE AllocateArray7D
@@ -134,7 +169,7 @@ CONTAINS
 
 
   SUBROUTINE Update_IMEX_RK &
-    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit )
+    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit, SolveGravity )
 
     REAL(DP), INTENT(in) :: &
       dt
@@ -142,7 +177,7 @@ CONTAINS
       GE(1:nDOFE, &
          iE_B1:iE_E1, &
          1:nGE)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(inout) :: &
       GX(1:nDOFX, &
          iX_B1(1):iX_E1(1), &
          iX_B1(2):iX_E1(2), &
@@ -163,8 +198,23 @@ CONTAINS
         1:nCR,1:nSpecies)
     PROCEDURE(ImplicitIncrement) :: &
       ComputeIncrement_TwoMoment_Implicit
+    PROCEDURE(GravitySolver), OPTIONAL :: &
+      SolveGravity
 
-    INTEGER :: iS, jS
+    INTEGER  :: iS, jS
+    REAL(DP) :: dU_OffGrid(nCF)
+    REAL(DP) :: dM_OffGrid(2*nCR)
+    REAL(DP) :: dM_PL(nCR)
+
+    dM_PL = Zero
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GE, GX, U, M )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( GE, GX, U, M )
+#endif
 
     CALL CopyArray( U0, One, U )
     CALL CopyArray( M0, One, M )
@@ -202,13 +252,36 @@ CONTAINS
             CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
 
+            IF( PRESENT( SolveGravity ) )THEN
+
+              CALL SolveGravity &
+                     ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
+
+            END IF
+
           END IF
 
-          CALL ApplySLopeLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+          IF( EvolveTwoMoment )THEN
 
-          CALL ApplyPositivityLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+            !$OMP TARGET UPDATE FROM( Ui, Mi )
+#elif defined( THORNADO_OACC   )
+            !$ACC UPDATE HOST( Ui, Mi )
+#endif
+            CALL ApplySlopeLimiter_TwoMoment &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+            CALL ApplyPositivityLimiter_TwoMoment &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+            !$OMP TARGET UPDATE TO( Mi )
+#elif defined( THORNADO_OACC   )
+            !$ACC UPDATE DEVICE( Mi )
+#endif
+
+            dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
+
+          END IF
 
         END IF
 
@@ -232,8 +305,24 @@ CONTAINS
 
         END IF
 
-        CALL ApplyPositivityLimiter_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+        IF( EvolveTwoMoment )THEN
+
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE FROM( Ui, Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE HOST( Ui, Mi )
+#endif
+          CALL ApplyPositivityLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE TO( Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE DEVICE( Mi )
+#endif
+
+          dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
+
+        END IF
 
       END IF
 
@@ -247,11 +336,19 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                    Ui, uDF, StageData(iS) % dU_EX )
 
+          StageData(iS) % OffGridFlux_U = OffGridFlux_Euler
+
         END IF
 
-        CALL ComputeIncrement_TwoMoment_Explicit &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-                 Ui, Mi, StageData(iS) % dM_EX )
+        IF( EvolveTwoMoment )THEN
+
+          CALL ComputeIncrement_TwoMoment_Explicit &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                   Ui, Mi, StageData(iS) % dM_EX )
+
+          StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
+
+        END IF
 
       END IF
 
@@ -293,24 +390,89 @@ CONTAINS
 
       END IF
 
-      CALL ApplySlopeLimiter_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+      IF( EvolveTwoMoment )THEN
 
-      CALL ApplyPositivityLimiter_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE FROM( Ui, Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE HOST( Ui, Mi )
+#endif
+        CALL ApplySlopeLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+
+        CALL ApplyPositivityLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+#if   defined( THORNADO_OMP_OL )
+          !$OMP TARGET UPDATE TO( Mi )
+#elif defined( THORNADO_OACC   )
+          !$ACC UPDATE DEVICE( Mi )
+#endif
+
+        dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
+
+      END IF
+
+    END IF
+
+    IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
+
+      CALL SolveGravity &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
 
     END IF
 
     CALL CopyArray( U, One, Ui )
     CALL CopyArray( M, One, Mi )
 
+    IF( EvolveEuler )THEN
+
+      dU_OffGrid = Zero
+      DO iS = 1, nStages
+
+        dU_OffGrid &
+          = dU_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_U
+
+      END DO
+
+      CALL IncrementOffGridTally_Euler( dU_OffGrid )
+
+    END IF
+
+    IF( EvolveTwoMoment )THEN
+
+      dM_OffGrid = Zero
+      DO iS = 1, nStages
+
+        dM_OffGrid &
+          = dM_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_M
+
+      END DO
+
+      CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
+
+      CALL IncrementPositivityLimiterTally_TwoMoment( dM_PL )
+
+    END IF
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U, M ) &
+    !$OMP MAP( release: GE, GX )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U, M ) &
+    !$ACC DELETE( GE, GX )
+#endif
+
   END SUBROUTINE Update_IMEX_RK
 
 
-  SUBROUTINE Initialize_IMEX_RK( Scheme, EvolveEuler_Option )
+  SUBROUTINE Initialize_IMEX_RK &
+    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option )
 
     CHARACTER(LEN=*), INTENT(in)           :: Scheme
     LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
 
     INTEGER :: i
 
@@ -319,9 +481,15 @@ CONTAINS
       EvolveEuler = EvolveEuler_Option
     END IF
 
+    EvolveTwoMoment = .TRUE.
+    IF( PRESENT( EvolveTwoMoment_Option ) )THEN
+      EvolveTwoMoment = EvolveTwoMoment_Option
+    END IF
+
     WRITE(*,*)
-    WRITE(*,'(A6,A16,A)' ) '', 'IMEX-RK Scheme: ', TRIM( Scheme )
-    WRITE(*,'(A6,A16,L1)') '', 'Evolve Euler: '  , EvolveEuler
+    WRITE(*,'(A6,A19,A)' ) '', 'IMEX-RK Scheme: '   , TRIM( Scheme )
+    WRITE(*,'(A6,A19,L1)') '', 'Evolve Euler: '     , EvolveEuler
+    WRITE(*,'(A6,A19,L1)') '', 'Evolve Two-Moment: ', EvolveTwoMoment
 
     SELECT CASE ( TRIM( Scheme ) )
 
@@ -453,7 +621,18 @@ CONTAINS
       CALL AllocateArray( StageData(i) % dM_IM )
       CALL AllocateArray( StageData(i) % dM_EX )
 
+      StageData(i) % OffGridFlux_U = Zero
+      StageData(i) % OffGridFlux_M = Zero
+
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#endif
 
   END SUBROUTINE Initialize_IMEX_RK
 
@@ -461,6 +640,14 @@ CONTAINS
   SUBROUTINE Finalize_IMEX_RK
 
     INTEGER :: i
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( c_IM, w_IM, a_IM, c_EX, w_EX, a_EX )
+#endif
 
     DEALLOCATE( c_IM, w_IM, a_IM )
     DEALLOCATE( c_EX, w_EX, a_EX )
@@ -524,6 +711,14 @@ CONTAINS
 
     Array5D = Zero
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Array5D )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Array5D )
+#endif
+
     CALL TimersStop( Timer_TimeStepper )
 
   END SUBROUTINE AllocateArray5D
@@ -534,6 +729,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
 
     CALL TimersStart( Timer_TimeStepper )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Array5D )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Array5D )
+#endif
 
     DEALLOCATE( Array5D )
 
@@ -558,6 +761,14 @@ CONTAINS
 
     Array7D = Zero
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Array7D )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Array7D )
+#endif
+
     CALL TimersStop( Timer_TimeStepper )
 
   END SUBROUTINE AllocateArray7D
@@ -568,6 +779,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
 
     CALL TimersStart( Timer_TimeStepper )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Array7D )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Array7D )
+#endif
 
     DEALLOCATE( Array7D )
 
@@ -598,9 +817,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U, V, iX_B1, iX_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iCF = 1, nCF
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -648,9 +870,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( U, V, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -702,9 +927,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U, V, iX_B1, iX_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iCF = 1, nCF
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -755,9 +983,12 @@ CONTAINS
     CALL TimersStart( Timer_TimeStepper )
 
 #if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( U, V, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
