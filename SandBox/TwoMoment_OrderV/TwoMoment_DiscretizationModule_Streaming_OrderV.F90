@@ -60,7 +60,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     MeshX
   USE GeometryFieldsModuleE, ONLY: &
     nGE, &
-    iGE_Ep1, &
     iGE_Ep2, &
     iGE_Ep3
   USE GeometryFieldsModule, ONLY: &
@@ -80,7 +79,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, LeptonNumber, &
+    nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
@@ -141,8 +140,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   INTEGER :: nZ_X1(4), nX1_X, nX1_Z, nNodesX_X1, nNodesZ_X1
   INTEGER :: nZ_X2(4), nX2_X, nX2_Z, nNodesX_X2, nNodesZ_X2
   INTEGER :: nZ_X3(4), nX3_X, nX3_Z, nNodesX_X3, nNodesZ_X3
-
-  REAL(DP), PUBLIC :: OffGridFlux_TwoMoment(2*nCR)
 
 CONTAINS
 
@@ -252,8 +249,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    OffGridFlux_TwoMoment = Zero
 
     CALL TimersStop( Timer_Streaming_Zero )
 
@@ -469,26 +464,19 @@ CONTAINS
     ! --- Fluxes ---
 
     REAL(DP) :: &
-      NumericalFlux (nDOF_X1,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(2)  :iZ_E0(2)+1)
+      NumericalFlux(nDOF_X1,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(2)  :iZ_E0(2)+1)
     REAL(DP) :: &
-      NumericalFlux2(nDOF_X1,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(2)  :iZ_E0(2)+1)
-    REAL(DP) :: &
-      Flux_q        (nDOFZ,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(2)  :iZ_E0(2)  )
+      Flux_q       (nDOFZ,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(2)  :iZ_E0(2)  )
 
     ! --- X1 Increment ---
 
@@ -876,44 +864,6 @@ CONTAINS
 
       END DO
 
-      ! --- Energy and Momentum Fluxes for Conservation Tally ---
-
-      ! --- Energy ---
-
-      NumericalFlux2(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) &
-                + uV1_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X1,iCR_G1,iZ1,iZ3,iZ4,iS,iZ2) &
-                + uV2_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X1,iCR_G2,iZ1,iZ3,iZ4,iS,iZ2) &
-                + uV3_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X1,iCR_G3,iZ1,iZ3,iZ4,iS,iZ2) )
-
-      ! --- Momentum 1 ---
-
-      NumericalFlux2(iNodeZ_X1,iCR_G1,iZ1,iZ3,iZ4,iS,iZ2) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X1,iCR_G1,iZ1,iZ3,iZ4,iS,iZ2) &
-                + Gm_dd_11_F(iX_F) * uV1_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) )
-
-      ! --- Momentum 2 ---
-
-      NumericalFlux2(iNodeZ_X1,iCR_G2,iZ1,iZ3,iZ4,iS,iZ2) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X1,iCR_G2,iZ1,iZ3,iZ4,iS,iZ2) &
-                + Gm_dd_22_F(iX_F) * uV2_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) )
-
-      ! --- Momentum 3 ---
-
-      NumericalFlux2(iNodeZ_X1,iCR_G3,iZ1,iZ3,iZ4,iS,iZ2) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X1,iCR_G3,iZ1,iZ3,iZ4,iS,iZ2) &
-                + Gm_dd_33_F(iX_F) * uV3_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) )
-
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux )
@@ -937,58 +887,6 @@ CONTAINS
              nDOF_X1, One,  dU_X1, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    ! --- Off-Grid Fluxes for Conservation Tally ---
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X1 = 1, nDOF_X1
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X1 = 1, nDOF_X1
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     !--------------------
     ! --- Volume Term ---
@@ -1249,26 +1147,19 @@ CONTAINS
     ! --- Fluxes ---
 
     REAL(DP) :: &
-      NumericalFlux (nDOF_X2,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(3)  :iZ_E0(3)+1)
+      NumericalFlux(nDOF_X2,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(3)  :iZ_E0(3)+1)
     REAL(DP) :: &
-      NumericalFlux2(nDOF_X2,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(3)  :iZ_E0(3)+1)
-    REAL(DP) :: &
-      Flux_q        (nDOFZ,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(3)  :iZ_E0(3)  )
+      Flux_q       (nDOFZ,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(3)  :iZ_E0(3)  )
 
     ! --- X2 Increment ---
 
@@ -1606,7 +1497,7 @@ CONTAINS
 
       iNodeZ_X2 = iNodeE + ( iNodeX_X2 - 1 ) * nDOFE
 
-      ! --- Left State Flux ---
+        ! --- Left State Flux ---
 
       Flux_L &
         = Flux_X2 &
@@ -1656,44 +1547,6 @@ CONTAINS
 
       END DO
 
-      ! --- Energy and Momentum Fluxes for Conservation Tally ---
-
-      ! --- Energy ---
-
-      NumericalFlux2(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) &
-                + uV1_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X2,iCR_G1,iZ1,iZ2,iZ4,iS,iZ3) &
-                + uV2_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X2,iCR_G2,iZ1,iZ2,iZ4,iS,iZ3) &
-                + uV3_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X2,iCR_G3,iZ1,iZ2,iZ4,iS,iZ3) )
-
-      ! --- Momentum 1 ---
-
-      NumericalFlux2(iNodeZ_X2,iCR_G1,iZ1,iZ2,iZ4,iS,iZ3) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X2,iCR_G1,iZ1,iZ2,iZ4,iS,iZ3) &
-                + Gm_dd_11_F(iX_F) * uV1_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) )
-
-      ! --- Momentum 2 ---
-
-      NumericalFlux2(iNodeZ_X2,iCR_G2,iZ1,iZ2,iZ4,iS,iZ3) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X2,iCR_G2,iZ1,iZ2,iZ4,iS,iZ3) &
-                + Gm_dd_22_F(iX_F) * uV2_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) )
-
-      ! --- Momentum 3 ---
-
-      NumericalFlux2(iNodeZ_X2,iCR_G3,iZ1,iZ2,iZ4,iS,iZ3) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X2,iCR_G3,iZ1,iZ2,iZ4,iS,iZ3) &
-                + Gm_dd_33_F(iX_F) * uV3_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) )
-
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux )
@@ -1717,58 +1570,6 @@ CONTAINS
              nDOF_X2, One,  dU_X2, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    ! --- Off-Grid Fluxes for Conservation Tally ---
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X2 = 1, nDOF_X2
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X2 = 1, nDOF_X2
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     !--------------------
     ! --- Volume Term ---
@@ -2027,26 +1828,19 @@ CONTAINS
     ! --- Fluxes ---
 
     REAL(DP) :: &
-      NumericalFlux (nDOF_X3,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     nSpecies, &
-                     iZ_B0(4)  :iZ_E0(4)+1)
+      NumericalFlux(nDOF_X3,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    nSpecies, &
+                    iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
-      NumericalFlux2(nDOF_X3,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     nSpecies, &
-                     iZ_B0(4)  :iZ_E0(4)+1)
-    REAL(DP) :: &
-      Flux_q        (nDOFZ,nCR, &
-                     iZ_B0(1)  :iZ_E0(1)  , &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     nSpecies, &
-                     iZ_B0(4)  :iZ_E0(4)  )
+      Flux_q       (nDOFZ,nCR, &
+                    iZ_B0(1)  :iZ_E0(1)  , &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    nSpecies, &
+                    iZ_B0(4)  :iZ_E0(4)  )
 
     ! --- X3 Increment ---
 
@@ -2434,44 +2228,6 @@ CONTAINS
 
       END DO
 
-      ! --- Energy and Momentum Fluxes for Conservation Tally ---
-
-      ! --- Energy ---
-
-      NumericalFlux2(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ4,iS,iZ4) &
-                + uV1_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
-                + uV2_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X3,iCR_G2,iZ1,iZ2,iZ3,iS,iZ4) &
-                + uV3_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X3,iCR_G3,iZ1,iZ2,iZ3,iS,iZ4) )
-
-      ! --- Momentum 1 ---
-
-      NumericalFlux2(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
-                + Gm_dd_11_F(iX_F) * uV1_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) )
-
-      ! --- Momentum 2 ---
-
-      NumericalFlux2(iNodeZ_X3,iCR_G2,iZ1,iZ2,iZ3,iS,iZ4) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X3,iCR_G2,iZ1,iZ2,iZ3,iS,iZ4) &
-                + Gm_dd_22_F(iX_F) * uV2_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) )
-
-      ! --- Momentum 3 ---
-
-      NumericalFlux2(iNodeZ_X3,iCR_G3,iZ1,iZ2,iZ3,iS,iZ4) &
-        = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X3,iCR_G3,iZ1,iZ2,iZ3,iS,iZ4) &
-                + Gm_dd_33_F(iX_F) * uV3_F(iX_F) &
-                    * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) )
-
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux )
@@ -2495,58 +2251,6 @@ CONTAINS
              nDOF_X3, One,  dU_X3, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    ! --- Off-Grid Fluxes for Conservation Tally ---
-
-    DO iS  = 1       , nSpecies
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X3 = 1, nDOF_X3
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X3 = 1, nDOF_X3
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     !--------------------
     ! --- Volume Term ---
@@ -2805,26 +2509,19 @@ CONTAINS
     ! --- Fluxes ---
 
     REAL(DP) :: &
-      NumericalFlux (nDOF_E,nCR, &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(1)  :iZ_E0(1)+1)
+      NumericalFlux(nDOF_E,nCR, &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(1)  :iZ_E0(1)+1)
     REAL(DP) :: &
-      NumericalFlux2(nDOF_E,nCR, &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(1)  :iZ_E0(1)+1)
-    REAL(DP) :: &
-      Flux_q        (nDOFZ,nCR, &
-                     iZ_B0(2)  :iZ_E0(2)  , &
-                     iZ_B0(3)  :iZ_E0(3)  , &
-                     iZ_B0(4)  :iZ_E0(4)  , &
-                     nSpecies, &
-                     iZ_B0(1)  :iZ_E0(1)  )
+      Flux_q       (nDOFZ,nCR, &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    nSpecies, &
+                    iZ_B0(1)  :iZ_E0(1)  )
 
     ! --- E Increment ---
 
@@ -3184,46 +2881,6 @@ CONTAINS
 
       END DO
 
-      ! --- Energy and Momentum Fluxes for Conservation Tally ---
-
-      EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )
-
-      ! --- Energy ---
-
-      NumericalFlux2(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
-        = EdgeEnergyCubed &
-            * ( NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
-                + uV1_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
-                + uV2_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
-                + uV3_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) )
-
-      ! --- Momentum 1 ---
-
-      NumericalFlux2(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
-        = EdgeEnergyCubed &
-            * ( NumericalFlux(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
-                + Gm_dd_11_K(iX_F) * uV1_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
-
-      ! --- Momentum 2 ---
-
-      NumericalFlux2(iNodeZ_E,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
-        = EdgeEnergyCubed &
-            * ( NumericalFlux(iNodeZ_E,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
-                + Gm_dd_22_K(iX_F) * uV2_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
-
-      ! --- Momentum 3 ---
-
-      NumericalFlux2(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
-        = EdgeEnergyCubed &
-            * ( NumericalFlux(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
-                + Gm_dd_33_K(iX_F) * uV3_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
-
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux )
@@ -3247,58 +2904,6 @@ CONTAINS
              nDOF_E, One,  dU_E, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    ! --- Off-Grid Fluxes for Conservation Tally ---
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_E = 1, nDOF_E
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_E = 1, nDOF_E
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     !--------------------
     ! --- Volume Term ---

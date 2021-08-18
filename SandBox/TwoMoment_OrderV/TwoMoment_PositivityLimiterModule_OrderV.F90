@@ -2,7 +2,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, &
-    SqrtTiny, FourPi
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nNodesZ, &
     nDOFE, nNodesE, &
@@ -38,12 +38,11 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE GeometryFieldsModuleE, ONLY: &
-    nGE, iGE_Ep2, iGE_Ep3
+    nGE, iGE_Ep2
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    nGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3
+    nCF
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -69,14 +68,6 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   REAL(DP),   PARAMETER :: One_EPS = One - 1.0d1 * EPSILON( One )
   REAL(DP), ALLOCATABLE :: InterpMat_Z(:,:)
   REAL(DP), ALLOCATABLE :: InterpMat_X(:,:)
-
-  REAL(DP), PUBLIC :: dEnergyMomentum_PL_TwoMoment(nCR)
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( Min_1, Max_1, Min_2 )
-#elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( Min_1, Max_1, Min_2 )
-#endif
 
 CONTAINS
 
@@ -131,7 +122,7 @@ CONTAINS
       WRITE(*,'(A)') '  --------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)') &
-        '', 'Use Positivity Limiter: ', UsePositivityLimiter
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter 
       WRITE(*,*)
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Min_1: ', Min_1
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Max_1: ', Max_1
@@ -278,7 +269,7 @@ CONTAINS
     DO iNodeX1 = 1, nNodesX(1)
 
       iP_X = iP_X + 1
-
+    
       DO iNodeE  = 1, nNodesE
 
         iP_Z = iP_Z + 1
@@ -318,7 +309,7 @@ CONTAINS
       DO iNodeX3 = 1, nNodesX(3)
       DO iNodeX2 = 1, nNodesX(2)
       DO iNodeX1 = 1, nNodesX(1)
-
+      
         iP_Z = iP_Z + 1
         iP_X = iP_X + 1
 
@@ -519,14 +510,6 @@ CONTAINS
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP) :: EnergyMomentum(nCR,0:1)
-    LOGICAL  :: &
-      RealizableCellAverage &
-        (iZ_B0(1):iZ_E0(1), &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies)
     LOGICAL  :: &
       RecomputePointValues &
         (iZ_B0(1):iZ_E0(1), &
@@ -643,9 +626,6 @@ CONTAINS
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
     CALL TimersStart( Timer_PL )
-
-    CALL ComputeEnergyMomentum &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum(:,0) )
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -766,10 +746,6 @@ CONTAINS
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G2_Q, G2_K )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G3_Q, G3_K )
 
-    CALL CheckCellAverageRealizability &
-           ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
-             h_d_1_P, h_d_2_P, h_d_3_P, RealizableCellAverage )
-
     ! --- Ensure Bounded Density ---
 
     CALL TimersStart( Timer_PL_Theta_1 )
@@ -788,36 +764,32 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      IF( RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
+      Min_K = Min_1
+      Max_K = Max_1
 
-        Min_K = Min_1
-        Max_K = Max_1
+      DO iP_Z = 1, nPT_Z
 
-        DO iP_Z = 1, nPT_Z
+        Min_K = MIN( Min_K, N_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
+        Max_K = MAX( Max_K, N_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
 
-          Min_K = MIN( Min_K, N_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
-          Max_K = MAX( Max_K, N_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
+      END DO
 
-        END DO
+      IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
 
-        IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
-
-          Theta_1 &
-            = MIN( One, &
-                   ABS( ( Min_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
+        Theta_1 &
+          = MIN( One, &
+                 ABS( ( Min_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
                       / ( Min_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ), &
-                   ABS( ( Max_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
+                 ABS( ( Max_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
                       / ( Max_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ) )
 
-          Theta_1 = One_EPS * Theta_1
+        Theta_1 = One_EPS * Theta_1
 
-          N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+        N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
-          RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
-
-        END IF
+        RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
       END IF
 
@@ -854,72 +826,68 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      IF( RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
+      Theta_2   = One
+      Gamma_Min = Min_2
 
-        Theta_2   = One
-        Gamma_Min = Min_2
+      DO iP_Z = 1, nPT_Z
 
-        DO iP_Z = 1, nPT_Z
+        iP_X = PointZ2X(iP_Z)
 
-          iP_X = PointZ2X(iP_Z)
+        Gm_dd_11 = MAX( h_d_1_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
+        Gm_dd_22 = MAX( h_d_2_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
+        Gm_dd_33 = MAX( h_d_3_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
 
-          Gm_dd_11 = MAX( h_d_1_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-          Gm_dd_22 = MAX( h_d_2_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-          Gm_dd_33 = MAX( h_d_3_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
+        Gamma &
+          = GammaFun &
+              ( N_P (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                G1_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                G2_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                G3_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-          Gamma &
-            = GammaFun &
-                ( N_P (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                  G1_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                  G2_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                  G3_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+        Gamma_Min = MIN( Gamma, Gamma_Min )
 
-          Gamma_Min = MIN( Gamma, Gamma_Min )
+        IF( Gamma < Min_2 )THEN
 
-          IF( Gamma < Min_2 )THEN
+          CALL SolveTheta_Bisection &
+                 ( N_P (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
+                   N_K (     iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_K(     iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_K(     iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_K(     iZ1,iZ2,iZ3,iZ4,iS), &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33 , &
+                   Theta_P )
 
-            CALL SolveTheta_Bisection &
-                   ( N_P (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                     G1_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                     G2_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                     G3_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                     N_K (     iZ1,iZ2,iZ3,iZ4,iS), &
-                     G1_K(     iZ1,iZ2,iZ3,iZ4,iS), &
-                     G2_K(     iZ1,iZ2,iZ3,iZ4,iS), &
-                     G3_K(     iZ1,iZ2,iZ3,iZ4,iS), &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33 , &
-                     Theta_P )
-
-            Theta_2 = MIN( Theta_2, Theta_P )
-
-          END IF
-
-        END DO
-
-        IF( Gamma_Min < Min_2 )THEN
-
-          ! --- Limit Towards Cell Average ---
-
-          Theta_2 = One_EPS * Theta_2
-
-          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
-
-          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+          Theta_2 = MIN( Theta_2, Theta_P )
 
         END IF
+
+      END DO
+
+      IF( Gamma_Min < Min_2 )THEN
+
+        ! --- Limit Towards Cell Average ---
+
+        Theta_2 = One_EPS * Theta_2
+
+        N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
+
+        G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
 
       END IF
 
@@ -930,14 +898,6 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_PL_Theta_2 )
-
-    IF( .NOT. ALL( RealizableCellAverage ) )THEN
-
-      CALL RecoverRealizableCellAverage &
-             ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
-               h_d_1_P, h_d_2_P, h_d_3_P, RealizableCellAverage )
-
-    END IF
 
     CALL TimersStart( Timer_PL_Permute )
 
@@ -966,11 +926,6 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_PL_Permute )
-
-    CALL ComputeEnergyMomentum &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum(:,1) )
-
-    dEnergyMomentum_PL_TwoMoment = EnergyMomentum(:,1) - EnergyMomentum(:,0)
 
     CALL TimersStop( Timer_PL )
 
@@ -1080,249 +1035,6 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage
 
 
-  SUBROUTINE CheckCellAverageRealizability &
-    ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, h_d_1, h_d_2, h_d_3, &
-      RealizableCellAverage )
-
-    INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4)
-    REAL(DP), INTENT(in) :: &
-      N_K (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in) :: &
-      G1_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in) :: &
-      G2_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in) :: &
-      G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in) :: &
-      h_d_1(nPT_X, &
-            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(in) :: &
-      h_d_2(nPT_X, &
-            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(in) :: &
-      h_d_3(nPT_X, &
-            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    LOGICAL, INTENT(out) :: &
-      RealizableCellAverage &
-          (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_X
-    REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_K
-
-    ! --- Check for Negative Density ---
-
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
-
-      IF( N_K(iZ1,iZ2,iZ3,iZ4,iS) < Min_1 )THEN
-
-!!$        PRINT*
-!!$        PRINT*, "  N_K < Min_1"
-!!$        PRINT*
-!!$        PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
-!!$        PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
-!!$        PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-!!$        PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-!!$        PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
-!!$        PRINT*
-
-        RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Check for Negative "Gamma" ---
-
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      DO iP_X = 1, nPT_X
-
-        Gm_dd_11 = MAX( h_d_1(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-        Gm_dd_22 = MAX( h_d_2(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-        Gm_dd_33 = MAX( h_d_3(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-
-        Gamma_K &
-          = GammaFun &
-              ( N_K (iZ1,iZ2,iZ3,iZ4,iS), &
-                G1_K(iZ1,iZ2,iZ3,iZ4,iS), &
-                G2_K(iZ1,iZ2,iZ3,iZ4,iS), &
-                G3_K(iZ1,iZ2,iZ3,iZ4,iS), &
-                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        IF(  Gamma_K < Min_2 )THEN
-
-!!$          PRINT*
-!!$          PRINT*, "  Gamma_K < Min_2"
-!!$          PRINT*
-!!$          PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
-!!$          PRINT*, "  Gamma_K            = ", Gamma_K
-!!$          PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
-!!$          PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-!!$          PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-!!$          PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
-!!$          PRINT*
-
-          RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
-
-        END IF
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE CheckCellAverageRealizability
-
-
-  SUBROUTINE RecoverRealizableCellAverage &
-    ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
-      h_d_1, h_d_2, h_d_3, RealizableCellAverage )
-
-    INTEGER,  INTENT(in)    :: &
-      iZ_B0(4), iZ_E0(4)
-    REAL(DP), INTENT(in)    :: &
-      N_K (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in)    :: &
-      G1_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in)    :: &
-      G2_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in)    :: &
-      G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(inout) :: &
-      N_Q (nDOFZ, &
-           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(inout) :: &
-      G1_Q(nDOFZ, &
-           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(inout) :: &
-      G2_Q(nDOFZ, &
-           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(inout) :: &
-      G3_Q(nDOFZ, &
-           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP), INTENT(in) :: &
-      h_d_1(nPT_X, &
-            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(in) :: &
-      h_d_2(nPT_X, &
-            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(in) :: &
-      h_d_3(nPT_X, &
-            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    LOGICAL,  INTENT(in) :: &
-      RealizableCellAverage &
-          (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_X
-    REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, absG_K
-
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      IF( .NOT. RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
-
-        IF( N_K(iZ1,iZ2,iZ3,iZ4,iS) < Min_1 )THEN
-
-          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) = 1.1_DP * Min_1
-          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = Zero
-          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = Zero
-          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = Zero
-
-        ELSE
-
-          absG_K = Zero
-          DO iP_X = 1, nPT_X
-
-            Gm_dd_11 = MAX( h_d_1(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-            Gm_dd_22 = MAX( h_d_2(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-            Gm_dd_33 = MAX( h_d_3(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
-
-            absG_K &
-              = MAX( absG_K,   G1_K(iZ1,iZ2,iZ3,iZ4,iS)**2 / Gm_dd_11 &
-                             + G2_K(iZ1,iZ2,iZ3,iZ4,iS)**2 / Gm_dd_22 &
-                             + G3_K(iZ1,iZ2,iZ3,iZ4,iS)**2 / Gm_dd_33 )
-
-          END DO
-
-          absG_K = MAX( SQRT( absG_K ), SqrtTiny )
-
-          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = N_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = ( G1_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
-                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = ( G2_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
-                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = ( G3_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
-                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-        END IF
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE RecoverRealizableCellAverage
-
-
   REAL(DP) FUNCTION GammaFun( N, G1, G2, G3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if defined(THORNADO_OMP_OL)
@@ -1413,174 +1125,6 @@ CONTAINS
     END IF
 
   END SUBROUTINE SolveTheta_Bisection
-
-
-  SUBROUTINE ComputeEnergyMomentum &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum )
-
-    USE UnitsModule, ONLY: &
-      UnitsActive, &
-      PlanckConstant, &
-      SpeedOfLight
-    USE MeshModule, ONLY: &
-      MeshE, MeshX
-    
-
-    INTEGER,  INTENT(in)    :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)    :: &
-      GE (1:nDOFE, &
-          iZ_B1(1):iZ_E1(1), &
-          1:nGE)
-    REAL(DP), INTENT(in)    :: &
-      GX (1:nDOFX, &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4), &
-          1:nGF)
-    REAL(DP), INTENT(in) :: &
-      U_F(1:nDOFX, &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4), &
-          1:nCF)
-    REAL(DP), INTENT(in) :: &
-      U_R(1:nDOFZ, &
-          iZ_B1(1):iZ_E1(1), &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4), &
-          1:nCR, &
-          1:nSpecies)
-    REAL(DP), INTENT(out) :: &
-      EnergyMomentum(nCR)
-
-    REAL(DP), PARAMETER :: hc3 = ( PlanckConstant * SpeedOfLight )**3
-
-    INTEGER  :: iNodeE, iNodeX, iNodeZ
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: &
-      V_d_1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      V_d_2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      V_d_3(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      V_u_1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      V_u_2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      V_u_3(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX
-
-        V_d_1(iNodeX,iZ2,iZ3,iZ4) &
-          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S1) / U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D)
-
-        V_d_2(iNodeX,iZ2,iZ3,iZ4) &
-          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S2) / U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D)
-
-        V_d_3(iNodeX,iZ2,iZ3,iZ4) &
-          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3) / U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D)
-
-        V_u_1(iNodeX,iZ2,iZ3,iZ4) &
-          = V_d_1(iNodeX,iZ2,iZ3,iZ4) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
-
-        V_u_2(iNodeX,iZ2,iZ3,iZ4) &
-          = V_d_2(iNodeX,iZ2,iZ3,iZ4) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
-
-        V_u_3(iNodeX,iZ2,iZ3,iZ4) &
-          = V_d_3(iNodeX,iZ2,iZ3,iZ4) / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-    ASSOCIATE &
-      ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
-        dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
-
-    EnergyMomentum = Zero
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        EnergyMomentum(iCR_N) &
-          = EnergyMomentum(iCR_N) &
-              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-                * Weights_q(iNodeZ) &
-                * GE(iNodeE,iZ1,iGE_Ep3) &
-                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
-                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) &
-                      + V_u_1(iNodeX,iZ2,iZ3,iZ4) &
-                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G1,iS) &
-                      + V_u_2(iNodeX,iZ2,iZ3,iZ4) &
-                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G2,iS) &
-                      + V_u_3(iNodeX,iZ2,iZ3,iZ4) &
-                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G3,iS) )
-
-        EnergyMomentum(iCR_G1) &
-          = EnergyMomentum(iCR_G1) &
-              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-                * Weights_q(iNodeZ) &
-                * GE(iNodeE,iZ1,iGE_Ep3) &
-                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
-                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
-                      + V_d_1(iNodeX,iZ2,iZ3,iZ4) &
-                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_N,iS) )
-
-        EnergyMomentum(iCR_G2) &
-          = EnergyMomentum(iCR_G2) &
-              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-                * Weights_q(iNodeZ) &
-                * GE(iNodeE,iZ1,iGE_Ep3) &
-                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
-                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
-                      + V_d_2(iNodeX,iZ2,iZ3,iZ4) &
-                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_N,iS) )
-
-        EnergyMomentum(iCR_G3) &
-          = EnergyMomentum(iCR_G3) &
-              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-                * Weights_q(iNodeZ) &
-                * GE(iNodeE,iZ1,iGE_Ep3) &
-                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
-                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) &
-                      + V_d_3(iNodeX,iZ2,iZ3,iZ4) &
-                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_N,iS) )
-
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE
-
-    IF( UnitsActive )THEN
-
-      EnergyMomentum = FourPi * EnergyMomentum / hc3
-
-    ELSE
-
-      EnergyMomentum = FourPi * EnergyMomentum
-
-    END IF
-
-  END SUBROUTINE ComputeEnergyMomentum
 
 
 END MODULE TwoMoment_PositivityLimiterModule_OrderV
