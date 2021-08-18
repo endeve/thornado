@@ -15,7 +15,7 @@ thornado.t_end       = 1.0e1
 thornado.iCycleD     = 1
 thornado.CFL         = 0.5
 thornado.iCycleW     = 10
-thornado.iCycleChk   = 10
+thornado.iCycleChk   = 100000
 
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 

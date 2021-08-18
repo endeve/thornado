@@ -46,6 +46,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     CFL, &
     nNodes, &
     nStages
+  USE FillPatchModule, ONLY: &
+    FillPatch_uCF
   USE MF_FieldsModule, ONLY: &
     MF_uGF_new, &
     MF_OffGridFlux_Euler
@@ -76,13 +78,16 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE Increment_Euler_MF &
-      ( MF_uGF, MF_U, MF_uDF, MF_duCF )
+      ( Time, MF_uGF, MF_U, MF_uDF, MF_duCF )
+      USE MF_KindModule, ONLY: &
+        DP
       USE amrex_amrcore_module, ONLY: &
         amrex_max_level
       USE amrex_multifab_module, ONLY: &
         amrex_multifab
-      TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:amrex_max_level)
-      TYPE(amrex_multifab), INTENT(inout)    :: MF_U   (0:amrex_max_level)
+      REAL(DP),             INTENT(in)    :: Time   (0:amrex_max_level)
+      TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:amrex_max_level)
+      TYPE(amrex_multifab), INTENT(inout) :: MF_U   (0:amrex_max_level)
       TYPE(amrex_multifab), INTENT(in)    :: MF_uDF (0:amrex_max_level)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:amrex_max_level)
     END SUBROUTINE Increment_Euler_MF
@@ -224,6 +229,8 @@ CONTAINS
 
         CALL MF_U(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 
+        CALL FillPatch_uCF( iLevel, t(iLevel), MF_U(iLevel) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
         ! --- Copy ghost data from physical boundaries ---
@@ -263,7 +270,7 @@ CONTAINS
 
 !        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U, MF_uDF )
 
-        CALL MF_ComputeIncrement_Euler( MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
+        CALL MF_ComputeIncrement_Euler( t, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
 !        DO iLevel = 0, amrex_max_level
 !

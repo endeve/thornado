@@ -298,7 +298,7 @@ CONTAINS
 
   SUBROUTINE MakeNewLevelFromCoarse( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillCoarsePatch
+    USE FillPatchModule, ONLY: FillCoarsePatch_uCF, FillCoarsePatch_uGF
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -307,6 +307,9 @@ CONTAINS
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
     INTEGER :: nCompCF
+
+print*,'Hello and goodbye from MakeNewLevelFromCoarse'
+RETURN
 
     BA = pBA
     DM = pDM
@@ -338,8 +341,8 @@ CONTAINS
              ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nCompCF )
 
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF_new(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uCF_new(iLevel) )
+    CALL FillCoarsePatch_uGF( iLevel, Time, MF_uGF_new(iLevel) )
+    CALL FillCoarsePatch_uCF( iLevel, Time, MF_uCF_new(iLevel) )
     CALL FillCoarsePatch( iLevel, Time, MF_uPF_new(iLevel) )
     CALL FillCoarsePatch( iLevel, Time, MF_uAF_new(iLevel) )
     CALL FillCoarsePatch( iLevel, Time, MF_uDF_new(iLevel) )
@@ -373,7 +376,7 @@ CONTAINS
 
   SUBROUTINE RemakeLevel( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillPatch
+    USE FillPatchModule, ONLY: FillPatch_uCF, FillPatch_uGF
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -389,22 +392,25 @@ CONTAINS
 
     INTEGER :: nCompGF, nCompCF, nCompPF, nCompAF, nCompDF
 
+print*,'Hello and goodbye from RemakeLevel'
+RETURN
+
     BA = pBA
     DM = pDM
 
-    CALL amrex_multifab_build( new_MF_uGF_new, BA, DM, nDOFX * nGF, 0 )
-    CALL FillPatch( iLevel, Time, new_MF_uGF_new )
+    CALL amrex_multifab_build( new_MF_uGF_new, BA, DM, nDOFX * nGF, swX )
+    CALL FillPatch_uGF( iLevel, Time, new_MF_uGF_new )
 
-    CALL amrex_multifab_build( new_MF_uCF_new, BA, DM, nDOFX * nCF, 0 )
-    CALL FillPatch( iLevel, Time, new_MF_uCF_new )
+    CALL amrex_multifab_build( new_MF_uCF_new, BA, DM, nDOFX * nCF, swX )
+    CALL FillPatch_uCF( iLevel, Time, new_MF_uCF_new )
 
-    CALL amrex_multifab_build( new_MF_uPF_new, BA, DM, nDOFX * nPF, 0 )
+    CALL amrex_multifab_build( new_MF_uPF_new, BA, DM, nDOFX * nPF, swX )
     CALL FillPatch( iLevel, Time, new_MF_uPF_new )
 
-    CALL amrex_multifab_build( new_MF_uAF_new, BA, DM, nDOFX * nAF, 0 )
+    CALL amrex_multifab_build( new_MF_uAF_new, BA, DM, nDOFX * nAF, swX )
     CALL FillPatch( iLevel, Time, new_MF_uAF_new )
 
-    CALL amrex_multifab_build( new_MF_uDF_new, BA, DM, nDOFX * nDF, 0 )
+    CALL amrex_multifab_build( new_MF_uDF_new, BA, DM, nDOFX * nDF, swX )
     CALL FillPatch( iLevel, Time, new_MF_uDF_new )
 
     CALL ClearLevel( iLevel )
@@ -437,11 +443,11 @@ CONTAINS
               ( FluxRegister(iLevel), BA, DM, &
                 amrex_ref_ratio(iLevel-1), iLevel, nCompCF )
 
-    CALL MF_uGF_new( iLevel ) % Copy( new_MF_uGF_new, 1, 1, nCompGF, 0 )
-    CALL MF_uCF_new( iLevel ) % Copy( new_MF_uCF_new, 1, 1, nCompCF, 0 )
-    CALL MF_uPF_new( iLevel ) % Copy( new_MF_uPF_new, 1, 1, nCompPF, 0 )
-    CALL MF_uAF_new( iLevel ) % Copy( new_MF_uAF_new, 1, 1, nCompAF, 0 )
-    CALL MF_uDF_new( iLevel ) % Copy( new_MF_uDF_new, 1, 1, nCompDF, 0 )
+    CALL MF_uGF_new( iLevel ) % Copy( new_MF_uGF_new, 1, 1, nCompGF, swX )
+    CALL MF_uCF_new( iLevel ) % Copy( new_MF_uCF_new, 1, 1, nCompCF, swX )
+    CALL MF_uPF_new( iLevel ) % Copy( new_MF_uPF_new, 1, 1, nCompPF, swX )
+    CALL MF_uAF_new( iLevel ) % Copy( new_MF_uAF_new, 1, 1, nCompAF, swX )
+    CALL MF_uDF_new( iLevel ) % Copy( new_MF_uDF_new, 1, 1, nCompDF, swX )
 
     CALL amrex_multifab_destroy( new_MF_uDF_new )
     CALL amrex_multifab_destroy( new_MF_uAF_new )

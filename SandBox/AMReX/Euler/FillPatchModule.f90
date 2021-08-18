@@ -29,14 +29,90 @@ MODULE FillPatchModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: FillPatch
-  PUBLIC :: FillCoarsePatch
+  PUBLIC :: FillPatch_uCF, FillCoarsePatch_uCF
+  PUBLIC :: FillPatch_uGF, FillCoarsePatch_uGF
 
 
 CONTAINS
 
 
-  SUBROUTINE FillPatch( iLevel, Time, MF_uCF )
+  SUBROUTINE FillPatch_uGF( iLevel, Time, MF_uGF )
+
+    USE MF_FieldsModule, ONLY: &
+      MF_uGF_old, &
+      MF_uGF_new
+    USE InputParsingModule, ONLY: &
+      t_old, &
+      t_new
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
+
+    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+    INTEGER :: nCompGF
+
+    nCompGF = MF_uGF_old(iLevel) % nComp()
+
+    IF( iLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch( MF_uGF, t_old (iLevel), MF_uGF_old(iLevel), &
+                                    t_new (iLevel), MF_uGF_new(iLevel), &
+                            amrex_geom(iLevel), FillPhysicalBC, &
+                            Time, sComp, dComp, nCompGF )
+
+    ELSE
+
+      CALL amrex_fillpatch( MF_uGF, t_old (iLevel-1), MF_uGF_old(iLevel-1), &
+                                    t_new (iLevel-1), MF_uGF_new(iLevel-1), &
+                            amrex_geom(iLevel-1), FillPhysicalBC, &
+                                    t_old (iLevel  ), MF_uGF_old(iLevel  ), &
+                                    t_new (iLevel  ), MF_uGF_new(iLevel  ), &
+                            amrex_geom(iLevel  ), FillPhysicalBC, &
+                            Time, sComp, dComp, nCompGF, &
+                            amrex_ref_ratio(iLevel-1), amrex_interp_dg, &
+                            lo_bc, hi_bc )
+
+    END IF
+
+  END SUBROUTINE FillPatch_uGF
+
+
+  SUBROUTINE FillCoarsePatch_uGF( iLevel, Time, MF_uGF )
+
+    USE MF_FieldsModule, ONLY: &
+      MF_uGF_old, &
+      MF_uGF_new
+    USE InputParsingModule, ONLY: &
+      t_old, &
+      t_new
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
+
+    INTEGER :: nCompGF
+
+    nCompGF = MF_uGF % nComp()
+
+    CALL amrex_fillcoarsepatch &
+           ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                     t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+             amrex_geom(iLevel-1), FillPhysicalBC, &
+             amrex_geom(iLevel  ), FillPhysicalBC, &
+             Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
+             amrex_interp_dg, lo_bc, hi_bc )
+
+  END SUBROUTINE FillCoarsePatch_uGF
+
+
+  SUBROUTINE FillPatch_uCF( iLevel, Time, MF_uCF )
 
     USE MF_FieldsModule, ONLY: &
       MF_uCF_old, &
@@ -69,8 +145,8 @@ CONTAINS
       CALL amrex_fillpatch( MF_uCF, t_old (iLevel-1), MF_uCF_old(iLevel-1), &
                                     t_new (iLevel-1), MF_uCF_new(iLevel-1), &
                             amrex_geom(iLevel-1), FillPhysicalBC, &
-                                t_old (iLevel  ), MF_uCF_old(iLevel  ), &
-                                t_new (iLevel  ), MF_uCF_new(iLevel  ), &
+                                    t_old (iLevel  ), MF_uCF_old(iLevel  ), &
+                                    t_new (iLevel  ), MF_uCF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC, &
                             Time, sComp, dComp, nCompCF, &
                             amrex_ref_ratio(iLevel-1), amrex_interp_dg, &
@@ -78,10 +154,10 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FillPatch
+  END SUBROUTINE FillPatch_uCF
 
 
-  SUBROUTINE FillCoarsePatch( iLevel, Time, MF_uCF )
+  SUBROUTINE FillCoarsePatch_uCF( iLevel, Time, MF_uCF )
 
     USE MF_FieldsModule, ONLY: &
       MF_uCF_old, &
@@ -109,7 +185,7 @@ CONTAINS
              Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
              amrex_interp_dg, lo_bc, hi_bc )
 
-  END SUBROUTINE FillCoarsePatch
+  END SUBROUTINE FillCoarsePatch_uCF
 
 
   SUBROUTINE FillPhysicalBC( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
