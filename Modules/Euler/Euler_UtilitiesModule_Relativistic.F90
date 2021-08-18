@@ -1449,8 +1449,10 @@ CONTAINS
 
     ! --- Eq. C23 ---
 
-    za = Half * k / SQRT( One - Fourth * k**2 ) - SqrtTiny
-    zb = k        / SQRT( One - k**2 ) + SqrtTiny
+    za = SQRT( One - Fourth * k**2 )
+    zb = SQRT( One - k**2 )
+    za = Half * k / za - SqrtTiny
+    zb = k        / zb + SqrtTiny
 
     ! --- Compute FunZ for upper and lower bounds ---
 
