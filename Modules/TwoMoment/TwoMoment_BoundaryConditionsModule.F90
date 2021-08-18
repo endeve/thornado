@@ -1,8 +1,7 @@
 MODULE TwoMoment_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, &
-    SqrtTiny
+    DP, sqrttiny
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, nE, &
     nNodesZ, nDOF, nDOFE, nDOFX
@@ -95,28 +94,13 @@ CONTAINS
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
         1:nCR,1:nSpecies)
-
     INTEGER, PARAMETER :: nE_LeastSquares = 5
-    INTEGER  :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
-    REAL(DP) :: E_K(2), E_R
-    REAL(DP) :: &
-      N_K(2, &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nSpecies), &
-      a_K(iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nSpecies), &
-      b_K(iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nSpecies)
     REAL(DP) :: L_lnN( nE_LeastSquares, nDOFE, nDOFX)
     REAL(DP) :: L_N( nE_LeastSquares, nDOFE, nDOFX)
     REAL(DP) :: N(nE_LeastSquares, nDOFE), lnN(nE_LeastSquares, nDOFE)
-    REAL(DP) :: E(nE_LeastSquares, nDOFE), A_T(nDOFX), B_T(nDOFX)
+    REAL(DP) :: E(nE_LeastSquares, nDOFE), E_R, A_T(nDOFX), B_T(nDOFX)
+    INTEGER :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
+
     
     SELECT CASE ( bcZ(1) )
 
@@ -200,57 +184,6 @@ CONTAINS
 
     CASE ( 10 ) ! Custom
 
-      ! --- Compute Cell Averaged Density in Last Two Elements ---
-
-      DO iS  = 1, nSpecies
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-      DO iZ2 = iZ_B0(2), iZ_E0(2)
-      DO iZ1 = 1, 2
-
-        N_K(iZ1,iZ2,iZ3,iZ4,iS) = Zero
-
-        DO iNodeZ = 1, nDOF
-
-          N_K(iZ1,iZ2,iZ3,iZ4,iS) &
-            = N_K(iZ1,iZ2,iZ3,iZ4,iS) &
-                + Weights_q(iNodeZ) &
-                    * U(iNodeZ,iZ_E0(1)-(2-iZ1),iZ2,iZ3,iZ4,iCR_N,iS)
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      ! --- Compute Exponential Extrapolation Coefficients ---
-
-      E_K = MeshE % Center(iZ_E0(1)-1:iZ_E0(1))
-
-      DO iS  = 1, nSpecies
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-      DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-        a_K(iZ2,iZ3,iZ4,iS) &
-          = ( E_K(1) * LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) &
-                - E_K(2) * LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) ) &
-            / ( E_K(2) - E_K(1) )
-
-        b_K(iZ2,iZ3,iZ4,iS) &
-          = ( LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) &
-                - LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) ) &
-            / ( E_K(2) - E_K(1) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-      E_R = MeshE % Center(iZ_E0(1)) + Half * MeshE % Width(iZ_E0(1))
-
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
@@ -275,55 +208,8 @@ CONTAINS
 
           ! --- Outer Boundary ---
 
-          IF( iCR == iCR_N )THEN
-
-            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-              = One / ( EXP(   a_K(iZ2,iZ3,iZ4,iS) &
-                             + b_K(iZ2,iZ3,iZ4,iS) * E_R ) + One )
-
-          ELSE
-
-            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-              = Zero
-
-          END IF
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    CASE ( 11 ) ! Custom
-
-      DO iS  = 1, nSpecies
-      DO iCR = 1, nCR
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-      DO iZ2 = iZ_B0(2), iZ_E0(2)
-      DO iZ1 = 1, swZ(1)
-
-        DO iNodeZ = 1, nDOF
-
-          ! --- Inner Boundary ---
-
-          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
-
-          ! --- Outer Boundary ---
-
-          IF( iCR == iCR_N )THEN
-
-            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = SqrtTiny
-
-          ELSE
-
-            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
-
-          END IF
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
 
         END DO
 

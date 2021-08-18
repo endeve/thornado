@@ -1,17 +1,11 @@
 MODULE TwoMoment_UtilitiesModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, Three, Five, &
-    SqrtTiny
+    DP, Zero, Half, One, Two, Three, Five
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
-  USE MeshModule, ONLY: &
-    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_h_1, &
-    iGF_h_2, &
-    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
@@ -45,23 +39,22 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: FinalizeComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment_Scalar
+  PUBLIC :: ComputePrimitive_TwoMoment_Vector
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
-  PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Flux_E
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
   PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_dd
-  PUBLIC :: EddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: ComputeHeatFluxTensorComponents_udd
   PUBLIC :: NumericalFlux_LLF
 
   INTERFACE ComputePrimitive_TwoMoment
     MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar
-    MODULE PROCEDURE ComputePrimitive_TwoMoment_Vector_Richardson
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Vector
   END INTERFACE ComputePrimitive_TwoMoment
 
 CONTAINS
@@ -312,8 +305,7 @@ CONTAINS
           I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
           I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
 
-          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) &
-                        <= Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+          CONVERGED = ALL( ABS( FVECm(:,iZ) ) <= Rtol * ABS( CVEC(:,iZ) ) )
 
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
@@ -381,295 +373,6 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector
 
 
-  SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson &
-    ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ, nIterations_Option )
-
-    REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
-    REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
-    REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
-    INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
-
-    ! --- Parameters ---
-
-    INTEGER,  PARAMETER :: M = 2
-    INTEGER,  PARAMETER :: MaxIterations = 100
-    REAL(DP), PARAMETER :: Rtol = 1.0d-08
-
-    ! --- Local Variables ---
-
-    INTEGER  :: nZ
-    INTEGER  :: iX, iZ
-    INTEGER  :: k, Mk, iM, i, j
-
-    REAL(DP) :: FTMP(4,M), GTMP(4,M)
-    REAL(DP) :: SUM1, k_dd(3,3)
-    REAL(DP) :: vMag, Omega, vI, vK
-    LOGICAL  :: CONVERGED
-
-    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
-    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
-    LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
-    INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
-
-    nZ = SIZE( N, 1 )
-
-    CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
-
-    ALLOCATE( FVEC(4,M,nZ) )
-    ALLOCATE( GVEC(4,M,nZ) )
-
-    ALLOCATE( CVEC (4,nZ) )
-    ALLOCATE( UVEC (4,nZ) )
-    ALLOCATE( FVECm(4,nZ) )
-    ALLOCATE( GVECm(4,nZ) )
-    ALLOCATE( Alpha(M,nZ) )
-
-    ALLOCATE( ITERATE(nZ) )
-    ALLOCATE( nIterations(nZ) )
-
-    ITERATE = .TRUE.
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: ITERATE ) &
-    !$OMP MAP( alloc: FVEC, GVEC, CVEC, UVEC, &
-    !$OMP             FVECm, GVECm, Alpha, nIterations )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA ASYNC &
-    !$ACC COPYIN( ITERATE ) &
-    !$ACC CREATE( FVEC, GVEC, CVEC, UVEC, &
-    !$ACC         FVECm, GVECm, Alpha, nIterations )
-#endif
-
-    ! --- Initial Guess ---
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-    !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3, &
-    !$ACC          D, I_u_1, I_u_2, I_u_3 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-    DO iZ = 1, nZ
-      CVEC(iCR_N ,iZ) = N    (iZ)
-      CVEC(iCR_G1,iZ) = G_d_1(iZ)
-      CVEC(iCR_G2,iZ) = G_d_2(iZ)
-      CVEC(iCR_G3,iZ) = G_d_3(iZ)
-
-      D    (iZ) = N(iZ)
-      I_u_1(iZ) = Zero
-      I_u_2(iZ) = Zero
-      I_u_3(iZ) = Zero
-    END DO
-
-    CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
-
-    k = 0
-    DO WHILE( ANY( ITERATE ) .AND. k < MaxIterations )
-
-      k = k + 1
-      Mk = MIN( M, k )
-
-      CALL TimersStart( Timer_Streaming_NumericalFlux_RHS )
-
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
-#elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-      !$ACC PRIVATE( iX, k_dd, vMag, Omega, vI, vK ) &
-      !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
-      !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
-      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
-#endif
-      DO iZ = 1, nZ
-        IF ( ITERATE(iZ) ) THEN
-
-          iX = PositionIndexZ(iZ)
-
-          UVEC(iPR_D ,iZ) = D    (iZ)
-          UVEC(iPR_I1,iZ) = I_u_1(iZ) * Gm_dd_11(iX)
-          UVEC(iPR_I2,iZ) = I_u_2(iZ) * Gm_dd_22(iX)
-          UVEC(iPR_I3,iZ) = I_u_3(iZ) * Gm_dd_33(iX)
-
-          k_dd = EddingtonTensorComponents_dd &
-                   ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
-                     Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) )
-
-          vMag = SQRT(   V_u_1(iX) * Gm_dd_11(iX) * V_u_1(iX) &
-                       + V_u_2(iX) * Gm_dd_22(iX) * V_u_2(iX) &
-                       + V_u_3(iX) * Gm_dd_33(iX) * V_u_3(iX) )
-
-          Omega = One / ( One + vMag )
-
-          vI =   V_u_1(iX) * UVEC(iPR_I1,iZ) &
-               + V_u_2(iX) * UVEC(iPR_I2,iZ) &
-               + V_u_3(iX) * UVEC(iPR_I3,iZ)
-
-          GVECm(1,iZ) = (One - Omega) * UVEC(iPR_D,iZ) &
-                        + Omega * ( CVEC(iCR_N,iZ) - vI )
-
-          DO j = 1, 3
-
-            vK =   V_u_1(iX) * k_dd(j,1) &
-                 + V_u_2(iX) * k_dd(j,2) &
-                 + V_u_3(iX) * k_dd(j,3)
-
-            GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
-                            + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
-
-          END DO
-
-          DO i = 1, 4
-
-            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
-
-            GVEC(i,Mk,iZ) = GVECm(i,iZ)
-            FVEC(i,Mk,iZ) = FVECm(i,iZ)
-
-          END DO
-
-        END IF
-      END DO
-
-      CALL TimersStop( Timer_Streaming_NumericalFlux_RHS )
-
-      CALL TimersStart( Timer_Streaming_NumericalFlux_LS )
-
-      IF ( Mk > 1 ) THEN
-
-        CALL Alpha_LS_Vector &
-               ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
-
-#if   defined( THORNADO_OMP_OL )
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-        !$OMP PRIVATE( SUM1 )
-#elif defined( THORNADO_OACC   )
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) ASYNC &
-        !$ACC PRIVATE( SUM1 ) &
-        !$ACC PRESENT( ITERATE, GVECm, FVECm, GVEC, UVEC, Alpha )
-#elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO COLLAPSE(2) &
-        !$OMP PRIVATE( SUM1 )
-#endif
-        DO iZ = 1, nZ
-          DO i = 1, 4
-            IF ( ITERATE(iZ) ) THEN
-              SUM1 = Zero
-              DO iM = 1, Mk
-                SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
-              END DO
-              GVECm(i,iZ) = SUM1
-              FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
-            END IF
-          END DO
-        END DO
-      END IF
-
-      CALL TimersStop( Timer_Streaming_NumericalFlux_LS )
-
-      CALL TimersStart( Timer_Streaming_NumericalFlux_Update )
-
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
-#elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
-      !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
-      !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
-      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
-#endif
-      DO iZ = 1, nZ
-        IF ( ITERATE(iZ) ) THEN
-
-          iX = PositionIndexZ(iZ)
-
-          D    (iZ) = GVECm(iPR_D ,iZ)
-          I_u_1(iZ) = GVECm(iPR_I1,iZ) / Gm_dd_11(iX)
-          I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
-          I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
-
-          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
-                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
-
-          IF ( CONVERGED ) THEN
-            ITERATE(iZ) = .FALSE.
-            nIterations(iZ) = k
-          ELSE IF ( Mk == M ) THEN
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FTMP(i,j) = FVEC(i,j+1,iZ)
-                GTMP(i,j) = GVEC(i,j+1,iZ)
-              END DO
-            END DO
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FVEC(i,j,iZ) = FTMP(i,j)
-                GVEC(i,j,iZ) = GTMP(i,j)
-              END DO
-            END DO
-          END IF
-        END IF
-      END DO
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET UPDATE FROM( ITERATE )
-#elif defined( THORNADO_OACC   )
-      !$ACC UPDATE HOST( ITERATE ) ASYNC
-      !$ACC WAIT
-#endif
-
-      CALL TimersStop( Timer_Streaming_NumericalFlux_Update )
-
-    END DO
-
-    CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
-
-    IF( PRESENT( nIterations_Option ) ) THEN
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
-      !$ACC PRESENT( nIterations, nIterations_Option )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO
-#endif
-      DO iZ = 1, nZ
-        nIterations_Option(iZ) = nIterations(iZ)
-      END DO
-    END IF
-
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: FVEC, GVEC, CVEC, UVEC, &
-    !$OMP               FVECm, GVECm, Alpha, ITERATE, nIterations )
-#elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA WAIT &
-    !$ACC DELETE( FVEC, GVEC, CVEC, UVEC, &
-    !$ACC         FVECm, GVECm, Alpha, ITERATE, nIterations )
-#endif
-
-    DEALLOCATE( FVEC, GVEC )
-    DEALLOCATE( CVEC, UVEC, FVECm, GVECm, Alpha )
-    DEALLOCATE( ITERATE, nIterations )
-
-    CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
-
-  END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
-
-
   SUBROUTINE Alpha_LS_Vector &
     ( MASK, nZ, M, Mk, Fm, F, Alpha )
 
@@ -714,7 +417,7 @@ CONTAINS
 
             END DO
 
-            Alpha(1,iZ) = AB1 / ( AA11 + SqrtTiny )
+            Alpha(1,iZ) = AB1 / AA11
             Alpha(2,iZ) = One - Alpha(1,iZ)
 
           END IF
@@ -899,7 +602,7 @@ CONTAINS
 
       FVECm = GVECm - UVEC
 
-      IF( SQRT( SUM( FVECm**2 ) ) <= Rtol * SQRT( SUM( CVEC**2 ) ) )THEN
+      IF( ALL( ABS( FVECm ) <= Rtol * ABS( CVEC ) ) )THEN
 
         CONVERGED = .TRUE.
 
@@ -1215,64 +918,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeFromConserved_TwoMoment
-
-
-  SUBROUTINE ComputeTimeStep_TwoMoment &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, CFL, TimeStep )
-
-    INTEGER,  INTENT(in)  :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      GX(1:nDOFX, &
-         iX_B1(1):iX_E1(1), &
-         iX_B1(2):iX_E1(2), &
-         iX_B1(3):iX_E1(3), &
-         1:nGF)
-    REAL(DP), INTENT(in)  :: &
-      CFL
-    REAL(DP), INTENT(out) :: &
-      TimeStep
-
-    INTEGER  :: iX1, iX2, iX3, iNodeX
-    REAL(DP) :: dt(3)
-
-    TimeStep = HUGE( One )
-    dt       = HUGE( One )
-
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width, &
-        dX2 => MeshX(2) % Width, &
-        dX3 => MeshX(3) % Width )
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      dt(1) = dX1(iX1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
-
-      IF( iX_E0(2) .GT. iX_B0(2) )THEN
-
-        dt(2) = dX2(iX2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )
-
-      END IF
-
-      IF( iX_E0(3) .GT. iX_B0(3) )THEN
-
-        dt(3) = dX3(iX3) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_3) )
-
-      END IF
-
-      TimeStep = MIN( TimeStep, MINVAL( dt ) )
-
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dX1, etc
-
-    TimeStep = MAX( CFL * TimeStep, SqrtTiny )
-
-  END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
   FUNCTION Flux_E &

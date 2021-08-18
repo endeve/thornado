@@ -18,7 +18,7 @@ PROGRAM ApplicationDriver
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
+    ComputeFromConserved_TwoMoment  
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -32,8 +32,6 @@ PROGRAM ApplicationDriver
   USE InitializationModule, ONLY: &
     InitializeFields, &
     ComputeError
-  USE TwoMoment_TallyModule_OrderV, ONLY: &
-    ComputeTally
 
   IMPLICIT NONE
 
@@ -118,7 +116,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 1.0d-1
+      t_end   = 1.0d0
       iCycleD = 10
       iCycleW = 10
       maxCycles = 1000000
@@ -558,8 +556,6 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields( V_0, LengthScale, Direction, Spectrum )
 
-  t = 0.0_DP
-
   ! --- Apply Slope Limiter to Initial Data ---
 
   CALL ApplySlopeLimiter_TwoMoment &
@@ -578,11 +574,9 @@ PROGRAM ApplicationDriver
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
-  CALL ComputeTally &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
-           SetInitialValues_Option = .TRUE. )
-
   ! --- Evolve ---
+
+  t  = 0.0_DP
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -643,8 +637,6 @@ PROGRAM ApplicationDriver
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
 
-      CALL ComputeTally( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
-
     END IF
 
   END DO
@@ -657,8 +649,6 @@ PROGRAM ApplicationDriver
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
-
-  CALL ComputeTally( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
   CALL ComputeError( t )
 
@@ -705,8 +695,6 @@ CONTAINS
       InitializeSlopeLimiter_TwoMoment
     USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
       InitializePositivityLimiter_TwoMoment
-    USE TwoMoment_TallyModule_OrderV, ONLY: &
-      InitializeTally
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Initialize_IMEX_RK
 
@@ -820,10 +808,6 @@ CONTAINS
              Verbose_Option &
                = .TRUE. )
 
-    ! --- Initialize Tally ---
-
-    CALL InitializeTally
-
     ! --- Initialize Time Stepper ---
 
     CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
@@ -835,8 +819,6 @@ CONTAINS
 
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Finalize_IMEX_RK
-    USE TwoMoment_TallyModule_OrderV, ONLY: &
-      FinalizeTally
     USE TwoMoment_OpacityModule_OrderV, ONLY: &
       DestroyOpacities
     USE EquationOfStateModule, ONLY: &
@@ -867,8 +849,6 @@ CONTAINS
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
-
-    CALL FinalizeTally
 
     CALL DestroyOpacities
 
