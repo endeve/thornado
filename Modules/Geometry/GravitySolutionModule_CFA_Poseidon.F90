@@ -231,8 +231,8 @@ CONTAINS
     REAL(DP), INTENT(inout)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    REAL(DP) :: Tmp_Lapse   (nDOFX,nX(1),nX(2),nX(3)), &
-                Tmp_Shift_X1(nDOFX,nX(1),nX(2),nX(3))
+    REAL(DP) :: Tmp_Lapse(nDOFX,nX(1),nX(2),nX(3)), &
+                Tmp_Shift(nDOFX,nX(1),nX(2),nX(3),1:3)
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -291,13 +291,13 @@ CONTAINS
            PQ_Input         = MeshX(3) % Nodes, &
            Left_Limit       = -Half,            &
            Right_Limit      = +Half,            &
-           Return_Shift     = Tmp_Shift_X1 )
+           Return_Shift     = Tmp_Shift )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
     CALL ComputeGeometryFromPoseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             Tmp_Lapse, Tmp_Shift_X1, G )
+             Tmp_Lapse, Tmp_Shift, G )
 
     CALL SetBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
@@ -351,12 +351,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryFromPoseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, Alpha, Beta_X1, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, Alpha, Beta, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: Alpha  (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-    REAL(DP), INTENT(in)    :: Beta_X1(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-    REAL(DP), INTENT(inout) :: G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: Alpha(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(in)    :: Beta (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout) :: G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
     REAL(DP) :: X1, X2
@@ -375,9 +375,9 @@ CONTAINS
 
         G(iNX,iX1,iX2,iX3,iGF_Alpha) = Alpha(iNX,iX1,iX2,iX3)
 
-        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Beta_X1(iNX,iX1,iX2,iX3)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Zero
-        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Beta(iNX,iX1,iX2,iX3,1)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Beta(iNX,iX1,iX2,iX3,2)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Beta(iNX,iX1,iX2,iX3,3)
 
         G(iNX,iX1,iX2,iX3,iGF_h_1) &
           = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
