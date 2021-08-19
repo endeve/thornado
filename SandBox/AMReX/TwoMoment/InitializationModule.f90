@@ -94,6 +94,8 @@ MODULE InitializationModule
   USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
     CreateOpacities,         &
     SetOpacities
+  USE OpacityModule_Table, ONLY:   &
+    InitializeOpacities_TABLE
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -158,6 +160,11 @@ MODULE InitializationModule
     mu0,                       &
     R0,                        &
     EquationOfState,           &
+    EosTableName,              &
+    OpacityTableName_AbEm,     &
+    OpacityTableName_Iso,     &
+    OpacityTableName_NES,     &
+    OpacityTableName_Pair,     &
     Min_1,                     &
     Min_2,                     &
     UsePositivityLimiter,      &
@@ -326,16 +333,37 @@ CONTAINS
 
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
-    CALL InitializeEquationOfState &
+
+    #ifdef MICROPHYSICS_WEAKLIB
+
+      CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               EquationOfStateTableName_Option &
+                 = EosTableName )
+
+      CALL InitializeOpacities_TABLE &
+        ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
+          OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
+          OpacityTableName_NES_Option  = OpacityTableName_NES,  &
+          OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          EquationOfStateTableName_Option = EosTableName, &
+          Verbose_Option =  amrex_parallel_ioprocessor())
+
+    #else
+
+
+      CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
                Gamma_IDEAL_Option = Gamma_IDEAL, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateOpacities &
+      CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
 
-    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, & 
+      CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, & 
                        Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    #endif
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
                               Verbose_Option = amrex_parallel_ioprocessor() )

@@ -1,6 +1,7 @@
 
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/ProgramHeader
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
@@ -19,6 +20,9 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment_Relativistic
 
 f90EXE_sources += KindModule.f90
 
+# In THORNADO_DIR/Modules/Opacities:
+
+F90EXE_sources += OpacityModule_TABLE.F90
 
 # In THORNADO_DIR/Modules/Units
 
@@ -115,9 +119,10 @@ F90EXE_sources += dgemv.F90 lsame.F90
 F90EXE_sources += TwoMoment_UtilitiesModule_Relativistic.F90
 F90EXE_sources += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90
 F90EXE_sources += TwoMoment_DiscretizationModule_Collisions_Relativistic.F90
+F90EXE_sources += TwoMoment_DiscretizationModule_Collisions_Neutrinos_Relativistic.F90
 F90EXE_sources += TwoMoment_OpacityModule_Relativistic.F90
 F90EXE_sources += Euler_BoundaryConditionsModule_Relativistic.F90
 F90EXE_sources += TwoMoment_PositivityLimiterModule_Relativistic.F90
 F90EXE_sources += TwoMoment_SlopeLimiterModule_Relativistic.F90
-
+F90EXE_sources += TwoMoment_NeutrinoMatterSolverModule_Relativistic.F90
 
