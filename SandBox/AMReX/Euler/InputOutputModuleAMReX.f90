@@ -154,6 +154,7 @@ CONTAINS
 
       WRITE(*,*)
       WRITE(*,'(6x,A,I8.8)') 'Writing PlotFile: ', StepNo(0)
+      WRITE(*,*)
 
     END IF
 

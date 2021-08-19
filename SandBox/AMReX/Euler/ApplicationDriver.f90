@@ -87,7 +87,13 @@ PROGRAM ApplicationDriver
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF_new, MF_uCF_new, CFL, dt )
 
-    IF( ANY( t_new + dt .LE. t_end ) )THEN
+    DO iLevel = 0, amrex_max_level
+
+      dt(iLevel) = MINVAL( dt )
+
+    END DO
+
+    IF( ALL( t_new + dt .LE. t_end ) )THEN
 
       t_new = t_new + dt
 
