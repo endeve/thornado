@@ -58,16 +58,14 @@ PROGRAM ApplicationDriver
     uGF
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     InitializeGravitySolver_CFA_Poseidon, &
-    FinalizeGravitySolver_CFA_Poseidon, &
-    SolveGravity_CFA_Poseidon
+    FinalizeGravitySolver_CFA_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
     Time
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
-    UpdateFluid_SSPRK, &
-    WriteSourceTerms2
+    UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -85,8 +83,6 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
-  USE Poseidon_UtilitiesModule, ONLY: &
-    ComputeSourceTerms_Poseidon
 
   IMPLICIT NONE
 
@@ -207,11 +203,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  ALLOCATE( SourceTerms_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
-                                         iX_B0(2):iX_E0(2), &
-                                         iX_B0(3):iX_E0(3),1:6) )
-
-  CALL InitializeGravitySolver_CFA_Poseidon
+  CALL InitializeGravitySolver_CFA_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
@@ -257,6 +249,8 @@ PROGRAM ApplicationDriver
   CALL InitializeFields_Relativistic &
          ( ProgenitorFileName_Option = TRIM( ProgenitorFileName ) )
 
+STOP 'ApplicationDriver'
+
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
@@ -265,11 +259,11 @@ PROGRAM ApplicationDriver
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
-    CALL ComputeSourceTerms_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-
-    CALL SolveGravity_CFA_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+!    CALL ComputeSourceTerms_Poseidon &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
+!
+!    CALL SolveGravity_CFA_Poseidon &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -346,17 +340,13 @@ PROGRAM ApplicationDriver
     IF( t + dt .GT. t_wrt2 )THEN
 
       t_wrt2 = t_wrt2 + dt_wrt
-      WriteSourceTerms2 = .TRUE.
       Time = t
 
     END IF
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, uDF, &
-             ComputeIncrement_Euler_DG_Explicit, &
-             SolveGravity_CFA_Poseidon )
-
-    WriteSourceTerms2 = .FALSE.
+             ComputeIncrement_Euler_DG_Explicit )
 
     IF( iCycleW .GT. 0 )THEN
 
@@ -407,11 +397,11 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-  CALL ComputeSourceTerms_Poseidon &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-
-  CALL SolveGravity_CFA_Poseidon &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+!  CALL ComputeSourceTerms_Poseidon &
+!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
+!
+!  CALL SolveGravity_CFA_Poseidon &
+!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

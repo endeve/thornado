@@ -19,8 +19,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     WeightsX_q, &
     NodeNumberTableX
   USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
-    thornado_abort
+    NodeNumberX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -41,7 +40,8 @@ MODULE GravitySolutionModule_CFA_Poseidon
   USE GeometryComputationModule, ONLY: &
     LapseFunction, &
     ConformalFactor, &
-    ComputeGeometryX_FromScaleFactors
+    ComputeGeometryX_FromScaleFactors, &
+    ComputeGeometryX
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -53,27 +53,18 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   USE Initialization_Poseidon, ONLY: &
     Initialize_Poseidon
-
   USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Run, &
     Poseidon_Close, &
     Poseidon_CFA_Set_Uniform_Boundary_Conditions
-
   USE Source_Input_Module, ONLY: &
-    Poseidon_Input_Sources, &
     Poseidon_XCFC_Input_Sources1, &
     Poseidon_XCFC_Input_Sources2
-
   USE Poseidon_XCFC_Interface_Module, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2, &
     Poseidon_Return_ConFactor, &
     Poseidon_Return_Lapse, &
     Poseidon_Return_Shift
-
-  USE Variables_Functions, ONLY: &
-    Calc_1D_CFA_Values
-
   USE Initial_Guess_Module, ONLY: &
     Poseidon_Init_FlatGuess
 
@@ -84,48 +75,24 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   PUBLIC :: InitializeGravitySolver_CFA_Poseidon
   PUBLIC :: FinalizeGravitySolver_CFA_Poseidon
-  PUBLIC :: SolveGravity_CFA_Poseidon
+  PUBLIC :: ComputeConformalFactor_Poseidon
+  PUBLIC :: ComputeLapseAndShift_Poseidon
 
-  INTEGER, PARAMETER :: POSEIDON_SOLVER_CFA_NEWTONRAPHSON = 1
-  INTEGER, PARAMETER :: POSEIDON_SOLVER_CFA_FIXEDPOINT    = 2
-  INTEGER, PARAMETER :: POSEIDON_SOLVER_XCFC_FIXEDPOINT   = 3
-  INTEGER            :: POSEIDON_SOLVER
+  REAL(DP) :: GravitationalMass
 
 
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver_CFA_Poseidon( POSEIDON_SOLVER_Option )
+  SUBROUTINE InitializeGravitySolver_CFA_Poseidon &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
-    INTEGER, INTENT(in), OPTIONAL :: POSEIDON_SOLVER_Option
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: POSEIDON_SOLVER
+    CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
-    POSEIDON_SOLVER = POSEIDON_SOLVER_XCFC_FIXEDPOINT
-    IF( PRESENT( POSEIDON_SOLVER_Option ) ) &
-      POSEIDON_SOLVER = POSEIDON_SOLVER_Option
-
-    IF( POSEIDON_SOLVER .LT. 1 .OR. POSEIDON_SOLVER .GT. 3 )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A)') 'FATAL ERROR'
-      WRITE(*,'(A)') '-----------'
-      WRITE(*,'(A)') '    MODULE: GravitySolutionModule_CFA_Poseidon'
-      WRITE(*,'(A)') 'SUBROUTINE: InitializeGravitySolver_CFA_Poseidon'
-      WRITE(*,*)
-      WRITE(*,'(A,I2.2)') &
-        'Invalid choice for POSEIDON_SOLVER: ', POSEIDON_SOLVER
-      WRITE(*,'(A)') 'Valid choices'
-      WRITE(*,'(A)') '-------------'
-      WRITE(*,'(A)') '  1 (CFA, Newton--Raphson)'
-      WRITE(*,'(A)') '  2 (CFA, Fixed Point)'
-      WRITE(*,'(A)') '  3 (XCFC, Fixed Point)'
-      WRITE(*,*)
-      CALL thornado_abort
-
-    END IF
 
     WRITE(*,*)
     WRITE(*,'(A)') &
@@ -147,7 +114,7 @@ CONTAINS
            dr_Option          = MeshX(1) % Width(1:nX(1)), &
            dt_Option          = MeshX(2) % Width(1:nX(2)), &
            dp_Option          = MeshX(3) % Width(1:nX(3)), &
-           Method_Flag_Option = POSEIDON_SOLVER,           &
+           Method_Flag_Option = 3,                         &
            Print_Setup_Option = .TRUE.,                    &
            Verbose_Option     = .FALSE.)
 
@@ -167,82 +134,39 @@ CONTAINS
   END SUBROUTINE FinalizeGravitySolver_CFA_Poseidon
 
 
-  SUBROUTINE SolveGravity_CFA_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Sources )
+  SUBROUTINE ComputeConformalFactor_Poseidon &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout)    :: &
-      G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in) :: &
-      Sources(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      E (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)   ! This is psi^6 * E
+    REAL(DP), INTENT(in)    :: &
+      Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:) ! This is psi^6 * S_i
+    REAL(DP), INTENT(in)    :: &
+      Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(inout) :: &
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    REAL(DP)         :: Psi_BC, AlphaPsi_BC, GravitationalMass
+    REAL(DP)         :: Psi_BC, AlphaPsi_BC
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
-    REAL(DP)         :: Tmp_Lapse  (nDOFX,nX(1),nX(2),nX(3)), &
-                        Tmp_ConFact(nDOFX,nX(1),nX(2),nX(3)), &
-                        Tmp_Shift  (nDOFX,nX(1),nX(2),nX(3))
-
-    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2, iNX3
-    REAL(DP) :: X1, X2, X3
+    REAL(DP)         :: Tmp_ConFact(nDOFX,nX(1),nX(2),nX(3))
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-    IF( POSEIDON_SOLVER .EQ. POSEIDON_SOLVER_XCFC_FIXEDPOINT )THEN
-
-      ! --- Set matter sources with current conformal factor ---
-
-      CALL Poseidon_XCFC_Input_Sources1 &
-             ( Local_E      = Sources(:,:,:,:,1),   &
-               Local_Si     = Sources(:,:,:,:,3:5), &
-               Local_RE_Dim = nX(1),                &
-               Local_TE_Dim = nX(2),                &
-               Local_PE_Dim = nX(3),                &
-               Local_RQ_Dim = nNodesX(1),           &
-               Local_TQ_Dim = nNodesX(2),           &
-               Local_PQ_Dim = nNodesX(3),           &
-               Input_R_Quad = MeshX(1) % Nodes,     &
-               Input_T_Quad = MeshX(2) % Nodes,     &
-               Input_P_Quad = MeshX(3) % Nodes,     &
-               Left_Limit   = -Half,                &
-               Right_Limit  = +Half )
-
-    ELSE
-
-      ! --- Set matter sources ---
-
-      CALL Poseidon_Input_Sources &
-             ( 0, 0, 0,                             &
-               Local_E      = Sources(:,:,:,:,1),   &
-               Local_S      = Sources(:,:,:,:,2),   &
-               Local_Si     = Sources(:,:,:,:,3:5), &
-               Local_RE_Dim = nX(1),                &
-               Local_TE_Dim = nX(2),                &
-               Local_PE_Dim = nX(3),                &
-               Local_RQ_Dim = nNodesX(1),           &
-               Local_TQ_Dim = nNodesX(2),           &
-               Local_PQ_Dim = nNodesX(3),           &
-               Input_R_Quad = MeshX(1) % Nodes,     &
-               Input_T_Quad = MeshX(2) % Nodes,     &
-               Input_P_Quad = MeshX(3) % Nodes,     &
-               Left_Limit   = -Half,                &
-               Right_Limit  = +Half )
-
-    END IF
-
     ! --- Set Boundary Values ---
 
     CALL ComputeGravitationalMass &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Sources, GravitationalMass )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mg )
 
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
 
-    INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ]
-    OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ]
+    INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ] ! Neumann
+    OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ] ! Dirichlet
 
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
     OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
@@ -254,83 +178,149 @@ CONTAINS
 
     CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
 
-    IF( POSEIDON_SOLVER .EQ. POSEIDON_SOLVER_XCFC_FIXEDPOINT )THEN
+    ! --- Set matter sources with current conformal factor ---
 
-      ! --- Compute conformal factor ---
+    CALL Poseidon_XCFC_Input_Sources1 &
+           ( Local_E      = E,                    &
+             Local_Si     = Si,                   &
+             Local_RE_Dim = nX(1),                &
+             Local_TE_Dim = nX(2),                &
+             Local_PE_Dim = nX(3),                &
+             Local_RQ_Dim = nNodesX(1),           &
+             Local_TQ_Dim = nNodesX(2),           &
+             Local_PQ_Dim = nNodesX(3),           &
+             Input_R_Quad = MeshX(1) % Nodes,     &
+             Input_T_Quad = MeshX(2) % Nodes,     &
+             Input_P_Quad = MeshX(3) % Nodes,     &
+             Left_Limit   = -Half,                &
+             Right_Limit  = +Half )
 
-      CALL Poseidon_XCFC_Run_Part1()
+    ! --- Compute conformal factor ---
 
-      CALL Poseidon_Return_ConFactor &
-           ( NE               = nX,               &
-             NQ               = nNodesX,          &
-             RQ_Input         = MeshX(1) % Nodes, &
-             TQ_Input         = MeshX(2) % Nodes, &
-             PQ_Input         = MeshX(3) % Nodes, &
-             Left_Limit       = -Half,            &
-             Right_Limit      = +Half,            &
-             Return_ConFactor = Tmp_ConFact )
+    CALL Poseidon_XCFC_Run_Part1()
 
-      !
-      !   Calculate S using updated Conformal Factor
-      !
+    CALL Poseidon_Return_ConFactor &
+         ( NE               = nX,               &
+           NQ               = nNodesX,          &
+           RQ_Input         = MeshX(1) % Nodes, &
+           TQ_Input         = MeshX(2) % Nodes, &
+           PQ_Input         = MeshX(3) % Nodes, &
+           Left_Limit       = -Half,            &
+           Right_Limit      = +Half,            &
+           Return_ConFactor = Tmp_ConFact )
 
-      ! --- Set matter sources with updated conformal factor ---
+    CALL UpdateConformalFactorAndMetric &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, Tmp_ConFact, G )
 
-      CALL Poseidon_XCFC_Input_Sources2 &
-             ( Local_S      = Sources(:,:,:,:,2),   &
-               Local_RE_Dim = nX(1),                &
-               Local_TE_Dim = nX(2),                &
-               Local_PE_Dim = nX(3),                &
-               Local_RQ_Dim = nNodesX(1),           &
-               Local_TQ_Dim = nNodesX(2),           &
-               Local_PQ_Dim = nNodesX(3),           &
-               Input_R_Quad = MeshX(1) % Nodes,     &
-               Input_T_Quad = MeshX(2) % Nodes,     &
-               Input_P_Quad = MeshX(3) % Nodes,     &
-               Left_Limit   = -Half,                &
-               Right_Limit  = +Half )
+#endif
 
-      ! --- Compute lapse and shift ---
+    CALL TimersStop_Euler( Timer_GravitySolver )
 
-      CALL Poseidon_XCFC_Run_Part2()
+  END SUBROUTINE ComputeConformalFactor_Poseidon
 
-      CALL Poseidon_Return_Lapse &
-           ( NE               = nX,               &
-             NQ               = nNodesX,          &
-             RQ_Input         = MeshX(1) % Nodes, &
-             TQ_Input         = MeshX(2) % Nodes, &
-             PQ_Input         = MeshX(3) % Nodes, &
-             Left_Limit       = -Half,            &
-             Right_Limit      = +Half,            &
-             Return_Lapse     = Tmp_Lapse )
 
-      CALL Poseidon_Return_Shift &
-           ( NE               = nX,               &
-             NQ               = nNodesX,          &
-             RQ_Input         = MeshX(1) % Nodes, &
-             TQ_Input         = MeshX(2) % Nodes, &
-             PQ_Input         = MeshX(3) % Nodes, &
-             Left_Limit       = -Half,            &
-             Right_Limit      = +Half,            &
-             Return_Shift     = Tmp_Shift )
+  SUBROUTINE ComputeLapseAndShift_Poseidon &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
-    ELSE
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      E (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):), &
+      S (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):), &
+      Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout)    :: &
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-      CALL Poseidon_Run()
+    REAL(DP) :: Tmp_Lapse   (nDOFX,nX(1),nX(2),nX(3)), &
+                Tmp_Shift_X1(nDOFX,nX(1),nX(2),nX(3))
 
-      CALL Calc_1D_CFA_Values &
-             ( Num_RE_Input  = nX(1),            &
-               Num_RQ_Input  = nNodesX(1),       &
-               RQ_Input      = MeshX(1) % Nodes, &
-               Left_Limit    = -Half,            &
-               Right_Limit   = +Half,            &
-               CFA_Lapse     = Tmp_Lapse,        &
-               CFA_ConFactor = Tmp_ConFact,      &
-               CFA_Shift     = Tmp_Shift )
+    CALL TimersStart_Euler( Timer_GravitySolver )
 
-    END IF
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ! --- Set matter sources with updated conformal factor ---
+
+    CALL Poseidon_XCFC_Input_Sources1 &
+           ( Local_E      = E,                    &
+             Local_Si     = Si,                   &
+             Local_RE_Dim = nX(1),                &
+             Local_TE_Dim = nX(2),                &
+             Local_PE_Dim = nX(3),                &
+             Local_RQ_Dim = nNodesX(1),           &
+             Local_TQ_Dim = nNodesX(2),           &
+             Local_PQ_Dim = nNodesX(3),           &
+             Input_R_Quad = MeshX(1) % Nodes,     &
+             Input_T_Quad = MeshX(2) % Nodes,     &
+             Input_P_Quad = MeshX(3) % Nodes,     &
+             Left_Limit   = -Half,                &
+             Right_Limit  = +Half )
+
+    CALL Poseidon_XCFC_Input_Sources2 &
+           ( Local_S      = S,                    &
+             Local_RE_Dim = nX(1),                &
+             Local_TE_Dim = nX(2),                &
+             Local_PE_Dim = nX(3),                &
+             Local_RQ_Dim = nNodesX(1),           &
+             Local_TQ_Dim = nNodesX(2),           &
+             Local_PQ_Dim = nNodesX(3),           &
+             Input_R_Quad = MeshX(1) % Nodes,     &
+             Input_T_Quad = MeshX(2) % Nodes,     &
+             Input_P_Quad = MeshX(3) % Nodes,     &
+             Left_Limit   = -Half,                &
+             Right_Limit  = +Half )
+
+    ! --- Compute lapse and shift ---
+
+    CALL Poseidon_XCFC_Run_Part2()
+
+    CALL Poseidon_Return_Lapse &
+         ( NE               = nX,               &
+           NQ               = nNodesX,          &
+           RQ_Input         = MeshX(1) % Nodes, &
+           TQ_Input         = MeshX(2) % Nodes, &
+           PQ_Input         = MeshX(3) % Nodes, &
+           Left_Limit       = -Half,            &
+           Right_Limit      = +Half,            &
+           Return_Lapse     = Tmp_Lapse )
+
+    CALL Poseidon_Return_Shift &
+         ( NE               = nX,               &
+           NQ               = nNodesX,          &
+           RQ_Input         = MeshX(1) % Nodes, &
+           TQ_Input         = MeshX(2) % Nodes, &
+           PQ_Input         = MeshX(3) % Nodes, &
+           Left_Limit       = -Half,            &
+           Right_Limit      = +Half,            &
+           Return_Shift     = Tmp_Shift_X1 )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
+
+    CALL ComputeGeometryFromPoseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             Tmp_Lapse, Tmp_Shift_X1, G )
+
+    CALL SetBoundaryConditions &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+#endif
+
+    CALL TimersStop_Euler( Timer_GravitySolver )
+
+  END SUBROUTINE ComputeLapseAndShift_Poseidon
+
+
+  ! --- PRIVATE Subroutines ---
+
+
+  SUBROUTINE UpdateConformalFactorAndMetric &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, Psi, G )
+
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: Psi(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(inout) :: G  (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
+    REAL(DP) :: X1, X2
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -340,28 +330,14 @@ CONTAINS
 
         iNX1 = NodeNumberTableX(1,iNX)
         iNX2 = NodeNumberTableX(2,iNX)
-        iNX3 = NodeNumberTableX(3,iNX)
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-        X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
 
-        G(iNX,iX1,iX2,iX3,iGF_Alpha)  &
-          = Tmp_Lapse  (iNX,iX1,iX2,iX3)
-        G(iNX,iX1,iX2,iX3,iGF_Psi)    &
-          = Tmp_ConFact(iNX,iX1,iX2,iX3)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-          = Tmp_Shift  (iNX,iX1,iX2,iX3)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-          = Zero
-        G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
-          = Zero
-        G(iNX,iX1,iX2,iX3,iGF_h_1)    &
-          = Tmp_ConFact(iNX,iX1,iX2,iX3)**2
-        G(iNX,iX1,iX2,iX3,iGF_h_2)    &
-          = Tmp_ConFact(iNX,iX1,iX2,iX3)**2 * X1
-        G(iNX,iX1,iX2,iX3,iGF_h_3)    &
-          = Tmp_ConFact(iNX,iX1,iX2,iX3)**2 * X1 * SIN( X2 )
+        G(iNX,iX1,iX2,iX3,iGF_Psi) = Psi    (iNX,iX1,iX2,iX3)
+        G(iNX,iX1,iX2,iX3,iGF_h_1) = Psi(iNX,iX1,iX2,iX3)**2
+        G(iNX,iX1,iX2,iX3,iGF_h_2) = Psi(iNX,iX1,iX2,iX3)**2 * X1
+        G(iNX,iX1,iX2,iX3,iGF_h_3) = Psi(iNX,iX1,iX2,iX3)**2 * X1 * SIN( X2 )
 
       END DO ! iNX
 
@@ -371,41 +347,77 @@ CONTAINS
     END DO ! iX2
     END DO ! iX3
 
-    CALL SetBoundaryConditions &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, GravitationalMass )
+  END SUBROUTINE UpdateConformalFactorAndMetric
 
-#endif
 
-    CALL TimersStop_Euler( Timer_GravitySolver )
+  SUBROUTINE ComputeGeometryFromPoseidon &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, Alpha, Beta_X1, G )
 
-  END SUBROUTINE SolveGravity_CFA_Poseidon
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: Alpha  (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(in)    :: Beta_X1(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(inout) :: G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
+    REAL(DP) :: X1, X2
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNX = 1, nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        iNX2 = NodeNumberTableX(2,iNX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+        G(iNX,iX1,iX2,iX3,iGF_Alpha) = Alpha(iNX,iX1,iX2,iX3)
+
+        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Beta_X1(iNX,iX1,iX2,iX3)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
+        G(iNX,iX1,iX2,iX3,iGF_h_1) &
+          = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
+        G(iNX,iX1,iX2,iX3,iGF_h_2) &
+          = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1
+        G(iNX,iX1,iX2,iX3,iGF_h_3) &
+          = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
+
+      END DO ! iNX
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+    END DO ! iX1
+    END DO ! iX2
+    END DO ! iX3
+
+  END SUBROUTINE ComputeGeometryFromPoseidon
 
 
   SUBROUTINE SetBoundaryConditions &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)    :: &
-      Mass
 
     CALL SetBoundaryConditions_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
   END SUBROUTINE SetBoundaryConditions
 
 
   SUBROUTINE SetBoundaryConditions_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)    :: &
-      Mass
 
     INTEGER  :: iX2, iX3
     INTEGER  :: iNX1, jNX1, iNX2, iNX3
@@ -451,10 +463,10 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNX1 )
 
         G(iNX,nX(1)+1,iX2,iX3,iGF_Alpha) &
-          = LapseFunction( X1, Mass )
+          = LapseFunction( X1, GravitationalMass )
 
         G(iNX,nX(1)+1,iX2,iX3,iGF_Psi) &
-          = ConformalFactor( X1, Mass )
+          = ConformalFactor( X1, GravitationalMass )
 
         G(iNX,nX(1)+1,iX2,iX3,iGF_Beta_1) &
           = Zero
@@ -482,16 +494,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeGravitationalMass &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Sources, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mg )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: &
-      Sources(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(out) :: &
-      Mass
+      Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
 
     INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: d3X
@@ -503,7 +513,7 @@ CONTAINS
 
     ! --- Assuming 1D spherical symmetry ---
 
-    Mass = Zero
+    GravitationalMass = Zero
 
     DO iX3 = 1, nX(3)
     DO iX2 = 1, nX(2)
@@ -511,12 +521,12 @@ CONTAINS
 
       d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
-      Mass &
-        = Mass + d3X                                     &
-            * SUM( WeightsX_q                            &
-                     * Sources(:,iX1,iX2,iX3,6)          &
-                     * G      (:,iX1,iX2,iX3,iGF_Alpha)  &
-                     * G      (:,iX1,iX2,iX3,iGF_SqrtGm) )
+      GravitationalMass &
+        = GravitationalMass + d3X                  &
+            * SUM( WeightsX_q                      &
+                     * Mg(:,iX1,iX2,iX3)           &
+                     * G (:,iX1,iX2,iX3,iGF_Alpha) &
+                     * G (:,iX1,iX2,iX3,iGF_SqrtGm) )
 
     END DO
     END DO
