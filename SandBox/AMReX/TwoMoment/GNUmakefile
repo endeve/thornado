@@ -28,11 +28,11 @@ EBASE     = main
 WEAK ?=TABLE
 
 ifeq ($(WEAK),TABLE)
-  USE_HDF5 = TRUE
+#  USE_HDF5 = TRUE
   INCLUDE_LOCATIONS += $(HDF5_INC)
   LIBRARY_LOCATIONS += $(HDF5_LIB)
   LIBRARIES += -lhdf5_fortran -lhdf5
-  include $(THORNADO_HOME)/SandBox/AMReX/Euler/Make.weaklib
+  include $(THORNADO_HOME)/SandBox/AMReX/TwoMoment/Make.weaklib
 endif
 
 
