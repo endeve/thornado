@@ -21,17 +21,15 @@ MODULE TimeSteppingModule_SSPRK
     ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler,  &
-    Timer_Euler_UpdateFluid
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeMatterSources_Poseidon, &
     ComputePressureTensorTrace_Poseidon, &
     MultiplyByPsi6, &
     DivideByPsi6
-  USE Euler_dgDiscretizationModule, ONLY: &
-    WriteSourceTerms
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
+    Timer_Euler_UpdateFluid
 
   IMPLICIT NONE
   PRIVATE

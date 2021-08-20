@@ -61,9 +61,15 @@ MODULE InitializationModule_Relativistic
     iAF_Xn, &
     iAF_Xa, &
     iAF_Xh, &
-    iAF_Gm
+    iAF_Gm, &
+    uDF
+  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_Relativistic_TABLE
+  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_Euler_Relativistic
+    ComputeConserved_Euler_Relativistic, &
+    ComputeFromConserved_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputeThermodynamicStates_Primitive, &
     ApplyEquationOfState
@@ -303,6 +309,29 @@ CONTAINS
 
     END DO
 
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+
+    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
+
+    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+
+    CALL ComputePressureTensorTrace_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
+
+    CALL ComputeLapseAndShift_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
+
+    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
 
   END SUBROUTINE InitializeFields_GravitationalCollapse
 

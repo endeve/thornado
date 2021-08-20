@@ -104,7 +104,7 @@ PROGRAM ApplicationDriver
   INTEGER       :: RestartFileNumber
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: xL(3), xR(3)
-  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, t_wrt2, CFL
+  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: ZoomX(3)
@@ -115,8 +115,6 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ActivateUnits = .TRUE.
 
   REAL(DP) :: Timer_Evolution
-
-  REAL(DP), ALLOCATABLE :: SourceTerms_Poseidon(:,:,:,:,:)
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -249,21 +247,7 @@ PROGRAM ApplicationDriver
   CALL InitializeFields_Relativistic &
          ( ProgenitorFileName_Option = TRIM( ProgenitorFileName ) )
 
-STOP 'ApplicationDriver'
-
   IF( RestartFileNumber .LT. 0 )THEN
-
-    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-!    CALL ComputeSourceTerms_Poseidon &
-!           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-!
-!    CALL SolveGravity_CFA_Poseidon &
-!           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -291,9 +275,8 @@ STOP 'ApplicationDriver'
   WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
 
-  t_wrt  = t + dt_wrt
-  t_wrt2 = t + dt_wrt
-  wrt    = .FALSE.
+  t_wrt = t + dt_wrt
+  wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
@@ -334,13 +317,6 @@ STOP 'ApplicationDriver'
         TRIM( UnitsDisplay % TimeLabel ), &
         ' dt = ', dt /  UnitsDisplay % TimeUnit, &
         TRIM( UnitsDisplay % TimeLabel )
-
-    END IF
-
-    IF( t + dt .GT. t_wrt2 )THEN
-
-      t_wrt2 = t_wrt2 + dt_wrt
-      Time = t
 
     END IF
 
@@ -420,8 +396,6 @@ STOP 'ApplicationDriver'
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
-
-  DEALLOCATE( SourceTerms_Poseidon )
 
   CALL FinalizeGravitySolver_CFA_Poseidon
 
