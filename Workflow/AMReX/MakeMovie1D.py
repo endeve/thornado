@@ -22,10 +22,10 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify ID to be used for naming purposes
-ID = 'SAS'
+ID = 'Advection1D'
 
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
 
 # Specify plot file base name
 PlotFileBaseName = 'plt'
@@ -34,13 +34,13 @@ PlotFileBaseName = 'plt'
 Field = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale = True
+UseLogScale = False
 
 # Specify whether or not to use physical units
-UsePhysicalUnits = True
+UsePhysicalUnits = False
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
-CoordinateSystem = 'spherical'
+CoordinateSystem = 'cartesian'
 
 Verbose = True
 
@@ -129,7 +129,7 @@ time_text = plt.text( xL[0] + 0.5 * Width, ymin + 0.7 * Height, '' )
 
 if( UseLogScale ): ax.set_yscale( 'log' )
 
-#IC,   = ax.plot([],[], color = 'red',   linewidth = 2 )
+IC,   = ax.plot([],[], color = 'red',   linewidth = 2 )
 line, = ax.plot([],[], color = 'black', linewidth = 1 )
 
 def f( t ):
@@ -137,21 +137,21 @@ def f( t ):
 
 def InitializeFrame():
 
-#    IC.set_data([],[])
+    IC.set_data([],[])
     line.set_data([],[])
     time_text.set_text('')
 
-    ret = ( line, time_text )
+    ret = ( line, time_text, IC )
     return ret
 
 def UpdateFrame( t ):
 
-#    IC.set_data( X1, f(0) )
+    IC.set_data( X1, f(0) )
     y = Data[t]
     line.set_data( X1, y )
     time_text.set_text( 'time = {:.3e} {:}'.format( Time[t], TimeUnit ) )
 
-    ret = ( line, time_text )
+    ret = ( line, time_text, IC )
     return ret
 
 nFrames = FileArray.shape[0]
