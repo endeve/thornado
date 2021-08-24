@@ -77,10 +77,7 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
 
         # Put all time-slices into one array to use for movie making
 
-        if   nDimsX == 1: DataShape = (FileArray.shape[0],nX[0])
-        elif nDimsX == 2: DataShape = (FileArray.shape[0],nX[0],nX[1])
-
-        Data = np.empty( DataShape, np.float64 )
+        Data = np.empty( FileArray.shape[0], object )
         Time = np.empty( FileArray.shape[0], np.float64 )
 
         print( 'Generating data file: {:}...'.format( DataFileName ) )
@@ -91,12 +88,28 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
 
             ds = yt.load( '{:}'.format( DataDirectory + FileArray[i] ) )
 
-            Data[i], DataUnit, Time[i] \
-              = GetData( DataDirectory, PlotFileBaseName, \
-                         Field, CoordinateSystem, UsePhysicalUnits, \
-                         argv = [ 'a', FileArray[i] ], \
-                         ReturnTime = True, ReturnMesh = False, \
-                         Verbose = Verbose )
+            if i == 0:
+
+                Data[i], DataUnit, X1, X2, X3, xL, xU, nX, Time[i] \
+                  = GetData( DataDirectory, PlotFileBaseName, \
+                             Field, CoordinateSystem, UsePhysicalUnits, \
+                             argv = [ 'a', FileArray[i] ], \
+                             ReturnTime = True, ReturnMesh = True, \
+                             Verbose = Verbose )
+
+            else:
+
+                Data[i], DataUnit, Time[i] \
+                  = GetData( DataDirectory, PlotFileBaseName, \
+                             Field, CoordinateSystem, UsePhysicalUnits, \
+                             argv = [ 'a', FileArray[i] ], \
+                             ReturnTime = True, ReturnMesh = False, \
+                             Verbose = Verbose )
+
+        if   nDimsX == 1: DataShape \
+                            = (FileArray.shape[0],X1.shape[0])
+        elif nDimsX == 2: DataShape \
+                            = (FileArray.shape[0],X1.shape[0],X2.shape[0])
 
         # Save multi-D array with np.savetxt. Taken from:
         # https://stackoverflow.com/questions/3685265/

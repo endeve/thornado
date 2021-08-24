@@ -99,7 +99,8 @@ def ChoosePlotFile( DataDirectory, PlotFileBaseName, argv = [ 'a' ], \
 
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
-             ReturnTime = False, ReturnMesh = False, Verbose = True ):
+             MaxLevel = -1, ReturnTime = False, ReturnMesh = False, \
+             Verbose = True ):
 
     import yt
     import numpy as np
@@ -136,7 +137,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
-    MaxLevel = ds.index.max_level
+    if MaxLevel == -1: MaxLevel = ds.index.max_level
     Time     = ds.current_time.to_ndarray()
     nX       = ds.domain_dimensions
     xL       = ds.domain_left_edge
@@ -152,7 +153,9 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
           ( level           = MaxLevel, \
             left_edge       = xL, \
             dims            = nX * 2**MaxLevel, \
-            num_ghost_zones = nX[0] )
+            num_ghost_zones = 0 )
+
+#    ds.force_periodicity()
 
     nDimsX = 1
     if nX[1] > 1: nDimsX += 1
@@ -165,9 +168,9 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     dX = ( xU - xL ) / np.float64( nX )
 
-    X1  = np.linspace( xL[0] + dX[0] / 2.0, xU[0] - dX[0] / 2.0, nX[0] )
-    X2  = np.linspace( xL[1] + dX[1] / 2.0, xU[1] - dX[1] / 2.0, nX[1] )
-    X3  = np.linspace( xL[2] + dX[2] / 2.0, xU[2] - dX[2] / 2.0, nX[2] )
+    X1 = CoveringGrid['X1_C'].to_ndarray()[:,0,0]
+    X2 = CoveringGrid['X2_C'].to_ndarray()[0,:,0]
+    X3 = CoveringGrid['X3_C'].to_ndarray()[0,0,:]
 
     if  ( Field == 'PF_D'  ):
 
