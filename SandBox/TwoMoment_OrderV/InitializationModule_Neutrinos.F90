@@ -88,10 +88,10 @@ CONTAINS
     REAL(DP), PARAMETER :: D_0   = 1.032d12 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: T_0   = 7.588d0 * MeV
     REAL(DP), PARAMETER :: Y_0   = 0.1347_DP
-    REAL(DP), PARAMETER :: V_u_1 = 0.0_DP * SpeedOfLight
+    REAL(DP), PARAMETER :: V_u_1 = 0.1_DP * SpeedOfLight
     REAL(DP), PARAMETER :: V_u_2 = 0.0_DP * SpeedOfLight
     REAL(DP), PARAMETER :: V_u_3 = 0.0_DP * SpeedOfLight
-    REAL(DP), PARAMETER :: Mu_0  = - 1.0_DP ! \in [-1,1]
+    REAL(DP), PARAMETER :: Mu_0  = 0.0_DP ! \in [-1,1]
 
     INTEGER  :: iE, iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeZ
     REAL(DP) :: kT, E, f_E
