@@ -39,6 +39,8 @@ MODULE InputOutputModuleAMReX
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     ShortNamesGF, &
     nGF, &
@@ -60,6 +62,9 @@ MODULE InputOutputModuleAMReX
   USE MF_KindModule, ONLY: &
     DP, &
     Zero
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE InputParsingModule, ONLY: &
     MaxGridSizeX, &
     dt, &
@@ -108,7 +113,7 @@ CONTAINS
     TYPE(amrex_multifab)            :: MF_plt(0:amrex_max_level)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
-    nF = 0
+    nF = 3
 
     WriteGF = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
@@ -164,7 +169,11 @@ CONTAINS
 
     ALLOCATE( VarNames(nF) )
 
-    iOS = 0
+    CALL amrex_string_build( VarNames( 1 ), 'X1_C' )
+    CALL amrex_string_build( VarNames( 2 ), 'X2_C' )
+    CALL amrex_string_build( VarNames( 3 ), 'X3_C' )
+
+    iOS = 3
 
     IF( WriteGF )THEN
 
@@ -239,7 +248,9 @@ CONTAINS
                nF, 0 )
       CALL MF_plt(iLevel) % setVal( Zero )
 
-      iOS = 0
+      CALL WriteMesh( iLevel, MF_uGF(iLevel), MF_plt(iLevel) )
+
+      iOS = 3
 
       IF( WriteGF )THEN
 
@@ -369,6 +380,54 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE ComputeCellAverage_MF
+
+
+  SUBROUTINE WriteMesh( iLevel, MF_uGF, MF_plt )
+
+    INTEGER,              INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+
+    INTEGER            :: iX1, iX2, iX3
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP) :: X1, X2, X3
+    REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+
+    CALL CreateMesh_MF( iLevel, MeshX )
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      U_plt => MF_plt % DataPtr( MFI )
+
+      BX = MFI % TileBox()
+
+      DO iX3 = BX % lo(3), BX % hi(3)
+      DO iX2 = BX % lo(2), BX % hi(2)
+      DO iX1 = BX % lo(1), BX % hi(1)
+
+        X1 = MeshX(1) % Center(iX1)
+        X2 = MeshX(2) % Center(iX2)
+        X3 = MeshX(3) % Center(iX3)
+
+        U_plt(iX1,iX2,iX3,1) = X1
+        U_plt(iX1,iX2,iX3,2) = X2
+        U_plt(iX1,iX2,iX3,3) = X3
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+    CALL DestroyMesh_MF( MeshX )
+
+  END SUBROUTINE WriteMesh
 
 
 END MODULE InputOutputModuleAMReX

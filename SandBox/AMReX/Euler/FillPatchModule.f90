@@ -12,7 +12,7 @@ MODULE FillPatchModule
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio, &
-    amrex_interp_dg
+    amrex_interp_dg_order2
   USE amrex_fillpatch_module, ONLY: &
     amrex_fillpatch, &
     amrex_fillcoarsepatch
@@ -73,7 +73,7 @@ CONTAINS
                                     t_new (iLevel  ), MF_uGF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC, &
                             Time, sComp, dComp, nCompGF, &
-                            amrex_ref_ratio(iLevel-1), amrex_interp_dg, &
+                            amrex_ref_ratio(iLevel-1), amrex_interp_dg_order2, &
                             lo_bc, hi_bc )
 
     END IF
@@ -107,7 +107,7 @@ CONTAINS
              amrex_geom(iLevel-1), FillPhysicalBC, &
              amrex_geom(iLevel  ), FillPhysicalBC, &
              Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
-             amrex_interp_dg, lo_bc, hi_bc )
+             amrex_interp_dg_order2, lo_bc, hi_bc )
 
   END SUBROUTINE FillCoarsePatch_uGF
 
@@ -149,7 +149,7 @@ CONTAINS
                                     t_new (iLevel  ), MF_uCF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC, &
                             Time, sComp, dComp, nCompCF, &
-                            amrex_ref_ratio(iLevel-1), amrex_interp_dg, &
+                            amrex_ref_ratio(iLevel-1), amrex_interp_dg_order2, &
                             lo_bc, hi_bc )
 
     END IF
@@ -183,7 +183,7 @@ CONTAINS
              amrex_geom(iLevel-1), FillPhysicalBC, &
              amrex_geom(iLevel  ), FillPhysicalBC, &
              Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
-             amrex_interp_dg, lo_bc, hi_bc )
+             amrex_interp_dg_order2, lo_bc, hi_bc )
 
   END SUBROUTINE FillCoarsePatch_uCF
 

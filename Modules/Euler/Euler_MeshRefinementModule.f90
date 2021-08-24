@@ -134,7 +134,7 @@ close(100)
 
 open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix.txt')
 write(100,'(A)') '{'
-do ifine=1,4
+do ifine=1,nfine
 write(100,'(A)') '  {'
 do i=1,ndofx
 write(100,'(A)') '    {'
@@ -159,6 +159,8 @@ endif
 enddo
 write(100,'(A)') '};'
 close(100)
+
+print*,shape(ProjectionMatrix)
 
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
