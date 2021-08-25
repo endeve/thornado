@@ -36,13 +36,13 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'KHI'
+ProblemName = 'Advection1D'
 
 # Specify title of figure
 FigTitle = ProblemName
 
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
 
 # Specify plot file base name
 PlotFileBaseName = 'plt'
