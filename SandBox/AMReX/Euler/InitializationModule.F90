@@ -114,6 +114,8 @@ MODULE InitializationModule
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE MF_Euler_TimersModule, ONLY: &
     InitializeTimers_AMReX_Euler, &
     TimersStart_AMReX_Euler, &
@@ -206,6 +208,8 @@ CONTAINS
 
     CALL amrex_init_from_scratch( 0.0_DP )
 
+!!$    CALL AverageDown( MF_uGF_new, MF_uCF_new )
+
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
@@ -224,7 +228,7 @@ CONTAINS
              MF_uAF_Option = MF_uAF_new, &
              MF_uDF_Option = MF_uDF_new )
 
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   END SUBROUTINE InitializeProgram
 
