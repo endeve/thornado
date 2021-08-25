@@ -22,6 +22,7 @@ f90EXE_sources  += MF_Euler_TimersModule.f90
 f90EXE_sources  += MF_TimeSteppingModule_SSPRK.f90
 f90EXE_sources  += MF_Euler_BoundaryConditionsModule.f90
 f90EXE_sources  += MF_Euler_dgDiscretizationModule.f90
+f90EXE_sources  += AverageDownModule.f90
 
 # thornado/Modules/Library
 
