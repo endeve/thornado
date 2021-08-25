@@ -120,7 +120,7 @@ CONTAINS
     END DO
     END DO
 
-open(100,file='/Users/dunhamsj/Desktop/WeightsX_q.txt')
+open(100,file='/Users/dunhamsj/Desktop/GaussLegendreWeights.txt')
 write(100,'(A)') '{'
 do in1=1,ndofx
 if(.not.in1.eq.ndofx)then
@@ -160,7 +160,36 @@ enddo
 write(100,'(A)') '};'
 close(100)
 
-print*,shape(ProjectionMatrix)
+open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix_T.txt')
+write(100,'(A)') '{'
+do ifine=1,nfine
+write(100,'(A)') '  {'
+do i=1,ndofx
+write(100,'(A)') '    {'
+do k=1,ndofx
+if(.not.k.eq.ndofx)then
+write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix_T(i,k,iFine), ','
+else
+write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix_T(i,k,iFine)
+endif
+enddo
+if(.not.i.eq.ndofx)then
+write(100,'(A)') '    },'
+else
+write(100,'(A)') '    }'
+endif
+enddo
+if(.not.ifine.eq.4)then
+write(100,'(A)') '  },'
+else
+write(100,'(A)') '  }'
+endif
+enddo
+write(100,'(A)') '};'
+close(100)
+
+print*,'  SHAPE( ProjMatrix ): ', shape(ProjectionMatrix)
+print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
 
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
