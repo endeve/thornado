@@ -24,7 +24,7 @@ USE_OMP   = FALSE
 #MEM_PROFILE  = FALSE
 #TINY_PROFILE = FALSE
 
-DIM       = 2
+DIM       = 1
 
 EBASE     = ApplicationDriver
 
