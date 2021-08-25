@@ -208,7 +208,7 @@ CONTAINS
 
     CALL amrex_init_from_scratch( 0.0_DP )
 
-!!$    CALL AverageDown( MF_uGF_new, MF_uCF_new )
+    CALL AverageDown( MF_uGF_new, MF_uCF_new )
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
