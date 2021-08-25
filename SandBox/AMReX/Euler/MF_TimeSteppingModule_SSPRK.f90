@@ -35,6 +35,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     Zero, &
     One, &
     Two
+  USE MF_Euler_dgDiscretizationModule, ONLY: &
+    ComputeIncrement_Euler_MF
 !  USE MF_Euler_SlopeLimiterModule, ONLY: &
 !    MF_ApplySlopeLimiter_Euler
 !  USE MF_Euler_PositivityLimiterModule, ONLY: &
@@ -75,23 +77,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   TYPE(amrex_multifab), ALLOCATABLE :: MF_D(:,:)
 
   LOGICAL :: Verbose
-
-  INTERFACE
-    SUBROUTINE Increment_Euler_MF &
-      ( Time, MF_uGF, MF_U, MF_uDF, MF_duCF )
-      USE MF_KindModule, ONLY: &
-        DP
-      USE amrex_amrcore_module, ONLY: &
-        amrex_max_level
-      USE amrex_multifab_module, ONLY: &
-        amrex_multifab
-      REAL(DP),             INTENT(in)    :: Time   (0:amrex_max_level)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:amrex_max_level)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_U   (0:amrex_max_level)
-      TYPE(amrex_multifab), INTENT(in)    :: MF_uDF (0:amrex_max_level)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:amrex_max_level)
-    END SUBROUTINE Increment_Euler_MF
-  END INTERFACE
 
 
 CONTAINS
@@ -174,14 +159,13 @@ CONTAINS
 
 
   SUBROUTINE UpdateFluid_SSPRK_MF &
-    ( t, dt, MF_uGF, MF_uCF, MF_uDF, MF_ComputeIncrement_Euler )
+    ( t, dt, MF_uGF, MF_uCF, MF_uDF )
 
     REAL(DP),             INTENT(in)    :: t (0:amrex_max_level), &
                                            dt(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
-    PROCEDURE(Increment_Euler_MF)       :: MF_ComputeIncrement_Euler
 
     INTEGER :: iS, jS
 
@@ -270,7 +254,7 @@ CONTAINS
 
 !        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U, MF_uDF )
 
-        CALL MF_ComputeIncrement_Euler( t, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
+        CALL ComputeIncrement_Euler_MF( t, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
 !        DO iLevel = 0, amrex_max_level
 !
