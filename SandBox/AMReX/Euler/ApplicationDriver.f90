@@ -18,7 +18,8 @@ PROGRAM ApplicationDriver
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    Two
   USE MF_FieldsModule, ONLY: &
     MF_uGF_new, &
     MF_uCF_new, &
@@ -64,6 +65,8 @@ PROGRAM ApplicationDriver
   REAL(DP) :: t_wrt, t_chk
   REAL(DP) :: Timer_Evolution
 
+  REAL(DP), ALLOCATABLE :: dtMultiplier(:)
+
   TimeIt_AMReX_Euler = .TRUE.
 
   TimeIt_Euler = .TRUE.
@@ -79,32 +82,43 @@ PROGRAM ApplicationDriver
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
 
-  DO WHILE( ALL( t_new .LT. t_end ) )
+  ALLOCATE( dtMultiplier(0:amrex_max_level) )
 
-    StepNo = StepNo + 1
+  DO iLevel = 0, amrex_max_level
+
+    dtMultiplier(iLevel) = Two**( amrex_max_level - iLevel )
+
+  END DO
+
+  DO WHILE( ALL( t_new .LT. t_end ) )
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF_new, MF_uCF_new, CFL, dt )
 
-    DO iLevel = 0, amrex_max_level
+    ! --- Normalize time-steps to finest time-step ---
 
-      dt(iLevel) = MINVAL( dt )
+!!$    DO iLevel = 0, amrex_max_level-1
+!!$
+!!$      dt(iLevel) = dtMultiplier(iLevel) * dt(amrex_max_level)
+!!$
+!!$    END DO
 
-    END DO
+    dt = MINVAL( dt )
 
-    IF( ALL( t_new + dt .LE. t_end ) )THEN
+!!$    t_old = t_new
 
-      t_new = t_new + dt
+    IF( t_new(0) + dt(0) .LE. t_end )THEN
+
+      t_new = t_new(0) + dt(0)
 
     ELSE
 
-      DO iLevel = 0, amrex_max_level
-
-        dt   (iLevel) = t_end - t_new(iLevel)
-        t_new(iLevel) = t_end
-
-      END DO
+      dt    = t_end - t_new
+      t_new = t_end
 
     END IF
+
+    CALL UpdateFluid_SSPRK_MF &
+          ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -140,35 +154,32 @@ PROGRAM ApplicationDriver
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
-    CALL UpdateFluid_SSPRK_MF &
-          ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )
-
-    IF( chk )THEN
-
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
-
-!      CALL WriteFieldsAMReX_Checkpoint &
-!             ( StepNo, nLevels, dt, t, &
-!               MF_uGF % BA % P, &
-!               MF_uGF % P, &
-!               MF_uCF % P )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
-      CALL FinalizeTimers_Euler &
-             ( Verbose_Option = amrex_parallel_ioprocessor(), &
-               SuppressApplicationDriver_Option = .TRUE., &
-               WriteAtIntermediateTime_Option = .TRUE. )
-
-      CALL FinalizeTimers_AMReX_Euler &
-             ( WriteAtIntermediateTime_Option = .TRUE. )
-
-      chk = .FALSE.
-
-    END IF
+!!$    IF( chk )THEN
+!!$
+!!$      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+!!$
+!!$      CALL ComputeFromConserved_Euler_MF &
+!!$             ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
+!!$
+!!$      CALL WriteFieldsAMReX_Checkpoint &
+!!$             ( StepNo, nLevels, dt, t, &
+!!$               MF_uGF % BA % P, &
+!!$               MF_uGF % P, &
+!!$               MF_uCF % P )
+!!$
+!!$      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+!!$
+!!$      CALL FinalizeTimers_Euler &
+!!$             ( Verbose_Option = amrex_parallel_ioprocessor(), &
+!!$               SuppressApplicationDriver_Option = .TRUE., &
+!!$               WriteAtIntermediateTime_Option = .TRUE. )
+!!$
+!!$      CALL FinalizeTimers_AMReX_Euler &
+!!$             ( WriteAtIntermediateTime_Option = .TRUE. )
+!!$
+!!$      chk = .FALSE.
+!!$
+!!$    END IF
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -208,6 +219,8 @@ PROGRAM ApplicationDriver
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   END DO
+
+  DEALLOCATE( dtMultiplier )
 
   ! --- END of evolution ---
 
