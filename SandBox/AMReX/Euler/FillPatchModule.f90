@@ -59,18 +59,18 @@ CONTAINS
 
     IF( iLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch( MF_uGF, t_old (iLevel), MF_uGF_old(iLevel), &
-                                    t_new (iLevel), MF_uGF_new(iLevel), &
+      CALL amrex_fillpatch( MF_uGF, t_old(iLevel), MF_uGF_old(iLevel), &
+                                    t_new(iLevel), MF_uGF_new(iLevel), &
                             amrex_geom(iLevel), FillPhysicalBC, &
                             Time, sComp, dComp, nCompGF )
 
     ELSE
 
-      CALL amrex_fillpatch( MF_uGF, t_old (iLevel-1), MF_uGF_old(iLevel-1), &
-                                    t_new (iLevel-1), MF_uGF_new(iLevel-1), &
+      CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                                    t_new(iLevel-1), MF_uGF_new(iLevel-1), &
                             amrex_geom(iLevel-1), FillPhysicalBC, &
-                                    t_old (iLevel  ), MF_uGF_old(iLevel  ), &
-                                    t_new (iLevel  ), MF_uGF_new(iLevel  ), &
+                                    t_old(iLevel  ), MF_uGF_old(iLevel  ), &
+                                    t_new(iLevel  ), MF_uGF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC, &
                             Time, sComp, dComp, nCompGF, &
                             amrex_ref_ratio(iLevel-1), amrex_interp_dg_order2, &
@@ -135,18 +135,18 @@ CONTAINS
 
     IF( iLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch( MF_uCF, t_old (iLevel), MF_uCF_old(iLevel), &
-                                    t_new (iLevel), MF_uCF_new(iLevel), &
+      CALL amrex_fillpatch( MF_uCF, t_old(iLevel), MF_uCF_old(iLevel), &
+                                    t_new(iLevel), MF_uCF_new(iLevel), &
                             amrex_geom(iLevel), FillPhysicalBC, &
                             Time, sComp, dComp, nCompCF )
 
     ELSE
 
-      CALL amrex_fillpatch( MF_uCF, t_old (iLevel-1), MF_uCF_old(iLevel-1), &
-                                    t_new (iLevel-1), MF_uCF_new(iLevel-1), &
+      CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                                    t_new(iLevel-1), MF_uCF_new(iLevel-1), &
                             amrex_geom(iLevel-1), FillPhysicalBC, &
-                                    t_old (iLevel  ), MF_uCF_old(iLevel  ), &
-                                    t_new (iLevel  ), MF_uCF_new(iLevel  ), &
+                                    t_old(iLevel  ), MF_uCF_old(iLevel  ), &
+                                    t_new(iLevel  ), MF_uCF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC, &
                             Time, sComp, dComp, nCompCF, &
                             amrex_ref_ratio(iLevel-1), amrex_interp_dg_order2, &
