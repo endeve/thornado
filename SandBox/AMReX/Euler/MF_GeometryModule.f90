@@ -54,11 +54,9 @@ CONTAINS
     TYPE(amrex_box)       :: BX
     TYPE(amrex_parmparse) :: PP
 
-    INTEGER :: iNX, iX1, iX2, iX3, iGF
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: Gt(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER :: iLo_G(3), iHi_G(3)
