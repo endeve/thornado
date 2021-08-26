@@ -1,11 +1,17 @@
 MODULE TwoMoment_UtilitiesModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, Three, Five
+    DP, Zero, Half, One, Two, Three, Five, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
@@ -22,28 +28,764 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     FluxFactor, &
     EddingtonFactor, &
     HeatFluxFactor
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Streaming_NumericalFlux_InOut, &
+    Timer_Streaming_NumericalFlux_RHS, &
+    Timer_Streaming_NumericalFlux_LS, &
+    Timer_Streaming_NumericalFlux_Update
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiplyBatched
 
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: InitializeComputePrimitive_TwoMoment
+  PUBLIC :: FinalizeComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment
+  PUBLIC :: ComputePrimitive_TwoMoment_Scalar
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
+  PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Flux_E
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
+  PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_dd
+  PUBLIC :: EddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: ComputeHeatFluxTensorComponents_udd
   PUBLIC :: NumericalFlux_LLF
 
+  INTERFACE ComputePrimitive_TwoMoment
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Vector_Richardson
+  END INTERFACE ComputePrimitive_TwoMoment
+
 CONTAINS
 
+  SUBROUTINE InitializeComputePrimitive_TwoMoment
+  END SUBROUTINE InitializeComputePrimitive_TwoMoment
 
-  SUBROUTINE ComputePrimitive_TwoMoment &
+  SUBROUTINE FinalizeComputePrimitive_TwoMoment
+  END SUBROUTINE FinalizeComputePrimitive_TwoMoment
+
+  SUBROUTINE ComputePrimitive_TwoMoment_Vector &
+    ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ, nIterations_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
+    INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
+
+    ! --- Parameters ---
+
+    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+
+    ! --- Local Variables ---
+
+    INTEGER  :: nZ
+    INTEGER  :: iX, iZ
+    INTEGER  :: k, Mk, iM, i, j
+
+    REAL(DP) :: FTMP(4,M), GTMP(4,M)
+    REAL(DP) :: k_dd(3,3), SUM1, DET, LMAT(4,4)
+    REAL(DP) :: A_d_1, A_d_2, A_d_3
+    LOGICAL  :: CONVERGED
+
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
+    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
+    LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
+    INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
+
+    nZ = SIZE( N, 1 )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    ALLOCATE( FVEC(4,M,nZ) )
+    ALLOCATE( GVEC(4,M,nZ) )
+
+    ALLOCATE( CVEC (4,nZ) )
+    ALLOCATE( UVEC (4,nZ) )
+    ALLOCATE( FVECm(4,nZ) )
+    ALLOCATE( GVECm(4,nZ) )
+    ALLOCATE( Alpha(M,nZ) )
+
+    ALLOCATE( ITERATE(nZ) )
+    ALLOCATE( nIterations(nZ) )
+
+    ITERATE = .TRUE.
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: ITERATE ) &
+    !$OMP MAP( alloc: FVEC, GVEC, CVEC, UVEC, &
+    !$OMP             FVECm, GVECm, Alpha, nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( ITERATE ) &
+    !$ACC CREATE( FVEC, GVEC, CVEC, UVEC, &
+    !$ACC         FVECm, GVECm, Alpha, nIterations )
+#endif
+
+    ! --- Initial Guess ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+    !$ACC PRESENT( CVEC, UVEC, N, G_d_1, G_d_2, G_d_3, &
+    !$ACC          D, I_u_1, I_u_2, I_u_3, &
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iZ = 1, nZ
+      CVEC(iCR_N ,iZ) = N    (iZ)
+      CVEC(iCR_G1,iZ) = G_d_1(iZ)
+      CVEC(iCR_G2,iZ) = G_d_2(iZ)
+      CVEC(iCR_G3,iZ) = G_d_3(iZ)
+
+      D    (iZ) = N(iZ)
+      I_u_1(iZ) = Zero
+      I_u_2(iZ) = Zero
+      I_u_3(iZ) = Zero
+    END DO
+
+    CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
+
+    k = 0
+    DO WHILE( ANY( ITERATE ) .AND. k < MaxIterations )
+
+      k = k + 1
+      Mk = MIN( M, k )
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_RHS )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+      !$ACC PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT ) &
+      !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
+      !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
+#endif
+      DO iZ = 1, nZ
+        IF ( ITERATE(iZ) ) THEN
+
+          iX = PositionIndexZ(iZ)
+
+          UVEC(iPR_D ,iZ) = D    (iZ)
+          UVEC(iPR_I1,iZ) = I_u_1(iZ) * Gm_dd_11(iX)
+          UVEC(iPR_I2,iZ) = I_u_2(iZ) * Gm_dd_22(iX)
+          UVEC(iPR_I3,iZ) = I_u_3(iZ) * Gm_dd_33(iX)
+
+          k_dd = EddingtonTensorComponents_dd &
+                   ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
+                     Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) )
+
+          A_d_1 &
+            =   V_u_1(iX) * k_dd(1,1) &
+              + V_u_2(iX) * k_dd(2,1) &
+              + V_u_3(iX) * k_dd(3,1)
+
+          A_d_2 &
+            =   V_u_1(iX) * k_dd(1,2) &
+              + V_u_2(iX) * k_dd(2,2) &
+              + V_u_3(iX) * k_dd(3,2)
+
+          A_d_3 &
+            =   V_u_1(iX) * k_dd(1,3) &
+              + V_u_2(iX) * k_dd(2,3) &
+              + V_u_3(iX) * k_dd(3,3)
+
+          DET &
+            = One &
+              - ( V_u_1(iX) * A_d_1 &
+                + V_u_2(iX) * A_d_2 &
+                + V_u_3(iX) * A_d_3 )
+
+          LMAT(1,1) = One
+          LMAT(2,1) = - V_u_1(iX)
+          LMAT(3,1) = - V_u_2(iX)
+          LMAT(4,1) = - V_u_3(iX)
+
+          LMAT(1,2) = - A_d_1
+          LMAT(2,2) = One - ( V_u_2(iX) * A_d_2 + V_u_3(iX) * A_d_3 )
+          LMAT(3,2) = V_u_2(iX) * A_d_1
+          LMAT(4,2) = V_u_3(iX) * A_d_1
+
+          LMAT(1,3) = - A_d_2
+          LMAT(2,3) = V_u_1(iX) * A_d_2
+          LMAT(3,3) = One - ( V_u_1(iX) * A_d_1 + V_u_3(iX) * A_d_3 )
+          LMAT(4,3) = V_u_3(iX) * A_d_2
+
+          LMAT(1,4) = - A_d_3
+          LMAT(2,4) = V_u_1(iX) * A_d_3
+          LMAT(3,4) = V_u_2(iX) * A_d_3
+          LMAT(4,4) = One - ( V_u_1(iX) * A_d_1 + V_u_2(iX) * A_d_2 )
+
+          DO i = 1, 4
+            SUM1 = Zero
+            DO j = 1, 4
+              SUM1 = SUM1 + LMAT(j,i) * CVEC(j,iZ) / DET
+            END DO
+            GVECm(i,iZ) = SUM1
+            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+
+            GVEC(i,Mk,iZ) = GVECm(i,iZ)
+            FVEC(i,Mk,iZ) = FVECm(i,iZ)
+          END DO
+
+        END IF
+      END DO
+
+      CALL TimersStop( Timer_Streaming_NumericalFlux_RHS )
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_LS )
+
+      IF ( Mk > 1 ) THEN
+        CALL Alpha_LS_Vector &
+               ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
+
+#if   defined( THORNADO_OMP_OL )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( SUM1 )
+#elif defined( THORNADO_OACC   )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) ASYNC &
+        !$ACC PRIVATE( SUM1 ) &
+        !$ACC PRESENT( ITERATE, GVECm, FVECm, GVEC, UVEC, Alpha )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(2) &
+        !$OMP PRIVATE( SUM1 )
+#endif
+        DO iZ = 1, nZ
+          DO i = 1, 4
+            IF ( ITERATE(iZ) ) THEN
+              SUM1 = Zero
+              DO iM = 1, Mk
+                SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
+              END DO
+              GVECm(i,iZ) = SUM1
+              FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+            END IF
+          END DO
+        END DO
+      END IF
+
+      CALL TimersStop( Timer_Streaming_NumericalFlux_LS )
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_Update )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
+      !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
+      !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+#endif
+      DO iZ = 1, nZ
+        IF ( ITERATE(iZ) ) THEN
+
+          iX = PositionIndexZ(iZ)
+
+          D    (iZ) = GVECm(iPR_D ,iZ)
+          I_u_1(iZ) = GVECm(iPR_I1,iZ) / Gm_dd_11(iX)
+          I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
+          I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
+
+          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) &
+                        <= Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+
+          IF ( CONVERGED ) THEN
+            ITERATE(iZ) = .FALSE.
+            nIterations(iZ) = k
+          ELSE IF ( Mk == M ) THEN
+            DO j = 1, Mk - 1
+              DO i = 1, 4
+                FTMP(i,j) = FVEC(i,j+1,iZ)
+                GTMP(i,j) = GVEC(i,j+1,iZ)
+              END DO
+            END DO
+            DO j = 1, Mk - 1
+              DO i = 1, 4
+                FVEC(i,j,iZ) = FTMP(i,j)
+                GVEC(i,j,iZ) = GTMP(i,j)
+              END DO
+            END DO
+          END IF
+        END IF
+      END DO
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE FROM( ITERATE )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE HOST( ITERATE ) ASYNC
+      !$ACC WAIT
+#endif
+
+      CALL TimersStop( Timer_Streaming_NumericalFlux_Update )
+
+    END DO
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    IF( PRESENT( nIterations_Option ) ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+      !$ACC PRESENT( nIterations, nIterations_Option )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iZ = 1, nZ
+        nIterations_Option(iZ) = nIterations(iZ)
+      END DO
+    END IF
+
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: FVEC, GVEC, CVEC, UVEC, &
+    !$OMP               FVECm, GVECm, Alpha, ITERATE, nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA WAIT &
+    !$ACC DELETE( FVEC, GVEC, CVEC, UVEC, &
+    !$ACC         FVECm, GVECm, Alpha, ITERATE, nIterations )
+#endif
+
+    DEALLOCATE( FVEC, GVEC )
+    DEALLOCATE( CVEC, UVEC, FVECm, GVECm, Alpha )
+    DEALLOCATE( ITERATE, nIterations )
+
+    CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
+
+  END SUBROUTINE ComputePrimitive_TwoMoment_Vector
+
+
+  SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson &
+    ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ, nIterations_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
+    INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
+
+    ! --- Parameters ---
+
+    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+
+    ! --- Local Variables ---
+
+    INTEGER  :: nZ
+    INTEGER  :: iX, iZ
+    INTEGER  :: k, Mk, iM, i, j
+
+    REAL(DP) :: FTMP(4,M), GTMP(4,M)
+    REAL(DP) :: SUM1, k_dd(3,3)
+    REAL(DP) :: vMag, Omega, vI, vK
+    LOGICAL  :: CONVERGED
+
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
+    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
+    LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
+    INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
+
+    nZ = SIZE( N, 1 )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    ALLOCATE( FVEC(4,M,nZ) )
+    ALLOCATE( GVEC(4,M,nZ) )
+
+    ALLOCATE( CVEC (4,nZ) )
+    ALLOCATE( UVEC (4,nZ) )
+    ALLOCATE( FVECm(4,nZ) )
+    ALLOCATE( GVECm(4,nZ) )
+    ALLOCATE( Alpha(M,nZ) )
+
+    ALLOCATE( ITERATE(nZ) )
+    ALLOCATE( nIterations(nZ) )
+
+    ITERATE = .TRUE.
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: ITERATE ) &
+    !$OMP MAP( alloc: FVEC, GVEC, CVEC, UVEC, &
+    !$OMP             FVECm, GVECm, Alpha, nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( ITERATE ) &
+    !$ACC CREATE( FVEC, GVEC, CVEC, UVEC, &
+    !$ACC         FVECm, GVECm, Alpha, nIterations )
+#endif
+
+    ! --- Initial Guess ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+    !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3, &
+    !$ACC          D, I_u_1, I_u_2, I_u_3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iZ = 1, nZ
+      CVEC(iCR_N ,iZ) = N    (iZ)
+      CVEC(iCR_G1,iZ) = G_d_1(iZ)
+      CVEC(iCR_G2,iZ) = G_d_2(iZ)
+      CVEC(iCR_G3,iZ) = G_d_3(iZ)
+
+      D    (iZ) = N(iZ)
+      I_u_1(iZ) = Zero
+      I_u_2(iZ) = Zero
+      I_u_3(iZ) = Zero
+    END DO
+
+    CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
+
+    k = 0
+    DO WHILE( ANY( ITERATE ) .AND. k < MaxIterations )
+
+      k = k + 1
+      Mk = MIN( M, k )
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_RHS )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+      !$ACC PRIVATE( iX, k_dd, vMag, Omega, vI, vK ) &
+      !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
+      !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
+#endif
+      DO iZ = 1, nZ
+        IF ( ITERATE(iZ) ) THEN
+
+          iX = PositionIndexZ(iZ)
+
+          UVEC(iPR_D ,iZ) = D    (iZ)
+          UVEC(iPR_I1,iZ) = I_u_1(iZ) * Gm_dd_11(iX)
+          UVEC(iPR_I2,iZ) = I_u_2(iZ) * Gm_dd_22(iX)
+          UVEC(iPR_I3,iZ) = I_u_3(iZ) * Gm_dd_33(iX)
+
+          k_dd = EddingtonTensorComponents_dd &
+                   ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
+                     Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) )
+
+          vMag = SQRT(   V_u_1(iX) * Gm_dd_11(iX) * V_u_1(iX) &
+                       + V_u_2(iX) * Gm_dd_22(iX) * V_u_2(iX) &
+                       + V_u_3(iX) * Gm_dd_33(iX) * V_u_3(iX) )
+
+          Omega = One / ( One + vMag )
+
+          vI =   V_u_1(iX) * UVEC(iPR_I1,iZ) &
+               + V_u_2(iX) * UVEC(iPR_I2,iZ) &
+               + V_u_3(iX) * UVEC(iPR_I3,iZ)
+
+          GVECm(1,iZ) = (One - Omega) * UVEC(iPR_D,iZ) &
+                        + Omega * ( CVEC(iCR_N,iZ) - vI )
+
+          DO j = 1, 3
+
+            vK =   V_u_1(iX) * k_dd(j,1) &
+                 + V_u_2(iX) * k_dd(j,2) &
+                 + V_u_3(iX) * k_dd(j,3)
+
+            GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
+                            + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
+
+          END DO
+
+          DO i = 1, 4
+
+            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+
+            GVEC(i,Mk,iZ) = GVECm(i,iZ)
+            FVEC(i,Mk,iZ) = FVECm(i,iZ)
+
+          END DO
+
+        END IF
+      END DO
+
+      CALL TimersStop( Timer_Streaming_NumericalFlux_RHS )
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_LS )
+
+      IF ( Mk > 1 ) THEN
+
+        CALL Alpha_LS_Vector &
+               ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
+
+#if   defined( THORNADO_OMP_OL )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( SUM1 )
+#elif defined( THORNADO_OACC   )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) ASYNC &
+        !$ACC PRIVATE( SUM1 ) &
+        !$ACC PRESENT( ITERATE, GVECm, FVECm, GVEC, UVEC, Alpha )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(2) &
+        !$OMP PRIVATE( SUM1 )
+#endif
+        DO iZ = 1, nZ
+          DO i = 1, 4
+            IF ( ITERATE(iZ) ) THEN
+              SUM1 = Zero
+              DO iM = 1, Mk
+                SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
+              END DO
+              GVECm(i,iZ) = SUM1
+              FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+            END IF
+          END DO
+        END DO
+      END IF
+
+      CALL TimersStop( Timer_Streaming_NumericalFlux_LS )
+
+      CALL TimersStart( Timer_Streaming_NumericalFlux_Update )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
+      !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
+      !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+#endif
+      DO iZ = 1, nZ
+        IF ( ITERATE(iZ) ) THEN
+
+          iX = PositionIndexZ(iZ)
+
+          D    (iZ) = GVECm(iPR_D ,iZ)
+          I_u_1(iZ) = GVECm(iPR_I1,iZ) / Gm_dd_11(iX)
+          I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
+          I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
+
+          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
+                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+
+          IF ( CONVERGED ) THEN
+            ITERATE(iZ) = .FALSE.
+            nIterations(iZ) = k
+          ELSE IF ( Mk == M ) THEN
+            DO j = 1, Mk - 1
+              DO i = 1, 4
+                FTMP(i,j) = FVEC(i,j+1,iZ)
+                GTMP(i,j) = GVEC(i,j+1,iZ)
+              END DO
+            END DO
+            DO j = 1, Mk - 1
+              DO i = 1, 4
+                FVEC(i,j,iZ) = FTMP(i,j)
+                GVEC(i,j,iZ) = GTMP(i,j)
+              END DO
+            END DO
+          END IF
+        END IF
+      END DO
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE FROM( ITERATE )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE HOST( ITERATE ) ASYNC
+      !$ACC WAIT
+#endif
+
+      CALL TimersStop( Timer_Streaming_NumericalFlux_Update )
+
+    END DO
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    IF( PRESENT( nIterations_Option ) ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+      !$ACC PRESENT( nIterations, nIterations_Option )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iZ = 1, nZ
+        nIterations_Option(iZ) = nIterations(iZ)
+      END DO
+    END IF
+
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: FVEC, GVEC, CVEC, UVEC, &
+    !$OMP               FVECm, GVECm, Alpha, ITERATE, nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA WAIT &
+    !$ACC DELETE( FVEC, GVEC, CVEC, UVEC, &
+    !$ACC         FVECm, GVECm, Alpha, ITERATE, nIterations )
+#endif
+
+    DEALLOCATE( FVEC, GVEC )
+    DEALLOCATE( CVEC, UVEC, FVECm, GVECm, Alpha )
+    DEALLOCATE( ITERATE, nIterations )
+
+    CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
+
+  END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
+
+
+  SUBROUTINE Alpha_LS_Vector &
+    ( MASK, nZ, M, Mk, Fm, F, Alpha )
+
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    INTEGER,                    INTENT(in)    :: nZ, M, Mk
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Alpha
+
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA
+    REAL(DP) :: A1, A2, B
+    INTEGER  :: iZ, iP
+
+    IF ( Mk > 1 ) THEN
+
+      IF ( Mk == 2 ) THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+        !$OMP PRIVATE( AA11, AB1, B )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+        !$ACC PRIVATE( AA11, AB1, B ) &
+        !$ACC PRESENT( MASK, Alpha, F, Fm )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO &
+        !$OMP PRIVATE( AA11, AB1, B )
+#endif
+        DO iZ = 1, nZ
+          IF ( MASK(iZ) ) THEN
+
+            AA11 = Zero
+            AB1 = Zero
+
+            DO iP = 1, 4
+
+              A1 = F(iP,1,iZ) - Fm(iP,iZ)
+              B  = - Fm(iP,iZ)
+
+              AA11 = AA11 + A1 * A1
+              AB1  = AB1  + A1 * B
+
+            END DO
+
+            Alpha(1,iZ) = AB1 / ( AA11 + SqrtTiny )
+            Alpha(2,iZ) = One - Alpha(1,iZ)
+
+          END IF
+        END DO
+
+      ELSE IF ( Mk == 3 ) THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR ASYNC &
+        !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B ) &
+        !$ACC PRESENT( MASK, Alpha, F, Fm )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO &
+        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B )
+#endif
+        DO iZ = 1, nZ
+          IF ( MASK(iZ) ) THEN
+
+            AA11 = Zero
+            AA12 = Zero
+            AA22 = Zero
+            AB1  = Zero
+            AB2  = Zero
+
+            DO iP = 1, 4
+
+              A1 = F(iP,1,iZ) - Fm(iP,iZ)
+              A2 = F(iP,2,iZ) - Fm(iP,iZ)
+              B  = - Fm(iP,iZ)
+
+              AA11 = AA11 + A1 * A1
+              AA12 = AA12 + A1 * A2
+              AA22 = AA22 + A2 * A2
+
+              AB1  = AB1  + A1 * B
+              AB2  = AB2  + A2 * B
+
+            END DO
+
+            DET_AA = AA11*AA22 - AA12*AA12
+
+            Alpha(1,iZ) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+            Alpha(2,iZ) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+            Alpha(3,iZ) = One - Alpha(1,iZ) - Alpha(2,iZ)
+
+          END IF
+        END DO
+
+      ELSE IF ( Mk > 3 ) THEN
+
+        ! --- Not Implemented ---
+
+      END IF
+
+    END IF
+
+  END SUBROUTINE Alpha_LS_Vector
+
+
+  SUBROUTINE ComputePrimitive_TwoMoment_Scalar &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(out) :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
@@ -54,21 +796,18 @@ CONTAINS
     ! --- Parameters ---
 
     INTEGER,  PARAMETER :: M = 2
-    INTEGER,  PARAMETER :: LWORK = 2 * M
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
 
     ! --- Local Variables ---
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: i, k, mk, INFO
-    REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    INTEGER  :: i, j, k, mk
+    REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3, k_dd(3,3)
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
     REAL(DP) :: LMAT(4,4), DET, Alpha(M)
-    REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
 
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
@@ -92,13 +831,12 @@ CONTAINS
 
       UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
 
-      CALL ComputeEddingtonTensorComponents_dd &
-             ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+      k_dd = EddingtonTensorComponents_dd &
+               ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-      A_d_1 = V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13
-      A_d_2 = V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23
-      A_d_3 = V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33
+      A_d_1 = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+      A_d_2 = V_u_1 * k_dd(1,2) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+      A_d_3 = V_u_1 * k_dd(1,3) + V_u_2 * k_dd(2,3) + V_u_3 * k_dd(3,3)
 
       DET = One - ( V_u_1 * A_d_1 + V_u_2 * A_d_2 + V_u_3 * A_d_3 )
 
@@ -124,7 +862,17 @@ CONTAINS
 
       LMAT = LMAT / DET
 
-      CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
+      ! --- Multiply LMAT and CVEC to form GVEC ---
+
+      GVEC(:,mk) = Zero
+
+      DO j = 1, 4
+      DO i = 1, 4
+
+        GVEC(i,mk) = GVEC(i,mk) + LMAT(i,j) * CVEC(j)
+
+      END DO
+      END DO
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
 
@@ -138,16 +886,7 @@ CONTAINS
 
         ! --- Anderson Accelerated Fixed-Point ---
 
-        BVEC = - FVEC(:,mk)
-
-        AMAT(:,1:mk-1) &
-          = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
-
-        CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
-                    WORK, LWORK, INFO )
-
-        Alpha(1:mk-1) = BVEC(1:mk-1)
-        Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
+        Alpha = Alpha_LS( M, mk, FVEC )
 
         GVECm = Zero
         DO i = 1, mk
@@ -160,7 +899,7 @@ CONTAINS
 
       FVECm = GVECm - UVEC
 
-      IF( ALL( ABS( FVECm ) <= Rtol * ABS( CVEC ) ) )THEN
+      IF( SQRT( SUM( FVECm**2 ) ) <= Rtol * SQRT( SUM( CVEC**2 ) ) )THEN
 
         CONVERGED = .TRUE.
 
@@ -170,8 +909,8 @@ CONTAINS
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
 
-        GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-        FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+        FVEC = ShiftVec( M, mk, FVEC )
+        GVEC = ShiftVec( M, mk, GVEC )
 
       END IF
 
@@ -188,53 +927,175 @@ CONTAINS
 
     END IF
 
-    IF( k == MaxIterations )THEN
+!    IF( k == MaxIterations )THEN
+!
+!      PRINT*
+!      PRINT*, "ComputePrimitive_TwoMoment"
+!      PRINT*
+!      PRINT*, "  N     = ", N
+!      PRINT*, "  G_d_1 = ", G_d_1
+!      PRINT*, "  G_d_2 = ", G_d_2
+!      PRINT*, "  G_d_3 = ", G_d_3
+!      PRINT*
+!      PRINT*, "  V_u_1 = ", V_u_1
+!      PRINT*, "  V_u_2 = ", V_u_2
+!      PRINT*, "  V_u_3 = ", V_u_3
+!      PRINT*
+!
+!      PRINT*, "  Converged with k = ", k
+!
+!      PRINT*
+!      PRINT*, "  FVECm = ", FVECm
+!      PRINT*
+!
+!      PRINT*
+!      PRINT*, "  D     = ", D
+!      PRINT*, "  I_u_1 = ", I_u_1
+!      PRINT*, "  I_u_2 = ", I_u_2
+!      PRINT*, "  I_u_3 = ", I_u_3
+!      PRINT*
+!
+!    END IF
 
-      PRINT*
-      PRINT*, "ComputePrimitive_TwoMoment"
-      PRINT*
-      PRINT*, "  N     = ", N
-      PRINT*, "  G_d_1 = ", G_d_1
-      PRINT*, "  G_d_2 = ", G_d_2
-      PRINT*, "  G_d_3 = ", G_d_3
-      PRINT*
-      PRINT*, "  V_u_1 = ", V_u_1
-      PRINT*, "  V_u_2 = ", V_u_2
-      PRINT*, "  V_u_3 = ", V_u_3
-      PRINT*
+  END SUBROUTINE ComputePrimitive_TwoMoment_Scalar
 
-      PRINT*, "  Converged with k = ", k
 
-      PRINT*
-      PRINT*, "  FVECm = ", FVECm
-      PRINT*
+  FUNCTION Alpha_LS( M, mk, FVEC )
 
-      PRINT*
-      PRINT*, "  D     = ", D
-      PRINT*, "  I_u_1 = ", I_u_1
-      PRINT*, "  I_u_2 = ", I_u_2
-      PRINT*, "  I_u_3 = ", I_u_3
-      PRINT*
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,  INTENT(in) :: M, mk
+    REAL(DP), INTENT(in) :: FVEC(4,M)
+    REAL(DP)             :: Alpha_LS(M)
+
+    INTEGER  :: i
+    REAL(DP) :: BVEC(4), AMAT(4,M)
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
+
+    BVEC = - FVEC(:,mk)
+
+    DO i = 1, mk - 1
+
+      AMAT(:,i) = FVEC(:,i) - FVEC(:,mk)
+
+    END DO
+
+    IF( mk == 2 )THEN
+
+      AA11 = Zero
+      AB1  = Zero
+
+      DO i = 1, 4
+
+        AA11 = AA11 + AMAT(i,1) * AMAT(i,1)
+        AB1  = AB1  + AMAT(i,1) * BVEC(i)
+
+      END DO
+
+      BVEC(1) = AB1 / AA11
+
+    ELSEIF( mk == 3 )THEN
+
+      AA11 = Zero
+      AA12 = Zero
+      AA22 = Zero
+      AB1  = Zero
+      AB2  = Zero
+
+      DO i = 1, 4
+
+        AA11 = AA11 + AMAT(i,1) * AMAT(i,1)
+        AA12 = AA12 + AMAT(i,1) * AMAT(i,2)
+        AA22 = AA22 + AMAT(i,2) * AMAT(i,2)
+        AB1  = AB1  + AMAT(i,1) * BVEC(i)
+        AB2  = AB2  + AMAT(i,2) * BVEC(i)
+
+      END DO
+
+      DET_AA = AA11 * AA22 - AA12 * AA12
+
+      BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+      BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+    ELSEIF( mk > 3 )THEN
+
+      ! --- Not Implemented ---
 
     END IF
 
-  END SUBROUTINE ComputePrimitive_TwoMoment
+    SUM1 = Zero
+    DO i = 1, mk - 1
+
+      Alpha_LS(i) = BVEC(i)
+
+      SUM1 = SUM1 + BVEC(i)
+
+    END DO
+
+    Alpha_LS(mk) = One - SUM1
+
+    RETURN
+  END FUNCTION Alpha_LS
+
+
+  FUNCTION ShiftVec( M, mk, Vec )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,  INTENT(in) :: M, mk
+    REAL(DP), INTENT(in) :: Vec(4,M)
+    REAL(DP)             :: ShiftVec(4,M)
+
+    INTEGER  :: i, j
+    REAL(DP) :: VecTMP(4,M)
+
+    DO j = 1, mk - 1
+    DO i = 1, 4
+
+      VecTMP(i,j) = Vec(i,j+1)
+
+    END DO
+    END DO
+
+    DO j = 1, mk - 1
+    DO i = 1, 4
+
+      ShiftVec(i,j) = VecTMP(i,j)
+
+    END DO
+    END DO
+
+    RETURN
+  END FUNCTION ShiftVec
 
 
   SUBROUTINE ComputeConserved_TwoMoment &
     ( D, I_u_1, I_u_2, I_u_3, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(out) :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: k_dd(3,3)
 
-    CALL ComputeEddingtonTensorComponents_dd &
-           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+    k_dd = EddingtonTensorComponents_dd &
+             ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     ! --- Conserved Number Density ---
 
@@ -245,23 +1106,23 @@ CONTAINS
     ! --- Conserved Number Flux Density (1) ---
 
     G_d_1 = Gm_dd_11 * I_u_1 &
-              + (   V_u_1 * k_dd_11 &
-                  + V_u_2 * k_dd_12 &
-                  + V_u_3 * k_dd_13 ) * D
+              + (   V_u_1 * k_dd(1,1) &
+                  + V_u_2 * k_dd(1,2) &
+                  + V_u_3 * k_dd(1,3) ) * D
 
     ! --- Conserved Number Flux Density (2) ---
 
     G_d_2 = Gm_dd_22 * I_u_2 &
-              + (   V_u_1 * k_dd_12 &
-                  + V_u_2 * k_dd_22 &
-                  + V_u_3 * k_dd_23 ) * D
+              + (   V_u_1 * k_dd(1,2) &
+                  + V_u_2 * k_dd(2,2) &
+                  + V_u_3 * k_dd(2,3) ) * D
 
     ! --- Conserved Number Flux Density (3) ---
 
     G_d_3 = Gm_dd_33 * I_u_3 &
-              + (   V_u_1 * k_dd_13 &
-                  + V_u_2 * k_dd_23 &
-                  + V_u_3 * k_dd_33 ) * D
+              + (   V_u_1 * k_dd(1,3) &
+                  + V_u_2 * k_dd(2,3) &
+                  + V_u_3 * k_dd(3,3) ) * D
 
   END SUBROUTINE ComputeConserved_TwoMoment
 
@@ -356,81 +1217,191 @@ CONTAINS
   END SUBROUTINE ComputeFromConserved_TwoMoment
 
 
+  SUBROUTINE ComputeTimeStep_TwoMoment &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, CFL, TimeStep )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX, &
+         iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: dt(3)
+
+    TimeStep = HUGE( One )
+    dt       = HUGE( One )
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dt(1) = dX1(iX1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
+
+      IF( iX_E0(2) .GT. iX_B0(2) )THEN
+
+        dt(2) = dX2(iX2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )
+
+      END IF
+
+      IF( iX_E0(3) .GT. iX_B0(3) )THEN
+
+        dt(3) = dX3(iX3) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_3) )
+
+      END IF
+
+      TimeStep = MIN( TimeStep, MINVAL( dt ) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc
+
+    TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+
+  END SUBROUTINE ComputeTimeStep_TwoMoment
+
+
   FUNCTION Flux_E &
     ( D, I_u_1, I_u_2, I_u_3, &
+      V_u_1, V_u_2, V_u_3, &
       dV_u_1_dX1, dV_u_2_dX1, dV_u_3_dX1, &
       dV_u_1_dX2, dV_u_2_dX2, dV_u_3_dX2, &
       dV_u_1_dX3, dV_u_2_dX3, dV_u_3_dX3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      dGm_dd_11_dX1, dGm_dd_22_dX1, dGm_dd_33_dX1, &
+      dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2, &
+      dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_E(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), INTENT(in) :: V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(in) :: dV_u_1_dX1, dV_u_2_dX1, dV_u_3_dX1
     REAL(DP), INTENT(in) :: dV_u_1_dX2, dV_u_2_dX2, dV_u_3_dX2
     REAL(DP), INTENT(in) :: dV_u_1_dX3, dV_u_2_dX3, dV_u_3_dX3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in) :: dGm_dd_11_dX1, dGm_dd_22_dX1, dGm_dd_33_dX1
+    REAL(DP), INTENT(in) :: dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2
+    REAL(DP), INTENT(in) :: dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3
 
-    REAL(DP) :: k_ud_11, k_ud_12, k_ud_13
-    REAL(DP) ::          k_ud_22, k_ud_23
-    REAL(DP) ::                   k_ud_33
-    REAL(DP) :: l_udd_111, l_udd_121, l_udd_131
-    REAL(DP) ::            l_udd_221, l_udd_231
-    REAL(DP) ::                       l_udd_331
-    REAL(DP) :: l_udd_222, l_udd_223
-    REAL(DP) :: l_udd_333, l_udd_332
+    REAL(DP) :: k_uu(3,3), l_uuu(3,3,3)
+    REAL(DP) :: VdotGradGm_dd_11
+    REAL(DP) :: VdotGradGm_dd_22
+    REAL(DP) :: VdotGradGm_dd_33
+
+    VdotGradGm_dd_11 &
+      = V_u_1 * dGm_dd_11_dX1 + V_u_2 * dGm_dd_11_dX2 + V_u_3 * dGm_dd_11_dX3
+
+    VdotGradGm_dd_22 &
+      = V_u_1 * dGm_dd_22_dX1 + V_u_2 * dGm_dd_22_dX2 + V_u_3 * dGm_dd_22_dX3
+
+    VdotGradGm_dd_33 &
+      = V_u_1 * dGm_dd_33_dX1 + V_u_2 * dGm_dd_33_dX2 + V_u_3 * dGm_dd_33_dX3
 
     ! --- Eddington Tensor Components ---
 
-    CALL ComputeEddingtonTensorComponents_ud &
-           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+    CALL ComputeEddingtonTensorComponents_uu &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, k_uu )
 
     ! --- Heat Flux Tensor Components ---
 
-    CALL ComputeHeatFluxTensorComponents_udd &
-           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 , &
-             l_udd_111, l_udd_121, l_udd_131, l_udd_221, l_udd_231, &
-             l_udd_331, l_udd_222, l_udd_223, l_udd_333, l_udd_332 )
+    CALL ComputeHeatFluxTensorComponents_uuu &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, l_uuu )
 
-    Flux_E(1) = - (   k_ud_11 * dV_u_1_dX1 &
-                    + k_ud_12 * dV_u_2_dX1 &
-                    + k_ud_13 * dV_u_3_dX1 &
-                    + k_ud_12 * dV_u_1_dX2 &
-                    + k_ud_22 * dV_u_2_dX2 &
-                    + k_ud_23 * dV_u_3_dX2 &
-                    + k_ud_13 * dV_u_1_dX3 &
-                    + k_ud_23 * dV_u_2_dX3 &
-                    + k_ud_33 * dV_u_3_dX3 ) * D
+    ! --- Number Density ---
 
-    Flux_E(2) = - (   l_udd_111 * dV_u_1_dX1 &
-                    + l_udd_121 * dV_u_2_dX1 &
-                    + l_udd_131 * dV_u_3_dX1 &
-                    + l_udd_121 * dV_u_1_dX2 &
-                    + l_udd_221 * dV_u_2_dX2 &
-                    + l_udd_231 * dV_u_3_dX2 &
-                    + l_udd_131 * dV_u_1_dX3 &
-                    + l_udd_231 * dV_u_2_dX3 &
-                    + l_udd_331 * dV_u_3_dX3 ) * D
+    Flux_E(1) &
+      = - (   Gm_dd_11 * (   k_uu(1,1) * dV_u_1_dX1 &
+                           + k_uu(2,1) * dV_u_1_dX2 &
+                           + k_uu(3,1) * dV_u_1_dX3 ) &
+            + Gm_dd_22 * (   k_uu(1,2) * dV_u_2_dX1 &
+                           + k_uu(2,2) * dV_u_2_dX2 &
+                           + k_uu(3,2) * dV_u_2_dX3 ) &
+            + Gm_dd_33 * (   k_uu(1,3) * dV_u_3_dX1 &
+                           + k_uu(2,3) * dV_u_3_dX2 &
+                           + k_uu(3,3) * dV_u_3_dX3 ) ) * D
 
-    Flux_E(3) = - (   l_udd_121 * dV_u_1_dX1 &
-                    + l_udd_221 * dV_u_2_dX1 &
-                    + l_udd_231 * dV_u_3_dX1 &
-                    + l_udd_221 * dV_u_1_dX2 &
-                    + l_udd_222 * dV_u_2_dX2 &
-                    + l_udd_223 * dV_u_3_dX2 &
-                    + l_udd_231 * dV_u_1_dX3 &
-                    + l_udd_223 * dV_u_2_dX3 &
-                    + l_udd_332 * dV_u_3_dX3 ) * D
+    Flux_E(1) &
+      = Flux_E(1) &
+          - Half * (   k_uu(1,1) * VdotGradGm_dd_11 &
+                     + k_uu(2,2) * VdotGradGm_dd_22 &
+                     + k_uu(3,3) * VdotGradGm_dd_33 ) * D
 
-    Flux_E(4) = - (   l_udd_131 * dV_u_1_dX1 &
-                    + l_udd_231 * dV_u_2_dX1 &
-                    + l_udd_331 * dV_u_3_dX1 &
-                    + l_udd_231 * dV_u_1_dX2 &
-                    + l_udd_223 * dV_u_2_dX2 &
-                    + l_udd_332 * dV_u_3_dX2 &
-                    + l_udd_331 * dV_u_1_dX3 &
-                    + l_udd_332 * dV_u_2_dX3 &
-                    + l_udd_333 * dV_u_3_dX3 ) * D
+    ! --- Number Flux Density (Component 1) ---
+
+    Flux_E(2) &
+      = - Gm_dd_11 * (   Gm_dd_11 * (   l_uuu(1,1,1) * dV_u_1_dX1 &
+                                      + l_uuu(1,2,1) * dV_u_1_dX2 &
+                                      + l_uuu(1,3,1) * dV_u_1_dX3 ) &
+                       + Gm_dd_22 * (   l_uuu(2,1,1) * dV_u_2_dX1 &
+                                      + l_uuu(2,2,1) * dV_u_2_dX2 &
+                                      + l_uuu(2,3,1) * dV_u_2_dX3 ) &
+                       + Gm_dd_33 * (   l_uuu(3,1,1) * dV_u_3_dX1 &
+                                      + l_uuu(3,2,1) * dV_u_3_dX2 &
+                                      + l_uuu(3,3,1) * dV_u_3_dX3 ) ) * D
+
+    Flux_E(2) &
+      = Flux_E(2) &
+          - Half * Gm_dd_11 * (   l_uuu(1,1,1) * VdotGradGm_dd_11 &
+                                + l_uuu(2,2,1) * VdotGradGm_dd_22 &
+                                + l_uuu(3,3,1) * VdotGradGm_dd_33 ) * D
+
+    ! --- Number Flux Density (Component 2) ---
+
+    Flux_E(3) &
+      = - Gm_dd_22 * (   Gm_dd_11 * (   l_uuu(1,1,2) * dV_u_1_dX1 &
+                                      + l_uuu(1,2,2) * dV_u_1_dX2 &
+                                      + l_uuu(1,3,2) * dV_u_1_dX3 ) &
+                       + Gm_dd_22 * (   l_uuu(2,1,2) * dV_u_2_dX1 &
+                                      + l_uuu(2,2,2) * dV_u_2_dX2 &
+                                      + l_uuu(2,3,2) * dV_u_2_dX3 ) &
+                       + Gm_dd_33 * (   l_uuu(3,1,2) * dV_u_3_dX1 &
+                                      + l_uuu(3,2,2) * dV_u_3_dX2 &
+                                      + l_uuu(3,3,2) * dV_u_3_dX3 ) ) * D
+
+    Flux_E(3) &
+      = Flux_E(3) &
+          - Half * Gm_dd_22 * (   l_uuu(1,1,2) * VdotGradGm_dd_11 &
+                                + l_uuu(2,2,2) * VdotGradGm_dd_22 &
+                                + l_uuu(3,3,2) * VdotGradGm_dd_33 ) * D
+
+    ! --- Number Flux Density (Component 3) ---
+
+    Flux_E(4) &
+      = - Gm_dd_33 * (   Gm_dd_11 * (   l_uuu(3,1,1) * dV_u_1_dX1 &
+                                      + l_uuu(3,1,2) * dV_u_1_dX2 &
+                                      + l_uuu(3,1,3) * dV_u_1_dX3 ) &
+                       + Gm_dd_22 * (   l_uuu(3,2,1) * dV_u_2_dX1 &
+                                      + l_uuu(3,2,2) * dV_u_2_dX2 &
+                                      + l_uuu(3,2,3) * dV_u_2_dX3 ) &
+                       + Gm_dd_33 * (   l_uuu(3,3,1) * dV_u_3_dX1 &
+                                      + l_uuu(3,3,2) * dV_u_3_dX2 &
+                                      + l_uuu(3,3,3) * dV_u_3_dX3 ) ) * D
+
+    Flux_E(4) &
+      = Flux_E(4) &
+          - Half * Gm_dd_33 * (   l_uuu(1,1,3) * VdotGradGm_dd_11 &
+                                + l_uuu(2,2,3) * VdotGradGm_dd_22 &
+                                + l_uuu(3,3,3) * VdotGradGm_dd_33 ) * D
 
     RETURN
   END FUNCTION Flux_E
@@ -439,6 +1410,12 @@ CONTAINS
   FUNCTION Flux_X1 &
     ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X1(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
@@ -482,6 +1459,12 @@ CONTAINS
     ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP) :: Flux_X2(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
@@ -524,6 +1507,12 @@ CONTAINS
     ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP) :: Flux_X3(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
@@ -562,9 +1551,58 @@ CONTAINS
   END FUNCTION Flux_X3
 
 
+  SUBROUTINE ComputeEddingtonTensorComponents_uu &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, k_uu )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: &
+      k_uu(3,3)
+
+    INTEGER  :: i, j
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_u(3), Gm_uu(3,3)
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+
+    Gm_uu      = Zero
+    Gm_uu(1,1) = One / Gm_dd_11
+    Gm_uu(2,2) = One / Gm_dd_22
+    Gm_uu(3,3) = One / Gm_dd_33
+
+    DO j = 1, 3
+    DO i = 1, 3
+
+      k_uu(i,j) = a * Gm_uu(i,j) + b * h_u(i) * h_u(j)
+
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeEddingtonTensorComponents_uu
+
+
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
@@ -598,6 +1636,53 @@ CONTAINS
     k_dd_23 = b * h_d_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
+
+
+  FUNCTION EddingtonTensorComponents_dd &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP)              :: &
+      EddingtonTensorComponents_dd(3,3)
+
+    INTEGER  :: i, j
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_d(3), Gm_dd(3,3)
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
+    h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
+    h_d(3) = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    Gm_dd = Zero
+    Gm_dd(1,1) = Gm_dd_11
+    Gm_dd(2,2) = Gm_dd_22
+    Gm_dd(3,3) = Gm_dd_33
+
+    DO j = 1, 3
+    DO i = 1, 3
+
+      EddingtonTensorComponents_dd(i,j) &
+        = a * Gm_dd(i,j) + b * h_d(i) * h_d(j)
+
+    END DO
+    END DO
+
+    RETURN
+  END FUNCTION EddingtonTensorComponents_dd
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
@@ -641,6 +1726,117 @@ CONTAINS
     k_ud_23 = b * h_u_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
+
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_uuu &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, l_uuu )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: &
+      l_uuu(3,3,3)
+
+    INTEGER  :: i, j, k
+    REAL(DP) :: FF, HF, a, b
+    REAL(DP) :: h_u(3), Gm_uu(3,3)
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    HF = HeatFluxFactor( D, FF )
+
+    a = Half * ( FF - HF )
+    b = Half * ( Five * HF - Three * FF )
+
+    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+
+    Gm_uu      = Zero
+    Gm_uu(1,1) = One / Gm_dd_11
+    Gm_uu(2,2) = One / Gm_dd_22
+    Gm_uu(3,3) = One / Gm_dd_33
+
+    DO k = 1, 3
+    DO j = 1, 3
+    DO i = 1, 3
+
+      l_uuu(i,j,k) &
+        = a * (   h_u(i) * Gm_uu(j,k) &
+                + h_u(j) * Gm_uu(i,k) &
+                + h_u(k) * Gm_uu(i,j) ) &
+          + b * h_u(i) * h_u(j) * h_u(k)
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_uuu
+
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_uud &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      l_uud_111, l_uud_121, l_uud_131, l_uud_221, l_uud_231, l_uud_331, &
+      l_uud_222, l_uud_223, l_uud_333, l_uud_332 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: &
+      l_uud_111, l_uud_121, l_uud_131, &
+                 l_uud_221, l_uud_231, &
+                            l_uud_331, &
+      l_uud_222, l_uud_223, &
+      l_uud_333, l_uud_332
+
+    REAL(DP) :: FF, HF, a, b
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    HF = HeatFluxFactor( D, FF )
+
+    a = Half * ( FF - HF )
+    b = Half * ( Five * HF - Three * FF )
+
+    h_u_1 = I_u_1 / ( FF * D )
+    h_u_2 = I_u_2 / ( FF * D )
+    h_u_3 = I_u_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * h_u_1
+    h_d_2 = Gm_dd_22 * h_u_2
+    h_d_3 = Gm_dd_33 * h_u_3
+
+    ! --- Diagonal Heat Flux Tensor Components ---
+
+    l_uud_111 &
+      = a * ( h_u_1 + Two * h_u_1 ) + b * h_u_1 * h_u_1 * h_d_1
+    l_uud_222 &
+      = a * ( h_u_2 + Two * h_u_2 ) + b * h_u_2 * h_u_2 * h_d_2
+    l_uud_333 &
+      = a * ( h_u_3 + Two * h_u_3 ) + b * h_u_3 * h_u_3 * h_d_3
+
+    ! --- Off-Diagonal Heat Flux Tensor Components ---
+
+    l_uud_121 &
+      = a * h_u_2 + b * h_u_1 * h_u_2 * h_d_1
+    l_uud_131 &
+      = a * h_u_3 + b * h_u_1 * h_u_3 * h_d_1
+    l_uud_221 &
+      = a * h_d_1 / Gm_dd_22 + b * h_u_2 * h_u_2 * h_d_1
+    l_uud_231 &
+      =                        b * h_u_2 * h_u_3 * h_d_1
+    l_uud_331 &
+      = a * h_d_1 / Gm_dd_33 + b * h_u_3 * h_u_3 * h_d_1
+    l_uud_223 &
+      = a * h_d_3 / Gm_dd_22 + b * h_u_2 * h_u_2 * h_d_3
+    l_uud_332 &
+      = a * h_d_2 / Gm_dd_33 + b * h_u_3 * h_u_3 * h_d_2
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_uud
 
 
   SUBROUTINE ComputeHeatFluxTensorComponents_udd &
@@ -706,6 +1902,12 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_LLF( u_L, u_R, Flux_L, Flux_R, alpha )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: NumericalFlux_LLF
     REAL(DP), INTENT(in) :: u_L, u_R, flux_L, flux_R, alpha

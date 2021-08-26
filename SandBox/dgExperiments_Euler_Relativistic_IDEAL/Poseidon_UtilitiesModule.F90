@@ -1,0 +1,324 @@
+MODULE Poseidon_UtilitiesModule
+
+  USE KindModule, ONLY: &
+    DP, &
+    One, &
+    Two, &
+    Three
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
+    iGF_Psi
+  USE FluidFieldsModule, ONLY: &
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
+    nPF, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
+    Timer_GS_ComputeSourceTerms
+
+  IMPLICIT NONE
+  PRIVATE
+
+  PUBLIC :: ComputeMatterSources_Poseidon
+  PUBLIC :: ComputePressureTensorTrace_Poseidon
+  PUBLIC :: MultiplyByPsi6
+  PUBLIC :: DivideByPsi6
+
+
+CONTAINS
+
+
+  SUBROUTINE ComputeMatterSources_Poseidon &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)  :: U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: E (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(out) :: Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(out) :: Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+
+    REAL(DP) :: uPF(nPF), uGF(nGF), Psi, &
+                Pressure, LorentzFactor, Enthalpy, BetaDotV
+
+    INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
+
+    INTEGER :: iNX, iX1, iX2, iX3, iGF
+
+    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
+
+      iErr(iNX,iX1,iX2,iX3) = 0
+
+      E(iNX,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_E) + U(iNX,iX1,iX2,iX3,iCF_D)
+
+      Si(iNX,iX1,iX2,iX3,1) = U(iNX,iX1,iX2,iX3,iCF_S1)
+      Si(iNX,iX1,iX2,iX3,2) = U(iNX,iX1,iX2,iX3,iCF_S2)
+      Si(iNX,iX1,iX2,iX3,3) = U(iNX,iX1,iX2,iX3,iCF_S3)
+
+      ! --- Compute gravitational mass ---
+
+      DO iGF = 1, nGF
+
+        uGF(iGF) = G(iNX,iX1,iX2,iX3,iGF)
+
+      END DO
+
+      Psi = uGF(iGF_Psi)
+
+      CALL ComputePrimitive_Euler_Relativistic &
+             ( U   (iNX,iX1,iX2,iX3,iCF_D ) / Psi**6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S1) / Psi**6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S2) / Psi**6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S3) / Psi**6, &
+               U   (iNX,iX1,iX2,iX3,iCF_E ) / Psi**6, &
+               U   (iNX,iX1,iX2,iX3,iCF_Ne) / Psi**6, &
+               uPF (iPF_D ), &
+               uPF (iPF_V1), &
+               uPF (iPF_V2), &
+               uPF (iPF_V3), &
+               uPF (iPF_E ), &
+               uPF (iPF_Ne), &
+               uGF (iGF_Gm_dd_11), &
+               uGF (iGF_Gm_dd_22), &
+               uGF (iGF_Gm_dd_33), &
+               iErr(iNX,iX1,iX2,iX3) )
+
+       CALL ComputePressureFromPrimitive &
+              ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+
+       LorentzFactor &
+         = One / SQRT( One                              &
+             - ( uGF(iGF_Gm_dd_11) * uPF(iPF_V1)**2 &
+               + uGF(iGF_Gm_dd_22) * uPF(iPF_V2)**2 &
+               + uGF(iGF_Gm_dd_33) * uPF(iPF_V3)**2 ) )
+
+       BetaDotV =   uGF(iGF_Gm_dd_11) * uGF(iGF_Beta_1) * uPF(iPF_V1) &
+                  + uGF(iGF_Gm_dd_22) * uGF(iGF_Beta_2) * uPF(iPF_V2) &
+                  + uGF(iGF_Gm_dd_33) * uGF(iGF_Beta_3) * uPF(iPF_V3)
+
+       Enthalpy = uPF(iPF_D) + uPF(iPF_E) + Pressure
+
+       Mg(iNX,iX1,iX2,iX3) &
+         = Enthalpy * ( Two * LorentzFactor**2             &
+             * ( One - BetaDotV / uGF(iGF_Alpha) ) - One ) &
+             + Two * Pressure
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( ANY( iErr .NE. 0 ) )THEN
+
+      WRITE(*,*) 'ERROR'
+      WRITE(*,*) '-----'
+      WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
+      WRITE(*,*) 'SUBROUTINE: ComputeMatterSources_Poseidon'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,'(2x,A,4I5.4)') 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
+
+  END SUBROUTINE ComputeMatterSources_Poseidon
+
+
+  SUBROUTINE ComputePressureTensorTrace_Poseidon &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)  :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: S(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+
+    REAL(DP) :: uGF(nGF), uPF(nPF), Pressure
+    INTEGER  :: iNX, iX1, iX2, iX3, iGF
+
+    INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
+
+    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
+
+      iErr(iNX,iX1,iX2,iX3) = 0
+
+      DO iGF = 1, nGF
+
+        uGF(iGF) = G(iNX,iX1,iX2,iX3,iGF)
+
+      END DO
+
+      ! --- Compute trace of stress tensor ---
+
+      CALL ComputePrimitive_Euler_Relativistic &
+             ( U   (iNX,iX1,iX2,iX3,iCF_D ), &
+               U   (iNX,iX1,iX2,iX3,iCF_S1), &
+               U   (iNX,iX1,iX2,iX3,iCF_S2), &
+               U   (iNX,iX1,iX2,iX3,iCF_S3), &
+               U   (iNX,iX1,iX2,iX3,iCF_E ), &
+               U   (iNX,iX1,iX2,iX3,iCF_Ne), &
+               uPF (iPF_D ), &
+               uPF (iPF_V1), &
+               uPF (iPF_V2), &
+               uPF (iPF_V3), &
+               uPF (iPF_E ), &
+               uPF (iPF_Ne), &
+               uGF (iGF_Gm_dd_11), &
+               uGF (iGF_Gm_dd_22), &
+               uGF (iGF_Gm_dd_33), &
+               iErr(iNX,iX1,iX2,iX3) )
+
+      CALL ComputePressureFromPrimitive &
+             ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+
+      S(iNX,iX1,iX2,iX3) &
+        =   U(iNX,iX1,iX2,iX3,iCF_S1) * uPF(iPF_V1) &
+          + U(iNX,iX1,iX2,iX3,iCF_S2) * uPF(iPF_V2) &
+          + U(iNX,iX1,iX2,iX3,iCF_S3) * uPF(iPF_V3) &
+          + Three * Pressure
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( ANY( iErr .NE. 0 ) )THEN
+
+      WRITE(*,*) 'ERROR'
+      WRITE(*,*) '-----'
+      WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
+      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Poseidon'
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,'(2x,A,4I5.4)') 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
+
+  END SUBROUTINE ComputePressureTensorTrace_Poseidon
+
+
+  SUBROUTINE MultiplyByPsi6( iX_B1, iX_E1, G, U )
+
+    INTEGER,  INTENT(in)    :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
+
+    DO iCF = 1, nCF
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
+
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = U(iNX,iX1,iX2,iX3,iCF) * G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MultiplyByPsi6
+
+
+  SUBROUTINE DivideByPsi6( iX_B1, iX_E1, G, U )
+
+    INTEGER,  INTENT(in)    :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
+
+    DO iCF = 1, nCF
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
+
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = U(iNX,iX1,iX2,iX3,iCF) / G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE DivideByPsi6
+
+
+END MODULE Poseidon_UtilitiesModule

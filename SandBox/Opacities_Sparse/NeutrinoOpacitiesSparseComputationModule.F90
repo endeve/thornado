@@ -1228,10 +1228,10 @@ CONTAINS
         k = k + 1
         ! H1(iE1,iE2) = Values(1,k)
         ! H2(iE1,iE2) = Values(2,k)
-        ! J1(iE1,iE2) = 10.0d0**(Values(1,k)) - OS_Pair(1,iJ1)
-        ! J2(iE1,iE2) = 10.0d0**(Values(2,k)) - OS_Pair(1,iJ2)
-        J1(iE1,iE2) = 10.0d0**(Values(1,k) - 20.0d0) - 9.391433233644253d-23
-        J2(iE1,iE2) = 10.0d0**(Values(2,k) - 20.0d0) - 9.391433233644254d-23
+        J1(iE1,iE2) = 10.0d0**(Values(1,k)) - OS_Pair(1,iJ1)
+        J2(iE1,iE2) = 10.0d0**(Values(2,k)) - OS_Pair(1,iJ2)
+        ! J1(iE1,iE2) = 10.0d0**(Values(1,k) - 20.0d0) - 9.391433233644253d-23
+        ! J2(iE1,iE2) = 10.0d0**(Values(2,k) - 20.0d0) - 9.391433233644254d-23
       END DO
     END DO
 

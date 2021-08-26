@@ -4,6 +4,9 @@ TwoMoment_ClosureModule.o: \
 
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
   TwoMoment_UtilitiesModule.F90
 
 TwoMoment_CharacteristicDecompositionModule.o: \

@@ -303,7 +303,7 @@ CONTAINS
         !          AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, 1, Sig(:,iS,:) )
         CALL ComputeNeutrinoOpacities_ES_Points_SG &
                ( 1, nE_G, 1, nDOFX, E_N, PF_N(:,iPF_D), &
-                 AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, 1, Sig(:,1,:) )
+                 AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, 1, Sig(:,iS,:) )
 
       END DO
 

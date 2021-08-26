@@ -34,7 +34,8 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
   USE GeometryFieldsModuleE, ONLY: &
     nGE, iGE_Ep2
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_NE
@@ -279,7 +280,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -296,9 +297,11 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      Verbose_Option
 
     LOGICAL  :: RecomputePointValues
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP, iP_X
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP, iP_X, n, m, Change
     INTEGER  :: iX_B0(3), iX_E0(3)
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
@@ -386,6 +389,32 @@ CONTAINS
                 NE_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+
+
+
+
+
+
+    REAL(DP) :: DP_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 V1_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 V2_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 V3_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 EP_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 NEP_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
     REAL(DP) :: DP_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
@@ -404,6 +433,9 @@ CONTAINS
                  NEP_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+
+
     REAL(DP) :: G_11_Q(nDOFX, &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
@@ -422,12 +454,51 @@ CONTAINS
                 G_33_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: A_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                A_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: B1_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                B1_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: B2_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                B2_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: B3_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                B3_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    LOGICAL  :: &
+      RealizableCellAverage &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
 
-
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    END IF
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
-    PRINT*, "      ApplyPositivityLimiter_TwoMoment"
+
+    IF (Verbose) THEN
+
+      PRINT*, "      ApplyPositivityLimiter_TwoMoment"
+
+    END IF
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -494,9 +565,45 @@ CONTAINS
       G_22_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
       G_33_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
 
+      A_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Alpha)
+      B1_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Beta_1)
+      B2_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Beta_2)
+      B3_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Beta_3)
+
     END DO
     END DO
     END DO
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        CALL ComputePrimitive_Euler_Relativistic &
+                 (D_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 S1_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 S2_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 S3_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 E_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 NE_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 DP_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 V1_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 V2_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 V3_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 EP_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 NEP_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
+                 G_33_Q(iNodeX,iZ2,iZ3,iZ4) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+
 
 
     CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
@@ -511,60 +618,6 @@ CONTAINS
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G2_Q, G2_K )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, G3_Q, G3_K )
 
-
-    ! --- Ensure Bounded Density ---
-
-    RecomputePointValues = .FALSE.
-
-    DO iS = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      Min_K = Min_1
-      Max_K = Max_1
-
-      DO iP = 1, nPT
-
-        Min_K = MIN( Min_K, N_P(iP,iZ1,iZ2,iZ3,iZ4,iS) )
-        Max_K = MAX( Max_K, N_P(iP,iZ1,iZ2,iZ3,iZ4,iS) )
-
-      END DO
-
-      IF( Min_K < Min_1 .OR. Max_K > Max_K )THEN
-
-        Theta_1 &
-          = MIN( One, &
-                 ABS( ( Min_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
-                      / ( Min_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ), &
-                 ABS( ( Max_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
-                      / ( Max_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ) )
-
-        Theta_1 = One_EPS * Theta_1
-
-        N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-          = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-        RecomputePointValues = .TRUE.
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    IF( RecomputePointValues )THEN
-
-      CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
-
-    END IF
-
-    ! --- Ensure Positive "Gamma" ---
-
     CALL ComputePointValuesX( iX_B0, iX_E0, D_Q , D_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, S1_Q , S1_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, S2_Q , S2_P  )
@@ -576,6 +629,11 @@ CONTAINS
     CALL ComputePointValuesX( iX_B0, iX_E0, G_11_Q , G_11_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, G_22_Q , G_22_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, G_33_Q , G_33_P  )
+
+    CALL ComputePointValuesX( iX_B0, iX_E0, A_Q , A_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, B1_Q , B1_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, B2_Q , B2_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, B3_Q , B3_P  )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -600,12 +658,21 @@ CONTAINS
                  G_22_P(iP,iZ2,iZ3,iZ4), &
                  G_33_P(iP,iZ2,iZ3,iZ4) )
 
+
       END DO
 
     END DO
     END DO
     END DO
 
+    CALL CheckCellAverageRealizability & 
+          (iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
+           V1_P, V2_P, V3_P, G_11_P, G_22_P, G_33_P, &
+           A_P, B1_P, B2_P, B3_P, RealizableCellAverage) 
+
+    ! --- Ensure Bounded Density ---
+
+    RecomputePointValues = .FALSE.
 
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -613,69 +680,32 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      Gamma_Min = Min_2
-      Theta_2   = One
 
-      DO iP = 1, nPT
+      IF( RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
+        Min_K = Min_1
 
-        CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
+        DO iP = 1, nPT
 
-        Gamma &
-          = GammaFun &
-              ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-                 V1_P(iP_X,iZ2,iZ3,iZ4), &
-                 V2_P(iP_X,iZ2,iZ3,iZ4), &
-                 V3_P(iP_X,iZ2,iZ3,iZ4), &
-                 G_11_P(iP_X,iZ2,iZ3,iZ4), &
-                 G_22_P(iP_X,iZ2,iZ3,iZ4), &
-                 G_33_P(iP_X,iZ2,iZ3,iZ4) )
+          Min_K = MIN( Min_K, N_P(iP,iZ1,iZ2,iZ3,iZ4,iS) )
 
-        Gamma_Min = MIN( Gamma, Gamma_Min )
+        END DO
 
-        IF( Gamma_Min < Min_2 )THEN
+        IF( Min_K < Min_1 )THEN
 
-!          CALL SolveTheta_Bisection &
-!                 ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                   G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                   G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                   G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
-!                   N_K (   iZ1,iZ2,iZ3,iZ4,iS), &
-!                   G1_K(   iZ1,iZ2,iZ3,iZ4,iS), &
-!                   G2_K(   iZ1,iZ2,iZ3,iZ4,iS), &
-!                   G3_K(   iZ1,iZ2,iZ3,iZ4,iS), &
-!                   Theta_P )
-!
-!          Theta_2 = MIN( Theta_2, Theta_P )
-           !print*, iZ1, iZ2, N_P (iP,iZ1,iZ2,iZ3,iZ4,iS),G1_P (iP,iZ1,iZ2,iZ3,iZ4,iS), Gamma, Gamma_Min
-           Theta_2 = 0.0_DP
+          Theta_1 &
+            = MIN( One, &
+                   ABS( ( Min_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
+                        / ( Min_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ) )
+
+          Theta_1 = One_EPS * Theta_1
+
+          N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+              + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          RecomputePointValues = .TRUE.
 
         END IF
-
-      END DO
-      IF( Gamma_Min < Min_2 )THEN
-
-        ! --- Limit Towards Cell Average ---
-
-        Theta_2 = One_EPS * Theta_2
-
-        N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-          = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-            + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
-
-        G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-          = Theta_2 * G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-        G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-          = Theta_2 * G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-        G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-          = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
 
       END IF
 
@@ -684,6 +714,129 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( RecomputePointValues )THEN
+
+      CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
+
+    END IF
+
+    ! --- Ensure Positive "Gamma" ---
+
+
+!
+
+
+
+
+n=0
+m=0
+    DO iS = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+
+      IF( RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
+        Gamma_Min = Min_2
+        Theta_2   = One
+
+        DO iP = 1, nPT
+
+          CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
+
+          Gamma &
+            = GammaFun &
+                ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                  G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                  G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                  G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                  V1_P(iP_X,iZ2,iZ3,iZ4), &
+                  V2_P(iP_X,iZ2,iZ3,iZ4), &
+                  V3_P(iP_X,iZ2,iZ3,iZ4), &
+                  G_11_P(iP_X,iZ2,iZ3,iZ4), &
+                  G_22_P(iP_X,iZ2,iZ3,iZ4), &
+                  G_33_P(iP_X,iZ2,iZ3,iZ4), &
+                  A_P(iP_X,iZ2,iZ3,iZ4) , &
+                  B1_P(iP_X,iZ2,iZ3,iZ4) , &
+                  B2_P(iP_X,iZ2,iZ3,iZ4) , &
+                  B3_P(iP_X,iZ2,iZ3,iZ4)  )
+
+          Gamma_Min = MIN( Gamma, Gamma_Min )
+          IF( Gamma_Min < Min_2 )THEN
+            CALL SolveTheta_Bisection &
+                 ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   N_K (   iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+                   V1_P(iP_X,iZ2,iZ3,iZ4), &
+                   V2_P(iP_X,iZ2,iZ3,iZ4), &
+                   V3_P(iP_X,iZ2,iZ3,iZ4), &
+                   G_11_P(iP_X,iZ2,iZ3,iZ4), &
+                   G_22_P(iP_X,iZ2,iZ3,iZ4), &
+                   G_33_P(iP_X,iZ2,iZ3,iZ4), &
+                   A_P(iP_X,iZ2,iZ3,iZ4), &
+                   B1_P(iP_X,iZ2,iZ3,iZ4), &
+                   B2_P(iP_X,iZ2,iZ3,iZ4), &
+                   B3_P(iP_X,iZ2,iZ3,iZ4), &
+                   Theta_P )
+            Theta_2 = MIN( Theta_2, Theta_P )
+          END IF
+
+      END DO
+
+      m=m+1
+
+
+        IF( Gamma_Min < Min_2 )THEN
+        ! --- Limit Towards Cell Average ---
+
+          Theta_2 = One_EPS * Theta_2
+
+          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+              + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
+
+          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = Theta_2 * G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+              + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = Theta_2 * G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+              + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+              + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          n=n+1
+
+        END IF 
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+print*, n, m
+
+    IF( .NOT. ALL( RealizableCellAverage ) )THEN
+
+      CALL RecoverRealizableCellAverage &
+             ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
+               V1_P, V2_P, V3_P, G_11_P, G_22_P, G_33_P, &
+               A_P, B1_P, B2_P, B3_P, RealizableCellAverage )
+
+    END IF
+
 
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -702,6 +855,7 @@ CONTAINS
     END DO
     END DO
 
+
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
   SUBROUTINE ComputePointValuesX( iX_B0, iX_E0, U_Q, U_P )
@@ -712,7 +866,7 @@ CONTAINS
       U_Q(nDOFX,iX_B0(1):iX_E0(1), &
                 iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
-      U_P(nDOFX,iX_B0(1):iX_E0(1), &
+      U_P(nPT_X,iX_B0(1):iX_E0(1), &
                 iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
     CALL MatrixMatrixMultiply &
@@ -765,7 +919,6 @@ CONTAINS
         = SUM( Weights_Q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) &
                  * U_Q(:,iZ1,iZ2,iZ3,iZ4,iS) ) &
           / SUM( Weights_Q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) )
-
     END DO
     END DO
     END DO
@@ -775,7 +928,7 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage
 
 
-  REAL(DP) FUNCTION GammaFun( N, G1, G2, G3, V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  REAL(DP) FUNCTION GammaFun( N, G1, G2, G3, V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B1, B2, B3 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -783,21 +936,55 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: N, G1, G2, G3, V1, V2 ,V3, Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP) :: G
+    REAL(DP), INTENT(in) :: N, G1, G2, G3, V1, V2 ,V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B1, B2, B3
+    REAL(DP) :: absG, G_uu(0:3,0:3), G(0:3), B(3)
+    INTEGER :: i, j
 
-    G = Gm_dd_11 * G1**2 + Gm_dd_22 * G2**2 + Gm_dd_33 * G3**2 &
-      - ( V1**2 * Gm_dd_11**2 * G1**2 + V2**2 * Gm_dd_22**2 * G2**2 + V3**2 * Gm_dd_33**2 * G3**2 ) &
-      - 2.0_DP * ( V1 * V2 * Gm_dd_11 * Gm_dd_22 * G1 * G2 + V1 * V3 * Gm_dd_11 * Gm_dd_33 * G1 * G3 &
-      + V2 * V3 * Gm_dd_22 * Gm_dd_33 * G2 * G3 )
-    G = SQRT(G)  
-    GammaFun = N - G 
+    B(1) = B1    
+    B(2) = B2    
+    B(3) = B3    
+
+    G_uu(0,0) = - 1.0_DP / alp**2
+    G_uu(1:3,0) = B(1:3) / alp**2
+    G_uu(0,1:3) = B(1:3) / alp**2
+    G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)   
+    G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)   
+    G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)   
+    G_uu(1,2) = - alp**2 * B(1) * B(2)
+    G_uu(1,3) = - alp**2 * B(1) * B(3)
+    G_uu(2,1) = - alp**2 * B(1) * B(2)
+    G_uu(3,1) = - alp**2 * B(1) * B(3)
+    G_uu(2,3) = - alp**2 * B(2) * B(3)
+    G_uu(3,2) = - alp**2 * B(2) * B(3)
+  
+    G(0) = ( V1 * G1 + V2 * G2 + V3 * G3 ) / alp
+    G(1) = G1
+    G(2) = G2
+    G(3) = G3
+
+    absG = 0.0_DP
+
+    DO i = 0,3
+    DO j = 0,3
+
+      absG = absG + G_uu(i,j) * G(i) * G(j)    
+
+    END DO
+    END DO
+
+    absG = SQRT(absG) 
+ 
+    GammaFun = N - absG 
+
+
     RETURN
   END FUNCTION GammaFun
 
 
   SUBROUTINE SolveTheta_Bisection &
-    ( N_P, G1_P, G2_P, G3_P, N_K, G1_K, G2_K, G3_K, Theta )
+    ( N_P, G1_P, G2_P, G3_P, N_K, G1_K, G2_K, G3_K, &
+      V1_P, V2_P, V3_P, Gm_dd_11_P, Gm_dd_22_P, Gm_dd_33_P, &
+      A_P, B1_P, B2_P, B3_P, Theta )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -807,6 +994,8 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: N_P, G1_P, G2_P, G3_P
     REAL(DP), INTENT(in)  :: N_K, G1_K, G2_K, G3_K
+    REAL(DP), INTENT(in)  :: V1_P, V2_P, V3_P, Gm_dd_11_P, Gm_dd_22_P, Gm_dd_33_P
+    REAL(DP), INTENT(in)  :: A_P, B1_P, B2_P, B3_P
     REAL(DP), INTENT(out) :: Theta
 
     INTEGER,  PARAMETER :: ITERATION_MAX = 12
@@ -818,10 +1007,12 @@ CONTAINS
     REAL(DP) :: f_a, f_b, f_c
 
     x_a = Zero
-!    f_a = GammaFun( N_K, G1_K, G2_K, G3_K ) - Min_2
+    f_a = GammaFun( N_K, G1_K, G2_K, G3_K, V1_P, V2_P, V3_P, &
+                    Gm_dd_11_P, Gm_dd_22_P, Gm_dd_33_P, A_P, B1_P, B2_P, B3_P ) - Min_2
 
     x_b = One
-!    f_b = GammaFun( N_P, G1_P, G2_P, G3_P ) - Min_2
+    f_b = GammaFun( N_P, G1_P, G2_P, G3_P, V1_P, V2_P, V3_P, &
+                    Gm_dd_11_P, Gm_dd_22_P, Gm_dd_33_P, A_P, B1_P, B2_P, B3_P ) - Min_2
 
     dx = One
 
@@ -834,12 +1025,15 @@ CONTAINS
       dx = Half * dx
       x_c = x_a + dx
 
-!      f_c = GammaFun &
-!              ( x_c * N_P  + ( One - x_c ) * N_K,  &
-!                x_c * G1_P + ( One - x_c ) * G1_K, &
-!                x_c * G2_P + ( One - x_c ) * G2_K, &
-!                x_c * G3_P + ( One - x_c ) * G3_K ) - Min_2
-!
+      f_c = GammaFun &
+              ( x_c * N_P  + ( One - x_c ) * N_K,  &
+                x_c * G1_P + ( One - x_c ) * G1_K, &
+                x_c * G2_P + ( One - x_c ) * G2_K, &
+                x_c * G3_P + ( One - x_c ) * G3_K, &
+                V1_P, V2_P, V3_P,                  &
+                Gm_dd_11_P, Gm_dd_22_P, Gm_dd_33_P, &
+                A_P, B1_P, B2_P, B3_P  ) - Min_2
+
       IF( f_a * f_c < Zero )THEN
 
         x_b = x_c
@@ -899,5 +1093,343 @@ CONTAINS
     END IF
 
   END SUBROUTINE
+
+  SUBROUTINE CheckCellAverageRealizability(iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
+              V_1_P, V_2_P, V_3_P, G_11_P, G_22_P, G_33_P, &
+              A_P, B1_P, B2_P, B3_P, RealizableCellAverage)
+
+    INTEGER,  INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4)
+    REAL(DP), INTENT(in) :: &
+      N_K (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in) :: &
+      G1_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in) :: &
+      G2_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in) :: &
+      G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in) :: &
+      G_11_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      G_22_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      G_33_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      A_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      B1_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      B2_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      B3_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      V_1_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      V_2_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      V_3_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    LOGICAL, INTENT(out) :: &
+      RealizableCellAverage &
+          (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP) :: GammaOut, W
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_X
+    REAL(DP) :: Gamma_K
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
+
+      IF( N_K(iZ1,iZ2,iZ3,iZ4,iS) < Min_1 )THEN
+
+!!$        PRINT*
+!!$        PRINT*, "  N_K < Min_1"
+!!$        PRINT*
+!!$        PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
+!!$        PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
+!!$        PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+!!$        PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+!!$        PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+!!$        PRINT*
+
+        RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    ! --- Check for Negative "Gamma" ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iP_X = 1, nPT_X
+
+
+        Gamma_K &
+          = GammaFun &
+              ( N_K (iZ1,iZ2,iZ3,iZ4,iS), &
+                G1_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                G2_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                G3_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                V_1_P(iP_X,iZ2,iZ3,iZ4), &
+                V_2_P(iP_X,iZ2,iZ3,iZ4), &
+                V_3_P(iP_X,iZ2,iZ3,iZ4), &
+                G_11_P(iP_X,iZ2,iZ3,iZ4), &
+                G_22_P(iP_X,iZ2,iZ3,iZ4), &
+                G_33_P(iP_X,iZ2,iZ3,iZ4), & 
+                A_P(iP_X,iZ2,iZ3,iZ4), & 
+                B1_P(iP_X,iZ2,iZ3,iZ4), & 
+                B2_P(iP_X,iZ2,iZ3,iZ4), & 
+                B3_P(iP_X,iZ2,iZ3,iZ4) ) 
+
+        IF(  Gamma_K < Min_2 )THEN
+
+!!$          PRINT*
+!!$          PRINT*, "  Gamma_K < Min_2"
+!!$          PRINT*
+!!$          PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
+!!$          PRINT*, "  Gamma_K            = ", Gamma_K
+!!$          PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
+!!$          PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+!!$          PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+!!$          PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+!!$          PRINT*
+
+          RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
+
+        END IF
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+
+
+  END SUBROUTINE CheckCellAverageRealizability
+
+
+  SUBROUTINE RecoverRealizableCellAverage(iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
+              N_Q, G1_Q, G2_Q, G3_Q, V_1_P, V_2_P, V_3_P, G_11_P, G_22_P, G_33_P, &
+              A_P, B1_P, B2_P, B3_P, RealizableCellAverage)
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4)
+    REAL(DP), INTENT(in)    :: &
+      N_K (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in)    :: &
+      G1_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in)    :: &
+      G2_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in)    :: &
+      G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      N_Q (nDOFZ, &
+           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      G1_Q(nDOFZ, &
+           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      G2_Q(nDOFZ, &
+           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      G3_Q(nDOFZ, &
+           iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    REAL(DP), INTENT(in) :: &
+      G_11_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      G_22_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      G_33_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      V_1_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      V_2_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      V_3_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      A_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      B1_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      B2_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP), INTENT(in) :: &
+      B3_P(nPT_X, &
+            iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    LOGICAL, INTENT(in) :: &
+      RealizableCellAverage &
+          (iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+           nSpecies)
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_X, i, j
+    REAL(DP) :: absG_K, G_uu(0:3,0:3), G(0:3), absG, B(3), alp, Gm_dd_11, Gm_dd_22, Gm_dd_33, V1, V2, V3
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      IF( .NOT. RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
+
+        IF( N_K(iZ1,iZ2,iZ3,iZ4,iS) < Min_1 )THEN
+
+          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) = 1.1_DP * Min_1
+          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = Zero
+          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = Zero
+          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = Zero
+
+        ELSE
+
+          absG_K = Zero
+
+          DO iP_X = 1, nPT_X
+
+            
+
+            Gm_dd_11 = G_11_P(iP_X,iZ2,iZ3,iZ4)
+            Gm_dd_22 = G_22_P(iP_X,iZ2,iZ3,iZ4)
+            Gm_dd_33 = G_33_P(iP_X,iZ2,iZ3,iZ4)
+
+            V1 = V_1_P(iP_X,iZ2,iZ3,iZ4)
+            V2 = V_2_P(iP_X,iZ2,iZ3,iZ4)
+            V3 = V_3_P(iP_X,iZ2,iZ3,iZ4)
+
+            alp = A_P(iP_X,iZ2,iZ3,iZ4)
+            B(1) = B1_P(iP_X,iZ2,iZ3,iZ4)    
+            B(2) = B2_P(iP_X,iZ2,iZ3,iZ4)    
+            B(3) = B3_P(iP_X,iZ2,iZ3,iZ4)    
+
+            
+            G_uu(0,0) = - 1.0_DP / alp**2
+            G_uu(1:3,0) = B(1:3) / alp**2
+            G_uu(0,1:3) = B(1:3) / alp**2
+            G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)   
+            G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)   
+            G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)   
+            G_uu(1,2) = - alp**2 * B(1) * B(2)
+            G_uu(1,3) = - alp**2 * B(1) * B(3)
+            G_uu(2,1) = - alp**2 * B(1) * B(2)
+            G_uu(3,1) = - alp**2 * B(1) * B(3)
+            G_uu(2,3) = - alp**2 * B(2) * B(3)
+            G_uu(3,2) = - alp**2 * B(2) * B(3)
+  
+            G(1) = G1_K(iZ1,iZ2,iZ3,iZ4,iS) 
+            G(2) = G2_K(iZ1,iZ2,iZ3,iZ4,iS) 
+            G(3) = G3_K(iZ1,iZ2,iZ3,iZ4,iS) 
+            G(0) = ( V1 * G(1) + V2 * G(2) + V3 * G(3) ) / alp
+
+            absG = 0.0_DP
+
+            DO i = 0,3
+            DO j = 0,3
+
+              absG = absG + G_uu(i,j) * G(i) * G(j)    
+
+            END DO
+            END DO
+
+            absG = SQRT(absG) 
+
+            absG_K &
+              = MAX( absG_K, absG ) 
+                            
+                            
+
+          END DO
+
+          absG_K = MAX( SQRT( absG_K ), SqrtTiny )
+
+          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = N_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = ( G1_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
+                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = ( G2_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
+                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            = ( G3_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
+                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        END IF
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE RecoverRealizableCellAverage
+
+
+
+
+
 
 END MODULE TwoMoment_PositivityLimiterModule_Relativistic

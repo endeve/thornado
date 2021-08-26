@@ -2,6 +2,8 @@ MODULE MF_InitializationModule
 
   ! --- AMReX Modules ---
 
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
   USE amrex_multifab_module,                         ONLY: &
     amrex_multifab
 
@@ -27,26 +29,27 @@ MODULE MF_InitializationModule
 CONTAINS
 
 
-  SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF )
+  SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL MF_InitializeFields_NonRelativistic_TABLE &
-           ( ProgramName, MF_uGF, MF_uCF )
+           ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
 #elif defined HYDRO_RELATIVISTIC
 
     CALL MF_InitializeFields_Relativistic_IDEAL &
-           ( ProgramName, MF_uGF, MF_uCF )
+           ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
 #else
 
     CALL MF_InitializeFields_NonRelativistic_IDEAL &
-           ( ProgramName, MF_uGF, MF_uCF )
+           ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
 #endif
 

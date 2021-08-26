@@ -10,6 +10,7 @@ PROGRAM main
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
     MF_ComputeTimeStep,                &
+    MF_ComputeTimeStep_Fancy,                &
     MF_ComputeFromConserved
   USE MF_UtilitiesModule,     ONLY: & 
     WriteNodalDataToFile
@@ -55,11 +56,17 @@ PROGRAM main
     ReadCheckpointFile
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE UnitsModule,            ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay, &
+    Millisecond, &
+    Kilometer
 
   IMPLICIT NONE
 
-  REAL(amrex_real) :: n, m
-
+  REAL(amrex_real) :: n, m, dt_Fancy
+  
   n = 1.0_amrex_real
   CALL InitializeProgram
 
@@ -67,12 +74,16 @@ PROGRAM main
 !      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
 !        MF_uCR % P,  &
 !        MF_uPR % P  )
-!  
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
  
-    CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
+    CALL MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
+ !   dt_Fancy = dt(0)
+ !   CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
+
+ !   print*, dt(0) / UnitsDisplay % TimeUnit, dt_Fancy / UnitsDisplay % TimeUnit
+!STOP
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE
@@ -81,7 +92,9 @@ PROGRAM main
     END IF
     IF( amrex_parallel_ioprocessor() )THEN
       !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-       print*,  'StepNo: ', StepNo(0), ' t = ', t , ' dt = ', dt(0) 
+       print*,  'StepNo: ', StepNo(0), ' t = ', t / UnitsDisplay % TimeUnit , &
+       TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
+       TRIM( UnitsDisplay % TimeLabel )
     END IF
     !this is where the issue is
     CALL MF_Update_IMEX_RK &

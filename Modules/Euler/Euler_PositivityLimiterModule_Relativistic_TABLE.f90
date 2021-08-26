@@ -1,16 +1,17 @@
 MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One
+    One, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
-    nDOFX_X1,   &
-    nDOFX_X2,   &
+    nDOFX_X1, &
+    nDOFX_X2, &
     nDOFX_X3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, &
@@ -22,43 +23,46 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
-    nGF,          &
-    iGF_h_1,      &
-    iGF_h_2,      &
-    iGF_h_3,      &
+    nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF,    &
-    iCF_D,  &
+    nCF, &
+    iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E,  &
+    iCF_E, &
     iCF_Ne, &
-    nPF,    &
-    iPF_D,  &
+    nPF, &
+    iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
-    iPF_E,  &
+    iPF_E, &
     iPF_Ne
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputePressureFromPrimitive_TABLE, &
-    ComputeTemperatureFromPressure_TABLE
+    ComputeTemperatureFromPressure_TABLE, &
+    ComputeSpecificInternalEnergy_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE UnitsModule, ONLY: &
-    Gram,       &
+    Gram, &
     Centimeter, &
-    Kelvin,     &
+    Kelvin, &
     AtomicMassUnit
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
+    TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -98,7 +102,6 @@ CONTAINS
     INTEGER :: iDim
     LOGICAL :: Verbose
 
-
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
@@ -131,13 +134,12 @@ CONTAINS
     IF( PRESENT( Max_3_Option ) ) &
       Max_Ye = Max_3_Option
 
-
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: InitializePositivityLimiter_Euler_Relativistic_TABLE'
+        '    INFO: Positivity Limiter (Euler, Relativistic, TABLE)'
       WRITE(*,'(A)') &
-        '    ----------------------------------------------------------'
+        '    -----------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
@@ -193,10 +195,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iP
-    REAL(DP) :: G_q(nDOFX,nGF), U_q(nDOFX,nCF), &
-                U_K(nCF), q(nPT), SSq(nPT), &
-                Ye(nPT), Pressure(nPT), Temperature(nPT)
+    INTEGER  :: iX1, iX2, iX3, iCF
+    REAL(DP) :: U_q(nDOFX,nCF)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -209,7 +209,6 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
-      G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
 
       DO iCF = 1, nCF
 
@@ -217,58 +216,9 @@ CONTAINS
 
       END DO
 
-      CALL ComputePointValues &
-             ( G_q(1:nDOFX,iGF_h_1), G_PP(1:nPT,iGF_h_1) )
-      CALL ComputePointValues &
-             ( G_q(1:nDOFX,iGF_h_2), G_PP(1:nPT,iGF_h_2) )
-      CALL ComputePointValues &
-             ( G_q(1:nDOFX,iGF_h_3), G_PP(1:nPT,iGF_h_3) )
+      IF( ANY( U_PP(:,iCF_E) .LT. Zero ) )THEN
 
-      CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
-
-      CALL ComputePrimitive_Euler_Relativistic &
-             ( U_PP(:,iCF_D ), &
-               U_PP(:,iCF_S1), &
-               U_PP(:,iCF_S2), &
-               U_PP(:,iCF_S3), &
-               U_PP(:,iCF_E ), &
-               U_PP(:,iCF_Ne), &
-               P_PP(:,iPF_D ), &
-               P_PP(:,iPF_V1), &
-               P_PP(:,iPF_V2), &
-               P_PP(:,iPF_V3), &
-               P_PP(:,iPF_E ), &
-               P_PP(:,iPF_Ne), &
-               G_PP(:,iGF_Gm_dd_11), &
-               G_PP(:,iGF_Gm_dd_22), &
-               G_PP(:,iGF_Gm_dd_33) )
-
-      Ye = P_PP(:,iPF_Ne) * BaryonMass / P_PP(:,iPF_D)
-
-      CALL ComputePressureFromPrimitive_TABLE &
-             ( P_PP(:,iPF_D), P_PP(:,iPF_E), P_PP(:,iPF_Ne), Pressure )
-
-      CALL ComputeTemperatureFromPressure_TABLE &
-             ( P_PP(:,iPF_D), Pressure, Ye, Temperature )
-
-      IF(        ANY( P_PP(:,iPF_D) .LT. Min_D  ) &
-            .OR. ANY( P_PP(:,iPF_D) .GT. Max_D  ) &
-            .OR. ANY( Temperature   .LT. Min_T  ) &
-            .OR. ANY( Temperature   .GT. Max_T  ) &
-            .OR. ANY( Ye            .LT. Min_Ye ) &
-            .OR. ANY( Ye            .GT. Max_Ye ) )THEN
-
-
-        DO iCF = 1, nCF
-
-          U_K(iCF) &
-            = SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) &
-                     * U_q(1:nDOFX,iCF) ) &
-              / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) )
-
-          U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
-
-        END DO
+        U(:,iX1,iX2,iX3,iCF_E) = SqrtTiny
 
       END IF
 

@@ -2,8 +2,6 @@ MODULE MF_Euler_PerturbationModule
 
   ! ---AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
-    AR => amrex_real
   USE amrex_box_module,      ONLY: &
     amrex_box
   USE amrex_geometry_module, ONLY: &
@@ -35,13 +33,16 @@ MODULE MF_Euler_PerturbationModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                     ONLY: &
+    DP
   USE MF_UtilitiesModule,                ONLY: &
-    amrex2thornado_Euler, &
-    thornado2amrex_Euler
+    amrex2thornado_X, &
+    thornado2amrex_X
   USE InputParsingModule,                ONLY: &
     nLevels,          &
     DEBUG,            &
     UsePhysicalUnits, &
+    UseTiling,        &
     GEOM
 
   IMPLICIT NONE
@@ -51,6 +52,7 @@ MODULE MF_Euler_PerturbationModule
 
 
 CONTAINS
+
 
   SUBROUTINE MF_InitializePerturbations_Euler
 
@@ -63,11 +65,11 @@ CONTAINS
     INTEGER  :: MJ_D_Nodes
     INTEGER  :: MJ_V_RadNodes
     INTEGER  :: MJ_V_AngNodes
-    REAL(AR) :: ShellWidth
-    REAL(AR) :: BD_Amplitude
-    REAL(AR) :: CO_V_Amplitude
-    REAL(AR) :: MJ_D_Amplitude
-    REAL(AR) :: MJ_V_Amplitude
+    REAL(DP) :: ShellWidth
+    REAL(DP) :: BD_Amplitude
+    REAL(DP) :: CO_V_Amplitude
+    REAL(DP) :: MJ_D_Amplitude
+    REAL(DP) :: MJ_V_Amplitude
 
     TYPE(amrex_parmparse) :: PP
 
@@ -174,29 +176,31 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_geometry), INTENT(in   ) :: GEOM  (0:nLevels-1)
 
-    REAL(AR)            , INTENT(in   ) :: Time(0:nLevels-1)
+    REAL(DP)            , INTENT(in   ) :: Time(0:nLevels-1)
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -213,9 +217,9 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF) )
 
-        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPerturbations_Euler'
 
@@ -226,7 +230,7 @@ CONTAINS
 
         END IF
 
-        CALL thornado2amrex_Euler( nCF, iX_B1, iX_E1, uCF, U )
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
         DEALLOCATE( U )
 

@@ -42,13 +42,22 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Vector
   END INTERFACE ComputeAuxiliary_Fluid_IDEAL
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( Gamma_IDEAL )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( Gamma_IDEAL )
+#endif
 
 CONTAINS
 
 
-  SUBROUTINE InitializeEquationOfState_IDEAL( Gamma_IDEAL_Option )
+  SUBROUTINE InitializeEquationOfState_IDEAL &
+    ( Gamma_IDEAL_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
 
     IF( PRESENT( Gamma_IDEAL_Option ) )THEN
       Gamma_IDEAL = Gamma_IDEAL_Option
@@ -56,11 +65,37 @@ CONTAINS
       Gamma_IDEAL = 5.0_DP / 3.0_DP
     END IF
 
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A7,A13,ES10.3E3)') &
+           '', 'Gamma_IDEAL: ', Gamma_IDEAL
+      WRITE(*,*)
+
+    END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( Gamma_IDEAL )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( Gamma_IDEAL )
+#endif
+
   END SUBROUTINE InitializeEquationOfState_IDEAL
 
 
   SUBROUTINE FinalizeEquationOfState_IDEAL
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Gamma_IDEAL )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Gamma_IDEAL )
+#endif
   END SUBROUTINE FinalizeEquationOfState_IDEAL
 
 
@@ -88,6 +123,12 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromPrimitive_IDEAL_Scalar( D, Ev, Ne, P )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P
 
@@ -108,6 +149,12 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar &
     ( D, Em, Y, P )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Em, Y
     REAL(DP), INTENT(out) :: P
@@ -139,8 +186,13 @@ CONTAINS
 
 #ifdef HYDRO_RELATIVISTIC
 
-
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: Cs
@@ -161,11 +213,15 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
 
-
 #else
 
-
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: Cs
@@ -184,15 +240,28 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
 
-
 #endif
-
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
+
+    P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
+    Gm = Gamma_IDEAL
+    Em = Ev / D
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+
+    T = 0.0_DP
+    Y = 0.0_DP
+    S = 0.0_DP
 
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar
 
@@ -203,10 +272,14 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: P(:), T (:), Y (:), S(:), Em(:), Gm(:), Cs(:)
 
-    P (:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
-    Gm(:) = Gamma_IDEAL
-    Em(:) = Ev(:) / D(:)
-    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D(:), Ev(:), Ne(:), Cs(:) )
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeAuxiliary_Fluid_IDEAL_Scalar &
+             ( D(i), Ev(i), Ne(i), P(i), T(i), Y(i), S(i), Em(i), Gm(i), Cs(i) )
+
+    END DO
 
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Vector
 

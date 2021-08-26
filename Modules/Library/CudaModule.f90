@@ -11,7 +11,6 @@ module CudaModule
 
   integer :: mystream
   type(c_ptr) :: stream, event
-  !$omp threadprivate(stream, mystream, event)
 
   integer :: nstream, nevent
   type(c_ptr), allocatable :: streamArray(:)

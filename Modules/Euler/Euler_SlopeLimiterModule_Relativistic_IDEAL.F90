@@ -1,60 +1,85 @@
 MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
-    DP,   &
+    DP, &
     Zero, &
-    One,  &
-    Two
+    One
   USE ProgramHeaderModule, ONLY: &
-    nDOFX,   &
-    nDimsX,  &
-    nNodes,  &
+    nDOFX, &
+    nDimsX, &
     nNodesX, &
     bcX
+  USE LinearAlgebraModule, ONLY: &
+    MatrixVectorMultiply, &
+    MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
-    NodeNumberTableX
+    NodesX1, &
+    NodesX2, &
+    NodesX3, &
+    WeightsX1, &
+    WeightsX2, &
+    WeightsX3
   USE UtilitiesModule, ONLY: &
     MinModB, &
     NodeNumberX
-  USE PolynomialBasisModule_Legendre, ONLY: &
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
+    L_X1, &
+    L_X2, &
+    L_X3, &
+    IndLX_Q
+  USE PolynomialBasisModuleX_Legendre, ONLY: &
     P_X1, &
     P_X2, &
     P_X3, &
-    IndPX_Q
+    IndPX_Q, &
+    MassPX
   USE PolynomialBasisMappingModule, ONLY: &
-    MapNodalToModal_Fluid, &
-    MapModalToNodal_Fluid
+    Pij_X
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Alpha,    &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
-    iGF_Beta_3,   &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyInnerBC_Euler,  &
-    ApplyOuterBC_Euler,  &
+    ApplyInnerBC_Euler, &
+    ApplyOuterBC_Euler, &
     iApplyBC_Euler_Both, &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
-    FinalizeTroubledCellIndicator_Euler,   &
+    FinalizeTroubledCellIndicator_Euler, &
+    LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
-    TimersStop_Euler,  &
-    Timer_Euler_SlopeLimiter
+    TimersStop_Euler, &
+    Timer_Euler_SlopeLimiter, &
+    Timer_Euler_SL_CharDecomp, &
+    Timer_Euler_SL_CopyIn, &
+    Timer_Euler_SL_CopyOut, &
+    Timer_Euler_SL_Integrate, &
+    Timer_Euler_SL_Permute, &
+    Timer_Euler_SL_LimitCells, &
+    Timer_Euler_SL_ConsCorr, &
+    Timer_Euler_SL_Mapping
 
   IMPLICIT NONE
   PRIVATE
@@ -63,23 +88,33 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
-  REAL(DP), PUBLIC :: LimiterThreshold
-
   LOGICAL      :: UseSlopeLimiter
   LOGICAL      :: UseCharacteristicLimiting
   LOGICAL      :: UseConservativeCorrection
-  LOGICAL      :: UseTroubledCellIndicator
   CHARACTER(4) :: SlopeLimiterMethod
 
-  ! --- WENO Limiter ---
-  REAL(DP), ALLOCATABLE :: OrthonormalBasis(:,:,:)
-  REAL(DP), ALLOCATABLE :: VandermondeMatrix(:,:)
-
   ! --- TVD Limiter ---
+
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
+
+  ! --- Conservative Correction ---
+
+  REAL(DP), ALLOCATABLE :: LegendreX(:,:)
+  REAL(DP), ALLOCATABLE :: Kij_X    (:,:)
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+  !$OMP DECLARE TARGET &
+  !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
+  !$OMP     UseConservativeCorrection, &
+  !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+  !$ACC DECLARE CREATE &
+  !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
+  !$ACC     UseConservativeCorrection, &
+  !$ACC     BetaTVD, BetaTVB, SlopeTolerance )
+#endif
 
 
 CONTAINS
@@ -111,8 +146,9 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
-    INTEGER :: i
-    LOGICAL :: Verbose
+    INTEGER  :: i, j, iPol, iNX, iNX1, iNX2, iNX3, qX1, qX2, qX3
+    LOGICAL  :: Verbose, UseTroubledCellIndicator
+    REAL(DP) :: LimiterThresholdParameter
 
     UseSlopeLimiter = .TRUE.
     IF( PRESENT( UseSlopeLimiter_Option ) ) &
@@ -145,7 +181,6 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -155,58 +190,122 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
+
     IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: InitializeSlopeLimiter_Euler_Relativistic_IDEAL'
+        '    INFO: Slope Limiter (Euler, Relativistic, IDEAL)'
       WRITE(*,'(A)') &
-        '    -----------------------------------------------------'
+        '    ------------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
+      WRITE(*,'(A6,A27,A)')         '', 'SlopeLimiterMethod: ', &
         TRIM( SlopeLimiterMethod )
       WRITE(*,*)
 
       IF( TRIM( SlopeLimiterMethod ) .EQ. 'TVD' )THEN
 
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
+        WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
           BetaTVD
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
+        WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
           BetaTVB
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
+        WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
           SlopeTolerance
         WRITE(*,*)
 
       END IF
 
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
+      WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
+
     END IF
 
-    CALL InitializeTroubledCellIndicator_Euler &
-           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
-             LimiterThreshold_Option = LimiterThreshold )
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET UPDATE TO &
+    !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
+    !$OMP     UseConservativeCorrection, &
+    !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC UPDATE DEVICE &
+    !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
+    !$ACC     UseConservativeCorrection, &
+    !$ACC     BetaTVD, BetaTVB, SlopeTolerance )
+#endif
 
     I_6x6 = Zero
     DO i = 1, 6
       I_6x6(i,i) = One
     END DO
 
-    IF( TRIM( SlopeLimiterMethod ).EQ. 'WENO' )THEN
+    ALLOCATE( LegendreX(1:nDOFX,1:nDOFX) )
 
-      CALL InitializeSlopeLimiter_Euler_WENO
+    DO iPol = 1, nDOFX ! Only need for iPol = 2,3,4 (FIXME)
 
-    END IF
+      DO iNX3 = 1, nNodesX(3)
+      DO iNX2 = 1, nNodesX(2)
+      DO iNX1 = 1, nNodesX(1)
+
+        iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+
+        LegendreX(iNX,iPol) &
+          = P_X1  (IndPX_Q(1,iPol)) % P( NodesX1(iNX1) ) &
+            * P_X2(IndPX_Q(2,iPol)) % P( NodesX2(iNX2) ) &
+            * P_X3(IndPX_Q(3,iPol)) % P( NodesX3(iNX3) )
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+
+    ALLOCATE( Kij_X(1:nDOFX,1:nDOFX) )
+
+    Kij_X = Zero
+    DO j = 1, nDOFX
+    DO i = 1, nDOFX
+
+      DO qX3 = 1, nNodesX(3)
+      DO qX2 = 1, nNodesX(2)
+      DO qX1 = 1, nNodesX(1)
+
+        Kij_X(i,j) &
+          = Kij_X(i,j) &
+              + MassPX(i) * WeightsX1(qX1) * WeightsX2(qX2) * WeightsX3(qX3) &
+                  * P_X1(IndPX_Q(1,i)) % P( NodesX1(qX1) ) &
+                  * P_X2(IndPX_Q(2,i)) % P( NodesX2(qX2) ) &
+                  * P_X3(IndPX_Q(3,i)) % P( NodesX3(qX3) ) &
+                  * L_X1(IndLX_Q(1,j)) % P( NodesX1(qX1) ) &
+                  * L_X2(IndLX_Q(2,j)) % P( NodesX2(qX2) ) &
+                  * L_X3(IndLX_Q(3,j)) % P( NodesX3(qX3) )
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: I_6x6, LegendreX, Kij_X, Pij_X )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  I_6x6, LegendreX, Kij_X, Pij_X )
+#endif
 
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
 
@@ -220,57 +319,6 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)          :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iApplyBC_Option(3)
-
-    SELECT CASE( TRIM( SlopeLimiterMethod ) )
-
-      CASE( 'TVD' )
-
-        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-                 SuppressBC_Option, iApplyBC_Option )
-
-      CASE( 'WENO' )
-
-        IF( UseCharacteristicLimiting )THEN
-
-          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-                   SuppressBC_Option, iApplyBC_Option )
-
-        ELSE
-
-          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-                   SuppressBC_Option, iApplyBC_Option )
-
-        END IF
-
-      CASE DEFAULT
-
-        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-                 SuppressBC_Option, iApplyBC_Option )
-
-    END SELECT
-
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
-
-
-  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
-
-    INTEGER,  INTENT(in)           :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)           :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
@@ -278,32 +326,120 @@ CONTAINS
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
-    LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
-                                iX_B0(2):iX_E0(2), &
-                                iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
-    INTEGER  :: iX1, iX2, iX3, iCF
+    INTEGER  :: iNX, iX1, iX2, iX3, iCF
     INTEGER  :: iApplyBC(3)
-    REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: SlopeDifference(nCF)
-    REAL(DP) :: a(nCF), b(nCF), c(nCF) ! --- Arguments for MinMod (fluid)
-    REAL(DP) :: G_K(nGF)
-    REAL(DP) :: dU (nCF,nDimsX)
-    REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX,iX_B0(1):iX_E0(1), &
-                                         iX_B0(2):iX_E0(2), &
-                                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
-    REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
-    REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
-    REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+
+    INTEGER  :: nX_BE0, nX_BE1, nCF_BE0, nCF_BE1, nGF_BE0
+
+    REAL(DP) :: U_N(1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: U_X(1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: SqrtGm(1:nDOFX   ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: Vol(              iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_K(1:nCF        ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: U_M(1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: a1(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: b1(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: c1(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: a2(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: b2(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: c2(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: a3(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: b3(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: c3(1:nCF,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: dU_X1(1:nCF,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU_X2(1:nCF,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU_X3(1:nCF,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: SlopeDifference(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+
+    LOGICAL :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: G_X(1:nDOFX,1:8  ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: G_K(1:8          ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: R_X1(1:nCF,nCF   ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: invR_X1(1:nCF,nCF,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: R_X2(1:nCF,nCF   ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: invR_X2(1:nCF,nCF,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: R_X3(1:nCF,nCF   ,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    REAL(DP) :: invR_X3(1:nCF,nCF,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, &
+               dX2 => MeshX(2) % Width, &
+               dX3 => MeshX(3) % Width )
+
+    nX_BE0  = PRODUCT( iX_E0 - iX_B0 + 1 )
+    nX_BE1  = PRODUCT( iX_E1 - iX_B1 + 1 )
+    nCF_BE0 = nCF * nX_BE0
+    nCF_BE1 = nCF * nX_BE1
+    nGF_BE0 = 8   * nX_BE0
 
     iApplyBC = iApplyBC_Euler_Both
     IF( PRESENT( iApplyBC_Option ) ) &
@@ -313,6 +449,8 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
+    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
+
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
@@ -320,7 +458,7 @@ CONTAINS
     CALL DetectTroubledCells_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
-    LimitedCell = .FALSE.
+    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
     ExcludeInnerGhostCell = .FALSE.
     ExcludeOuterGhostCell = .FALSE.
@@ -337,1403 +475,1465 @@ CONTAINS
     IF( ApplyOuterBC_Euler( iApplyBC(3) ) .AND. bcX(3) .NE. 1 ) &
       ExcludeOuterGhostCell(3) = .TRUE.
 
+    CALL TimersStart_Euler( Timer_Euler_SL_CopyIn )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
+    !$OMP MAP( alloc: U_N, U_X, SqrtGm, Vol, U_K, U_M, &
+    !$OMP             a1, b1, c1, a2, b2, c2, a3, b3, c3, &
+    !$OMP             dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
+    !$OMP             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
+    !$ACC CREATE(     U_N, U_X, SqrtGm, Vol, U_K, U_M, &
+    !$ACC             a1, b1, c1, a2, b2, c2, a3, b3, c3, &
+    !$ACC             dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
+    !$ACC             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_SL_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_SL_Permute )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U_N, U )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iCF = 1, nCF
+    DO iNX = 1, nDOFX
+
+      U_N(iNX,iCF,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, SqrtGm, G )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
-
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
-
-      ! --- Cell Volume ---
-
-      V_K(iX1,iX2,iX3) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm) )
-
-      ! --- Cell Average of Conserved Fluid ---
-
-      DO iCF = 1, nCF
-
-        U_K(iCF,iX1,iX2,iX3) &
-          = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                   * U(:,iX1,iX2,iX3,iCF) ) / V_K(iX1,iX2,iX3)
-
-      END DO
-
-      ! --- Map to Modal Representation ---
-
-      DO iCF = 1, nCF
-
-        CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), &
-                                    U_M(iCF,0,:,iX1,iX2,iX3) )
-
-        ! --- Cell Average of Neighbors in X1 Direction ---
-
-        U_M(iCF,1,1,iX1,iX2,iX3) &
-          = DOT_PRODUCT( WeightsX_q, U(:,iX1-1,iX2,iX3,iCF) )
-
-        U_M(iCF,2,1,iX1,iX2,iX3) &
-          = DOT_PRODUCT( WeightsX_q, U(:,iX1+1,iX2,iX3,iCF) )
-
-        IF( nDimsX .GT. 1 )THEN
-
-          ! --- Cell Average of Neighbors in X2 Direction ---
-
-          U_M(iCF,3,1,iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2-1,iX3,iCF) )
-
-          U_M(iCF,4,1,iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2+1,iX3,iCF) )
-
-        END IF
-
-        IF( nDimsX .GT. 2 )THEN
-
-          ! --- Cell Average of Neighbors in X3 Direction ---
-
-          U_M(iCF,5,1,iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3-1,iCF) )
-
-          U_M(iCF,6,1,iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3+1,iCF) )
-
-        END IF
-
-      END DO
-
-      IF( UseCharacteristicLimiting )THEN
-
-        ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
-        !     and Shift Vector) ---
-
-        G_K(iGF_Gm_dd_11) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
-        G_K(iGF_Gm_dd_22) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
-        G_K(iGF_Gm_dd_33) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-        G_K(iGF_SqrtGm  ) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
-        G_K(iGF_Alpha   ) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
-        G_K(iGF_Beta_1  ) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
-        G_K(iGF_Beta_2  ) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
-        G_K(iGF_Beta_3  ) &
-          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
-
-        ! --- Compute Eigenvectors ---
-
-        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X1, invR_X1 )
-
-        IF( nDimsX .GT. 1 )THEN
-
-          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 2, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X2, invR_X2 )
-
-        END IF
-
-        IF( nDimsX .GT. 2 )THEN
-
-          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 3, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X3, invR_X3 )
-
-        END IF
-
-      ELSE
-
-        ! --- Componentwise Limiting ---
-
-        R_X1 = I_6x6; invR_X1 = I_6x6
-        R_X2 = I_6x6; invR_X2 = I_6x6
-        R_X3 = I_6x6; invR_X3 = I_6x6
-
-      END IF
-
-      ! --- Compute Limited Slopes ---
-
-      a = MATMUL( invR_X1, U_M(:,0,2,iX1,iX2,iX3) )
-
-      IF     ( iX1 .EQ. iX_B0(1) .AND. ExcludeInnerGhostCell(1) )THEN
-
-        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
-                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
-        b = c
-
-      ELSE IF( iX1 .EQ. iX_E0(1) .AND. ExcludeOuterGhostCell(1) )THEN
-
-        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
-                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
-        c = b
-
-      ELSE
-
-        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
-                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
-        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
-                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
-
-      END IF
-
-      dU(:,1) = MinModB( a, b, c, dX1, BetaTVB )
-
-      IF( nDimsX .GT. 1 )THEN
-
-        a = MATMUL( invR_X2, U_M(:,0,3,iX1,iX2,iX3) )
-
-        IF     ( iX2 .EQ. iX_B0(2) .AND. ExcludeInnerGhostCell(2) )THEN
-
-          c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1,iX1,iX2,iX3) &
-                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
-          b = c
-
-        ELSE IF( iX2 .EQ. iX_E0(2) .AND. ExcludeOuterGhostCell(2) )THEN
-
-          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1,iX1,iX2,iX3) &
-                                             - U_M(:,3,1,iX1,iX2,iX3) ) )
-          c = b
-
-        ELSE
-
-          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1,iX1,iX2,iX3) &
-                                             - U_M(:,3,1,iX1,iX2,iX3) ) )
-          c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1,iX1,iX2,iX3) &
-                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
-
-        END IF
-
-        dU(:,2) = MinModB( a, b, c, dX2, BetaTVB )
-
-      END IF
-
-      IF( nDimsX .GT. 2 )THEN
-
-        a = MATMUL( invR_X3, U_M(:,0,4,iX1,iX2,iX3) )
-
-        IF     ( iX3 .EQ. iX_B0(3) .AND. ExcludeInnerGhostCell(3) )THEN
-
-          c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1,iX1,iX2,iX3) &
-                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
-          b = c
-
-        ELSE IF( iX3 .EQ. iX_E0(3) .AND. ExcludeOuterGhostCell(3) )THEN
-
-          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1,iX1,iX2,iX3) &
-                                             - U_M(:,5,1,iX1,iX2,iX3) ) )
-          c = b
-
-        ELSE
-
-          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1,iX1,iX2,iX3) &
-                                             - U_M(:,5,1,iX1,iX2,iX3) ) )
-          c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1,iX1,iX2,iX3) &
-                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
-
-        END IF
-
-        dU(:,3) = MinModB( a, b, c, dX3, BetaTVB )
-
-      END IF
-
-      IF( UseCharacteristicLimiting )THEN
-
-        ! --- Transform Back from Characteristic Variables ---
-
-        dU(:,1) = MATMUL( R_X1, dU(:,1) )
-
-        IF( nDimsX .GT. 1 )THEN
-
-          dU(:,2) = MATMUL( R_X2, dU(:,2) )
-
-        END IF
-
-        IF( nDimsX .GT. 2 )THEN
-
-          dU(:,3) = MATMUL( R_X3, dU(:,3) )
-
-        END IF
-
-      END IF
-
-      ! --- Compare Limited Slopes to Original Slopes ---
-
-      DO iCF = 1, nCF
-
-        SlopeDifference(iCF) = ABS( U_M(iCF,0,2,iX1,iX2,iX3) - dU(iCF,1) )
-
-        IF( nDimsX .GT. 1 )THEN
-
-          SlopeDifference(iCF) &
-            = MAX( SlopeDifference(iCF), &
-                   ABS( U_M(iCF,0,3,iX1,iX2,iX3) - dU(iCF,2) ) )
-
-        END IF
-
-        IF( nDimsX .GT. 2 )THEN
-
-          SlopeDifference(iCF) &
-            = MAX( SlopeDifference(iCF), &
-                   ABS( U_M(iCF,0,4,iX1,iX2,iX3) - dU(iCF,3) ) )
-
-        END IF
-
-      END DO
-
-      ! --- Replace Slopes and Discard High-Order Components ---
-      ! --- if Limited Slopes Deviate too Much from Original ---
-
-      DO iCF = 1, nCF
-
-        IF( SlopeDifference(iCF) &
-              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
-
-          U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
-
-          U_M(iCF,0,2,iX1,iX2,iX3) = dU(iCF,1)
-
-          IF( nDimsX .GT. 1 ) U_M(iCF,0,3,iX1,iX2,iX3) = dU(iCF,2)
-
-          IF( nDimsX .GT. 2 ) U_M(iCF,0,4,iX1,iX2,iX3) = dU(iCF,3)
-
-          LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
-
-        END IF
-
-      END DO
+      SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
     END DO
     END DO
     END DO
+    END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_X, U_N, SqrtGm )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+    DO iNX = 1, nDOFX
 
+      U_X(iNX,iCF,iX1,iX2,iX3) &
+        = U_N(iNX,iCF,iX1,iX2,iX3) * SqrtGm(iNX,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_SL_Permute )
+
+    CALL TimersStart_Euler( Timer_Euler_SL_Integrate )
+
+    ! --- Compute volumes of compute cells ---
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nX_BE0 , One, SqrtGm, nDOFX, &
+             WeightsX_q, 1, Zero, Vol, 1 )
+
+    ! --- Compute cell integrals ---
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nCF_BE0, One, U_X   , nDOFX, &
+             WeightsX_q, 1, Zero, U_K, 1 )
+
+    CALL TimersStop_Euler( Timer_Euler_SL_Integrate )
+
+    ! --- Form cell averages ---
+
+    CALL TimersStart_Euler( Timer_Euler_SL_Permute )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_K, Vol )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      U_K(iCF,iX1,iX2,iX3) = U_K(iCF,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_SL_Permute )
+
+    ! --- Map Nodal to Modal ---
+
+    CALL TimersStart_Euler( Timer_Euler_SL_Mapping )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX, nCF_BE1, nDOFX, One, Kij_X, nDOFX, &
+             U_N, nDOFX, Zero, U_M, nDOFX )
+
+    CALL TimersStop_Euler( Timer_Euler_SL_Mapping )
+
+    CALL ComputeMinModArguments &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U_M, &
+             ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
+             a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    IF( UseCharacteristicLimiting )THEN
+
+      CALL TimersStart_Euler( Timer_Euler_SL_Permute )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_X, G )
+#elif defined(THORNADO_OMP) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        G_X(iNX,1,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)
+        G_X(iNX,2,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)
+        G_X(iNX,3,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)
+        G_X(iNX,4,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm  )**2
+        G_X(iNX,5,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Alpha   )
+        G_X(iNX,6,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_1  )
+        G_X(iNX,7,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_2  )
+        G_X(iNX,8,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_3  )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_SL_Permute )
+
+      CALL TimersStart_Euler( Timer_Euler_SL_Integrate )
+
+      CALL MatrixVectorMultiply &
+             ( 'T', nDOFX, nGF_BE0, One, G_X, nDOFX, &
+               WeightsX_q, 1, Zero, G_K, 1 )
+
+      CALL TimersStop_Euler( Timer_Euler_SL_Integrate )
+
+      CALL ComputeEigenvectorMatrices &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G_K, U_M, &
+               R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+
+      CALL MultiplyWithInverseEigenvectorMatrices &
+             ( iX_B0, iX_E0, invR_X1, invR_X2, invR_X3, &
+               a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    END IF
+
+    CALL TimersStart_Euler( Timer_Euler_SL_LimitCells )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, dU_X1, a1, b1, c1, dX1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      dU_X1(iCF,iX1,iX2,iX3) &
+        = MinModB( a1(iCF,iX1,iX2,iX3), &
+                   b1(iCF,iX1,iX2,iX3), &
+                   c1(iCF,iX1,iX2,iX3), &
+                   dX1(iX1), BetaTVB )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X2, a2, b2, c2, dX2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
       DO iCF = 1, nCF
 
-        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
-
-          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
-                                      U_M(iCF,0,:,iX1,iX2,iX3) )
-
-        END IF
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-    CALL ApplyConservativeCorrection &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
-
-    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
-
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD
-
-
-  SUBROUTINE InitializeSlopeLimiter_Euler_WENO
-
-    INTEGER  :: iNodeX, iNodeX1, iNodeX2, iGridPt, iPoly, k, nP
-    REAL(DP) :: OrthonormalBasis1D(1:nNodes,0:nNodes-1,0:nNodes-1)
-    REAL(DP) :: eta
-
-    IF( nDimsX .GT. 2 )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A)') &
-         'WENO slope-limiter not implemented for nDimsX > 2. Stopping...'
-      STOP
-
-    END  IF
-
-    IF( nNodes .GT. 3 )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A)') &
-         'WENO slope-limiter not implemented for nNodes > 3. Stopping...'
-      STOP
-
-    END  IF
-
-    IF( nNodes .EQ. 2 )THEN
-
-      DO iNodeX = 1, nNodes
-
-        eta = MeshX(1) % Nodes( iNodeX )
-
-        ! --- 0th derivative ---
-        OrthonormalBasis1D(iNodeX,0,0) &
-          = One
-        OrthonormalBasis1D(iNodeX,1,0) &
-          = SQRT(12.0_DP) * eta
-
-        ! --- 1st derivative ---
-        OrthonormalBasis1D(iNodeX,0,1) &
-          = Zero
-        OrthonormalBasis1D(iNodeX,1,1) &
-          = SQRT(12.0_DP)
+        dU_X2(iCF,iX1,iX2,iX3) &
+          = MinModB( a2(iCF,iX1,iX2,iX3), &
+                     b2(iCF,iX1,iX2,iX3), &
+                     c2(iCF,iX1,iX2,iX3), &
+                     dX2(iX2), BetaTVB )
 
       END DO
-
-    ELSE IF( nNodes .EQ. 3 )THEN
-
-      DO iNodeX = 1, nNodes
-
-        eta = MeshX(1) % Nodes( iNodeX )
-
-        ! --- 0th derivative ---
-        OrthonormalBasis1D(iNodeX,0,0) &
-          = One
-        OrthonormalBasis1D(iNodeX,1,0) &
-          = SQRT(12.0_DP) * eta
-        OrthonormalBasis1D(iNodeX,2,0) &
-          = SQRT(180.0_DP) * ( eta**2 - One / 12.0_DP )
-
-        ! --- 1st derivative ---
-        OrthonormalBasis1D(iNodeX,0,1) &
-          = Zero
-        OrthonormalBasis1D(iNodeX,1,1) &
-          = SQRT(12.0_DP)
-        OrthonormalBasis1D(iNodeX,2,1) &
-          = SQRT(180.0_DP) * Two * eta
-
-        ! --- 2nd derivative ---
-        OrthonormalBasis1D(iNodeX,0,2) &
-          = Zero
-        OrthonormalBasis1D(iNodeX,1,2) &
-          = Zero
-        OrthonormalBasis1D(iNodeX,2,2) &
-          = SQRT(180.0_DP) * Two
-
+      END DO
+      END DO
       END DO
 
     END IF
 
-    k  = nNodes - 1
-    nP = UpperLimit_pSpace( k )
+    IF( nDimsX .GT. 2 )THEN
 
-    ALLOCATE( OrthonormalBasis(1:nDOFX,0:nDOFX-1,0:nP) )
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X3, a3, b3, c3, dX3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
 
-    IF     ( nDimsX .EQ. 1 )THEN
-
-      OrthonormalBasis = OrthonormalBasis1D
-
-    ELSE IF( nDimsX .EQ. 2 )THEN
-
-      OrthonormalBasis = Zero
-
-      IF( k .EQ. 1 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-          iNodeX2 = NodeNumberTableX(2,iNodeX)
-
-          ! --- 0th derivative ---
-          OrthonormalBasis(iNodeX,0,0) = OrthonormalBasis1D(iNodeX1,0,0)
-          OrthonormalBasis(iNodeX,1,0) = OrthonormalBasis1D(iNodeX1,1,0)
-          OrthonormalBasis(iNodeX,2,0) = OrthonormalBasis1D(iNodeX2,1,0)
-
-          ! --- 1st eta1 derivative ---
-          OrthonormalBasis(iNodeX,0,1) = OrthonormalBasis1D(iNodeX1,0,1)
-          OrthonormalBasis(iNodeX,1,1) = OrthonormalBasis1D(iNodeX1,1,1)
-          OrthonormalBasis(iNodeX,2,1) = Zero
-
-          ! --- 1st eta2 derivative ---
-          OrthonormalBasis(iNodeX,0,2) = OrthonormalBasis1D(iNodeX2,0,1)
-          OrthonormalBasis(iNodeX,1,2) = Zero
-          OrthonormalBasis(iNodeX,2,2) = OrthonormalBasis1D(iNodeX2,1,1)
-
-        END DO
-
-      ELSE IF( k .EQ. 2 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-          iNodeX2 = NodeNumberTableX(2,iNodeX)
-
-          ! --- 0th derivative ---
-          OrthonormalBasis(iNodeX,0,0) = OrthonormalBasis1D(iNodeX1,0,0)
-          OrthonormalBasis(iNodeX,1,0) = OrthonormalBasis1D(iNodeX1,1,0)
-          OrthonormalBasis(iNodeX,2,0) = OrthonormalBasis1D(iNodeX2,1,0)
-          OrthonormalBasis(iNodeX,3,0) = OrthonormalBasis1D(iNodeX1,2,0)
-          OrthonormalBasis(iNodeX,4,0) = OrthonormalBasis1D(iNodeX1,1,0) &
-                                           * OrthonormalBasis1D(iNodeX2,1,0)
-          OrthonormalBasis(iNodeX,5,0) = OrthonormalBasis1D(iNodeX2,2,0)
-
-          ! --- 1st eta1 derivative ---
-          OrthonormalBasis(iNodeX,0,1) = OrthonormalBasis1D(iNodeX1,0,1)
-          OrthonormalBasis(iNodeX,1,1) = OrthonormalBasis1D(iNodeX1,1,1)
-          OrthonormalBasis(iNodeX,2,1) = Zero
-          OrthonormalBasis(iNodeX,3,1) = OrthonormalBasis1D(iNodeX1,2,1)
-          OrthonormalBasis(iNodeX,4,1) = OrthonormalBasis1D(iNodeX2,1,0) &
-                                           * OrthonormalBasis1D(iNodeX1,1,1)
-
-          OrthonormalBasis(iNodeX,5,1) = Zero
-
-          ! --- 1st eta2 derivative ---
-          OrthonormalBasis(iNodeX,0,2) = OrthonormalBasis1D(iNodeX2,0,1)
-          OrthonormalBasis(iNodeX,1,2) = Zero
-          OrthonormalBasis(iNodeX,2,2) = OrthonormalBasis1D(iNodeX2,1,1)
-          OrthonormalBasis(iNodeX,3,2) = Zero
-          OrthonormalBasis(iNodeX,4,2) = OrthonormalBasis1D(iNodeX1,1,0) &
-                                           * OrthonormalBasis1D(iNodeX2,1,1)
-          OrthonormalBasis(iNodeX,5,2) = OrthonormalBasis1D(iNodeX2,2,1)
-
-          ! --- 2nd eta1 derivative ---
-          OrthonormalBasis(iNodeX,0,3) = OrthonormalBasis1D(iNodeX1,0,2)
-          OrthonormalBasis(iNodeX,1,3) = OrthonormalBasis1D(iNodeX1,1,2)
-          OrthonormalBasis(iNodeX,2,3) = Zero
-          OrthonormalBasis(iNodeX,3,3) = OrthonormalBasis1D(iNodeX1,2,2)
-          OrthonormalBasis(iNodeX,4,3) = OrthonormalBasis1D(iNodeX2,1,0) &
-                                           * OrthonormalBasis1D(iNodeX1,1,2)
-          OrthonormalBasis(iNodeX,5,3) = Zero
-
-          ! --- 1st mixed derivative ---
-          OrthonormalBasis(iNodeX,0,4) = Zero
-          OrthonormalBasis(iNodeX,1,4) = Zero
-          OrthonormalBasis(iNodeX,2,4) = Zero
-          OrthonormalBasis(iNodeX,3,4) = Zero
-          OrthonormalBasis(iNodeX,4,4) = OrthonormalBasis1D(iNodeX1,1,1) &
-                                           * OrthonormalBasis1D(iNodeX2,1,1)
-          OrthonormalBasis(iNodeX,5,4) = Zero
-
-          ! --- 2nd eta2 derivative ---
-          OrthonormalBasis(iNodeX,0,5) = OrthonormalBasis1D(iNodeX2,0,2)
-          OrthonormalBasis(iNodeX,1,5) = Zero
-          OrthonormalBasis(iNodeX,2,5) = OrthonormalBasis1D(iNodeX2,1,2)
-          OrthonormalBasis(iNodeX,3,5) = Zero
-          OrthonormalBasis(iNodeX,4,5) = OrthonormalBasis1D(iNodeX1,1,0) &
-                                           * OrthonormalBasis1D(iNodeX2,1,2)
-          OrthonormalBasis(iNodeX,5,5) = OrthonormalBasis1D(iNodeX2,2,2)
-
-        END DO
-
-      END IF ! Order of accuracy
-
-    END IF ! Spatial dimensions
-
-    ALLOCATE( VandermondeMatrix(0:nDOFX-1,1:nDOFX) )
-
-    DO iPoly = 0, nDOFX-1
-
-      DO iGridPt = 1, nDOFX
-
-        VandermondeMatrix(iPoly,iGridPt) &
-          = WeightsX_q(iGridPt) * OrthonormalBasis(iGridPt,iPoly,0)
+        dU_X3(iCF,iX1,iX2,iX3) &
+          = MinModB( a3(iCF,iX1,iX2,iX3), &
+                     b3(iCF,iX1,iX2,iX3), &
+                     c3(iCF,iX1,iX2,iX3), &
+                     dX3(iX3), BetaTVB )
 
       END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    CALL TimersStop_Euler( Timer_Euler_SL_LimitCells )
+
+    IF( UseCharacteristicLimiting ) &
+      CALL MultiplyWithEigenvectorMatrices &
+             ( iX_B0, iX_E0, R_X1, R_X2, R_X3, dU_X1, dU_X2, dU_X3 )
+
+    CALL TimersStart_Euler( Timer_Euler_SL_LimitCells )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, dU_X1, U_M, SlopeDifference )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      SlopeDifference(iCF,iX1,iX2,iX3) &
+        = ABS( U_M(2,iCF,iX1,iX2,iX3) - dU_X1(iCF,iX1,iX2,iX3) )
 
     END DO
+    END DO
+    END DO
+    END DO
 
-  END SUBROUTINE InitializeSlopeLimiter_Euler_WENO
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X2, U_M, SlopeDifference )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        SlopeDifference(iCF,iX1,iX2,iX3) &
+          = MAX( SlopeDifference(iCF,iX1,iX2,iX3), &
+                 ABS( U_M(3,iCF,iX1,iX2,iX3) - dU_X2(iCF,iX1,iX2,iX3) ) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X3, U_M, SlopeDifference )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        SlopeDifference(iCF,iX1,iX2,iX3) &
+          = MAX( SlopeDifference(iCF,iX1,iX2,iX3), &
+                 ABS( U_M(4,iCF,iX1,iX2,iX3) - dU_X3(iCF,iX1,iX2,iX3) ) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, U_M, dU_X1, dU_X2, dU_X3, D, &
+    !$ACC          SlopeDifference )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
+
+      IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
+
+      IF( SlopeDifference(iCF,iX1,iX2,iX3) &
+            .GT. SlopeTolerance * ABS( U_M(1,iCF,iX1,iX2,iX3) ) )THEN
+
+        DO iNX = 2, nDOFX
+
+          U_M(iNX,iCF,iX1,iX2,iX3) = Zero
+
+        END DO
+
+        U_M(2,iCF,iX1,iX2,iX3) = dU_X1(iCF,iX1,iX2,iX3)
+
+        IF( nDimsX .GT. 1 ) U_M(3,iCF,iX1,iX2,iX3) = dU_X2(iCF,iX1,iX2,iX3)
+
+        IF( nDimsX .GT. 2 ) U_M(4,iCF,iX1,iX2,iX3) = dU_X3(iCF,iX1,iX2,iX3)
+
+        LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_SL_LimitCells )
+
+    CALL ApplyConservativeCorrection &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, SqrtGm, Vol, U_K, LimitedCell, U_M )
+
+    ! --- Map Modal to Nodal ---
+
+    CALL TimersStart_Euler( Timer_Euler_SL_Mapping )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX, nCF_BE1, nDOFX, One, Pij_X, nDOFX, &
+             U_M, nDOFX, Zero, U_N, nDOFX )
+
+    CALL TimersStop_Euler( Timer_Euler_SL_Mapping )
+
+    CALL TimersStart_Euler( Timer_Euler_SL_Permute )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U_N, U )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iCF = 1, nCF
+    DO iNX = 1, nDOFX
+
+      U(iNX,iX1,iX2,iX3,iCF) = U_N(iNX,iCF,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_SL_Permute )
+
+    CALL TimersStart_Euler( Timer_Euler_SL_CopyOut )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    U, D ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
+    !$OMP               U_N, U_X, SqrtGm, Vol, U_K, U_M, &
+    !$OMP               a1, b1, c1, a2, b2, c2, a3, b3, c3, &
+    !$OMP               dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
+    !$OMP               G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      U, D ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
+    !$ACC               U_N, U_X, SqrtGm, Vol, U_K, U_M, &
+    !$ACC               a1, b1, c1, a2, b2, c2, a3, b3, c3, &
+    !$ACC               dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
+    !$ACC               G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_SL_CopyOut )
+
+    END ASSOCIATE
+
+    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
+
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator_Euler
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: I_6x6, LegendreX, Kij_X, Pij_X )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       I_6x6, LegendreX, Kij_X, Pij_X )
+#endif
 
-    IF( TRIM( SlopeLimiterMethod ) .EQ. 'WENO' )THEN
+    DEALLOCATE( Kij_X )
+    DEALLOCATE( LegendreX )
 
-      DEALLOCATE( VandermondeMatrix )
-      DEALLOCATE( OrthonormalBasis )
-
-    END IF
+    CALL FinalizeTroubledCellIndicator_Euler
 
   END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
-
-    INTEGER,  INTENT(in)           :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)           :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iApplyBC_Option(3)
-
-    LOGICAL  :: SuppressBC
-    INTEGER  :: iX1, iX2, iX3, iGridPt, iCF, ell
-    REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: U_M(0:nDOFX-1,0:2*nDimsX,nCF)
-    REAL(DP) :: UU(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),nCF)
-    LOGICAL  :: LimitedCell(iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3))
-
-    ! --- WENO Limiter ---
-
-    INTEGER  :: nPspace, k
-    REAL(DP) :: q    (nDOFX,0:nNodes-1  ,nCF)
-    REAL(DP) :: LinearWeights       (2*(nNodes-1))
-
-    IF( nDOFX .EQ. 1 ) RETURN
-
-    IF( .NOT. UseSlopeLimiter ) RETURN
-
-    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
-
-    k = nNodes - 1
-
-    ! --- Get linear weights ---
-
-    DO ell = 1, 2*k
-
-      IF( MOD( ell, 2 ) .NE. 0 )THEN
-
-        LinearWeights(ell) = 0.01_DP
-
-      ELSE
-
-        LinearWeights(ell) = 0.99_DP
-
-      END IF
-
-    END DO
-
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
-    IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
-
-    CALL DetectTroubledCells_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
-
-    LimitedCell = .FALSE.
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
-
-      LimitedCell(iX1,iX2,iX3) = .TRUE.
-
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
-
-      DO iCF = 1, nCF
-
-        CALL MapNodalToModal_Fluid_WENO &
-               ( VandermondeMatrix, &
-                 U(:,iX1,iX2,iX3,iCF), &
-                 U_M(:,0,iCF) )
-
-        CALL MapNodalToModal_Fluid_WENO &
-               ( VandermondeMatrix, &
-                 U(:,iX1-1,iX2,iX3,iCF), &
-                 U_M(:,1,iCF) )
-
-        CALL MapNodalToModal_Fluid_WENO &
-               ( VandermondeMatrix, &
-                 U(:,iX1+1,iX2,iX3,iCF), &
-                 U_M(:,2,iCF) )
-
-        IF( nDimsX .GT. 1 )THEN
-
-          CALL MapNodalToModal_Fluid_WENO &
-                 ( VandermondeMatrix, &
-                   U(:,iX1,iX2-1,iX3,iCF), &
-                   U_M(:,3,iCF) )
-
-          CALL MapNodalToModal_Fluid_WENO &
-                 ( VandermondeMatrix, &
-                   U(:,iX1,iX2+1,iX3,iCF), &
-                   U_M(:,4,iCF) )
-
-        END IF
-
-        ! --- Step 1.1 ---
-
-        DO ell = 0, k ! Loop over basis polynomials
-
-          nPspace = UpperLimit_pSpace( ell )
-
-          DO iGridPt = 1, nDOFX
-
-            q(iGridPt,ell,iCF) &
-              = SUM( U_M(0:nPspace,0,iCF) &
-                       * OrthonormalBasis(iGridPt,0:nPspace,0) )
-
-          END DO
-
-        END DO
-
-        ! --- Steps 1.2-1.5 ---
-
-        CALL ApplySlopeLimiter_WENO_Scalar &
-               ( k, LinearWeights, q(:,:,iCF), U_M(:,:,iCF), &
-                 UU(:,iX1,iX2,iX3,iCF) )
-
-      END DO ! End of loop over fields
-
-    END DO
-    END DO
-    END DO
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      IF( LimitedCell(iX1,iX2,iX3) )THEN
-
-        DO iCF = 1, nCF
-
-          U(:,iX1,iX2,iX3,iCF) = UU(:,iX1,iX2,iX3,iCF)
-
-        END DO
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
-
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise
-
-
-  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
-
-    INTEGER,  INTENT(in)           :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)           :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iApplyBC_Option(3)
-
-    LOGICAL  :: SuppressBC
-    INTEGER  :: iX1, iX2, iX3, iNodeX, iGridPt, iCF, iCell, ell
-    REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: U_M   (0:nDOFX-1,0:2*nDimsX,nCF)
-    REAL(DP) :: U_M_X1(0:nDOFX-1,0:2*nDimsX,nCF)
-    REAL(DP) :: U_M_X2(0:nDOFX-1,0:2*nDimsX,nCF)
-    REAL(DP) :: UU(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),nCF)
-    LOGICAL  :: LimitedCell(iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3))
-
-    REAL(DP) :: q  (nDOFX,0:nNodes-1,nCF)
-    REAL(DP) :: qX1(nDOFX,0:nNodes-1,nCF)
-    REAL(DP) :: qX2(nDOFX,0:nNodes-1,nCF)
-    REAL(DP) :: LinearWeights(2*(nNodes-1))
-    INTEGER  :: nPspace, k
-
-    ! --- Characteristic limiting ---
-    REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
-    REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
-    REAL(DP) :: U_X1(nDOFX,nCF), U_X2(nDOFX,nCF)
-    REAL(DP) :: U_K(nCF), G_K(nGF)
-
-    IF( nDOFX .EQ. 1 ) RETURN
-
-    IF( .NOT. UseSlopeLimiter ) RETURN
-
-    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
-
-    k = nNodes - 1
-
-    ! --- Get linear weights ---
-    DO iNodeX = 1, 2*k
-
-      IF( MOD( iNodeX, 2 ) .NE. 0 )THEN
-
-        LinearWeights(iNodeX) = 0.01_DP
-
-      ELSE
-
-        LinearWeights(iNodeX) = 0.99_DP
-
-      END IF
-
-    END DO
-
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
-    IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
-
-    CALL DetectTroubledCells_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
-
-    LimitedCell = .FALSE.
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
-
-      LimitedCell(iX1,iX2,iX3) = .TRUE.
-
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
-
-      ! --- Compute cell averages (ignore geometry) ---
-
-      DO iCF = 1, nCF
-
-        U_K(iCF) = SUM( WeightsX_q * U(:,iX1,iX2,iX3,iCF) )
-
-      END DO
-
-      ! --- Step 2.1.1 ---
-
-      G_K(iGF_Gm_dd_11) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
-      G_K(iGF_Gm_dd_22) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
-      G_K(iGF_Gm_dd_33) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-      G_K(iGF_SqrtGm) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
-      G_K(iGF_Alpha) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
-      G_K(iGF_Beta_1) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
-      G_K(iGF_Beta_2) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
-      G_K(iGF_Beta_3) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
-
-      CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-             ( 1, G_K, U_K, R_X1, invR_X1 )
-
-      IF( nDimsX .GT. 1 ) &
-        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 2, G_K, U_K, R_X2, invR_X2 )
-
-      DO iCF = 1, nCF
-
-        CALL MapNodalToModal_Fluid_WENO &
-               ( VandermondeMatrix, &
-                 U(:,iX1,iX2,iX3,iCF), &
-                 U_M(:,0,iCF) )
-
-        CALL MapNodalToModal_Fluid_WENO &
-               ( VandermondeMatrix, &
-                 U(:,iX1-1,iX2,iX3,iCF), &
-                 U_M(:,1,iCF) )
-
-        CALL MapNodalToModal_Fluid_WENO &
-               ( VandermondeMatrix, &
-                 U(:,iX1+1,iX2,iX3,iCF), &
-                 U_M(:,2,iCF) )
-
-        IF( nDimsX .GT. 1 )THEN
-
-          CALL MapNodalToModal_Fluid_WENO &
-                 ( VandermondeMatrix, &
-                   U(:,iX1,iX2-1,iX3,iCF), &
-                   U_M(:,3,iCF) )
-
-          CALL MapNodalToModal_Fluid_WENO &
-                 ( VandermondeMatrix, &
-                   U(:,iX1,iX2+1,iX3,iCF), &
-                   U_M(:,4,iCF) )
-
-        END IF
-
-      END DO
-
-      ! --- Step 2.1.0 (compute "associated polynomial vectors") ---
-
-      DO iCF = 1, nCF
-
-        DO ell = 0, k
-
-          nPspace = UpperLimit_pSpace( ell )
-
-          DO iGridPt = 1, nDOFX
-
-            q(iGridPt,ell,iCF) &
-              = SUM( U_M(0:nPspace,0,iCF) &
-                       * OrthonormalBasis(iGridPt,0:nPspace,0) )
-
-          END DO
-
-        END DO
-
-      END DO
-
-      ! --- Step 2.1.2 ---
-
-      DO ell = 0, k
-
-        DO iGridPt = 1, nDOFX
-
-          qX1(iGridPt,ell,:) &
-            = MATMUL( invR_X1, q(iGridPt,ell,:) )
-
-        END DO
-
-      END DO
-
-      IF( nDimsX .GT. 1 )THEN
-
-        DO ell = 0, k
-
-          DO iGridPt = 1, nDOFX
-
-            qX2(iGridPt,ell,:) &
-              = MATMUL( invR_X2, q(iGridPt,ell,:) )
-
-          END DO
-
-        END DO
-
-      END IF
-
-      DO iCell = 0, 2*nDimsX
-
-        DO iNodeX = 0, nDOFX-1
-
-          U_M_X1(iNodeX,iCell,:) = MATMUL( invR_X1, U_M(iNodeX,iCell,:) )
-
-        END DO
-
-      END DO
-
-      IF( nDimsX .GT. 1 )THEN
-
-        DO iCell = 0, 2*nDimsX
-
-          DO iNodeX = 0, nDOFX-1
-
-            U_M_X2(iNodeX,iCell,:) = MATMUL( invR_X2, U_M(iNodeX,iCell,:) )
-
-          END DO
-
-        END DO
-
-      END IF
-
-      ! --- Step 2.1.3 ---
-
-      DO iCF = 1, nCF
-
-        CALL ApplySlopeLimiter_WENO_Scalar &
-               ( k, LinearWeights, qX1(:,:,iCF), U_M_X1(:,:,iCF), &
-                 U_X1(:,iCF) )
-
-      END DO
-
-      IF( nDimsX .GT. 1 )THEN
-
-        DO iCF = 1, nCF
-
-          CALL ApplySlopeLimiter_WENO_Scalar &
-               ( k, LinearWeights, qX2(:,:,iCF), U_M_X2(:,:,iCF), &
-                 U_X2(:,iCF) )
-
-        END DO
-
-      END IF
-
-      ! --- Step 2.1.4 (X1) ---
-
-      DO iNodeX = 1, nDOFX
-
-        U_X1(iNodeX,:) = MATMUL( R_X1, U_X1(iNodeX,:) )
-
-      END DO
-
-      ! --- Step 2.2 (X1) ---
-
-      UU(:,iX1,iX2,iX3,:) = U_X1 / DBLE( nDimsX )
-
-      ! --- Step 2.1.4 (X2) ---
-
-      IF( nDimsX .GT. 1 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          U_X2(iNodeX,:) = MATMUL( R_X2, U_X2(iNodeX,:) )
-
-        END DO
-
-        ! --- Step 2.2 (X2)---
-
-        UU(:,iX1,iX2,iX3,:) = UU(:,iX1,iX2,iX3,:) + U_X2 / DBLE( nDimsX )
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      IF( LimitedCell(iX1,iX2,iX3) )THEN
-
-        DO iCF = 1, nCF
-
-          U(:,iX1,iX2,iX3,iCF) = UU(:,iX1,iX2,iX3,iCF)
-
-        END DO
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
-
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic
-
-
-  SUBROUTINE ApplySlopeLimiter_WENO_Scalar( k, LinearWeights, q, U_M, UU )
-
-    INTEGER,  INTENT(in)  :: k
-    REAL(DP), INTENT(in)  :: LinearWeights(2*k), &
-                             q(nDOFX,0:k), &
-                             U_M(0:nDOFX-1,0:2*nDimsX)
-    REAL(DP), INTENT(out) :: UU(nDOFX)
-
-    INTEGER  :: iGridPt
-    REAL(DP) :: SmoothnessIndicators(2*k)
-    REAL(DP) :: NonLinearWeights    (2*k)
-    REAL(DP) :: pCoeffs(2*k,nNodes)
-    REAL(DP) :: p(nDOFX,2*k)
-
-    ! --- 2nd Order ---
-
-    ! --- Step 1.2 ---
-
-    CALL ComputeCoefficients_Order2( LinearWeights, pCoeffs )
-
-    DO iGridPt = 1, nDOFX
-
-      p(iGridPt,1:2) = MATMUL( pCoeffs(1:2,1:2), q(iGridPt,0:1) )
-
-    END DO
-
-    ! --- Step 1.3 ---
-
-    ! --- Hard-code smoothness indicator beta_01 ---
-
-    IF     ( nDimsX .EQ. 1 )THEN
-
-      SmoothnessIndicators(1) &
-        = OrthonormalBasis(1,1,1)**2 &
-            * MIN( U_M(1,1)**2, &
-                   U_M(1,2)**2 )
-
-    ELSE IF( nDimsX .EQ. 2 )THEN
-
-      SmoothnessIndicators(1) &
-        = OrthonormalBasis(1,1,1)**2 &
-            * MIN( U_M(1,1)**2 + U_M(2,1)**2, &
-                   U_M(1,2)**2 + U_M(2,2)**2, &
-                   U_M(1,3)**2 + U_M(2,3)**2, &
-                   U_M(1,4)**2 + U_M(2,4)**2 )
-
-    END IF
-
-    CALL ComputeSmoothnessIndicator_Order2 &
-           ( LinearWeights(2), &
-             OrthonormalBasis(1,1,1), &
-             U_M(1:nDimsX,0), &
-             SmoothnessIndicators(2) )
-
-    ! --- Step 1.4 ---
-
-    CALL ComputeNonLinearWeights &
-           ( SmoothnessIndicators(1:2), &
-             LinearWeights       (1:2), &
-             NonLinearWeights    (1:2) )
-
-    ! --- 3rd order ---
-
-    IF( nNodes .GT. 2 )THEN
-
-      ! --- Step 1.2 ---
-
-      CALL ComputeCoefficients_Order3 &
-             ( LinearWeights, NonLinearWeights, pCoeffs )
-
-      DO iGridPt = 1, nDOFX
-
-        p(iGridPt,3:4) &
-          = MATMUL( pCoeffs(3:4,1:3), q(iGridPt,0:2) )
-
-      END DO
-
-      ! --- Step 1.3 ---
-
-      CALL ComputeSmoothnessIndicators_Order3 &
-             ( LinearWeights(2), NonLinearWeights(2), &
-               U_M(:,0), pCoeffs(4,:), SmoothnessIndicators )
-
-      ! --- Step 1.4 ---
-
-      CALL ComputeNonLinearWeights &
-             ( SmoothnessIndicators(3:4), &
-               LinearWeights       (3:4), &
-               NonLinearWeights    (3:4) )
-
-    END IF
-
-    ! --- Step 1.5 ---
-
-    DO iGridPt = 1, nDOFX
-
-      UU(iGridPt) &
-        = SUM( NonLinearWeights(2*k-1:2*k) &
-                 * p(iGridPt,2*k-1:2*k) )
-
-    END DO
-
-  END SUBROUTINE ApplySlopeLimiter_WENO_Scalar
-
-
-  INTEGER FUNCTION UpperLimit_pSpace( ell )
-
-    INTEGER, INTENT(in) :: ell
-
-    IF( nDimsX .EQ. 1 )THEN
-
-      UpperLimit_pSpace = ell
-
-    ELSE IF( nDimsX .EQ. 2 )THEN
-
-      UpperLimit_pSpace = ( ell + 1 ) * ( ell + 2 ) / 2 - 1
-
-    END IF
-
-    RETURN
-  END FUNCTION UpperLimit_pSpace
-
-
-  SUBROUTINE ComputeSmoothnessIndicator_Order2 &
-    ( LinearWeight_11, Coeff_v1, U_M, SmoothnessIndicator )
-
-    REAL(DP), INTENT(in)  :: LinearWeight_11, Coeff_v1, U_M(:)
-    REAL(DP), INTENT(out) :: SmoothnessIndicator
-
-    ! --- beta_11 ---
-
-    SmoothnessIndicator = ( U_M(1) / LinearWeight_11 * Coeff_v1 )**2
-
-    IF( nDimsX .GT. 1 ) &
-      SmoothnessIndicator &
-        = SmoothnessIndicator + ( U_M(2) / LinearWeight_11 * Coeff_v1 )**2
-
-  END SUBROUTINE ComputeSmoothnessIndicator_Order2
-
-
-  SUBROUTINE ComputeSmoothnessIndicators_Order3 &
-    ( LinearWeight_11, NonLinearWeight_11, U_M, &
-      pCoeffs, SmoothnessIndicators )
-
-    REAL(DP), INTENT(in)  :: LinearWeight_11, NonLinearWeight_11
-    REAL(DP), INTENT(in)  :: U_M(0:nDOFX-1), pCoeffs(:)
-    REAL(DP), INTENT(out) :: SmoothnessIndicators(:)
-
-    REAL(DP) :: Coeff_v1
-    REAL(DP) :: dq_X1   (nDOFX,0:2), &
-                dq_X2   (nDOFX,0:2), &
-                ddq_X1  (nDOFX,0:2), &
-                ddq_X2  (nDOFX,0:2), &
-                ddq_X1X2(nDOFX,0:2)
-    REAL(DP) :: dP_X1   (nDOFX), &
-                dP_X2   (nDOFX), &
-                ddP_X1  (nDOFX), &
-                ddP_X2  (nDOFX), &
-                ddP_X1X2(nDOFX)
-    INTEGER  :: iGridPt
-
-    ! --- beta_12 ---
-
-    Coeff_v1 = OrthonormalBasis(1,1,1)
-
-    SmoothnessIndicators(3) &
-      = ( Coeff_v1 * NonLinearWeight_11 / LinearWeight_11 * U_M(1) )**2
-
-    IF( nDimsX .GT. 1 ) &
-      SmoothnessIndicators(3) &
-        = SmoothnessIndicators(3) &
-            + ( Coeff_v1 * NonLinearWeight_11 / LinearWeight_11 * U_M(2) )**2
-
-    ! --- beta_22 ---
-
-    IF( nDimsX .EQ. 1 )THEN
-
-      DO iGridPt = 1, nDOFX
-
-        dq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,1) )
-        dq_X1(iGridPt,1) = SUM( U_M(0:1) * OrthonormalBasis(iGridPt,0:1,1) )
-        dq_X1(iGridPt,2) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,1) )
-        dp_X1 (iGridPt)  = DOT_PRODUCT( pCoeffs, dq_X1(iGridPt,:) )
-
-        ddq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,2) )
-        ddq_X1(iGridPt,1) = SUM( U_M(0:1) * OrthonormalBasis(iGridPt,0:1,2) )
-        ddq_X1(iGridPt,2) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,2) )
-        ddp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1(iGridPt,:) )
-
-      END DO
-
-      SmoothnessIndicators(4) &
-        = SUM( WeightsX_q * ( dp_X1**2 + ddp_X1**2 ) )
-
-    ELSE IF( nDimsX .GT. 1 )THEN
-
-      DO iGridPt = 1, nDOFX
-
-        dq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,1) )
-        dq_X1(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,1) )
-        dq_X1(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,1) )
-        dp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, dq_X1(iGridPt,:) )
-
-        dq_X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,2) )
-        dq_X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,2) )
-        dq_X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,2) )
-        dp_X2(iGridPt)   = DOT_PRODUCT( pCoeffs, dq_X2(iGridPt,:) )
-
-        ddq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,3) )
-        ddq_X1(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,3) )
-        ddq_X1(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,3) )
-        ddp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1(iGridPt,:) )
-
-        ddq_X1X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,4) )
-        ddq_X1X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,4) )
-        ddq_X1X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,4) )
-        ddp_X1X2(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1X2(iGridPt,:) )
-
-        ddq_X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,5) )
-        ddq_X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,5) )
-        ddq_X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,5) )
-        ddp_X2(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X2(iGridPt,:) )
-
-      END DO
-
-      SmoothnessIndicators(4) &
-        = SUM( WeightsX_q &
-                 * ( dp_X1**2 + ddp_X1**2 + dp_X2**2 &
-                       + ddp_X2**2 + ddp_X1X2**2 ) )
-
-    END IF
-
-  END SUBROUTINE ComputeSmoothnessIndicators_Order3
-
-
-  SUBROUTINE ComputeCoefficients_Order2 &
-    ( LinearWeights, PolynomialCoefficients )
-
-    REAL(DP), INTENT(in)  :: LinearWeights(:)
-    REAL(DP), INTENT(out) :: PolynomialCoefficients(:,:)
-
-    PolynomialCoefficients(1,1) = One
-
-    PolynomialCoefficients(1,2) = Zero
-
-    PolynomialCoefficients(2,1) = -LinearWeights(1) / LinearWeights(2)
-
-    PolynomialCoefficients(2,2) = One / LinearWeights(2)
-
-  END SUBROUTINE ComputeCoefficients_Order2
-
-
-  SUBROUTINE ComputeCoefficients_Order3 &
-    ( LinearWeights, NonLinearWeights, PolynomialCoefficients )
-
-    REAL(DP), INTENT(in)  :: LinearWeights(:), NonLinearWeights(:)
-    REAL(DP), INTENT(out) :: PolynomialCoefficients(:,:)
-
-    PolynomialCoefficients(1,1) &
-      = One
-
-    PolynomialCoefficients(1,2) &
-      = Zero
-
-    PolynomialCoefficients(1,3) &
-      = Zero
-
-    PolynomialCoefficients(2,1) &
-      = -LinearWeights(1) / LinearWeights(2)
-
-    PolynomialCoefficients(2,2) &
-      = One / LinearWeights(2)
-
-    PolynomialCoefficients(2,3) &
-      = Zero
-
-    PolynomialCoefficients(3,1) &
-      = NonLinearWeights(1) &
-          - NonLinearWeights(2) * LinearWeights(1) / LinearWeights(2)
-
-    PolynomialCoefficients(3,2) &
-      = NonLinearWeights(2) / LinearWeights(2)
-
-    PolynomialCoefficients(3,3) &
-      = Zero
-
-    PolynomialCoefficients(4,1) &
-      = -LinearWeights(3) / LinearWeights(4) * PolynomialCoefficients(3,1)
-
-    PolynomialCoefficients(4,2) &
-      = -LinearWeights(3) / LinearWeights(4) * PolynomialCoefficients(3,2)
-
-    PolynomialCoefficients(4,3) &
-      = One / LinearWeights(4)
-
-  END SUBROUTINE ComputeCoefficients_Order3
-
-
-  SUBROUTINE ComputeNonLinearWeights &
-    ( SmoothnessIndicators, LinearWeights, NonLinearWeights )
-
-    REAL(DP), INTENT(in)  :: SmoothnessIndicators(2), LinearWeights(2)
-    REAL(DP), INTENT(out) :: NonLinearWeights(2)
-
-    REAL(DP) :: Tau, Normalization
-    REAL(DP), PARAMETER :: EPS = 1.0d-10
-
-    Tau = ( SmoothnessIndicators(2) - SmoothnessIndicators(1) )**2
-
-    Normalization &
-      = SUM( LinearWeights * ( One + Tau / ( EPS + SmoothnessIndicators ) ) )
-
-    NonLinearWeights(1) &
-      = LinearWeights(1) * ( One + Tau / ( EPS + SmoothnessIndicators(1) ) ) &
-          / Normalization
-
-    NonLinearWeights(2) &
-      = LinearWeights(2) * ( One + Tau / ( EPS + SmoothnessIndicators(2) ) ) &
-          / Normalization
-
-  END SUBROUTINE ComputeNonLinearWeights
-
-
-  SUBROUTINE MapNodalToModal_Fluid_WENO( VandermondeMatrix, uN, uM )
-
-    REAL(DP), INTENT(in)  :: VandermondeMatrix(0:nDOFX-1,nDOFX)
-    REAL(DP), INTENT(in)  :: uN(nDOFX)
-    REAL(DP), INTENT(out) :: uM(0:nDOFX-1)
-
-    uM = MATMUL( VandermondeMatrix, uN )
-
-  END SUBROUTINE MapNodalToModal_Fluid_WENO
-
-
   SUBROUTINE ApplyConservativeCorrection &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, SqrtGm, Vol, U_K, LimitedCell, U_M )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)    :: &
-      V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)    :: &
-      U_K(1:nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(inout) :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      SqrtGm(1:nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Vol   (        iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      U_K   (1:nCF  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL, INTENT(in)     :: &
-      LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+      LimitedCell(1:nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: &
+      U_M(1:nDOFX,1:nCF,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iPol, iDimX
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    REAL(DP) :: Correction
-    REAL(DP) :: LegendreX(nDOFX,nDOFX)
-    REAL(DP) :: U_M(nCF,0:2**nDimsX,nDOFX)
+    INTEGER  :: iNX, iX1, iX2, iX3, iCF, iDimX
+    REAL(DP) :: Correction, Term
 
     IF( .NOT. UseConservativeCorrection ) RETURN
 
-    DO iPol = 1, nDOFX ! Only need for iPol = 2,3,4 (FIXME)
+    CALL TimersStart_Euler( Timer_Euler_SL_ConsCorr )
 
-      DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
-      DO iNodeX1 = 1, nNodesX(1)
-
-        iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-
-        LegendreX(iNodeX,iPol) &
-          = P_X1  (IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
-            * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
-            * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
-
-      END DO
-      END DO
-      END DO
-
-    END DO
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0, iX_E0, SqrtGm, Vol, U_K, LimitedCell, U_M )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  iX_B0, iX_E0, SqrtGm, Vol, U_K, LimitedCell, U_M )
+#endif
 
     ! --- Applies a correction to the 0-th order ---
     ! --- mode to maintain the cell average.     ---
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, WeightsX_q, LegendreX, SqrtGm, &
+    !$ACC          U_M, Vol, U_K )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+        Correction = Zero
+
+        DO iDimX = 1, nDimsX
+
+          Term = Zero
+
+          DO iNX = 1, nDOFX
+
+            Term &
+              = Term &
+                  + WeightsX_q(iNX) &
+                      * LegendreX(iNX,iDimX+1) * SqrtGm(iNX,iX1,iX2,iX3)
+
+          END DO
+
+          Correction &
+            = Correction &
+                + U_M(iDimX+1,iCF,iX1,iX2,iX3) * Term / Vol(iX1,iX2,iX3)
+
+        END DO
+
+        U_M(1,iCF,iX1,iX2,iX3) = U_K(iCF,iX1,iX2,iX3) - Correction
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    U_M ) &
+    !$OMP MAP( release: iX_B0, iX_E0, SqrtGm, Vol, U_K, LimitedCell )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      U_M ) &
+    !$ACC DELETE(       iX_B0, iX_E0, SqrtGm, Vol, U_K, LimitedCell )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_SL_ConsCorr )
+
+  END SUBROUTINE ApplyConservativeCorrection
+
+
+  SUBROUTINE ComputeMinModArguments &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U_M, &
+      ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
+      a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    LOGICAL,  INTENT(in)  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
+    REAL(DP), INTENT(in)  :: U_M(nDOFX,nCF,iX_B1(1):iX_E1(1), &
+                                           iX_B1(2):iX_E1(2), &
+                                           iX_B1(3):iX_E1(3))
+    REAL(DP), INTENT(out) :: a1(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: b1(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: c1(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: a2(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: b2(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: c2(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: a3(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: b3(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: c3(nCF,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iCF
+
+    CALL TimersStart_Euler( Timer_Euler_SL_LimitCells )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_M, a1, b1, c1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      a1(iCF,iX1,iX2,iX3) = U_M(2,iCF,iX1,iX2,iX3)
+
+      b1(iCF,iX1,iX2,iX3) = BetaTVD * (  U_M(1,iCF,iX1  ,iX2,iX3) &
+                                       - U_M(1,iCF,iX1-1,iX2,iX3) )
+      c1(iCF,iX1,iX2,iX3) = BetaTVD * (  U_M(1,iCF,iX1+1,iX2,iX3) &
+                                       - U_M(1,iCF,iX1  ,iX2,iX3) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, U_M, a2, b2, c2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        a2(iCF,iX1,iX2,iX3) = U_M(3,iCF,iX1,iX2,iX3)
+
+        b2(iCF,iX1,iX2,iX3) = BetaTVD * (  U_M(1,iCF,iX1,iX2  ,iX3) &
+                                         - U_M(1,iCF,iX1,iX2-1,iX3) )
+        c2(iCF,iX1,iX2,iX3) = BetaTVD * (  U_M(1,iCF,iX1,iX2+1,iX3) &
+                                         - U_M(1,iCF,iX1,iX2  ,iX3) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, U_M, a3, b3, c3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        a3(iCF,iX1,iX2,iX3) = U_M(4,iCF,iX1,iX2,iX3)
+
+        b3(iCF,iX1,iX2,iX3) = BetaTVD * (  U_M(1,iCF,iX1,iX2,iX3  ) &
+                                         - U_M(1,iCF,iX1,iX2,iX3-1) )
+        c3(iCF,iX1,iX2,iX3) = BetaTVD * (  U_M(1,iCF,iX1,iX2,iX3+1) &
+                                         - U_M(1,iCF,iX1,iX2,iX3  ) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( ExcludeInnerGhostCell(1) )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, b1, c1 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iCF = 1, nCF
+
+        b1(iCF,iX_B0(1),iX2,iX3) = c1(iCF,iX_B0(1),iX2,iX3)
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( ExcludeOuterGhostCell(1) )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, b1, c1 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iCF = 1, nCF
+
+        c1(iCF,iX_E0(1),iX2,iX3) = b1(iCF,iX_E0(1),iX2,iX3)
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 1 .AND. ExcludeInnerGhostCell(2) )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, b2, c2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        b2(iCF,iX1,iX_B0(2),iX3) = c2(iCF,iX1,iX_B0(2),iX3)
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 1 .AND. ExcludeOuterGhostCell(2) )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, b2, c2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        c2(iCF,iX1,iX_E0(2),iX3) = b2(iCF,iX1,iX_E0(2),iX3)
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 .AND. ExcludeInnerGhostCell(3) )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, b3, c3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        b3(iCF,iX1,iX2,iX_B0(3)) = c3(iCF,iX1,iX2,iX_B0(3))
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 .AND. ExcludeOuterGhostCell(3) )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, b3, c3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        c3(iCF,iX1,iX2,iX_E0(3)) = b3(iCF,iX1,iX2,iX_E0(3))
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    CALL TimersStop_Euler( Timer_Euler_SL_LimitCells )
+
+  END SUBROUTINE ComputeMinModArguments
+
+
+  SUBROUTINE ComputeEigenvectorMatrices &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G_K, U_M, &
+      R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: G_K(8        ,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in)  :: U_M(nDOFX,nCF,iX_B1(1):iX_E1(1), &
+                                           iX_B1(2):iX_E1(2), &
+                                           iX_B1(3):iX_E1(3))
+
+    REAL(DP), INTENT(out) :: R_X1(   nCF,nCF,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: invR_X1(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: R_X2(   nCF,nCF,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: invR_X2(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: R_X3(   nCF,nCF,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: invR_X3(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iGF, iCF, jCF
+
+    REAL(DP) :: R(nCF,nCF), invR(nCF,nCF), UK(nCF), GK(8)
+
+    CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( R, invR, UK, GK )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X1, invR_X1 ) &
+    !$ACC PRIVATE( R, invR, UK, GK )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( R, invR, UK, GK )
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
+      DO iGF = 1, 8
+
+        GK(iGF) = G_K(iGF,iX1,iX2,iX3)
+
+      END DO
+
       DO iCF = 1, nCF
 
-        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+        UK(iCF) = U_M(1,iCF,iX1,iX2,iX3)
 
-          CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+      END DO
 
-          Correction = Zero
-          DO iDimX = 1, nDimsX
+      CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+             ( 1, GK, UK, R, invR )
 
-            Correction &
-              = Correction &
-                  + ( U_M(iCF,0,iDimX+1) &
-                      * SUM( WeightsX_q(:) * LegendreX(:,iDimX+1) &
-                             * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
-                    / V_K(iX1,iX2,iX3)
+      DO iCF = 1, nCF
+      DO jCF = 1, nCF
 
-          END DO
+        R_X1   (jCF,iCF,iX1,iX2,iX3) = R   (iCF,jCF)
+        invR_X1(jCF,iCF,iX1,iX2,iX3) = invR(iCF,jCF)
 
-          U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction
-
-          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-        END IF
-
+      END DO
       END DO
 
     END DO
     END DO
     END DO
 
-  END SUBROUTINE ApplyConservativeCorrection
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PRIVATE( R, invR, UK, GK )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X2, invR_X2 ) &
+      !$ACC PRIVATE( R, invR, UK, GK )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PRIVATE( R, invR, UK, GK )
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iGF = 1, 8
+
+          GK(iGF) = G_K(iGF,iX1,iX2,iX3)
+
+        END DO
+
+        DO iCF = 1, nCF
+
+          UK(iCF) = U_M(1,iCF,iX1,iX2,iX3)
+
+        END DO
+
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+               ( 2, GK, UK, R, invR )
+
+        DO iCF = 1, nCF
+        DO jCF = 1, nCF
+
+          R_X2   (jCF,iCF,iX1,iX2,iX3) = R   (iCF,jCF)
+          invR_X2(jCF,iCF,iX1,iX2,iX3) = invR(iCF,jCF)
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PRIVATE( R, invR, UK, GK )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X3, invR_X3 ) &
+      !$ACC PRIVATE( R, invR, UK, GK )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PRIVATE( R, invR, UK, GK )
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iGF = 1, 8
+
+          GK(iGF) = G_K(iGF,iX1,iX2,iX3)
+
+        END DO
+
+        DO iCF = 1, nCF
+
+          UK(iCF) = U_M(1,iCF,iX1,iX2,iX3)
+
+        END DO
+
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+               ( 3, GK, UK, R, invR )
+
+        DO iCF = 1, nCF
+        DO jCF = 1, nCF
+
+          R_X3   (jCF,iCF,iX1,iX2,iX3) = R   (iCF,jCF)
+          invR_X3(jCF,iCF,iX1,iX2,iX3) = invR(iCF,jCF)
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    CALL TimersStop_Euler( Timer_Euler_SL_CharDecomp )
+
+  END SUBROUTINE ComputeEigenvectorMatrices
+
+
+  SUBROUTINE MultiplyWithInverseEigenvectorMatrices &
+    ( iX_B0, iX_E0, invR_X1, invR_X2, invR_X3, &
+      a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3)
+
+    REAL(DP), INTENT(in) :: invR_X1(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                            iX_B0(2):iX_E0(2), &
+                                            iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: invR_X2(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                            iX_B0(2):iX_E0(2), &
+                                            iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: invR_X3(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                            iX_B0(2):iX_E0(2), &
+                                            iX_B0(3):iX_E0(3))
+
+    REAL(DP), INTENT(inout) :: a1(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: b1(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: c1(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: a2(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: b2(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: c2(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: a3(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: b3(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: c3(nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: a1t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: b1t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: c1t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: a2t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: b2t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: c2t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: a3t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: b3t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: c3t(nCF,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iCF, jCF
+
+    REAL(DP) :: Sum_a, Sum_b, Sum_c
+
+    CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ENTER DATA &
+    !$ACC CREATE(     a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t )
+#endif
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a2t, b2t, c2t, &
+    !$ACC          a3t, b3t, c3t, a1, b1, c1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      a1t(iCF,iX1,iX2,iX3) = a1(iCF,iX1,iX2,iX3)
+      b1t(iCF,iX1,iX2,iX3) = b1(iCF,iX1,iX2,iX3)
+      c1t(iCF,iX1,iX2,iX3) = c1(iCF,iX1,iX2,iX3)
+
+      a2t(iCF,iX1,iX2,iX3) = a2(iCF,iX1,iX2,iX3)
+      b2t(iCF,iX1,iX2,iX3) = b2(iCF,iX1,iX2,iX3)
+      c2t(iCF,iX1,iX2,iX3) = c2(iCF,iX1,iX2,iX3)
+
+      a3t(iCF,iX1,iX2,iX3) = a2(iCF,iX1,iX2,iX3)
+      b3t(iCF,iX1,iX2,iX3) = b2(iCF,iX1,iX2,iX3)
+      c3t(iCF,iX1,iX2,iX3) = c2(iCF,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
+    !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a1, b1, c1, invR_X1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      Sum_a = Zero
+      Sum_b = Zero
+      Sum_c = Zero
+
+      DO jCF = 1, nCF
+
+        Sum_a = Sum_a + invR_X1(jCF,iCF,iX1,iX2,iX3) * a1t(jCF,iX1,iX2,iX3)
+        Sum_b = Sum_b + invR_X1(jCF,iCF,iX1,iX2,iX3) * b1t(jCF,iX1,iX2,iX3)
+        Sum_c = Sum_c + invR_X1(jCF,iCF,iX1,iX2,iX3) * c1t(jCF,iX1,iX2,iX3)
+
+      END DO
+
+      a1(iCF,iX1,iX2,iX3) = Sum_a
+      b1(iCF,iX1,iX2,iX3) = Sum_b
+      c1(iCF,iX1,iX2,iX3) = Sum_c
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
+      !$ACC PRESENT( iX_B0, iX_E0, a2t, b2t, c2t, a2, b2, c2, invR_X2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        Sum_a = Zero
+        Sum_b = Zero
+        Sum_c = Zero
+
+        DO jCF = 1, nCF
+
+          Sum_a = Sum_a + invR_X2(jCF,iCF,iX1,iX2,iX3) * a2t(jCF,iX1,iX2,iX3)
+          Sum_b = Sum_b + invR_X2(jCF,iCF,iX1,iX2,iX3) * b2t(jCF,iX1,iX2,iX3)
+          Sum_c = Sum_c + invR_X2(jCF,iCF,iX1,iX2,iX3) * c2t(jCF,iX1,iX2,iX3)
+
+        END DO
+
+        a2(iCF,iX1,iX2,iX3) = Sum_a
+        b2(iCF,iX1,iX2,iX3) = Sum_b
+        c2(iCF,iX1,iX2,iX3) = Sum_c
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
+      !$ACC PRESENT( iX_B0, iX_E0, a3t, b3t, c3t, a3, b3, c3, invR_X3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        Sum_a = Zero
+        Sum_b = Zero
+        Sum_c = Zero
+
+        DO jCF = 1, nCF
+
+          Sum_a = Sum_a + invR_X3(jCF,iCF,iX1,iX2,iX3) * a3t(jCF,iX1,iX2,iX3)
+          Sum_b = Sum_b + invR_X3(jCF,iCF,iX1,iX2,iX3) * b3t(jCF,iX1,iX2,iX3)
+          Sum_c = Sum_c + invR_X3(jCF,iCF,iX1,iX2,iX3) * c3t(jCF,iX1,iX2,iX3)
+
+        END DO
+
+        a3(iCF,iX1,iX2,iX3) = Sum_a
+        b3(iCF,iX1,iX2,iX3) = Sum_b
+        c3(iCF,iX1,iX2,iX3) = Sum_c
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       a1t, b1t, c1t, a2t, b2t, c2t, a3t, b3t, c3t )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_SL_CharDecomp )
+
+  END SUBROUTINE MultiplyWithInverseEigenvectorMatrices
+
+
+  SUBROUTINE MultiplyWithEigenvectorMatrices &
+    ( iX_B0, iX_E0, R_X1, R_X2, R_X3, dU_X1, dU_X2, dU_X3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3)
+
+    REAL(DP), INTENT(in) :: R_X1(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: R_X2(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: R_X3(nCF,nCF,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+
+    REAL(DP), INTENT(inout) :: dU_X1(nCF,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: dU_X2(nCF,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: dU_X3(nCF,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: dU_X1t(nCF,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU_X2t(nCF,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU_X3t(nCF,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iCF, jCF
+
+    REAL(DP) :: Sum_X1, Sum_X2, Sum_X3
+
+    CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: dU_X1t, dU_X2t, dU_X3t )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ENTER DATA &
+    !$ACC CREATE(     dU_X1t, dU_X2t, dU_X3t )
+#endif
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, dU_X1, dU_X2, dU_X3, dU_X1t, dU_X2t, dU_X3t )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      dU_X1t(iCF,iX1,iX2,iX3) = dU_X1(iCF,iX1,iX2,iX3)
+      dU_X2t(iCF,iX1,iX2,iX3) = dU_X2(iCF,iX1,iX2,iX3)
+      dU_X3t(iCF,iX1,iX2,iX3) = dU_X3(iCF,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_X1 )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( Sum_X1 ) &
+    !$ACC PRESENT( iX_B0, iX_E0, dU_X1, dU_X1t, R_X1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Sum_X1 )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      Sum_X1 = Zero
+
+      DO jCF = 1, nCF
+
+        Sum_X1 &
+          = Sum_X1 + R_X1(jCF,iCF,iX1,iX2,iX3) * dU_X1t(jCF,iX1,iX2,iX3)
+
+      END DO
+
+      dU_X1(iCF,iX1,iX2,iX3) = Sum_X1
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X2 )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_X2 ) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X2, dU_X2t, R_X2 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X2 )
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        Sum_X2 = Zero
+
+        DO jCF = 1, nCF
+
+          Sum_X2 &
+            = Sum_X2 + R_X2(jCF,iCF,iX1,iX2,iX3) * dU_X2t(jCF,iX1,iX2,iX3)
+
+        END DO
+
+        dU_X2(iCF,iX1,iX2,iX3) = Sum_X2
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X3 )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( Sum_X3 ) &
+      !$ACC PRESENT( iX_B0, iX_E0, dU_X3, dU_X3t, R_X3 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( Sum_X3 )
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCF = 1, nCF
+
+        Sum_X3 = Zero
+
+        DO jCF = 1, nCF
+
+          Sum_X3 &
+            = Sum_X3 + R_X3(jCF,iCF,iX1,iX2,iX3) * dU_X3t(jCF,iX1,iX2,iX3)
+
+        END DO
+
+        dU_X3(iCF,iX1,iX2,iX3) = Sum_X3
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dU_X1t, dU_X2t, dU_X3t )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       dU_X1t, dU_X2t, dU_X3t )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_SL_CharDecomp )
+
+  END SUBROUTINE MultiplyWithEigenvectorMatrices
 
 
 END MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL

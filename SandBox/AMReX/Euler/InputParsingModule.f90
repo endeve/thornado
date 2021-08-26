@@ -3,7 +3,6 @@ MODULE InputParsingModule
   ! --- AMReX Modules ---
 
   USE amrex_fort_module,      ONLY: &
-    AR => amrex_real, &
     amrex_spacedim
   USE amrex_init_module,      ONLY: &
     amrex_init, &
@@ -43,6 +42,11 @@ MODULE InputParsingModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,          ONLY: &
+    DP, &
+    Zero, &
+    One, &
+    Two
   USE MF_FieldsModule,        ONLY: &
     CreateFields_MF, &
     DestroyFields_MF
@@ -50,13 +54,14 @@ MODULE InputParsingModule
   IMPLICIT NONE
 
   ! --- thornado ---
-  REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
-  REAL(AR)         , ALLOCATABLE :: t(:), dt(:)
-  REAL(AR)                       :: CFL
+
+  REAL(DP)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
+  REAL(DP)         , ALLOCATABLE :: t(:), dt(:)
+  REAL(DP)                       :: CFL
   INTEGER                        :: nNodes, nStages
   INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
   INTEGER          , ALLOCATABLE :: nX(:), swX(:), bcX(:)
-  REAL(AR)         , ALLOCATABLE :: xL(:), xR(:)
+  REAL(DP)         , ALLOCATABLE :: xL(:), xR(:)
   CHARACTER(LEN=:) , ALLOCATABLE :: ProgramName
   CHARACTER(LEN=:) , ALLOCATABLE :: PlotFileBaseName
   CHARACTER(LEN=:) , ALLOCATABLE :: NodalDataFileNameBase
@@ -66,25 +71,29 @@ MODULE InputParsingModule
   LOGICAL          , SAVE        :: DEBUG
 
   ! --- Slope limiter ---
+
   LOGICAL                       :: UseSlopeLimiter
   CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
-  REAL(AR)                      :: BetaTVD, BetaTVB, SlopeTolerance
+  REAL(DP)                      :: BetaTVD, BetaTVB, SlopeTolerance
   LOGICAL                       :: UseCharacteristicLimiting
   LOGICAL                       :: UseTroubledCellIndicator
-  REAL(AR)                      :: LimiterThresholdParameter
+  REAL(DP)                      :: LimiterThresholdParameter
   LOGICAL                       :: UseConservativeCorrection
 
   ! --- Positivity limiter ---
+
   LOGICAL  :: UsePositivityLimiter
-  REAL(AR) :: Min_1, Min_2
-  REAL(AR) :: Max_1, Max_2
+  REAL(DP) :: Min_1, Min_2
+  REAL(DP) :: Max_1, Max_2
 
   ! --- Equation Of State ---
-  REAL(AR)                      :: Gamma_IDEAL
+
+  REAL(DP)                      :: Gamma_IDEAL
   CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
   ! --- AMReX  ---
+
   INTEGER                                    :: MaxLevel, nLevels, coord_sys
   INTEGER                                    :: MaxGridSizeX1
   INTEGER                                    :: MaxGridSizeX2
@@ -97,16 +106,13 @@ MODULE InputParsingModule
   TYPE(amrex_boxarray) , ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
   TYPE(amrex_geometry) , ALLOCATABLE, PUBLIC :: GEOM(:)
+  LOGICAL                                    :: UseTiling
 
 
 CONTAINS
 
 
   SUBROUTINE InitializeParameters
-
-    REAL(AR), PARAMETER :: Zero = 0.0_AR
-    REAL(AR), PARAMETER :: One  = 1.0_AR
-    REAL(AR), PARAMETER :: Two  = 2.0_AR
 
     TYPE(amrex_parmparse) :: PP
 
@@ -211,6 +217,7 @@ CONTAINS
     BlockingFactorX1 = 1
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
+    UseTiling        = .TRUE.
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell'           , nX               )
       CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
@@ -220,6 +227,7 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
       CALL PP % get   ( 'max_level'        , MaxLevel         )
+      CALL PP % query ( 'UseTiling'        , UseTiling        )
     CALL amrex_parmparse_destroy( PP )
 
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
@@ -228,12 +236,12 @@ CONTAINS
     ! --- Slope limiter parameters SL.* ---
     UseSlopeLimiter           = .TRUE.
     SlopeLimiterMethod        = 'TVD'
-    BetaTVD                   = 1.75_AR
+    BetaTVD                   = 1.75_DP
     BetaTVB                   = Zero
-    SlopeTolerance            = 1.0e-6_AR
+    SlopeTolerance            = 1.0e-6_DP
     UseCharacteristicLimiting = .TRUE.
     UseTroubledCellIndicator  = .TRUE.
-    LimiterThresholdParameter = 0.03_AR
+    LimiterThresholdParameter = 0.03_DP
     UseConservativeCorrection = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
       CALL PP % query( 'UseSlopeLimiter'          , UseSlopeLimiter           )
@@ -249,8 +257,8 @@ CONTAINS
 
     ! --- Positivitiy limiter parameters PL.* ---
     UsePositivityLimiter = .TRUE.
-    Min_1                = 1.0e-12_AR
-    Min_2                = 1.0e-12_AR
+    Min_1                = 1.0e-12_DP
+    Min_2                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
       CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
       CALL PP % query( 'Min_1'               , Min_1                )
@@ -258,7 +266,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
-    Gamma_IDEAL     = 5.0_AR / 3.0_AR
+    Gamma_IDEAL     = 5.0_DP / 3.0_DP
     EquationOfState = 'IDEAL'
     EosTableName    = ''
     CALL amrex_parmparse_build( PP, 'EoS' )
@@ -294,10 +302,10 @@ CONTAINS
     StepNo = 0
 
     ALLOCATE( dt(0:nLevels-1) )
-    dt = -100.0e0_AR
+    dt = -100.0e0_DP
 
     ALLOCATE( t(0:nLevels-1) )
-    t = 0.0e0_AR
+    t = 0.0e0_DP
 
     CALL CreateFields_MF( nLevels )
 

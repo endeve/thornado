@@ -2,8 +2,6 @@ PROGRAM ApplicationDriver
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,                ONLY: &
-    AR => amrex_real
   USE amrex_parallel_module,            ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
@@ -16,12 +14,13 @@ PROGRAM ApplicationDriver
   USE UnitsModule,                      ONLY: &
     UnitsDisplay
   USE TimersModule_Euler,               ONLY: &
-    TimeIt_Euler,           &
-    InitializeTimers_Euler, &
+    TimeIt_Euler, &
     FinalizeTimers_Euler
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                    ONLY: &
+    DP
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
@@ -56,9 +55,10 @@ PROGRAM ApplicationDriver
     iCycleW,   &
     iCycleChk, &
     GEOM
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_ComputeTally_Euler
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
-    InitializeTimers_AMReX_Euler,  &
     FinalizeTimers_AMReX_Euler,    &
     TimersStart_AMReX_Euler,       &
     TimersStop_AMReX_Euler,        &
@@ -70,15 +70,13 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   INTEGER  :: iErr
-  REAL(AR) :: Timer_Evolution
-
-  CALL InitializeProgram
+  REAL(DP) :: Timer_Evolution
 
   TimeIt_AMReX_Euler = .TRUE.
-  CALL InitializeTimers_AMReX_Euler
 
   TimeIt_Euler = .TRUE.
-  CALL InitializeTimers_Euler
+
+  CALL InitializeProgram
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
@@ -150,7 +148,7 @@ PROGRAM ApplicationDriver
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, &
+             ( StepNo, nLevels, dt, t, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P )
@@ -160,10 +158,10 @@ PROGRAM ApplicationDriver
       CALL FinalizeTimers_Euler &
              ( Verbose_Option = amrex_parallel_ioprocessor(), &
                SuppressApplicationDriver_Option = .TRUE., &
-               WriteAtIntermediateTime_Option = .FALSE. )
+               WriteAtIntermediateTime_Option = .TRUE. )
 
       CALL FinalizeTimers_AMReX_Euler &
-             ( WriteAtIntermediateTime_Option = .FALSE. )
+             ( WriteAtIntermediateTime_Option = .TRUE. )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -179,6 +177,7 @@ PROGRAM ApplicationDriver
     ELSE
 
       IF( ALL( t + dt .GT. t_wrt ) )THEN
+
         t_wrt = t_wrt + dt_wrt
         wrt   = .TRUE.
 
@@ -197,6 +196,9 @@ PROGRAM ApplicationDriver
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF )
+
+      CALL MF_ComputeTally_Euler &
+             ( GEOM, MF_uGF, MF_uCF, t(0), Verbose_Option = .FALSE. )
 
       wrt = .FALSE.
 
@@ -223,7 +225,7 @@ PROGRAM ApplicationDriver
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t, t_wrt, &
+         ( StepNo, nLevels, dt, t, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
            MF_uCF % P )
@@ -236,15 +238,12 @@ PROGRAM ApplicationDriver
            MF_uAF_Option = MF_uAF, &
            MF_uDF_Option = MF_uDF )
 
+  CALL MF_ComputeTally_Euler &
+         ( GEOM, MF_uGF, MF_uCF, t(0), Verbose_Option = .FALSE. )
+
   CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   ! --- Finalize everything ---
-
-  CALL FinalizeTimers_Euler &
-         ( Verbose_Option = amrex_parallel_ioprocessor(), &
-           SuppressApplicationDriver_Option = .TRUE. )
-
-  CALL FinalizeTimers_AMReX_Euler
 
   IF( amrex_parallel_ioprocessor() )THEN
 

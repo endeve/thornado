@@ -1,15 +1,20 @@
-ifeq ($(USE_GPU),TRUE)
+ifeq ($(USE_CUDA),TRUE)
 DeviceModule_prereqs += CudaModule.o
+else ifeq ($(USE_HIP),TRUE)
+DeviceModule_prereqs += HipModule.o
 endif
 ifeq ($(USE_OACC),TRUE)
 DeviceModule_prereqs += OpenACCModule.o
 else ifeq ($(USE_OMP_OL),TRUE)
 DeviceModule_prereqs += OpenMPModule.o
 endif
-ifeq ($(USE_MAGMA),TRUE)
-DeviceModule_prereqs += MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
-else ifeq ($(USE_CUBLAS),TRUE)
+ifeq ($(USE_CUBLAS),TRUE)
 DeviceModule_prereqs += CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_ROCM),TRUE)
+DeviceModule_prereqs += RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
+endif
+ifeq ($(USE_MAGMA),TRUE)
+DeviceModule_prereqs += MagmaModule.o
 endif
 
 ArrayUtilitiesModule.o: \
@@ -95,7 +100,8 @@ PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   QuadratureModule.o \
-  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
   PolynomialBasisModule_Lagrange.f90
 
 PolynomialBasisModule_Legendre.o: \
@@ -106,8 +112,9 @@ PolynomialBasisModule_Legendre.o: \
 ReferenceElementModuleX_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LagrangePolynomialsModule.o \
   ReferenceElementModuleX.o \
-  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModuleX_Lagrange.o \
   ReferenceElementModuleX_Lagrange.F90
 
 ReferenceElementModuleE_Lagrange.o: \
@@ -141,4 +148,4 @@ SubcellReconstructionModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   PolynomialBasisModuleX_Lagrange.o \
-  SubcellReconstructionModule.f90
+  SubcellReconstructionModule.F90

@@ -94,6 +94,8 @@ MODULE InitializationModule
   USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
     CreateOpacities,         &
     SetOpacities
+  USE OpacityModule_Table, ONLY:   &
+    InitializeOpacities_TABLE
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -106,6 +108,8 @@ MODULE InitializationModule
     ReadCheckpointFile
   USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
     InitializePositivityLimiter_TwoMoment
+  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
+    InitializeSlopeLimiter_TwoMoment
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
@@ -151,10 +155,21 @@ MODULE InitializationModule
     D_0,                       &
     Chi,                       &
     Sigma,                     &
+    kT,                        &
+    E0,                        &
+    mu0,                       &
+    R0,                        &
     EquationOfState,           &
+    EosTableName,              &
+    OpacityTableName_AbEm,     &
+    OpacityTableName_Iso,     &
+    OpacityTableName_NES,     &
+    OpacityTableName_Pair,     &
     Min_1,                     &
     Min_2,                     &
     UsePositivityLimiter,      &
+    UseSlopeLimiter,      &
+    BetaTVD,      &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -227,28 +242,27 @@ CONTAINS
 
 
       DO iLevel = 0, nLevels-1
-
         CALL amrex_multifab_build &
-               ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+               ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
         CALL MF_uGF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
         CALL MF_uCF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
         CALL MF_uAF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
                ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+                 nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
         CALL MF_uPR(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
                ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
@@ -293,10 +307,19 @@ CONTAINS
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
                                 Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+!
+!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!                               Verbose_Option = amrex_parallel_ioprocessor()  )
+    
+    
+
+
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
@@ -310,20 +333,40 @@ CONTAINS
 
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
-    CALL InitializeEquationOfState &
+
+    #ifdef MICROPHYSICS_WEAKLIB
+
+      CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               EquationOfStateTableName_Option &
+                 = EosTableName )
+
+      CALL InitializeOpacities_TABLE &
+        ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
+          OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
+          OpacityTableName_NES_Option  = OpacityTableName_NES,  &
+          OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          EquationOfStateTableName_Option = EosTableName, &
+          Verbose_Option =  amrex_parallel_ioprocessor())
+
+    #else
+
+
+      CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
                Gamma_IDEAL_Option = Gamma_IDEAL, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateOpacities &
+      CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
 
-    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, & 
+      CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, & 
                        Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    #endif
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
                               Verbose_Option = amrex_parallel_ioprocessor() )
-
     DO iLevel = 0, nLevels-1
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
@@ -342,6 +385,14 @@ CONTAINS
            UsePositivityLimiter_Option &
              = UsePositivityLimiter, &
            Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL InitializeSlopeLimiter_TwoMoment &
+           ( BetaTVD_Option &
+               = BetaTVD, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor()  )
 
     CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 

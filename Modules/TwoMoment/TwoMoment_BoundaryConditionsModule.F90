@@ -1,10 +1,11 @@
 MODULE TwoMoment_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP, sqrttiny
+    DP, Zero, Half, One, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    bcZ, swZ, &
-    nNodesZ, nDOF, nDOFE
+    bcZ, swZ, nE, &
+    nNodesZ, nDOF, nDOFE, nDOFX
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE RadiationFieldsModule, ONLY: &
@@ -17,6 +18,17 @@ MODULE TwoMoment_BoundaryConditionsModule
     MeshX,          &
     MeshE,          &
     NodeCoordinate
+  USE GeometryFieldsModule, ONLY: &
+    nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+  USE GeometryFieldsModuleE, ONLY: &
+    nGE, iGE_Ep2
+  USE ReferenceElementModule, ONLY: &
+    nDOF_E, &
+    nDOF_X1, &
+    nDOF_X2, &
+    nDOF_X3, &
+    Weights_Q
+
 
   IMPLICIT NONE
   PRIVATE
@@ -83,15 +95,43 @@ CONTAINS
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
         1:nCR,1:nSpecies)
-    REAL(DP) :: C
-    INTEGER :: iNodeZ, iS, iCR, iZ1, iZ2, iZ3, iZ4
 
+    INTEGER, PARAMETER :: nE_LeastSquares = 5
+    INTEGER  :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
+    REAL(DP) :: E_K(2), E_R
+    REAL(DP) :: &
+      N_K(2, &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nSpecies), &
+      a_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nSpecies), &
+      b_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nSpecies)
+    REAL(DP) :: L_lnN( nE_LeastSquares, nDOFE, nDOFX)
+    REAL(DP) :: L_N( nE_LeastSquares, nDOFE, nDOFX)
+    REAL(DP) :: N(nE_LeastSquares, nDOFE), lnN(nE_LeastSquares, nDOFE)
+    REAL(DP) :: E(nE_LeastSquares, nDOFE), A_T(nDOFX), B_T(nDOFX)
+    
     SELECT CASE ( bcZ(1) )
 
     CASE ( 0 ) ! No Boundary Condition
 
     CASE ( 1 ) ! Periodic
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -122,6 +162,14 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -152,6 +200,65 @@ CONTAINS
 
     CASE ( 10 ) ! Custom
 
+      ! --- Compute Cell Averaged Density in Last Two Elements ---
+
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, 2
+
+        N_K(iZ1,iZ2,iZ3,iZ4,iS) = Zero
+
+        DO iNodeZ = 1, nDOF
+
+          N_K(iZ1,iZ2,iZ3,iZ4,iS) &
+            = N_K(iZ1,iZ2,iZ3,iZ4,iS) &
+                + Weights_q(iNodeZ) &
+                    * U(iNodeZ,iZ_E0(1)-(2-iZ1),iZ2,iZ3,iZ4,iCR_N,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      ! --- Compute Exponential Extrapolation Coefficients ---
+
+      E_K = MeshE % Center(iZ_E0(1)-1:iZ_E0(1))
+
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+        a_K(iZ2,iZ3,iZ4,iS) &
+          = ( E_K(1) * LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) &
+                - E_K(2) * LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) ) &
+            / ( E_K(2) - E_K(1) )
+
+        b_K(iZ2,iZ3,iZ4,iS) &
+          = ( LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) &
+                - LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) ) &
+            / ( E_K(2) - E_K(1) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      E_R = MeshE % Center(iZ_E0(1)) + Half * MeshE % Width(iZ_E0(1))
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -168,8 +275,55 @@ CONTAINS
 
           ! --- Outer Boundary ---
 
-          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-            = U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+          IF( iCR == iCR_N )THEN
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+              = One / ( EXP(   a_K(iZ2,iZ3,iZ4,iS) &
+                             + b_K(iZ2,iZ3,iZ4,iS) * E_R ) + One )
+
+          ELSE
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+              = Zero
+
+          END IF
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    CASE ( 11 ) ! Custom
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          IF( iCR == iCR_N )THEN
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = SqrtTiny
+
+          ELSE
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+
+          END IF
 
         END DO
 
@@ -181,29 +335,94 @@ CONTAINS
       END DO
 
     CASE ( 22 ) ! Custom
+      i = 1
+
 
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
       DO iZ3 = iZ_B0(3), iZ_E0(3)
       DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        IF ( iZ1 .GE. (nE - nE_LeastSquares + 1) ) THEN
+         
+          DO iNodeZ = 1, nDOF
+
+            iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+            iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+
+            L_N( i, iNodeE, iNodeX ) =  U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+            
+            IF(L_N(i,iNodeE,iNodeX) .EQ. 0.0_DP) THEN
+
+              L_lnN( i, iNodeE, iNodeX ) = 0.0_DP
+
+            ELSE
+
+              L_lnN( i, iNodeE, iNodeX ) = LOG( U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) )
+
+            END IF
+
+            E(i,iNodeE) = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+          END DO
+
+          i = i + 1
+        END IF
+
+      END DO 
+
+      i = 1
+
+      DO iNodeX = 1, nDOFX
+
+        N(:,:) = L_N(:,:, iNodeX)
+        
+        lnN(:,:) = L_lnN(:,:,iNodeX)
+        IF( ALL(N .EQ. 0.0_DP) )THEN
+
+
+          A_T(iNodeX) = 0.0_DP
+
+          B_T(iNodeX) = 0.0_DP
+
+        ELSE
+
+          B_T(iNodeX) &
+            = ( SUM(N)*SUM(E*N*lnN)-SUM(E*N)*SUM(N*lnN) ) / (SUM(N)*SUM(E**2*N)-(SUM(E*N))**2)
+
+          A_T(iNodeX) &
+            = ( SUM(E**2*N)*SUM(N*lnN)-SUM(E*N)*SUM(E*N*lnN) ) / (SUM(N)*SUM(E**2*N)-(SUM(E*N))**2)
+        
+          A_T(iNodeX) = EXP(A_T(iNodeX) )
+
+        END IF 
+
+
+      END DO
       DO iZ1 = 1, swZ(1)
+
 
         DO iNodeZ = 1, nDOF
 
-          IF ( U(iNodeZ,iZ_E0(1)-1,iZ2,iZ3,iZ4,iCR_N,iS) .GT. sqrttiny ) THEN
-              C =  U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR_N,iS) /  U(iNodeZ,iZ_E0(1)-1,iZ2,iZ3,iZ4,iCR_N,iS) 
-          ELSE
-              C = 0.0_DP
-          END IF
-          ! --- Inner Boundary ---
+          iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+
+          iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+       !   ! --- Inner Boundary ---
           U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
 
           ! --- Outer Boundary ---
 
-          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-            = C * U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+          E_R = MeshE % Center(iZ_E0(1)+iZ1) - 0.5_DP * MeshE % Width(iZ_E0(1)+iZ1)
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = A_T(iNodeX) * EXP( B_T(iNodeX) * E_R )
 
         END DO
 
@@ -214,15 +433,12 @@ CONTAINS
       END DO
       END DO
 
-
-
     CASE DEFAULT
 
       WRITE(*,*)
       WRITE(*,'(A5,A45,I2.2)') &
         '', 'Invalid Boundary Condition for TwoMoment E: ', bcZ(1)
       STOP
-
     END SELECT
 
   END SUBROUTINE ApplyBC_TwoMoment_E
@@ -422,7 +638,7 @@ CONTAINS
       END DO
       END DO
 
-    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+    CASE ( 32,31,30 ) ! Reflecting (Inner), Homogeneous (Outer)
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -503,31 +719,32 @@ CONTAINS
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
                   DO iNode = 1, nDOF
 
-                    iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+                    iNodeE = MOD( (iNode-1)        , nDOFE ) + 1
 
 
-                    E = NodeCoordinate( MeshE, iZ1, iNodeE )
-           !         print*, E
+                   E = NodeCoordinate( MeshE, iZ1, iNodeE )
                     ! --- Inner Boundary ---
                     U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)  &
-                    !  = 0.5_DP * ( 1.0_DP - Mu_0 ) / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
-                       =   1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
+                      != 0.5_DP * ( 1.0_DP - Mu_0 ) / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                      =   1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                      ! =   1.0_DP / ( EXP( E )- 1.0_DP )
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G1,iS)  &
-                    !  = 0.5_DP * ( 1.0_DP + Mu_0 ) * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS) 
-                       = U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
+                      != 0.5_DP * ( 1.0_DP + Mu_0 ) * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS) 
+                      = 0.99_DP * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G2,iS) &
                       = 0.0_DP
 
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G3,iS) &
                       = 0.0_DP
 
-
+                    !print*,iNode, iZ1, iZ_B0(2)-iZ2, U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
 
 
                     ! --- Outer Boundary ---
 
                     U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_N,iS) &
                       = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_N,iS)
+
                     U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G1,iS) &
                       = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_G1,iS)
 
@@ -1106,6 +1323,22 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE ApplyBC_TwoMoment_X3
+
+  SUBROUTINE CheckRealizability(N, G1, V1,iZ2)
+
+    REAL(DP), INTENT(in) ::  N, G1, V1
+    INTEGER, INTENT(in) :: iZ2
+
+    REAL(DP) :: gamma1, W
+
+    W = 1.0_DP/SQRT(1.0_DP - V1**2)
+    gamma1 = N - G1 / W
+   
+    IF(gamma1 .LT. 10d-26)THEN
+    print*, iZ2, V1, N, G1, gamma1
+    END IF
+  END SUBROUTINE CheckRealizability
+
 
 
 END MODULE TwoMoment_BoundaryConditionsModule

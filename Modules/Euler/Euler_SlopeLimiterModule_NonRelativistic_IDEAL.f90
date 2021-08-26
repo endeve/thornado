@@ -1,15 +1,25 @@
 MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, &
+    Zero, &
+    One
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nNodes, nNodesX, bcX
+    nDOFX, &
+    nDimsX, &
+    nNodes, &
+    nNodesX, &
+    bcX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UtilitiesModule, ONLY: &
-    MinModB, NodeNumberX
+    MinModB, &
+    NodeNumberX
   USE PolynomialBasisModule_Legendre, ONLY: &
-    P_X1, P_X2, P_X3, IndPX_Q
+    P_X1, &
+    P_X2, &
+    P_X3, &
+    IndPX_Q
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
@@ -22,11 +32,11 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_E, &
+    nCF, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyInnerBC_Euler,  &
-    ApplyOuterBC_Euler,  &
+    ApplyInnerBC_Euler, &
+    ApplyOuterBC_Euler, &
     iApplyBC_Euler_Both, &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL, ONLY: &
@@ -34,9 +44,11 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
+    LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_SlopeLimiter
 
   IMPLICIT NONE
@@ -46,16 +58,12 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
 
-  REAL(DP), PUBLIC :: LimiterThreshold
-
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseConservativeCorrection
-  LOGICAL  :: UseTroubledCellIndicator
   LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
 
@@ -81,7 +89,9 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
-    INTEGER :: i
+    INTEGER  :: i
+    LOGICAL  :: UseTroubledCellIndicator
+    REAL(DP) :: LimiterThresholdParameter
 
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
@@ -110,7 +120,6 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -119,6 +128,10 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -149,10 +162,6 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
-    CALL InitializeTroubledCellIndicator_Euler &
-           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
-             LimiterThreshold_Option = LimiterThreshold )
-
     I_6x6 = Zero
     DO i = 1, 6
       I_6x6(i,i) = One
@@ -163,8 +172,7 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator_Euler
+    CALL FinalizeTroubledCellIndicator_Euler
 
   END SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 

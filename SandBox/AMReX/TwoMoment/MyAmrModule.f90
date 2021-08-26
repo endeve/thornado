@@ -27,12 +27,18 @@ MODULE MyAmrModule
   ! --- thornado Modules ---
   USE ProgramHeaderModule,   ONLY: &
     InitializeProgramHeader, nDimsX
+  USE UnitsModule,            ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay, &
+    Centimeter, &
+    Kilometer, &
+    MeV, &
+    SolarMass
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
     FinalizeDataAMReX
-
-
   ! --- thornado ---
   REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
@@ -72,9 +78,20 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_AbEm
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Iso
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_NES
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Pair
+
   ! --- Positivity limiter ---
   LOGICAL  :: UsePositivityLimiter
   REAL(AR) :: Min_1, Min_2
+
+  LOGICAL  :: UseSlopeLimiter
+  REAL(AR) :: BetaTVD
+  
+
+  REAL(AR) :: Mass, R0, kT, mu0, E0
 
 CONTAINS
 
@@ -83,6 +100,8 @@ CONTAINS
     REAL(AR), PARAMETER :: Zero = 0.0_AR
     REAL(AR), PARAMETER :: One  = 1.0_AR
     REAL(AR), PARAMETER :: Two  = 2.0_AR
+    REAL(AR), PARAMETER :: Pi     = ACOS( -1.0_AR )
+    REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
 
     TYPE(amrex_parmparse) :: PP
 
@@ -128,6 +147,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
           
 
+    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
@@ -135,6 +155,8 @@ CONTAINS
       CALL PP % getarr( 'prob_lo',    xL )
       CALL PP % getarr( 'prob_hi',    xR )
     CALL amrex_parmparse_destroy( PP )
+
+
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
     ELSE IF( coord_sys .EQ. 1 )THEN
@@ -144,6 +166,45 @@ CONTAINS
     ELSE
       STOP 'Invalid choice for coord_sys'
     END IF
+
+    Mass = 0.0_AR
+    R0 = 1000.0_AR
+    CALL amrex_parmparse_build( PP, 'ST' )
+      CALL PP % query( 'Mass', Mass )
+      CALL PP % query( 'R0'               ,R0 )
+      CALL PP % query( 'mu0'               ,mu0 )
+      CALL PP % query( 'E0'               ,E0 )
+      CALL PP % query( 'kT'               ,kT )
+    CALL amrex_parmparse_destroy( PP )
+
+    IF( UsePhysicalUnits )THEN
+
+      CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
+
+      t_end  = t_end  * UnitsDisplay % TimeUnit
+      dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
+      dt_chk = dt_chk * UnitsDisplay % TimeUnit
+
+      xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
+      xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
+      xL(2) = xL(2) * UnitsDisplay % LengthX2Unit
+      xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
+      xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
+      xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
+
+      eL = eL * UnitsDisplay % EnergyUnit 
+      eR = eR * UnitsDisplay % EnergyUnit 
+
+      Chi = Chi * ( 1.0_AR / Centimeter )
+
+      Mass = Mass * SolarMass
+      E0 = E0 * MeV 
+      mu0 = mu0 * MeV 
+      kT = kT * MeV 
+      R0 = R0 * kilometer
+
+    END IF
+
 
 
     ! --- Parameters amr.* ---
@@ -165,6 +226,17 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
+    OpacityTableName_AbEm = ''
+    OpacityTableName_Iso  = ''
+    OpacityTableName_NES  = ''
+    OpacityTableName_Pair  = ''
+    CALL amrex_parmparse_build( PP, 'OP' )
+      CALL PP % query( 'OpacityTableName_AbEm',OpacityTableName_AbEm )
+      CALL PP % query( 'OpacityTableName_Iso', OpacityTableName_Iso )
+      CALL PP % query( 'OpacityTableName_NES', OpacityTableName_NES )
+      CALL PP % query( 'OpacityTableName_Pair', OpacityTableName_Pair )
+    CALL amrex_parmparse_destroy( PP )
+
     Gamma_IDEAL     = 5.0_AR / 3.0_AR
     EquationOfState = 'IDEAL'
     EosTableName    = ''
@@ -173,7 +245,6 @@ CONTAINS
       CALL PP % query( 'EquationOfState', EquationOfState )
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
-
     ! --- Positivitiy limiter parameters PL.* ---
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_AR
@@ -183,6 +254,16 @@ CONTAINS
       CALL PP % query( 'Min_1'               , Min_1                )
       CALL PP % query( 'Min_2'               , Min_2                )
     CALL amrex_parmparse_destroy( PP )
+
+    ! --- Positivitiy limiter parameters PL.* ---
+    UseSlopeLimiter = .TRUE.
+    BetaTVD = 1.0_AR
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter', UseSlopeLimiter )
+      CALL PP % query( 'BetaTVD'               , BetaTVD                )
+    CALL amrex_parmparse_destroy( PP )
+
+
 
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
 
@@ -194,6 +275,12 @@ CONTAINS
              xL_Option = xL, xR_Option = xR, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, eL_option = eL, eR_option = eR, &
              Verbose_Option = amrex_parallel_ioprocessor() )
+
+
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
+
+
 
     IF( nDimsX .NE. amrex_spacedim )THEN
       WRITE(*,'(A)') 'ERROR'

@@ -211,7 +211,7 @@ CONTAINS
 
     CASE ( 30 ) ! Reflecting (Inner), Zero (Outer)
 
-      ! --- Inner Boundary ---
+      ! --- Inner Boundary --
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         DO iX3 = iX_B0(3), iX_E0(3)
@@ -241,6 +241,8 @@ CONTAINS
           END DO
           END DO
 
+            U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(:,iX_E0(1),iX2,iX3,iCF)
         END DO
         END DO
         END DO
