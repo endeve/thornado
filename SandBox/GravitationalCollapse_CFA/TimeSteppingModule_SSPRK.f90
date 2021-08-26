@@ -10,20 +10,26 @@ MODULE TimeSteppingModule_SSPRK
     iX_E0, &
     iX_E1, &
     nDOFX
+  USE GeometryFieldsModule, ONLY: &
+    iGF_Psi
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+    ComputeConformalFactor_Poseidon, &
+    ComputeLapseAndShift_Poseidon
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
+  USE Poseidon_UtilitiesModule, ONLY: &
+    ComputeMatterSources_Poseidon, &
+    ComputePressureTensorTrace_Poseidon, &
+    MultiplyByPsi6, &
+    DivideByPsi6
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
     Timer_Euler_UpdateFluid
-  USE Poseidon_UtilitiesModule, ONLY: &
-    ComputeSourceTerms_Poseidon
-  USE Euler_dgDiscretizationModule, ONLY: &
-    WriteSourceTerms
 
   IMPLICIT NONE
   PRIVATE
@@ -33,14 +39,12 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
-  REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: U_SSPRK
-  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
+  REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: Ustar
+  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: Dstar
 
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
-
-  LOGICAL, PUBLIC :: WriteSourceTerms2
 
   INTERFACE
     SUBROUTINE FluidIncrement &
@@ -64,18 +68,6 @@ MODULE TimeSteppingModule_SSPRK
     END SUBROUTINE FluidIncrement
   END INTERFACE
 
-  INTERFACE
-    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
-      USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)     :: &
-        iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(inout) :: &
-        G         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(in)    :: &
-        U_Poseidon(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    END SUBROUTINE GravitySolver
-  END INTERFACE
-
 
 CONTAINS
 
@@ -85,8 +77,6 @@ CONTAINS
     INTEGER, INTENT(in) :: nStages
 
     INTEGER :: i
-
-WriteSourceTerms2 = .FALSE.
 
     nStages_SSPRK = nStages
 
@@ -108,14 +98,14 @@ WriteSourceTerms2 = .FALSE.
     END DO
     WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
 
-    ALLOCATE( U_SSPRK &
+    ALLOCATE( Ustar &
                 (1:nDOFX, &
                  iX_B1(1):iX_E1(1), &
                  iX_B1(2):iX_E1(2), &
                  iX_B1(3):iX_E1(3), &
                  1:nCF) )
 
-    ALLOCATE( D_SSPRK &
+    ALLOCATE( Dstar &
                 (1:nDOFX, &
                  iX_B1(1):iX_E1(1), &
                  iX_B1(2):iX_E1(2), &
@@ -129,7 +119,7 @@ WriteSourceTerms2 = .FALSE.
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
-    DEALLOCATE( U_SSPRK, D_SSPRK )
+    DEALLOCATE( Ustar, Dstar )
 
   END SUBROUTINE FinalizeFluid_SSPRK
 
@@ -188,7 +178,7 @@ WriteSourceTerms2 = .FALSE.
 
 
   SUBROUTINE UpdateFluid_SSPRK &
-    ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravity )
+    ( t, dt, G, U, D, ComputeIncrement_Fluid )
 
     REAL(DP), INTENT(in)    :: &
       t, dt
@@ -200,36 +190,38 @@ WriteSourceTerms2 = .FALSE.
       D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
-    PROCEDURE (GravitySolver), OPTIONAL :: &
-      ComputeGravity
 
-    ! --- E, S, S^1, S^2, S^3, Mg ---
-    REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
-                                 iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),6)
-
-    LOGICAL :: SolveGravity
     INTEGER :: iS, jS, iX1, iX2, iX3
+
+    REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: Si(nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),3)
+    REAL(DP) :: S (nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    SolveGravity = .FALSE.
-    IF( PRESENT( ComputeGravity ) ) &
-      SolveGravity = .TRUE.
+    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
 
-    U_SSPRK = Zero ! --- State
-    D_SSPRK = Zero ! --- Increment
+    Dstar = Zero ! --- Increment
 
     DO iS = 1, nStages_SSPRK
 
-      U_SSPRK = U
+      Ustar = U
 
       DO jS = 1, iS - 1
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Fluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
+                 ( One, Ustar, dt * a_SSPRK(iS,jS), Dstar(:,:,:,:,:,jS) )
 
         END IF
 
@@ -238,30 +230,35 @@ WriteSourceTerms2 = .FALSE.
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+        IF( .NOT. iS .EQ. 1 )THEN
 
-        CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+          CALL ComputeMatterSources_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
 
-        IF( SolveGravity )THEN
+          CALL ComputeConformalFactor_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-          CALL ComputeSourceTerms_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, U_Poseidon )
+          CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
 
-          CALL ComputeGravity &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+          CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
+
+          CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
+
+          CALL MultiplyByPsi6( iX_B1, iX_E1, G, Ustar )
+
+          CALL ComputePressureTensorTrace_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, S )
+
+          CALL ComputeLapseAndShift_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
         END IF
 
-        WriteSourceTerms = .FALSE.
-
-        IF( WriteSourceTerms2 .AND. iS .EQ. nStages_SSPRK ) &
-          WriteSourceTerms = .TRUE.
-
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+                 G, Ustar, D, Dstar(:,:,:,:,:,iS) )
 
       END IF
 
@@ -272,11 +269,19 @@ WriteSourceTerms2 = .FALSE.
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
+               ( One, U, dt * w_SSPRK(iS), Dstar(:,:,:,:,:,iS) )
 
       END IF
 
     END DO
+
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+
+    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -284,19 +289,22 @@ WriteSourceTerms2 = .FALSE.
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    IF( SolveGravity )THEN
+    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
 
-      CALL ComputeSourceTerms_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, U_Poseidon )
+    CALL ComputePressureTensorTrace_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
 
-      CALL ComputeGravity &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+    CALL ComputeLapseAndShift_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
-    END IF
+    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
+
+
+  ! --- PRIVATE Subroutines ---
 
 
   SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
