@@ -224,15 +224,13 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-    CALL MF_uGF % Fill_Boundary( amrex_geom(iLevel) )
-
-    CALL MF_uCF % Fill_Boundary( amrex_geom(iLevel) )
-
-    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
-
+!    CALL MF_uGF % Fill_Boundary( amrex_geom(iLevel) )
     CALL FillPatch_uGF( iLevel, Time, MF_uGF )
 
+!    CALL MF_uCF % Fill_Boundary( amrex_geom(iLevel) )
     CALL FillPatch_uCF( iLevel, Time, MF_uCF )
+
+    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 

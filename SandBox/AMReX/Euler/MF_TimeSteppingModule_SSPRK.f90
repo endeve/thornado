@@ -52,7 +52,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE FillPatchModule, ONLY: &
     FillPatch_uCF
   USE MF_FieldsModule, ONLY: &
-    MF_uGF_new, &
     MF_OffGridFlux_Euler
 !  USE MF_Euler_TallyModule, ONLY: &
 !    MF_IncrementOffGridTally_Euler
@@ -73,9 +72,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
-
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_U(:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_D(:,:)
 
   LOGICAL :: Verbose
 
@@ -114,24 +110,9 @@ CONTAINS
 
     END IF
 
-    ALLOCATE( MF_U(0:amrex_max_level) )
-    ALLOCATE( MF_D(0:amrex_max_level,1:nStages) )
-
     ALLOCATE( nSubSteps(0:amrex_max_level) )
 
     DO iLevel = 0, amrex_max_level
-
-      CALL amrex_multifab_build &
-             ( MF_U(iLevel), MF_uGF_new(iLevel) % BA, &
-                             MF_uGF_new(iLevel) % DM, nDOFX * nCF, swX )
-
-      DO iS = 1, nStages
-
-        CALL amrex_multifab_build &
-               ( MF_D(iLevel,iS), MF_uGF_new(iLevel) % BA, &
-                                  MF_uGF_new(iLevel) % DM, nDOFX * nCF, swX )
-
-      END DO
 
       nSubSteps(iLevel) = 1!2**iLevel
 
@@ -146,22 +127,7 @@ CONTAINS
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
-    DO iLevel = 0, amrex_max_level
-
-      CALL amrex_multifab_destroy( MF_U(iLevel) )
-
-      DO iS = 1, nStages
-
-        CALL amrex_multifab_destroy( MF_D(iLevel,iS) )
-
-      END DO
-
-    END DO
-
     DEALLOCATE( nSubSteps )
-
-    DEALLOCATE( MF_U )
-    DEALLOCATE( MF_D )
 
   END SUBROUTINE FinalizeFluid_SSPRK_MF
 
@@ -174,6 +140,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+
+    TYPE(amrex_multifab) :: MF_U
+    TYPE(amrex_multifab) :: MF_D(1:nStages)
 
     INTEGER :: iS, jS
     INTEGER :: iLevel, iSubStep
@@ -188,15 +157,29 @@ CONTAINS
 
         StepNo(iLevel) = StepNo(iLevel) + 1
 
-        dM_OffGrid_Euler(iLevel,:) = Zero
+        CALL amrex_multifab_build &
+               ( MF_U, MF_uCF(iLevel) % BA, &
+                       MF_uCF(iLevel) % DM, nDOFX * nCF, swX )
 
-        ! --- Initialize temporary MultiFabs to zero ---
-
-        CALL MF_U(iLevel) % SetVal( Zero )
+        CALL MF_U &
+               % COPY( MF_uCF(iLevel), 1, 1, &
+                       MF_uCF(iLevel) % nComp(), swX )
 
         DO iS = 1, nStages
 
-          CALL MF_D(iLevel,iS) % SetVal( Zero )
+          CALL amrex_multifab_build &
+                 ( MF_D(iS), MF_uCF(iLevel) % BA, &
+                             MF_uCF(iLevel) % DM, nDOFX * nCF, swX )
+
+        END DO
+
+        dM_OffGrid_Euler(iLevel,:) = Zero
+
+        ! --- Initialize increment MultiFab to zero ---
+
+        DO iS = 1, nStages
+
+          CALL MF_D(iS) % SetVal( Zero )
 
         END DO
 
@@ -206,9 +189,8 @@ CONTAINS
 
           CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
-          CALL MF_U(iLevel) &
-                 % COPY( MF_uCF(iLevel), 1, 1, &
-                         MF_uCF(iLevel) % nComp(), swX )
+          CALL MF_uCF(iLevel) &
+                 % COPY( MF_U, 1, 1, MF_U % nComp(), swX )
 
           CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
@@ -216,18 +198,19 @@ CONTAINS
 
           CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-          CALL FillPatch_uCF( iLevel, t(iLevel), MF_U(iLevel) )
+          CALL FillPatch_uCF( iLevel, t(iLevel), MF_uCF(iLevel) )
+          !CALL MF_U % Fill_Boundary( amrex_geom(iLevel) )
 
           CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
           DO jS = 1, iS-1
 
             IF( a_SSPRK(iS,jS) .NE. Zero ) &
-              CALL MF_U(iLevel) &
-                     % LinComb( One, MF_U(iLevel), 1, &
+              CALL MF_uCF(iLevel) &
+                     % LinComb( One, MF_uCF(iLevel), 1, &
                                 dt(iLevel) * a_SSPRK(iS,jS), &
-                                MF_D(iLevel,jS), 1, &
-                                1, MF_U(iLevel) % nComp(), swX )
+                                MF_D(jS), 1, 1, &
+                                MF_uCF(iLevel) % nComp(), swX )
 
           END DO
 
@@ -235,14 +218,14 @@ CONTAINS
               .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
 !!$            CALL MF_ApplySlopeLimiter_Euler &
-!!$                   ( MF_uGF(iLevel), MF_U(iLevel), MF_uDF(iLevel) )
+!!$                   ( MF_uGF(iLevel), MF_U, MF_uDF(iLevel) )
 !!$
 !!$            CALL MF_ApplyPositivityLimiter_Euler &
-!!$                   ( MF_uGF(iLevel), MF_U(iLevel), MF_uDF(iLevel) )
+!!$                   ( MF_uGF(iLevel), MF_U, MF_uDF(iLevel) )
 
             CALL ComputeIncrement_Euler_MF &
-                   ( iLevel, t(iLevel), MF_uGF(iLevel), MF_U(iLevel), &
-                     MF_uDF(iLevel), MF_D(iLevel,iS) )
+                   ( iLevel, t(iLevel), MF_uGF(iLevel), MF_uCF(iLevel), &
+                     MF_uDF(iLevel), MF_D(iS) )
 
             dM_OffGrid_Euler(iLevel,:) &
               = dM_OffGrid_Euler(iLevel,:) &
@@ -255,12 +238,22 @@ CONTAINS
         DO iS = 1, nStages
 
           IF( w_SSPRK(iS) .NE. Zero ) &
-            CALL MF_uCF(iLevel) &
-                   % LinComb( One, MF_uCF(iLevel), 1, &
-                              dt(iLevel) * w_SSPRK(iS), MF_D(iLevel,iS), 1, &
-                              1, MF_uCF(iLevel) % nComp(), swX )
+            CALL MF_U &
+                   % LinComb( One, MF_U, 1, &
+                              dt(iLevel) * w_SSPRK(iS), MF_D(iS), 1, 1, &
+                              MF_U % nComp(), swX )
 
         END DO
+
+        CALL MF_uCF(iLevel) % COPY( MF_U, 1, 1, MF_U % nComp(), swX )
+
+        DO iS = 1, nStages
+
+          CALL amrex_multifab_destroy( MF_D(iS) )
+
+        END DO
+
+        CALL amrex_multifab_destroy( MF_U )
 
       END DO ! iSubStep
 

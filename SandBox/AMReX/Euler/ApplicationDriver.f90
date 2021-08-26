@@ -106,7 +106,7 @@ PROGRAM ApplicationDriver
 
     dt = MINVAL( dt )
 
-!!$    t_old = t_new
+    t_old = t_new
 
     IF( t_new(0) + dt(0) .LE. t_end )THEN
 

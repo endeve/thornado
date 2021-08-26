@@ -295,6 +295,14 @@ CONTAINS
     CALL ComputeGeometryX_MF( MF_uGF_new(iLevel) )
     CALL InitializeFields_MF( iLevel, MF_uGF_new(iLevel), MF_uCF_new(iLevel) )
 
+    CALL MF_uGF_old(iLevel) &
+           % COPY( MF_uGF_new(iLevel), 1, 1, &
+                   MF_uGF_new(iLevel) % nComp(), swX )
+
+    CALL MF_uCF_old(iLevel) &
+           % COPY( MF_uCF_new(iLevel), 1, 1, &
+                   MF_uCF_new(iLevel) % nComp(), swX )
+
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
