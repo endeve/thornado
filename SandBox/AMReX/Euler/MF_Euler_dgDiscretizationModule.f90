@@ -129,7 +129,6 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: D (:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dU(:,:,:,:,:)
 
-    INTEGER :: iCF
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     TYPE(EdgeMap) :: Edge_Map
