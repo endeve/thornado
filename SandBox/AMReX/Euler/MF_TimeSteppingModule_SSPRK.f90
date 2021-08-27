@@ -114,7 +114,7 @@ CONTAINS
 
     DO iLevel = 0, amrex_max_level
 
-      nSubSteps(iLevel) = 1!2**iLevel
+      nSubSteps(iLevel) = 2**iLevel
 
     END DO
 

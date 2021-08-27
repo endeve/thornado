@@ -88,36 +88,37 @@ PROGRAM ApplicationDriver
 
   DO iLevel = 0, amrex_max_level
 
-    dtMultiplier(iLevel) = Two**( amrex_max_level - iLevel )
+    dtMultiplier(iLevel) = Two**( iLevel )
 
   END DO
 
-  DO WHILE( ALL( t_new .LT. t_end ) )
+  ! --- Begin evolution ---
 
-    CALL ComputeTimeStep_Euler_MF( MF_uGF_new, MF_uCF_new, CFL, dt )
-
-    ! --- Normalize time-steps to finest time-step ---
-
-!!$    DO iLevel = 0, amrex_max_level-1
-!!$
-!!$      dt(iLevel) = dtMultiplier(iLevel) * dt(amrex_max_level)
-!!$
-!!$    END DO
-
-    dt = MINVAL( dt )
+  DO WHILE( MAXVAL( t_new ) .LT. t_end )
 
     t_old = t_new
 
-    IF( t_new(0) + dt(0) .LE. t_end )THEN
+    CALL ComputeTimeStep_Euler_MF( MF_uGF_new, MF_uCF_new, CFL, dt )
 
-      t_new = t_new(0) + dt(0)
+    IF( MAXVAL( t_old + dtMultiplier * dt ) .LT. t_end )THEN
+
+      t_new = t_old(0) + dt(0)
 
     ELSE
 
-      dt    = t_end - t_new
+      dt(0) = t_end - t_old(0)
+
       t_new = t_end
 
     END IF
+
+    ! --- Normalize time-steps ---
+
+    DO iLevel = 0, amrex_max_level
+
+      dt(iLevel) = dt(0) / dtMultiplier(iLevel)
+
+    END DO
 
     CALL UpdateFluid_SSPRK_MF &
           ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )
