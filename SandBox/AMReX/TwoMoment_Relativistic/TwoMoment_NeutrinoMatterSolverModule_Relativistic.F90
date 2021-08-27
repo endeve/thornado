@@ -1,7 +1,6 @@
-#ifdef THORNADO_DEBUG
-#define THORNADO_DEBUG_IMPLICIT
-#endif
-MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
+MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
+
+
 
   USE KindModule, ONLY: &
     DP, Zero, One, Two, FourPi, Half
@@ -15,19 +14,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
     nDOFE
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
-    TimersStart, &
-    TimersStop, &
-    Timer_Collisions_InnerLoop, &
-    Timer_Collisions_ComputeOpacity, &
-    Timer_Collisions_ComputeRates, &
-    Timer_Collisions_InitializeRHS, &
-    Timer_Collisions_NeutrinoRHS, &
-    Timer_Collisions_MatterRHS, &
-    Timer_Collisions_SolveLS, &
-    Timer_Collisions_UpdateFP, &
-    Timer_Collisions_CheckOuter, &
-    Timer_Collisions_CheckInner
   USE ArrayUtilitiesModule, ONLY: &
     CreatePackIndex, &
     ArrayPack, &
@@ -71,8 +57,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
 
-  LOGICAL, PARAMETER :: Include_NES  = .TRUE.
-  LOGICAL, PARAMETER :: Include_Pair = .TRUE.
+  LOGICAL, PARAMETER :: Include_NES  = .FALSE.
+  LOGICAL, PARAMETER :: Include_Pair = .FALSE.
 
   ! --- Units Only for Displaying to Screen ---
 
@@ -594,22 +580,18 @@ CONTAINS
 
     ! --- Initial RHS ---
 
-    CALL TimersStart( Timer_Collisions_InitializeRHS )
 
     CALL InitializeRHS_FP &
            ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    CALL TimersStop( Timer_Collisions_InitializeRHS )
 
     ! --- Compute Opacity Kernels ---
 
-    CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
     CALL ComputeOpacities_Packed &
            ( D, T, Y )
 
-    CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
     ! --- Start Outer Loop ---
 
@@ -629,19 +611,16 @@ CONTAINS
 
         ! --- Recompute Opacity Kernels ---
 
-        CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
                ( D, T, Y, &
                  ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
-        CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
       END IF
 
       ! --- Start Inner Loop ---
 
-      CALL TimersStart( Timer_Collisions_InnerLoop )
 
       k_inner = 0
       DO WHILE( ANY( ITERATE_inner(:) ) .AND. k_inner < MaxIter_inner )
@@ -654,28 +633,23 @@ CONTAINS
 
         ! --- Compute Neutrino Rates ---
 
-        CALL TimersStart( Timer_Collisions_ComputeRates )
 
         CALL ComputeRates_Packed &
                ( J, ITERATE_inner, nX_P_inner, PackIndex_inner, &
                  UnpackIndex_inner, nX_P_outer )
 
-        CALL TimersStop( Timer_Collisions_ComputeRates )
 
         ! --- Right-Hand Side Vectors and Residuals (inner) ---
 
-        CALL TimersStart( Timer_Collisions_NeutrinoRHS )
 
         CALL ComputeNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
                  J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-        CALL TimersStop( Timer_Collisions_NeutrinoRHS )
 
         ! --- Anderson Acceleration (inner) ---
 
-        CALL TimersStart( Timer_Collisions_SolveLS )
 
         CALL SolveLS_FP &
                ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
@@ -683,11 +657,9 @@ CONTAINS
                  AMAT_inner, BVEC_inner, Alpha_inner, TAU_inner, &
                  LWORK_inner, WORK_inner )
 
-        CALL TimersStop( Timer_Collisions_SolveLS )
 
         ! --- Update Residuals and Solution Vectors (inner) ---
 
-        CALL TimersStart( Timer_Collisions_UpdateFP )
 
         CALL UpdateNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, &
@@ -696,13 +668,11 @@ CONTAINS
 
         ! --- Check Convergence (inner) ---
 
-        CALL TimersStart( Timer_Collisions_CheckInner )
 
         CALL CheckConvergence_Inner &
                ( ITERATE_inner, n_FP_inner, k_inner, &
                  nIterations_Inner, FVECm_inner )
 
-        CALL TimersStop( Timer_Collisions_CheckInner )
 
         ! --- Shift History Arrays (inner) ---
 
@@ -710,26 +680,21 @@ CONTAINS
                ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
                  FVEC_inner, GVEC_inner )
 
-        CALL TimersStop( Timer_Collisions_UpdateFP )
 
       END DO ! --- Inner Loop ---
 
-      CALL TimersStop( Timer_Collisions_InnerLoop )
 
       ! --- Right-Hand Side Vectors and Residuals (outer) ---
 
-      CALL TimersStart( Timer_Collisions_MatterRHS )
 
       CALL ComputeMatterRHS_FP &
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
                J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-      CALL TimersStop( Timer_Collisions_MatterRHS )
 
       ! --- Anderson Acceleration (outer) ---
 
-      CALL TimersStart( Timer_Collisions_SolveLS )
 
       CALL SolveLS_FP &
              ( ITERATE_outer, n_FP_outer, M_outer, Mk_outer, &
@@ -737,11 +702,9 @@ CONTAINS
                AMAT_outer, BVEC_outer, Alpha_outer, TAU_outer, &
                LWORK_outer, WORK_outer )
 
-      CALL TimersStop( Timer_Collisions_SolveLS )
 
       ! --- Update Residuals and Solution Vectors (outer) ---
 
-      CALL TimersStart( Timer_Collisions_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
@@ -756,13 +719,11 @@ CONTAINS
 
       ! --- Check Convergence (outer) ---
 
-      CALL TimersStart( Timer_Collisions_CheckOuter )
 
       CALL CheckConvergence_Outer &
              ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
                nIterations_Outer, FVECm_outer )
 
-      CALL TimersStop( Timer_Collisions_CheckOuter )
 
       ! --- Shift History Arrays (outer) ---
 
@@ -770,7 +731,6 @@ CONTAINS
              ( ITERATE_outer, n_FP_outer, M_outer, Mk_outer, &
                FVEC_outer, GVEC_outer )
 
-      CALL TimersStop( Timer_Collisions_UpdateFP )
 
     END DO ! --- Outer Loop ---
 
@@ -2334,4 +2294,4 @@ CONTAINS
   END FUNCTION WNORM
 
 
-END MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
+END MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
