@@ -230,7 +230,7 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        IF( .NOT. iS .EQ. 1 )THEN
+        IF( iS .NE. 1 )THEN
 
           CALL ComputeMatterSources_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
@@ -256,9 +256,12 @@ CONTAINS
 
         END IF
 
+        CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
+
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, Ustar, D, Dstar(:,:,:,:,:,iS) )
+                 G, Ustar, D, Dstar(:,:,:,:,:,iS), &
+                 UseXCFC_Option = .TRUE. )
 
       END IF
 
