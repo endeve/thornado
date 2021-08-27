@@ -71,8 +71,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
 
-  LOGICAL, PARAMETER :: Include_NES  = .FALSE.
-  LOGICAL, PARAMETER :: Include_Pair = .FALSE.
+  LOGICAL, PARAMETER :: Include_NES  = .TRUE.
+  LOGICAL, PARAMETER :: Include_Pair = .TRUE.
 
   ! --- Units Only for Displaying to Screen ---
 

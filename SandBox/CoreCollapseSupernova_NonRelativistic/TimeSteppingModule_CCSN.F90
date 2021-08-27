@@ -40,8 +40,8 @@ MODULE TimeSteppingModule_CCSN
     REAL(DP), ALLOCATABLE :: dM_EX(:,:,:,:,:,:,:)
   END type StageDataType
 
-  LOGICAL                          :: EvolveFluid
-  LOGICAL                          :: EvolveNeutrinos
+  LOGICAL                          :: EvolveEuler
+  LOGICAL                          :: EvolveTwoMoment
   INTEGER                          :: nStages
   REAL(DP),            ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP),            ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
@@ -138,7 +138,7 @@ CONTAINS
 
           ! --- Apply Limiters ---
 
-          IF( EvolveFluid )THEN
+          IF( EvolveEuler )THEN
 
             CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
@@ -148,7 +148,7 @@ CONTAINS
 
           END IF
 
-          IF( EvolveNeutrinos )THEN
+          IF( EvolveTwoMoment )THEN
 
             CALL ApplyPositivityLimiter_TwoMoment &
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Mi )
@@ -157,7 +157,7 @@ CONTAINS
 
           ! --- Solve Gravity ---
 
-          IF( EvolveFluid )THEN
+          IF( EvolveEuler )THEN
 
             CALL SolveGravity_Newtonian_Poseidon &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
@@ -179,14 +179,14 @@ CONTAINS
         CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
-        IF( EvolveFluid )THEN
+        IF( EvolveEuler )THEN
 
           CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
 
         END IF
 
-        IF( EvolveNeutrinos )THEN
+        IF( EvolveTwoMoment )THEN
 
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Mi )
@@ -199,7 +199,7 @@ CONTAINS
 
         ! --- Explicit Solve ---
 
-        IF( EvolveFluid )THEN
+        IF( EvolveEuler )THEN
 
           CALL ComputeIncrement_Euler_DG_Explicit &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF, &
@@ -207,7 +207,7 @@ CONTAINS
 
         END IF
 
-        IF( EvolveNeutrinos )THEN
+        IF( EvolveTwoMoment )THEN
 
           CALL ComputeIncrement_TwoMoment_Explicit &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Mi, &
@@ -247,7 +247,7 @@ CONTAINS
 
       ! --- Apply Limiters ---
 
-      IF( EvolveFluid )THEN
+      IF( EvolveEuler )THEN
 
         CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
                ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
@@ -257,7 +257,7 @@ CONTAINS
 
       END IF
 
-      IF( EvolveNeutrinos )THEN
+      IF( EvolveTwoMoment )THEN
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Mi )
@@ -268,7 +268,7 @@ CONTAINS
 
     ! --- Solve Gravity ---
 
-    IF( EvolveFluid )THEN
+    IF( EvolveEuler )THEN
 
       CALL SolveGravity_Newtonian_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
@@ -282,11 +282,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeTimeStepping &
-    ( Scheme_Option, EvolveFluid_Option, EvolveNeutrinos_Option )
+    ( Scheme_Option, EvolveEuler_Option, EvolveTwoMoment_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Scheme_Option
-    LOGICAL,          INTENT(in), OPTIONAL :: EvolveFluid_Option
-    LOGICAL,          INTENT(in), OPTIONAL :: EvolveNeutrinos_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: EvolveEuler_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
 
     CHARACTER(16) :: Scheme
     INTEGER       :: i
@@ -295,22 +295,33 @@ CONTAINS
     IF( PRESENT( Scheme_Option ) ) &
       Scheme = TRIM( Scheme_Option )
 
-    EvolveFluid = .TRUE.
-    IF( PRESENT( EvolveFluid_Option ) ) &
-      EvolveFluid = EvolveFluid_Option
+    EvolveEuler = .TRUE.
+    IF( PRESENT( EvolveEuler_Option ) ) &
+      EvolveEuler = EvolveEuler_Option
 
-    EvolveNeutrinos = .TRUE.
-    IF( PRESENT( EvolveNeutrinos_Option ) ) &
-      EvolveNeutrinos = EvolveNeutrinos_Option
+    EvolveTwoMoment = .TRUE.
+    IF( PRESENT( EvolveTwoMoment_Option ) ) &
+      EvolveTwoMoment = EvolveTwoMoment_Option
 
     WRITE(*,*)
     WRITE(*,'(A6,A22,A)' ) '', 'Time Stepping Scheme: ', TRIM( Scheme )
     WRITE(*,*)
-    WRITE(*,'(A8,A18,L1)') '', 'Evolve Fluid: ', EvolveFluid
-    WRITE(*,'(A8,A18,L1)') '', 'Evolve Neutrinos: ', EvolveNeutrinos
+    WRITE(*,'(A8,A18,L1)') '', 'Evolve Fluid: ', EvolveEuler
+    WRITE(*,'(A8,A18,L1)') '', 'Evolve Neutrinos: ', EvolveTwoMoment
 
     SELECT CASE( TRIM( Scheme ) )
 
+      CASE ( 'SSPRK2' )
+
+        nStages = 2
+
+        CALL AllocateButcherTables
+
+        a_EX(1,1:2) = [ 0.0_DP, 0.0_DP ]
+        a_EX(2,1:2) = [ 1.0_DP, 0.0_DP ]
+        w_EX(1:2)   = [ 0.5_DP, 0.5_DP ]
+
+       
       CASE ( 'IMEX_PDARS' )
 
         nStages = 3
@@ -340,7 +351,7 @@ CONTAINS
         WRITE(*,'(A6,A)') &
           '', 'Available Options:'
         WRITE(*,*)
-        WRITE(*,'(A6,A)') '', 'IMEX_PDARS'
+        WRITE(*,'(A6,A)') '', 'SSPRK2, IMEX_PDARS'
         WRITE(*,*)
         STOP
 
@@ -578,7 +589,7 @@ CONTAINS
 
     INTEGER :: iNodeX, iX1, iX2, iX3, iCF
 
-    IF( .NOT. EvolveFluid ) RETURN
+    IF( .NOT. EvolveEuler ) RETURN
 
     DO iCF = 1, nCF
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -624,7 +635,7 @@ CONTAINS
 
     INTEGER :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
 
-    IF( .NOT. EvolveNeutrinos ) RETURN
+    IF( .NOT. EvolveTwoMoment ) RETURN
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
