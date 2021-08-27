@@ -329,6 +329,8 @@ CONTAINS
 
     USE TwoMoment_TimersModule_OrderV, ONLY: &
       InitializeTimers
+    USE TimersModule_Euler, ONLY: &
+      InitializeTimers_Euler
     USE ProgramInitializationModule, ONLY: &
       InitializeProgram
     USE ReferenceElementModuleX, ONLY: &
@@ -372,6 +374,8 @@ CONTAINS
       Initialize_IMEX_RK
 
     CALL InitializeTimers
+
+    CALL InitializeTimers_Euler
 
     CALL InitializeProgram &
            ( ProgramName_Option &
@@ -486,17 +490,17 @@ CONTAINS
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
-               = ( One + EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinD, &
              Min_2_Option &
-               = ( One + EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinT, &
              Min_3_Option &
-               = ( One + EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinY, &
              Max_1_Option &
-               = ( One - EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxD, &
              Max_2_Option &
-               = ( One - EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxT, &
              Max_3_Option &
-               = ( One - EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxY )
 
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 
@@ -578,6 +582,8 @@ CONTAINS
       FinalizeReferenceElement_Lagrange
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
+    USE TimersModule_Euler, ONLY: &
+      FinalizeTimers_Euler
     USE TwoMoment_TimersModule_OrderV, ONLY: &
       FinalizeTimers
 
@@ -614,6 +620,8 @@ CONTAINS
     CALL FinalizeReferenceElement_Lagrange
 
     CALL FinalizeProgram
+
+    CALL FinalizeTimers_Euler
 
     CALL FinalizeTimers
 
