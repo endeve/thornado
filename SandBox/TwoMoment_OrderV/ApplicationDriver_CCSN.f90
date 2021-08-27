@@ -92,20 +92,20 @@ PROGRAM ApplicationDriver_CCSN
 
   ! --- Evolution Parameters ---
 
-  t_end   = 3.00d+2 * Millisecond
+  t_end   = 3.50d+2 * Millisecond
   dt_wrt  = 1.00d-0 * Millisecond
   wrt     = .FALSE.
-  iCycleD = 1
+  iCycleD = 10
 
   ! --- Position Space Grid Parameters ---
 
-  nX  = [ 200, 1, 1 ]
+  nX  = [ 400, 1, 1 ]
   xL  = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ]
   xR  = [ 8.0d3 * Kilometer, Pi   , TwoPi ]
   bcX = [ 30, 0, 0 ]
 
-  nEquidistantX = 50
-  dEquidistantX = 1.0d0 * Kilometer
+  nEquidistantX = 100
+  dEquidistantX = 0.5d0 * Kilometer
 
   ! --- Energy Space Grid Parameters ---
 
@@ -114,7 +114,7 @@ PROGRAM ApplicationDriver_CCSN
   eR  = 3.0d2 * MeV
   bcE = 10
 
-  zoomE = 1.290361891685686_DP
+  zoomE = 1.25_DP
 
   ! --- Time Step Control ---
 
@@ -129,7 +129,7 @@ PROGRAM ApplicationDriver_CCSN
   CFL      = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One )
 
   EvolveEuler                    = .TRUE.
-  UseSlopeLimiter_Euler          = .FALSE.
+  UseSlopeLimiter_Euler          = .TRUE.
   UsePositivityLimiter_Euler     = .TRUE.
 
   EvolveTwoMoment                = .TRUE.
@@ -500,17 +500,17 @@ CONTAINS
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
-               = ( One + EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinD, &
              Min_2_Option &
-               = ( One + EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinT, &
              Min_3_Option &
-               = ( One + EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinY, &
              Max_1_Option &
-               = ( One - EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxD, &
              Max_2_Option &
-               = ( One - EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxT, &
              Max_3_Option &
-               = ( One - EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxY )
 
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 
