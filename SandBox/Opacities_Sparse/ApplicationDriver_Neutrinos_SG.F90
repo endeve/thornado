@@ -82,10 +82,10 @@ PROGRAM ApplicationDriver_Neutrinos_SG
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
 
-  OpacityGridName_EmAb = 'SGOpacities/reduced_EmAb_threshold_0.001_log_trunc_20.grid'
-  OpacityGridName_Iso  = 'SGOpacities/reduced_IS_threshold_0.001_log_trunc_20.grid'
-  OpacityGridName_NES  = 'SGOpacities/reduced_NES_threshold_0.001_log_trunc_20.grid'
-  OpacityGridName_Pair = 'SGOpacities/reduced_PAIR_threshold_0.01_log_trunc_20.grid'
+  OpacityGridName_EmAb = "SGOpacities/reduced_EmAb_threshold_0.001_log_trunc_20.grid"
+  OpacityGridName_Iso  = "SGOpacities/reduced_IS_threshold_0.001_log_trunc_20.grid"
+  OpacityGridName_NES  = "SGOpacities/reduced_NES_threshold_0.001_log_trunc_20.grid"
+  OpacityGridName_Pair = "SGOpacities/reduced_PAIR_threshold_0.01_log_trunc_20.grid"
 
   FixedTimeStep = .FALSE.
 
