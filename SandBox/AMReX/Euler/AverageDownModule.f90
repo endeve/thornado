@@ -44,7 +44,6 @@ CONTAINS
 
     FinestLevel = amrex_get_finest_level()
 
-nnodes=10
     DO iLevel = FinestLevel-1, 0, -1
 
        nCompGF = MF_uGF(iLevel+1) % nComp()
