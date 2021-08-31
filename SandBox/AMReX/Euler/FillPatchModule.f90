@@ -12,17 +12,26 @@ MODULE FillPatchModule
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio, &
-    amrex_interp_dg_order2
+    amrex_interp_dg_order1, &
+    amrex_interp_dg_order2, &
+    amrex_interp_dg_order3
   USE amrex_fillpatch_module, ONLY: &
     amrex_fillpatch, &
     amrex_fillcoarsepatch
   USE amrex_geometry_module, ONLY: &
     amrex_geometry
 
+  ! --- thornado Modules ---
+
+  USE ProgramHeaderModule, ONLY: &
+    nNodes
+
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP
+  USE MF_Euler_ErrorModule, ONLY: &
+    DescribeError_Euler_MF
   USE InputParsingModule, ONLY: &
     UseTiling
 
@@ -66,15 +75,51 @@ CONTAINS
 
     ELSE
 
-      CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
-                                    t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-                            amrex_geom(iLevel-1), FillPhysicalBC, &
-                                    t_old(iLevel  ), MF_uGF_old(iLevel  ), &
-                                    t_new(iLevel  ), MF_uGF_new(iLevel  ), &
-                            amrex_geom(iLevel  ), FillPhysicalBC, &
-                            Time, sComp, dComp, nCompGF, &
-                            amrex_ref_ratio(iLevel-1), amrex_interp_dg_order2, &
-                            lo_bc, hi_bc )
+      IF( nNodes .EQ. 1 )THEN
+
+        CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uGF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uGF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompGF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order1, &
+                              lo_bc, hi_bc )
+
+      ELSE IF( nNodes .EQ. 2 )THEN
+
+        CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uGF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uGF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompGF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order2, &
+                              lo_bc, hi_bc )
+
+      ELSE IF( nNodes .EQ. 3 )THEN
+
+        CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uGF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uGF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompGF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order3, &
+                              lo_bc, hi_bc )
+
+      ELSE
+
+        CALL DescribeError_Euler_MF &
+               ( 04, Message_Option = 'uGF', Int_Option = [ nNodes ] )
+
+      END IF
 
     END IF
 
@@ -101,13 +146,42 @@ CONTAINS
 
     nCompGF = MF_uGF % nComp()
 
-    CALL amrex_fillcoarsepatch &
-           ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
-                     t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-             amrex_geom(iLevel-1), FillPhysicalBC, &
-             amrex_geom(iLevel  ), FillPhysicalBC, &
-             Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
-             amrex_interp_dg_order2, lo_bc, hi_bc )
+    IF( nNodes .EQ. 1 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order1, lo_bc, hi_bc )
+
+    ELSE IF( nNodes .EQ. 2 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order2, lo_bc, hi_bc )
+
+    ELSE IF( nNodes .EQ. 3 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uGF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order3, lo_bc, hi_bc )
+
+    ELSE
+
+      CALL DescribeError_Euler_MF &
+             ( 05, Message_Option = 'uGF', Int_Option = [ nNodes ] )
+
+    END IF
 
   END SUBROUTINE FillCoarsePatch_uGF
 
@@ -142,15 +216,51 @@ CONTAINS
 
     ELSE
 
-      CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
-                                    t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-                            amrex_geom(iLevel-1), FillPhysicalBC, &
-                                    t_old(iLevel  ), MF_uCF_old(iLevel  ), &
-                                    t_new(iLevel  ), MF_uCF_new(iLevel  ), &
-                            amrex_geom(iLevel  ), FillPhysicalBC, &
-                            Time, sComp, dComp, nCompCF, &
-                            amrex_ref_ratio(iLevel-1), amrex_interp_dg_order2, &
-                            lo_bc, hi_bc )
+      IF( nNodes .EQ. 1 )THEN
+
+        CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uCF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uCF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uCF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompCF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order1, &
+                              lo_bc, hi_bc )
+
+      ELSE IF( nNodes .EQ. 2 )THEN
+
+        CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uCF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uCF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uCF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompCF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order2, &
+                              lo_bc, hi_bc )
+
+      ELSE IF( nNodes .EQ. 3 )THEN
+
+        CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uCF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uCF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uCF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompCF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order3, &
+                              lo_bc, hi_bc )
+
+      ELSE
+
+        CALL DescribeError_Euler_MF &
+               ( 04, Message_Option = 'uCF', Int_Option = [ nNodes ] )
+
+      END IF
 
     END IF
 
@@ -177,13 +287,42 @@ CONTAINS
 
     nCompCF = MF_uCF % nComp()
 
-    CALL amrex_fillcoarsepatch &
-           ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
-                     t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-             amrex_geom(iLevel-1), FillPhysicalBC, &
-             amrex_geom(iLevel  ), FillPhysicalBC, &
-             Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
-             amrex_interp_dg_order2, lo_bc, hi_bc )
+    IF( nNodes .EQ. 1 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uCF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order1, lo_bc, hi_bc )
+
+    ELSE IF( nNodes .EQ. 2 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uCF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order2, lo_bc, hi_bc )
+
+    ELSE IF( nNodes .EQ. 3 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uCF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order3, lo_bc, hi_bc )
+
+    ELSE
+
+      CALL DescribeError_Euler_MF &
+             ( 05, Message_Option = 'uCF', Int_Option = [ nNodes ] )
+
+    END IF
 
   END SUBROUTINE FillCoarsePatch_uCF
 

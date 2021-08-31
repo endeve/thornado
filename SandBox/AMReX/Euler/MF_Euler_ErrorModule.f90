@@ -52,6 +52,7 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
         WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  Advection1D'
         WRITE(*,'(2x,A)')   '  Advection2D'
         WRITE(*,*)
         WRITE(*,'(A)') 'Stopping...'
@@ -72,6 +73,62 @@ CONTAINS
         WRITE(*,'(2x,A)') '  0 (CARTESIAN)'
         WRITE(*,'(2x,A)') '  1 (CYLINDRICAL)'
         WRITE(*,'(2x,A)') '  2 (SPHERICAL)'
+        WRITE(*,'(2x,A)')
+
+        CALL thornado_abort
+
+      CASE( 03 )
+
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: AverageDownModule'
+        WRITE(*,'(A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A,I3.2)') &
+          'amrex_average_down not implemented for nNodes = ', Int_Option(1)
+        WRITE(*,'(2x,A)') 'Valid choices'
+        WRITE(*,'(2x,A)') '-------------'
+        WRITE(*,'(2x,A)') '  1'
+        WRITE(*,'(2x,A)') '  2'
+        WRITE(*,'(2x,A)') '  3'
+        WRITE(*,'(2x,A)')
+
+        CALL thornado_abort
+
+      CASE( 04 )
+
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: FillPatchModule'
+        WRITE(*,'(2x,A,A)') &
+          'SUBROUTINE: FillPatch_', TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A,I3.2)') &
+          'amrex_fillpatch not implemented for nNodes = ', Int_Option(1)
+        WRITE(*,'(2x,A)') 'Valid choices'
+        WRITE(*,'(2x,A)') '-------------'
+        WRITE(*,'(2x,A)') '  1'
+        WRITE(*,'(2x,A)') '  2'
+        WRITE(*,'(2x,A)') '  3'
+        WRITE(*,'(2x,A)')
+
+        CALL thornado_abort
+
+      CASE( 05 )
+
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: FillPatchModule'
+        WRITE(*,'(2x,A,A)') &
+          'SUBROUTINE: FillCoarsePatch_', TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A,I3.2)') &
+          'amrex_fillcoarsepatch not implemented for nNodes = ', Int_Option(1)
+        WRITE(*,'(2x,A)') 'Valid choices'
+        WRITE(*,'(2x,A)') '-------------'
+        WRITE(*,'(2x,A)') '  1'
+        WRITE(*,'(2x,A)') '  2'
+        WRITE(*,'(2x,A)') '  3'
         WRITE(*,'(2x,A)')
 
         CALL thornado_abort
