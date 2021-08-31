@@ -225,9 +225,9 @@ PROGRAM ApplicationDriver
 
   END DO
 
-  DEALLOCATE( dtMultiplier )
-
   ! --- END of evolution ---
+
+  DEALLOCATE( dtMultiplier )
 
   IF( amrex_parallel_ioprocessor() )THEN
 
