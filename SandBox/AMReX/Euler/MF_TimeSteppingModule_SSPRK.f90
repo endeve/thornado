@@ -123,8 +123,6 @@ CONTAINS
 
   SUBROUTINE FinalizeFluid_SSPRK_MF
 
-    INTEGER :: iLevel, iS
-
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
     DEALLOCATE( nSubSteps )
@@ -153,7 +151,7 @@ CONTAINS
 
     DO iLevel = 0, amrex_max_level
 
-      DO iSubStep = 1, nSubSteps(iLevel)
+      DO iSubStep = 1, 1!nSubSteps(iLevel)
 
         StepNo(iLevel) = StepNo(iLevel) + 1
 

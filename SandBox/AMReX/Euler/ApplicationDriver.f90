@@ -100,25 +100,39 @@ PROGRAM ApplicationDriver
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF_new, MF_uCF_new, CFL, dt )
 
-    IF( MAXVAL( t_old + dtMultiplier * dt ) .LT. t_end )THEN
+    dt = MINVAL( dt )
 
-      t_new = t_old(0) + dt(0)
+    IF( MAXVAL( t_old + dt ) .LT. t_end )THEN
+
+      t_new = t_old + dt
 
     ELSE
 
-      dt(0) = t_end - t_old(0)
+      dt = t_end - t_old
 
       t_new = t_end
 
     END IF
 
-    ! --- Normalize time-steps ---
-
-    DO iLevel = 0, amrex_max_level
-
-      dt(iLevel) = dt(0) / dtMultiplier(iLevel)
-
-    END DO
+!!$    IF( MAXVAL( t_old + dtMultiplier * dt ) .LT. t_end )THEN
+!!$
+!!$      t_new = t_old(0) + dt(0)
+!!$
+!!$    ELSE
+!!$
+!!$      dt(0) = t_end - t_old(0)
+!!$
+!!$      t_new = t_end
+!!$
+!!$    END IF
+!!$
+!!$    ! --- Normalize time-steps ---
+!!$
+!!$    DO iLevel = 0, amrex_max_level
+!!$
+!!$      dt(iLevel) = dt(0) / dtMultiplier(iLevel)
+!!$
+!!$    END DO
 
     CALL UpdateFluid_SSPRK_MF &
           ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )
