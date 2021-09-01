@@ -42,6 +42,9 @@ UsePhysicalUnits = False
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
 CoordinateSystem = 'cartesian'
 
+# Specify max level of refinement (-1 is MaxLevel)
+MaxLevel = -1
+
 Verbose = True
 
 UseCustomLimits = False
@@ -69,9 +72,9 @@ if UsePhysicalUnits:
     TimeUnit   = 'ms'
     LengthUnit = 'km'
 
-Data, DataUnit, X1, X2, X3, xL, xU, nX, Time \
+Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
-             CoordinateSystem, UsePhysicalUnits, \
+             CoordinateSystem, UsePhysicalUnits, MaxLevel = MaxLevel, \
              ReturnTime = True, ReturnMesh = True, \
              Verbose = False )
 
@@ -85,7 +88,7 @@ assert ( nDims == 1 ), \
 MakeDataFile( Field, DataDirectory, DataFileName, \
               PlotFileBaseName, CoordinateSystem, \
               UsePhysicalUnits = UsePhysicalUnits, \
-              WriteExtras = False, Verbose = False )
+              MaxLevel = MaxLevel )
 
 assert isfile( DataFileName ), \
        'File: {:s} does not exist.'.format( DataFileName )
@@ -129,8 +132,11 @@ time_text = plt.text( xL[0] + 0.5 * Width, ymin + 0.7 * Height, '' )
 
 if( UseLogScale ): ax.set_yscale( 'log' )
 
-IC,   = ax.plot([],[], color = 'red',   linewidth = 2 )
-line, = ax.plot([],[], color = 'black', linewidth = 1 )
+#IC,   = ax.plot([],[], color = 'red',   linewidth = 2 )
+#line, = ax.plot([],[], color = 'black', linewidth = 1 )
+
+IC,   = ax.plot([],[], 'r.' )
+line, = ax.plot([],[], 'k.' )
 
 def f( t ):
     return Data[t]

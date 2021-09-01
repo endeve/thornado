@@ -41,8 +41,17 @@ ProblemName = 'Advection1D'
 # Specify title of figure
 FigTitle = ProblemName
 
+from sys import argv
+
+#nN = argv[1]
+#nX = argv[2]
+#Grid = argv[3]
+
 # Specify directory containing plotfiles
 DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
+#DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/nN{:}_nX{:}_{:}/'.format( nN.zfill(2), nX.zfill(3), Grid )
+
+#argv = ['a']
 
 # Specify plot file base name
 PlotFileBaseName = 'plt'
@@ -61,6 +70,8 @@ CoordinateSystem = 'cartesian'
 
 # Specify colormap
 cmap = 'jet'
+
+MaxLevel = -1
 
 Verbose = True
 
@@ -86,9 +97,16 @@ if( UsePhysicalUnits ):
     TimeUnit = 'ms'
     LengthUnit = 'km'
 
-Data, DataUnit, X1, X2, X3, xL, xU, nX, Time \
+Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
+  = GetData( DataDirectory, PlotFileBaseName, Field, \
+             CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
+             MaxLevel = MaxLevel, \
+             ReturnTime = True, ReturnMesh = True, Verbose = Verbose )
+
+Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = argv, \
+             MaxLevel = MaxLevel, \
              ReturnTime = True, ReturnMesh = True, Verbose = Verbose )
 
 nDims = 1
@@ -100,7 +118,10 @@ assert ( ( nDims >= 1 ) & ( nDims <= 2 ) ), \
 
 if nDims == 1:
 
-    plt.plot( X1, Data, 'k-' )
+#    data = np.vstack( (X10, dX10, Data0, X1, dX1, Data ) )
+#    np.savetxt( '{:}.dat'.format( DataDirectory[79:-1] ), data )
+    plt.plot( X10, Data0, 'r.' )
+    plt.plot( X1, Data, 'k.' )
     if( UseLogScale ): plt.yscale( 'log' )
     plt.xlim( xL[0], xU[0] )
     plt.xlabel( 'X1' + ' ' + LengthUnit )

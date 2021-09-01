@@ -166,11 +166,13 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     xL = xL.to_ndarray()
     xU = xU.to_ndarray()
 
-    dX = ( xU - xL ) / np.float64( nX )
-
     X1 = CoveringGrid['X1_C'].to_ndarray()[:,0,0]
     X2 = CoveringGrid['X2_C'].to_ndarray()[0,:,0]
     X3 = CoveringGrid['X3_C'].to_ndarray()[0,0,:]
+
+    dX1 = CoveringGrid['dX1'].to_ndarray()[:,0,0]
+    dX2 = CoveringGrid['dX2'].to_ndarray()[0,:,0]
+    dX3 = CoveringGrid['dX3'].to_ndarray()[0,0,:]
 
     if  ( Field == 'PF_D'  ):
 
@@ -397,12 +399,12 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                     AngleAveragedMass[iX1] \
                       += rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX[1] * dX[2]
+                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
 
                     AngleAveragedRadialVelocity[iX1] \
                       += V1[iX1,iX2,iX3] * rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX[1] * dX[2]
+                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
 
             AngleAveragedRadialVelocity[iX1] /= AngleAveragedMass[iX1]
 
@@ -449,12 +451,12 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                     AngleAveragedMass[iX1] \
                       += rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX[1] * dX[2]
+                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
 
                     AngleAveragedRadialVelocity[iX1] \
                       += V1[iX1,iX2,iX3] * rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX[1] * dX[2]
+                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
 
             AngleAveragedRadialVelocity[iX1] /= AngleAveragedMass[iX1]
 
@@ -538,6 +540,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '\nInvalid field: {:}'.format( Field ) )
         print( '\nValid choices:' )
         print( '--------------' )
+        print( '  MPIProcess' )
         print( '  PF_D' )
         print( '  PF_V1' )
         print( '  PF_V2' )
@@ -588,7 +591,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     if ReturnTime and ReturnMesh:
 
-        return Data, DataUnit, X1, X2, X3, xL, xU, nX, Time
+        return Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time
 
     elif ReturnTime:
 
@@ -596,7 +599,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     elif ReturnMesh:
 
-        return Data, DataUnit, X1, X2, X3, xL, xU, nX
+        return Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX
 
     else:
 

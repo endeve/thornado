@@ -10,6 +10,7 @@ from UtilitiesModule import OverwriteFile, GetData, ChoosePlotFile
 def MakeDataFile( Field, DataDirectory, DataFileName, \
                   PlotFileBaseName, CoordinateSystem, \
                   UsePhysicalUnits = True, ReturnMesh = False, \
+                  MaxLevel = -1, \
                   WriteExtras = False, Verbose = False ):
 
     print( '\nRunning MakeDataFile...\n' )
@@ -31,7 +32,7 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
     # Get some general info about the computational domain
 
     ds       = yt.load( DataDirectory + FileArray[0] )
-    MaxLevel = ds.index.max_level
+    if MaxLevel == -1: MaxLevel = ds.index.max_level
     nX       = ds.domain_dimensions
     xL       = ds.domain_left_edge
     xU       = ds.domain_right_edge
@@ -90,12 +91,14 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
 
             if i == 0:
 
-                Data[i], DataUnit, X1, X2, X3, xL, xU, nX, Time[i] \
-                  = GetData( DataDirectory, PlotFileBaseName, \
-                             Field, CoordinateSystem, UsePhysicalUnits, \
-                             argv = [ 'a', FileArray[i] ], \
-                             ReturnTime = True, ReturnMesh = True, \
-                             Verbose = Verbose )
+                Data[i], DataUnit, \
+                  X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time[i] \
+                    = GetData( DataDirectory, PlotFileBaseName, \
+                               Field, CoordinateSystem, UsePhysicalUnits, \
+                               argv = [ 'a', FileArray[i] ], \
+                               MaxLevel = MaxLevel, \
+                               ReturnTime = True, ReturnMesh = True, \
+                               Verbose = Verbose )
 
             else:
 
@@ -103,6 +106,7 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
                   = GetData( DataDirectory, PlotFileBaseName, \
                              Field, CoordinateSystem, UsePhysicalUnits, \
                              argv = [ 'a', FileArray[i] ], \
+                             MaxLevel = MaxLevel, \
                              ReturnTime = True, ReturnMesh = False, \
                              Verbose = Verbose )
 
