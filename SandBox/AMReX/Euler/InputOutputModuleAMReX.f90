@@ -29,7 +29,8 @@ MODULE InputOutputModuleAMReX
     amrex_max_level, &
     amrex_ref_ratio
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_myproc
   USE amrex_amr_module, ONLY: &
     amrex_geom
 
@@ -113,7 +114,7 @@ CONTAINS
     TYPE(amrex_multifab)            :: MF_plt(0:amrex_max_level)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
-    nF = 3
+    nF = 7 ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3
 
     WriteGF = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
@@ -169,11 +170,15 @@ CONTAINS
 
     ALLOCATE( VarNames(nF) )
 
-    CALL amrex_string_build( VarNames( 1 ), 'X1_C' )
-    CALL amrex_string_build( VarNames( 2 ), 'X2_C' )
-    CALL amrex_string_build( VarNames( 3 ), 'X3_C' )
+    CALL amrex_string_build( VarNames( 1 ), 'MPIProcess' )
+    CALL amrex_string_build( VarNames( 2 ), 'X1_C' )
+    CALL amrex_string_build( VarNames( 3 ), 'X2_C' )
+    CALL amrex_string_build( VarNames( 4 ), 'X3_C' )
+    CALL amrex_string_build( VarNames( 5 ), 'dX1' )
+    CALL amrex_string_build( VarNames( 6 ), 'dX2' )
+    CALL amrex_string_build( VarNames( 7 ), 'dX3' )
 
-    iOS = 3
+    iOS = 7
 
     IF( WriteGF )THEN
 
@@ -248,9 +253,11 @@ CONTAINS
                nF, 0 )
       CALL MF_plt(iLevel) % setVal( Zero )
 
+      CALL WriteMPI( MF_uGF(iLevel), MF_plt(iLevel) )
+
       CALL WriteMesh( iLevel, MF_uGF(iLevel), MF_plt(iLevel) )
 
-      iOS = 3
+      iOS = 7
 
       IF( WriteGF )THEN
 
@@ -382,6 +389,42 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_MF
 
 
+  SUBROUTINE WriteMPI( MF_uGF, MF_plt )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+
+    INTEGER            :: iX1, iX2, iX3
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      U_plt => MF_plt % DataPtr( MFI )
+
+      BX = MFI % TileBox()
+
+      DO iX3 = BX % lo(3), BX % hi(3)
+      DO iX2 = BX % lo(2), BX % hi(2)
+      DO iX1 = BX % lo(1), BX % hi(1)
+
+        U_plt(iX1,iX2,iX3,1) = amrex_parallel_myproc()
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE WriteMPI
+
+
   SUBROUTINE WriteMesh( iLevel, MF_uGF, MF_plt )
 
     INTEGER,              INTENT(in)    :: iLevel
@@ -392,7 +435,6 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP) :: X1, X2, X3
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
 
     CALL CreateMesh_MF( iLevel, MeshX )
@@ -409,13 +451,13 @@ CONTAINS
       DO iX2 = BX % lo(2), BX % hi(2)
       DO iX1 = BX % lo(1), BX % hi(1)
 
-        X1 = MeshX(1) % Center(iX1)
-        X2 = MeshX(2) % Center(iX2)
-        X3 = MeshX(3) % Center(iX3)
+        U_plt(iX1,iX2,iX3,2) = MeshX(1) % Center(iX1)
+        U_plt(iX1,iX2,iX3,3) = MeshX(2) % Center(iX2)
+        U_plt(iX1,iX2,iX3,4) = MeshX(3) % Center(iX3)
 
-        U_plt(iX1,iX2,iX3,1) = X1
-        U_plt(iX1,iX2,iX3,2) = X2
-        U_plt(iX1,iX2,iX3,3) = X3
+        U_plt(iX1,iX2,iX3,5) = MeshX(1) % Width(iX1)
+        U_plt(iX1,iX2,iX3,6) = MeshX(2) % Width(iX2)
+        U_plt(iX1,iX2,iX3,7) = MeshX(3) % Width(iX3)
 
       END DO
       END DO
