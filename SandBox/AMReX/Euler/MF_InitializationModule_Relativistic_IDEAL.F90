@@ -89,6 +89,10 @@ CONTAINS
 
         CALL InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 
+      CASE( 'RiemannProblem1D' )
+
+        CALL InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCF )
+
       CASE( 'Advection2D' )
 
         CALL InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )
@@ -251,6 +255,184 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE InitializeFields_Advection1D
+
+
+  SUBROUTINE InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCF )
+
+    INTEGER,              INTENT(in) :: iLevel
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_parmparse) :: PP
+
+    INTEGER  :: iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP) :: uPF(nDOFX,nPF)
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-specific parameters ---
+
+    INTEGER  :: iNX1
+    REAL(DP) :: X1, X_D
+
+    CHARACTER(:), ALLOCATABLE :: RiemannProblemName
+
+    REAL(DP) :: uPF_L(nPF), uPF_R(nPF)
+
+    RiemannProblemName = 'Sod'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'Sod' )
+
+        X_D = 0.5_DP
+
+        uPF_L(iPF_D ) = 1.0_DP
+        uPF_L(iPF_V1) = 0.0_DP
+        uPF_L(iPF_V2) = 0.0_DP
+        uPF_L(iPF_V3) = 0.0_DP
+        uPF_L(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        uPF_L(iPF_Ne) = 0.0_DP
+
+        uPF_R(iPF_D ) = 0.125_DP
+        uPF_R(iPF_V1) = 0.0_DP
+        uPF_R(iPF_V2) = 0.0_DP
+        uPF_R(iPF_V3) = 0.0_DP
+        uPF_R(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+        uPF_R(iPF_Ne) = 0.0_DP
+
+        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,'(4x,A,A)') 'RiemannProblemName: ', TRIM( RiemannProblemName )
+          WRITE(*,'(4x,A,A)') '------------------- '
+          WRITE(*,*)
+          WRITE(*,'(6x,A,F5.3)') 'X_D: ', X_D
+          WRITE(*,*)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_D ): ', uPF_L(iPF_D )
+          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_V1): ', uPF_L(iPF_V2)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_V2): ', uPF_L(iPF_V3)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_V3): ', uPF_L(iPF_V3)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_E ): ', uPF_L(iPF_E )
+          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_Ne): ', uPF_L(iPF_Ne)
+          WRITE(*,*)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_D ): ', uPF_R(iPF_D )
+          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_V1): ', uPF_R(iPF_V2)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_V2): ', uPF_R(iPF_V3)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_V3): ', uPF_R(iPF_V3)
+          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_E ): ', uPF_R(iPF_E )
+          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_Ne): ', uPF_R(iPF_Ne)
+          WRITE(*,*)
+
+        END IF
+
+      CASE DEFAULT
+
+        CALL DescribeError_Euler_MF( 99 )
+
+    END SELECT
+
+    CALL amrex_mfiter_build( MFI, MF_uGF )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+
+      BX = MFI % TileBox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nGF) )
+
+      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nCF) )
+
+      CALL amrex2thornado_X &
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        IF( TRIM( RiemannProblemName ) .EQ. 'Sod' )THEN
+
+          IF( X1 .LT. X_D )THEN
+
+            uPF(iNX,iPF_D ) = uPF_L(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_L(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_L(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_L(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_L(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_L(iPF_Ne)
+
+          ELSE
+
+            uPF(iNX,iPF_D ) = uPF_R(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_R(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_R(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_R(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_R(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_R(iPF_Ne)
+
+          END IF
+
+        END IF
+
+        CALL ComputeConserved_Euler &
+               ( uPF(iNX,iPF_D ), &
+                 uPF(iNX,iPF_V1), &
+                 uPF(iNX,iPF_V2), &
+                 uPF(iNX,iPF_V3), &
+                 uPF(iNX,iPF_E ), &
+                 uPF(iNX,iPF_Ne), &
+                 U(iNX,iX1,iX2,iX3,iCF_D ), &
+                 U(iNX,iX1,iX2,iX3,iCF_S1), &
+                 U(iNX,iX1,iX2,iX3,iCF_S2), &
+                 U(iNX,iX1,iX2,iX3,iCF_S3), &
+                 U(iNX,iX1,iX2,iX3,iCF_E ), &
+                 U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 One )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL thornado2amrex_X &
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
+
+      DEALLOCATE( U )
+      DEALLOCATE( G )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE InitializeFields_RiemannProblem1D
 
 
   SUBROUTINE InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )

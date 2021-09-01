@@ -53,6 +53,7 @@ CONTAINS
         WRITE(*,'(2x,A)')   'Valid choices'
         WRITE(*,'(2x,A)')   '-------------'
         WRITE(*,'(2x,A)')   '  Advection1D'
+        WRITE(*,'(2x,A)')   '  RiemannProblem1D'
         WRITE(*,'(2x,A)')   '  Advection2D'
         WRITE(*,*)
         WRITE(*,'(A)') 'Stopping...'
