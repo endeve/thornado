@@ -220,28 +220,6 @@ CONTAINS
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
-    CALL InitializeSlopeLimiter_Euler &
-           ( BetaTVD_Option &
-               = BetaTVD, &
-             BetaTVB_Option &
-               = BetaTVB, &
-             SlopeTolerance_Option &
-               = SlopeTolerance, &
-             UseSlopeLimiter_Option &
-               = UseSlopeLimiter, &
-             UseCharacteristicLimiting_Option &
-               = UseCharacteristicLimiting, &
-             UseTroubledCellIndicator_Option &
-               = UseTroubledCellIndicator, &
-             SlopeLimiterMethod_Option &
-               = SlopeLimiterMethod, &
-             LimiterThresholdParameter_Option &
-               = LimiterThresholdParameter, &
-             UseConservativeCorrection_Option &
-               = UseConservativeCorrection, &
-             Verbose_Option &
-               = amrex_parallel_ioprocessor() )
-
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
         CALL InitializeEquationOfState &
@@ -273,6 +251,28 @@ CONTAINS
                Min_2_Option = Min_2 )
 
     END IF
+
+    CALL InitializeSlopeLimiter_Euler &
+           ( BetaTVD_Option &
+               = BetaTVD, &
+             BetaTVB_Option &
+               = BetaTVB, &
+             SlopeTolerance_Option &
+               = SlopeTolerance, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             UseCharacteristicLimiting_Option &
+               = UseCharacteristicLimiting, &
+             UseTroubledCellIndicator_Option &
+               = UseTroubledCellIndicator, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
+             LimiterThresholdParameter_Option &
+               = LimiterThresholdParameter, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
 
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &

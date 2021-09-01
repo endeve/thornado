@@ -13,6 +13,8 @@ MODULE FinalizationModule
     FinalizeReferenceElementX
   USE Euler_SlopeLimiterModule, ONLY: &
     FinalizeSlopeLimiter_Euler
+  USE Euler_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_Euler
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
 
@@ -71,9 +73,11 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
-    CALL FinalizeEquationOfState
-
     CALL FinalizeSlopeLimiter_Euler
+
+    CALL FinalizePositivityLimiter_Euler
+
+    CALL FinalizeEquationOfState
 
     CALL FinalizeReferenceElementX
 
