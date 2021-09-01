@@ -59,6 +59,12 @@ MODULE InputParsingModule
   REAL(DP)                      :: LimiterThresholdParameter
   LOGICAL                       :: UseConservativeCorrection
 
+  ! --- Positivity Limiter ---
+
+  LOGICAL  :: UsePositivityLimiter
+  REAL(DP) :: Min_1, Min_2
+  REAL(DP) :: Max_1, Max_2
+
   ! --- geometry ---
 
   INTEGER               :: CoordSys
@@ -100,7 +106,7 @@ CONTAINS
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
 
-    ! --- Parameters thornado.* ---
+    ! --- thornado Parameters thornado.* ---
 
     EquationOfState  = 'IDEAL'
     Gamma_IDEAL      = 4.0_DP / 3.0_DP
@@ -148,7 +154,7 @@ CONTAINS
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
-    ! --- Parameters SL.* ---
+    ! --- Slope Limiter Parameters SL.* ---
 
     UseSlopeLimiter           = .TRUE.
     SlopeLimiterMethod        = 'TVD'
@@ -169,6 +175,17 @@ CONTAINS
       CALL PP % query( 'UseTroubledCellIndicator' , UseTroubledCellIndicator  )
       CALL PP % query( 'LimiterThresholdParameter', LimiterThresholdParameter )
       CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- Positivity Limiter Parameters PL.* ---
+
+    UsePositivityLimiter = .TRUE.
+    Min_1                = 1.0e-12_DP
+    Min_2                = 1.0e-12_DP
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
+      CALL PP % query( 'Min_1'               , Min_1                )
+      CALL PP % query( 'Min_2'               , Min_2                )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---

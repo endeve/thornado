@@ -72,14 +72,24 @@ MODULE InitializationModule
     nDF
   USE Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler
+  USE Euler_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_Euler
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
+  USE EquationOfStateModule_TABLE, ONLY: &
+    MinD, &
+    MaxD, &
+    MinT, &
+    MaxT, &
+    MinY, &
+    MaxY
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE AMReX_BoundaryConditionsModule, ONLY: &
     lo_bc, &
     hi_bc
@@ -98,6 +108,8 @@ MODULE InitializationModule
     FluxRegister
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler_MF
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -130,7 +142,10 @@ MODULE InitializationModule
     UseTroubledCellIndicator, &
     SlopeLimiterMethod, &
     LimiterThresholdParameter, &
-    UseConservativeCorrection
+    UseConservativeCorrection, &
+    UsePositivityLimiter, &
+    Min_1, &
+    Min_2
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_ErrorModule, ONLY: &
@@ -231,8 +246,18 @@ CONTAINS
 
         CALL InitializeEquationOfState &
                ( EquationOfState_Option = EquationOfState, &
-                 EquationOfStateTableName_Option &
-                   = EosTableName )
+                 EquationOfStateTableName_Option = EosTableName, &
+                 Verbose_Option = amrex_parallel_ioprocessor() )
+
+      CALL InitializePositivityLimiter_Euler &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+               Verbose_Option = amrex_parallel_ioprocessor(), &
+               Min_1_Option = ( One + EPSILON(One) ) * MinD, &
+               Min_2_Option = ( One + EPSILON(One) ) * MinT, &
+               Min_3_Option = ( One + EPSILON(One) ) * MinY, &
+               Max_1_Option = ( One - EPSILON(One) ) * MaxD, &
+               Max_2_Option = ( One - EPSILON(One) ) * MaxT, &
+               Max_3_Option = ( One - EPSILON(One) ) * MaxY )
 
     ELSE
 
@@ -240,6 +265,12 @@ CONTAINS
                ( EquationOfState_Option = EquationOfState, &
                  Gamma_IDEAL_Option = Gamma_IDEAL, &
                  Verbose_Option = amrex_parallel_ioprocessor() )
+
+      CALL InitializePositivityLimiter_Euler &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+               Verbose_Option = amrex_parallel_ioprocessor(), &
+               Min_1_Option = Min_1, &
+               Min_2_Option = Min_2 )
 
     END IF
 
@@ -269,6 +300,9 @@ CONTAINS
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF_new, MF_uCF_new, MF_uDF_new )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF_new, MF_uCF_new, MF_uDF_new )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

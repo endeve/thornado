@@ -39,8 +39,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputeIncrement_Euler_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler_MF
-!  USE MF_Euler_PositivityLimiterModule, ONLY: &
-!    MF_ApplyPositivityLimiter_Euler
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
     UseTiling, &
     swX, &
@@ -219,8 +219,8 @@ CONTAINS
                    ( iLevel, t(iLevel), &
                      MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
-!!$            CALL MF_ApplyPositivityLimiter_Euler &
-!!$                   ( MF_uGF(iLevel), MF_U, MF_uDF(iLevel) )
+            CALL ApplyPositivityLimiter_Euler_MF &
+                   ( MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
             CALL ComputeIncrement_Euler_MF &
                    ( iLevel, t(iLevel), MF_uGF(iLevel), MF_uCF(iLevel), &
@@ -260,8 +260,8 @@ CONTAINS
 
     CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
 
-!!$    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
-!!$
+    CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
+
 !!$    CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
