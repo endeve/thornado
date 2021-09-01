@@ -22,10 +22,10 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify ID to be used for naming purposes
-ID = 'SAS2D'
+ID = 'Advection2D'
 
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
 
 # Specify plot file base name
 PlotFileBaseName = 'plt'
@@ -34,18 +34,18 @@ PlotFileBaseName = 'plt'
 Field = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale = True
+UseLogScale = False
 
 # Specify whether or not to use physical units
-UsePhysicalUnits = True
+UsePhysicalUnits = False
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
-CoordinateSystem = 'spherical'
+CoordinateSystem = 'cartesian'
 
 # Specify colormap
-cmap = 'cividis'
+cmap = 'jet'
 
-Verbose = True
+Verbose = False
 
 UseCustomLimits = False
 vmin = 0.0
