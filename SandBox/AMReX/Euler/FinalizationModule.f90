@@ -37,7 +37,9 @@ MODULE FinalizationModule
     StepNo, &
     dt, &
     t_old, &
-    t_new
+    t_new, &
+    lo_bc, &
+    hi_bc
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -80,6 +82,9 @@ CONTAINS
     CALL FinalizeEquationOfState
 
     CALL FinalizeReferenceElementX
+
+    DEALLOCATE( hi_bc )
+    DEALLOCATE( lo_bc )
 
     DEALLOCATE( t_new )
     DEALLOCATE( t_old )

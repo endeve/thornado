@@ -49,6 +49,11 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: EquationOfState
   CHARACTER(:), ALLOCATABLE :: EosTableName
 
+  ! --- Boundary Conditions ---
+
+  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc(:,:)
+  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc(:,:)
+
   ! --- Slope Limiter ---
 
   LOGICAL                       :: UseSlopeLimiter

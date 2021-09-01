@@ -53,8 +53,7 @@ CONTAINS
       MF_uGF_new
     USE InputParsingModule, ONLY: &
       t_old, &
-      t_new
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+      t_new, &
       lo_bc, &
       hi_bc
 
@@ -134,8 +133,7 @@ CONTAINS
       MF_uGF_new
     USE InputParsingModule, ONLY: &
       t_old, &
-      t_new
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+      t_new, &
       lo_bc, &
       hi_bc
 
@@ -194,8 +192,7 @@ CONTAINS
       MF_uCF_new
     USE InputParsingModule, ONLY: &
       t_old, &
-      t_new
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+      t_new, &
       lo_bc, &
       hi_bc
 
@@ -275,8 +272,7 @@ CONTAINS
       MF_uCF_new
     USE InputParsingModule, ONLY: &
       t_old, &
-      t_new
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+      t_new, &
       lo_bc, &
       hi_bc
 
@@ -335,8 +331,7 @@ CONTAINS
       MF_uDF_new
     USE InputParsingModule, ONLY: &
       t_old, &
-      t_new
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+      t_new, &
       lo_bc, &
       hi_bc
 
@@ -416,8 +411,7 @@ CONTAINS
       MF_uDF_new
     USE InputParsingModule, ONLY: &
       t_old, &
-      t_new
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+      t_new, &
       lo_bc, &
       hi_bc
 
@@ -475,7 +469,7 @@ CONTAINS
       amrex_is_all_periodic
     USE amrex_filcc_module, ONLY: &
       amrex_filcc
-    USE AMReX_BoundaryConditionsModule, ONLY: &
+    USE InputParsingModule, ONLY: &
       lo_bc, &
       hi_bc
 

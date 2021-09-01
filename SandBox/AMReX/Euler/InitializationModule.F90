@@ -39,6 +39,8 @@ MODULE InitializationModule
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
+  USE amrex_bc_types_module, ONLY: &
+    amrex_bc_ext_dir
 
   ! --- thornado Modules ---
 
@@ -90,9 +92,6 @@ MODULE InitializationModule
     DP, &
     Zero, &
     One
-  USE AMReX_BoundaryConditionsModule, ONLY: &
-    lo_bc, &
-    hi_bc
   USE MF_FieldsModule, ONLY: &
     CreateFields_MF, &
     MF_uGF_old, &
@@ -145,7 +144,9 @@ MODULE InitializationModule
     UseConservativeCorrection, &
     UsePositivityLimiter, &
     Min_1, &
-    Min_2
+    Min_2, &
+    lo_bc, &
+    hi_bc
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_ErrorModule, ONLY: &
@@ -203,6 +204,12 @@ CONTAINS
     IF( amrex_parallel_ioprocessor() ) CALL DescribeProgramHeaderX
 
     CALL CreateFields_MF
+
+    ALLOCATE( lo_bc(1:amrex_spacedim,1:nDOFX*nCF) )
+    ALLOCATE( hi_bc(1:amrex_spacedim,1:nDOFX*nCF) )
+
+    lo_bc = amrex_bc_ext_dir
+    hi_bc = amrex_bc_ext_dir
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
