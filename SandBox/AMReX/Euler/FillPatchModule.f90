@@ -38,8 +38,9 @@ MODULE FillPatchModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: FillPatch_uCF, FillCoarsePatch_uCF
   PUBLIC :: FillPatch_uGF, FillCoarsePatch_uGF
+  PUBLIC :: FillPatch_uCF, FillCoarsePatch_uCF
+  PUBLIC :: FillPatch_uDF, FillCoarsePatch_uDF
 
 
 CONTAINS
@@ -325,6 +326,147 @@ CONTAINS
     END IF
 
   END SUBROUTINE FillCoarsePatch_uCF
+
+
+  SUBROUTINE FillPatch_uDF( iLevel, Time, MF_uDF )
+
+    USE MF_FieldsModule, ONLY: &
+      MF_uDF_old, &
+      MF_uDF_new
+    USE InputParsingModule, ONLY: &
+      t_old, &
+      t_new
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
+
+    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+    INTEGER :: nCompDF
+
+    nCompDF = MF_uDF_old(iLevel) % nComp()
+
+    IF( iLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch( MF_uDF, t_old(iLevel), MF_uDF_old(iLevel), &
+                                    t_new(iLevel), MF_uDF_new(iLevel), &
+                            amrex_geom(iLevel), FillPhysicalBC, &
+                            Time, sComp, dComp, nCompDF )
+
+    ELSE
+
+      IF( nNodes .EQ. 1 )THEN
+
+        CALL amrex_fillpatch( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uDF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uDF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uDF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompDF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order1, &
+                              lo_bc, hi_bc )
+
+      ELSE IF( nNodes .EQ. 2 )THEN
+
+        CALL amrex_fillpatch( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uDF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uDF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uDF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompDF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order2, &
+                              lo_bc, hi_bc )
+
+      ELSE IF( nNodes .EQ. 3 )THEN
+
+        CALL amrex_fillpatch( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
+                                      t_new(iLevel-1), MF_uDF_new(iLevel-1), &
+                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                                      t_old(iLevel  ), MF_uDF_old(iLevel  ), &
+                                      t_new(iLevel  ), MF_uDF_new(iLevel  ), &
+                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              Time, sComp, dComp, nCompDF, &
+                              amrex_ref_ratio(iLevel-1), &
+                              amrex_interp_dg_order3, &
+                              lo_bc, hi_bc )
+
+      ELSE
+
+        CALL DescribeError_Euler_MF &
+               ( 04, Message_Option = 'uDF', Int_Option = [ nNodes ] )
+
+      END IF
+
+    END IF
+
+  END SUBROUTINE FillPatch_uDF
+
+
+  SUBROUTINE FillCoarsePatch_uDF( iLevel, Time, MF_uDF )
+
+    USE MF_FieldsModule, ONLY: &
+      MF_uDF_old, &
+      MF_uDF_new
+    USE InputParsingModule, ONLY: &
+      t_old, &
+      t_new
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
+
+    INTEGER :: nCompDF
+
+    nCompDF = MF_uDF % nComp()
+
+    IF( nNodes .EQ. 1 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uDF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompDF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order1, lo_bc, hi_bc )
+
+    ELSE IF( nNodes .EQ. 2 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uDF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompDF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order2, lo_bc, hi_bc )
+
+    ELSE IF( nNodes .EQ. 3 )THEN
+
+      CALL amrex_fillcoarsepatch &
+             ( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
+                       t_new(iLevel-1), MF_uDF_new(iLevel-1), &
+               amrex_geom(iLevel-1), FillPhysicalBC, &
+               amrex_geom(iLevel  ), FillPhysicalBC, &
+               Time, 1, 1, nCompDF, amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg_order3, lo_bc, hi_bc )
+
+    ELSE
+
+      CALL DescribeError_Euler_MF &
+             ( 05, Message_Option = 'uDF', Int_Option = [ nNodes ] )
+
+    END IF
+
+  END SUBROUTINE FillCoarsePatch_uDF
 
 
   SUBROUTINE FillPhysicalBC( pMF, sComp, nComp, Time, pGEOM ) BIND(c)

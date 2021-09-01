@@ -49,6 +49,16 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: EquationOfState
   CHARACTER(:), ALLOCATABLE :: EosTableName
 
+  ! --- Slope Limiter ---
+
+  LOGICAL                       :: UseSlopeLimiter
+  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
+  REAL(DP)                      :: BetaTVD, BetaTVB, SlopeTolerance
+  LOGICAL                       :: UseCharacteristicLimiting
+  LOGICAL                       :: UseTroubledCellIndicator
+  REAL(DP)                      :: LimiterThresholdParameter
+  LOGICAL                       :: UseConservativeCorrection
+
   ! --- geometry ---
 
   INTEGER               :: CoordSys
@@ -90,7 +100,7 @@ CONTAINS
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
 
-    ! --- thornado paramaters thornado.* ---
+    ! --- Parameters thornado.* ---
 
     EquationOfState  = 'IDEAL'
     Gamma_IDEAL      = 4.0_DP / 3.0_DP
@@ -137,6 +147,29 @@ CONTAINS
     END IF
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
+
+    ! --- Parameters SL.* ---
+
+    UseSlopeLimiter           = .TRUE.
+    SlopeLimiterMethod        = 'TVD'
+    BetaTVD                   = 1.75_DP
+    BetaTVB                   = Zero
+    SlopeTolerance            = 1.0e-6_DP
+    UseCharacteristicLimiting = .TRUE.
+    UseTroubledCellIndicator  = .TRUE.
+    LimiterThresholdParameter = 0.03_DP
+    UseConservativeCorrection = .TRUE.
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter'          , UseSlopeLimiter           )
+      CALL PP % query( 'SlopeLimiterMethod'       , SlopeLimiterMethod        )
+      CALL PP % query( 'BetaTVD'                  , BetaTVD                   )
+      CALL PP % query( 'BetaTVB'                  , BetaTVB                   )
+      CALL PP % query( 'SlopeTolerance'           , SlopeTolerance            )
+      CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
+      CALL PP % query( 'UseTroubledCellIndicator' , UseTroubledCellIndicator  )
+      CALL PP % query( 'LimiterThresholdParameter', LimiterThresholdParameter )
+      CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
+    CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
 

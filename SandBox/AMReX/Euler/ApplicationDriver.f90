@@ -137,7 +137,7 @@ PROGRAM ApplicationDriver
     CALL UpdateFluid_SSPRK_MF &
           ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )
 
-    CALL AverageDown( MF_uGF_new, MF_uCF_new )
+    CALL AverageDown( MF_uGF_new, MF_uCF_new, MF_uDF_new )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 

@@ -37,8 +37,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     Two
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
-!  USE MF_Euler_SlopeLimiterModule, ONLY: &
-!    MF_ApplySlopeLimiter_Euler
+  USE MF_Euler_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_Euler_MF
 !  USE MF_Euler_PositivityLimiterModule, ONLY: &
 !    MF_ApplyPositivityLimiter_Euler
   USE InputParsingModule, ONLY: &
@@ -215,9 +215,10 @@ CONTAINS
           IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
               .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-!!$            CALL MF_ApplySlopeLimiter_Euler &
-!!$                   ( MF_uGF(iLevel), MF_U, MF_uDF(iLevel) )
-!!$
+            CALL ApplySlopeLimiter_Euler_MF &
+                   ( iLevel, t(iLevel), &
+                     MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
 !!$            CALL MF_ApplyPositivityLimiter_Euler &
 !!$                   ( MF_uGF(iLevel), MF_U, MF_uDF(iLevel) )
 
@@ -257,8 +258,8 @@ CONTAINS
 
     END DO ! iLevel
 
-!!$    CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
-!!$
+    CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
+
 !!$    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
 !!$
 !!$    CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler )

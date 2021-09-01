@@ -46,8 +46,16 @@ MODULE InitializationModule
     nDOFX, &
     nNodesX, &
     DescribeProgramHeaderX
-  USE PolynomialBasisModuleX_Lagrange,   ONLY: &
+  USE PolynomialBasisModule_Lagrange, ONLY: &
+    InitializePolynomialBasis_Lagrange
+  USE PolynomialBasisModule_Legendre, ONLY: &
+    InitializePolynomialBasis_Legendre
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
     InitializePolynomialBasisX_Lagrange
+  USE PolynomialBasisModuleX_Legendre, ONLY: &
+    InitializePolynomialBasisX_Legendre
+  USE PolynomialBasisMappingModule, ONLY: &
+    InitializePolynomialBasisMapping
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
@@ -62,6 +70,8 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
+  USE Euler_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_Euler
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
 
@@ -86,6 +96,8 @@ MODULE InitializationModule
     MF_uDF_old, &
     MF_uDF_new, &
     FluxRegister
+  USE MF_Euler_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -109,7 +121,16 @@ MODULE InitializationModule
     CoordSys, &
     EquationOfState, &
     Gamma_IDEAL, &
-    EosTableName
+    EosTableName, &
+    UseSlopeLimiter, &
+    BetaTVD, &
+    BetaTVB, &
+    SlopeTolerance, &
+    UseCharacteristicLimiting, &
+    UseTroubledCellIndicator, &
+    SlopeLimiterMethod, &
+    LimiterThresholdParameter, &
+    UseConservativeCorrection
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_ErrorModule, ONLY: &
@@ -169,9 +190,42 @@ CONTAINS
     CALL CreateFields_MF
 
     CALL InitializePolynomialBasisX_Lagrange
+    CALL InitializePolynomialBasisX_Legendre
+
+    CALL InitializePolynomialBasis_Lagrange
+    CALL InitializePolynomialBasis_Legendre
+
+    CALL CreateMesh_MF( 0, MeshX )
+
+    CALL InitializePolynomialBasisMapping &
+           ( [Zero], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
+
+    CALL CreateMesh_MF( 0, MeshX )
 
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
+
+    CALL InitializeSlopeLimiter_Euler &
+           ( BetaTVD_Option &
+               = BetaTVD, &
+             BetaTVB_Option &
+               = BetaTVB, &
+             SlopeTolerance_Option &
+               = SlopeTolerance, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             UseCharacteristicLimiting_Option &
+               = UseCharacteristicLimiting, &
+             UseTroubledCellIndicator_Option &
+               = UseTroubledCellIndicator, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
+             LimiterThresholdParameter_Option &
+               = LimiterThresholdParameter, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
 
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
@@ -208,10 +262,13 @@ CONTAINS
 
     CALL amrex_init_from_scratch( 0.0_DP )
 
-    CALL AverageDown( MF_uGF_new, MF_uCF_new )
+    CALL AverageDown( MF_uGF_new, MF_uCF_new, MF_uDF_new )
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL ApplySlopeLimiter_Euler_MF &
+           ( t_new, MF_uGF_new, MF_uCF_new, MF_uDF_new )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
@@ -321,6 +378,7 @@ CONTAINS
     INTEGER :: nCompCF
 
 print*,'Hello and goodbye from MakeNewLevelFromCoarse'
+stop
 RETURN
 
     BA = pBA
@@ -405,6 +463,7 @@ RETURN
     INTEGER :: nCompGF, nCompCF, nCompPF, nCompAF, nCompDF
 
 print*,'Hello and goodbye from RemakeLevel'
+stop
 RETURN
 
     BA = pBA
