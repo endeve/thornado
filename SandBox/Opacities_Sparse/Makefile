@@ -16,13 +16,19 @@ endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
-Tasmanian_link = -L/home/plc/TASMANIAN_cuda/lib
+Tasmanian_link_atlasmath = -L/home/plc/TASMANIAN_cuda/lib
 #Tasmanian_libs = -ltasmaniandream -ltasmaniansparsegrid  /usr/lib/libblas.so /usr/lib/gcc/x86_64-linux-gnu/5/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so
 Tasmanian_libs = -ltasmaniandream -ltasmaniansparsegrid
 Tarmanian_fortran_libs = -ltasmanianfortran90 -ltasmanianfortran $(Tasmanian_libs) -lstdc++
 
 INCLUDE_TASMANIAN_atlasmath = -I/home/plc/TASMANIAN_cuda/include
-LIBRARIES_TASMANIAN_atlasmath = $(Tasmanian_link) $(Tarmanian_fortran_libs)
+# LIBRARIES_TASMANIAN_atlasmath = $(Tasmanian_link) $(Tarmanian_fortran_libs)
+LIBRARIES_TASMANIAN_atlasmath = $(Tasmanian_link_atlasmath) $(Tarmanian_fortran_libs)
+
+Tasmanian_link_paullaiumbp = -L/Users/plc/TASMANIAN_OMP/lib
+INCLUDE_TASMANIAN_paullaiumbp = -I/Users/plc/TASMANIAN_OMP/include
+LIBRARIES_TASMANIAN_paullaiumbp = $(Tasmanian_link_paullaiumbp) $(Tarmanian_fortran_libs)
+
 
 INCLUDE_TASMANIAN = $(INCLUDE_TASMANIAN_$(MACHINE))
 LIBRARIES_TASMANIAN = $(LIBRARIES_TASMANIAN_$(MACHINE))
