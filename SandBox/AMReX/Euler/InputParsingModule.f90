@@ -53,6 +53,8 @@ MODULE InputParsingModule
 
   INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc(:,:)
   INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc(:,:)
+  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc_uCF(:,:)
+  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc_uCF(:,:)
 
   ! --- Slope Limiter ---
 

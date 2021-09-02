@@ -4,6 +4,8 @@ MODULE FillPatchModule
 
   ! --- AMReX Modules ---
 
+  USE amrex_fort_module, ONLY: &
+    amrex_spacedim
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
@@ -19,7 +21,11 @@ MODULE FillPatchModule
     amrex_fillpatch, &
     amrex_fillcoarsepatch
   USE amrex_geometry_module, ONLY: &
-    amrex_geometry
+    amrex_geometry, &
+    amrex_is_all_periodic
+  USE amrex_filcc_module, ONLY: &
+    amrex_filcc
+
 
   ! --- thornado Modules ---
 
@@ -30,10 +36,23 @@ MODULE FillPatchModule
 
   USE MF_KindModule, ONLY: &
     DP
+  USE MF_FieldsModule, ONLY: &
+    MF_uGF_old, &
+    MF_uGF_new, &
+    MF_uCF_old, &
+    MF_uCF_new, &
+    MF_uDF_old, &
+    MF_uDF_new
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
   USE InputParsingModule, ONLY: &
-    UseTiling
+    UseTiling, &
+    t_old, &
+    t_new, &
+    lo_bc, &
+    hi_bc, &
+    lo_bc_uCF, &
+    hi_bc_uCF
 
   IMPLICIT NONE
   PRIVATE
@@ -48,15 +67,6 @@ CONTAINS
 
   SUBROUTINE FillPatch_uGF( iLevel, Time, MF_uGF )
 
-    USE MF_FieldsModule, ONLY: &
-      MF_uGF_old, &
-      MF_uGF_new
-    USE InputParsingModule, ONLY: &
-      t_old, &
-      t_new, &
-      lo_bc, &
-      hi_bc
-
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
@@ -70,7 +80,7 @@ CONTAINS
 
       CALL amrex_fillpatch( MF_uGF, t_old(iLevel), MF_uGF_old(iLevel), &
                                     t_new(iLevel), MF_uGF_new(iLevel), &
-                            amrex_geom(iLevel), FillPhysicalBC, &
+                            amrex_geom(iLevel), FillPhysicalBC_Dummy, &
                             Time, sComp, dComp, nCompGF )
 
     ELSE
@@ -79,10 +89,10 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                                       t_old(iLevel  ), MF_uGF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uGF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                               Time, sComp, dComp, nCompGF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order1, &
@@ -92,10 +102,10 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                                       t_old(iLevel  ), MF_uGF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uGF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                               Time, sComp, dComp, nCompGF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order2, &
@@ -105,10 +115,10 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                                       t_old(iLevel  ), MF_uGF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uGF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                               Time, sComp, dComp, nCompGF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order3, &
@@ -128,15 +138,6 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_uGF( iLevel, Time, MF_uGF )
 
-    USE MF_FieldsModule, ONLY: &
-      MF_uGF_old, &
-      MF_uGF_new
-    USE InputParsingModule, ONLY: &
-      t_old, &
-      t_new, &
-      lo_bc, &
-      hi_bc
-
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
@@ -150,8 +151,8 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
                amrex_interp_dg_order1, lo_bc, hi_bc )
 
@@ -160,8 +161,8 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
                amrex_interp_dg_order2, lo_bc, hi_bc )
 
@@ -170,8 +171,8 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uGF, t_old(iLevel-1), MF_uGF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uGF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                Time, 1, 1, nCompGF, amrex_ref_ratio(iLevel-1), &
                amrex_interp_dg_order3, lo_bc, hi_bc )
 
@@ -187,15 +188,6 @@ CONTAINS
 
   SUBROUTINE FillPatch_uCF( iLevel, Time, MF_uCF )
 
-    USE MF_FieldsModule, ONLY: &
-      MF_uCF_old, &
-      MF_uCF_new
-    USE InputParsingModule, ONLY: &
-      t_old, &
-      t_new, &
-      lo_bc, &
-      hi_bc
-
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
@@ -209,7 +201,7 @@ CONTAINS
 
       CALL amrex_fillpatch( MF_uCF, t_old(iLevel), MF_uCF_old(iLevel), &
                                     t_new(iLevel), MF_uCF_new(iLevel), &
-                            amrex_geom(iLevel), FillPhysicalBC, &
+                            amrex_geom(iLevel), FillPhysicalBC_uCF, &
                             Time, sComp, dComp, nCompCF )
 
     ELSE
@@ -218,40 +210,40 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_uCF, &
                                       t_old(iLevel  ), MF_uCF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uCF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_uCF, &
                               Time, sComp, dComp, nCompCF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order1, &
-                              lo_bc, hi_bc )
+                              lo_bc_uCF, hi_bc_uCF )
 
       ELSE IF( nNodes .EQ. 2 )THEN
 
         CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_uCF, &
                                       t_old(iLevel  ), MF_uCF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uCF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_uCF, &
                               Time, sComp, dComp, nCompCF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order2, &
-                              lo_bc, hi_bc )
+                              lo_bc_uCF, hi_bc_uCF )
 
       ELSE IF( nNodes .EQ. 3 )THEN
 
         CALL amrex_fillpatch( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_uCF, &
                                       t_old(iLevel  ), MF_uCF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uCF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_uCF, &
                               Time, sComp, dComp, nCompCF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order3, &
-                              lo_bc, hi_bc )
+                              lo_bc_uCF, hi_bc_uCF )
 
       ELSE
 
@@ -267,15 +259,6 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_uCF( iLevel, Time, MF_uCF )
 
-    USE MF_FieldsModule, ONLY: &
-      MF_uCF_old, &
-      MF_uCF_new
-    USE InputParsingModule, ONLY: &
-      t_old, &
-      t_new, &
-      lo_bc, &
-      hi_bc
-
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
@@ -289,30 +272,30 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_uCF, &
+               amrex_geom(iLevel  ), FillPhysicalBC_uCF, &
                Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg_order1, lo_bc, hi_bc )
+               amrex_interp_dg_order1, lo_bc_uCF, hi_bc_uCF )
 
     ELSE IF( nNodes .EQ. 2 )THEN
 
       CALL amrex_fillcoarsepatch &
              ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_uCF, &
+               amrex_geom(iLevel  ), FillPhysicalBC_uCF, &
                Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg_order2, lo_bc, hi_bc )
+               amrex_interp_dg_order2, lo_bc_uCF, hi_bc_uCF )
 
     ELSE IF( nNodes .EQ. 3 )THEN
 
       CALL amrex_fillcoarsepatch &
              ( MF_uCF, t_old(iLevel-1), MF_uCF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uCF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_uCF, &
+               amrex_geom(iLevel  ), FillPhysicalBC_uCF, &
                Time, 1, 1, nCompCF, amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg_order3, lo_bc, hi_bc )
+               amrex_interp_dg_order3, lo_bc_uCF, hi_bc_uCF )
 
     ELSE
 
@@ -325,15 +308,6 @@ CONTAINS
 
 
   SUBROUTINE FillPatch_uDF( iLevel, Time, MF_uDF )
-
-    USE MF_FieldsModule, ONLY: &
-      MF_uDF_old, &
-      MF_uDF_new
-    USE InputParsingModule, ONLY: &
-      t_old, &
-      t_new, &
-      lo_bc, &
-      hi_bc
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
@@ -348,7 +322,7 @@ CONTAINS
 
       CALL amrex_fillpatch( MF_uDF, t_old(iLevel), MF_uDF_old(iLevel), &
                                     t_new(iLevel), MF_uDF_new(iLevel), &
-                            amrex_geom(iLevel), FillPhysicalBC, &
+                            amrex_geom(iLevel), FillPhysicalBC_Dummy, &
                             Time, sComp, dComp, nCompDF )
 
     ELSE
@@ -357,10 +331,10 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uDF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                                       t_old(iLevel  ), MF_uDF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uDF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                               Time, sComp, dComp, nCompDF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order1, &
@@ -370,10 +344,10 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uDF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                                       t_old(iLevel  ), MF_uDF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uDF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                               Time, sComp, dComp, nCompDF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order2, &
@@ -383,10 +357,10 @@ CONTAINS
 
         CALL amrex_fillpatch( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
                                       t_new(iLevel-1), MF_uDF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC, &
+                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                                       t_old(iLevel  ), MF_uDF_old(iLevel  ), &
                                       t_new(iLevel  ), MF_uDF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC, &
+                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                               Time, sComp, dComp, nCompDF, &
                               amrex_ref_ratio(iLevel-1), &
                               amrex_interp_dg_order3, &
@@ -406,15 +380,6 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_uDF( iLevel, Time, MF_uDF )
 
-    USE MF_FieldsModule, ONLY: &
-      MF_uDF_old, &
-      MF_uDF_new
-    USE InputParsingModule, ONLY: &
-      t_old, &
-      t_new, &
-      lo_bc, &
-      hi_bc
-
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
@@ -428,8 +393,8 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uDF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                Time, 1, 1, nCompDF, amrex_ref_ratio(iLevel-1), &
                amrex_interp_dg_order1, lo_bc, hi_bc )
 
@@ -438,8 +403,8 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uDF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                Time, 1, 1, nCompDF, amrex_ref_ratio(iLevel-1), &
                amrex_interp_dg_order2, lo_bc, hi_bc )
 
@@ -448,8 +413,8 @@ CONTAINS
       CALL amrex_fillcoarsepatch &
              ( MF_uDF, t_old(iLevel-1), MF_uDF_old(iLevel-1), &
                        t_new(iLevel-1), MF_uDF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC, &
-               amrex_geom(iLevel  ), FillPhysicalBC, &
+               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
                Time, 1, 1, nCompDF, amrex_ref_ratio(iLevel-1), &
                amrex_interp_dg_order3, lo_bc, hi_bc )
 
@@ -463,15 +428,7 @@ CONTAINS
   END SUBROUTINE FillCoarsePatch_uDF
 
 
-  SUBROUTINE FillPhysicalBC( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
-
-    USE amrex_geometry_module, ONLY: &
-      amrex_is_all_periodic
-    USE amrex_filcc_module, ONLY: &
-      amrex_filcc
-    USE InputParsingModule, ONLY: &
-      lo_bc, &
-      hi_bc
+  SUBROUTINE FillPhysicalBC_uCF( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
 
     ! --- No INTENT here because amrex source code doesn't have it ---
 
@@ -497,20 +454,19 @@ CONTAINS
 
         p => MF % DataPtr( MFI )
 
-        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN ! part of this box is outside the domain
+        ! Check if part of this box is outside the domain
+        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN
 
           pLo = LBOUND( p )
           pHi = UBOUND( p )
 
           CALL amrex_filcc &
-                 ( p, pLo, pHi, & ! fortran array and bounds
-                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, & ! index extent of whole problem domain
-                   GEOM % dX, & ! cell size in real
-                   GEOM % get_physical_location( pLo ), & ! physical location of lower left corner
-                   lo_bc, hi_bc) ! bc types for each component
+                 ( p, pLo, pHi, &
+                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, &
+                   GEOM % dX, &
+                   GEOM % get_physical_location( pLo ), &
+                   lo_bc_uCF, hi_bc_uCF)
 
-             ! amrex_filcc doesn't fill EXT_DIR (see amrex_bc_types_module for a list of bc types
-             ! In that case, the user needs to fill it.
         END IF
 
       END DO
@@ -520,6 +476,57 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FillPhysicalBC
+  END SUBROUTINE FillPhysicalBC_uCF
+
+
+  SUBROUTINE FillPhysicalBC_Dummy( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
+
+    ! --- No INTENT here because amrex source code doesn't have it ---
+
+    TYPE(c_ptr),    VALUE :: pMF, pGEOM
+    INTEGER(c_int), VALUE :: sComp, nComp
+    REAL(DP),       VALUE :: Time
+
+    TYPE(amrex_geometry) :: GEOM
+    TYPE(amrex_multifab) :: MF
+    TYPE(amrex_mfiter)   :: MFI
+    INTEGER              :: pLo(4), pHi(4)
+    REAL(DP), CONTIGUOUS, POINTER :: p(:,:,:,:)
+
+    IF( .NOT. amrex_is_all_periodic() )THEN
+
+      GEOM = pGEOM
+      MF   = pMF
+
+      !$OMP PARALLEL PRIVATE(MFI,p,pLo,pHi)
+      CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        p => MF % DataPtr( MFI )
+
+        ! Check if part of this box is outside the domain
+        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN
+
+          pLo = LBOUND( p )
+          pHi = UBOUND( p )
+
+          CALL amrex_filcc &
+                 ( p, pLo, pHi, &
+                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, &
+                   GEOM % dX, &
+                   GEOM % get_physical_location( pLo ), &
+                   lo_bc, hi_bc )
+
+        END IF
+
+      END DO
+      !$OMP END PARALLEL
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END IF
+
+  END SUBROUTINE FillPhysicalBC_Dummy
 
 END MODULE FillPatchModule

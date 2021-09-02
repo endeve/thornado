@@ -40,7 +40,8 @@ MODULE InitializationModule
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
   USE amrex_bc_types_module, ONLY: &
-    amrex_bc_ext_dir
+    amrex_bc_foextrap, &
+    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
@@ -146,7 +147,9 @@ MODULE InitializationModule
     Min_1, &
     Min_2, &
     lo_bc, &
-    hi_bc
+    hi_bc, &
+    lo_bc_uCF, &
+    hi_bc_uCF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_ErrorModule, ONLY: &
@@ -205,11 +208,15 @@ CONTAINS
 
     CALL CreateFields_MF
 
-    ALLOCATE( lo_bc(1:amrex_spacedim,1:nDOFX*nCF) )
-    ALLOCATE( hi_bc(1:amrex_spacedim,1:nDOFX*nCF) )
+    ALLOCATE( lo_bc    (1:amrex_spacedim,1) )
+    ALLOCATE( hi_bc    (1:amrex_spacedim,1) )
+    ALLOCATE( lo_bc_uCF(1:amrex_spacedim,1:nDOFX*nCF) )
+    ALLOCATE( hi_bc_uCF(1:amrex_spacedim,1:nDOFX*nCF) )
 
-    lo_bc = amrex_bc_ext_dir
-    hi_bc = amrex_bc_ext_dir
+    lo_bc     = amrex_bc_bogus
+    hi_bc     = amrex_bc_bogus
+    lo_bc_uCF = amrex_bc_foextrap
+    hi_bc_uCF = amrex_bc_foextrap
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
