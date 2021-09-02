@@ -19,7 +19,7 @@ VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 Tasmanian_link = -L/Users/plc/TASMANIAN/lib/
 #Tasmanian_libs = -ltasmaniandream -ltasmaniansparsegrid  /usr/lib/libblas.so /usr/lib/gcc/x86_64-linux-gnu/5/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so
 Tasmanian_libs = -ltasmaniandream -ltasmaniansparsegrid
-Tarmanian_fortran_libs = -ltasmanianfortran90 $(Tasmanian_libs) -lstdc++
+Tarmanian_fortran_libs = -ltasmanianfortran90 -ltasmanianfortran $(Tasmanian_libs) -lstdc++
 
 INCLUDE_TASMANIAN_paullaiumbp = -I/Users/plc/TASMANIAN/include/
 LIBRARIES_TASMANIAN_paullaiumbp = $(Tasmanian_link) $(Tarmanian_fortran_libs)
@@ -84,7 +84,7 @@ ApplicationDriver_Neutrinos_SG: \
 	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule_Neutrinos.o \
 	NeutrinoOpacitiesSparseComputationModule.o \
-	ApplicationDriver_Neutrinos_SG.o 
+	ApplicationDriver_Neutrinos_SG.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_Neutrinos_SG_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \

@@ -4,7 +4,9 @@
 
 MODULE NeutrinoOpacitiesSparseComputationModule
 
-  USE TasmanianSG
+  USE Tasmanian
+  USE, INTRINSIC :: iso_c_binding
+
   USE KindModule, ONLY: &
     DP, Zero, One
   USE UnitsModule, ONLY: &
@@ -103,7 +105,7 @@ MODULE NeutrinoOpacitiesSparseComputationModule
   REAL(DP), PARAMETER :: C1(iNuE:iNuE_Bar) = [ ( cv + ca )**2, ( cv - ca )**2 ]
   REAL(DP), PARAMETER :: C2(iNuE:iNuE_Bar) = [ ( cv - ca )**2, ( cv + ca )**2 ]
 
-  CHARACTER(256) :: &
+  CHARACTER(128) :: &
     OpacityGridName_EmAb, &
     OpacityGridName_Iso,  &
     OpacityGridName_NES,  &
@@ -143,16 +145,28 @@ CONTAINS
       LOGICAL :: Include_Pair
       LOGICAL :: SGReadError
 
-      CALL tsgAllocateGrid(gridEmAb)
-      CALL tsgAllocateGrid(gridIso)
-      CALL tsgAllocateGrid(gridNES)
-      CALL tsgAllocateGrid(gridPair)
+      ! CALL tsgAllocateGrid(gridEmAb)
+      ! CALL tsgAllocateGrid(gridIso)
+      ! CALL tsgAllocateGrid(gridNES)
+      ! CALL tsgAllocateGrid(gridPair)
+      gridEmAb = TasmanianSparseGrid()
+      gridIso  = TasmanianSparseGrid()
+      gridNES  = TasmanianSparseGrid()
+      gridPair = TasmanianSparseGrid()
+
+      CALL gridEmAb%enableAcceleration(tsg_accel_gpu_cuda)
+      CALL gridIso%enableAcceleration(tsg_accel_gpu_cuda)
+      CALL gridNES%enableAcceleration(tsg_accel_gpu_cuda)
+      CALL gridPair%enableAcceleration(tsg_accel_gpu_cuda)
 
       IF( PRESENT( OpacityGridName_EmAb_Option ) &
           .AND. ( LEN( OpacityGridName_EmAb_Option ) > 1 ) )THEN
         OpacityGridName_EmAb = TRIM( OpacityGridName_EmAb_Option )
         Include_EmAb = .TRUE.
-        SGReadError = tsgRead(gridEmAb, OpacityGridName_EmAb)
+        ! SGReadError = tsgRead(gridEmAb, OpacityGridName_EmAb)
+        CALL gridEmAb%read(TRIM( OpacityGridName_EmAb ))
+        ! CALL gridEmAb%read('SGOpacities/reduced_EmAb_threshold_0.001_log_trunc_20.grid')
+        ! CALL gridEmAb%read("SGOpacities/reduced_EmAb_threshold_0.001_log_trunc_20.grid")
       ELSE
         OpacityGridName_EmAb = ''
         Include_EmAb = .FALSE.
@@ -162,7 +176,9 @@ CONTAINS
           .AND. ( LEN( OpacityGridName_Iso_Option ) > 1 ) )THEN
         OpacityGridName_Iso = TRIM( OpacityGridName_Iso_Option )
         Include_Iso = .TRUE.
-        SGReadError = tsgRead(gridIso, OpacityGridName_Iso)
+        ! SGReadError = tsgRead(gridIso, OpacityGridName_Iso)
+        CALL gridIso%read(TRIM( OpacityGridName_Iso ))
+        ! CALL gridIso%read('SGOpacities/reduced_IS_threshold_0.001_log_trunc_20.grid')
       ELSE
         OpacityGridName_Iso = ''
         Include_Iso = .FALSE.
@@ -172,7 +188,9 @@ CONTAINS
           .AND. ( LEN( OpacityGridName_NES_Option ) > 1 ) )THEN
         OpacityGridName_NES = TRIM( OpacityGridName_NES_Option )
         Include_NES = .TRUE.
-        SGReadError = tsgRead(gridNES, OpacityGridName_NES)
+        ! SGReadError = tsgRead(gridNES, OpacityGridName_NES)
+        CALL gridNES%read(TRIM( OpacityGridName_NES ))
+        ! CALL gridNES%read('SGOpacities/reduced_NES_threshold_0.001_log_trunc_20.grid')
       ELSE
         OpacityGridName_NES = ''
         Include_NES = .FALSE.
@@ -182,7 +200,9 @@ CONTAINS
           .AND. ( LEN( OpacityGridName_Pair_Option ) > 1 ) )THEN
         OpacityGridName_Pair = TRIM( OpacityGridName_Pair_Option )
         Include_Pair = .TRUE.
-        SGReadError = tsgRead(gridPair, OpacityGridName_Pair)
+        ! SGReadError = tsgRead(gridPair, OpacityGridName_Pair)
+        CALL gridPair%read(TRIM (OpacityGridName_Pair ))
+        ! CALL gridPair%read('SGOpacities/reduced_PAIR_threshold_0.01_log_trunc_20.grid')
       ELSE
         OpacityGridName_Pair = ''
         Include_Pair = .FALSE.
@@ -191,10 +211,15 @@ CONTAINS
 
   SUBROUTINE FinalizeSparseGridOpacities
 
-    CALL tsgDeallocateGrid(gridEmAb)
-    CALL tsgDeallocateGrid(gridIso)
-    CALL tsgDeallocateGrid(gridNES)
-    CALL tsgDeallocateGrid(gridPair)
+    ! CALL tsgDeallocateGrid(gridEmAb)
+    ! CALL tsgDeallocateGrid(gridIso)
+    ! CALL tsgDeallocateGrid(gridNES)
+    ! CALL tsgDeallocateGrid(gridPair)
+    CALL gridEmAb%release()
+    CALL gridIso%release()
+    CALL gridNES%release()
+    CALL gridPair%release()
+
 
   END SUBROUTINE FinalizeSparseGridOpacities
 
@@ -387,6 +412,7 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_Points_SG &
     ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, opEC_Points )
+    USE, INTRINSIC :: iso_c_binding
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
     INTEGER,  INTENT(in)  :: iE_B, iE_E
@@ -401,7 +427,7 @@ CONTAINS
     INTEGER  :: iX, iE, nE, nX
     INTEGER  :: k
     REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
-    REAL(DP), allocatable :: Points(:,:), Values(:,:)
+    REAL(C_DOUBLE), allocatable :: Points(:,:), Values(:,:)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
@@ -451,8 +477,10 @@ CONTAINS
       END DO
     END DO
 
+    CALL gridEmAb%evaluateBatch(Points(:,1),  nX * nE, Values(:,1))
+    ! CALL gridEmAb%evaluateBatch(Points,  nX * nE, Values)
 
-    CALL tsgEvaluateBatch(gridEmAb, Points,  nX * nE, Values)
+    ! CALL tsgEvaluateBatch(gridEmAb, Points,  nX * nE, Values)
     ! CALL tsgEvaluateBatch(gridEmAb, Points,  2, Values)
 
     ! WRITE(*,*) "-------------------------------------------------------------------------------------------------"
@@ -533,7 +561,7 @@ CONTAINS
     INTEGER  :: iX, iE, nE, nX
     INTEGER  :: k, iV
     REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
-    REAL(DP), allocatable :: Points(:,:), Values(:,:)
+    REAL(C_DOUBLE), allocatable :: Points(:,:), Values(:,:)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
@@ -583,7 +611,8 @@ CONTAINS
       END DO
     END DO
 
-    CALL tsgEvaluateBatch(gridIso, Points,  nX * nE, Values)
+    CALL gridIso%evaluateBatch(Points(:,1),  nX * nE, Values(:,1))
+    ! CALL tsgEvaluateBatch(gridIso, Points,  nX * nE, Values)
     ! iV = (iSpecies-1)*2 + iMoment
     iV = iSpecies
 
@@ -669,7 +698,7 @@ CONTAINS
     INTEGER  :: i, j, k, N
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P, LogEta_P, LogE_P(iE_B:iE_E)
-    REAL(DP), allocatable :: Points(:,:), Values(:,:)
+    REAL(C_DOUBLE), allocatable :: Points(:,:), Values(:,:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -718,8 +747,8 @@ CONTAINS
     END DO
 
 
-
-    CALL tsgEvaluateBatch(gridNES, Points,  nE * nE, Values)
+    ! CALL tsgEvaluateBatch(gridNES, Points,  nE * nE, Values)
+    CALL gridNES%evaluateBatch(Points(:,1),  nE * nE, Values(:,1))
 
 
 
@@ -801,7 +830,7 @@ CONTAINS
     INTEGER  :: i, j, k, N
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E), LogE_P(iE_B:iE_E)
-    REAL(DP), allocatable :: Points(:,:), Values(:,:)
+    REAL(C_DOUBLE), allocatable :: Points(:,:), Values(:,:)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
@@ -910,8 +939,9 @@ CONTAINS
 
     ! N = tsgGetNumPoints(gridNES)
     ! WRITE(*,*) "N = ", N
+    CALL gridNES%evaluateBatch(Points(:,1),  nX * nE * nE, Values(:,1))
 
-    CALL tsgEvaluateBatch(gridNES, Points,  nX * nE * nE, Values)
+    ! CALL tsgEvaluateBatch(gridNES, Points,  nX * nE * nE, Values)
 
     ! WRITE(*,*) "Values = ", Values
     ! k = 0
@@ -1172,7 +1202,7 @@ CONTAINS
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P, LogEta_P, LogE_P(iE_B:iE_E)
-    REAL(DP), allocatable :: Points(:,:), Values(:,:)
+    REAL(C_DOUBLE), allocatable :: Points(:,:), Values(:,:)
 
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -1220,7 +1250,8 @@ CONTAINS
       END DO
     END DO
 
-    CALL tsgEvaluateBatch(gridPair, Points,  nE * nE, Values)
+    ! CALL tsgEvaluateBatch(gridPair, Points,  nE * nE, Values)
+    CALL gridPair%evaluateBatch(Points(:,1),  nE * nE, Values(:,1))
 
     k = 0
     DO iE2 = iE_B, iE_E
@@ -1297,7 +1328,7 @@ CONTAINS
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E), LogE_P(iE_B:iE_E)
-    REAL(DP), allocatable :: Points(:,:), Values(:,:)
+    REAL(C_DOUBLE), allocatable :: Points(:,:), Values(:,:)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
@@ -1375,7 +1406,8 @@ CONTAINS
       END DO
     END DO
 
-    CALL tsgEvaluateBatch(gridPair, Points,  nX * nE * nE, Values)
+    ! CALL tsgEvaluateBatch(gridPair, Points,  nX * nE * nE, Values)
+    CALL gridPair%evaluateBatch(Points(:,1),  nX * nE * nE, Values(:,1))
 
     k = 0
     DO iX = iX_B, iX_E
