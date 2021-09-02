@@ -83,6 +83,15 @@ CONTAINS
     INTEGER,              INTENT(in) :: iLevel
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
 
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(4x,A,A)') 'INFO: Initial Conditions'
+      WRITE(*,'(4x,A,A)') '------------------------'
+      WRITE(*,*)
+
+    END IF
+
     SELECT CASE( TRIM( ProgramName ) )
 
       CASE( 'Advection1D' )
@@ -156,15 +165,14 @@ CONTAINS
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
-          WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
-          WRITE(*,'(4x,A,A)') '------------------ '
+          WRITE(*,'(6x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') 'D_0: ', D_0
-          WRITE(*,'(6x,A,F5.3)') 'Amp: ', Amp
-          WRITE(*,'(6x,A,F5.3)') ' V1: ', V1
-          WRITE(*,'(6x,A,F5.3)') ' V2: ', V2
-          WRITE(*,'(6x,A,F5.3)') ' V3: ', V3
-          WRITE(*,'(6x,A,F5.3)') '  P: ', P
+          WRITE(*,'(8x,A,F5.3)') 'D_0: ', D_0
+          WRITE(*,'(8x,A,F5.3)') 'Amp: ', Amp
+          WRITE(*,'(8x,A,F5.3)') ' V1: ', V1
+          WRITE(*,'(8x,A,F5.3)') ' V2: ', V2
+          WRITE(*,'(8x,A,F5.3)') ' V3: ', V3
+          WRITE(*,'(8x,A,F5.3)') '  P: ', P
           WRITE(*,*)
 
         END IF
@@ -312,24 +320,23 @@ CONTAINS
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
-          WRITE(*,'(4x,A,A)') 'RiemannProblemName: ', TRIM( RiemannProblemName )
-          WRITE(*,'(4x,A,A)') '------------------- '
+          WRITE(*,'(6x,A,A)') 'RiemannProblemName: ', TRIM( RiemannProblemName )
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') 'X_D: ', X_D
+          WRITE(*,'(8x,A,F5.3)') 'X_D: ', X_D
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_D ): ', uPF_L(iPF_D )
-          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_V1): ', uPF_L(iPF_V2)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_V2): ', uPF_L(iPF_V3)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_V3): ', uPF_L(iPF_V3)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_E ): ', uPF_L(iPF_E )
-          WRITE(*,'(6x,A,F5.3)') 'uPF_L(iPF_Ne): ', uPF_L(iPF_Ne)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_D ): ', uPF_L(iPF_D )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_V1): ', uPF_L(iPF_V2)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_V2): ', uPF_L(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_V3): ', uPF_L(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_E ): ', uPF_L(iPF_E )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_Ne): ', uPF_L(iPF_Ne)
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_D ): ', uPF_R(iPF_D )
-          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_V1): ', uPF_R(iPF_V2)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_V2): ', uPF_R(iPF_V3)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_V3): ', uPF_R(iPF_V3)
-          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_E ): ', uPF_R(iPF_E )
-          WRITE(*,'(6x,A,F5.3)') 'uPF_R(iPF_Ne): ', uPF_R(iPF_Ne)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_D ): ', uPF_R(iPF_D )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_V1): ', uPF_R(iPF_V2)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_V2): ', uPF_R(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_V3): ', uPF_R(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_E ): ', uPF_R(iPF_E )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_Ne): ', uPF_R(iPF_Ne)
           WRITE(*,*)
 
         END IF
