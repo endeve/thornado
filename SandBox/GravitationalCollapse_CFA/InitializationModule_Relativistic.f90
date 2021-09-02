@@ -271,8 +271,6 @@ CONTAINS
       CALL ComputeLapseAndShift_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
-      CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
-
       dAlpha = ABS( dAlpha - MINVAL( uGF(:,:,:,:,iGF_Alpha) ) ) &
                  / MINVAL( uGF(:,:,:,:,iGF_Alpha) )
       dPsi   = ABS( dPsi   - MAXVAL( uGF(:,:,:,:,iGF_Psi)   ) ) &
@@ -309,14 +307,6 @@ CONTAINS
 
     END DO
 
-    CALL ComputeMatterSources_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
-
-    CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
-
-    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
-
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -324,6 +314,12 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
     CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
 
     CALL ComputePressureTensorTrace_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
