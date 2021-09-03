@@ -65,7 +65,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(out) :: Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
 
-    REAL(DP) :: uPF(nPF), uGF(nGF), Psi, &
+    REAL(DP) :: uPF(nPF), uGF(nGF), Psi6, &
                 Pressure, LorentzFactor, Enthalpy, BetaDotV
 
     INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
@@ -98,15 +98,15 @@ CONTAINS
 
       END DO
 
-      Psi = uGF(iGF_Psi)
+      Psi6 = uGF(iGF_Psi)**6
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (iNX,iX1,iX2,iX3,iCF_D ) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_S1) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_S2) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_S3) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_E ) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_Ne) / Psi**6, &
+             ( U   (iNX,iX1,iX2,iX3,iCF_D ) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S1) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S2) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S3) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_E ) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_Ne) / Psi6, &
                uPF (iPF_D ), &
                uPF (iPF_V1), &
                uPF (iPF_V2), &
@@ -182,7 +182,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! psi^6*U
     REAL(DP), INTENT(out) :: S(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
 
-    REAL(DP) :: uGF(nGF), uPF(nPF), Psi, Pressure
+    REAL(DP) :: uGF(nGF), uPF(nPF), Psi6, Pressure
     INTEGER  :: iNX, iX1, iX2, iX3, iGF
 
     INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
@@ -204,17 +204,17 @@ CONTAINS
 
       END DO
 
-      Psi = uGF(iGF_Psi)
+      Psi6 = uGF(iGF_Psi)**6
 
       ! --- Compute trace of stress tensor ---
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (iNX,iX1,iX2,iX3,iCF_D ) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_S1) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_S2) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_S3) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_E ) / Psi**6, &
-               U   (iNX,iX1,iX2,iX3,iCF_Ne) / Psi**6, &
+             ( U   (iNX,iX1,iX2,iX3,iCF_D ) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S1) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S2) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_S3) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_E ) / Psi6, &
+               U   (iNX,iX1,iX2,iX3,iCF_Ne) / Psi6, &
                uPF (iPF_D ), &
                uPF (iPF_V1), &
                uPF (iPF_V2), &
@@ -233,7 +233,7 @@ CONTAINS
         =   U(iNX,iX1,iX2,iX3,iCF_S1) * uPF(iPF_V1) &
           + U(iNX,iX1,iX2,iX3,iCF_S2) * uPF(iPF_V2) &
           + U(iNX,iX1,iX2,iX3,iCF_S3) * uPF(iPF_V3) &
-          + Psi**6 * Three * Pressure
+          + Psi6 * Three * Pressure
 
     END DO
     END DO
