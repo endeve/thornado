@@ -315,7 +315,7 @@ CONTAINS
         uPF_R(iPF_V1) = 0.0_DP
         uPF_R(iPF_V2) = 0.0_DP
         uPF_R(iPF_V3) = 0.0_DP
-        uPF_R(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+        uPF_R(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
         uPF_R(iPF_Ne) = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
