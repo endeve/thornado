@@ -361,7 +361,10 @@ contains
     call FinalizeMeshRefinement_TwoMoment
 
 #ifdef TWOMOMENT_ORDER_V
+
+#ifdef MICROPHYSICS_WEAKLIB
     call FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+#endif
 
     call FinalizeSlopeLimiter_TwoMoment
 #endif
