@@ -18,6 +18,7 @@ MODULE Poseidon_UtilitiesModule
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
+    iGF_Phi_N, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -337,24 +338,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, D, FileNo_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, D, G )
 
-    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
-    INTEGER,  INTENT(in), OPTIONAL :: FileNo_Option
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
+    REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, FileNo
+    INTEGER  :: iX1
     REAL(DP) :: X1C, dX, X1q(nDOFX), dM, dPhi
     REAL(DP) :: EnclosedMass(iX_B0(1):iX_E0(1))
-    REAL(DP) :: Phi(         iX_B0(1):iX_E0(1))
-
-    CHARACTER(LEN=32) :: FileName
 
     IF( .NOT. nDimsX .EQ. 1 ) RETURN
-
-    FileNo = 0
-    IF( PRESENT( FileNo_Option ) ) &
-      FileNo = FileNo_Option
 
     ! --- Compute enclosed mass ---
 
@@ -378,7 +372,8 @@ CONTAINS
 
     ! --- Compute Newtonian gravitational potential ---
 
-    Phi(iX_E0(1)) = -EnclosedMass(iX_E0(1)) / MeshX(1) % Center(iX_E0(1))
+    G(:,iX_E0(1),1,1,iGF_Phi_N) &
+      = -EnclosedMass(iX_E0(1)) / MeshX(1) % Center(iX_E0(1))
 
     dPhi = Zero
 
@@ -389,26 +384,9 @@ CONTAINS
 
       dPhi = dPhi - EnclosedMass(iX1) / X1C**2 * dX
 
-      Phi(iX1) = Phi(iX_E0(1)) + dPhi
+      G(:,iX1,1,1,iGF_Phi_N) = G(:,iX_E0(1),1,1,iGF_Phi_N) + dPhi
 
     END DO
-
-    WRITE( FileName, '(A,I6.6)' ) '../Output/NewtApprox_', FileNo
-
-    OPEN( 100, FILE = TRIM( FileName ) )
-
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      WRITE( 100, * ) &
-        MeshX(1) % Center(iX1) / Kilometer, &
-        EnclosedMass(iX1) / SolarMass, &
-        Phi(iX1), &
-        One + Phi(iX1), &
-        One - Half * Phi(iX1)
-
-    END DO
-
-    CLOSE( 100 )
 
   END SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry
 
