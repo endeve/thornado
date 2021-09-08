@@ -2,11 +2,20 @@ MODULE Poseidon_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, &
+    Zero, &
+    Half, &
     One, &
     Two, &
-    Three
+    Three, &
+    FourPi
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nDimsX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q, &
+    NodesX1
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
@@ -32,6 +41,9 @@ MODULE Poseidon_UtilitiesModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne
+  USE UnitsModule, ONLY: &
+    Kilometer, &
+    SolarMass
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
@@ -50,6 +62,7 @@ MODULE Poseidon_UtilitiesModule
   PUBLIC :: ComputePressureTensorTrace_Poseidon
   PUBLIC :: MultiplyByPsi6
   PUBLIC :: DivideByPsi6
+  PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
 
 
 CONTAINS
@@ -321,6 +334,83 @@ CONTAINS
     END DO
 
   END SUBROUTINE DivideByPsi6
+
+
+  SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, D, FileNo_Option )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
+    INTEGER,  INTENT(in), OPTIONAL :: FileNo_Option
+
+    INTEGER  :: iX1, FileNo
+    REAL(DP) :: X1C, dX, X1q(nDOFX), dM, dPhi
+    REAL(DP) :: EnclosedMass(iX_B0(1):iX_E0(1))
+    REAL(DP) :: Phi(         iX_B0(1):iX_E0(1))
+
+    CHARACTER(LEN=32) :: FileName
+
+    IF( .NOT. nDimsX .EQ. 1 ) RETURN
+
+    FileNo = 0
+    IF( PRESENT( FileNo_Option ) ) &
+      FileNo = FileNo_Option
+
+    ! --- Compute enclosed mass ---
+
+    dM = Zero
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      X1C = MeshX(1) % Center(iX1)
+      dX  = MeshX(1) % Width (iX1)
+
+      X1q = X1C + NodesX1 * dX
+
+      dM &
+        = dM &
+            + FourPi * dX &
+                 * SUM( WeightsX_q * X1q**2 * D(:,iX1,1,1) )
+
+      EnclosedMass(iX1) = dM
+
+    END DO
+
+    ! --- Compute Newtonian gravitational potential ---
+
+    Phi(iX_E0(1)) = -EnclosedMass(iX_E0(1)) / MeshX(1) % Center(iX_E0(1))
+
+    dPhi = Zero
+
+    DO iX1 = iX_E0(1)-1, iX_B0(1), -1
+
+      X1C = MeshX(1) % Center(iX1)
+      dX  = MeshX(1) % Width (iX1)
+
+      dPhi = dPhi - EnclosedMass(iX1) / X1C**2 * dX
+
+      Phi(iX1) = Phi(iX_E0(1)) + dPhi
+
+    END DO
+
+    WRITE( FileName, '(A,I6.6)' ) '../Output/NewtApprox_', FileNo
+
+    OPEN( 100, FILE = TRIM( FileName ) )
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      WRITE( 100, * ) &
+        MeshX(1) % Center(iX1) / Kilometer, &
+        EnclosedMass(iX1) / SolarMass, &
+        Phi(iX1), &
+        One + Phi(iX1), &
+        One - Half * Phi(iX1)
+
+    END DO
+
+    CLOSE( 100 )
+
+  END SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry
 
 
 END MODULE Poseidon_UtilitiesModule
