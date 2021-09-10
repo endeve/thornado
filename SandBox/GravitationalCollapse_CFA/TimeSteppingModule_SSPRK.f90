@@ -248,6 +248,12 @@ CONTAINS
 
           CALL MultiplyByPsi6( iX_B1, iX_E1, G, Ustar )
 
+          CALL ComputeMatterSources_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
+
+          CALL ComputeConformalFactor_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+
           CALL ComputePressureTensorTrace_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, S )
 
@@ -293,6 +299,12 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
+
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
     CALL ComputePressureTensorTrace_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )

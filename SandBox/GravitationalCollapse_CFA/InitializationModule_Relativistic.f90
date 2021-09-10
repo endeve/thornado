@@ -2,7 +2,8 @@ MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    Half
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFX, &
@@ -143,6 +144,23 @@ CONTAINS
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3))
 
+    INTEGER  :: ITER
+    REAL(DP) :: dAlpha, dPsi
+    LOGICAL  :: CONVERGED
+
+    REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dCF1(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dAl2(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dCF2(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+
     WRITE(*,*)
     WRITE(*,'(6x,A,A)') &
       'ProgenitorFileName: ', TRIM( ProgenitorFileName )
@@ -241,32 +259,75 @@ CONTAINS
 
     END ASSOCIATE ! R1D, etc
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+    ! --- Iterate to incorporate gravity in initial conditions ---
 
-    CALL ComputeMatterSources_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+    CONVERGED = .FALSE.
+    ITER = 0
 
-    CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+    DO WHILE( .NOT. CONVERGED )
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E1(1)
+      ITER = ITER + 1
 
-      CALL ComputeConserved_Euler_Relativistic &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uAF(:,iX1,iX2,iX3,iAF_P) )
+      dAl1 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Alpha)
+      dCF1 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Psi  )
 
-    END DO
-    END DO
+      CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+
+      CALL ComputeMatterSources_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+
+      CALL ComputeConformalFactor_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+
+      CALL ComputePressureTensorTrace_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
+
+      CALL ComputeLapseAndShift_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
+
+      dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Alpha)
+      dCF2 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Psi  )
+
+      dAlpha = MINVAL( ABS( dAl2 - dAl1 ) / ( Half * ( dAl1 + dAl2 ) ) )
+      dPsi   = MINVAL( ABS( dCF2 - dCF1 ) / ( Half * ( dCF1 + dCF2 ) ) )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E1(1)
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+
+      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. 10 )THEN
+
+        WRITE(*,*) 'Could not initialize fields. Exiting...'
+        STOP
+
+      END IF
+
     END DO
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
