@@ -60,6 +60,7 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_PL_CellAverage
   REAL(DP), PUBLIC :: Timer_PL_Theta_1
   REAL(DP), PUBLIC :: Timer_PL_Theta_2
+  REAL(DP), PUBLIC :: Timer_PL_EnergyLimiter
   REAL(DP), PUBLIC :: Timer_TimeStepper
 
   PUBLIC :: InitializeTimers
@@ -130,6 +131,7 @@ CONTAINS
     Timer_PL_CellAverage                 = Zero
     Timer_PL_Theta_1                     = Zero
     Timer_PL_Theta_2                     = Zero
+    Timer_PL_EnergyLimiter               = Zero
 
     Timer_TimeStepper                    = Zero
 
@@ -258,8 +260,9 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_PL_Theta_2                     :', Timer_PL_Theta_2                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_PL_EnergyLimiter               :', Timer_PL_EnergyLimiter              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TimeStepper                      :', Timer_TimeStepper                   , ' s'
-
     WRITE(*,*)
 
   END SUBROUTINE FinalizeTimers
