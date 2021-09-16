@@ -39,8 +39,6 @@ MODULE TimeSteppingModule_Flash
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY : &
     ApplySlopeLimiter_TwoMoment
-  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
-    ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
@@ -217,9 +215,6 @@ CONTAINS
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
 #ifdef TWOMOMENT_ORDER_V
-    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
-
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 #endif
@@ -515,9 +510,6 @@ CONTAINS
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
-    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
-
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 
@@ -723,9 +715,6 @@ CONTAINS
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
-      CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
-
       CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 

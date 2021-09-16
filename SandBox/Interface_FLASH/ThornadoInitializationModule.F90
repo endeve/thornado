@@ -96,9 +96,6 @@ module ThornadoInitializationModule
   use TwoMoment_PositivityLimiterModule_OrderV, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
-  use Euler_SlopeLimiterModule_NonRelativistic_TABLE, only: &
-    InitializeSlopeLimiter_Euler_NonRelativistic_TABLE, &
-    FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
   use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
     InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
@@ -306,37 +303,24 @@ contains
     call InitializeMeshRefinement_TwoMoment
 
     ! --- For applying limiter on fluid field
-#ifdef TWOMOMENT_ORDER_V
-    call InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( BetaTVD_Option &
-               = 1.75_DP, &
-             SlopeTolerance_Option &
-               = 1.0d-6, &
-             UseSlopeLimiter_Option &
-               = .FALSE., &
-             UseTroubledCellIndicator_Option &
-               = .FALSE., &
-             LimiterThresholdParameter_Option &
-               = Zero, &
-             Verbose_Option = Verbose )
-
+#if defined TWOMOMENT_ORDER_V && defined MICROPHYSICS_WEAKLIB
     call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
                = .TRUE., &
              Verbose_Option &
                = Verbose, &
              Min_1_Option &
-               = ( One + EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * MinD, &
              Min_2_Option &
-               = ( One + EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * MinT, &
              Min_3_Option &
-               = ( One + EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * MinY, &
              Max_1_Option &
-               = ( One - EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxD, &
              Max_2_Option &
-               = ( One - EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxT, &
              Max_3_Option &
-               = ( One - EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxY )
 #endif
 
   end subroutine InitThornado
@@ -377,9 +361,10 @@ contains
     call FinalizeMeshRefinement_TwoMoment
 
 #ifdef TWOMOMENT_ORDER_V
-    call FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
+#ifdef MICROPHYSICS_WEAKLIB
     call FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+#endif
 
     call FinalizeSlopeLimiter_TwoMoment
 #endif
