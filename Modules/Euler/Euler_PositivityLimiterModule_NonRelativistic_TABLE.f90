@@ -121,6 +121,7 @@ CONTAINS
       Max_Y = Max_3_Option
 
     IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A2,A6,A)') '', &
         'INFO: ', 'Euler_PositivityLimiterModule_NonRelativistic_TABLE'
@@ -187,7 +188,7 @@ CONTAINS
 
     LOGICAL  :: NegativeStates
     INTEGER  :: iX1, iX2, iX3, iCF, iQ, iP
-    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K
+    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K
     REAL(DP) :: Min_Y_K, Max_Y_K, Min_E_K
     REAL(DP) :: Min_N, Max_N, Min_E(nPT), Max_E(nPT)
     REAL(DP) :: Theta_1, Theta_2, Theta_3, Theta_P, Alpha

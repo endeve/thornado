@@ -44,7 +44,8 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE FluidIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+        SuppressBC_Option, UseXCFC_Option )
       USE KindModule          , ONLY: DP
       USE ProgramHeaderModule , ONLY: nDOFX
       USE GeometryFieldsModule, ONLY: nGF
@@ -61,6 +62,8 @@ MODULE TimeSteppingModule_SSPRK
         dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       LOGICAL, INTENT(in), OPTIONAL :: &
         SuppressBC_Option
+      LOGICAL, INTENT(in), OPTIONAL :: &
+        UseXCFC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
 

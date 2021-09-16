@@ -1,6 +1,7 @@
 MOMENT_CLOSURE  = MINERBO
 MICROPHYSICS   ?=
 GRAVITY_SOLVER ?=
+TWOMOMENT_ORDER = ORDER_V
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -14,6 +15,8 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
+
+DEFINES += $(PP)THORNADO_EULER_NOGPU
 
 .DEFAULT_GOAL := all
 
@@ -226,8 +229,35 @@ ApplicationDriver_Neutrinos.o: \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
   GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  RadiationFieldsModule.o \
+  InputOutputModuleHDF.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_SlopeLimiterModule_OrderV.o \
+  TwoMoment_PositivityLimiterModule_OrderV.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+  TwoMoment_TimeSteppingModule_OrderV.o \
   InitializationModule_Neutrinos.o \
-  ApplicationDriver_Neutrinos.f90
+  TwoMoment_TallyModule_OrderV.o \
+  EquationOfStateModule_TABLE.o \
+  OpacityModule_TABLE.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModuleZ.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  ProgramInitializationModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  GeometryComputationModule.o \
+  GeometryComputationModuleE.o \
+  TwoMoment_ClosureModule.o \
+  ApplicationDriver_Neutrinos.F90
 
 ApplicationDriver_CCSN.o: \
   KindModule.o \
@@ -264,6 +294,17 @@ InitializationModule.o: \
   InitializationModule.F90
 
 InitializationModule_Neutrinos.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_UtilitiesModule_OrderV.o \
+  EquationOfStateModule_TABLE.o \
   InitializationModule_Neutrinos.F90
 
 TwoMoment_TimersModule_OrderV.o: \
@@ -394,6 +435,17 @@ TwoMoment_NeutrinoMatterSolverModule_OrderV.o: \
   TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
 
 TwoMoment_TallyModule_OrderV.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
   TwoMoment_TallyModule_OrderV.F90
 
 TwoMoment_TimeSteppingModule_OrderV.o: \

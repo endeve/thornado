@@ -1625,7 +1625,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RadiatingSphere
 
-    CHARACTER(32) :: Profile = 'Collapse'
+    CHARACTER(32) :: Profile = 'Shock'
     INTEGER       :: iNodeX, iX1, iX2, iX3
     INTEGER       :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER       :: iNodeX1

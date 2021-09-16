@@ -78,6 +78,11 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_AbEm
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Iso
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_NES
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Pair
+
   ! --- Positivity limiter ---
   LOGICAL  :: UsePositivityLimiter
   REAL(AR) :: Min_1, Min_2
@@ -221,6 +226,17 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
+    OpacityTableName_AbEm = ''
+    OpacityTableName_Iso  = ''
+    OpacityTableName_NES  = ''
+    OpacityTableName_Pair  = ''
+    CALL amrex_parmparse_build( PP, 'OP' )
+      CALL PP % query( 'OpacityTableName_AbEm',OpacityTableName_AbEm )
+      CALL PP % query( 'OpacityTableName_Iso', OpacityTableName_Iso )
+      CALL PP % query( 'OpacityTableName_NES', OpacityTableName_NES )
+      CALL PP % query( 'OpacityTableName_Pair', OpacityTableName_Pair )
+    CALL amrex_parmparse_destroy( PP )
+
     Gamma_IDEAL     = 5.0_AR / 3.0_AR
     EquationOfState = 'IDEAL'
     EosTableName    = ''
@@ -229,7 +245,6 @@ CONTAINS
       CALL PP % query( 'EquationOfState', EquationOfState )
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
-
     ! --- Positivitiy limiter parameters PL.* ---
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_AR
