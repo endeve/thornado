@@ -208,7 +208,6 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3
-    REAL(DP) :: d3X
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -222,26 +221,16 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
-      IF( CoordinateSystem .EQ. 'SPHERICAL' .AND. nDimsX .EQ. 1 )THEN
-
-        d3X = FourPi * dX1(iX1)
-
-      ELSE
-
-        d3X = dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-      END IF
-
       BaryonicMass_Interior &
         = BaryonicMass_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * U(iNX,iX1,iX2,iX3,iCF_D)
 
       Energy_Interior &
         = Energy_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * U(iNX,iX1,iX2,iX3,iCF_E)

@@ -346,7 +346,6 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3
-    REAL(DP) :: d3X
 
     REAL(DP) :: P(nDOFX,nPF)
 
@@ -364,16 +363,6 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
-
-      IF( CoordinateSystem .EQ. 'SPHERICAL' .AND. nDimsX .EQ. 1 )THEN
-
-        d3X = FourPi * dX1(iX1)
-
-      ELSE
-
-        d3X = dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-      END IF
 
       CALL ComputePrimitive_Euler_NonRelativistic &
              ( U(iNX,iX1,iX2,iX3,iCF_D ), &
@@ -394,28 +383,28 @@ CONTAINS
 
       BaryonicMass_Interior &
         = BaryonicMass_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * U(iNX,iX1,iX2,iX3,iCF_D)
 
       Energy_Interior &
         = Energy_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * U(iNX,iX1,iX2,iX3,iCF_E)
 
       InternalEnergy_Interior &
         = InternalEnergy_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * P(iNX,iPF_E)
 
       KineticEnergy_Interior &
         = KineticEnergy_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * Half * ( U(iNX,iX1,iX2,iX3,iCF_S1) * P(iNX,iPF_V1) &
@@ -424,7 +413,7 @@ CONTAINS
 
       GravitationalEnergy_Interior &
         = GravitationalEnergy_Interior &
-            + d3X &
+            + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * Half * P(iNX,iPF_D) * G(iNX,iX1,iX2,iX3,iGF_Phi_N)
