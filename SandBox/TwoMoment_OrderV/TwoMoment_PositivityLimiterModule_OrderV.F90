@@ -15,7 +15,8 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
     Timer_PL_PointValues, &
     Timer_PL_CellAverage, &
     Timer_PL_Theta_1, &
-    Timer_PL_Theta_2
+    Timer_PL_Theta_2, &
+    Timer_PL_EnergyLimiter
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -56,6 +57,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   PUBLIC :: ApplyPositivityLimiter_TwoMoment
 
   LOGICAL               :: UsePositivityLimiter
+  LOGICAL               :: UseEnergyLimiter
   LOGICAL               :: Verbose
   INTEGER               :: N_R, N_G
   INTEGER,    PARAMETER :: nPS_Z = 9    ! Number of Positive Point Sets
@@ -83,12 +85,13 @@ CONTAINS
 
   SUBROUTINE InitializePositivityLimiter_TwoMoment &
     ( Min_1_Option, Max_1_Option, Min_2_Option, UsePositivityLimiter_Option, &
-      Verbose_Option )
+      UseEnergyLimiter_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Max_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: UseEnergyLimiter_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i, iNodeZ, iNodeX, iOS_Z, iOS_X, iP_Z, iP_X
@@ -118,6 +121,12 @@ CONTAINS
       UsePositivityLimiter = .TRUE.
     END IF
 
+    IF( PRESENT( UseEnergyLimiter_Option ) )THEN
+      UseEnergyLimiter = UseEnergyLimiter_Option
+    ELSE
+      UseEnergyLimiter = .FALSE.
+    END IF
+
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
@@ -132,6 +141,8 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
+      WRITE(*,'(A4,A32,L1)') &
+        '', 'Use Energy Correction: ' , UseEnergyLimiter
       WRITE(*,*)
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Min_1: ', Min_1
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Max_1: ', Max_1
@@ -519,7 +530,8 @@ CONTAINS
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP) :: EnergyMomentum(nCR,0:1)
+    REAL(DP) :: EnergyMomentum_0(nCR)
+    REAL(DP) :: EnergyMomentum_1(nCR)
     LOGICAL  :: &
       RealizableCellAverage &
         (iZ_B0(1):iZ_E0(1), &
@@ -529,6 +541,26 @@ CONTAINS
          nSpecies)
     LOGICAL  :: &
       RecomputePointValues &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
+    LOGICAL  :: &
+      LimiterApplied &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
+    REAL(DP) :: &
+      Energy_K &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies), &
+      dEnergy_K &
         (iZ_B0(1):iZ_E0(1), &
          iZ_B0(2):iZ_E0(2), &
          iZ_B0(3):iZ_E0(3), &
@@ -644,8 +676,11 @@ CONTAINS
 
     CALL TimersStart( Timer_PL )
 
-    CALL ComputeEnergyMomentum &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum(:,0) )
+    CALL ComputeLocalEnergy & ! --- For Energy Correction ---
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, Energy_K )
+
+    CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_0 )
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
@@ -653,8 +688,6 @@ CONTAINS
     iX_E0 = iZ_E0(2:4)
 
     N_G = PRODUCT( iX_E0 - iX_B0 + 1 )
-
-    RecomputePointValues = .FALSE.
 
     CALL TimersStart( Timer_PL_Permute )
 
@@ -788,6 +821,9 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
+      RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
+      LimiterApplied      (iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
+
       IF( RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
 
         Min_K = Min_1
@@ -816,6 +852,7 @@ CONTAINS
               + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
           RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
+          LimiterApplied      (iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
         END IF
 
@@ -919,6 +956,8 @@ CONTAINS
             = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
               + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
 
+          LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
+
         END IF
 
       END IF
@@ -948,7 +987,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
-    DO iS = 1, nSpecies
+    DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -967,14 +1006,404 @@ CONTAINS
 
     CALL TimersStop( Timer_PL_Permute )
 
-    CALL ComputeEnergyMomentum &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum(:,1) )
+    CALL ComputeLocalEnergy & ! --- For Energy Correction ---
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dEnergy_K )
 
-    dEnergyMomentum_PL_TwoMoment = EnergyMomentum(:,1) - EnergyMomentum(:,0)
+    ! --- Energy Change Due to Positivity Limiter ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      dEnergy_K(iZ1,iZ2,iZ3,iZ4,iS) &
+        = dEnergy_K(iZ1,iZ2,iZ3,iZ4,iS) - Energy_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL ApplyEnergyLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, &
+             LimiterApplied, dEnergy_K )
+
+    CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_1 )
+
+    dEnergyMomentum_PL_TwoMoment = EnergyMomentum_1 - EnergyMomentum_0
 
     CALL TimersStop( Timer_PL )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
+
+
+  SUBROUTINE ApplyEnergyLimiter_TwoMoment &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, LimiterApplied, DeltaE )
+
+    USE MeshModule, ONLY: &
+      MeshE, MeshX
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE (1:nDOFE, &
+          iZ_B1(1):iZ_E1(1), &
+          1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX (1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nGF)
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR, &
+          1:nSpecies)
+    LOGICAL, INTENT(in)     :: &
+      LimiterApplied &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
+    REAL(DP), INTENT(in)    :: &
+      DeltaE &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         nSpecies)
+
+    REAL(DP), PARAMETER :: MinTheta_K = - 0.99_DP
+    REAL(DP), PARAMETER :: RedTheta_K =   0.90_DP ! --- Reduction Factor
+
+    INTEGER  :: iNodeE, iNodeX, iNodeZ
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iK1, iK2, PowTheta
+    REAL(DP) :: N_K1, N_K2, E_K1, E_K2, ResidualE
+    REAL(DP) :: Det, Theta_K1, Theta_K2
+    REAL(DP) :: &
+      V_u_1(1:nDOFX, &
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      V_u_2(1:nDOFX, &
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      V_u_3(1:nDOFX, &
+            iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      W2_K(1:nDOFZ, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: & 
+      W3_K(1:nDOFZ, &
+           iZ_B0(1):iZ_E0(1), &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4))
+
+    IF( .NOT. UseEnergyLimiter ) RETURN
+
+    CALL TimersStart( Timer_PL_EnergyLimiter )
+
+    ! --- Three-Velocity ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        V_u_1(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S1) &
+              / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
+                    * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) )
+
+        V_u_2(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S2) &
+              / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
+                    * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) )
+
+        V_u_3(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3) &
+              / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
+                    * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Integration Weights ---
+
+    ASSOCIATE &
+      ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
+        dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        W2_K(iNodeZ,iZ1,iZ2,iZ3,iZ4) &
+          = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+              * GE(iNodeE,iZ1,iGE_Ep2) &
+              * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+              * Weights_q(iNodeZ)
+
+        W3_K(iNodeZ,iZ1,iZ2,iZ3,iZ4) &
+          = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+              * GE(iNodeE,iZ1,iGE_Ep3) &
+              * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+              * Weights_q(iNodeZ)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      IF( ANY( LimiterApplied(:,iZ2,iZ3,iZ4,iS) ) )THEN
+
+        ResidualE = DeltaE(iZ_B0(1),iZ2,iZ3,iZ4,iS)
+
+        DO iZ1 = iZ_B0(1), iZ_E0(1) - 1 ! --- Forward Sweep
+
+          iK1 = iZ1
+          iK2 = iZ1 + 1
+
+          N_K1 &
+            = ElementNumber &
+                ( W2_K(:,iK1,iZ2,iZ3,iZ4), &
+                  U_R (:,iK1,iZ2,iZ3,iZ4,iCR_N,iS) )
+
+          N_K2 &
+            = ElementNumber &
+                ( W2_K(:,iK2,iZ2,iZ3,iZ4), &
+                  U_R (:,iK2,iZ2,iZ3,iZ4,iCR_N,iS) )
+
+          E_K1 &
+            = ElementEnergy &
+                ( W3_K (:,iK1,iZ2,iZ3,iZ4), &
+                  U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                  U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                  U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                  U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                  V_u_1(:    ,iZ2,iZ3,iZ4), &
+                  V_u_2(:    ,iZ2,iZ3,iZ4), &
+                  V_u_3(:    ,iZ2,iZ3,iZ4) )
+
+          E_K2 &
+            = ElementEnergy &
+                ( W3_K (:,iK2,iZ2,iZ3,iZ4), &
+                  U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                  U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                  U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                  U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                  V_u_1(:    ,iZ2,iZ3,iZ4), &
+                  V_u_2(:    ,iZ2,iZ3,iZ4), &
+                  V_u_3(:    ,iZ2,iZ3,iZ4) )
+
+          Det = ( N_K1 * E_K2 - N_K2 * E_K1 )
+
+          Theta_K1 =   N_K2 * ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) ) / Det
+
+          Theta_K2 = - N_K1 * ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) ) / Det
+
+          IF( Theta_K1 < MinTheta_K .OR. Theta_K2 < MinTheta_K )THEN
+
+            PowTheta = 0
+
+            IF( Theta_K1 < MinTheta_K )THEN
+
+              PowTheta &
+                = CEILING(LOG(MinTheta_K/Theta_K1)/LOG(RedTheta_K))
+
+            END IF
+
+            IF( Theta_K2 < MinTheta_K )THEN
+
+              PowTheta &
+                = MAX( CEILING(LOG(MinTheta_K/Theta_K2)/LOG(RedTheta_K)), &
+                       PowTheta )
+
+            END IF
+
+            Theta_K1 = RedTheta_K**PowTheta * Theta_K1
+            Theta_K2 = RedTheta_K**PowTheta * Theta_K2
+
+          END IF
+
+          ResidualE &
+            = E_K1 * Theta_K1 + E_K2 * Theta_K2 &
+                + ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) )
+
+          U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N,iS) &
+            = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)
+          U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N,iS) &
+            = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS)
+
+          U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+            = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS)
+          U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS) &
+            = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS)
+
+          U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+            = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS)
+          U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS) &
+            = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS)
+
+          U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS) &
+            = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS)
+          U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS) &
+            = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS)
+
+        END DO
+
+        IF( ABS( ResidualE ) > Zero )THEN
+
+          DO iZ1 = iZ_E0(1) - 2, iZ_B0(1), - 1 ! Backward Sweep
+
+            iK1 = iZ1
+            iK2 = iZ1 + 1
+
+            N_K1 &
+              = ElementNumber &
+                  ( W2_K(:,iK1,iZ2,iZ3,iZ4), &
+                    U_R (:,iK1,iZ2,iZ3,iZ4,iCR_N,iS) )
+
+            N_K2 &
+              = ElementNumber &
+                  ( W2_K(:,iK2,iZ2,iZ3,iZ4), &
+                    U_R (:,iK2,iZ2,iZ3,iZ4,iCR_N,iS) )
+
+            E_K1 &
+              = ElementEnergy &
+                  ( W3_K (:,iK1,iZ2,iZ3,iZ4), &
+                    U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                    U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                    U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                    U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                    V_u_1(:    ,iZ2,iZ3,iZ4), &
+                    V_u_2(:    ,iZ2,iZ3,iZ4), &
+                    V_u_3(:    ,iZ2,iZ3,iZ4) )
+
+            E_K2 &
+              = ElementEnergy &
+                  ( W3_K (:,iK2,iZ2,iZ3,iZ4), &
+                    U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                    U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                    U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                    U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                    V_u_1(:    ,iZ2,iZ3,iZ4), &
+                    V_u_2(:    ,iZ2,iZ3,iZ4), &
+                    V_u_3(:    ,iZ2,iZ3,iZ4) )
+
+            Det = ( N_K1 * E_K2 - N_K2 * E_K1 )
+
+            Theta_K1 =   N_K2 * ResidualE / Det
+
+            Theta_K2 = - N_K1 * ResidualE / Det
+
+            IF( Theta_K1 < MinTheta_K .OR. Theta_K2 < MinTheta_K )THEN
+
+              PowTheta = 0
+
+              IF( Theta_K1 < MinTheta_K )THEN
+
+                PowTheta &
+                  = CEILING(LOG(MinTheta_K/Theta_K1)/LOG(RedTheta_K))
+
+              END IF
+
+              IF( Theta_K2 < MinTheta_K )THEN
+
+                PowTheta &
+                  = MAX( CEILING(LOG(MinTheta_K/Theta_K2)/LOG(RedTheta_K)), &
+                         PowTheta )
+
+              END IF
+
+              Theta_K1 = RedTheta_K**PowTheta * Theta_K1
+              Theta_K2 = RedTheta_K**PowTheta * Theta_K2
+
+            END IF
+
+            ResidualE &
+              = E_K1 * Theta_K1 + E_K2 * Theta_K2 + ResidualE
+
+            U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N,iS) &
+              = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)
+            U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N,iS) &
+              = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS)
+
+            U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+              = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS)
+            U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS) &
+              = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS)
+
+            U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+              = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS)
+            U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS) &
+              = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS)
+
+            U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS) &
+              = ( One + Theta_K1 ) * U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS)
+            U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS) &
+              = ( One + Theta_K2 ) * U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS)
+
+            IF( ResidualE == Zero ) EXIT
+
+          END DO
+
+        END IF ! --- ABS( ResidualE ) > Zero
+
+      END IF ! --- ANY( LimiterApplied )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_PL_EnergyLimiter )
+
+  END SUBROUTINE ApplyEnergyLimiter_TwoMoment
 
 
   SUBROUTINE ComputePointValuesZ( iZ_B0, iZ_E0, U_Q, U_P )
@@ -1415,7 +1844,180 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-  SUBROUTINE ComputeEnergyMomentum &
+  REAL(DP) FUNCTION ElementNumber( W, N )
+
+    REAL(DP), INTENT(in) :: W(nDOFZ)
+    REAL(DP), INTENT(in) :: N(nDOFZ)
+
+    INTEGER :: iNodeZ
+
+    ElementNumber = Zero
+    DO iNodeZ = 1, nDOFZ
+
+      ElementNumber = ElementNumber + W(iNodeZ) * N(iNodeZ)
+
+    END DO
+
+    RETURN
+  END FUNCTION ElementNumber
+
+
+  REAL(DP) FUNCTION ElementEnergy &
+    ( W, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3 )
+
+    REAL(DP), INTENT(in) :: W    (nDOFZ)
+    REAL(DP), INTENT(in) :: N    (nDOFZ)
+    REAL(DP), INTENT(in) :: G_d_1(nDOFZ)
+    REAL(DP), INTENT(in) :: G_d_2(nDOFZ)
+    REAL(DP), INTENT(in) :: G_d_3(nDOFZ)
+    REAL(DP), INTENT(in) :: V_u_1(nDOFX)
+    REAL(DP), INTENT(in) :: V_u_2(nDOFX)
+    REAL(DP), INTENT(in) :: V_u_3(nDOFX)
+
+    INTEGER :: iNodeE, iNodeX, iNodeZ
+
+    ElementEnergy = Zero
+    DO iNodeX = 1, nDOFX
+    DO iNodeE = 1, nDOFE
+
+      iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+      ElementEnergy &
+        = ElementEnergy &
+            + W(iNodeZ) &
+                * ( N(iNodeZ) &
+                    + V_u_1(iNodeX) * G_d_1(iNodeZ) &
+                    + V_u_2(iNodeX) * G_d_2(iNodeZ) &
+                    + V_u_3(iNodeX) * G_d_3(iNodeZ) )
+
+    END DO
+    END DO
+
+    RETURN
+  END FUNCTION ElementEnergy
+
+
+  SUBROUTINE ComputeLocalEnergy &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, Energy )
+
+    USE MeshModule, ONLY: &
+      MeshE, MeshX
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GE (1:nDOFE, &
+          iZ_B1(1):iZ_E1(1), &
+          1:nGE)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCF)
+    REAL(DP), INTENT(in)  :: &
+      U_R(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR, &
+          1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      Energy &
+        (iZ_B0(1):iZ_E0(1), &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4), &
+         1:nSpecies)
+
+    INTEGER  :: iNodeE, iNodeX, iNodeZ
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: &
+      V_u_1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      V_u_2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      V_u_3(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        V_u_1(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S1) &
+              / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
+                    * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) )
+
+        V_u_2(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S2) &
+              / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
+                    * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) )
+
+        V_u_3(iNodeX,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3) &
+              / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
+                    * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ASSOCIATE &
+      ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
+        dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      Energy(iZ1,iZ2,iZ3,iZ4,iS) = Zero
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        Energy(iZ1,iZ2,iZ3,iZ4,iS) &
+          = Energy(iZ1,iZ2,iZ3,iZ4,iS) &
+              + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * Weights_q(iNodeZ) &
+                * GE(iNodeE,iZ1,iGE_Ep3) &
+                * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+                * ( U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) &
+                      + V_u_1(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G1,iS) &
+                      + V_u_2(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G2,iS) &
+                      + V_u_3(iNodeX,iZ2,iZ3,iZ4) &
+                          * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ3,iCR_G3,iS) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE
+
+
+  END SUBROUTINE ComputeLocalEnergy
+
+
+  SUBROUTINE ComputeGlobalEnergyMomentum &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum )
 
     USE UnitsModule, ONLY: &
@@ -1424,15 +2026,14 @@ CONTAINS
       SpeedOfLight
     USE MeshModule, ONLY: &
       MeshE, MeshX
-    
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in) :: &
       GE (1:nDOFE, &
           iZ_B1(1):iZ_E1(1), &
           1:nGE)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in) :: &
       GX (1:nDOFX, &
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
@@ -1580,7 +2181,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeEnergyMomentum
+  END SUBROUTINE ComputeGlobalEnergyMomentum
 
 
 END MODULE TwoMoment_PositivityLimiterModule_OrderV

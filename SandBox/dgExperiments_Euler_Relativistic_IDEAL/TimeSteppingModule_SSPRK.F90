@@ -268,7 +268,8 @@ CONTAINS
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
         dM_OffGrid_Euler &
-          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+          = dM_OffGrid_Euler &
+              + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 

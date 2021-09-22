@@ -44,6 +44,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: TimeSteppingScheme
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -129,9 +130,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .FALSE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'IsotropicRadiation' )
 
@@ -160,9 +161,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .FALSE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'StreamingDopplerShift' )
 
@@ -226,9 +227,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
 
     CASE( 'TransparentTurbulence' )
 
@@ -289,9 +290,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'TransparentShock' )
 
@@ -354,9 +355,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .TRUE.
-
+      UseSlopeLimiter      = .TRUE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'TransparentVortex' )
 
@@ -404,9 +405,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'RadiatingSphere' )
 
@@ -421,14 +422,14 @@ PROGRAM ApplicationDriver
       nE    = 16
       eL    = 0.0d0
       eR    = 3.0d2
-      bcE   = 10
+      bcE   = 2
       ZoomE = 1.310262775587271_DP
 
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end = 1.0d+1
+      t_end = 2.0d+4
       iCycleD = 1
       iCycleW = 2000
       maxCycles = 1000000
@@ -437,9 +438,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
 
     CASE( 'GaussianDiffusion' )
 
@@ -468,9 +469,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'HomogeneousSphere1D' )
 
@@ -507,6 +508,7 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator = .TRUE.
       UseSlopeLimiter          = .TRUE.
       UsePositivityLimiter     = .TRUE.
+      UseEnergyLimiter         = .FALSE.
 
     CASE( 'HomogeneousSphere2D' )
 
@@ -535,9 +537,9 @@ PROGRAM ApplicationDriver
       Chi   = 4.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE DEFAULT
 
@@ -817,6 +819,8 @@ CONTAINS
                = SqrtTiny, &
              UsePositivityLimiter_Option &
                = UsePositivityLimiter, &
+             UseEnergyLimiter_Option &
+               = UseEnergyLimiter, &
              Verbose_Option &
                = .TRUE. )
 

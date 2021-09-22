@@ -1,7 +1,5 @@
 PROGRAM ApplicationDriver
 
-use euler_Meshrefinementmodule,only:&
-InitializeMeshRefinement_Euler
   USE KindModule, ONLY: &
     DP, &
     Zero, &
@@ -320,7 +318,7 @@ InitializeMeshRefinement_Euler
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -379,9 +377,6 @@ InitializeMeshRefinement_Euler
   CALL InitializeReferenceElementX
 
   CALL InitializeReferenceElementX_Lagrange
-
-call InitializeMeshRefinement_Euler
-stop
 
   CALL ComputeGeometryX &
        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )

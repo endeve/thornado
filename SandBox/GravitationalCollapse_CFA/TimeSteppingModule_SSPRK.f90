@@ -30,6 +30,10 @@ MODULE TimeSteppingModule_SSPRK
     TimersStart_Euler, &
     TimersStop_Euler,  &
     Timer_Euler_UpdateFluid
+  USE Euler_dgDiscretizationModule, ONLY: &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    IncrementOffGridTally_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -206,6 +210,10 @@ CONTAINS
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3))
 
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
+
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
@@ -248,6 +256,12 @@ CONTAINS
 
           CALL MultiplyByPsi6( iX_B1, iX_E1, G, Ustar )
 
+          CALL ComputeMatterSources_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
+
+          CALL ComputeConformalFactor_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+
           CALL ComputePressureTensorTrace_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, S )
 
@@ -262,6 +276,10 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, Ustar, D, Dstar(:,:,:,:,:,iS), &
                  UseXCFC_Option = .TRUE. )
+
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler &
+              + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 
@@ -294,6 +312,12 @@ CONTAINS
 
     CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
 
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+
     CALL ComputePressureTensorTrace_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
 
@@ -301,6 +325,8 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
     CALL DivideByPsi6( iX_B1, iX_E1, G, U )
+
+    CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
