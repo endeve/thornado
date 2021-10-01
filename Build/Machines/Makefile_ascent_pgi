@@ -1,0 +1,39 @@
+## Makefile definitions for ascent with PGI compiler
+
+C       = mpic++ --c++11
+FORTRAN = mpifort -Mpreprocess
+FLINKER = mpifort
+
+DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
+OPTIMIZE = -g -O2 -tp=pwr9
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -mp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -mp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
+endif
+
+INCLUDE_CUDA     = -I$(OLCF_CUDA_ROOT)/include
+INCLUDE_HDF5     = -I$(OLCF_HDF5_ROOT)/include
+INCLUDE_LAPACK   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_MAGMA    = -I$(OLCF_MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_POSEIDON =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_HDF5     = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L$(OLCF_ESSL_ROOT)/lib64 -lessl -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
+LIBRARIES_MAGMA    = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_POSEIDON =
+LIBRARIES_ROCM     =

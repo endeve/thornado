@@ -1,11 +1,16 @@
 MICROPHYSICS = WEAKLIB
 
-THORNADO_DIR ?= $(HOME)/thornado
+THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-WEAKLIB_DIR ?= $(HOME)/weaklib
+WEAKLIB_DIR ?= ../../../weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
+DEFINES += -DTHORNADO_DEBUG
+
+.DEFAULT_GOAL := all
 
 all: ApplicationDriver
 
@@ -51,7 +56,7 @@ ApplicationDriver.o: \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
   UnitsModule.o \
-  ApplicationDriver.f90
+  ApplicationDriver.F90
 
 InitializationModule.o: \
   KindModule.o \
