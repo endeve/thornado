@@ -131,7 +131,7 @@ PROGRAM ApplicationDriver
   EvolveTwoMoment                = .TRUE.
   UsePositivityLimiter_TwoMoment = .TRUE.
 
-  TimeSteppingScheme = 'PDARS'
+  TimeSteppingScheme = 'IMEX_PDARS'
 
   ! --- Auxiliary Initialization ---
 
