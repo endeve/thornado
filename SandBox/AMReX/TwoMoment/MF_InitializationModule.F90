@@ -127,6 +127,8 @@ MODULE MF_InitializationModule
     Erg,          &
     Gram,         &
     Centimeter,   &
+    MeV,          &
+    BoltzmannConstant, &
     GravitationalConstant
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -1432,7 +1434,6 @@ END IF
     uGF_K = Zero
     uAF_K = Zero
 
-    Ones=1.0_AR
    
    
     DO iDim = 1, 3
@@ -1608,7 +1609,9 @@ END IF
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-  END SUBROUTINE InitializeFields_HomogeneousSphereGR
+  END SUBROUTINE InitializeFields_Relaxation
+
+
   SUBROUTINE ComputeAlphaPsi( M, R, R0, theta, G ) 
 
     REAL(AR), INTENT(in) :: M, R, R0, theta

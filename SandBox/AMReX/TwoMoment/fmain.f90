@@ -37,11 +37,6 @@ PROGRAM main
     CFL,       &
     t_wrt,     &
     dt_wrt,    &
-    t_chk,     &
-    dt_chk,    &
-    iCycleD,   &
-    iCycleW,   &
-    iCycleChk, &
     BA,        &
     GEOM
   USE ProgramHeaderModule,  ONLY: &
@@ -65,25 +60,17 @@ PROGRAM main
 
   IMPLICIT NONE
 
-  REAL(amrex_real) :: n, m, dt_Fancy
+  REAL(amrex_real) :: n
   
   n = 1.0_amrex_real
   CALL InitializeProgram
 
-!  CALL WriteFieldsAMReX_Checkpoint & 
-!      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-!        MF_uCR % P,  &
-!        MF_uPR % P  )
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
  
     CALL MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
- !   dt_Fancy = dt(0)
- !   CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
 
- !   print*, dt(0) / UnitsDisplay % TimeUnit, dt_Fancy / UnitsDisplay % TimeUnit
-!STOP
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE
@@ -96,7 +83,6 @@ PROGRAM main
        TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
        TRIM( UnitsDisplay % TimeLabel )
     END IF
-    !this is where the issue is
     CALL MF_Update_IMEX_RK &
            ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
             Verbose_Option = amrex_parallel_ioprocessor()  )

@@ -1,4 +1,4 @@
-MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
+MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,     ONLY: &
@@ -24,14 +24,17 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit_Neutrinos
+
+
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
-    thornado2amrex_Z
+    thornado2amrex_Z, &
+    thornado2amrex_X
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nSpecies, &
@@ -41,20 +44,23 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     ConstructEdgeMap, &
     MF_ApplyBoundaryConditions_TwoMoment
 
+
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ComputeIncrement_Explicit
+  PUBLIC :: MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
 
 
 CONTAINS
 
-
-  SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos( GEOM, MF_uGF, MF_uCF, MF_duCF, &
+                                                     MF_uCR, MF_duCR, dt, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
+    REAL(amrex_real),     INTENT(in)    :: dt
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -64,32 +70,34 @@ CONTAINS
 
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: duCF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: duCR(:,:,:,:)
 
     REAL(amrex_real), ALLOCATABLE :: G (:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: C (:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: dC(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: U (:,:,:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
-
-
     LOGICAL :: Verbose
+
 
     TYPE(EdgeMap) :: Edge_Map
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-
-
-
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
+
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
@@ -100,6 +108,7 @@ CONTAINS
 
         uGF  => MF_uGF (iLevel) % DataPtr( MFI )
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
+        duCF => MF_duCF(iLevel) % DataPtr( MFI )
         uCR  => MF_uCR (iLevel) % DataPtr( MFI )
         duCR => MF_duCR(iLevel) % DataPtr( MFI )
 
@@ -143,6 +152,10 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nCF) )
 
+        ALLOCATE( dC (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF) )
+
         ALLOCATE( U (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                              iZ_B1(3):iZ_E1(3), &
                              iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
@@ -156,6 +169,8 @@ CONTAINS
 
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
 
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
+
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
@@ -165,10 +180,12 @@ CONTAINS
         CALL MF_ApplyBoundaryConditions_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
-        CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose, &
-               SuppressBC_Option = .TRUE.  )
 
+        CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, Verbose_Option = Verbose )
+
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
+ 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
@@ -179,9 +196,7 @@ CONTAINS
 
     END DO
 
+  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
 
 
-  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit
-
-
-END MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
+END MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR

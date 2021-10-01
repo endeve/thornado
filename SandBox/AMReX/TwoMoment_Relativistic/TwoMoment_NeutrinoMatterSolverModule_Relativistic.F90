@@ -46,8 +46,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
     ComputeNeutrinoOpacities_Pair_Points, &
     ComputeNeutrinoOpacitiesRates_NES_Points, &
     ComputeNeutrinoOpacitiesRates_Pair_Points
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    EddingtonTensorComponents_dd
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+    ComputeEddingtonTensorComponents_dd
 
   IMPLICIT NONE
   PRIVATE
@@ -561,30 +561,29 @@ CONTAINS
 
   SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA &
     ( dt, J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Inner, nIterations_Outer )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, &
+      nIterations_Inner, nIterations_Outer )
 
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:),     INTENT(inout) :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:),     INTENT(inout) :: D, T, Y, E
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: alp, B_u_1, B_u_2, B_u_3
     INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner, nIterations_Outer
 
     ! --- Local Variables ---
 
-    INTEGER  :: iN_E, iN_X, iS
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
 
-    REAL(DP) :: vDotV
 
     ! --- Initial RHS ---
 
 
     CALL InitializeRHS_FP &
            ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
+             Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
     ! --- Compute Opacity Kernels ---
 
@@ -645,7 +644,7 @@ CONTAINS
         CALL ComputeNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
                  J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3  )
 
 
         ! --- Anderson Acceleration (inner) ---
@@ -690,7 +689,7 @@ CONTAINS
       CALL ComputeMatterRHS_FP &
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
                J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
 
       ! --- Anderson Acceleration (outer) ---
@@ -773,7 +772,6 @@ CONTAINS
     ELSE
       nX0 = nX_G
     END IF
-
     IF ( nX < nX_G ) THEN
 
       ! --- Pack Arrays ---
@@ -1011,7 +1009,6 @@ CONTAINS
       END IF
 
     END IF
-
   END SUBROUTINE ComputeOpacities_Packed
 
 
@@ -1215,14 +1212,15 @@ CONTAINS
 
   SUBROUTINE InitializeRHS_FP &
     ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
     REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: alp, B_u_1, B_u_2, B_u_3
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vvDotK
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1251,8 +1249,9 @@ CONTAINS
       ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
       ! --- For first interation: must be consistent with initial guess ---
 
-      Omega(iN_X) = One / ( One + SQRT( vDotV ) )
-
+      !Omega(iN_X) = One / ( One + SQRT( vDotV ) )
+      Omega(iN_X) = 1.0_DP
+      
       ! --- Store Initial Matter State ---
 
       Y_old (iN_X) = Y (iN_X)
@@ -1298,6 +1297,12 @@ CONTAINS
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
 
+      vDotV =   V_u_1(iN_X) * V_d_1(iN_X) &
+              + V_u_2(iN_X) * V_d_2(iN_X) &
+              + V_u_3(iN_X) * V_d_3(iN_X)
+
+      W = 1.0_DP / SQRT(1.0_DP - vDotV)
+
       H_d_1(iN_E,iN_X,iS) = Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS)
       H_d_2(iN_E,iN_X,iS) = Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS)
       H_d_3(iN_E,iN_X,iS) = Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS)
@@ -1306,10 +1311,12 @@ CONTAINS
               + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
               + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
-      k_dd = EddingtonTensorComponents_dd &
-               ( J    (iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
+       CALL ComputeEddingtonTensorComponents_dd &
+               ( J(iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
                  H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
-                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 alp(iN_X), B_u_1(iN_X), B_u_2(iN_X), B_u_3(iN_X), & 
+                 V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
 
       vDotK_d_1 &
         = ( V_u_1(iN_X) * k_dd(1,1) &
@@ -1324,31 +1331,39 @@ CONTAINS
           + V_u_2(iN_X) * k_dd(2,3) &
           + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iN_X,iS)
 
+
+       vvDotK = V_u_1(iN_X) * vDotK_d_1 &
+              + V_u_2(iN_X) * vDotK_d_2 & 
+              + V_u_3(iN_X) * vDotK_d_3 
+
       ! --- Eulerian Neutrino Number Density ---
 
-      N_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + vDotH
+      N_nu(iN_E,iN_X,iS) = W * J(iN_E,iN_X,iS) + vDotH
 
       ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
 
-      E_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + Two * vDotH
+      E_nu(iN_E,iN_X,iS) = W * J(iN_E,iN_X,iS) +  W * Two * vDotH + vvDotK 
 
       ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
       F_nu_d_1(iN_E,iN_X,iS) &
-        = H_d_1(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
+        = W * H_d_1(iN_E,iN_X,iS) + W**2 * V_d_1(iN_X) * J(iN_E,iN_X,iS) &
+        + W * vDotH * V_d_1(iN_X)  + vDotK_d_1
 
       F_nu_d_2(iN_E,iN_X,iS) &
-        = H_d_2(iN_E,iN_X,iS) + V_d_2(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_2
+        = W * H_d_2(iN_E,iN_X,iS) + W**2 * V_d_2(iN_X) * J(iN_E,iN_X,iS) &
+        + W * vDotH * V_d_2(iN_X)  + vDotK_d_2
 
       F_nu_d_3(iN_E,iN_X,iS) &
-        = H_d_3(iN_E,iN_X,iS) + V_d_3(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_3
+        = W * H_d_3(iN_E,iN_X,iS) + W**2 * V_d_3(iN_X) * J(iN_E,iN_X,iS) &
+        + W * vDotH * V_d_3(iN_X)  + vDotK_d_3
 
       ! --- Old States for Neutrino Number Density and Flux ---
 
-      C_J    (iN_E,iN_X,iS) = J    (iN_E,iN_X,iS) + vDotH
-      C_H_d_1(iN_E,iN_X,iS) = H_d_1(iN_E,iN_X,iS) + vDotK_d_1
-      C_H_d_2(iN_E,iN_X,iS) = H_d_2(iN_E,iN_X,iS) + vDotK_d_2
-      C_H_d_3(iN_E,iN_X,iS) = H_d_3(iN_E,iN_X,iS) + vDotK_d_3
+      C_J    (iN_E,iN_X,iS) = W * J    (iN_E,iN_X,iS) + vDotH
+      C_H_d_1(iN_E,iN_X,iS) = W * H_d_1(iN_E,iN_X,iS) + vDotK_d_1
+      C_H_d_2(iN_E,iN_X,iS) = W * H_d_2(iN_E,iN_X,iS) + vDotK_d_2
+      C_H_d_3(iN_E,iN_X,iS) = W * H_d_3(iN_E,iN_X,iS) + vDotK_d_3
 
     END DO
     END DO
@@ -1464,16 +1479,17 @@ CONTAINS
   SUBROUTINE ComputeMatterRHS_FP &
     ( MASK, Fm, Gm, &
       J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: alp, B_u_1, B_u_2, B_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, W
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1495,10 +1511,12 @@ CONTAINS
                 + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
                 + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
-        k_dd = EddingtonTensorComponents_dd &
-                 ( J    (iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
-                   H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
-                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+       CALL ComputeEddingtonTensorComponents_dd &
+               ( J(iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
+                 H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 alp(iN_X), B_u_1(iN_X), B_u_2(iN_X), B_u_3(iN_X), & 
+                 V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd(1,1) &
@@ -1513,25 +1531,38 @@ CONTAINS
             + V_u_2(iN_X) * k_dd(2,3) &
             + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iN_X,iS)
 
-        ! --- Eulerian Neutrino Number Density ---
 
-        N_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + vDotH
+        vvDotK = V_u_1(iN_X) * vDotK_d_1 &
+              + V_u_2(iN_X) * vDotK_d_2 & 
+              + V_u_3(iN_X) * vDotK_d_3 
 
-        ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
+        vDotV =   V_u_1(iN_X) * V_u_1(iN_X) * Gm_dd_11(iN_X) &
+                + V_u_2(iN_X) * V_u_2(iN_X) * Gm_dd_22(iN_X)&
+                + V_u_3(iN_X) * V_u_3(iN_X) * Gm_dd_33(iN_X)
 
-        E_nu(iN_E,iN_X,iS) = J(iN_E,iN_X,iS) + Two * vDotH
+        W = 1.0_DP / SQRT(1.0_DP - vDotV)
 
-        ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
+      ! --- Eulerian Neutrino Number Density ---
 
-        F_nu_d_1(iN_E,iN_X,iS) &
-          = H_d_1(iN_E,iN_X,iS) + V_d_1(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_1
+      N_nu(iN_E,iN_X,iS) = W * J(iN_E,iN_X,iS) + vDotH
 
-        F_nu_d_2(iN_E,iN_X,iS) &
-          = H_d_2(iN_E,iN_X,iS) + V_d_2(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_2
+      ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
 
-        F_nu_d_3(iN_E,iN_X,iS) &
-          = H_d_3(iN_E,iN_X,iS) + V_d_3(iN_X) * J(iN_E,iN_X,iS) + vDotK_d_3
+      E_nu(iN_E,iN_X,iS) = W * J(iN_E,iN_X,iS) +  W * Two * vDotH + vvDotK 
 
+      ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
+
+      F_nu_d_1(iN_E,iN_X,iS) &
+        = W * H_d_1(iN_E,iN_X,iS) + W**2 * V_d_1(iN_X) * J(iN_E,iN_X,iS) &
+        + W * vDotH * V_d_1(iN_X)  + vDotK_d_1
+
+      F_nu_d_2(iN_E,iN_X,iS) &
+        = W * H_d_2(iN_E,iN_X,iS) + W**2 * V_d_2(iN_X) * J(iN_E,iN_X,iS) &
+        + W * vDotH * V_d_2(iN_X)  + vDotK_d_2
+
+      F_nu_d_3(iN_E,iN_X,iS) &
+        = W * H_d_3(iN_E,iN_X,iS) + W**2 * V_d_3(iN_X) * J(iN_E,iN_X,iS) &
+        + W * vDotH * V_d_3(iN_X)  + vDotK_d_3
       END IF
 
     END DO
@@ -1619,17 +1650,18 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoRHS_FP &
     ( MASK, Fm, Gm, dt, &
       J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: alp, B_u_1, B_u_2, B_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS, iOS
-    REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vDotV 
     REAL(DP) :: Eta_T, Chi_T, Kappa
 
 #if   defined( THORNADO_OMP_OL )
@@ -1655,10 +1687,12 @@ CONTAINS
                 + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
                 + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
-        k_dd = EddingtonTensorComponents_dd &
-                 ( J    (iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
-                   H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
-                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+       CALL ComputeEddingtonTensorComponents_dd &
+               ( J(iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
+                 H_u_2(iN_E,iN_X,iS), H_u_3(iN_E,iN_X,iS), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 alp(iN_X), B_u_1(iN_X), B_u_2(iN_X), B_u_3(iN_X), & 
+                 V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd(1,1) &
@@ -1673,6 +1707,11 @@ CONTAINS
             + V_u_2(iN_X) * k_dd(2,3) &
             + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iN_X,iS)
 
+        vDotV =   V_u_1(iN_X) * V_u_1(iN_X) * Gm_dd_11(iN_X) &
+                + V_u_2(iN_X) * V_u_2(iN_X) * Gm_dd_22(iN_X)&
+                + V_u_3(iN_X) * V_u_3(iN_X) * Gm_dd_33(iN_X)
+
+        W = 1.0_DP / SQRT(1.0_DP - vDotV) 
         ! --- Emissivity ---
 
         Eta_T =   Chi     (iN_E,iN_X,iS) * J0(iN_E,iN_X,iS) &
@@ -1695,8 +1734,8 @@ CONTAINS
 
         Gm(iOS+iCR_N,iN_X) &
           = ( One - Omega(iN_X) ) *     J(iN_E,iN_X,iS) &
-            +       Omega(iN_X)   * ( C_J(iN_E,iN_X,iS) - vDotH + dt * Eta_T ) &
-                                    / ( One + dt * Chi_T )
+           + ( C_J(iN_E,iN_X,iS) - vDotH + dt * Eta_T ) &
+              / ( W + dt * Chi_T )
 
         Fm(iOS+iCR_N,iN_X) &
           = Gm(iOS+iCR_N,iN_X) - J(iN_E,iN_X,iS)
@@ -1706,7 +1745,7 @@ CONTAINS
         Gm(iOS+iCR_G1,iN_X) &
           = ( One - Omega(iN_X) ) *     H_d_1(iN_E,iN_X,iS) &
             +       Omega(iN_X)   * ( C_H_d_1(iN_E,iN_X,iS) - vDotK_d_1 ) &
-                                    / ( One + dt * Kappa )
+                                    / ( W + dt * Kappa )
 
         Fm(iOS+iCR_G1,iN_X) &
           = Gm(iOS+iCR_G1,iN_X) - H_d_1(iN_E,iN_X,iS)
@@ -1716,7 +1755,7 @@ CONTAINS
         Gm(iOS+iCR_G2,iN_X) &
           = ( One - Omega(iN_X) ) *     H_d_2(iN_E,iN_X,iS) &
             +       Omega(iN_X)   * ( C_H_d_2(iN_E,iN_X,iS) - vDotK_d_2 ) &
-                                    / ( One + dt * Kappa )
+                                    / ( W + dt * Kappa )
 
         Fm(iOS+iCR_G2,iN_X) &
           = Gm(iOS+iCR_G2,iN_X) - H_d_2(iN_E,iN_X,iS)
@@ -1726,7 +1765,7 @@ CONTAINS
         Gm(iOS+iCR_G3,iN_X) &
           = ( One - Omega(iN_X) ) *     H_d_3(iN_E,iN_X,iS) &
             +       Omega(iN_X)   * ( C_H_d_3(iN_E,iN_X,iS) - vDotK_d_3 ) &
-                                    / ( One + dt * Kappa )
+                                    / ( W + dt * Kappa )
 
         Fm(iOS+iCR_G3,iN_X) &
           = Gm(iOS+iCR_G3,iN_X) - H_d_3(iN_E,iN_X,iS)
@@ -1800,8 +1839,8 @@ CONTAINS
 
         ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
 
-        Omega(iN_X) = One / ( One + SQRT( vDotV ) )
-
+        !Omega(iN_X) = One / ( One + SQRT( vDotV ) )
+        Omega(iN_X) = One       
       END IF
 
     END DO
