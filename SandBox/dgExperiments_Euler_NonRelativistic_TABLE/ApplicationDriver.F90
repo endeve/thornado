@@ -102,9 +102,9 @@ PROGRAM ApplicationDriver
 
   SelfGravity = .FALSE.
 
-  RestartFileNumber = -1 ! 603
+  RestartFileNumber = -1
 
-  t = 0.0_DP ! 301.5_DP
+  t = 0.0_DP
 
   SELECT CASE ( TRIM( ProgramName ) )
 
