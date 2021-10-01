@@ -68,6 +68,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   INTEGER               :: nPT_X        ! Total Number of Positive Points
   INTEGER,  ALLOCATABLE :: PointZ2X(:)
   REAL(DP)              :: Min_1, Max_1, Min_2
+  REAL(DP)              :: W_Factor
   REAL(DP),   PARAMETER :: One_EPS = One - 1.0d1 * EPSILON( One )
   REAL(DP), ALLOCATABLE :: InterpMat_Z(:,:)
   REAL(DP), ALLOCATABLE :: InterpMat_X(:,:)
@@ -86,6 +87,11 @@ CONTAINS
   SUBROUTINE InitializePositivityLimiter_TwoMoment &
     ( Min_1_Option, Max_1_Option, Min_2_Option, UsePositivityLimiter_Option, &
       UseEnergyLimiter_Option, Verbose_Option )
+
+    USE UnitsModule, ONLY: &
+      UnitsActive, &
+      PlanckConstant, &
+      SpeedOfLight
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Max_1_Option
@@ -476,6 +482,16 @@ CONTAINS
 
       END DO
       END DO
+
+    END IF
+
+    IF( UnitsActive )THEN
+
+      W_Factor = FourPi / ( PlanckConstant * SpeedOfLight )**3
+
+    ELSE
+
+      W_Factor = FourPi
 
     END IF
 
@@ -1174,12 +1190,14 @@ CONTAINS
 
         W2_K(iNodeZ,iZ1,iZ2,iZ3,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+              * W_Factor &
               * GE(iNodeE,iZ1,iGE_Ep2) &
               * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
               * Weights_q(iNodeZ)
 
         W3_K(iNodeZ,iZ1,iZ2,iZ3,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+              * W_Factor &
               * GE(iNodeE,iZ1,iGE_Ep3) &
               * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
               * Weights_q(iNodeZ)
@@ -1242,9 +1260,20 @@ CONTAINS
 
           Det = ( N_K1 * E_K2 - N_K2 * E_K1 )
 
-          Theta_K1 =   N_K2 * ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) ) / Det
+          IF( ABS( Det ) .GT. SqrtTiny )THEN
 
-          Theta_K2 = - N_K1 * ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) ) / Det
+            Theta_K1 &
+              =   N_K2 * ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) ) / Det
+
+            Theta_K2 &
+              = - N_K1 * ( ResidualE + DeltaE(iK2,iZ2,iZ3,iZ4,iS) ) / Det
+
+          ELSE
+
+            Theta_K1 = Zero
+            Theta_K2 = Zero
+
+          END IF
 
           IF( Theta_K1 < MinTheta_K .OR. Theta_K2 < MinTheta_K )THEN
 
@@ -1337,9 +1366,18 @@ CONTAINS
 
             Det = ( N_K1 * E_K2 - N_K2 * E_K1 )
 
-            Theta_K1 =   N_K2 * ResidualE / Det
+            IF( ABS( Det ) .GT. SqrtTiny )THEN
 
-            Theta_K2 = - N_K1 * ResidualE / Det
+              Theta_K1 =   N_K2 * ResidualE / Det
+
+              Theta_K2 = - N_K1 * ResidualE / Det
+
+            ELSE
+
+              Theta_K1 = Zero
+              Theta_K2 = Zero
+
+            END IF
 
             IF( Theta_K1 < MinTheta_K .OR. Theta_K2 < MinTheta_K )THEN
 
@@ -1991,6 +2029,7 @@ CONTAINS
         Energy(iZ1,iZ2,iZ3,iZ4,iS) &
           = Energy(iZ1,iZ2,iZ3,iZ4,iS) &
               + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * W_Factor &
                 * Weights_q(iNodeZ) &
                 * GE(iNodeE,iZ1,iGE_Ep3) &
                 * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
@@ -2020,10 +2059,6 @@ CONTAINS
   SUBROUTINE ComputeGlobalEnergyMomentum &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum )
 
-    USE UnitsModule, ONLY: &
-      UnitsActive, &
-      PlanckConstant, &
-      SpeedOfLight
     USE MeshModule, ONLY: &
       MeshE, MeshX
 
@@ -2055,8 +2090,6 @@ CONTAINS
           1:nSpecies)
     REAL(DP), INTENT(out) :: &
       EnergyMomentum(nCR)
-
-    REAL(DP), PARAMETER :: hc3 = ( PlanckConstant * SpeedOfLight )**3
 
     INTEGER  :: iNodeE, iNodeX, iNodeZ
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
@@ -2119,6 +2152,7 @@ CONTAINS
         EnergyMomentum(iCR_N) &
           = EnergyMomentum(iCR_N) &
               + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * W_Factor &
                 * Weights_q(iNodeZ) &
                 * GE(iNodeE,iZ1,iGE_Ep3) &
                 * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
@@ -2133,6 +2167,7 @@ CONTAINS
         EnergyMomentum(iCR_G1) &
           = EnergyMomentum(iCR_G1) &
               + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * W_Factor &
                 * Weights_q(iNodeZ) &
                 * GE(iNodeE,iZ1,iGE_Ep3) &
                 * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
@@ -2143,6 +2178,7 @@ CONTAINS
         EnergyMomentum(iCR_G2) &
           = EnergyMomentum(iCR_G2) &
               + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * W_Factor &
                 * Weights_q(iNodeZ) &
                 * GE(iNodeE,iZ1,iGE_Ep3) &
                 * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
@@ -2153,6 +2189,7 @@ CONTAINS
         EnergyMomentum(iCR_G3) &
           = EnergyMomentum(iCR_G3) &
               + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+                * W_Factor &
                 * Weights_q(iNodeZ) &
                 * GE(iNodeE,iZ1,iGE_Ep3) &
                 * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
@@ -2170,16 +2207,6 @@ CONTAINS
     END DO
 
     END ASSOCIATE
-
-    IF( UnitsActive )THEN
-
-      EnergyMomentum = FourPi * EnergyMomentum / hc3
-
-    ELSE
-
-      EnergyMomentum = FourPi * EnergyMomentum
-
-    END IF
 
   END SUBROUTINE ComputeGlobalEnergyMomentum
 
