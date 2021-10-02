@@ -154,7 +154,7 @@ contains
       PositivityLimiter = .FALSE.
     END IF
 
-    IF( PRESENT(PositivityLimiter_Option) )THEN
+    IF( PRESENT(SlopeLimiter_Option) )THEN
       SlopeLimiter = SlopeLimiter_Option
     ELSE
       SlopeLimiter = .FALSE.
