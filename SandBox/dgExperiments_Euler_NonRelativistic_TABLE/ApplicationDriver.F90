@@ -110,33 +110,33 @@ PROGRAM ApplicationDriver
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'TopHat'
+      AdvectionProfile = 'SineWave'
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 256, 01, 01 ]
+      nX = [ 16, 01, 01 ]
       xL = [ -1.0d2, 0.0d0, 0.0d0 ] * Kilometer
       xR = [  1.0d2, 1.0d2, 1.0d2 ] * Kilometer
       zoomX = One
 
       bcX = [ 1, 1, 1 ]
 
-      nNodes  = 2
-      nStages = 2
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .FALSE.
 
-      UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 1.0d-3
-      UsePositivityLimiter      = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.0d-0
+      UsePositivityLimiter      = .FALSE.
 
       iCycleD = 10
       t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
-      dt_wrt  = 1.0d-1 * t_end
+      dt_wrt  = 1.0d-0 * t_end
 
     CASE( 'RiemannProblem' )
 
@@ -564,7 +564,7 @@ PROGRAM ApplicationDriver
       wrt = .FALSE.
 
     END IF
-    !STOP ! HACKZ
+
   END DO
 
 !!$#if defined(THORNADO_OMP_OL)

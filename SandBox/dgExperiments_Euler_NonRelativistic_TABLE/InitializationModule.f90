@@ -111,9 +111,9 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       AdvectionProfile_Option
 
-    REAL(DP), PARAMETER :: D_0    = 1.6608d3 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: Amp    = 3.00d3   * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: L      = 1.0d02   * Kilometer
+    REAL(DP), PARAMETER :: D_0    = 1.0d12 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Amp    = 1.0d11 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: L      = 1.0d02 * Kilometer
     REAL(DP), PARAMETER :: Ye_0   = 0.0125_DP
     REAL(DP), PARAMETER :: Amp_Ye = 0.030_DP
 
