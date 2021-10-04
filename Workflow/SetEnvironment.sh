@@ -28,6 +28,16 @@ elif [[ $THORNADO_MACHINE == summit* ]]; then
   module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
   module unload DefApps
 
+elif [[ $THORNADO_MACHINE == ascent* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
+  module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
+  module unload DefApps
+
 elif [[ $THORNADO_MACHINE == darter* ]]; then
 
   echo
@@ -193,6 +203,17 @@ elif [[ $THORNADO_MACHINE == summit_xl ]]; then
   module load hdf5/1.10.3
   module load netlib-lapack/3.8.0
   module load essl
+
+elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
+
+  echo
+
+  module load pgi
+  module load spectrum-mpi
+  module load hdf5
+  module load netlib-lapack
+  module load essl
+  module load cuda
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
