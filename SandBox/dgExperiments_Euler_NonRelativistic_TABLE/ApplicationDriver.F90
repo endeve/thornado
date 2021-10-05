@@ -65,6 +65,10 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_NonRelativistic, &
     FinalizeTally_Euler_NonRelativistic, &
     ComputeTally_Euler_NonRelativistic
+  USE TimersModule_Euler, ONLY: &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler
 
   IMPLICIT NONE
 
@@ -91,6 +95,9 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: xL(3), xR(3), zoomX(3), dxEquidistant
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
+
+  TimeIt_Euler = .TRUE.
+  CALL InitializeTimers_Euler
 
   ProgramName = 'Advection'
 
@@ -607,6 +614,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
+
+  CALL FinalizeTimers_Euler
 
 !  WRITE(*,*)
 !  WRITE(*,'(2x,A)') 'git info'
