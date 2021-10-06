@@ -211,6 +211,14 @@ CONTAINS
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
                               Verbose_Option = Verbose )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uCF, uPF, uAF )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE(     uCF, uPF, uAF )
+#endif
+
   END SUBROUTINE CreateFluidFields
 
 
@@ -226,14 +234,6 @@ CONTAINS
                  1-swX(2):nX(2)+swX(2), &
                  1-swX(3):nX(3)+swX(3), &
                  1:nCF) )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uCF )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC CREATE( uCF )
-#endif
 
   END SUBROUTINE CreateFluidFields_Conserved
 
@@ -367,10 +367,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCF )
+    !$OMP MAP( release: uCF, uPF, uAF )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( uCF )
+    !$ACC DELETE( uCF, uPF, uAF )
 #endif
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )
