@@ -76,6 +76,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: ComputePrimitive_Euler_Relativistic_GPU
   PUBLIC :: ComputePrimitive_Euler_Relativistic
   PUBLIC :: ComputeConserved_Euler_Relativistic
   PUBLIC :: ComputeFromConserved_Euler_Relativistic
@@ -107,6 +108,93 @@ MODULE Euler_UtilitiesModule_Relativistic
 
 
 CONTAINS
+
+
+  SUBROUTINE ComputePrimitive_Euler_Relativistic_GPU &
+    ( N, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF )
+
+    INTEGER,  INTENT(in)  :: &
+      N, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iErr(N,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    INTEGER :: iNX, iX1, iX2, iX3
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, uGF, uCF ) &
+    !$OMP MAP( alloc: uPF, iErr )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, uGF, uCF ) &
+    !$ACC CREATE(     uPF, iErr )
+#endif
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, uGF, uCF, uPF, iErr )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, N
+
+      iErr(iNX,iX1,iX2,iX3) = 0
+
+      CALL ComputePrimitive_Scalar &
+             ( uCF (iNX,iX1,iX2,iX3,iCF_D ), &
+               uCF (iNX,iX1,iX2,iX3,iCF_S1), &
+               uCF (iNX,iX1,iX2,iX3,iCF_S2), &
+               uCF (iNX,iX1,iX2,iX3,iCF_S3), &
+               uCF (iNX,iX1,iX2,iX3,iCF_E ), &
+               uCF (iNX,iX1,iX2,iX3,iCF_Ne), &
+               uPF (iNX,iX1,iX2,iX3,iPF_D ), &
+               uPF (iNX,iX1,iX2,iX3,iPF_V1), &
+               uPF (iNX,iX1,iX2,iX3,iPF_V2), &
+               uPF (iNX,iX1,iX2,iX3,iPF_V3), &
+               uPF (iNX,iX1,iX2,iX3,iPF_E ), &
+               uPF (iNX,iX1,iX2,iX3,iPF_Ne), &
+               uGF (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               iErr(iNX,iX1,iX2,iX3) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    uPF, iErr ) &
+    !$OMP MAP( release: iX_B0, iX_E0, uGF, uCF )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(     uPF, iErr ) &
+    !$ACC DELETE(      iX_B0, iX_E0, uGF, uCF )
+#endif
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, N
+
+      CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputePrimitive_Euler_Relativistic_GPU
 
 
   !> Compute the primitive variables from the conserved variables,
@@ -241,6 +329,12 @@ CONTAINS
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       Gm11, Gm22, Gm33, &
       AF_P )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: PF_D, PF_V1, PF_V2, PF_V3, &
                              PF_E, PF_Ne, AF_P, &
