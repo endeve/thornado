@@ -16,10 +16,12 @@ all: PrimitiveConserved_Richardson
 PrimitiveConserved_Richardson: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_Relativistic.o \
+        TwoMoment_TimersModule_Relativistic.o    \
 	PrimitiveConserved_Richardson.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_Richardson_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_Relativistic.o \
+        TwoMoment_TimersModule_Relativistic.o    \
 	PrimitiveConserved_Richardson.o \
 	$(LIBRARIES)
 
