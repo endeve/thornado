@@ -136,12 +136,12 @@ PROGRAM ApplicationDriver
 
       AdvectionProfile = 'SineWave'
 
-      t_end = 1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
+      t_end = 1.0e-2_DP * Millisecond!1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
       bcX   = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0e2_DP, 1.0e2_DP, 1.0e2_DP ] * Kilometer
@@ -174,13 +174,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -188,19 +188,19 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  UseSlopeLimiter           = .TRUE.
+  UseSlopeLimiter           = .FALSE.
   SlopeLimiterMethod        = 'TVD'
-  BetaTVD                   = 1.75d0
-  BetaTVB                   = 0.0d0
-  SlopeTolerance            = 1.0d-6
+  BetaTVD                   = 1.75_DP
+  BetaTVB                   = 0.0_DP
+  SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
-  UseTroubledCellIndicator  = .FALSE.
+  UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
 
   ! === End of User Input ===
 
@@ -233,7 +233,7 @@ PROGRAM ApplicationDriver
   CALL InitializeReferenceElementX_Lagrange
 
   CALL ComputeGeometryX &
-       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
@@ -292,9 +292,9 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
     CALL WriteFieldsHDF &
@@ -308,9 +308,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
+  iCycleD = 1
 !!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  dt_wrt = 1.0e+2_DP * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -393,9 +393,9 @@ PROGRAM ApplicationDriver
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
       CALL WriteFieldsHDF &
@@ -424,9 +424,9 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
   CALL WriteFieldsHDF &
@@ -453,21 +453,21 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeTimers_Euler
 
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git info'
-  WRITE(*,'(2x,A)') '--------'
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git branch:'
-  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git describe --tags:'
-  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'date:'
-  CALL EXECUTE_COMMAND_LINE( 'date' )
-  WRITE(*,*)
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git info'
+!!$  WRITE(*,'(2x,A)') '--------'
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git branch:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git describe --tags:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'date:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'date' )
+!!$  WRITE(*,*)
 
 END PROGRAM ApplicationDriver

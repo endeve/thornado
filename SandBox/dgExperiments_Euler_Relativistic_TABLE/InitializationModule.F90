@@ -109,7 +109,7 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
 
     INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1
+    INTEGER  :: iNX, iNX1
     REAL(DP) :: X1
 
     REAL(DP) :: D_0 = 1.0e12_DP
@@ -127,82 +127,104 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
-      DO iNodeX = 1, nDOFX
+      iNX1 = NodeNumberTableX(1,iNX)
 
-        iNodeX1 = NodeNumberTableX(1,iNodeX)
+      X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      SELECT CASE( TRIM( AdvectionProfile ) )
 
-        SELECT CASE( TRIM( AdvectionProfile ) )
+        CASE( 'SineWave' )
 
-          CASE( 'SineWave' )
+          uPF(iNX,iX1,iX2,iX3,iPF_D ) &
+            = D_0 + Amp * SIN( TwoPi * X1 / L )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-              = D_0 + Amp * SIN( TwoPi * X1 / L )
+          uPF(iNX,iX1,iX2,iX3,iPF_V1) &
+            = 3.0e4_DP * unitsPF(iPF_V1)
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-              = 3.0e4_DP * unitsPF(iPF_V1)
+          uPF(iNX,iX1,iX2,iX3,iPF_V2) &
+            = 0.0_DP   * unitsPF(iPF_V2)
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-              = 0.0_DP   * unitsPF(iPF_V2)
+          uPF(iNX,iX1,iX2,iX3,iPF_V3) &
+            = 0.0_DP   * unitsPF(iPF_V3)
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
-              = 0.0_DP   * unitsPF(iPF_V3)
+          uAF(iNX,iX1,iX2,iX3,iAF_P ) &
+            = 0.1_DP  * D_0 * SpeedOfLight**2
 
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) &
-              = 0.01_DP  * uPF(iNodeX,iX1,iX2,iX3,iPF_D) * SpeedOfLight**2
+          uAF(iNX,iX1,iX2,iX3,iAF_Ye) &
+            = 0.3_DP   * unitsAF(iAF_Ye)
 
-            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
-              = 0.3_DP   * unitsAF(iAF_Ye)
+        CASE DEFAULT
 
-          CASE DEFAULT
+          WRITE(*,*)
+          WRITE(*,'(A,A)') &
+            'Invalid choice for AdvectionProfile: ', AdvectionProfile
+          WRITE(*,'(A)') 'Valid choices:'
+          WRITE(*,'(A)') '  SineWave'
+          WRITE(*,*)
+          WRITE(*,'(A)') 'Stopping...'
+          STOP
 
-            WRITE(*,*)
-            WRITE(*,'(A,A)') &
-              'Invalid choice for AdvectionProfile: ', AdvectionProfile
-            WRITE(*,'(A)') 'Valid choices:'
-            WRITE(*,'(A)') '  SineWave'
-            WRITE(*,*)
-            WRITE(*,'(A)') 'Stopping...'
-            STOP
+      END SELECT
 
-        END SELECT
+    END DO
+    END DO
+    END DO
+    END DO
 
-      END DO
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+  !$OMP TARGET UPDATE TO( uPF, uAF )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+  !$ACC UPDATE DEVICE   ( uPF, uAF )
+#endif
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
       CALL ComputeTemperatureFromPressure &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uAF(:,iX1,iX2,iX3,iAF_P ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uAF(:,iX1,iX2,iX3,iAF_T ) )
+             ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_P ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_Ye), &
+               uAF(iNX,iX1,iX2,iX3,iAF_T ) )
 
       CALL ComputeThermodynamicStates_Primitive &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uAF(:,iX1,iX2,iX3,iAF_E ), &
-               uPF(:,iX1,iX2,iX3,iPF_Ne) )
+             ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_T ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_Ye), &
+               uPF(iNX,iX1,iX2,iX3,iPF_E ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_E ), &
+               uPF(iNX,iX1,iX2,iX3,iPF_Ne) )
 
       CALL ComputeConserved_Euler_Relativistic &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uPF(:,iX1,iX2,iX3,iPF_V1), &
-               uPF(:,iX1,iX2,iX3,iPF_V2), &
-               uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uPF(:,iX1,iX2,iX3,iPF_Ne), &
-               uCF(:,iX1,iX2,iX3,iCF_D ), &
-               uCF(:,iX1,iX2,iX3,iCF_S1), &
-               uCF(:,iX1,iX2,iX3,iCF_S2), &
-               uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), &
-               uCF(:,iX1,iX2,iX3,iCF_Ne), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uAF(:,iX1,iX2,iX3,iAF_P) )
+             ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
+               uPF(iNX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNX,iX1,iX2,iX3,iPF_V3), &
+               uPF(iNX,iX1,iX2,iX3,iPF_E ), &
+               uPF(iNX,iX1,iX2,iX3,iPF_Ne), &
+               uCF(iNX,iX1,iX2,iX3,iCF_D ), &
+               uCF(iNX,iX1,iX2,iX3,iCF_S1), &
+               uCF(iNX,iX1,iX2,iX3,iCF_S2), &
+               uCF(iNX,iX1,iX2,iX3,iCF_S3), &
+               uCF(iNX,iX1,iX2,iX3,iCF_E ), &
+               uCF(iNX,iX1,iX2,iX3,iCF_Ne), &
+               uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(iNX,iX1,iX2,iX3,iAF_P) )
 
+    END DO
     END DO
     END DO
     END DO
@@ -213,10 +235,10 @@ CONTAINS
   SUBROUTINE InitializeFields_RiemannProblem &
     ( RiemannProblemName )
 
-    CHARACTER(LEN=*), INTENT(in)           :: RiemannProblemName
+    CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
     INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1
+    INTEGER  :: iNX, iNX1
     REAL(DP) :: X1, XD
 
     REAL(DP) :: LeftStatePF(nPF), RightStatePF(nPF)
@@ -296,67 +318,89 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
-      DO iNodeX = 1, nDOFX
+      iNX1 = NodeNumberTableX(1,iNX)
 
-        iNodeX1 = NodeNumberTableX(1,iNodeX)
+      X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      IF( X1 .LE. XD )THEN
 
-        IF( X1 .LE. XD )THEN
+        uPF(iNX,iX1,iX2,iX3,iPF_D ) = LeftStatePF(iPF_D )
+        uPF(iNX,iX1,iX2,iX3,iPF_V1) = LeftStatePF(iPF_V1)
+        uPF(iNX,iX1,iX2,iX3,iPF_V2) = LeftStatePF(iPF_V2)
+        uPF(iNX,iX1,iX2,iX3,iPF_V3) = LeftStatePF(iPF_V3)
+        uAF(iNX,iX1,iX2,iX3,iAF_P ) = LeftStateAF(iAF_P )
+        uAF(iNX,iX1,iX2,iX3,iAF_Ye) = LeftStateAF(iAF_Ye)
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = LeftStatePF(iPF_D )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftStatePF(iPF_V1)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftStatePF(iPF_V2)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftStatePF(iPF_V3)
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = LeftStateAF(iAF_P )
-          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = LeftStateAF(iAF_Ye)
+      ELSE
 
-        ELSE
+        uPF(iNX,iX1,iX2,iX3,iPF_D ) = RightStatePF(iPF_D )
+        uPF(iNX,iX1,iX2,iX3,iPF_V1) = RightStatePF(iPF_V1)
+        uPF(iNX,iX1,iX2,iX3,iPF_V2) = RightStatePF(iPF_V2)
+        uPF(iNX,iX1,iX2,iX3,iPF_V3) = RightStatePF(iPF_V3)
+        uAF(iNX,iX1,iX2,iX3,iAF_P ) = RightStateAF(iAF_P )
+        uAF(iNX,iX1,iX2,iX3,iAF_Ye) = RightStateAF(iAF_Ye)
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = RightStatePF(iPF_D )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = RightStatePF(iPF_V1)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightStatePF(iPF_V2)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightStatePF(iPF_V3)
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = RightStateAF(iAF_P )
-          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = RightStateAF(iAF_Ye)
+      END IF
 
-        END IF
+    END DO
+    END DO
+    END DO
+    END DO
 
-      END DO
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+  !$OMP TARGET UPDATE TO( uPF, uAF )
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+  !$ACC UPDATE DEVICE   ( uPF, uAF )
+#endif
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
       CALL ComputeTemperatureFromPressure &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uAF(:,iX1,iX2,iX3,iAF_P ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uAF(:,iX1,iX2,iX3,iAF_T ) )
+             ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_P ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_Ye), &
+               uAF(iNX,iX1,iX2,iX3,iAF_T ) )
 
       CALL ComputeThermodynamicStates_Primitive &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uAF(:,iX1,iX2,iX3,iAF_E ), &
-               uPF(:,iX1,iX2,iX3,iPF_Ne) )
+             ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_T ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_Ye), &
+               uPF(iNX,iX1,iX2,iX3,iPF_E ), &
+               uAF(iNX,iX1,iX2,iX3,iAF_E ), &
+               uPF(iNX,iX1,iX2,iX3,iPF_Ne) )
 
       CALL ComputeConserved_Euler_Relativistic &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uPF(:,iX1,iX2,iX3,iPF_V1), &
-               uPF(:,iX1,iX2,iX3,iPF_V2), &
-               uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uPF(:,iX1,iX2,iX3,iPF_Ne), &
-               uCF(:,iX1,iX2,iX3,iCF_D ), &
-               uCF(:,iX1,iX2,iX3,iCF_S1), &
-               uCF(:,iX1,iX2,iX3,iCF_S2), &
-               uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), &
-               uCF(:,iX1,iX2,iX3,iCF_Ne), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uAF(:,iX1,iX2,iX3,iAF_P) )
+             ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
+               uPF(iNX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNX,iX1,iX2,iX3,iPF_V3), &
+               uPF(iNX,iX1,iX2,iX3,iPF_E ), &
+               uPF(iNX,iX1,iX2,iX3,iPF_Ne), &
+               uCF(iNX,iX1,iX2,iX3,iCF_D ), &
+               uCF(iNX,iX1,iX2,iX3,iCF_S1), &
+               uCF(iNX,iX1,iX2,iX3,iCF_S2), &
+               uCF(iNX,iX1,iX2,iX3,iCF_S3), &
+               uCF(iNX,iX1,iX2,iX3,iCF_E ), &
+               uCF(iNX,iX1,iX2,iX3,iCF_Ne), &
+               uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(iNX,iX1,iX2,iX3,iAF_P) )
 
+    END DO
     END DO
     END DO
     END DO
