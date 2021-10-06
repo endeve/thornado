@@ -188,6 +188,7 @@ CONTAINS
 
     LOGICAL  :: NegativeStates
     INTEGER  :: iX1, iX2, iX3, iCF, iQ, iP
+    INTEGER  :: ITERATION
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K
     REAL(DP) :: Min_Y_K, Max_Y_K, Min_E_K
     REAL(DP) :: Min_N, Max_N, Min_E(nPT), Max_E(nPT)
@@ -424,14 +425,17 @@ CONTAINS
 
       END DO
 
-      DO iP = 1, nDOFX ! --- Diagnostics (excludes points on interfaces)
+      ITERATION = 0
+      DO WHILE( ANY( E_PP < Min_E ) )
 
-        D(iP,iX1,iX2,iX3,iDF_MinE) = Min_E(iP)
-        D(iP,iX1,iX2,iX3,iDF_MaxE) = Max_E(iP)
+        ITERATION = ITERATION + 1
 
-      END DO
+        DO iP = 1, nDOFX ! --- Diagnostics (excludes points on interfaces)
 
-      IF( ANY( E_PP(:) < Min_E(:) ) )THEN
+          D(iP,iX1,iX2,iX3,iDF_MinE) = Min_E(iP)
+          D(iP,iX1,iX2,iX3,iDF_MaxE) = Max_E(iP)
+
+        END DO
 
         CALL ComputeSpecificInternalEnergyAndElectronFraction &
                ( U_K(1:nCF), E_K, Y_K )
@@ -439,20 +443,27 @@ CONTAINS
         CALL ComputeSpecificInternalEnergy_TABLE &
                ( U_K(iCF_D), Min_T, Y_K, Min_E_K )
 
-        Theta_3 = One
+        IF( ITERATION .LT. 10 )THEN
 
-        DO iP = 1, nPT
+          Theta_3 = One
+          DO iP = 1, nPT
 
-          IF( E_PP(iP) < Min_E(iP) )THEN
+            IF( E_PP(iP) < Min_E(iP) )THEN
 
-            CALL SolveTheta_Bisection &
-                   ( U_PP(iP,1:nCF), U_K(1:nCF), Min_E(iP), Min_E_K, Theta_P )
+              CALL SolveTheta_Bisection &
+                     ( U_PP(iP,1:nCF), U_K(1:nCF), Min_E(iP), Min_E_K, Theta_P )
 
-            Theta_3 = MIN( Theta_3, SafetyFactor * Theta_P )
+              Theta_3 = MIN( Theta_3, SafetyFactor * Theta_P )
 
-          END IF
+            END IF
 
-        END DO
+          END DO
+
+        ELSE
+
+          Theta_3 = Zero
+
+        END IF
 
         ! --- Limit Towards Cell Average ---
 
@@ -467,7 +478,24 @@ CONTAINS
         D(:,iX1,iX2,iX3,iDF_T3) &
           = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T3) ), Theta_3 )
 
-      END IF
+        ! --- Recompute Point Values ---
+
+        CALL ComputePointValues_Fluid( U_q, U_PP )
+
+        DO iP = 1, nPT
+
+          CALL ComputeSpecificInternalEnergyAndElectronFraction &
+                 ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
+
+          CALL ComputeSpecificInternalEnergy_TABLE &
+                 ( U_PP(iP,iCF_D), Min_T, Y_PP(iP), Min_E(iP) )
+
+          CALL ComputeSpecificInternalEnergy_TABLE &
+                 ( U_PP(iP,iCF_D), Max_T, Y_PP(iP), Max_E(iP) )
+
+        END DO
+
+      END DO ! --- WHILE( ANY( E_PP < Min_E ) )
 
       IF( NegativeStates )THEN
 
@@ -575,9 +603,9 @@ CONTAINS
   END FUNCTION eFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, MinEK, Theta_P )
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, MinE_K, Theta_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE, MinEK
+    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE, MinE_K
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -595,7 +623,7 @@ CONTAINS
               x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2), &
               x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3), &
               x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E) ) &
-          - ( x_a * MinE + ( One - x_a ) * MinEK )
+          - ( x_a * MinE + ( One - x_a ) * MinE_K )
 
     x_b = One
     f_b = eFun &
@@ -604,7 +632,7 @@ CONTAINS
               x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2), &
               x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3), &
               x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E) ) &
-          - ( x_b * MinE + ( One - x_b ) * MinEK )
+          - ( x_b * MinE + ( One - x_b ) * MinE_K )
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
@@ -637,7 +665,7 @@ CONTAINS
                 x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2), &
                 x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3), &
                 x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E) ) &
-            - ( x_c * MinE + ( One - x_c ) * MinEK )
+            - ( x_c * MinE + ( One - x_c ) * MinE_K )
 
       IF( f_a * f_c < Zero )THEN
 
