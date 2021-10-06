@@ -12,7 +12,7 @@ DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver
+all: ApplicationDriver ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -28,12 +28,24 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
+ComputePrimitiveTest: \
+	$(weaklib) \
+	$(thornado) \
+	ComputePrimitiveTest.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	ComputePrimitiveTest.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
+	rm -f  ComputePrimitiveTest_$(MACHINE)
+	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
 
 ApplicationDriver.o: \
   KindModule.o \
@@ -68,7 +80,7 @@ InitializationModule.o: \
   EquationOfStateModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   UnitsModule.o \
-  InitializationModule.f90
+  InitializationModule.F90
 
 TimeSteppingModule_SSPRK.o: \
   KindModule.o \
@@ -80,3 +92,17 @@ TimeSteppingModule_SSPRK.o: \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90
+
+ComputePrimitiveTest.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ProgramHeaderModule.o \
+  UnitsModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_ErrorModule.o \
+  ComputePrimitiveTest.F90
