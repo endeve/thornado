@@ -198,7 +198,9 @@ CONTAINS
       BoundaryCondition = 0 ! No Boundary Condition
     END IF
 
+#ifdef THORNADO_DEBUG
     IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN when enter TimeStep'
+#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -219,7 +221,9 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 #endif
 
+#ifdef THORNADO_DEBUG
     IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN before Copy U_R'
+#endif
 
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
@@ -232,6 +236,7 @@ CONTAINS
     CALL AddFields_Radiation &
            ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
 
+#ifdef THORNADO_DEBUG
     IF( DEBUG ) THEN
       IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
         PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
@@ -239,6 +244,7 @@ CONTAINS
         STOP ' Negative U_R(iCR_N) when enter Update_IMEX_PDARS'
       END IF
     END IF
+#endif
 
     ! ---------------
     ! --- Stage 1 ---
@@ -299,6 +305,7 @@ CONTAINS
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
+#ifdef THORNADO_DEBUG
       IF( DEBUG ) THEN
         IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
           PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
@@ -306,6 +313,7 @@ CONTAINS
           STOP ' Negative U_R(iCR_N) after applied first limiter'
         END IF
       END IF
+#endif
 
       ! --- Apply Boundary Condition ---
 
@@ -317,6 +325,7 @@ CONTAINS
              ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
 #endif
 
+#ifdef THORNADO_DEBUG
       IF( DEBUG ) THEN
         IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
           PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
@@ -324,6 +333,7 @@ CONTAINS
           STOP ' Negative U_R(iCR_N) before ComputeIncrement_TwoMoment_Explicit'
         END IF
       END IF
+#endif
 
       ! --- Explicit Solver ---
 
@@ -365,18 +375,21 @@ CONTAINS
 
     END IF
 
+#ifdef THORNADO_DEBUG
     IF( DEBUG ) THEN
       IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
         PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
         PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
       END IF
     END IF
+#endif
 
     ! --- Apply Increment ---
 
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R )
 
+#ifdef THORNADO_DEBUG
     IF( DEBUG ) THEN
       IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
         PRINT*, 'MIN N  =', MINVAL(U_R(:,:,:,:,:,iCR_N,:))
@@ -387,6 +400,7 @@ CONTAINS
     END IF
 
     IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN before second limiter'
+#endif
 
     ! --- Apply Limiter ---
 
@@ -402,6 +416,7 @@ CONTAINS
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
+#ifdef THORNADO_DEBUG
     IF( DEBUG ) THEN
       IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) )THEN
         PRINT*, 'Negative U_R(:,:,:,:,:,iCR_N,:) after applied second limiter'
@@ -429,6 +444,7 @@ CONTAINS
     END IF
 
     IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN after second limiter'
+#endif
 
     ! --- Implicit Step ---
 
@@ -520,6 +536,7 @@ CONTAINS
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
+#ifdef THORNADO_DEBUG
     IF( DEBUG ) THEN
       IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
         PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
@@ -527,6 +544,7 @@ CONTAINS
         STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied limiter 441'
       END IF
     END IF
+#endif
 
     IF( .NOT. SingleStage ) THEN
 
@@ -727,7 +745,9 @@ CONTAINS
 
     END IF
 
+#ifdef THORNADO_DEBUG
     IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN @ end of [Update_IMEX_PDARS]'
+#endif
 
 #ifdef THORNADO_DEBUG_IMEX
 #if defined(THORNADO_OMP_OL)
