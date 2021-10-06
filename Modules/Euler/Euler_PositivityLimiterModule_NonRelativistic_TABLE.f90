@@ -230,22 +230,6 @@ CONTAINS
 
       IF( U_K(iCF_D) < Min_D .OR. U_K(iCF_D) > Max_D )THEN
 
-        ! --- Cell Average Density Outside Bounds ---
-
-        PRINT*
-        PRINT*, "Cell Average Density Outside Bounds"
-        PRINT*
-        PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
-        PRINT*
-        PRINT*, "Min_D, Max_D, D_K = ", &
-          Min_D / Unit_D, Max_D / Unit_D, U_K(iCF_D) / Unit_D
-        DO iQ = 1, nDOFX
-          PRINT*, "iQ, D(iQ) = ", iQ, U_q(iQ,iCF_D) / Unit_D
-        END DO
-        PRINT*
-        PRINT*, "Y_K = ", Y_K
-        PRINT*
-
         ! --- Force Cell Averages Inside Table Bounds ---
 
         IF( U_K(iCF_D) < Min_D )THEN
@@ -296,12 +280,6 @@ CONTAINS
                  Min_N_K - Min_N ] < Zero ) ) &
       THEN
 
-        PRINT*, "Step 1"
-
-        PRINT*, "Min_D, Min_D_K, D_K = ", Min_D, Min_D_K, U_K(iCF_D)
-        PRINT*, "Max_D, Max_D_K, D_K = ", Max_D, Max_D_K, U_K(iCF_D)
-        PRINT*, "Min_N, Min_N_K, N_K = ", Min_N, Min_N_K, U_K(iCF_Ne)
-
         Theta_1 = One
 
         DO iP = 1, nPT
@@ -350,15 +328,6 @@ CONTAINS
         D(:,iX1,iX2,iX3,iDF_T1) &
           = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T1) ), Theta_1 )
 
-        IF( ANY( U_PP(:,iCF_D) < Min_D ) )THEN
-
-          PRINT*, "Failed Step 1"
-          STOP
-
-        END IF
-
-        PRINT*, "Passed Step 1.  Theta_1 = ", Theta_1
-
       END IF
 
       ! -------------------------------------------------------------------
@@ -371,22 +340,13 @@ CONTAINS
 
       IF( Min_Y_K < Min_Y .OR. Max_Y_K > Max_Y )THEN
 
-        PRINT*, "Step 2"
-
-        PRINT*, "Min_Y, Min_Y_K, Y_K = ", Min_Y, Min_Y_K, Y_K
-        PRINT*, "Max_Y, Max_Y_K, Y_K = ", Max_Y, Max_Y_K, Y_K
-
         Alpha = MIN( One, &
                      ABS( ( Min_Y - Y_K ) / ( Min_Y_K - Y_K ) ), &
                      ABS( ( Max_Y - Y_K ) / ( Max_Y_K - Y_K ) ) )
 
-        PRINT*, "Alpha   = ", Alpha
-
         Theta_2 &
           = SafetyFactor * Alpha * U_K(iCF_D) &
             / ( Alpha * U_K(iCF_D) + (One-Alpha) * MAXVAL(U_PP(:,iCF_D)) )
-
-        PRINT*, "Theta_2 = ", Theta_2
 
         ! --- Limit Mass and Electron Density Towards Cell Average ---
 
