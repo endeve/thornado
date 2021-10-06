@@ -99,7 +99,7 @@ PROGRAM ApplicationDriver
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
 
-  ProgramName = 'Advection'
+  ProgramName = 'RiemannProblem'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
@@ -147,11 +147,11 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'Pochik'
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 100, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
       xR = [ + 5.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
       zoomX = One
@@ -164,16 +164,27 @@ PROGRAM ApplicationDriver
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .TRUE.
+      UseSlopeLimiter           = .FALSE.
       UseCharacteristicLimiting = .FALSE.
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-2
       UsePositivityLimiter      = .TRUE.
 
-      iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond
-      dt_wrt  = 1.25d-4 * Millisecond
+      iCycleD = 1
+
+      SELECT CASE( TRIM( RiemannProblemName ) )
+      CASE( 'Sod' )
+
+        t_end  = 2.5d-2 * Millisecond
+        dt_wrt = 5.0d-2 * t_end
+
+      CASE( 'Pochik' )
+
+        t_end  = 2.0d-1 * Millisecond
+        dt_wrt = 5.0d-2 * t_end
+
+      END SELECT
 
    CASE( 'RiemannProblemSpherical' )
 
