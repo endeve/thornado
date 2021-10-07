@@ -252,7 +252,7 @@ CONTAINS
 
           IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
           CALL AddIncrement_Fluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
+                 ( jS, One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK )
 
         END IF
 
@@ -283,7 +283,7 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
+               ( iS, One, U, dt * w_SSPRK(iS), D_SSPRK )
 
       END IF
 
@@ -312,14 +312,16 @@ CONTAINS
   END SUBROUTINE UpdateFluid_SSPRK
 
 
-  SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
+  SUBROUTINE AddIncrement_Fluid( iS, alpha, U, beta, D )
 
+    INTEGER,  INTENT(in)    :: &
+      iS
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:,:)
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF
 
@@ -337,9 +339,9 @@ CONTAINS
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
 
-      U(:,iX1,iX2,iX3,iCF) &
-        = alpha * U(:,iX1,iX2,iX3,iCF) &
-            + beta * D(:,iX1,iX2,iX3,iCF)
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = alpha * U(iNX,iX1,iX2,iX3,iCF) &
+            + beta * D(iNX,iX1,iX2,iX3,iCF,iS)
 
     END DO
     END DO
