@@ -111,88 +111,264 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Euler_Relativistic_GPU &
-    ( N, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF )
+    ( N, &
+      uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+      pDa, pV1a, pV2a, pV3a, pEa, pNea, &
+      Gm_dd_11a, Gm_dd_22a, Gm_dd_33a ) ! a for all
 
-    INTEGER,  INTENT(in)  :: &
-      N, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
-      uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(in)  :: N
+    REAL(DP), INTENT(in)  :: uDa(N), uS1a(N), uS2a(N), uS3a(N), uEa(N), uNea(N)
+    REAL(DP), INTENT(out) :: pDa(N), pV1a(N), pV2a(N), pV3a(N), pEa(N), pNea(N)
+    REAL(DP), INTENT(in)  :: Gm_dd_11a(N), Gm_dd_22a(N), Gm_dd_33a(N)
 
-    INTEGER :: iErr(N,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    INTEGER :: iNX, iX1, iX2, iX3
+    INTEGER  :: IsPhysical(N)
+    INTEGER  :: iX, nP, iP ! P for physical
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    REAL(DP), ALLOCATABLE :: &
+      uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:), &
+      pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:), &
+      Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:), &
+      S(:), q(:), r(:), k(:), z0(:), W(:), eps(:), p(:), DhW(:)
+
+    INTEGER, ALLOCATABLE :: iErr(:)
+
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, uGF, uCF ) &
-    !$OMP MAP( alloc: uPF, iErr )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP MAP( to:    uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+    !$OMP             Gm_dd_11a, Gm_dd_22a, Gm_dd_33a ) &
+    !$OMP MAP( alloc: pDa, pV1a, pV2a, pV3a, pEa, pNea )
+#elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, uGF, uCF ) &
-    !$ACC CREATE(     uPF, iErr )
+    !$ACC COPYIN(     uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+    !$ACC             Gm_dd_11a, Gm_dd_22a, Gm_dd_33a ) &
+    !$ACC CREATE(     pDa, pV1a, pV2a, pV3a, pEa, pNea )
 #endif
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uGF, uCF, uPF, iErr )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    ! --- Isolate elements whose primitives can be recovered ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( uDa )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE HOST       ( uDa )
 #endif
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, N
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+    nP = 0
 
-      CALL ComputePrimitive_Scalar &
-             ( uCF (iNX,iX1,iX2,iX3,iCF_D ), &
-               uCF (iNX,iX1,iX2,iX3,iCF_S1), &
-               uCF (iNX,iX1,iX2,iX3,iCF_S2), &
-               uCF (iNX,iX1,iX2,iX3,iCF_S3), &
-               uCF (iNX,iX1,iX2,iX3,iCF_E ), &
-               uCF (iNX,iX1,iX2,iX3,iCF_Ne), &
-               uPF (iNX,iX1,iX2,iX3,iPF_D ), &
-               uPF (iNX,iX1,iX2,iX3,iPF_V1), &
-               uPF (iNX,iX1,iX2,iX3,iPF_V2), &
-               uPF (iNX,iX1,iX2,iX3,iPF_V3), &
-               uPF (iNX,iX1,iX2,iX3,iPF_E ), &
-               uPF (iNX,iX1,iX2,iX3,iPF_Ne), &
-               uGF (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr(iNX,iX1,iX2,iX3) )
+    DO iX = 1, N
+
+      IF( uDa(iX) .LT. MinD )THEN
+
+        IsPhysical(iX) = -1
+
+      ELSE
+
+        nP             = nP + 1
+        IsPhysical(iX) = nP
+
+      END IF
 
     END DO
-    END DO
-    END DO
+
+    ALLOCATE( uD(nP), uS1(nP), uS2(nP), uS3(nP), uE(nP), uNe(nP), &
+              pD(nP), pV1(nP), pV2(nP), pV3(nP), pE(nP), pNe(nP), &
+              Gm_dd_11(nP), Gm_dd_22(nP), Gm_dd_33(nP), &
+              S(nP), q(nP), r(nP), k(nP), z0(nP), W(nP), &
+              eps(nP), p(nP), DhW(nP), iErr(nP) )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    IsPhysical ) &
+    !$OMP MAP( alloc: uD, uS1, uS2, uS3, uE, uNe, &
+    !$OMP             pD, pV1, pV2, pV3, pE, pNe, &
+    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP             S, q, r, k, z0, W, eps, p, DhW, iErr )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     IsPhysical ) &
+    !$ACC CREATE(     uD, uS1, uS2, uS3, uE, uNe, &
+    !$ACC             pD, pV1, pV2, pV3, pE, pNe, &
+    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC             S, q, r, k, z0, W, eps, p, DhW, iErr )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( uD,  uS1,  uS2,  uS3,  uE,  uNe, &
+    !$ACC          uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+    !$ACC          pD,  pV1,  pV2,  pV3,  pE,  pNe, &
+    !$ACC          pDa, pV1a, pV2a, pV3a, pEa, pNea, &
+    !$ACC          Gm_dd_11,  Gm_dd_22,  Gm_dd_33, &
+    !$ACC          Gm_dd_11a, Gm_dd_22a, Gm_dd_33a, &
+    !$ACC          IsPhysical )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iX = 1, N
+
+      IF( IsPhysical(iX) .GT. 0 )THEN
+
+        uD (IsPhysical(iX)) = uDa (iX)
+        uS1(IsPhysical(iX)) = uS1a(iX)
+        uS2(IsPhysical(iX)) = uS2a(iX)
+        uS3(IsPhysical(iX)) = uS3a(iX)
+        uE (IsPhysical(iX)) = uEa (iX)
+        uNe(IsPhysical(iX)) = uNea(iX)
+
+        pD (IsPhysical(iX)) = pDa (iX)
+        pV1(IsPhysical(iX)) = pV1a(iX)
+        pV2(IsPhysical(iX)) = pV2a(iX)
+        pV3(IsPhysical(iX)) = pV3a(iX)
+        pE (IsPhysical(iX)) = pEa (iX)
+        pNe(IsPhysical(iX)) = pNea(iX)
+
+        Gm_dd_11(IsPhysical(iX)) = Gm_dd_11a(iX)
+        Gm_dd_22(IsPhysical(iX)) = Gm_dd_22a(iX)
+        Gm_dd_33(IsPhysical(iX)) = Gm_dd_33a(iX)
+
+      END IF
+
     END DO
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    ! --- Eq. C2 ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, &
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC          S, q, r, k )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+
+      S(iP) = SQRT(   uS1(iP)**2 / Gm_dd_11(iP) &
+                    + uS2(iP)**2 / Gm_dd_22(iP) &
+                    + uS3(iP)**2 / Gm_dd_33(iP) )
+
+      q(iP) = uE(iP) / uD(iP)
+      r(iP) = S (iP) / uD(iP)
+      k(iP) = r (iP) / ( One + q(iP) )
+
+      IF( q(iP) .LT. Zero )THEN
+
+        r(iP) = k(iP)
+        q(iP) = Zero
+
+      END IF
+
+    END DO
+
+ierr=0
+!$acc update device( ierr )
+
+    ! --- Solve for primitives ---
+
+    ! --- Eq. C15/C16 ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( W, z0, uD, uNe, eps, q, r, p, DhW, &
+    !$ACC          pD, pV1, pV2, pV3, pE, pNe )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+
+      W  (iP) = SQRT( One + z0(iP)**2 )
+      pD (iP) = uD (iP) / W(iP)
+      pNe(iP) = uNe(iP) / W(iP)
+      eps(iP) = W(iP) * q(iP) - z0(iP) * r(iP) + z0(iP)**2 / ( One + W(iP) )
+
+      CALL ComputePressureFromSpecificInternalEnergy &
+             ( pD(iP), eps(iP), AtomicMassUnit * pNe(iP) / pD(iP), p(iP) )
+
+      DhW(iP) = uD(iP) * ( One + eps(iP) + p(iP) / pD(iP) ) * W(iP)
+
+      pV1(iP) = ( uS1(iP) / Gm_dd_11(iP) ) / DhW(iP)
+      pV2(iP) = ( uS2(iP) / Gm_dd_22(iP) ) / DhW(iP)
+      pV3(iP) = ( uS3(iP) / Gm_dd_33(iP) ) / DhW(iP)
+      pE (iP) = pD(iP) * eps(iP)
+
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( pD,  pV1,  pV2,  pV3,  pE,  pNe, &
+    !$ACC          pDa, pV1a, pV2a, pV3a, pEa, pNea, &
+    !$ACC          uDa, uEa, uNea, IsPhysical )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iX = 1, N
+
+      IF( IsPhysical(iX) .GT. 0 )THEN
+
+        pDa (iX) = pD (IsPhysical(iX))
+        pV1a(iX) = pV1(IsPhysical(iX))
+        pV2a(iX) = pV2(IsPhysical(iX))
+        pV3a(iX) = pV3(IsPhysical(iX))
+        pEa (iX) = pE (IsPhysical(iX))
+        pNea(iX) = pNe(IsPhysical(iX))
+
+      ELSE
+
+        pDa (iX) = 1.01_DP * MinD
+        pV1a(iX) = Zero
+        pV2a(iX) = Zero
+        pV3a(iX) = Zero
+        pEa (iX) = MAX( uEa(iX), SqrtTiny )
+        pNea(iX) = uNea(iX) / uDa(iX)
+
+      END IF
+
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    uPF, iErr ) &
-    !$OMP MAP( release: iX_B0, iX_E0, uGF, uCF )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP MAP( from:    iErr ) &
+    !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
+    !$OMP               pD, pV1, pV2, pV3, pE, pNe, &
+    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP               S, q, r, k, z0, W, eps, p, DhW, IsPhysical )
+#elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(     uPF, iErr ) &
-    !$ACC DELETE(      iX_B0, iX_E0, uGF, uCF )
+    !$ACC COPYOUT(      iErr ) &
+    !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
+    !$ACC               pD, pV1, pV2, pV3, pE, pNe, &
+    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC               S, q, r, k, z0, W, eps, p, DhW, IsPhysical )
 #endif
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, N
+    DO iP = 1, nP
 
-      CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+      CALL DescribeError_Euler( iErr(iP) )
 
     END DO
-    END DO
-    END DO
-    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    pDa, pV1a, pV2a, pV3a, pEa, pNea ) &
+    !$OMP MAP( release: uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+    !$OMP               Gm_dd_11a, Gm_dd_22a, Gm_dd_33a )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      pDa, pV1a, pV2a, pV3a, pEa, pNea ) &
+    !$ACC DELETE(       uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+    !$ACC               Gm_dd_11a, Gm_dd_22a, Gm_dd_33a )
+#endif
+
+    DEALLOCATE( uD, uS1, uS2, uS3, uE, uNe, &
+                pD, pV1, pV2, pV3, pE, pNe, &
+                Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                S, q, r, k, z0, W, eps, p, DhW )
 
   END SUBROUTINE ComputePrimitive_Euler_Relativistic_GPU
 

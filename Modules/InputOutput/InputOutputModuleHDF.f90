@@ -50,8 +50,8 @@ MODULE InputOutputModuleHDF
   IMPLICIT NONE
   PRIVATE
 
-  CHARACTER(9),  PARAMETER :: &
-    OutputDirectory = '../Output'
+  CHARACTER(13),  PUBLIC :: OutputDirectory
+
   CHARACTER(14), PARAMETER :: &
     GeometrySuffix  = 'GeometryFields'
   CHARACTER(11), PARAMETER :: &

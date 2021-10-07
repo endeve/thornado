@@ -12,7 +12,7 @@ DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver ComputePrimitiveTest
+all: ApplicationDriver #ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -50,19 +50,19 @@ clobber: clean
 ApplicationDriver.o: \
   KindModule.o \
   ProgramInitializationModule.o \
+  ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
   EquationOfStateModule.o \
   EquationOfStateModule_TABLE.o \
-  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
   GeometryComputationModule.o \
+  FluidFieldsModule.o \
   InitializationModule.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_TABLE.o \
   Euler_UtilitiesModule_Relativistic.o \
   InputOutputModuleHDF.o \
-  FluidFieldsModule.o \
-  GeometryFieldsModule.o \
   Euler_dgDiscretizationModule.o \
   TimeSteppingModule_SSPRK.o \
   Euler_TallyModule_Relativistic.o \

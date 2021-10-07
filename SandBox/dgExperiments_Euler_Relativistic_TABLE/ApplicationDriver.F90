@@ -8,6 +8,12 @@ PROGRAM ApplicationDriver
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE ProgramHeaderModule, ONLY: &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDimsX
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -24,14 +30,15 @@ PROGRAM ApplicationDriver
     MaxT, &
     MinY, &
     MaxY
-  USE ProgramHeaderModule, ONLY: &
-    iX_B0, &
-    iX_B1, &
-    iX_E0, &
-    iX_E1, &
-    nDimsX
+  USE GeometryFieldsModule, ONLY: &
+    uGF
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
+  USE FluidFieldsModule, ONLY: &
+    uCF, &
+    uPF, &
+    uAF, &
+    uDF
   USE InitializationModule, ONLY: &
     InitializeFields
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
@@ -47,14 +54,8 @@ PROGRAM ApplicationDriver
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF
-  USE FluidFieldsModule, ONLY: &
-    uCF, &
-    uPF, &
-    uAF, &
-    uDF
-  USE GeometryFieldsModule, ONLY: &
-    uGF
+    ReadFieldsHDF, &
+    OutputDirectory
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -116,6 +117,12 @@ PROGRAM ApplicationDriver
 
   LOGICAL :: UsePositivityLimiter
 
+#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
+  OutputDirectory = '../Output_GPU'
+#else
+  OutputDirectory = '../Output_CPU'
+#endif
+
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -136,12 +143,12 @@ PROGRAM ApplicationDriver
 
       AdvectionProfile = 'SineWave'
 
-      t_end = 1.0e-2_DP * Millisecond!1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
+      t_end = 5.0e-3_DP * Millisecond!1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
       bcX   = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 128, 1, 1 ]
+      nX  = [ 16, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0e2_DP, 1.0e2_DP, 1.0e2_DP ] * Kilometer
@@ -239,7 +246,8 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option &
              = 'TABLE', &
            EquationOfStateTableName_Option &
-             = TRIM( EosTableName ) )
+             = TRIM( EosTableName ), &
+           Verbose_Option = .TRUE. )
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_TABLE &
          ( UseSlopeLimiter_Option &
@@ -324,7 +332,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
+           BaseFileName_Option = TRIM( OutputDirectory ) // '/' )
 
   CALL ComputeTally_Euler_Relativistic &
        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
@@ -410,6 +419,8 @@ PROGRAM ApplicationDriver
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     END IF
+
+exit
 
   END DO
 
