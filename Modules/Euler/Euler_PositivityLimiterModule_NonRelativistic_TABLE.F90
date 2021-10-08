@@ -54,6 +54,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     TimersStop_Euler, &
     Timer_Euler_PositivityLimiter, &
     Timer_Euler_PL_LimitCells, &
+    Timer_Euler_PL_CopyIn, &
     Timer_Euler_PL_Permute, &
     Timer_Euler_PL_Integrate
 
@@ -336,6 +337,22 @@ CONTAINS
     Min_N = Min_D * Min_Y / BaryonMass
     Max_N = Max_D * Max_Y / BaryonMass
 
+    CALL TimersStart_Euler( Timer_Euler_PL_CopyIn )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0, iX_E0, G, U, Min_N, Max_N ) &
+    !$ACC CREATE( G_Q_h_d_1, G_Q_h_d_2, G_Q_h_d_2, G_Q_SqrtGm,  &
+    !$ACC         G_P_Gm_dd_11, G_P_Gm_dd_22, G_P_Gm_dd_33,     &
+    !$ACC         U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
+    !$ACC         U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+    !$ACC         U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_PL_CopyIn )
+
     ! --- Geometry Scale Factors and Metric Determinant in Quad. Points ---
 
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
@@ -343,7 +360,9 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, G, &
+    !$ACC          G_Q_h_d_1, G_Q_h_d_2, G_Q_h_d_3, G_Q_SqrtGm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -383,7 +402,9 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, &
+    !$ACC          G_P_Gm_dd_11, G_P_Gm_dd_22, G_P_Gm_dd_33 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -395,10 +416,8 @@ CONTAINS
 
         G_P_Gm_dd_11(iP,iX1,iX2,iX3) &
           = MAX( G_P_Gm_dd_11(iP,iX1,iX2,iX3)**2, SqrtTiny )
-
         G_P_Gm_dd_22(iP,iX1,iX2,iX3) &
           = MAX( G_P_Gm_dd_22(iP,iX1,iX2,iX3)**2, SqrtTiny )
-
         G_P_Gm_dd_33(iP,iX1,iX2,iX3) &
           = MAX( G_P_Gm_dd_33(iP,iX1,iX2,iX3)**2, SqrtTiny )
 
@@ -417,7 +436,9 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, U, &
+    !$ACC          U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -475,10 +496,12 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
 
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( Y_K ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_K_D, U_Q_D, U_P_D, U_K_Ne, U_Q_Ne, U_P_Ne )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( Y_K)
+    !$OMP PRIVATE( Y_K )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -492,38 +515,34 @@ CONTAINS
 
         IF( U_K_D(iX1,iX2,iX3) < Min_D )THEN
 
+          U_K_D(iX1,iX2,iX3) = ( One + 1.0d-6 ) * Min_D
+
           DO iNodeX = 1, nDOFX
-
-            U_Q_D(iNodeX,iX1,iX2,iX3) = ( One + 1.0d-6 ) * Min_D
-
+            U_Q_D(iNodeX,iX1,iX2,iX3) = U_K_D(iX1,iX2,iX3)
           END DO
 
         ELSE
 
+          U_K_D(iX1,iX2,iX3) = ( One - 1.0d-6 ) * Max_D
+
           DO iNodeX = 1, nDOFX
-
-            U_Q_D(iNodeX,iX1,iX2,iX3) = ( One - 1.0d-6 ) * Max_D
-
+            U_Q_D(iNodeX,iX1,iX2,iX3) = U_K_D(iX1,iX2,iX3)
           END DO
 
         END IF
 
         ! --- Reset Electron Density by Preserving Cell-Averaged Ye ---
 
+        U_K_Ne(iX1,iX2,iX3) = Y_K * U_K_D(iX1,iX2,iX3) / BaryonMass
+
         DO iNodeX = 1, nDOFX
-
-          U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-            = Y_K * U_Q_D(iNodeX,iX1,iX2,iX3) / BaryonMass
-
+          U_Q_Ne(iNodeX,iX1,iX2,iX3) = U_K_Ne(iX1,iX2,iX3)
         END DO
 
-        U_K_D (iX1,iX2,iX3) = U_Q_D (1,iX1,iX2,iX3)
-        U_K_Ne(iX1,iX2,iX3) = U_Q_Ne(1,iX1,iX2,iX3)
-
         CALL ComputePointValues_Single &
-               ( U_Q_D (1:nDOFX,iX1,iX2,iX3), U_P_D (1:nPT,iX1,iX2,iX3) )
+               ( U_Q_D (:,iX1,iX2,iX3), U_P_D (:,iX1,iX2,iX3) )
         CALL ComputePointValues_Single &
-               ( U_Q_Ne(1:nDOFX,iX1,iX2,iX3), U_P_Ne(1:nPT,iX1,iX2,iX3) )
+               ( U_Q_Ne(:,iX1,iX2,iX3), U_P_Ne(:,iX1,iX2,iX3) )
 
       END IF
 
@@ -1269,6 +1288,12 @@ CONTAINS
 
 
   SUBROUTINE ComputePointValues_Single( U_Q, U_P )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: U_Q(nDOFX)
     REAL(DP), INTENT(out) :: U_P(nPT)
