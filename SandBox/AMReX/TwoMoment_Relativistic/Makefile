@@ -36,4 +36,4 @@ PrimitiveConserved_Richardson.o: \
   KindModule.o \
   ProgramInitializationModule.o \
   ReferenceElementModuleX.o \
-  PrimitiveConserved_Richardson.f90
+  PrimitiveConserved_Richardson.F90
