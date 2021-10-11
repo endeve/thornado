@@ -3686,9 +3686,33 @@ CONTAINS
                iZ_B0(2)  :iZ_E0(2)  )
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
-      dV_u_dX1_Out   = Zero
-      dV_d_dX1_Out   = Zero
-      dGm_dd_dX1_Out = Zero
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP MAP( to: iZ_B0, iZ_E0 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC COPYIN( iZ_B0, iZ_E0 ) &
+      !$ACC PRESENT( dV_u_dX1_Out, dV_d_dX1_Out, dGm_dd_dX1_Out )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX1_Out  (iNodeX,i,iZ2,iZ3,iZ4) = Zero
+          dV_d_dX1_Out  (iNodeX,i,iZ2,iZ3,iZ4) = Zero
+          dGm_dd_dX1_Out(iNodeX,i,iZ2,iZ3,iZ4) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
       RETURN
     END IF
 
@@ -4249,9 +4273,33 @@ CONTAINS
                iZ_B0(3)  :iZ_E0(3)  )
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
-      dV_u_dX2_Out   = Zero
-      dV_d_dX2_Out   = Zero
-      dGm_dd_dX2_Out = Zero
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP MAP( to: iZ_B0, iZ_E0 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC COPYIN( iZ_B0, iZ_E0 ) &
+      !$ACC PRESENT( dV_u_dX2_Out, dV_d_dX2_Out, dGm_dd_dX2_Out )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX2_Out  (iNodeX,i,iZ2,iZ3,iZ4) = Zero
+          dV_d_dX2_Out  (iNodeX,i,iZ2,iZ3,iZ4) = Zero
+          dGm_dd_dX2_Out(iNodeX,i,iZ2,iZ3,iZ4) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
       RETURN
     END IF
 
@@ -4812,9 +4860,33 @@ CONTAINS
                iZ_B0(4)  :iZ_E0(4)  )
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
-      dV_u_dX3_Out   = Zero
-      dV_d_dX3_Out   = Zero
-      dGm_dd_dX3_Out = Zero
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP MAP( to: iZ_B0, iZ_E0 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC COPYIN( iZ_B0, iZ_E0 ) &
+      !$ACC PRESENT( dV_u_dX3_Out, dV_d_dX3_Out, dGm_dd_dX3_Out )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX3_Out  (iNodeX,i,iZ2,iZ3,iZ4) = Zero
+          dV_d_dX3_Out  (iNodeX,i,iZ2,iZ3,iZ4) = Zero
+          dGm_dd_dX3_Out(iNodeX,i,iZ2,iZ3,iZ4) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
       RETURN
     END IF
 
