@@ -76,9 +76,9 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   REAL(DP), PUBLIC :: dEnergyMomentum_PL_TwoMoment(nCR)
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( Min_1, Max_1, Min_2 )
+  !$OMP DECLARE TARGET( Min_1, Max_1, Min_2, W_Factor )
 #elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( Min_1, Max_1, Min_2 )
+  !$ACC DECLARE CREATE( Min_1, Max_1, Min_2, W_Factor )
 #endif
 
 CONTAINS

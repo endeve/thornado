@@ -221,7 +221,7 @@ ApplicationDriver.o: \
   EquationOfStateModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_TroubledCellIndicatorModule.o \
-  ApplicationDriver.f90
+  ApplicationDriver.F90
 
 ApplicationDriver_Neutrinos.o: \
   KindModule.o \

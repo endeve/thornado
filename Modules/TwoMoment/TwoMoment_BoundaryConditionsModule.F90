@@ -202,6 +202,28 @@ CONTAINS
 
       ! --- Compute Cell Averaged Density in Last Two Elements ---
 
+      ASSOCIATE &
+        ( CenterE => MeshE % Center, &
+          WidthE  => MeshE % Width )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: N_K, a_K, b_K ) &
+      !$OMP MAP( to: CenterE, WidthE )
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA &
+      !$ACC CREATE( N_K, a_K, b_K ) &
+      !$ACC COPYIN( CenterE, WidthE )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, N_K, Weights_q )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
       DO iS  = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
       DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -227,37 +249,44 @@ CONTAINS
 
       ! --- Compute Exponential Extrapolation Coefficients ---
 
-      E_K = MeshE % Center(iZ_E0(1)-1:iZ_E0(1))
-
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iZ_B0, iZ_E0, N_K, a_K, b_K, CenterE )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
       DO iS  = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
       DO iZ3 = iZ_B0(3), iZ_E0(3)
       DO iZ2 = iZ_B0(2), iZ_E0(2)
 
         a_K(iZ2,iZ3,iZ4,iS) &
-          = ( E_K(1) * LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) &
-                - E_K(2) * LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) ) &
-            / ( E_K(2) - E_K(1) )
+          = ( CenterE(iZ_E0(1)-1) * LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) &
+                - CenterE(iZ_E0(1)) * LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) ) &
+            / ( CenterE(iZ_E0(1)) - CenterE(iZ_E0(1)-1) )
 
         b_K(iZ2,iZ3,iZ4,iS) &
           = ( LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) &
                 - LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) ) &
-            / ( E_K(2) - E_K(1) )
+            / ( CenterE(iZ_E0(1)) - CenterE(iZ_E0(1)-1) )
 
       END DO
       END DO
       END DO
       END DO
-
-      E_R = MeshE % Center(iZ_E0(1)) + Half * MeshE % Width(iZ_E0(1))
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+      !$OMP PRIVATE( E_R )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ ) &
+      !$ACC PRIVATE( E_R )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7) &
+      !$OMP PRIVATE( E_R )
 #endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
@@ -277,6 +306,7 @@ CONTAINS
 
           IF( iCR == iCR_N )THEN
 
+            E_R = CenterE(iZ_E0(1)) + Half * WidthE(iZ_E0(1))
             U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
               = One / ( EXP(   a_K(iZ2,iZ3,iZ4,iS) &
                              + b_K(iZ2,iZ3,iZ4,iS) * E_R ) + One )
@@ -296,6 +326,16 @@ CONTAINS
       END DO
       END DO
       END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: N_K, a_K, b_K, CenterE, WidthE )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( N_K, a_K, b_K, CenterE, WidthE )
+#endif
+
+      END ASSOCIATE
 
     CASE ( 11 ) ! Custom
 
@@ -613,6 +653,14 @@ CONTAINS
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7)
+#endif
       DO iS = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -940,6 +988,14 @@ CONTAINS
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1216,6 +1272,14 @@ CONTAINS
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = 1, swZ(4)
