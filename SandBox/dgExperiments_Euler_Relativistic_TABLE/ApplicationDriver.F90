@@ -187,7 +187,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -327,6 +327,12 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A2,A)') '', 'Begin evolution'
   WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
+#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
+  print*,'GPU'
+#else
+  print*,'CPU'
+#endif
+
 
   t_wrt = t + dt_wrt
   wrt   = .FALSE.

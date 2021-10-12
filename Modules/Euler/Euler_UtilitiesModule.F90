@@ -252,7 +252,7 @@ CONTAINS
 
 
   FUNCTION Eigenvalues_Euler &
-    ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
+    ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -260,7 +260,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: V, Cs, Gmii
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi
@@ -270,13 +270,13 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     Eigenvalues_Euler = Eigenvalues_Euler_Relativistic &
-                          ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
+                          ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
                             Lapse, Shift_Xi )
 
 #else
 
     Eigenvalues_Euler = Eigenvalues_Euler_NonRelativistic &
-                          ( V, Cs, Gmii )
+                          ( Vi, Cs, Gmii )
 
 #endif
 

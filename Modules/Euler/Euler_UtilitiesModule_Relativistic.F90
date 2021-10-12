@@ -57,11 +57,12 @@ MODULE Euler_UtilitiesModule_Relativistic
     MaxT, &
     ComputeSpecificInternalEnergy_TABLE
   USE UnitsModule, ONLY: &
-    AtomicMassUnit
+    AtomicMassUnit,gram,centimeter,erg
   USE TimersModule_Euler,ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep, &
+    Timer_Euler_ComputePrimitive, &
     Timer_Euler_CTS_ComputeTimeStep, &
     Timer_Euler_CTS_CopyIn, &
     Timer_Euler_CTS_CopyOut, &
@@ -77,6 +78,8 @@ MODULE Euler_UtilitiesModule_Relativistic
   PRIVATE
 
   PUBLIC :: ComputePrimitive_Euler_Relativistic_GPU
+  PUBLIC :: ComputeEigenvalues_Euler_Relativistic
+
   PUBLIC :: ComputePrimitive_Euler_Relativistic
   PUBLIC :: ComputeConserved_Euler_Relativistic
   PUBLIC :: ComputeFromConserved_Euler_Relativistic
@@ -111,26 +114,32 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Euler_Relativistic_GPU &
-    ( N, &
-      uDa, uS1a, uS2a, uS3a, uEa, uNea, &
+    ( uDa, uS1a, uS2a, uS3a, uEa, uNea, &
       pDa, pV1a, pV2a, pV3a, pEa, pNea, &
       Gm_dd_11a, Gm_dd_22a, Gm_dd_33a ) ! a for all
 
-    INTEGER,  INTENT(in)  :: N
-    REAL(DP), INTENT(in)  :: uDa(N), uS1a(N), uS2a(N), uS3a(N), uEa(N), uNea(N)
-    REAL(DP), INTENT(out) :: pDa(N), pV1a(N), pV2a(N), pV3a(N), pEa(N), pNea(N)
-    REAL(DP), INTENT(in)  :: Gm_dd_11a(N), Gm_dd_22a(N), Gm_dd_33a(N)
+    REAL(DP), INTENT(in)  :: uDa(:), uS1a(:), uS2a(:), uS3a(:), uEa(:), uNea(:)
+    REAL(DP), INTENT(out) :: pDa(:), pV1a(:), pV2a(:), pV3a(:), pEa(:), pNea(:)
+    REAL(DP), INTENT(in)  :: Gm_dd_11a(:), Gm_dd_22a(:), Gm_dd_33a(:)
 
-    INTEGER  :: IsPhysical(N)
+    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
+    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
+
     INTEGER  :: iX, nP, iP ! P for physical
 
     REAL(DP), ALLOCATABLE :: &
       uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:), &
       pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:), &
       Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:), &
-      S(:), q(:), r(:), k(:), z0(:), W(:), eps(:), p(:), DhW(:)
+      S(:), q(:), r(:), k(:), &
+      W(:), eps(:), p(:), DhW(:), &
+      z0(:), za(:), zb(:), zc(:), fa(:), fb(:), fc(:), dz(:)
 
-    INTEGER, ALLOCATABLE :: iErr(:)
+    INTEGER :: N
+    INTEGER, ALLOCATABLE :: IsPhysical(:), iErr(:), ITERATION(:)
+    LOGICAL, ALLOCATABLE :: CONVERGED(:)
+
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
@@ -152,6 +161,10 @@ CONTAINS
     !$ACC UPDATE HOST       ( uDa )
 #endif
 
+    N = SIZE( uDa )
+
+    ALLOCATE( IsPhysical(N) )
+
     nP = 0
 
     DO iX = 1, N
@@ -172,8 +185,10 @@ CONTAINS
     ALLOCATE( uD(nP), uS1(nP), uS2(nP), uS3(nP), uE(nP), uNe(nP), &
               pD(nP), pV1(nP), pV2(nP), pV3(nP), pE(nP), pNe(nP), &
               Gm_dd_11(nP), Gm_dd_22(nP), Gm_dd_33(nP), &
-              S(nP), q(nP), r(nP), k(nP), z0(nP), W(nP), &
-              eps(nP), p(nP), DhW(nP), iErr(nP) )
+              S(nP), q(nP), r(nP), k(nP), &
+              W(nP), eps(nP), p(nP), DhW(nP), &
+              z0(nP), za(nP), zb(nP), zc(nP), fa(nP), fb(nP), fc(nP), dz(nP), &
+              iErr(nP), ITERATION(nP), CONVERGED(nP) )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
@@ -181,14 +196,20 @@ CONTAINS
     !$OMP MAP( alloc: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP             pD, pV1, pV2, pV3, pE, pNe, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$OMP             S, q, r, k, z0, W, eps, p, DhW, iErr )
+    !$OMP             S, q, r, k, &
+    !$OMP             W, eps, p, DhW, &
+    !$OMP             z0, za, zb, zc, fa, fb, fc, dz, &
+    !$OMP             iErr, ITERATION, CONVERGED )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     IsPhysical ) &
     !$ACC CREATE(     uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC             pD, pV1, pV2, pV3, pE, pNe, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC             S, q, r, k, z0, W, eps, p, DhW, iErr )
+    !$ACC             S, q, r, k, &
+    !$ACC             W, eps, p, DhW, &
+    !$ACC             z0, za, zb, zc, fa, fb, fc, dz, &
+    !$ACC             iErr, ITERATION, CONVERGED )
 #endif
 
 #if   defined( THORNADO_OMP_OL )
@@ -197,11 +218,9 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( uD,  uS1,  uS2,  uS3,  uE,  uNe, &
     !$ACC          uDa, uS1a, uS2a, uS3a, uEa, uNea, &
-    !$ACC          pD,  pV1,  pV2,  pV3,  pE,  pNe, &
-    !$ACC          pDa, pV1a, pV2a, pV3a, pEa, pNea, &
     !$ACC          Gm_dd_11,  Gm_dd_22,  Gm_dd_33, &
     !$ACC          Gm_dd_11a, Gm_dd_22a, Gm_dd_33a, &
-    !$ACC          IsPhysical )
+    !$ACC          iErr, IsPhysical )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO
 #endif
@@ -216,33 +235,30 @@ CONTAINS
         uE (IsPhysical(iX)) = uEa (iX)
         uNe(IsPhysical(iX)) = uNea(iX)
 
-        pD (IsPhysical(iX)) = pDa (iX)
-        pV1(IsPhysical(iX)) = pV1a(iX)
-        pV2(IsPhysical(iX)) = pV2a(iX)
-        pV3(IsPhysical(iX)) = pV3a(iX)
-        pE (IsPhysical(iX)) = pEa (iX)
-        pNe(IsPhysical(iX)) = pNea(iX)
-
         Gm_dd_11(IsPhysical(iX)) = Gm_dd_11a(iX)
         Gm_dd_22(IsPhysical(iX)) = Gm_dd_22a(iX)
         Gm_dd_33(IsPhysical(iX)) = Gm_dd_33a(iX)
+
+        iErr(IsPhysical(iX)) = 0
 
       END IF
 
     END DO
 
-    ! --- Eq. C2 ---
+    ! --- Eq. C2/C23 ---
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, &
+    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC          S, q, r, k )
+    !$ACC          S, q, r, k, za, zb, fa, fb, dz, &
+    !$ACC          iErr, ITERATION, CONVERGED )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO
 #endif
+
     DO iP = 1, nP
 
       S(iP) = SQRT(   uS1(iP)**2 / Gm_dd_11(iP) &
@@ -260,12 +276,79 @@ CONTAINS
 
       END IF
 
+      za(iP) = Half * k(iP) / SQRT( One - Fourth * k(iP)**2 ) - SqrtTiny
+      zb(iP) = k(iP)        / SQRT( One - k(iP)**2 )          + SqrtTiny
+      dz(iP) = zb(iP) - za(iP)
+
+      CALL ComputeFunZ( za(iP), uD(iP), uNe(iP), r(iP), k(iP), q(iP), fa(iP) )
+      CALL ComputeFunZ( zb(iP), uD(iP), uNe(iP), r(iP), k(iP), q(iP), fb(iP) )
+
+      IF( .NOT. fa(iP) * fb(iP) .LT. Zero ) iErr(iP) = 8
+
+      ITERATION(iP) = 0
+      CONVERGED(iP) = .FALSE.
+
     END DO
 
-ierr=0
-!$acc update device( ierr )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( ITERATION, CONVERGED, uD, uNe, &
+    !$ACC          dz, za, zb, zc, z0, fa, fb, fc, r, k, q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
 
-    ! --- Solve for primitives ---
+      DO WHILE( .NOT. CONVERGED(iP) .AND. ITERATION(iP) .LT. MAX_IT )
+
+        ITERATION(iP) = ITERATION(iP) + 1
+
+        dz(iP) = Half * dz(iP)
+
+        zc(iP) = za(iP) + dz(iP)
+
+        ! --- Compute f(zc) for midpoint zc ---
+
+        CALL ComputeFunZ( zc(iP), uD(iP), uNe(iP), r(iP), k(iP), q(iP), fc(iP) )
+
+        ! --- Change zc to za or zb, depending on sign of fc ---
+
+        IF( fa(iP) * fc(iP) .LT. Zero )THEN
+
+          zb(iP) = zc(iP)
+          fb(iP) = fc(iP)
+
+        ELSE IF( fa(iP) * fc(iP) .GT. Zero )THEN
+
+          za(iP) = zc(iP)
+          fa(iP) = fc(iP)
+
+        ELSE
+
+          CONVERGED(iP) = .TRUE.
+
+        END IF
+
+        IF( ABS( dz(iP) ) / MAX( ABS( zc(iP) ), SqrtTiny ) .LE. dz_min ) &
+          CONVERGED(iP) = .TRUE.
+
+!!$        IF( ITERATION(iP) .GT. MAX_IT - 3 )THEN
+!!$
+!!$          WRITE(*,*) 'iP     = ', iP
+!!$          WRITE(*,*) 'Iter   = ', ITERATION(iP)
+!!$          WRITE(*,*) 'za, zb = ', za(iP), zb(iP)
+!!$          WRITE(*,*) 'dz     = ', dz(iP)
+!!$          WRITE(*,*)
+!!$
+!!$        END IF
+
+      END DO
+
+      z0(iP) = zc(iP)
+
+    END DO
 
     ! --- Eq. C15/C16 ---
 
@@ -337,14 +420,20 @@ ierr=0
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               pD, pV1, pV2, pV3, pE, pNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$OMP               S, q, r, k, z0, W, eps, p, DhW, IsPhysical )
+    !$OMP               S, q, r, k, z0, &
+    !$OMP               W, eps, p, DhW, &
+    !$OMP               z0, za, zb, zc, fa, fb, fc, dz, &
+    !$OMP               ITERATION, CONVERGED, IsPhysical )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               pD, pV1, pV2, pV3, pE, pNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC               S, q, r, k, z0, W, eps, p, DhW, IsPhysical )
+    !$ACC               S, q, r, k, z0, &
+    !$ACC               W, eps, p, DhW, &
+    !$ACC               z0, za, zb, zc, fa, fb, fc, dz, &
+    !$ACC               ITERATION, CONVERGED, IsPhysical )
 #endif
 
     DO iP = 1, nP
@@ -368,7 +457,12 @@ ierr=0
     DEALLOCATE( uD, uS1, uS2, uS3, uE, uNe, &
                 pD, pV1, pV2, pV3, pE, pNe, &
                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                S, q, r, k, z0, W, eps, p, DhW )
+                S, q, r, k, &
+                W, eps, p, DhW, &
+                z0, za, zb, zc, fa, fb, fc, dz, &
+                iErr, ITERATION, CONVERGED, IsPhysical )
+
+    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
 
   END SUBROUTINE ComputePrimitive_Euler_Relativistic_GPU
 
@@ -381,9 +475,9 @@ ierr=0
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm11, GF_Gm22, GF_Gm33, iErr )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -506,9 +600,9 @@ ierr=0
       Gm11, Gm22, Gm33, &
       AF_P )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -599,11 +693,11 @@ ierr=0
 
     CALL TimersStart_Euler( Timer_Euler_CFC_CopyIn )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$OMP MAP( alloc: P, A, iErr )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$ACC CREATE(     P, A, iErr )
@@ -613,13 +707,13 @@ ierr=0
 
     CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B1, iX_E1, A )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iAF = 1, nAF
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -635,13 +729,13 @@ ierr=0
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -689,11 +783,11 @@ ierr=0
 
     CALL TimersStart_Euler( Timer_Euler_CFC_CopyOut )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    P, A, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      P, A, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
@@ -765,11 +859,11 @@ ierr=0
 
     CALL TimersStart_Euler( Timer_Euler_CTS_CopyIn )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$OMP MAP( alloc: iErr )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$ACC CREATE(     iErr )
@@ -781,17 +875,17 @@ ierr=0
 
     TimeStep = HUGE( One )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr ) &
     !$ACC REDUCTION( MIN: TimeStep )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
 #endif
@@ -853,11 +947,11 @@ ierr=0
 
     CALL TimersStart_Euler( Timer_Euler_CTS_CopyOut )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr ) &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr ) &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
@@ -901,12 +995,54 @@ ierr=0
   !> @param Vi The ith contravariant component of the three-velocity.
   !> @param Gmii The ith covariant component of the spatial three-metric.
   !> @param Shift The ith contravariant component of the shift-vector.
+  SUBROUTINE ComputeEigenvalues_Euler_Relativistic &
+    ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift, &
+      Eigenvalues_Euler_Relativistic )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii, V1, V2, V3, &
+                            Gm11, Gm22, Gm33, Lapse, Shift
+    REAL(DP), INTENT(out) :: Eigenvalues_Euler_Relativistic(nCF)
+
+    REAL(DP) :: VSq
+
+    VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
+
+    Eigenvalues_Euler_Relativistic(1) &
+      = Lapse / ( One - VSq * Cs**2 ) * ( Vi * ( One - Cs**2 ) &
+        - Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gmii &
+           - Vi**2 * ( One - Cs**2 ) ) ) ) - Shift
+
+    Eigenvalues_Euler_Relativistic(2) &
+      = Lapse * Vi - Shift
+
+    Eigenvalues_Euler_Relativistic(3) &
+      = Lapse / ( One - VSq * Cs**2 ) * ( Vi * ( One - Cs**2 ) &
+        + Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gmii &
+           - Vi**2 * ( One - Cs**2 ) ) ) ) - Shift
+
+    Eigenvalues_Euler_Relativistic(4) &
+      = Lapse * Vi - Shift
+
+    Eigenvalues_Euler_Relativistic(5) &
+      = Lapse * Vi - Shift
+
+    Eigenvalues_Euler_Relativistic(6) &
+      = Lapse * Vi - Shift
+
+  END SUBROUTINE ComputeEigenvalues_Euler_Relativistic
+
+
   FUNCTION Eigenvalues_Euler_Relativistic &
     ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -952,9 +1088,9 @@ ierr=0
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
       Gmii, aP, aM, Lapse, Shift, iErr )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1032,9 +1168,9 @@ ierr=0
   FUNCTION Flux_X1_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1076,9 +1212,9 @@ ierr=0
   FUNCTION Flux_X2_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1120,9 +1256,9 @@ ierr=0
   FUNCTION Flux_X3_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1181,9 +1317,9 @@ ierr=0
   FUNCTION NumericalFlux_LLF_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1209,9 +1345,9 @@ ierr=0
   FUNCTION NumericalFlux_HLL_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1233,9 +1369,9 @@ ierr=0
   FUNCTION NumericalFlux_X1_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1348,9 +1484,9 @@ ierr=0
   FUNCTION NumericalFlux_X2_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1463,9 +1599,9 @@ ierr=0
   FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1581,9 +1717,9 @@ ierr=0
 
   SUBROUTINE ComputeFunZ( z, D, Ne, r, k, q, FunZ )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1656,9 +1792,9 @@ ierr=0
 
   SUBROUTINE ComputeFunZ( z, D, Ne, r, k, q, FunZ )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1699,9 +1835,9 @@ ierr=0
 
   SUBROUTINE SolveZ_Bisection( CF_D, CF_Ne, q, r, k, z0, iErr )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
