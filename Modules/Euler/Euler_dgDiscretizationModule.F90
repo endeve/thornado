@@ -489,9 +489,6 @@ CONTAINS
             iX_B0(3):iX_E0(3), &
             iX_B0(1):iX_E0(1))
 
-real(dp)::tmps(nnodesx_x1),tmpv(ncf,nnodesx_x1)
-character(32) :: FMT
-
 !    IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
     ! --- Permuted Limits ---
@@ -523,7 +520,7 @@ character(32) :: FMT
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux_X1, Flux_X1_q, dU_X1, tmps, tmpv )
+    !$ACC             NumericalFlux_X1, Flux_X1_q, dU_X1 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -759,13 +756,13 @@ character(32) :: FMT
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( P_L, P_R, Cs_L, Cs_R, AlphaMns, AlphaPls, AlphaMdl, &
     !$ACC          EigVals_L, EigVals_R, Flux_X1_L, Flux_X1_R, Flux_X1_F, &
-    !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3, iCF ) &
+    !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
     !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS1_L, uE_L, &
     !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS1_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
     !$ACC          Alpha_F, Beta_1_F, iErr, &
     !$ACC          uCF_L, uCF_R, uDF_L, uDF_R, NumericalFlux_X1, &
-    !$ACC          dX2, dX3, WeightsX_X1, IndexTableX_F, tmps, tmpv )
+    !$ACC          dX2, dX3, WeightsX_X1, IndexTableX_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( P_L, P_R, Cs_L, Cs_R, AlphaMns, AlphaPls, AlphaMdl, &
@@ -781,23 +778,6 @@ character(32) :: FMT
 
       CALL ComputeSoundSpeedFromPrimitive &
              ( pD_L(iNX_X1), pE_L(iNX_X1), pNe_L(iNX_X1), Cs_L )
-
-      CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_L(iNX_X1), pE_L(iNX_X1), pNe_L(iNX_X1), tmps(inx_x1) )
-
-      CALL ComputeEigenvalues_Euler_Relativistic &
-            ( pV1_L     (iNX_X1), &
-              tmps(inx_x1),               &
-              Gm_dd_11_F(iNX_X1), &
-              pV1_L     (iNX_X1), &
-              pV2_L     (iNX_X1), &
-              pV3_L     (iNX_X1), &
-              Gm_dd_11_F(iNX_X1), &
-              Gm_dd_22_F(iNX_X1), &
-              Gm_dd_33_F(iNX_X1), &
-              Alpha_F   (iNX_X1), &
-              Beta_1_F  (iNX_X1), &
-              tmpv(:,iNX_X1) )
 
       EigVals_L &
         = Eigenvalues_Euler &
@@ -908,27 +888,6 @@ character(32) :: FMT
 
       END DO
 
-      tmpv(:,inx_x1) &
-        = NumericalFlux_Euler_X1 &
-            ( uCF_L_nCF,            &
-              uCF_R_nCF,            &
-              Flux_X1_L,            &
-              Flux_X1_R,            &
-              AlphaPls,             &
-              AlphaMns,             &
-              AlphaMdl,             &
-              Gm_dd_11_F(iNX_X1),   &
-              pV1_L(     iNX_X1),   &
-              pV1_R(     iNX_X1),   &
-              P_L,                  &
-              P_R,                  &
-              Alpha_F(   iNX_X1),   &
-              Beta_1_F(  iNX_X1),   &
-              uDF_L(iX2,iX3,iX1,1), &
-              uDF_R(iX2,iX3,iX1,2), &
-              uDF_L(iX2,iX3,iX1,1), &
-              uDF_R(iX2,iX3,iX1,2) )
-
       Flux_X1_F &
         = NumericalFlux_Euler_X1 &
             ( uCF_L_nCF,            &
@@ -961,55 +920,6 @@ character(32) :: FMT
 
     END DO ! iNX_X1
 
-!$acc update host( ud_l, us1_l, us2_l, us3_l, ue_l, une_l, &
-!$acc              ud_r, us1_r, us2_r, us3_r, ue_r, une_r, &
-!$acc              pd_l, pv1_l, pv2_l, pv3_l, pe_l, pne_l, &
-!$acc              pd_r, pv1_r, pv2_r, pv3_r, pe_r, pne_r, &
-!$acc              beta_1_f, gm_dd_11_f, gm_dd_22_f, gm_dd_33_f, &
-!$acc              tmps, tmpv )
-
-write(fmt,'(A,I4.4,A)') '(', nNodesX_X1, 'ES24.16E3)'
-
-#if defined(THORNADO_OACC)
-open(100,file='gpu')
-#else
-open(100,file='cpu')
-#endif
-!write(100,trim(fmt)) ud_l
-!write(100,trim(fmt))us1_l
-!write(100,trim(fmt))us2_l
-!write(100,trim(fmt))us3_l
-!write(100,trim(fmt)) ue_l
-!write(100,trim(fmt))une_l
-!write(100,trim(fmt)) pd_l
-!write(100,trim(fmt))pv1_l
-!write(100,trim(fmt))pv2_l
-!write(100,trim(fmt))pv3_l
-!write(100,trim(fmt)) pe_l
-!write(100,trim(fmt))pne_l
-!write(100,trim(fmt)) ud_r
-!write(100,trim(fmt))us1_r
-!write(100,trim(fmt))us2_r
-!write(100,trim(fmt))us3_r
-!write(100,trim(fmt)) ue_r
-!write(100,trim(fmt))une_r
-!write(100,trim(fmt)) pd_r
-!write(100,trim(fmt))pv1_r
-!write(100,trim(fmt))pv2_r
-!write(100,trim(fmt))pv3_r
-!write(100,trim(fmt)) pe_r
-!write(100,trim(fmt))pne_r
-!write(100,trim(fmt))gm_dd_11_f
-!write(100,trim(fmt))gm_dd_22_f
-!write(100,trim(fmt))gm_dd_33_f
-!write(100,trim(fmt))beta_1_f
-
-!write(100,trim(fmt))tmps
-do icf=1,ncf
-write(100,trim(fmt))tmpv(icf,:)
-enddo
-close(100)
-
     CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
 
     ! --- Surface Contribution ---
@@ -1018,17 +928,17 @@ close(100)
 
     ! --- Contribution from Left Face ---
 
-!    CALL MatrixMatrixMultiply &
-!           ( 'T', 'N', nDOFX, nX_K*nCF, nDOFX_X1, + One, LX_X1_Dn, nDOFX_X1, &
-!             NumericalFlux_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, &
-!             Zero, dU_X1, nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K*nCF, nDOFX_X1, + One, LX_X1_Dn, nDOFX_X1, &
+             NumericalFlux_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, &
+             One,  dU_X1, nDOFX )
 
     ! --- Contribution from Right Face ---
 
-!    CALL MatrixMatrixMultiply &
-!           ( 'T', 'N', nDOFX, nX_K*nCF, nDOFX_X1, - One, LX_X1_Up, nDOFX_X1, &
-!             NumericalFlux_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, &
-!             One,  dU_X1, nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K*nCF, nDOFX_X1, - One, LX_X1_Up, nDOFX_X1, &
+             NumericalFlux_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, &
+             One,  dU_X1, nDOFX )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -1098,9 +1008,9 @@ close(100)
 
     CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
-!    CALL MatrixMatrixMultiply &
-!           ( 'T', 'N', nDOFX, nX_K*nCF, nDOFX, One, dLXdX1_q, nDOFX, &
-!             Flux_X1_q, nDOFX, One, dU_X1, nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K*nCF, nDOFX, One, dLXdX1_q, nDOFX, &
+             Flux_X1_q, nDOFX, One, dU_X1, nDOFX )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -1161,7 +1071,7 @@ close(100)
     !$ACC               Flux_X1_F, Flux_X1_K, &
     !$ACC               uCF_L_nCF, uCF_R_nCF, &
     !$ACC               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC               Flux_X1_q, dU_X1, tmps, tmpv )
+    !$ACC               Flux_X1_q, dU_X1 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
@@ -4820,14 +4730,14 @@ close(100)
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    IndexTableX_F, IndexTableX_V ) &
     !$OMP MAP( alloc: pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-    !$OMP             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
-    !$OMP             IndexTableX_F, IndexTableX_V )
+    !$OMP             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
+    !$ACC COPYIN(     IndexTableX_F, IndexTableX_V ) &
     !$ACC CREATE(     pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-    !$ACC             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
-    !$ACC             IndexTableX_F, IndexTableX_V )
+    !$ACC             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R )
 #endif
 
   END SUBROUTINE InitializeIncrement_Divergence
