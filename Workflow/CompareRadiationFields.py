@@ -38,5 +38,10 @@ def CompareRadiationFields( File1, File2 ):
     print( '  max|dG1| = ', np.amax( np.abs( uCR2_G1.flatten() - uCR1_G1.flatten() ) ) )
     print( '  max|dG2| = ', np.amax( np.abs( uCR2_G2.flatten() - uCR1_G2.flatten() ) ) )
     print( '  max|dG3| = ', np.amax( np.abs( uCR2_G3.flatten() - uCR1_G3.flatten() ) ) )
+
+    print( '  max|dN/N|   = ', np.amax( np.abs( uCR2_N .flatten() - uCR1_N .flatten() ) / np.abs( uCR1_N .flatten() ) ) )
+    print( '  max|dG1/G1| = ', np.amax( np.abs( uCR2_G1.flatten() - uCR1_G1.flatten() ) / np.abs( uCR1_G1.flatten() ) ) )
+    print( '  max|dG2/G2| = ', np.amax( np.abs( uCR2_G2.flatten() - uCR1_G2.flatten() ) / np.abs( uCR1_G2.flatten() ) ) )
+    print( '  max|dG3/G3| = ', np.amax( np.abs( uCR2_G3.flatten() - uCR1_G3.flatten() ) / np.abs( uCR1_G3.flatten() ) ) )
     
     print( "--------------------------------------" )

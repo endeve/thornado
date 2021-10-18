@@ -63,7 +63,7 @@ PROGRAM ApplicationDriver_Neutrinos
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
-  INTEGER       :: iCycle, iCycleD, iCycleW
+  INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
@@ -108,6 +108,7 @@ PROGRAM ApplicationDriver_Neutrinos
       dt_FXD        = 1.0d-3 * Millisecond
       iCycleD       = 1
       iCycleW       = 100
+      maxCycles     = 100000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
@@ -137,6 +138,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       iCycleD = 1
       iCycleW = 10
+      maxCycles = 100000
 
       EvolveEuler                    = .TRUE.
       UseSlopeLimiter_Euler          = .FALSE.
@@ -166,6 +168,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       iCycleD = 1
       iCycleW = 100
+      maxCycles = 100000
 
       EvolveEuler                    = .TRUE.
       UseSlopeLimiter_Euler          = .FALSE.
@@ -234,7 +237,7 @@ PROGRAM ApplicationDriver_Neutrinos
   WRITE(*,*)
 
   iCycle = 0
-  DO WHILE( t < t_end )
+  DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
     iCycle = iCycle + 1
 

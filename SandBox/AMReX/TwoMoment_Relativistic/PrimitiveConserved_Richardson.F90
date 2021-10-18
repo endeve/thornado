@@ -42,25 +42,39 @@ PROGRAM PrimitiveConserved
     Flux_X1,                    &
     Flux_X2,                    &
     Flux_X3                    
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    InitializeTimers, &
+    FinalizeTimers, &
+    TimersStart, &
+    TimersStop, &
+    Timer_ComputePrimative
+
 
   IMPLICIT NONE
 
   INTEGER  :: nNodes, nPoints, iPoint
   INTEGER  :: nE, nX(3), nZ_G, nX_G, nE_G, nSpecies, nNodesZ(4)
-  INTEGER  :: iNode, iE, iX1, iX2, iX3, iS, iN_E, iN_X, iZ
+  INTEGER  :: iNode, iE, iX1, iX2, iX3, iS, iN_E, iN_X, iZ, i, j
   REAL(DP) :: eL, eR, xL(3), xR(3)
   REAL(DP) , DIMENSION(:), ALLOCATABLE :: V1, V2, V3, Ones, Zeros, B1, B2, B3, alp
   REAL(DP) :: absI, nVec(3), Vmax, absV, Vvec(3), Vsq, W
   REAL(DP) :: Bmax, absB, Bvec(3), F1(4), F2(4), F3(4), pep
-  REAL(DP) :: I1T, I2T, I3T
+  REAL(DP) :: I1T, I2T, I3T, absIi, Ii(1:3), Vi(1:3), gg(1:3,1:3)
   REAL(DP), DIMENSION(:), ALLOCATABLE :: D, I1, I2, I3, N, G1, G2, G3 
 
   INTEGER, ALLOCATABLE :: nIterations(:)
 
 
   INTEGER,  DIMENSION(:), ALLOCATABLE :: PositionIndexZ
+
+
+    CALL InitializeTimers
+
   nNodes = 2
- 
+ gg= 0.0_DP
+gg(1,1) = 1.0_DP
+gg(2,2) = 1.0_DP
+gg(3,3) = 1.0_DP
   nSpecies = 1
   nNodesZ = [2,2,2,2]
   nX = [ 8, 8, 8 ]
@@ -86,7 +100,7 @@ PROGRAM PrimitiveConserved
     ALLOCATE( B2(nX_G) )
     ALLOCATE( B3(nX_G) )
 
-  absV=0.99_DP
+  absV=0.5_DP
   CALL RANDOM_NUMBER(Vvec)
   Vvec = 2.0_DP * ( Vvec - 0.5_DP )
   Vvec = Vvec / SQRT( DOT_PRODUCT( Vvec, Vvec ) )
@@ -133,7 +147,7 @@ PROGRAM PrimitiveConserved
     ALLOCATE( G1(nZ_G) )
     ALLOCATE( G2(nZ_G) )
     ALLOCATE( G3(nZ_G) )
-
+!absIi = 0.0_DP
 
     DO iZ = 1, nZ_G
       Vsq = V1(PositionIndexZ(iZ))**2 &
@@ -166,7 +180,30 @@ PROGRAM PrimitiveConserved
              + ( ( W - 1.0_DP ) / Vsq ) * V1(PositionIndexZ(iZ)) * V3(PositionIndexZ(iZ)) * I1T &
              + ( ( W - 1.0_DP ) / Vsq ) * V2(PositionIndexZ(iZ)) * V3(PositionIndexZ(iZ)) * I2T  
   
+!      Ii(1) = I1(iZ) 
+!      Ii(2) = I2(iZ) 
+!      Ii(3) = I3(iZ) 
+!      
+!      Vi(1) = V1(PositionIndexZ(iZ))
+!      Vi(2) = V2(PositionIndexZ(iZ))
+!      Vi(3) = V3(PositionIndexZ(iZ))
+!
 
+!      DO i = 1,3
+!      DO j = 1,3
+!
+!        absIi = absIi + gg(i,j) * Ii(i) * Ii(j) - Vi(i) * Vi(j) * Ii(i) * Ii(j)
+!
+!      END DO
+!      END DO
+!
+!      absIi = SQRT(absIi) 
+!
+!      IF (absIi .GT. D(iZ) )THEN 
+!        print*,"D,I: ", absIi, D(iZ), Ii(1), Ii(2), Ii(3)
+!      END IF
+!
+!absIi= 0.0_DP 
       CALL ComputeConserved_TwoMoment &
                ( D(iZ), I1(iZ), I2(iZ), I3(iZ), &
                  N(iZ), G1(iZ), G2(iZ), G3(iZ), &
@@ -177,6 +214,25 @@ PROGRAM PrimitiveConserved
                  B2(PositionIndexZ(iZ)),B3(PositionIndexZ(iZ)) )
 
 
+!      Ii(1) = G1(iZ) 
+!      Ii(2) = G2(iZ) 
+!      Ii(3) = G3(iZ) 
+!
+!      DO i = 1,3
+!      DO j = 1,3
+!
+!        absIi = absIi + gg(i,j) * Ii(i) * Ii(j) - Vi(i) * Vi(j) * Ii(i) * Ii(j)
+!
+!      END DO
+!      END DO
+!
+!      absIi = SQRT(absIi) 
+!
+!      IF (absIi .GT. N(iZ) ) THEN
+!        print*,"N,G: ", absIi, N(iZ), Ii(1), Ii(2), Ii(3)
+!      END IF
+!
+!      absIi = 0.0_DP
 
     END DO
 
@@ -188,8 +244,24 @@ PROGRAM PrimitiveConserved
 
 
   ALLOCATE( nIterations(nZ_G) )
+ 
+#if defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( N, G1, G2, G3, &
+    !$ACC         D, I1, I2, I3, &
+    !$ACC         V1, V2, V3, Ones, Zeros, &
+    !$ACC         alp, B1, B2, B3, PositionIndexZ, nIterations  )
+#endif
 
-  
+
+
+
+
+    CALL TimersStart( Timer_ComputePrimative )
+
+
+
+ 
        CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( N, G1, G2, G3, &
              D, I1, I2, I3, &
@@ -206,10 +278,15 @@ PROGRAM PrimitiveConserved
              PositionIndexZ, &
              nIterations )     
 
+    CALL TimersStop( Timer_ComputePrimative )
 
 
-
-
+#if defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( N, G1, G2, G3, &
+    !$ACC                D, I1, I2, I3, &
+    !$ACC                V1, V2, V3, Ones, Zeros, &
+    !$ACC                alp, B1, B2, B3, PositionIndexZ, nIterations  )
+#endif
    
 
 
@@ -225,7 +302,12 @@ OPEN(UNIT=14,FILE="vel.txt",FORM="FORMATTED",STATUS="OLD",ACTION="WRITE")
   WRITE(UNIT=14, FMT=*) absV, V1(1), V2(1), V3(1)
 
 print*,absV, V1(1), V2(1), V3(1)
+print*,N(1), G1(1), G2(1), G3(1)
 
+OPEN(UNIT=14,FILE="N1.txt",FORM="FORMATTED",STATUS="OLD",ACTION="WRITE")
+
+  WRITE(UNIT=14, FMT=*) N(1), G1(1), G2(1), G3(1)
   DEALLOCATE( nIterations )
 
+    CALL FinalizeTimers
 END PROGRAM PrimitiveConserved

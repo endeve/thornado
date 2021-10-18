@@ -3,4 +3,9 @@ MACHINE = $(THORNADO_MACHINE)
 OPT_LEVEL ?= DEBUG
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
+USE_GPU    ?= TRUE
+USE_OACC   ?= TRUE
+USE_CUBLAS ?= TRUE
+
+
 include ../Makefile

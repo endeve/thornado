@@ -62,7 +62,7 @@ ReferenceElementModuleE.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
-  ReferenceElementModuleE.f90
+  ReferenceElementModuleE.F90
 
 ReferenceElementModuleZ.o: \
   KindModule.o \
@@ -122,7 +122,7 @@ ReferenceElementModuleE_Lagrange.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleE.o \
   PolynomialBasisModule_Lagrange.o \
-  ReferenceElementModuleE_Lagrange.f90
+  ReferenceElementModuleE_Lagrange.F90
 
 ReferenceElementModuleZ_Lagrange.o: \
   KindModule.o \

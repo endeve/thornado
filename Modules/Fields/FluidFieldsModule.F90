@@ -270,6 +270,14 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nPF) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uPF )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uPF )
+#endif
+
   END SUBROUTINE CreateFluidFields_Primitive
 
 
@@ -367,10 +375,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCF )
+    !$OMP MAP( release: uCF, uPF )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( uCF )
+    !$ACC DELETE( uCF, uPF )
 #endif
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )

@@ -298,16 +298,16 @@ CONTAINS
 
     TimeStep = HUGE( One )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$ACC REDUCTION( MIN: TimeStep )
-#elif defined(THORNADO_OMP)
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
@@ -361,10 +361,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CopyOut )
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL ) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
