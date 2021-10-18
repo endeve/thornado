@@ -76,9 +76,13 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   REAL(DP), PUBLIC :: dEnergyMomentum_PL_TwoMoment(nCR)
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( Min_1, Max_1, Min_2, W_Factor )
+  !$OMP DECLARE &
+  !$OMP TARGET( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
+  !$OMP         InterpMat_Z, InterpMat_X, PointZ2X )
 #elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( Min_1, Max_1, Min_2, W_Factor )
+  !$ACC DECLARE &
+  !$ACC CREATE( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
+  !$ACC         InterpMat_Z, InterpMat_X, PointZ2X )
 #endif
 
 CONTAINS
@@ -166,12 +170,6 @@ CONTAINS
 
     END IF
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( Min_1, Max_1, Min_2, W_Factor )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( Min_1, Max_1, Min_2, W_Factor )
-#endif
-
     ! --- Interpolation Matrix for Energy-Position Space Variables ---
 
     nPP_Z    = 0
@@ -238,14 +236,6 @@ CONTAINS
 
     END DO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: InterpMat_Z )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( InterpMat_Z )
-#endif
-
     ! --- Interpolation Matrix for Position Space Variables ---
 
     nPP_X    = 0
@@ -307,14 +297,6 @@ CONTAINS
       END IF
 
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: InterpMat_X )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( InterpMat_X )
-#endif
 
     ! --- Index Map from Energy-Position to Position ---
 
@@ -518,25 +500,19 @@ CONTAINS
     END IF
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: PointZ2X )
+    !$OMP TARGET UPDATE &
+    !$OMP TO( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
+    !$OMP     InterpMat_Z, InterpMat_X, PointZ2X )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( PointZ2X )
+    !$ACC UPDATE &
+    !$ACC DEVICE( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
+    !$ACC         InterpMat_Z, InterpMat_X, PointZ2X )
 #endif
 
   END SUBROUTINE InitializePositivityLimiter_TwoMoment
 
 
   SUBROUTINE FinalizePositivityLimiter_TwoMoment
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: InterpMat_Z, InterpMat_X, PointZ2X )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( InterpMat_Z, InterpMat_X, PointZ2X )
-#endif
 
     DEALLOCATE( InterpMat_Z )
     DEALLOCATE( InterpMat_X )
@@ -1242,6 +1218,14 @@ CONTAINS
 
     ! --- Three-Velocity ---
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, U_F, GX, V_u_1, V_u_2, V_u_3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1275,6 +1259,19 @@ CONTAINS
       ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
+    !$OMP PRIVATE( iNodeZ )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
+    !$ACC PRIVATE( iNodeZ ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, W2_K, W3_K, GE, GX, Weights_Q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1289,14 +1286,14 @@ CONTAINS
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * W_Factor &
               * GE(iNodeE,iZ1,iGE_Ep2) &
-              * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+              * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) &
               * Weights_Q(iNodeZ)
 
         W3_K(iNodeZ,iZ1,iZ2,iZ3,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * W_Factor &
               * GE(iNodeE,iZ1,iGE_Ep3) &
-              * GX(iNodeX,iZ2,iZ3,iZ3,iGF_SqrtGm) &
+              * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) &
               * Weights_Q(iNodeZ)
 
       END DO
@@ -1309,6 +1306,21 @@ CONTAINS
 
     END ASSOCIATE
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, Det, &
+    !$OMP          Theta_K1, Theta_K2, PowTheta )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, Det, &
+    !$ACC          Theta_K1, Theta_K2, PowTheta ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, W2_K, W3_K, DeltaE, U_R, &
+    !$ACC          V_u_1, V_u_2, V_u_3, LimiterApplied )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, Det, &
+    !$OMP          Theta_K1, Theta_K2, PowTheta )
+#endif
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1466,7 +1478,6 @@ CONTAINS
             IF( ABS( Det ) .GT. SqrtTiny )THEN
 
               Theta_K1 =   N_K2 * ResidualE / Det
-
               Theta_K2 = - N_K1 * ResidualE / Det
 
             ELSE
@@ -1723,7 +1734,7 @@ CONTAINS
     !$OMP PRIVATE( Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_K )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_K )
+    !$ACC PRIVATE( Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_K ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, RealizableCellAverage, &
     !$ACC          h_d_1, h_d_2, h_d_3, N_K, G1_K, G2_K, G3_K )
 #elif defined(THORNADO_OMP)
@@ -2009,6 +2020,12 @@ CONTAINS
 
   REAL(DP) FUNCTION ElementNumber( W, N )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: W(nDOFZ)
     REAL(DP), INTENT(in) :: N(nDOFZ)
 
@@ -2027,6 +2044,12 @@ CONTAINS
 
   REAL(DP) FUNCTION ElementEnergy &
     ( W, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: W    (nDOFZ)
     REAL(DP), INTENT(in) :: N    (nDOFZ)
@@ -2122,7 +2145,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG COLLAPSE(5) &
     !$ACC PRIVATE( SUM_E ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R )
+    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R, dZ1, dZ2, dZ3, dZ4, Energy )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iNodeZ, V_u_1, V_u_2, V_u_3, SUM_E )
@@ -2239,7 +2262,7 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
     REAL(DP) :: V_d_1, V_d_2, V_d_3
     REAL(DP) :: V_u_1, V_u_2, V_u_3
-    REAL(DP) :: JAC, SUM_N, SUM_G1, SUM_G2, SUM_G3
+    REAL(DP) :: W3_K, SUM_N, SUM_G1, SUM_G2, SUM_G3
 
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
@@ -2255,18 +2278,18 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
-    !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, JAC ) &
+    !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$OMP REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$OMP MAP( from: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, JAC ) &
+    !$ACC PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$ACC REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$ACC COPYOUT( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R )
+    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R, dZ1, dZ2, dZ3, dZ4 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(7) &
-    !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, JAC ) &
+    !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$OMP REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 #endif
     DO iS  = 1       , nSpecies
@@ -2288,29 +2311,29 @@ CONTAINS
         V_u_2 = V_d_2 / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
         V_u_3 = V_d_3 / GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
 
-        JAC = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-              * W_Factor &
-              * Weights_Q(iNodeZ) &
-              * GE(iNodeE,iZ1,iGE_Ep3) &
-              * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+        W3_K = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+               * W_Factor &
+               * Weights_Q(iNodeZ) &
+               * GE(iNodeE,iZ1,iGE_Ep3) &
+               * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
 
         SUM_N &
-          = SUM_N + JAC * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) &
-                            + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) * V_u_1 &
-                            + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) * V_u_2 &
-                            + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) * V_u_3 )
+          = SUM_N  + W3_K * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) &
+                              + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) * V_u_1 &
+                              + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) * V_u_2 &
+                              + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) * V_u_3 )
 
         SUM_G1 &
-          = SUM_G1 + JAC * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
-                             + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) * V_d_1 )
+          = SUM_G1 + W3_K * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+                              + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) * V_d_1 )
 
         SUM_G2 &
-          = SUM_G2 + JAC * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
-                             + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) * V_d_2 )
+          = SUM_G2 + W3_K * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+                              + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) * V_d_2 )
 
         SUM_G3 &
-          = SUM_G3 + JAC * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) &
-                             + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) * V_d_3 )
+          = SUM_G3 + W3_K * (   U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) &
+                              + U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) * V_d_3 )
 
       END DO
       END DO
