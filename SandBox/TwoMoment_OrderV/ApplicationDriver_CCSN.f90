@@ -65,6 +65,7 @@ PROGRAM ApplicationDriver_CCSN
   LOGICAL       :: UseSlopeLimiter_TwoMoment
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
+  LOGICAL       :: UseEnergyLimiter_TwoMoment
   LOGICAL       :: RampTimeStep
   INTEGER       :: RestartFileNumber
   INTEGER       :: nNodes, nSpecies
@@ -118,7 +119,11 @@ PROGRAM ApplicationDriver_CCSN
 
   ! --- Time Step Control ---
 
-  RampTimeStep = .TRUE.
+  IF( RestartFileNumber .LT. 0 )THEN
+    RampTimeStep = .TRUE.    
+  ELSE
+    RampTimeStep = .FALSE.
+  END IF
   RampFactor   = 1.1_DP
   dt_Initial   = 1.0d-6 * Millisecond
 
@@ -135,6 +140,7 @@ PROGRAM ApplicationDriver_CCSN
   EvolveTwoMoment                = .TRUE.
   UseSlopeLimiter_TwoMoment      = .FALSE.
   UsePositivityLimiter_TwoMoment = .TRUE.
+  UseEnergyLimiter_TwoMoment     = .FALSE.
 
   TimeSteppingScheme = 'IMEX_PDARS'
 
@@ -541,6 +547,8 @@ CONTAINS
                = SqrtTiny, &
              UsePositivityLimiter_Option &
                = UsePositivityLimiter_TwoMoment, &
+             UseEnergyLimiter_Option &
+               = UseEnergyLimiter_TwoMoment, &
              Verbose_Option &
                = .TRUE. )
 

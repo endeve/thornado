@@ -128,6 +128,8 @@ TimeSteppingModule_SSPRK.o: \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
   Poseidon_UtilitiesModule.o \
   TimersModule_Euler.o \
+  Euler_dgDiscretizationModule.o \
+  Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90
 
 ComputePrimitiveTest.o: \

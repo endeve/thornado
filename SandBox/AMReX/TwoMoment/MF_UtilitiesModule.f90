@@ -249,9 +249,9 @@ MODULE MF_UtilitiesModule
                           iZ_B (4), iZ_E (4), iE_B, iE_E,             &
                           iX_B (3), iX_E (3), iEL, iER, iLo_MF(4),    &
                           iLevel, nCompGF, nCompCF, nCompCR,          &
-                          iX1, iX2, iX3, iCF, iGF, iCR, iPR, i,       &
+                          iX1, iX2, iX3, iCF, iGF, iCR, i,            &
                           iZ1, iZ2, iZ3, iZ4, iS, iE,                 &
-                          iNodeZ, iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4, &
+                          iNodeZ,                                     &
                           iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeE
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
