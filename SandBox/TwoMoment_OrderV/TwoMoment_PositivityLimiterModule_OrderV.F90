@@ -722,6 +722,10 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R ) &
+    !$OMP MAP( alloc:  RealizableCellAverage, RecomputePointValues, LimiterApplied, &
+    !$OMP              Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
+    !$OMP              G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
+    !$OMP              h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R ) &
@@ -1118,6 +1122,22 @@ CONTAINS
 
     dEnergyMomentum_PL_TwoMoment = EnergyMomentum_1 - EnergyMomentum_0
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R, &
+    !$OMP               RealizableCellAverage, RecomputePointValues, LimiterApplied, &
+    !$OMP               Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
+    !$OMP               G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
+    !$OMP               h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R, &
+    !$ACC         RealizableCellAverage, RecomputePointValues, LimiterApplied, &
+    !$ACC         Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
+    !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
+    !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
+#endif
+
 !#if   defined( THORNADO_OMP_OL )
 !    !$OMP TARGET UPDATE TO( U_R )
 !#elif defined( THORNADO_OACC   )
@@ -1215,6 +1235,14 @@ CONTAINS
     IF( .NOT. UseEnergyLimiter ) RETURN
 
     CALL TimersStart( Timer_PL_EnergyLimiter )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+#endif
 
     ! --- Three-Velocity ---
 
@@ -1546,6 +1574,14 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+#endif
 
     CALL TimersStop( Timer_PL_EnergyLimiter )
 
@@ -2145,7 +2181,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG COLLAPSE(5) &
     !$ACC PRIVATE( SUM_E ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R, dZ1, dZ2, dZ3, dZ4, Energy )
+    !$ACC PRESENT( iZ_B0, iZ_E0, dZ1, dZ2, dZ3, dZ4, &
+    !$ACC          Weights_Q, GE, GX, U_F, U_R, Energy )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iNodeZ, V_u_1, V_u_2, V_u_3, SUM_E )
