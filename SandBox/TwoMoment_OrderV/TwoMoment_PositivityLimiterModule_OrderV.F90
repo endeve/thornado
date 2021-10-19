@@ -555,8 +555,6 @@ CONTAINS
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_Z, iP_X
     INTEGER  :: iNodeZ, iNodeE, iNodeX
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gam, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
@@ -708,29 +706,22 @@ CONTAINS
 
     N_R = nSpecies * PRODUCT( iZ_E0 - iZ_B0 + 1 )
 
-    iX_B0 = iZ_B0(2:4)
-    iX_E0 = iZ_E0(2:4)
-
-    N_G = PRODUCT( iX_E0 - iX_B0 + 1 )
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET UPDATE FROM( U_F, U_R )
-!#elif defined( THORNADO_OACC   )
-!    !$ACC UPDATE HOST( U_F, U_R )
-!#endif
+    N_G = PRODUCT( iZ_E0(2:4) - iZ_B0(2:4) + 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R ) &
+    !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$OMP MAP( alloc:  RealizableCellAverage, RecomputePointValues, LimiterApplied, &
-    !$OMP              Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
+    !$OMP              Energy_K, dEnergy_K, EnergyMomentum_0, EnergyMomentum_1, &
+    !$OMP              Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP              G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP              h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R ) &
+    !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$ACC CREATE( RealizableCellAverage, RecomputePointValues, LimiterApplied, &
-    !$ACC         Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
+    !$ACC         Energy_K, dEnergy_K, EnergyMomentum_0, EnergyMomentum_1, &
+    !$ACC         Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #endif
@@ -747,19 +738,19 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, GX, h_d_1_Q, h_d_2_Q, h_d_3_Q )
+    !$ACC PRESENT( iZ_B0, iZ_E0, GX, h_d_1_Q, h_d_2_Q, h_d_3_Q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
 
       DO iNodeX = 1, nDOFX
 
-        h_d_1_Q(iNodeX,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_1)
-        h_d_2_Q(iNodeX,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_2)
-        h_d_3_Q(iNodeX,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_3)
+        h_d_1_Q(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_h_1)
+        h_d_2_Q(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_h_2)
+        h_d_3_Q(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_h_3)
 
       END DO
 
@@ -769,9 +760,9 @@ CONTAINS
 
     CALL TimersStop( Timer_PL_Permute )
 
-    CALL ComputePointValuesX( iX_B0, iX_E0, h_d_1_Q, h_d_1_P )
-    CALL ComputePointValuesX( iX_B0, iX_E0, h_d_2_Q, h_d_2_P )
-    CALL ComputePointValuesX( iX_B0, iX_E0, h_d_3_Q, h_d_3_P )
+    CALL ComputePointValuesX( iZ_B0, iZ_E0, h_d_1_Q, h_d_1_P )
+    CALL ComputePointValuesX( iZ_B0, iZ_E0, h_d_2_Q, h_d_2_P )
+    CALL ComputePointValuesX( iZ_B0, iZ_E0, h_d_3_Q, h_d_3_P )
 
     CALL TimersStart( Timer_PL_Permute )
 
@@ -860,12 +851,6 @@ CONTAINS
            ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
              h_d_1_P, h_d_2_P, h_d_3_P, RealizableCellAverage )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( RealizableCellAverage )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( RealizableCellAverage )
-#endif
-
     ! --- Ensure Bounded Density ---
 
     CALL TimersStart( Timer_PL_Theta_1 )
@@ -938,9 +923,7 @@ CONTAINS
     CALL TimersStop( Timer_PL_Theta_1 )
 
     !IF( ANY( RecomputePointValues ) )THEN
-
     !  CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
-
     !END IF
 
     ! --- Ensure Positive "Gamma" ---
@@ -1048,13 +1031,9 @@ CONTAINS
 
     CALL TimersStop( Timer_PL_Theta_2 )
 
-    IF( .NOT. ALL( RealizableCellAverage ) )THEN
-
-      CALL RecoverRealizableCellAverage &
-             ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
-               h_d_1_P, h_d_2_P, h_d_3_P, RealizableCellAverage )
-
-    END IF
+    CALL RecoverRealizableCellAverage &
+           ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
+             h_d_1_P, h_d_2_P, h_d_3_P, RealizableCellAverage )
 
     CALL TimersStart( Timer_PL_Permute )
 
@@ -1120,29 +1099,25 @@ CONTAINS
     CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_1 )
 
-    dEnergyMomentum_PL_TwoMoment = EnergyMomentum_1 - EnergyMomentum_0
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R, &
+    !$OMP MAP( from: EnergyMomentum_0, EnergyMomentum_1 ) &
+    !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$OMP               RealizableCellAverage, RecomputePointValues, LimiterApplied, &
     !$OMP               Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP               G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP               h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( iZ_B0, iZ_E0, iX_B0, iX_E0, GE, GX, U_F, U_R, &
+    !$ACC COPYOUT( EnergyMomentum_0, EnergyMomentum_1 ) &
+    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$ACC         RealizableCellAverage, RecomputePointValues, LimiterApplied, &
     !$ACC         Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #endif
 
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET UPDATE TO( U_R )
-!#elif defined( THORNADO_OACC   )
-!    !$ACC UPDATE DEVICE( U_R )
-!#endif
+    dEnergyMomentum_PL_TwoMoment = EnergyMomentum_1 - EnergyMomentum_0
 
     CALL TimersStop( Timer_PL )
 
@@ -1238,10 +1213,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+    !$OMP MAP( alloc: V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+    !$ACC CREATE( V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #endif
 
     ! --- Three-Velocity ---
@@ -1645,20 +1620,20 @@ CONTAINS
   END SUBROUTINE ComputePointValuesZ_Single
 
 
-  SUBROUTINE ComputePointValuesX( iX_B0, iX_E0, U_Q, U_P )
+  SUBROUTINE ComputePointValuesX( iZ_B0, iZ_E0, U_Q, U_P )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B0(3), iX_E0(3)
+      iZ_B0(4), iZ_E0(4)
     REAL(DP), INTENT(in)  :: &
       U_Q(nDOFX, &
-          iX_B0(1):iX_E0(1), &
-          iX_B0(2):iX_E0(2), &
-          iX_B0(3):iX_E0(3))
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4))
     REAL(DP), INTENT(out) :: &
       U_P(nPT_X, &
-          iX_B0(1):iX_E0(1), &
-          iX_B0(2):iX_E0(2), &
-          iX_B0(3):iX_E0(3))
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4))
 
     CALL TimersStart( Timer_PL_PointValues )
 
@@ -2168,18 +2143,12 @@ CONTAINS
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 )
-#endif
-
-#if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(5) &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( SUM_E )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG COLLAPSE(5) &
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC PRIVATE( SUM_E ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, dZ1, dZ2, dZ3, dZ4, &
     !$ACC          Weights_Q, GE, GX, U_F, U_R, Energy )
@@ -2247,14 +2216,6 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4 )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4 )
-#endif
-
     END ASSOCIATE
 
   END SUBROUTINE ComputeLocalEnergy
@@ -2306,24 +2267,22 @@ CONTAINS
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 )
-#endif
+    !$OMP TARGET &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
+    !$OMP MAP( alloc: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
-    !$OMP REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
-    !$OMP MAP( from: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
+    !$OMP REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PARALLEL &
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
+    !$ACC CREATE( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, EnergyMomentum, Weights_Q, GE, GX, U_F, U_R )
+
+    !$ACC LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
-    !$ACC REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
-    !$ACC COPYOUT( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R, dZ1, dZ2, dZ3, dZ4 )
+    !$ACC REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
@@ -2380,18 +2339,14 @@ CONTAINS
     END DO
     END DO
     END DO
-
     EnergyMomentum(iCR_N ) = SUM_N
     EnergyMomentum(iCR_G1) = SUM_G1
     EnergyMomentum(iCR_G2) = SUM_G2
     EnergyMomentum(iCR_G3) = SUM_G3
-
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4 )
+    !$OMP END TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4 )
+    !$ACC END PARALLEL
 #endif
 
     END ASSOCIATE
