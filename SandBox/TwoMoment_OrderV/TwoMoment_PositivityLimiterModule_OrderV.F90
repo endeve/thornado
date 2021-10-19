@@ -717,7 +717,7 @@ CONTAINS
     !$OMP              G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP              h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
+    !$ACC ENTER DATA ASYNC &
     !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$ACC CREATE( RealizableCellAverage, RecomputePointValues, LimiterApplied, &
     !$ACC         Energy_K, dEnergy_K, EnergyMomentum_0, EnergyMomentum_1, &
@@ -737,7 +737,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) ASYNC &
     !$ACC PRESENT( iZ_B0, iZ_E0, GX, h_d_1_Q, h_d_2_Q, h_d_3_Q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
@@ -770,7 +770,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, Tau_Q, GX, GE )
 #elif defined( THORNADO_OMP    )
@@ -805,7 +805,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
     !$ACC PRESENT( iZ_B0, iZ_E0, N_Q, G1_Q, G2_Q, G3_Q, U_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(6)
@@ -856,10 +856,10 @@ CONTAINS
     CALL TimersStart( Timer_PL_Theta_1 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE ASYNC PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( Min_K, Max_K, Theta_1 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRIVATE( Min_K, Max_K, Theta_1 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, RecomputePointValues, LimiterApplied, &
     !$ACC          RealizableCellAverage, N_P, N_K, N_Q )
@@ -935,7 +935,7 @@ CONTAINS
     !$OMP PRIVATE( Theta_2, Theta_P, Gam, Gamma_Min, iP_X, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRIVATE( Theta_2, Theta_P, Gam, Gamma_Min, iP_X, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, RealizableCellAverage, LimiterApplied, &
@@ -1040,7 +1040,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRESENT( iZ_B0, iZ_E0, U_R, N_Q, G1_Q, G2_Q, G3_Q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
@@ -1072,7 +1072,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRESENT( iZ_B0, iZ_E0, dEnergy_K, Energy_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
@@ -1108,13 +1108,15 @@ CONTAINS
     !$OMP               G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP               h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
+    !$ACC EXIT DATA ASYNC &
     !$ACC COPYOUT( EnergyMomentum_0, EnergyMomentum_1 ) &
     !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$ACC         RealizableCellAverage, RecomputePointValues, LimiterApplied, &
     !$ACC         Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
+
+    !$ACC WAIT
 #endif
 
     dEnergyMomentum_PL_TwoMoment = EnergyMomentum_1 - EnergyMomentum_0
@@ -1215,7 +1217,7 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
+    !$ACC ENTER DATA ASYNC &
     !$ACC CREATE( V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #endif
 
@@ -1224,7 +1226,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) ASYNC &
     !$ACC PRESENT( iZ_B0, iZ_E0, U_F, GX, V_u_1, V_u_2, V_u_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
@@ -1267,7 +1269,7 @@ CONTAINS
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( iNodeZ )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC PRIVATE( iNodeZ ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, W2_K, W3_K, GE, GX, Weights_Q )
@@ -1314,7 +1316,7 @@ CONTAINS
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, Det, &
     !$OMP          Theta_K1, Theta_K2, PowTheta )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) ASYNC &
     !$ACC PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, Det, &
     !$ACC          Theta_K1, Theta_K2, PowTheta ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, W2_K, W3_K, DeltaE, U_R, &
@@ -1554,7 +1556,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
+    !$ACC EXIT DATA ASYNC &
     !$ACC DELETE( V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #endif
 
@@ -1669,7 +1671,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( SUM1, SUM2 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRIVATE( SUM1, SUM2 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, U_K, Weights_Q, Tau_Q, U_Q )
 #elif defined( THORNADO_OMP    )
@@ -1744,7 +1746,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_K )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRIVATE( Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_K ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, RealizableCellAverage, &
     !$ACC          h_d_1, h_d_2, h_d_3, N_K, G1_K, G2_K, G3_K )
@@ -1867,7 +1869,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( absG_K, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
     !$ACC PRIVATE( absG_K, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, RealizableCellAverage, &
     !$ACC          h_d_1, h_d_2, h_d_3, &
@@ -2147,7 +2149,7 @@ CONTAINS
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( SUM_E )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG COLLAPSE(5) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC PRIVATE( SUM_E ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, dZ1, dZ2, dZ3, dZ4, &
@@ -2275,7 +2277,7 @@ CONTAINS
     !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$OMP REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL &
+    !$ACC PARALLEL ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC CREATE( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, EnergyMomentum, Weights_Q, GE, GX, U_F, U_R )
