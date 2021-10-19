@@ -107,8 +107,7 @@ MODULE LinearAlgebraModule
     hipsparseDgthr, &
     HIPSPARSE_INDEX_BASE_ONE
 #elif defined(THORNADO_LA_ONEMKL)
-  USE onemkl_blas_omp_offload
-  USE common_blas
+  USE onemkl_blas_omp_offload_lp64
 #elif defined(THORNADO_LA_MAGMA)
   USE MagmaModule, ONLY: &
     magma_queue, &
@@ -973,7 +972,7 @@ CONTAINS
     CALL DGELS &
            ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
     !$OMP END TARGET VARIANT DISPATCH
-    !$OMP TARGET UPDATE FROM( work )
+    !$OMP TARGET UPDATE FROM( work(1) )
     lwork = INT( work(1) )
 #elif defined(THORNADO_LA_MAGMA)
     CALL magma_dgels_gpu &
