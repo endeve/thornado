@@ -556,7 +556,7 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_Z, iP_X
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: Gam, Gamma_Min
+    REAL(DP) :: Gamma_P, Gamma_Min
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP) :: EnergyMomentum_0(nCR)
     REAL(DP) :: EnergyMomentum_1(nCR)
@@ -922,29 +922,23 @@ CONTAINS
 
     CALL TimersStop( Timer_PL_Theta_1 )
 
-    !IF( ANY( RecomputePointValues ) )THEN
-    !  CALL ComputePointValuesZ( iZ_B0, iZ_E0, N_Q , N_P  )
-    !END IF
-
     ! --- Ensure Positive "Gamma" ---
 
     CALL TimersStart( Timer_PL_Theta_2 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( Theta_2, Theta_P, Gam, Gamma_Min, iP_X, &
-    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(5) &
+    !$OMP PRIVATE( Theta_2, Gamma_Min )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
-    !$ACC PRIVATE( Theta_2, Theta_P, Gam, Gamma_Min, iP_X, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    !$ACC PARALLEL LOOP GANG COLLAPSE(5) ASYNC &
+    !$ACC PRIVATE( Theta_2, Gamma_Min ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, RealizableCellAverage, LimiterApplied, &
     !$ACC          h_d_1_P, h_d_2_P, h_d_3_P, N_P, G1_P, G2_P, G3_P, &
     !$ACC          N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, PointZ2X )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( Theta_2, Theta_P, Gam, Gamma_Min, iP_X, &
-    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$OMP PRIVATE( Theta_2, Gamma_Min, &
+    !$OMP          iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P )
 #endif
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -957,6 +951,15 @@ CONTAINS
         Theta_2   = One
         Gamma_Min = Min_2
 
+#if   defined( THORNADO_OMP_OL )
+        !$OMP PARALLEL DO SIMD &
+        !$OMP PRIVATE( iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P ) &
+        !$OMP REDUCTION( min: Gamma_Min, Theta_2 )
+#elif defined( THORNADO_OACC   )
+        !$ACC LOOP VECTOR &
+        !$ACC PRIVATE( iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P ) &
+        !$ACC REDUCTION( min: Gamma_Min, Theta_2 )
+#endif
         DO iP_Z = 1, nPT_Z
 
           iP_X = PointZ2X(iP_Z)
@@ -965,7 +968,7 @@ CONTAINS
           Gm_dd_22 = MAX( h_d_2_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
           Gm_dd_33 = MAX( h_d_3_P(iP_X,iZ2,iZ3,iZ4)**2, SqrtTiny )
 
-          Gam &
+          Gamma_P &
             = GammaFun &
                 ( N_P (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
                   G1_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
@@ -973,9 +976,9 @@ CONTAINS
                   G3_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
                   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-          Gamma_Min = MIN( Gam, Gamma_Min )
+          Gamma_Min = MIN( Gamma_P, Gamma_Min )
 
-          IF( Gam < Min_2 )THEN
+          IF( Gamma_P < Min_2 )THEN
 
             CALL SolveTheta_Bisection &
                    ( N_P (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
@@ -1001,21 +1004,30 @@ CONTAINS
 
           Theta_2 = One_EPS * Theta_2
 
-          N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
+#if   defined( THORNADO_OMP_OL )
+        !$OMP PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+        !$ACC LOOP VECTOR
+#endif
+          DO iNodeZ = 1, nDOFZ
 
-          G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+            N_Q (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+              = Theta_2 * N_Q (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+                + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
 
-          G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+            G1_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+              = Theta_2 * G1_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+                + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
 
-          G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+            G2_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+              = Theta_2 * G2_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+                + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+            G3_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+              = Theta_2 * G3_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
+                + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+          END DO
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
