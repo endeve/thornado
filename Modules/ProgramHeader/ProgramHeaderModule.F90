@@ -303,7 +303,7 @@ CONTAINS
 
     nDimsE  = 0
     nNodesE = 1
-    IF( nE > 1 )THEN
+    IF( nE >= 1 )THEN
       nDimsE  = 1
       nNodesE = nNodes
     END IF
