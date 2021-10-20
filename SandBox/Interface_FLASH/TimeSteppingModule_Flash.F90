@@ -22,7 +22,7 @@ MODULE TimeSteppingModule_Flash
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies, iCR_N, iCR_G1
+    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2
 #ifdef TWOMOMENT_ORDER_1
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
@@ -199,7 +199,7 @@ CONTAINS
     END IF
 
 #ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN when enter TimeStep'
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when enter TimeStep'
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -217,12 +217,10 @@ CONTAINS
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
 #ifdef TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
 #endif
-
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN before Copy U_R'
 #endif
 
     ! ----------------------------------------------------------------
@@ -235,16 +233,6 @@ CONTAINS
 
     CALL AddFields_Radiation &
            ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
-
-#ifdef THORNADO_DEBUG
-    IF( DEBUG ) THEN
-      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
-        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-        STOP ' Negative U_R(iCR_N) when enter Update_IMEX_PDARS'
-      END IF
-    END IF
-#endif
 
     ! ---------------
     ! --- Stage 1 ---
@@ -305,16 +293,6 @@ CONTAINS
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
-#ifdef THORNADO_DEBUG
-      IF( DEBUG ) THEN
-        IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
-          PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-          PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-          STOP ' Negative U_R(iCR_N) after applied first limiter'
-        END IF
-      END IF
-#endif
-
       ! --- Apply Boundary Condition ---
 
       CALL ApplyBoundaryConditions_Radiation &
@@ -323,16 +301,6 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_V
       CALL ApplyBoundaryConditions_Euler_FLASH &
              ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
-#endif
-
-#ifdef THORNADO_DEBUG
-      IF( DEBUG ) THEN
-        IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
-          PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-          PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-          STOP ' Negative U_R(iCR_N) before ComputeIncrement_TwoMoment_Explicit'
-        END IF
-      END IF
 #endif
 
       ! --- Explicit Solver ---
@@ -375,32 +343,10 @@ CONTAINS
 
     END IF
 
-#ifdef THORNADO_DEBUG
-    IF( DEBUG ) THEN
-      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
-        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-      END IF
-    END IF
-#endif
-
     ! --- Apply Increment ---
 
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R )
-
-#ifdef THORNADO_DEBUG
-    IF( DEBUG ) THEN
-      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
-        PRINT*, 'MIN N  =', MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-        PRINT*, 'MIN N1 =', MINVAL(U_R(:,:,:,1,1,iCR_N,1))
-        PRINT*, 'LOC  =', MINLOC(U_R(:,:,:,1,1,iCR_N,1))
-        PRINT*, ' Negative U_R(:,:,:,:,:,iCR_N,:) before applied second limiter'
-      END IF
-    END IF
-
-    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN before second limiter'
-#endif
 
     ! --- Apply Limiter ---
 
@@ -414,36 +360,6 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
-#endif
-
-#ifdef THORNADO_DEBUG
-    IF( DEBUG ) THEN
-      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) )THEN
-        PRINT*, 'Negative U_R(:,:,:,:,:,iCR_N,:) after applied second limiter'
-        DO iS = 1, nSpecies
-          DO iCR = 1, nCR
-            DO iZ4 = iZ_B1(4), iZ_E1(4)
-              DO iZ3 = iZ_B1(3), iZ_E1(3)
-                DO iZ2 = iZ_B1(2), iZ_E1(2)
-                  DO iZ1 = iZ_B1(1), iZ_E1(1)
-                    DO iNode = 1, nDOF
-                      IF( U_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) < Zero )THEN
-                        PRINT*, iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS
-                      END IF
-                    END DO
-                  END DO
-                END DO
-              END DO
-            END DO
-          END DO
-        END DO
-        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-        STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied second limiter'
-      END IF
-    END IF
-
-    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN after second limiter'
 #endif
 
     ! --- Implicit Step ---
@@ -526,24 +442,17 @@ CONTAINS
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
 
     CALL ApplySlopeLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
-#endif
 
-#ifdef THORNADO_DEBUG
-    IF( DEBUG ) THEN
-      IF( ANY( U_R(:,:,:,:,:,iCR_N,:) < 0.0e0 ) ) THEN
-        PRINT*, MINVAL(U_R(:,:,:,:,:,iCR_N,:))
-        PRINT*, MINLOC(U_R(:,:,:,:,:,iCR_N,:))
-        STOP ' Negative U_R(:,:,:,:,:,iCR_N,:) after applied limiter 441'
-      END IF
-    END IF
 #endif
 
     IF( .NOT. SingleStage ) THEN
@@ -673,6 +582,7 @@ CONTAINS
                  U_F, Q1_F, &
                  U_R, Q1_R )
 #endif
+
       ELSE
 
 #if defined(THORNADO_OMP_OL)
@@ -733,8 +643,10 @@ CONTAINS
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
       CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
 
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
@@ -746,7 +658,7 @@ CONTAINS
     END IF
 
 #ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(U_R)) ) STOP 'NaN @ end of [Update_IMEX_PDARS]'
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN @ end of [Update_IMEX_PDARS]'
 #endif
 
 #ifdef THORNADO_DEBUG_IMEX
@@ -776,7 +688,7 @@ CONTAINS
     !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
     !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
-      
+
   END SUBROUTINE Update_IMEX_PDARS
 
 
