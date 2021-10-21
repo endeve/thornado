@@ -365,7 +365,8 @@ CONTAINS
       !$ACC          B_u_1, B_u_2, B_u_3, alp )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, k_dd, absV, Omega, vI, vK )
+      !$OMP PRIVATE( iX, k_dd, absV, Omega, vI, vK, I_d_1, I_d_2, I_d_3, &
+      !$OMP          B_d_1, B_d_2, B_d_3, W, DT ) 
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -486,7 +487,7 @@ CONTAINS
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, B_u_1, B_u_2, B_u_3, alp, nIterations )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP, B_d_1, B_d_2, B_d_3 )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
