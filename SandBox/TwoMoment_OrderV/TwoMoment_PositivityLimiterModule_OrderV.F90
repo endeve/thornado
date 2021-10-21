@@ -568,13 +568,6 @@ CONTAINS
          iZ_B0(4):iZ_E0(4), &
          nSpecies)
     LOGICAL  :: &
-      RecomputePointValues &
-        (iZ_B0(1):iZ_E0(1), &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies)
-    LOGICAL  :: &
       LimiterApplied &
         (iZ_B0(1):iZ_E0(1), &
          iZ_B0(2):iZ_E0(2), &
@@ -717,7 +710,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
-    !$OMP MAP( alloc:  RealizableCellAverage, RecomputePointValues, &
+    !$OMP MAP( alloc:  RealizableCellAverage, &
     !$OMP              LimiterApplied, ApplyEnergyLimiter, &
     !$OMP              Energy_K, dEnergy_K, EnergyMomentum_0, EnergyMomentum_1, &
     !$OMP              Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
@@ -726,7 +719,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA ASYNC &
     !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
-    !$ACC CREATE( RealizableCellAverage, RecomputePointValues, &
+    !$ACC CREATE( RealizableCellAverage, &
     !$ACC         LimiterApplied, ApplyEnergyLimiter, &
     !$ACC         Energy_K, dEnergy_K, EnergyMomentum_0, EnergyMomentum_1, &
     !$ACC         Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
@@ -861,12 +854,12 @@ CONTAINS
     CALL TimersStart( Timer_PL_Theta_1 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE ASYNC PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(5) &
     !$OMP PRIVATE( Min_K, Max_K, Theta_1 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PARALLEL LOOP GANG COLLAPSE(5) ASYNC &
     !$ACC PRIVATE( Min_K, Max_K, Theta_1 ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, RecomputePointValues, LimiterApplied, &
+    !$ACC PRESENT( iZ_B0, iZ_E0, LimiterApplied, &
     !$ACC          RealizableCellAverage, N_P, N_K, N_Q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
@@ -878,14 +871,22 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
-      LimiterApplied      (iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
+      LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
 
       IF( RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
 
         Min_K = Min_1
         Max_K = Max_1
 
+#if   defined( THORNADO_OMP_OL )
+        !$OMP PARALLEL DO SIMD &
+        !$OMP REDUCTION( min: Min_K ) &
+        !$OMP REDUCTION( max: Max_K )
+#elif defined( THORNADO_OACC   )
+        !$ACC LOOP VECTOR &
+        !$ACC REDUCTION( min: Min_K ) &
+        !$ACC REDUCTION( max: Max_K )
+#endif
         DO iP_Z = 1, nPT_Z
 
           Min_K = MIN( Min_K, N_P(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
@@ -904,16 +905,15 @@ CONTAINS
 
           Theta_1 = One_EPS * Theta_1
 
-          N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-            = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
-              + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          RecomputePointValues(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
-          LimiterApplied      (iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
+          CALL ApplyLimiter &
+                 ( Theta_1, N_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                   N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           CALL ComputePointValuesZ_Single &
                  ( N_Q(:,iZ1,iZ2,iZ3,iZ4,iS), &
                    N_P(:,iZ1,iZ2,iZ3,iZ4,iS) )
+
+          LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
         END IF
 
@@ -1009,30 +1009,18 @@ CONTAINS
 
           Theta_2 = One_EPS * Theta_2
 
-#if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   )
-        !$ACC LOOP VECTOR
-#endif
-          DO iNodeZ = 1, nDOFZ
-
-            N_Q (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-              = Theta_2 * N_Q (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-                + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
-
-            G1_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-              = Theta_2 * G1_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-                + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-            G2_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-              = Theta_2 * G2_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-                + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-            G3_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-              = Theta_2 * G3_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
-                + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
-
-          END DO
+          CALL ApplyLimiter &
+                 ( Theta_2, N_K (iZ1,iZ2,iZ3,iZ4,iS), &
+                   N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) )
+          CALL ApplyLimiter &
+                 ( Theta_2, G1_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
+          CALL ApplyLimiter &
+                 ( Theta_2, G2_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
+          CALL ApplyLimiter &
+                 ( Theta_2, G3_K(iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
@@ -1147,7 +1135,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: EnergyMomentum_0, EnergyMomentum_1 ) &
     !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
-    !$OMP               RealizableCellAverage, RecomputePointValues, &
+    !$OMP               RealizableCellAverage, &
     !$OMP               LimiterApplied, ApplyEnergyLimiter, &
     !$OMP               Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP               G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
@@ -1156,7 +1144,7 @@ CONTAINS
     !$ACC EXIT DATA ASYNC &
     !$ACC COPYOUT( EnergyMomentum_0, EnergyMomentum_1 ) &
     !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
-    !$ACC         RealizableCellAverage, RecomputePointValues, &
+    !$ACC         RealizableCellAverage, &
     !$ACC         LimiterApplied, ApplyEnergyLimiter, &
     !$ACC         Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
@@ -1541,7 +1529,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
+    !$ACC ROUTINE VECTOR
 #endif
 
     REAL(DP), INTENT(in)  :: &
@@ -1552,6 +1540,13 @@ CONTAINS
     REAL(DP) :: SUM1
     INTEGER  :: iNodeZ, iP_Z
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( SUM1 )
+#elif defined( THORNADO_OACC   )
+    !$ACC LOOP VECTOR &
+    !$ACC PRIVATE( SUM1 )
+#endif
     DO iP_Z = 1, nPT_Z
       SUM1 = Zero
       DO iNodeZ = 1, nDOFZ
@@ -2142,6 +2137,32 @@ CONTAINS
 
     RETURN
   END SUBROUTINE LimitEnergy
+
+
+  SUBROUTINE ApplyLimiter( Theta, U_K, U_Q )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE VECTOR
+#endif
+
+    REAL(DP), INTENT(in)    :: Theta, U_K
+    REAL(DP), INTENT(inout) :: U_Q(nDOFZ)
+
+    INTEGER :: iNodeZ
+
+#if defined  ( THORNADO_OMP_OL )
+    !$OMP PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+    !$ACC LOOP VECTOR
+#endif
+    DO iNodeZ = 1, nDOFZ
+      U_Q(iNodeZ) = Theta * U_Q(iNodeZ) + ( One - Theta ) * U_K
+    END DO
+
+    RETURN
+  END SUBROUTINE ApplyLimiter
 
 
   SUBROUTINE ComputeLocalEnergy &
