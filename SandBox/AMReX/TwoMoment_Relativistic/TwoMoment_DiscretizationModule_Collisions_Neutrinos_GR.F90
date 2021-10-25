@@ -1,4 +1,4 @@
-MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_Relativistic
+MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
 
   USE KindModule, ONLY: &
@@ -15,33 +15,37 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_Relativistic
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_T, iAF_E , iAF_Ye
+    nAF, iAF_T, iAF_E , iAF_Ye, iAF_P
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputePrimitive_Euler_NonRelativistic, &
-    ComputeConserved_Euler_NonRelativistic
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputeConserved_Euler_Relativistic, &
+    ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
-    ComputeThermodynamicStates_Primitive_TABLE
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    ComputeThermodynamicStates_Primitive_TABLE, &
+    ComputePressureFromPrimitive_TABLE
+  USE TwoMoment_NeutrinoMatterSolverModule_Relativistic, ONLY: &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
     InitializeNeutrinoMatterSolverParameters
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
+
+
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputeIncrement_TwoMoment_Implicit
+  PUBLIC :: ComputeIncrement_TwoMoment_Implicit_Neutrinos
 
   INTEGER               :: nE_G, nX_G
   INTEGER               :: nZ(4), nX(3), nE
@@ -56,8 +60,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_Relativistic
   REAL(DP), ALLOCATABLE, TARGET :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE, TARGET :: PR_N(:,:,:,:)
 
-  REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: N_P, G1_P, G2_P, G3_P
-  REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: J_P, H1_P, H2_P, H3_P
+  REAL(DP), DIMENSION(:,:,:), CONTIGUOUS, POINTER :: N_P, G1_P, G2_P, G3_P
+  REAL(DP), DIMENSION(:,:,:), CONTIGUOUS, POINTER :: J_P, H1_P, H2_P, H3_P
 
   INTEGER,  DIMENSION(:), ALLOCATABLE :: PositionIndexZ
 
@@ -71,8 +75,8 @@ CONTAINS
   ! --- Public Subroutines ---
 
 
-  SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -118,15 +122,24 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: iN_X, iN_E, iS
+    LOGICAL :: Verbose
 
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    IF (Verbose) THEN
+      PRINT*, "      ComputeIncrement_TwoMoment_Implicit_Neutrinos (Start)"
+    END IF
 
     ! PRINT*, "--- In implicit solve ---"
     ! PRINT*, "--- Initializing ---"
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-
+print*, "1"
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
@@ -141,6 +154,7 @@ CONTAINS
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
+print*, "2"
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "CF_D = ", CF_N(:,iCF_D) / (Gram / Centimeter**3)
     ! PRINT*, "CF_E = ", CF_N(:,iCF_E)
@@ -162,7 +176,7 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      CALL ComputePrimitive_Euler_NonRelativistic &
+      CALL ComputePrimitive_Euler_Relativistic &
              ( CF_N(iN_X,iCF_D ), &
                CF_N(iN_X,iCF_S1), &
                CF_N(iN_X,iCF_S2), &
@@ -181,6 +195,7 @@ CONTAINS
 
     END DO
 
+print*, "3"
 
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
@@ -199,20 +214,32 @@ CONTAINS
 
     ! PRINT*, "--- Computing primitive moments ---"
 
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
 
     CALL ComputePrimitive_TwoMoment &
-           ( N_P, G1_P, G2_P, G3_P, &
-             J_P, H1_P, H2_P, H3_P, &
-             PF_N(:,iPF_V1), &
-             PF_N(:,iPF_V2), &
-             PF_N(:,iPF_V3), &
-             GX_N(:,iGF_Gm_dd_11), &
-             GX_N(:,iGF_Gm_dd_22), &
-             GX_N(:,iGF_Gm_dd_33), &
-             PositionIndexZ, &
-             nIterations_Prim )
+           ( N_P(iN_E,iN_X,iS), G1_P(iN_E,iN_X,iS), &
+             G2_P(iN_E,iN_X,iS), G3_P(iN_E,iN_X,iS), &
+             J_P(iN_E,iN_X,iS), H1_P(iN_E,iN_X,iS), &
+             H2_P(iN_E,iN_X,iS), H3_P(iN_E,iN_X,iS), &
+             PF_N(iN_X,iPF_V1), &
+             PF_N(iN_X,iPF_V2), &
+             PF_N(iN_X,iPF_V3), &
+             GX_N(iN_X,iGF_Gm_dd_11), &
+             GX_N(iN_X,iGF_Gm_dd_22), &
+             GX_N(iN_X,iGF_Gm_dd_33), &
+             0.0_DP, 0.0_DP, 0.0_DP,  &
+             GX_N(iN_X,iGF_Alpha), & 
+             GX_N(iN_X,iGF_Beta_1),& 
+             GX_N(iN_X,iGF_Beta_2),& 
+             GX_N(iN_X,iGF_Beta_3) ) 
 
+    END DO
+    END DO
+    END DO
 
+print*, "4"
             ! PRINT*, "N_P = ", N_P(:)
             ! PRINT*, "G1_P = ", G1_P(:)
             ! PRINT*, "G2_P = ", G2_P(:)
@@ -229,6 +256,7 @@ CONTAINS
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
+print*, "5"
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
     ! PRINT*, "T = ", AF_N(:,iAF_T) / (MeV)
@@ -255,9 +283,14 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
+             GX_N(:,iGF_Alpha), &
+             GX_N(:,iGF_Beta_1), &
+             GX_N(:,iGF_Beta_2), &
+             GX_N(:,iGF_Beta_3), &
              nIterations_Inner, &
              nIterations_Outer )
 
+print*, "6"
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -285,16 +318,29 @@ CONTAINS
                PF_N(iN_X,iPF_V3), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
-               GX_N(iN_X,iGF_Gm_dd_33) )
+               GX_N(iN_X,iGF_Gm_dd_33), &
+               0.0_DP, 0.0_DP, 0.0_DP,  &
+               GX_N(iN_X,iGF_Alpha), &
+               GX_N(iN_X,iGF_Beta_1), &
+               GX_N(iN_X,iGF_Beta_2), &
+               GX_N(iN_X,iGF_Beta_3) )
 
     END DO
     END DO
     END DO
 
+print*, "7"
     CALL ComputeThermodynamicStates_Primitive_TABLE &
            ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
              PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
 
+print*, "8"
+    CALL ComputePressureFromPrimitive_TABLE & 
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+             AF_N(:,iAF_P) )
+
+
+print*, "9"
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
@@ -305,7 +351,7 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      CALL ComputeConserved_Euler_NonRelativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( PF_N(iN_X,iPF_D),  &
                PF_N(iN_X,iPF_V1), &
                PF_N(iN_X,iPF_V2), &
@@ -320,13 +366,16 @@ CONTAINS
                CF_N(iN_X,iCF_Ne), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
-               GX_N(iN_X,iGF_Gm_dd_33) )
+               GX_N(iN_X,iGF_Gm_dd_33), &
+               AF_N(iN_X,iAF_P) )
 
     END DO
 
+print*, "10"
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
+print*, "11"
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_F, dU_R ) &
@@ -341,8 +390,9 @@ CONTAINS
 
     CALL FinalizeCollisions
 
+print*, "12"
 
-  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos
 
 
   ! --- Private Subroutines ---
@@ -401,15 +451,15 @@ CONTAINS
     nIterations_Outer(:) = 0
     nIterations_Prim (:) = 0
 
-    N_P (1:nZ_G) => CR_N(:,:,:,iCR_N )
-    G1_P(1:nZ_G) => CR_N(:,:,:,iCR_G1)
-    G2_P(1:nZ_G) => CR_N(:,:,:,iCR_G2)
-    G3_P(1:nZ_G) => CR_N(:,:,:,iCR_G3)
+    N_P (1:,1:,1:) => CR_N(:,:,:,iCR_N )
+    G1_P(1:,1:,1:) => CR_N(:,:,:,iCR_G1)
+    G2_P(1:,1:,1:) => CR_N(:,:,:,iCR_G2)
+    G3_P(1:,1:,1:) => CR_N(:,:,:,iCR_G3)
 
-    J_P (1:nZ_G) => PR_N(:,:,:,iCR_N )
-    H1_P(1:nZ_G) => PR_N(:,:,:,iCR_G1)
-    H2_P(1:nZ_G) => PR_N(:,:,:,iCR_G2)
-    H3_P(1:nZ_G) => PR_N(:,:,:,iCR_G3)
+    J_P (1:,1:,1:) => PR_N(:,:,:,iCR_N )
+    H1_P(1:,1:,1:) => PR_N(:,:,:,iCR_G1)
+    H2_P(1:,1:,1:) => PR_N(:,:,:,iCR_G2)
+    H3_P(1:,1:,1:) => PR_N(:,:,:,iCR_G3)
 
     ! --- Neutrino-Matter Solver Parameter Initialization ---
     ! --- ( can be moved to the program init ) --------------
@@ -732,4 +782,4 @@ CONTAINS
 
 
 
-END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_Relativistic
+END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR

@@ -65,6 +65,10 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_NonRelativistic, &
     FinalizeTally_Euler_NonRelativistic, &
     ComputeTally_Euler_NonRelativistic
+  USE TimersModule_Euler, ONLY: &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler
 
   IMPLICIT NONE
 
@@ -92,7 +96,10 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'Advection'
+  TimeIt_Euler = .TRUE.
+  CALL InitializeTimers_Euler
+
+  ProgramName = 'RiemannProblem'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
@@ -102,49 +109,49 @@ PROGRAM ApplicationDriver
 
   SelfGravity = .FALSE.
 
-  RestartFileNumber = -1 ! 603
+  RestartFileNumber = -1
 
-  t = 0.0_DP ! 301.5_DP
+  t = 0.0_DP
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'TopHat'
+      AdvectionProfile = 'SineWave'
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 256, 01, 01 ]
+      nX = [ 16, 01, 01 ]
       xL = [ -1.0d2, 0.0d0, 0.0d0 ] * Kilometer
       xR = [  1.0d2, 1.0d2, 1.0d2 ] * Kilometer
       zoomX = One
 
       bcX = [ 1, 1, 1 ]
 
-      nNodes  = 2
-      nStages = 2
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .FALSE.
 
-      UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 1.0d-3
-      UsePositivityLimiter      = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.0d-0
+      UsePositivityLimiter      = .FALSE.
 
       iCycleD = 10
       t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
-      dt_wrt  = 1.0d-1 * t_end
+      dt_wrt  = 1.0d-0 * t_end
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'Pochik'
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 100, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
       xR = [ + 5.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
       zoomX = One
@@ -157,16 +164,27 @@ PROGRAM ApplicationDriver
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .TRUE.
+      UseSlopeLimiter           = .FALSE.
       UseCharacteristicLimiting = .FALSE.
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-2
       UsePositivityLimiter      = .TRUE.
 
-      iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond
-      dt_wrt  = 1.25d-4 * Millisecond
+      iCycleD = 1
+
+      SELECT CASE( TRIM( RiemannProblemName ) )
+      CASE( 'Sod' )
+
+        t_end  = 2.5d-2 * Millisecond
+        dt_wrt = 5.0d-2 * t_end
+
+      CASE( 'Pochik' )
+
+        t_end  = 2.0d-1 * Millisecond
+        dt_wrt = 5.0d-2 * t_end
+
+      END SELECT
 
    CASE( 'RiemannProblemSpherical' )
 
@@ -447,6 +465,12 @@ PROGRAM ApplicationDriver
 
   END IF
 
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE TO( uCF )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE DEVICE( uCF )
+#endif
+
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -484,14 +508,6 @@ PROGRAM ApplicationDriver
   CALL ComputeTally_Euler_NonRelativistic &
        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
          SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
-
-!!$#if defined(THORNADO_OMP_OL)
-!!$  !$OMP TARGET ENTER DATA &
-!!$  !$OMP MAP( to: uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
-!!$#elif defined(THORNADO_OACC)
-!!$  !$ACC ENTER DATA &
-!!$  !$ACC COPYIN(  uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
-!!$#endif
 
   iCycle = 0
   DO WHILE ( t < t_end )
@@ -541,13 +557,11 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$      !$OMP TARGET EXIT DATA &
-!!$      !$OMP MAP( from: uGF, uCF )
-!!$#elif defined(THORNADO_OACC)
-!!$      !$ACC EXIT DATA &
-!!$      !$ACC COPYOUT(   uGF, uCF )
-!!$#endif
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE FROM( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE HOST( uGF, uCF )
+#endif
 
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -564,16 +578,14 @@ PROGRAM ApplicationDriver
       wrt = .FALSE.
 
     END IF
-    !STOP ! HACKZ
+
   END DO
 
-!!$#if defined(THORNADO_OMP_OL)
-!!$      !$OMP TARGET EXIT DATA &
-!!$      !$OMP MAP( from: uGF, uCF )
-!!$#elif defined(THORNADO_OACC)
-!!$      !$ACC EXIT DATA &
-!!$      !$ACC COPYOUT(   uGF, uCF )
-!!$#endif
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE FROM( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE HOST( uGF, uCF )
+#endif
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -614,21 +626,23 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeProgram
 
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git info'
-  WRITE(*,'(2x,A)') '--------'
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git branch:'
-  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git describe --tags:'
-  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'date:'
-  CALL EXECUTE_COMMAND_LINE( 'date' )
-  WRITE(*,*)
+  CALL FinalizeTimers_Euler
+
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git info'
+!  WRITE(*,'(2x,A)') '--------'
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git branch:'
+!  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git describe --tags:'
+!  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+!  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'date:'
+!  CALL EXECUTE_COMMAND_LINE( 'date' )
+!  WRITE(*,*)
 
 END PROGRAM ApplicationDriver
