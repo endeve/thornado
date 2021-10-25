@@ -7,6 +7,11 @@ INCDIR = ../../../include
 .PHONY: default
 default: $(LIBNAME)
 
+USE_GPU    ?= TRUE
+USE_OMP_OL ?= FALSE
+USE_OACC   ?= TRUE
+USE_CUBLAS ?= TRUE
+
 # Import site specific information.
 # At setup time, this file will exist in the local library directory.
 include ../../../Makefile.h
@@ -22,6 +27,8 @@ include $(THORNADO_DIR)/Build/Makefile_GPU
 include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Defines
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
+
+## DEFINES   += -DTHORNADO_DEBUG
 
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).

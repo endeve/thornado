@@ -99,6 +99,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     ComputeEddingtonTensorComponents_ud, &
     NumericalFlux_LLF
 
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: &
+    IEEE_IS_NAN
+
   IMPLICIT NONE
   PRIVATE
 
@@ -778,6 +781,11 @@ CONTAINS
     ! --- Numerical Flux ---
 
     ! --- Left State Primitive ---
+
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(uN_L)) ) STOP 'uN_L=NaN before calling ComputePrimitive_TwoMoment'
+    IF( ANY(IEEE_IS_NAN(uD_L)) ) STOP 'uD_L=NaN before calling ComputePrimitive_TwoMoment'
+#endif
 
     CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &

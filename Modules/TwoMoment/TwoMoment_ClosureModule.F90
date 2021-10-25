@@ -307,7 +307,9 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, FF
     REAL(DP) :: EddingtonFactor
 
+#ifdef THORNADO_DEBUG
     IF( IEEE_IS_NAN(D) ) STOP 'NAN in D when call EddingtonFactor_Scalar'
+#endif
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
