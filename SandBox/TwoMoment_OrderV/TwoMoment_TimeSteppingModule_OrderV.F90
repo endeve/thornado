@@ -263,21 +263,11 @@ CONTAINS
 
           IF( EvolveTwoMoment )THEN
 
-#if   defined( THORNADO_OMP_OL )
-            !$OMP TARGET UPDATE FROM( Ui, Mi )
-#elif defined( THORNADO_OACC   )
-            !$ACC UPDATE HOST( Ui, Mi )
-#endif
             CALL ApplySlopeLimiter_TwoMoment &
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
             CALL ApplyPositivityLimiter_TwoMoment &
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
-#if   defined( THORNADO_OMP_OL )
-            !$OMP TARGET UPDATE TO( Mi )
-#elif defined( THORNADO_OACC   )
-            !$ACC UPDATE DEVICE( Mi )
-#endif
 
             dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -307,18 +297,8 @@ CONTAINS
 
         IF( EvolveTwoMoment )THEN
 
-#if   defined( THORNADO_OMP_OL )
-          !$OMP TARGET UPDATE FROM( Ui, Mi )
-#elif defined( THORNADO_OACC   )
-          !$ACC UPDATE HOST( Ui, Mi )
-#endif
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
-#if   defined( THORNADO_OMP_OL )
-          !$OMP TARGET UPDATE TO( Mi )
-#elif defined( THORNADO_OACC   )
-          !$ACC UPDATE DEVICE( Mi )
-#endif
 
           dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -392,21 +372,11 @@ CONTAINS
 
       IF( EvolveTwoMoment )THEN
 
-#if   defined( THORNADO_OMP_OL )
-          !$OMP TARGET UPDATE FROM( Ui, Mi )
-#elif defined( THORNADO_OACC   )
-          !$ACC UPDATE HOST( Ui, Mi )
-#endif
         CALL ApplySlopeLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
-#if   defined( THORNADO_OMP_OL )
-          !$OMP TARGET UPDATE TO( Mi )
-#elif defined( THORNADO_OACC   )
-          !$ACC UPDATE DEVICE( Mi )
-#endif
 
         dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 

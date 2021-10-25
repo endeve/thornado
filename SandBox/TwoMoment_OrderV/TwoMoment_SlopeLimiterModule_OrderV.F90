@@ -211,6 +211,11 @@ CONTAINS
       SuppressBC = .FALSE.
     END IF
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE HOST( U_F, U_R )
+#endif
+
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_TwoMoment &
@@ -236,6 +241,11 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
     END SELECT
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE( U_R )
+#endif
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
 

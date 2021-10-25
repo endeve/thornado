@@ -9,7 +9,8 @@ MODULE DeviceModule
     stream, &
     cudaGetDeviceCount, &
     cudaSetDevice, &
-    cudaStreamCreate
+    cudaStreamCreate, &
+    cudaStreamSynchronize
   USE CublasModule, ONLY: &
     cublas_handle, &
     cublasCreate_v2, &
@@ -29,6 +30,7 @@ MODULE DeviceModule
     hipGetDeviceCount, &
     hipSetDevice, &
     hipStreamCreate, &
+    hipStreamSynchronize, &
     hipCheck, &
     hipblasCheck, &
     hipsparseCheck, &
@@ -122,6 +124,7 @@ MODULE DeviceModule
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
   PUBLIC :: on_device
+  PUBLIC :: stream_sync
   PUBLIC :: dev_ptr
   PUBLIC :: QueryOnGpu
 
@@ -159,9 +162,15 @@ CONTAINS
     CALL omp_set_default_device( mydevice )
 #endif
 
-#if defined(THORNADO_CUDA)
+#if defined(THORNADO_OACC)
+    stream = acc_get_cuda_stream( acc_async_sync )
+#elif defined(THORNADO_CUDA)
     ierr = cudaStreamCreate( stream )
+#elif defined(THORNADO_HIP)
+    CALL hipCheck( hipStreamCreate( stream ) )
+#endif
 
+#if defined(THORNADO_CUDA)
     ierr = cublasCreate_v2( cublas_handle )
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
@@ -172,8 +181,6 @@ CONTAINS
     ierr = cusolverDnCreate( cusolver_handle )
     ierr = cusolverDnSetStream( cusolver_handle, stream )
 #elif defined(THORNADO_HIP)
-    CALL hipCheck( hipStreamCreate( stream ) )
-
     CALL hipblasCheck( hipblasCreate( hipblas_handle ) )
     CALL hipblasCheck( hipblasSetStream( hipblas_handle, stream ) )
 
@@ -200,10 +207,10 @@ CONTAINS
 #endif
 #endif
 
-#if defined(THORNADO_OACC)
-    !CALL acc_set_device_num( mydevice, acc_device_default )
-    ierr = acc_set_cuda_stream( acc_async_sync, stream )
-#endif
+!#if defined(THORNADO_OACC)
+!    !CALL acc_set_device_num( mydevice, acc_device_default )
+!    ierr = acc_set_cuda_stream( acc_async_sync, stream )
+!#endif
 
     RETURN
   END SUBROUTINE InitializeDevice
@@ -253,6 +260,19 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION on_device
+
+
+  SUBROUTINE stream_sync( stream )
+    TYPE(C_PTR), INTENT(in) :: stream
+    INTEGER :: ierr
+#if defined(THORNADO_CUDA)
+    ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_HIP)
+    CALL hipCheck( hipStreamSynchronize( stream ) )
+#endif
+    RETURN
+  END SUBROUTINE stream_sync
+
 
   TYPE(C_PTR) FUNCTION dev_ptr_int( a )
 #if defined(THORNADO_OMP_OL)
