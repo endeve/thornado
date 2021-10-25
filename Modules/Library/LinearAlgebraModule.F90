@@ -12,12 +12,11 @@ MODULE LinearAlgebraModule
   USE DeviceModule, ONLY: &
     mydevice, &
     device_is_present, &
-    dev_ptr
+    dev_ptr, &
+    stream_sync, &
+    stream
 
 #if defined(THORNADO_LA_CUBLAS)
-  USE CudaModule, ONLY: &
-    stream, &
-    cudaStreamSynchronize
   USE CublasModule, ONLY: &
     cublas_handle, &
     cublasDnrm2_v2, &
@@ -46,9 +45,6 @@ MODULE LinearAlgebraModule
     CUSPARSE_INDEX_BASE_ONE
 #elif defined(THORNADO_LA_ROCM)
   USE HipModule, ONLY: &
-    stream, &
-    hipStreamSynchronize, &
-    hipDeviceSynchronize, &
     hipCheck, &
     hipblasCheck, &
     hipsparseCheck, &
@@ -106,7 +102,6 @@ MODULE LinearAlgebraModule
 #elif defined(THORNADO_LA_MAGMA)
   USE MagmaModule, ONLY: &
     magma_queue, &
-    magma_queue_sync, &
     magma_dnrm2, &
     magma_daxpy, &
     magma_dgemm, &
@@ -232,13 +227,11 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgeam &
              ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !CALL rocblasCheck( rocblas_dgeam &
       !       ( rocblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc ) )
       CALL hipblasCheck( hipblasDgeam &
              ( hipblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
         CALL magmablas_dlacpy &
@@ -257,7 +250,9 @@ CONTAINS
         CALL magmablas_dgeadd2 &
                ( m, n, alpha, dat, m, beta, dc, ldc, magma_queue )
       END IF
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -412,17 +407,17 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemm_v2 &
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !CALL rocblasCheck( rocblas_dgemm &
       !       ( rocblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc ) )
       CALL hipblasCheck( hipblasDgemm &
              ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemm &
              ( itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc, magma_queue )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -511,7 +506,6 @@ CONTAINS
       ierr = cublasDgemmStridedBatched &
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !stridea_64 = stridea
       !strideb_64 = strideb
@@ -525,12 +519,13 @@ CONTAINS
       CALL hipblasCheck( hipblasDgemmStridedBatched &
              ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea_l, &
                db, ldb, strideb_l, beta, dc, ldc, stridec_l, batchcount ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
              ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount, magma_queue )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -642,7 +637,6 @@ CONTAINS
              ( cublas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
       ierr = cublasDgetrsBatched &
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !strideP_64 = n
       !CALL rocsolverCheck( rocsolver_dgetrf_batched &
@@ -653,13 +647,14 @@ CONTAINS
              ( hipblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount ) )
       CALL hipblasCheck( hipblasDgetrsBatched &
              ( hipblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
              ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
       CALL magma_dgetrs_batched &
              ( itrans, n, nrhs, da_array, lda, dipiv_array, db_array, ldb, batchcount, magma_queue )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -755,17 +750,17 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgemv_v2 &
              ( cublas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !CALL rocblasCheck( rocblas_dgemv &
       !       ( rocblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy ) )
       CALL hipblasCheck( hipblasDgemv &
              ( hipblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -833,19 +828,19 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDdgmm &
              ( cublas_handle, CUBLAS_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !CALL rocblasCheck( rocblas_ddgmm &
       !       ( rocblas_handle, rocblas_side_left, m, n, da, lda, dx, incx, dc, ldc ) )
       CALL hipblasCheck( hipblasDdgmm &
              ( hipblas_handle, hipblas_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dlacpy &
              ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
       CALL magmablas_dlascl2 &
              ( MagmaFull, m, n, dx, dc, ldc, magma_queue, info )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -1019,7 +1014,6 @@ CONTAINS
                  n, nrhs, One, da, lda, db, ldb )
 
       END IF
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       CALL rocsolverCheck( rocsolver_dgeqrf &
              ( rocsolver_handle, m, n, da, lda, dtau ) )
@@ -1052,11 +1046,12 @@ CONTAINS
                  n, nrhs, One, da, lda, db, ldb ) )
 
       END IF
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -1126,18 +1121,18 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ! Currently unavailable
       !ierr = cublasDdot_v2( cublas_handle, n, dx, incx, xnorm )
-      !ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       ! Currently unavailable
       stridex_64 = stridex
       stridey_64 = stridey
       CALL rocblasCheck( rocblas_ddot_strided_batched &
              ( rocblas_handle, n, dx, incx, stridex_64, dy, incy, stridey_64, batchcount, hxy ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       ! Currently unavailable
       !xnorm = magma_ddot( n, dx, incx, magma_queue )
-      !CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -1198,15 +1193,15 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       ! Currently unavailable
       !CALL rocblasCheck( rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm ) )
       CALL hipblasCheck( hipblasDnrm2( hipblas_handle, n, dx, incx, hxnorm ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
-      CALL magma_queue_sync( magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE
@@ -1298,14 +1293,14 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
-      ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_ROCM)
       !CALL rocblasCheck( rocblas_daxpy( rocblas_handle, n, alpha, dx, incx, dy, incy ) )
       CALL hipblasCheck( hipblasDaxpy( hipblas_handle, n, alpha, dx, incx, dy, incy ) )
-      CALL hipCheck( hipStreamSynchronize( stream ) )
 #elif defined(THORNADO_LA_MAGMA)
-      xnorm = magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
-      CALL magma_queue_sync( magma_queue )
+      CALL magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
 #endif
 
     ELSE

@@ -75,7 +75,7 @@ module OpenACCModule
     type(c_ptr) function acc_get_cuda_stream(async) &
         bind(c,name="acc_get_cuda_stream")
       use, intrinsic :: iso_c_binding
-      integer(c_int), value :: async
+      integer(c_long_long), value :: async
     end function acc_get_cuda_stream
 
     type(c_ptr) function acc_get_current_cuda_device() &

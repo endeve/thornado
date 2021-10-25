@@ -3021,11 +3021,11 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( A, Lambda )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( A, Lambda ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, Alpha, iZ_B0, iZ_E0 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( A, Lambda )
 #endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
