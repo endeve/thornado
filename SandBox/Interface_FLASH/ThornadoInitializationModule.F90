@@ -329,7 +329,7 @@ contains
 #if defined MICROPHYSICS_WEAKLIB
     call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
-               = .TRUE., &
+               = .FALSE., &
              Verbose_Option &
                = Verbose, &
              Min_1_Option &
