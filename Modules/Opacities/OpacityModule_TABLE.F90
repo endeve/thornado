@@ -70,12 +70,12 @@ MODULE OpacityModule_TABLE
   !$OMP DECLARE TARGET &
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-  !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
+  !$OMP   EmAb_T, Iso_T, NES_AT, Pair_AT )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
+  !$ACC   EmAb_T, Iso_T, NES_AT, Pair_AT )
 #endif
 
 CONTAINS
@@ -304,22 +304,6 @@ CONTAINS
                       1:OPACITIES % Scat_Pair % nOpacities) )
     Pair_AT = 0.0d0
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
-    !!$OMP TARGET UPDATE TO &
-    !!$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !!$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-    !!$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-    !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
-#endif
-
     ASSOCIATE ( CenterE => MeshE % Center, &
                 WidthE  => MeshE % Width, &
                 NodesE  => MeshE % Nodes )
@@ -329,17 +313,8 @@ CONTAINS
                 nPointsEta => OPACITIES % Scat_NES % nPoints(5), &
                 nPointsT   => OPACITIES % Scat_NES % nPoints(4) )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
-    !$ACC PRESENT( LogEs_T, OS_NES, NES_T, NES_AT )
-#elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
-#endif
     DO iS = 1, nSpecies
       DO iM = 1, nMoments
         DO iEta = 1, nPointsEta
@@ -377,17 +352,8 @@ CONTAINS
                 nPointsEta => OPACITIES % Scat_Pair % nPoints(5), &
                 nPointsT   => OPACITIES % Scat_Pair % nPoints(4) )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
-    !$ACC PRESENT( LogEs_T, OS_Pair, Pair_T, Pair_AT )
-#elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
-#endif
     DO iS = 1, nSpecies
       DO iM = 1, nMoments
         DO iEta = 1, nPointsEta
@@ -423,11 +389,15 @@ CONTAINS
     END ASSOCIATE
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( NES_AT, Pair_AT )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+    !$OMP          EmAb_T, Iso_T, NES_AT, Pair_AT )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( NES_AT, Pair_AT )
+    !$ACC UPDATE DEVICE &
+    !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+    !$ACC   EmAb_T, Iso_T, NES_AT, Pair_AT )
 #endif
 
 #endif
@@ -443,7 +413,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
+    !$OMP               EmAb_T, Iso_T, NES_AT, Pair_AT )
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
