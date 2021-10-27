@@ -832,7 +832,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: iZ_B0, iZ_E0, CL_X1, U_R, C0, C1, uCR )
+    !$OMP MAP( release: iZ_B0, iZ_E0, U_R, CL_X1, C0, C1, uCR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
     !$ACC DELETE( iZ_B0, iZ_E0, U_R, CL_X1, C0, C1, uCR )
