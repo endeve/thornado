@@ -234,6 +234,8 @@ CONTAINS
       SuppressBC = .FALSE.
     END IF
 
+    CALL TimersStart( Timer_SL )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R )
@@ -274,7 +276,11 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
     !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+
+    !$ACC WAIT
 #endif
+
+    CALL TimersStop( Timer_SL )
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
 
@@ -398,8 +404,6 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE ASYNC DEVICE( TroubledCell )
 #endif
-
-    CALL TimersStart( Timer_SL )
 
     CALL ComputeLimitedSlopes_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X1 )
 
@@ -680,8 +684,6 @@ CONTAINS
     !$ACC         CL_X1, CL_X2, CL_X3,  &
     !$ACC         uCR_K, wSqrtGm, uCR )
 #endif
-
-    CALL TimersStop( Timer_SL )
 
   END SUBROUTINE ApplySlopeLimiter_TVD
 
