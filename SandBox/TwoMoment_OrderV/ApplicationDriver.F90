@@ -574,6 +574,12 @@ PROGRAM ApplicationDriver
 
   ! --- Write Initial Condition ---
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
+#endif
+
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
