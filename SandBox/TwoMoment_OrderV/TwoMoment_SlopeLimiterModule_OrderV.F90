@@ -274,8 +274,6 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
     !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R )
-
-    !$ACC WAIT
 #endif
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
@@ -669,7 +667,6 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: U_R ) &
     !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$OMP               Limited, TroubledCell, &
     !$OMP               C_0, C_X1, C_X2, C_X3, &
@@ -677,8 +674,7 @@ CONTAINS
     !$OMP               uCR_K, wSqrtGm, uCR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
-    !$ACC COPYOUT( U_R ) &
-    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, &
+    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$ACC         Limited, TroubledCell, &
     !$ACC         C_0, C_X1, C_X2, C_X3, &
     !$ACC         CL_X1, CL_X2, CL_X3,  &
@@ -836,12 +832,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: CL_X1 ) &
-    !$OMP MAP( release: iZ_B0, iZ_E0, U_R, C0, C1, uCR )
+    !$OMP MAP( release: iZ_B0, iZ_E0, CL_X1, U_R, C0, C1, uCR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
-    !$ACC COPYOUT( CL_X1 ) &
-    !$ACC DELETE( iZ_B0, iZ_E0, U_R, C0, C1, uCR )
+    !$ACC DELETE( iZ_B0, iZ_E0, U_R, CL_X1, C0, C1, uCR )
 #endif
 
   END SUBROUTINE ComputeLimitedSlopes_X1
