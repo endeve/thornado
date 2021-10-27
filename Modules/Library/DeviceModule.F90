@@ -85,9 +85,11 @@ MODULE DeviceModule
     acc_get_cuda_stream, &
     acc_set_cuda_stream, &
     acc_get_default_async, &
+    acc_set_default_async, &
     acc_device_host, &
     acc_device_default, &
-    acc_async_sync
+    acc_async_sync, &
+    acc_async_noval
 #endif
 
   IMPLICIT NONE
@@ -178,6 +180,7 @@ CONTAINS
     ! Create a stream and associate with linear algebra libraries
 #if defined(THORNADO_OACC)
     stream = acc_get_cuda_stream( acc_async_sync )
+    CALL acc_set_default_async( acc_async_sync )
 #elif defined(THORNADO_CUDA)
     ierr = cudaStreamCreate( stream )
 #elif defined(THORNADO_HIP)
