@@ -13,8 +13,15 @@ MODULE LinearAlgebraModule
     mydevice, &
     device_is_present, &
     dev_ptr, &
-    stream_sync, &
+    stream_sync
+
+#if defined(THORNADO_CUDA)
+  USE CudaModule, ONLY: &
     stream
+#elif defined(THORNADO_HIP)
+  USE HipModule, ONLY: &
+    stream
+#endif
 
 #if defined(THORNADO_LA_CUBLAS)
   USE CublasModule, ONLY: &
