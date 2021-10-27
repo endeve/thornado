@@ -65,12 +65,12 @@ module OpenACCModule
       integer(c_size_t), value :: bytes
     end function acc_is_present
 
-    integer(c_int) function acc_set_cuda_stream(async,stream) &
+    subroutine acc_set_cuda_stream(async,stream) &
         bind(c,name="acc_set_cuda_stream" )
       use, intrinsic :: iso_c_binding
       integer(c_long_long), value :: async
       type(c_ptr), value :: stream
-    end function acc_set_cuda_stream
+    end subroutine acc_set_cuda_stream
 
     type(c_ptr) function acc_get_cuda_stream(async) &
         bind(c,name="acc_get_cuda_stream")
