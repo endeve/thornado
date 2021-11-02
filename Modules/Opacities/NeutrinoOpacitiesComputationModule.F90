@@ -693,7 +693,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0_1(:,:), f0_2(:,:)
     INTEGER,  INTENT(in)  :: iS_1, iS_2
 
-    REAL(DP), PARAMETER :: f0_Max = One
+    REAL(DP), PARAMETER :: f0_Max = One - EPSILON( One )
     INTEGER  :: iX, iE, iE_G, iNodeE, nE, nX
     REAL(DP) :: V_K, f0_Min, Min_K, Max_K, Theta
     REAL(DP), POINTER :: E_Q(:,:), f0_1_Q(:,:,:), f0_2_Q(:,:,:)
@@ -769,6 +769,9 @@ CONTAINS
     DO iE = 1, nE
 
       V_K = SUM( WeightsE * E_Q(:,iE)**2 )
+
+      f0_1_Q(:,iE,iX) = MIN( f0_1_Q(:,iE,iX), f0_Max)
+      f0_2_Q(:,iE,iX) = MIN( f0_2_Q(:,iE,iX), f0_Max)
 
       f0_1_K(iE,iX) = SUM( WeightsE * f0_1_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
 
