@@ -47,8 +47,7 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
 
   CHARACTER(4) :: SlopeLimiterMethod
   LOGICAL      :: UseSlopeLimiter
-  INTEGER      :: iX_B0(3), iX_E0(3)
-  INTEGER      :: iE_B0, iE_E0, nE_G
+  INTEGER      :: nE, nE_G
   REAL(DP)     :: BetaTVD, BetaTVB
   REAL(DP)     :: SlopeTolerance
   REAL(DP), ALLOCATABLE :: N2M_Vec_0(:)
@@ -59,6 +58,18 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
   REAL(DP), ALLOCATABLE :: M2N_Vec_1(:)
   REAL(DP), ALLOCATABLE :: M2N_Vec_2(:)
   REAL(DP), ALLOCATABLE :: M2N_Vec_3(:)
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE &
+  !$OMP TARGET( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+  !$OMP         M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+  !$OMP         BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE &
+  !$ACC CREATE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+  !$ACC         M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+  !$ACC         BetaTVD, BetaTVB, SlopeTolerance )
+#endif
 
 CONTAINS
 
@@ -167,6 +178,18 @@ CONTAINS
 
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP TO( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+    !$OMP     M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+    !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC DEVICE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+    !$ACC         M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+    !$ACC         BetaTVD, BetaTVB, SlopeTolerance )
+#endif
+
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment
 
 
@@ -211,9 +234,14 @@ CONTAINS
       SuppressBC = .FALSE.
     END IF
 
-#if   defined( THORNADO_OMP_OL )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( U_F, U_R )
+    CALL TimersStart( Timer_SL )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R )
 #endif
 
     IF( .NOT. SuppressBC )THEN
@@ -242,10 +270,17 @@ CONTAINS
 
     END SELECT
 
-#if   defined( THORNADO_OMP_OL )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE DEVICE( U_R )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+
+    !$ACC WAIT
 #endif
+
+    CALL TimersStop( Timer_SL )
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
 
@@ -272,233 +307,183 @@ CONTAINS
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: &
-      iE, iX1, iX2, iX3, iCR, iS, iE_G, &
-      iNodeZ, iNodeE, iNodeX, nV_KX
+      iZ1, iZ2, iZ3, iZ4, iCR, iS, iE_G, &
+      iNodeZ, iNodeE, iNodeX
     REAL(DP) :: &
-      dSlope, Alpha
+      dSlope, wSqrtGm, Alpha, uCR_K, &
+      C_0, C_X1, C_X2, C_X3, &
+      C0_L, C0_R, CL_X1, CL_X2, CL_X3
+    REAL(DP) :: &
+      uCR(1:nDOFX)
     LOGICAL  :: &
       TroubledCell &
            (iZ_B0(2):iZ_E0(2), &
             iZ_B0(3):iZ_E0(3), &
             iZ_B0(4):iZ_E0(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    LOGICAL  :: &
-      Limited &
-           (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      C_0  (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      C_X1 (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      C_X2 (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      C_X3 (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      CL_X1(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      CL_X2(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      CL_X3(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      uCR_K(iZ_B1(2):iZ_E1(2), &
-            iZ_B1(3):iZ_E1(3), &
-            iZ_B1(4):iZ_E1(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      wSqrtGm &
-           (1:nDOFX, &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      uCR  (1:nDOFX, &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
+
+    nE   = iZ_E0(1) - iZ_B0(1) + 1
+    nE_G = nE * nDOFE
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
+    !$OMP MAP( alloc: TroubledCell )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
+    !$ACC CREATE( TroubledCell )
+#endif
 
     CALL DetectTroubledCells_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, TroubledCell )
 
-    CALL TimersStart( Timer_SL )
-
-    iE_B0 = iZ_B0(1); iX_B0 = iZ_B0(2:4)
-    iE_E0 = iZ_E0(1); iX_E0 = iZ_E0(2:4)
-
-    nE_G = ( iZ_E0(1) - iZ_B0(1) + 1 ) * nDOFE
-
-    CALL ComputeLimitedSlopes_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X1 )
-
-    CALL ComputeLimitedSlopes_X2( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X2 )
-
-    CALL ComputeLimitedSlopes_X3( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X3 )
-
-    ! --- Permute Radiation Fields ---
-
-    CALL TimersStart( Timer_SL_Permute )
-
 #if   defined( THORNADO_OMP_OL )
-
 #elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(8) &
-    !$OMP PRIVATE( iNodeZ, iE_G )
+    !$ACC UPDATE ASYNC DEVICE( TroubledCell )
 #endif
-    DO iS     = 1       , nSpecies
-    DO iCR    = 1       , nCR
-    DO iE     = iE_B0   , iE_E0
-    DO iNodeE = 1       , nDOFE
-    DO iX3    = iX_B0(3), iX_E0(3)
-    DO iX2    = iX_B0(2), iX_E0(2)
-    DO iX1    = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1       , nDOFX
-
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
-      iE_G   = (iE    -1) * nDOFE + iNodeE
-
-      uCR(iNodeX,iX1,iX2,iX3,iE_G,iCR,iS) &
-        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iX3    = iX_B0(3), iX_E0(3)
-    DO iX2    = iX_B0(2), iX_E0(2)
-    DO iX1    = iX_B0(1), iX_E0(1)
-    DO iNodeX = 1       , nDOFX
-
-      wSqrtGm(iNodeX,iX1,iX2,iX3) &
-        = WeightsX_q(iNodeX) * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-    ! --- Compute Cell Average ---
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6)
-#endif
-    DO iS   = 1       , nSpecies
-    DO iCR  = 1       , nCR
-    DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
-
-      uCR_K(iX1,iX2,iX3,iE_G,iCR,iS) &
-        = SUM( wSqrtGm(:,iX1,iX2,iX3) * uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) )
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Compute Legendre Coefficients ---
-
-    CALL TimersStart( Timer_SL_LinearAlgebra )
-
-    nV_KX = PRODUCT( SHAPE( C_0 ) )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C_0 , 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_1, 1, Zero, C_X1, 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_2, 1, Zero, C_X2, 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_3, 1, Zero, C_X3, 1 )
-
-    CALL TimersStop( Timer_SL_LinearAlgebra )
 
     CALL TimersStart( Timer_SL_ReplaceSlopes )
 
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: dX1, dX2, dX3 ) &
+    !$OMP PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
+    !$OMP          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$OMP          CL_X1, CL_X2, CL_X3, C0_L, C0_R )
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
+    !$ACC COPYIN( dX1, dX2, dX3 ) &
+    !$ACC PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
+    !$ACC          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$ACC          CL_X1, CL_X2, CL_X3, C0_L, C0_R ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, TroubledCell, WeightsX_q, GX, U_R, &
+    !$ACC          M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP PRIVATE( dSlope )
+    !$OMP PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
+    !$OMP          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$OMP          CL_X1, CL_X2, CL_X3, C0_L, C0_R )
 #endif
     DO iS   = 1       , nSpecies
     DO iCR  = 1       , nCR
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .FALSE.
+      IF( TroubledCell(iZ2,iZ3,iZ4,iE_G,iS) )THEN
 
-      IF( TroubledCell(iX1,iX2,iX3,iE_G,iS) )THEN
+        iZ1    = MOD( (iE_G-1) / nDOFE, nE    ) + iZ_B0(1)
+        iNodeE = MOD( (iE_G-1)        , nDOFE ) + 1
+
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          uCR(iNodeX) = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+        END DO
+
+        ! --- Compute Legendre Coefficients ---
+
+        C_0  = Zero
+        C_X1 = Zero
+        C_X2 = Zero
+        C_X3 = Zero
+        DO iNodeX = 1, nDOFX
+          C_0  = C_0  + N2M_Vec_0(iNodeX) * uCR(iNodeX)
+          C_X1 = C_X1 + N2M_Vec_1(iNodeX) * uCR(iNodeX)
+          C_X2 = C_X2 + N2M_Vec_2(iNodeX) * uCR(iNodeX)
+          C_X3 = C_X3 + N2M_Vec_3(iNodeX) * uCR(iNodeX)
+        END DO
+
+        ! --- Limited Legendre Coefficients ---
+
+        C0_L = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
+        END DO
+        C0_R = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2+1,iZ3,iZ4,iCR,iS)
+        END DO
+        CL_X1 &
+          = MinModB( C_X1, &
+                     BetaTVD * ( C_0 - C0_L ), &
+                     BetaTVD * ( C0_R - C_0 ), &
+                     dX1(iZ2), BetaTVB )
+
+        C0_L = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3-1,iZ4,iCR,iS)
+        END DO
+        C0_R = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3+1,iZ4,iCR,iS)
+        END DO
+        CL_X2 &
+          = MinModB( C_X2, &
+                     BetaTVD * ( C_0 - C0_L ), &
+                     BetaTVD * ( C0_R - C_0 ), &
+                     dX2(iZ3), BetaTVB )
+
+        C0_L = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4-1,iCR,iS)
+        END DO
+        C0_R = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4+1,iCR,iS)
+        END DO
+        CL_X3 &
+          = MinModB( C_X3, &
+                     BetaTVD * ( C_0 - C0_L ), &
+                     BetaTVD * ( C0_R - C_0 ), &
+                     dX3(iZ4), BetaTVB )
 
         dSlope &
-          = MAX( ABS( CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
-                      -C_X1(iX1,iX2,iX3,iE_G,iCR,iS) ), &
-                 ABS( CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
-                      -C_X2(iX1,iX2,iX3,iE_G,iCR,iS) ), &
-                 ABS( CL_X3(iX1,iX2,iX3,iE_G,iCR,iS) &
-                      -C_X3(iX1,iX2,iX3,iE_G,iCR,iS) ) )
+          = MAX( ABS( CL_X1 - C_X1 ), &
+                 ABS( CL_X2 - C_X2 ), &
+                 ABS( CL_X3 - C_X3 ) )
 
-        IF( dSlope > SlopeTolerance * ABS( C_0(iX1,iX2,iX3,iE_G,iCR,iS) ) )THEN
+        IF( dSlope > SlopeTolerance * ABS( C_0 ) )THEN
 
-          uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) &
-            =   M2N_Vec_0(:) * C_0  (iX1,iX2,iX3,iE_G,iCR,iS) &
-              + M2N_Vec_1(:) * CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
-              + M2N_Vec_2(:) * CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
-              + M2N_Vec_3(:) * CL_X3(iX1,iX2,iX3,iE_G,iCR,iS)
+          ! --- Conservative Correction ---
 
-          Limited(iX1,iX2,iX3,iE_G,iCR,iS) = .TRUE.
+          uCR_K = Zero
+          Alpha = Zero
+
+          DO iNodeX = 1, nDOFX
+
+            wSqrtGm = WeightsX_q(iNodeX) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+
+            uCR_K = uCR_K + wSqrtGm * uCR(iNodeX)
+
+            uCR(iNodeX) &
+              =   M2N_Vec_0(iNodeX) * C_0 &
+                + M2N_Vec_1(iNodeX) * CL_X1 &
+                + M2N_Vec_2(iNodeX) * CL_X2 &
+                + M2N_Vec_3(iNodeX) * CL_X3
+
+            Alpha = Alpha + wSqrtGm * uCR(iNodeX)
+
+          END DO
+
+          IF( ABS( Alpha ) > Zero )THEN
+            DO iNodeX = 1, nDOFX
+              iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+              U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = uCR(iNodeX) * uCR_K / Alpha
+            END DO
+          END IF
 
         END IF
 
@@ -511,566 +496,21 @@ CONTAINS
     END DO
     END DO
 
+    END ASSOCIATE
+
     CALL TimersStop( Timer_SL_ReplaceSlopes )
 
-    ! --- Conservative Correction ---
-
-    CALL TimersStart( Timer_SL_Correction )
-
-    IF( ANY( Limited ) )THEN
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP PRIVATE( Alpha )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
+    !$OMP               TroubledCell )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
+    !$ACC         TroubledCell )
 #endif
-      DO iS   = 1       , nSpecies
-      DO iCR  = 1       , nCR
-      DO iE_G = 1       , nE_G
-      DO iX3  = iX_B0(3), iX_E0(3)
-      DO iX2  = iX_B0(2), iX_E0(2)
-      DO iX1  = iX_B0(1), iX_E0(1)
-
-        IF( Limited(iX1,iX2,iX3,iE_G,iCR,iS) )THEN
-
-          Alpha &
-            = SUM( wSqrtGm(:,iX1,iX2,iX3) * uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) )
-
-          IF( ABS( Alpha ) > Zero )THEN
-
-            Alpha = uCR_K(iX1,iX2,iX3,iE_G,iCR,iS) / Alpha
-
-            uCR(:,iX1,iX2,iX3,iE_G,iCR,iS) &
-              = Alpha * uCR(:,iX1,iX2,iX3,iE_G,iCR,iS)
-
-          END IF
-
-        END IF
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    CALL TimersStop( Timer_SL_Correction )
-
-    CALL TimersStart( Timer_SL_Permute )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(8) &
-    !$OMP PRIVATE( iNodeZ, iE_G )
-#endif
-    DO iS     = 1, nSpecies
-    DO iCR    = 1, nCR
-    DO iX3    = iX_B0(3), iX_E0(3)
-    DO iX2    = iX_B0(2), iX_E0(2)
-    DO iX1    = iX_B0(1), iX_E0(1)
-    DO iE     = iE_B0   , iE_E0
-    DO iNodeX = 1, nDOFX
-    DO iNodeE = 1, nDOFE
-
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-      iE_G   = (iE    -1) * nDOFE + iNodeE
-
-      U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
-        = uCR(iNodeX,iX1,iX2,iX3,iE_G,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-    CALL TimersStop( Timer_SL )
 
   END SUBROUTINE ApplySlopeLimiter_TVD
-
-
-  SUBROUTINE ComputeLimitedSlopes_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X1 )
-
-    INTEGER, INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in) :: &
-      U_R(1:nDOFZ, &
-          iZ_B1(1):iZ_E1(1), &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
-    REAL(DP), INTENT(out) :: &
-      CL_X1(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
-            1:nE_G,1:nCR,1:nSpecies)
-
-    INTEGER  :: &
-      iE, iE_G, iX1, iX2, iX3, iCR, iS, &
-      iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP) :: &
-      C0(iX_B0(1)-1:iX_E0(1)+1, &
-         iX_B0(2)  :iX_E0(2)  , &
-         iX_B0(3)  :iX_E0(3)  , &
-         1:nE_G,1:nCR,1:nSpecies), &
-      C1(iX_B0(1)-1:iX_E0(1)+1, &
-         iX_B0(2)  :iX_E0(2)  , &
-         iX_B0(3)  :iX_E0(3)  , &
-         1:nE_G,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      uCR(1:nDOFX, &
-          iX_B0(1)-1:iX_E0(1)+1, &
-          iX_B0(2)  :iX_E0(2)  , &
-          iX_B0(3)  :iX_E0(3)  , &
-          1:nE_G,1:nCR,1:nSpecies)
-
-    ! --- Permute Radiation Fields ---
-
-    CALL TimersStart( Timer_SL_Permute )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(8) &
-    !$OMP PRIVATE( iNodeZ, iE_G )
-#endif
-    DO iS     = 1         , nSpecies
-    DO iCR    = 1         , nCR
-    DO iE     = iE_B0     , iE_E0
-    DO iNodeE = 1         , nDOFE
-    DO iX3    = iX_B0(3)  , iX_E0(3)
-    DO iX2    = iX_B0(2)  , iX_E0(2)
-    DO iX1    = iX_B0(1)-1, iX_E0(1)+1
-    DO iNodeX = 1         , nDOFX
-
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
-      iE_G   = (iE    -1) * nDOFE + iNodeE
-
-      uCR(iNodeX,iX1,iX2,iX3,iE_G,iCR,iS) &
-        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-    ! --- Legendre Coefficients C0 and C1 ---
-
-    CALL TimersStart( Timer_SL_LinearAlgebra )
-
-    nV_KX = PRODUCT( SHAPE( C0 ) )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C0, 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_1, 1, Zero, C1, 1 )
-
-    CALL TimersStop( Timer_SL_LinearAlgebra )
-
-    ! --- Limited Legendre Coefficient CL_X1 ---
-
-    CALL TimersStart( Timer_SL_MinMod )
-
-    ASSOCIATE( dX1 => MeshX(1) % Width )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6)
-#endif
-    DO iS   = 1       , nSpecies
-    DO iCR  = 1       , nCR
-    DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
-
-      CL_X1(iX1,iX2,iX3,iE_G,iCR,iS) &
-        = MinModB &
-            ( C1(iX1,iX2,iX3,iE_G,iCR,iS), &
-              BetaTVD * ( C0  (iX1  ,iX2,iX3,iE_G,iCR,iS)    &
-                          - C0(iX1-1,iX2,iX3,iE_G,iCR,iS) ), &
-              BetaTVD * ( C0  (iX1+1,iX2,iX3,iE_G,iCR,iS)    &
-                          - C0(iX1  ,iX2,iX3,iE_G,iCR,iS) ), &
-              dX1(iX1), BetaTVB )
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dX1
-
-    CALL TimersStop( Timer_SL_MinMod )
-
-  END SUBROUTINE ComputeLimitedSlopes_X1
-
-
-  SUBROUTINE ComputeLimitedSlopes_X2( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X2 )
-
-    INTEGER, INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in) :: &
-      U_R(1:nDOFZ, &
-          iZ_B1(1):iZ_E1(1), &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
-    REAL(DP), INTENT(out) :: &
-      CL_X2(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
-            1:nE_G,1:nCR,1:nSpecies)
-
-    INTEGER  :: &
-      iE, iE_G, iX1, iX2, iX3, iCR, iS, &
-      iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP) :: &
-      C0 (iX_B0(2)-1:iX_E0(2)+1, &
-          iX_B0(1)  :iX_E0(1)  , &
-          iX_B0(3)  :iX_E0(3)  , &
-          1:nE_G,1:nCR,1:nSpecies), &
-      C2 (iX_B0(2)-1:iX_E0(2)+1, &
-          iX_B0(1)  :iX_E0(1)  , &
-          iX_B0(3)  :iX_E0(3)  , &
-          1:nE_G,1:nCR,1:nSpecies), &
-      CL2(iX_B0(2)  :iX_E0(2)  , &
-          iX_B0(1)  :iX_E0(1)  , &
-          iX_B0(3)  :iX_E0(3)  , &
-          1:nE_G,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      uCR(1:nDOFX, &
-          iX_B0(2)-1:iX_E0(2)+1, &
-          iX_B0(1)  :iX_E0(1)  , &
-          iX_B0(3)  :iX_E0(3)  , &
-          1:nE_G,1:nCR,1:nSpecies)
-
-    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
-      CL_X2 = Zero
-      RETURN
-    END IF
-
-    ! --- Permute Radiation Fields ---
-
-    CALL TimersStart( Timer_SL_Permute )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(8) &
-    !$OMP PRIVATE( iNodeZ, iE_G )
-#endif
-    DO iS     = 1         , nSpecies
-    DO iCR    = 1         , nCR
-    DO iE     = iE_B0     , iE_E0
-    DO iNodeE = 1         , nDOFE
-    DO iX3    = iX_B0(3)  , iX_E0(3)
-    DO iX1    = iX_B0(1)  , iX_E0(1)
-    DO iX2    = iX_B0(2)-1, iX_E0(2)+1
-    DO iNodeX = 1         , nDOFX
-
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
-      iE_G   = (iE    -1) * nDOFE + iNodeE
-
-      uCR(iNodeX,iX2,iX1,iX3,iE_G,iCR,iS) &
-        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-    ! --- Legendre Coefficients C0 and C2 ---
-
-    CALL TimersStart( Timer_SL_LinearAlgebra )
-
-    nV_KX = PRODUCT( SHAPE( C0 ) )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C0, 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_2, 1, Zero, C2, 1 )
-
-    CALL TimersStop( Timer_SL_LinearAlgebra )
-
-    ! --- Limited Legendre Coefficient CL_X2 ---
-
-    CALL TimersStart( Timer_SL_MinMod )
-
-    ASSOCIATE( dX2 => MeshX(2) % Width )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6)
-#endif
-    DO iS   = 1       , nSpecies
-    DO iCR  = 1       , nCR
-    DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX1  = iX_B0(1), iX_E0(1)
-    DO iX2  = iX_B0(2), iX_E0(2)
-
-      CL2(iX2,iX1,iX3,iE_G,iCR,iS) &
-        = MinModB &
-            ( C2(iX2,iX1,iX3,iE_G,iCR,iS), &
-              BetaTVD * ( C0  (iX2  ,iX1,iX3,iE_G,iCR,iS)    &
-                          - C0(iX2-1,iX1,iX3,iE_G,iCR,iS) ), &
-              BetaTVD * ( C0  (iX2+1,iX1,iX3,iE_G,iCR,iS)    &
-                          - C0(iX2  ,iX1,iX3,iE_G,iCR,iS) ), &
-              dX2(iX2), BetaTVB )
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dX2
-
-    CALL TimersStop( Timer_SL_MinMod )
-
-    ! --- Permute Legendre Coefficient CL_X2 ---
-
-    CALL TimersStart( Timer_SL_Permute )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6)
-#endif
-    DO iS   = 1       , nSpecies
-    DO iCR  = 1       , nCR
-    DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
-
-      CL_X2(iX1,iX2,iX3,iE_G,iCR,iS) &
-        = CL2(iX2,iX1,iX3,iE_G,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-  END SUBROUTINE ComputeLimitedSlopes_X2
-
-
-  SUBROUTINE ComputeLimitedSlopes_X3( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, CL_X3 )
-
-    INTEGER, INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in) :: &
-      U_R(1:nDOFZ, &
-          iZ_B1(1):iZ_E1(1), &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
-    REAL(DP), INTENT(out) :: &
-      CL_X3(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
-            1:nE_G,1:nCR,1:nSpecies)
-
-    INTEGER  :: &
-      iE, iE_G, iX1, iX2, iX3, iCR, iS, &
-      iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP) :: &
-      C0 (iX_B0(3)-1:iX_E0(3)+1, &
-          iX_B0(2)  :iX_E0(2)  , &
-          iX_B0(1)  :iX_E0(1)  , &
-          1:nE_G,1:nCR,1:nSpecies), &
-      C3 (iX_B0(3)-1:iX_E0(3)+1, &
-          iX_B0(2)  :iX_E0(2)  , &
-          iX_B0(1)  :iX_E0(1)  , &
-          1:nE_G,1:nCR,1:nSpecies), &
-      CL3(iX_B0(3)  :iX_E0(3)  , &
-          iX_B0(2)  :iX_E0(2)  , &
-          iX_B0(1)  :iX_E0(1)  , &
-          1:nE_G,1:nCR,1:nSpecies)
-    REAL(DP) :: &
-      uCR(1:nDOFX, &
-          iX_B0(3)-1:iX_E0(3)+1, &
-          iX_B0(2)  :iX_E0(2)  , &
-          iX_B0(1)  :iX_E0(1)  , &
-          1:nE_G,1:nCR,1:nSpecies)
-
-    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
-      CL_X3 = Zero
-      RETURN
-    END IF
-
-    ! --- Permute Radiation Fields ---
-
-    CALL TimersStart( Timer_SL_Permute )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(8) &
-    !$OMP PRIVATE( iNodeZ, iE_G )
-#endif
-    DO iS     = 1         , nSpecies
-    DO iCR    = 1         , nCR
-    DO iE     = iE_B0     , iE_E0
-    DO iNodeE = 1         , nDOFE
-    DO iX1    = iX_B0(1)  , iX_E0(1)
-    DO iX2    = iX_B0(2)  , iX_E0(2)
-    DO iX3    = iX_B0(3)-1, iX_E0(3)+1
-    DO iNodeX = 1         , nDOFX
-
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
-      iE_G   = (iE    -1) * nDOFE + iNodeE
-
-      uCR(iNodeX,iX3,iX2,iX1,iE_G,iCR,iS) &
-        = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-    ! --- Legendre Coefficients C0 and C3 ---
-
-    CALL TimersStart( Timer_SL_LinearAlgebra )
-
-    nV_KX = PRODUCT( SHAPE( C0 ) )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_0, 1, Zero, C0, 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, N2M_Vec_3, 1, Zero, C3, 1 )
-
-    CALL TimersStop( Timer_SL_LinearAlgebra )
-
-    ! --- Limited Legendre Coefficient CL_X3 ---
-
-    CALL TimersStart( Timer_SL_MinMod )
-
-    ASSOCIATE( dX3 => MeshX(3) % Width )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6)
-#endif
-    DO iS   = 1       , nSpecies
-    DO iCR  = 1       , nCR
-    DO iE_G = 1       , nE_G
-    DO iX1  = iX_B0(1), iX_E0(1)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX3  = iX_B0(3), iX_E0(3)
-
-      CL3(iX3,iX2,iX1,iE_G,iCR,iS) &
-        = MinModB &
-            ( C3(iX3,iX2,iX1,iE_G,iCR,iS), &
-              BetaTVD * ( C0  (iX3  ,iX2,iX1,iE_G,iCR,iS)    &
-                          - C0(iX3-1,iX2,iX1,iE_G,iCR,iS) ), &
-              BetaTVD * ( C0  (iX3+1,iX2,iX1,iE_G,iCR,iS)    &
-                          - C0(iX3  ,iX2,iX1,iE_G,iCR,iS) ), &
-              dX3(iX3), BetaTVB )
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dX3
-
-    CALL TimersStop( Timer_SL_MinMod )
-
-    ! --- Permute Legendre Coefficient CL_X3 ---
-
-    CALL TimersStart( Timer_SL_Permute )
-
-#if   defined( THORNADO_OMP_OL )
-
-#elif defined( THORNADO_OACC   )
-
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(6)
-#endif
-    DO iS   = 1       , nSpecies
-    DO iCR  = 1       , nCR
-    DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
-
-      CL_X3(iX1,iX2,iX3,iE_G,iCR,iS) &
-        = CL3(iX3,iX2,iX1,iE_G,iCR,iS)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop( Timer_SL_Permute )
-
-  END SUBROUTINE ComputeLimitedSlopes_X3
 
 
   SUBROUTINE ApplySLopeLimiter_WENO &

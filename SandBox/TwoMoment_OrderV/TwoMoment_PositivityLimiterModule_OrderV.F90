@@ -796,10 +796,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_PL_Permute )
-
-    CALL TimersStart( Timer_PL_Permute )
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
 #elif defined( THORNADO_OACC   )
@@ -1040,6 +1036,8 @@ CONTAINS
            ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
              h_d_1_P, h_d_2_P, h_d_3_P, RealizableCellAverage )
 
+    CALL TimersStart( Timer_PL_EnergyLimiter )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
@@ -1062,6 +1060,8 @@ CONTAINS
 
     CALL ComputeLocalEnergy & ! --- For Energy Correction ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, ApplyEnergyLimiter, Energy_K )
+
+    CALL TimersStop( Timer_PL_EnergyLimiter )
 
     CALL TimersStart( Timer_PL_Permute )
 
@@ -1091,6 +1091,8 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_PL_Permute )
+
+    CALL TimersStart( Timer_PL_EnergyLimiter )
 
     CALL ComputeLocalEnergy & ! --- For Energy Correction ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, ApplyEnergyLimiter, dEnergy_K )
@@ -1123,6 +1125,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PL_EnergyLimiter )
 
     CALL ApplyEnergyLimiter_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, &
@@ -1236,7 +1240,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE SIMD COLLAPSE(4) &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$OMP          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
+    !$OMP          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(4) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
