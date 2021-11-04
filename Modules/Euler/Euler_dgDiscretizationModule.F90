@@ -4015,7 +4015,7 @@ CONTAINS
 
     END ASSOCIATE ! dX1, dX2, dX3
 
-!    CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
+    CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
@@ -4041,7 +4041,7 @@ CONTAINS
 
     END IF
 
-!    CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
+    CALL TimersStop_Euler( Timer_Euler_DG_ErrorCheck )
 
 #ifndef USE_AMREX_TRUE
 

@@ -38,6 +38,7 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_DG_ComputePrimitive
   REAL(DP), PUBLIC :: Timer_Euler_DG_Permute
   REAL(DP), PUBLIC :: Timer_Euler_DG_Interpolate
+  REAL(DP), PUBLIC :: Timer_Euler_DG_ErrorCheck
 
   ! --- Compute Primitive --
 
@@ -154,6 +155,7 @@ CONTAINS
     Timer_Euler_DG_ComputePrimitive = SqrtTiny
     Timer_Euler_DG_Permute          = SqrtTiny
     Timer_Euler_DG_Interpolate      = SqrtTiny
+    Timer_Euler_DG_ErrorCheck       = SqrtTiny
 
     Timer_Euler_ComputePrimitive     = SqrtTiny
     TImer_Euler_CP_CopyIn            = SqrtTiny
@@ -376,19 +378,21 @@ CONTAINS
       DEALLOCATE( Labels )
       DEALLOCATE( Timers )
 
-      nT = 4
+      nT = 5
       ALLOCATE( Timers(nT) )
       ALLOCATE( Labels(nT) )
 
       Timers = [ Timer_Euler_DG_CopyIn, &
                  Timer_Euler_DG_CopyOut, &
                  Timer_Euler_DG_Interpolate, &
-                 Timer_Euler_DG_Permute ]
+                 Timer_Euler_DG_Permute, &
+                 Timer_Euler_DG_ErrorCheck ]
 
       Labels = [ 'CopyIn      : ', &
                  'CopyOut     : ', &
                  'Interpolate : ', &
-                 'Permute     : ' ]
+                 'Permute     : ', &
+                 'Error Check : ' ]
 
       DO iT = 1, nT
 

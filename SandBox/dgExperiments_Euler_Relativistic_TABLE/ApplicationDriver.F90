@@ -54,8 +54,7 @@ PROGRAM ApplicationDriver
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF, &
-    OutputDirectory
+    ReadFieldsHDF
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -117,12 +116,6 @@ PROGRAM ApplicationDriver
 
   LOGICAL :: UsePositivityLimiter
 
-#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
-  OutputDirectory = '../Output_GPU'
-#else
-  OutputDirectory = '../Output_CPU'
-#endif
-
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -143,7 +136,7 @@ PROGRAM ApplicationDriver
 
       AdvectionProfile = 'SineWave'
 
-      t_end = 5.0e-3_DP * Millisecond!1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
+      t_end = 1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
       bcX   = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
@@ -187,7 +180,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -316,9 +309,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 1
+  iCycleD = 10
 !!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt = 1.0e+2_DP * ( t_end - t ); iCycleW = -1
+  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -327,19 +320,12 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A2,A)') '', 'Begin evolution'
   WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
-#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
-  print*,'GPU'
-#else
-  print*,'CPU'
-#endif
-
 
   t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
-           BaseFileName_Option = TRIM( OutputDirectory ) // '/' )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL ComputeTally_Euler_Relativistic &
        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
@@ -426,8 +412,6 @@ PROGRAM ApplicationDriver
 
     END IF
 
-exit
-
   END DO
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
@@ -470,21 +454,21 @@ exit
 
   CALL FinalizeTimers_Euler
 
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git info'
-!!$  WRITE(*,'(2x,A)') '--------'
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git branch:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git describe --tags:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'date:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'date' )
-!!$  WRITE(*,*)
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git info'
+  WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git describe --tags:'
+  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
+  WRITE(*,*)
 
 END PROGRAM ApplicationDriver
