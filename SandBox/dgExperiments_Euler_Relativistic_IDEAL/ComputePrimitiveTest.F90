@@ -68,6 +68,7 @@ PROGRAM ComputePrimitiveTest
     ComputeConserved_Euler_Relativistic, &
     ComputePrimitive_Euler_Relativistic, &
     ComputePrimitive_Vector_old, &
+    ComputePrimitive_Vector_masked, &
     ComputePrimitive_Vector_new
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
@@ -125,12 +126,12 @@ PROGRAM ComputePrimitiveTest
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
 
-  EOS = 'TABLE'
+  EOS = 'IDEAL'
 
   L = 1.0e2_DP * Kilometer
 
   nNodesX = [ 3, 3, 3 ]
-  nX      = [ 64, 64, 64 ]
+  nX      = [ 32, 32, 32 ]
   swX     = [ 1, 1, 1 ]
   xL      = [ Zero, Zero, Zero ]
   xU      = [ One, One, One ] * L
@@ -182,10 +183,10 @@ PROGRAM ComputePrimitiveTest
   D0  = 1.0e12_DP * UnitsD
   Amp = 0.1_DP * D0
   V1  = 3.0e4_DP * UnitsV1
-  V2  = 1.0_DP * UnitsV2
-  V3  = 1.0_DP * UnitsV3
+  V2  = 0.0_DP * UnitsV2
+  V3  = 0.0_DP * UnitsV3
   P   = 0.01_DP * D0 * SpeedOfLight**2
-  Ye  = 0.3_DP
+  Ye  = 0.0_DP
 
   ASSOCIATE( X1C => MeshX(1) % Center, dX1 => MeshX(1) % Width )
 
@@ -320,10 +321,10 @@ PROGRAM ComputePrimitiveTest
 
   Timer_old = MPI_WTIME()
 
-!!$  CALL ComputePrimitive_Vector_old &
-!!$    ( uD , uS1 , uS2 , uS3 , uE , uNe , &
-!!$      p2D, p2V1, p2V2, p2V3, p2E, p2Ne, &
-!!$      Gm11, Gm22, Gm33 )
+  CALL ComputePrimitive_Vector_old &
+    ( uD , uS1 , uS2 , uS3 , uE , uNe , &
+      p2D, p2V1, p2V2, p2V3, p2E, p2Ne, &
+      Gm11, Gm22, Gm33 )
 
   Timer_old = MPI_WTIME() - Timer_old
 

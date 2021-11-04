@@ -93,3 +93,18 @@ TimeSteppingModule_SSPRK.o: \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.F90
+
+ComputePrimitiveTest.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ProgramHeaderModule.o \
+  UnitsModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_ErrorModule.o \
+  TimersModule_Euler.o \
+  ComputePrimitiveTest.F90

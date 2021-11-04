@@ -8,11 +8,11 @@ WEAKLIB_DIR ?= ../../../weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
-DEFINES += -DTHORNADO_DEBUG
+#DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver #ComputePrimitiveTest
+all: ApplicationDriver ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -105,4 +105,5 @@ ComputePrimitiveTest.o: \
   EquationOfStateModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   Euler_ErrorModule.o \
+  TimersModule_Euler.o \
   ComputePrimitiveTest.F90
