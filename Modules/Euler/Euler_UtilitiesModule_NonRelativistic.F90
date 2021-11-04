@@ -149,7 +149,7 @@ CONTAINS
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
     !$ACC          D, V_1, V_2, V_3, E, De )
 #elif defined( THORNADO_OMP    )
-    !$ACC PARALLEL DO
+    !$OMP PARALLEL DO
 #endif
     DO iNX = 1, SIZE( N )
 
