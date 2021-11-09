@@ -292,9 +292,9 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
   !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
   !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
@@ -306,6 +306,12 @@ PROGRAM ApplicationDriver
     CALL ReadFieldsHDF &
            ( RestartFileNumber, t, &
              ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( uGF, uCF )
+#endif
 
   END IF
 
@@ -393,9 +399,9 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
   !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
   !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
@@ -424,9 +430,9 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
   !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
   !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
