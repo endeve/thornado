@@ -8,6 +8,12 @@ PROGRAM ApplicationDriver
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE ProgramHeaderModule, ONLY: &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDimsX
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -24,14 +30,15 @@ PROGRAM ApplicationDriver
     MaxT, &
     MinY, &
     MaxY
-  USE ProgramHeaderModule, ONLY: &
-    iX_B0, &
-    iX_B1, &
-    iX_E0, &
-    iX_E1, &
-    nDimsX
+  USE GeometryFieldsModule, ONLY: &
+    uGF
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
+  USE FluidFieldsModule, ONLY: &
+    uCF, &
+    uPF, &
+    uAF, &
+    uDF
   USE InitializationModule, ONLY: &
     InitializeFields
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
@@ -48,13 +55,6 @@ PROGRAM ApplicationDriver
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF
-  USE FluidFieldsModule, ONLY: &
-    uCF, &
-    uPF, &
-    uAF, &
-    uDF
-  USE GeometryFieldsModule, ONLY: &
-    uGF
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -141,7 +141,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 1, 1 ]
+      nX  = [ 16, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0e2_DP, 1.0e2_DP, 1.0e2_DP ] * Kilometer
@@ -174,13 +174,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -188,19 +188,19 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  UseSlopeLimiter           = .TRUE.
+  UseSlopeLimiter           = .FALSE.
   SlopeLimiterMethod        = 'TVD'
-  BetaTVD                   = 1.75d0
-  BetaTVB                   = 0.0d0
-  SlopeTolerance            = 1.0d-6
+  BetaTVD                   = 1.75_DP
+  BetaTVB                   = 0.0_DP
+  SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
-  UseTroubledCellIndicator  = .FALSE.
+  UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
 
   ! === End of User Input ===
 
@@ -233,13 +233,14 @@ PROGRAM ApplicationDriver
   CALL InitializeReferenceElementX_Lagrange
 
   CALL ComputeGeometryX &
-       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
              = 'TABLE', &
            EquationOfStateTableName_Option &
-             = TRIM( EosTableName ) )
+             = TRIM( EosTableName ), &
+           Verbose_Option = .TRUE. )
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_TABLE &
          ( UseSlopeLimiter_Option &
@@ -291,6 +292,12 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF )
+#endif
+
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -300,11 +307,17 @@ PROGRAM ApplicationDriver
            ( RestartFileNumber, t, &
              ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( uGF, uCF )
+#endif
+
   END IF
 
   iCycleD = 10
 !!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -386,6 +399,12 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF )
+#endif
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -410,6 +429,12 @@ PROGRAM ApplicationDriver
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF )
+#endif
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
