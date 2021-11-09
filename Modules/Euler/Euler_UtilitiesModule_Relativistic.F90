@@ -83,9 +83,6 @@ MODULE Euler_UtilitiesModule_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputePrimitive_Vector_new
-  PUBLIC :: ComputePrimitive_Vector_old
-
   PUBLIC :: ComputePrimitive_Euler_Relativistic
   PUBLIC :: ComputeConserved_Euler_Relativistic
   PUBLIC :: ComputeFromConserved_Euler_Relativistic
@@ -158,10 +155,10 @@ CONTAINS
     !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    !$ACC REDUCTION( +:ErrorExists )
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP REDUCTION( +:ErrorExists )
@@ -340,8 +337,8 @@ CONTAINS
     !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr ) &
     !$ACC REDUCTION( +:ErrorExists ) &
+    !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr ) &
     !$ACC COPYOUT(     ErrorExists )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -783,8 +780,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
-    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr ) &
-    !$ACC REDUCTION( MIN: TimeStep )
+    !$ACC REDUCTION( MIN: TimeStep ) &
+    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
