@@ -83,8 +83,8 @@ MODULE Euler_UtilitiesModule_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputePrimitive_Vector_old
   PUBLIC :: ComputePrimitive_Vector_new
+  PUBLIC :: ComputePrimitive_Vector_old
 
   PUBLIC :: ComputePrimitive_Euler_Relativistic
   PUBLIC :: ComputeConserved_Euler_Relativistic

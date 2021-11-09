@@ -48,9 +48,11 @@ MODULE InitializationModule
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE UnitsModule, ONLY: &
+    Gram, &
+    Centimeter, &
     Kilometer, &
-    SpeedOfLight, &
-    UnitsDisplay
+    Second, &
+    SpeedOfLight
 
   IMPLICIT NONE
   PRIVATE
@@ -101,6 +103,12 @@ CONTAINS
 
     END SELECT
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE TO( uCF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE DEVICE   ( uCF )
+#endif
+
   END SUBROUTINE InitializeFields
 
 
@@ -116,8 +124,8 @@ CONTAINS
     REAL(DP) :: Amp = 1.0e11_DP
     REAL(DP) :: L   = 1.0e02_DP
 
-    D_0 = D_0 * unitsPF(iPF_D)
-    Amp = Amp * unitsPF(iPF_D)
+    D_0 = D_0 * ( Gram / Centimeter**3 )
+    Amp = Amp * ( Gram / Centimeter**3 )
     L   = L   * Kilometer
 
     WRITE(*,*)
@@ -167,30 +175,6 @@ CONTAINS
           STOP
 
       END SELECT
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-  !$OMP TARGET UPDATE TO( uPF, uAF )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
-  !$ACC UPDATE DEVICE   ( uPF, uAF )
-#endif
-
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
 
       CALL ComputeTemperatureFromPressure &
              ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &
@@ -255,19 +239,19 @@ CONTAINS
 
         XD = 0.0_DP * Kilometer
 
-        LeftStatePF(iPF_D ) = 1.00e12_DP * unitsPF(iPF_D )
-        LeftStatePF(iPF_V1) = 0.0_DP     * unitsPF(iPF_V1)
-        LeftStatePF(iPF_V2) = 0.0_DP     * unitsPF(iPF_V2)
-        LeftStatePF(iPF_V3) = 0.0_DP     * unitsPF(iPF_V3)
-        LeftStateAF(iAF_P ) = 1.00d32    * unitsAF(iAF_P )
-        LeftStateAF(iAF_Ye) = 0.4_DP     * unitsAF(iAF_Ye)
+        LeftStatePF(iPF_D ) = 1.00e12_DP * ( Gram / Centimeter**3 )
+        LeftStatePF(iPF_V1) = 0.0_DP     * ( Kilometer / Second )
+        LeftStatePF(iPF_V2) = 0.0_DP     * ( Kilometer / Second )
+        LeftStatePF(iPF_V3) = 0.0_DP     * ( Kilometer / Second )
+        LeftStateAF(iAF_P ) = 1.00d32    * ( Erg / Centimeter**3 )
+        LeftStateAF(iAF_Ye) = 0.4_DP
 
-        RightStatePF(iPF_D ) = 1.25e11_DP * unitsPF(iPF_D )
-        RightStatePF(iPF_V1) = 0.0_DP     * unitsPF(iPF_V1)
-        RightStatePF(iPF_V2) = 0.0_DP     * unitsPF(iPF_V2)
-        RightStatePF(iPF_V3) = 0.0_DP     * unitsPF(iPF_V3)
-        RightStateAF(iAF_P ) = 1.00d31    * unitsAF(iAF_P )
-        RightStateAF(iAF_Ye) = 0.3_DP     * unitsAF(iAF_Ye)
+        RightStatePF(iPF_D ) = 1.25e11_DP * ( Gram / Centimeter**3 )
+        RightStatePF(iPF_V1) = 0.0_DP     * ( Kilometer / Second )
+        RightStatePF(iPF_V2) = 0.0_DP     * ( Kilometer / Second )
+        RightStatePF(iPF_V3) = 0.0_DP     * ( Kilometer / Second )
+        RightStateAF(iAF_P ) = 1.00d31    * ( Erg / Centimeter**3 )
+        RightStateAF(iAF_Ye) = 0.3_DP
 
       CASE DEFAULT
 
@@ -283,37 +267,37 @@ CONTAINS
 
     END SELECT
 
-    WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+    WRITE(*,'(6x,A,F8.6,1x,A)') 'XD = ', XD, 'km'
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Right State:'
     WRITE(*,*)
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_D  = ', &
-      RightStatePF(iPF_D ) / unitsPF(iPF_D ), UnitsDisplay % MassDensityLabel
+      RightStatePF(iPF_D ) / ( Gram / Centimeter**3 ), 'g/cm^3'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_V1 = ', &
-      RightStatePF(iPF_V1) / unitsPF(iPF_V1), UnitsDisplay % VelocityX1Label
+      RightStatePF(iPF_V1) / ( Kilometer / Second ), 'km/s'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_V2 = ', &
-      RightStatePF(iPF_V2) / unitsPF(iPF_V2), UnitsDisplay % VelocityX2Label
+      RightStatePF(iPF_V2) / ( Kilometer / Second ), 'km/s'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_V3 = ', &
-      RightStatePF(iPF_V3) / unitsPF(iPF_V3), UnitsDisplay % VelocityX3Label
+      RightStatePF(iPF_V3) / ( Kilometer / Second ), 'km/s'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'AF_P  = ', &
-      RightStateAF(iAF_P ) / unitsAF(iAF_P ), UnitsDisplay % PressureLabel
-    WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'AF_Ye = ', &
-      RightStateAF(iAF_Ye) / unitsAF(iAF_Ye)
+      RightStateAF(iAF_P ) / ( Erg / Centimeter**3 ), 'erg/cm^3'
+    WRITE(*,'(8x,A,ES14.6E3)') 'AF_Ye = ', &
+      RightStateAF(iAF_Ye)
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Left State:'
     WRITE(*,*)
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_D  = ', &
-      LeftStatePF(iPF_D ) / unitsPF(iPF_D ), UnitsDisplay % MassDensityLabel
+      LeftStatePF(iPF_D ) / ( Gram / Centimeter**3 ), 'g/cm^3'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_V1 = ', &
-      LeftStatePF(iPF_V1) / unitsPF(iPF_V1), UnitsDisplay % VelocityX1Label
+      LeftStatePF(iPF_V1) / ( Kilometer / Second ), 'km/s'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_V2 = ', &
-      LeftStatePF(iPF_V2) / unitsPF(iPF_V2), UnitsDisplay % VelocityX2Label
+      LeftStatePF(iPF_V2) / ( Kilometer / Second ), 'km/s'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'PF_V3 = ', &
-      LeftStatePF(iPF_V3) / unitsPF(iPF_V3), UnitsDisplay % VelocityX3Label
+      LeftStatePF(iPF_V3) / ( Kilometer / Second ), 'km/s'
     WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'AF_P  = ', &
-      LeftStateAF(iAF_P ) / unitsAF(iAF_P ), UnitsDisplay % PressureLabel
-    WRITE(*,'(8x,A,ES14.6E3,1x,A)') 'AF_Ye = ', &
-      LeftStateAF(iAF_Ye) / unitsAF(iAF_Ye)
+      LeftStateAF(iAF_P ) / ( Erg / Centimeter**3 ), 'erg/cm^3'
+    WRITE(*,'(8x,A,ES14.6E3)') 'AF_Ye = ', &
+      LeftStateAF(iAF_Ye)
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -343,30 +327,6 @@ CONTAINS
         uAF(iNX,iX1,iX2,iX3,iAF_Ye) = RightStateAF(iAF_Ye)
 
       END IF
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-  !$OMP TARGET UPDATE TO( uPF, uAF )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
-  !$ACC UPDATE DEVICE   ( uPF, uAF )
-#endif
-
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
 
       CALL ComputeTemperatureFromPressure &
              ( uPF(iNX,iX1,iX2,iX3,iPF_D ), &

@@ -129,21 +129,21 @@ CONTAINS
 
     INTEGER :: iNX
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_NOGPU )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    N, S_1, S_2, S_3, G, Ne, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$OMP MAP( alloc: D, V_1, V_2, V_3, E, De )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_NOGPU )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     N, S_1, S_2, S_3, G, Ne, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$ACC CREATE(     D, V_1, V_2, V_3, E, De )
 #endif
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_NOGPU )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_NOGPU )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( N, S_1, S_2, S_3, G, Ne, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -164,12 +164,12 @@ CONTAINS
 
     END DO
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_NOGPU )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    D, V_1, V_2, V_3, E, De ) &
     !$OMP MAP( release: Gm_dd_11, Gm_dd_22, Gm_dd_33, &
     !$OMP               N, S_1, S_2, S_3, G, Ne )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_NOGPU )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      D, V_1, V_2, V_3, E, De ) &
     !$ACC DELETE(       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -183,9 +183,9 @@ CONTAINS
     ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_NOGPU )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_NOGPU )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 

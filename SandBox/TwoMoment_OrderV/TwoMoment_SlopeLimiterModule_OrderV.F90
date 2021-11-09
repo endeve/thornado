@@ -338,11 +338,6 @@ CONTAINS
     CALL DetectTroubledCells_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, TroubledCell )
 
-#if   defined( THORNADO_OMP_OL )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE ASYNC DEVICE( TroubledCell )
-#endif
-
     CALL TimersStart( Timer_SL_ReplaceSlopes )
 
     ASSOCIATE &

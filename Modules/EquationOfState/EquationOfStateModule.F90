@@ -720,12 +720,6 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_Scalar &
     ( D, T, Y, Ev, Em, Ne )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: Ev, Em, Ne
 
@@ -871,12 +865,6 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromPressure_Scalar( D, P, Y, T )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
 
     REAL(DP), INTENT(in)  :: D, P, Y
     REAL(DP), INTENT(out) :: T
