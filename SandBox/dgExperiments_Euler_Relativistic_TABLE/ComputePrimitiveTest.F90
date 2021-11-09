@@ -66,9 +66,7 @@ PROGRAM ComputePrimitiveTest
     ComputeThermodynamicStates_Primitive
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic, &
-    ComputePrimitive_Euler_Relativistic, &
-    ComputePrimitive_Vector_old, &
-    ComputePrimitive_Vector_new
+    ComputePrimitive_Euler_Relativistic
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
   USE TimersModule_Euler, ONLY: &
@@ -320,16 +318,16 @@ PROGRAM ComputePrimitiveTest
 
   Timer_old = MPI_WTIME()
 
-!!$  CALL ComputePrimitive_Vector_old &
-!!$    ( uD , uS1 , uS2 , uS3 , uE , uNe , &
-!!$      p2D, p2V1, p2V2, p2V3, p2E, p2Ne, &
-!!$      Gm11, Gm22, Gm33 )
+  CALL ComputePrimitive_Euler_Relativistic &
+    ( uD , uS1 , uS2 , uS3 , uE , uNe , &
+      p2D, p2V1, p2V2, p2V3, p2E, p2Ne, &
+      Gm11, Gm22, Gm33 )
 
   Timer_old = MPI_WTIME() - Timer_old
 
   Timer_new = MPI_WTIME()
 
-  CALL ComputePrimitive_Vector_new &
+  CALL ComputePrimitive_Euler_Relativistic &
     ( uD , uS1 , uS2 , uS3 , uE , uNe , &
       p3D, p3V1, p3V2, p3V3, p3E, p3Ne, &
       Gm11, Gm22, Gm33 )
