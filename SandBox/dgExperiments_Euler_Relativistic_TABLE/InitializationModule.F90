@@ -52,6 +52,7 @@ MODULE InitializationModule
     Centimeter, &
     Kilometer, &
     Second, &
+    Erg, &
     SpeedOfLight
 
   IMPLICIT NONE
