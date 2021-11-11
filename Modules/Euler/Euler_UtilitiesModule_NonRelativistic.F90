@@ -91,9 +91,9 @@ CONTAINS
     ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
   !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
   !$ACC ROUTINE SEQ
 #endif
 
@@ -183,9 +183,9 @@ CONTAINS
     ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -327,10 +327,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CTS_CopyIn )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN(  G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
@@ -341,11 +341,11 @@ CONTAINS
 
     TimeStep = HUGE( One )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
@@ -406,10 +406,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CTS_CopyOut )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif

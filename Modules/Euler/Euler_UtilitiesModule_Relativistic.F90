@@ -414,9 +414,9 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm11, GF_Gm22, GF_Gm33, iErr )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -498,9 +498,9 @@ CONTAINS
       Gm11, Gm22, Gm33, &
       AF_P )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -591,11 +591,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_CopyIn )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$OMP MAP( alloc: P, A, iErr )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$ACC CREATE(     P, A, iErr )
@@ -605,9 +605,9 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B1, iX_E1, A )
 #elif defined( THORNADO_OMP    )
@@ -627,9 +627,9 @@ CONTAINS
     END DO
     END DO
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
 #elif defined( THORNADO_OMP    )
@@ -681,11 +681,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_CopyOut )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    P, A, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+#elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      P, A, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
