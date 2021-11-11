@@ -139,7 +139,6 @@ CONTAINS
     ! PRINT*, "--- Initializing ---"
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-print*, "1"
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
@@ -154,7 +153,6 @@ print*, "1"
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
-print*, "2"
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "CF_D = ", CF_N(:,iCF_D) / (Gram / Centimeter**3)
     ! PRINT*, "CF_E = ", CF_N(:,iCF_E)
@@ -195,7 +193,6 @@ print*, "2"
 
     END DO
 
-print*, "3"
 
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
@@ -239,7 +236,6 @@ print*, "3"
     END DO
     END DO
 
-print*, "4"
             ! PRINT*, "N_P = ", N_P(:)
             ! PRINT*, "G1_P = ", G1_P(:)
             ! PRINT*, "G2_P = ", G2_P(:)
@@ -256,7 +252,12 @@ print*, "4"
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
-print*, "5"
+
+    CALL ComputePressureFromPrimitive_TABLE &
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+             AF_N(:,iAF_P) )
+
+
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
     ! PRINT*, "T = ", AF_N(:,iAF_T) / (MeV)
@@ -280,6 +281,7 @@ print*, "5"
              AF_N(:,iAF_T ), &
              AF_N(:,iAF_Ye), &
              AF_N(:,iAF_E ), &
+             AF_N(:,iAF_P ), &
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
@@ -290,7 +292,6 @@ print*, "5"
              nIterations_Inner, &
              nIterations_Outer )
 
-print*, "6"
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -329,18 +330,15 @@ print*, "6"
     END DO
     END DO
 
-print*, "7"
     CALL ComputeThermodynamicStates_Primitive_TABLE &
            ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
              PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
 
-print*, "8"
     CALL ComputePressureFromPrimitive_TABLE & 
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_P) )
 
 
-print*, "9"
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
@@ -371,11 +369,9 @@ print*, "9"
 
     END DO
 
-print*, "10"
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
-print*, "11"
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_F, dU_R ) &
@@ -390,7 +386,6 @@ print*, "11"
 
     CALL FinalizeCollisions
 
-print*, "12"
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos
 
