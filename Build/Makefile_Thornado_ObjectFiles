@@ -14,7 +14,11 @@ include $(THORNADO_DIR)/Modules/TwoMoment/Makefile_TwoMoment_ObjectFiles
 include $(THORNADO_DIR)/Modules/TimeStepping/Makefile_TimeStepping_ObjectFiles
 include $(THORNADO_DIR)/Modules/Runtime/Makefile_Runtime_ObjectFiles
 
-thornado = \
+ifeq ($(MICROPHYSICS),WEAKLIB)
+  thornado = $(weaklib)
+endif
+
+thornado += \
   $(NUMBERS) $(UNITS) $(PROGRAM_HEADER) $(LIBRARY) $(MESH) $(GEOMETRY) \
   $(FIELDS) $(EQUATION_OF_STATE) $(OPACITIES) $(INPUT_OUTPUT) \
   $(RAD_HYDRO) $(EULER) $(TWO_MOMENT) $(TIME_STEPPING) $(RUNTIME)

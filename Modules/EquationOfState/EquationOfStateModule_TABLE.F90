@@ -54,7 +54,7 @@ MODULE EquationOfStateModule_TABLE
     iXp_T, iXn_T, iXa_T, iXh_T, iGm_T
   INTEGER, DIMENSION(3) :: &
     LogInterp
-  REAL(DP) :: &
+  REAL(DP), PUBLIC :: &
     UnitD, UnitT, UnitY, &
     UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
     UnitXp, UnitXn, UnitXa, UnitXh, UnitGm

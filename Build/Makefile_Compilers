@@ -38,6 +38,7 @@ C                    = $(C_$(MACHINE))
 
 FORTRAN_mac_gnu      = mpif90 -fopenmp -cpp
 FORTRAN_sn1987b      = mpif90 -fopenmp -cpp
+FORTRAN_vass         = mpif90 -fopenmp -cpp
 FORTRAN_bbarker      = mpif90 -fopenmp
 FORTRAN_icer         = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
@@ -68,6 +69,7 @@ FORTRAN              = $(FORTRAN_$(MACHINE)) $(OPENMP) $(OPENACC)
 
 SUFFIX_f90_mac_gnu      =
 SUFFIX_f90_sn1987b      =
+SUFFIX_f90_vass         =
 SUFFIX_f90_bbarker      =
 SUFFIX_f90_icer         =
 SUFFIX_f90_juliana      =
@@ -97,6 +99,7 @@ SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 
 FLINKER_mac_gnu      = mpif90 -fopenmp
 FLINKER_sn1987b      = mpif90 -fopenmp
+FLINKER_vass         = mpif90 -fopenmp
 FLINKER_bbarker      = mpif90 -fopenmp
 FLINKER_icer         = mpif90 -fopenmp
 FLINKER_juliana      = gfortran
@@ -128,6 +131,7 @@ FLINKER              = $(FLINKER_$(MACHINE)) $(OPENMP) $(OPENACC)
 FLAGS_DEBUG        = $(DEBUG)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_vass         = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_bbarker      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_icer         = -g -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
@@ -159,6 +163,7 @@ DEBUG_summitdev_xl = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
+OPTIMIZE_vass         = -O2 -framework Accelerate
 OPTIMIZE_bbarker      = -O2 -framework Accelerate
 OPTIMIZE_icer         = -O2
 OPTIMIZE_juliana      = -O2
@@ -190,6 +195,7 @@ OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = -I/usr/local/include
 INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.10.5/include
+INCLUDE_HDF5_vass              = -I/usr/local/Cellar/hdf5/1.10.5_1/include
 INCLUDE_HDF5_bbarker           = -I/usr/local/Cellar/hdf5/1.10.5_1/include
 INCLUDE_HDF5_icer              = -I/opt/software/HDF5/1.10.4-foss-2019a/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
@@ -272,6 +278,7 @@ INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POS
 
 LIBRARIES_HDF5_mac_gnu         = -L/usr/local/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.10.5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_vass            = -L/usr/local/Cellar/hdf5/1.10.5_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_bbarker         = -L/usr/local/Cellar/hdf5/1.10.5_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_icer            = -L/opt/software/HDF5/1.10.4-foss-2019a/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
@@ -373,6 +380,7 @@ MDEFS                             = $(MDEFS_$(MACHINE))
 
 PP_mac_gnu      = -D
 PP_sn1987b      = -D
+PP_vass         = -D
 PP_bbarker      = -D
 PP_juliana      = -D
 PP_kristopher   = -D
@@ -402,6 +410,7 @@ PP              = $(PP_$(MACHINE))
 
 MDEFS_mac_gnu      =
 MDEFS_sn1987b      =
+MDEFS_vass         =
 MDEFS_bbarker      =
 MDEFS_juliana      =
 MDEFS_kristopher   =
