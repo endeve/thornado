@@ -66,9 +66,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
     LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point, &
-    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P, &
-    LinearInterp_Array_Point, &
-    GetIndexAndDelta
+    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P
 
   ! ----------------------------------------------
 
