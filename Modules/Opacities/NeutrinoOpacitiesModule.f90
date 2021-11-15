@@ -1,7 +1,13 @@
 MODULE NeutrinoOpacitiesModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, One
+  USE UnitsModule, ONLY: &
+    BoltzmannConstant, &
+    Centimeter, &
+    Gram, &
+    Kelvin, &
+    MeV
 
   IMPLICIT NONE
   PRIVATE
@@ -37,6 +43,12 @@ MODULE NeutrinoOpacitiesModule
   CHARACTER(32), PARAMETER, PUBLIC :: namesPP = 'Pair Process Opacities'
   REAL(DP),                 PUBLIC :: unitsPP
   REAL(DP),    ALLOCATABLE, PUBLIC :: opPP(:,:,:,:)
+
+  ! --- Nucleon-nucleon Bremsstrahlung Opacities ---
+
+  CHARACTER(32), PARAMETER, PUBLIC :: namesBrem = 'Bremsstrahlung Opacities'
+  REAL(DP),                 PUBLIC :: unitsBrem
+  REAL(DP),    ALLOCATABLE, PUBLIC :: opBrem(:,:,:,:)
 
   PUBLIC :: CreateNeutrinoOpacities
   PUBLIC :: DestroyNeutrinoOpacities
@@ -90,19 +102,21 @@ CONTAINS
 
     IF( UnitsActive )THEN
 
-      unitsEQ = 1.0_DP
-      unitsEC = 1.0_DP / Centimeter
-      unitsES = 1.0_DP / Centimeter
-      unitsIS = 1.0_DP ! --- Not Set Yet
-      unitsPP = 1.0_DP ! --- Not Set Yet
+      unitsEQ   = One
+      unitsEC   = One / Centimeter
+      unitsES   = One / Centimeter
+      unitsIS   = One ! --- Not Set Yet
+      unitsPP   = One / ( Centimeter * MeV**3 )
+      unitsBrem = One / ( Centimeter * MeV**3 )
 
     ELSE
 
-      unitsEQ = 1.0_DP
-      unitsEC = 1.0_DP
-      unitsES = 1.0_DP
-      unitsIS = 1.0_DP
-      unitsPP = 1.0_DP
+      unitsEQ   = One
+      unitsEC   = One
+      unitsES   = One
+      unitsIS   = One
+      unitsPP   = One
+      unitsBrem = One
 
     END IF
 
