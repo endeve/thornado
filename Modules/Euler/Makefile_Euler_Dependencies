@@ -1,6 +1,13 @@
 Euler_ErrorModule.o: \
-  UtilitiesModule.F90 \
+  UtilitiesModule.o \
   Euler_ErrorModule.f90
+
+Euler_MeshRefinementModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModule_Lagrange.o \
+  Euler_MeshRefinementModule.f90
 
 Euler_UtilitiesModule_NonRelativistic.o: \
   KindModule.o \
@@ -19,12 +26,15 @@ Euler_UtilitiesModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
+  EquationOfStateModule_TABLE.o \
+  UnitsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
   KindModule.o \
+  FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   Euler_UtilitiesModule_Relativistic.o \
   Euler_UtilitiesModule.F90
@@ -50,13 +60,11 @@ Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o: \
 
 Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   KindModule.o \
-  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule_IDEAL.o \
   EquationOfStateModule.o \
-  TimersModule_Euler.o \
-  Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
+  Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.F90
 
 Euler_CharacteristicDecompositionModule.o: \
   KindModule.o \
@@ -93,29 +101,45 @@ Euler_PositivityLimiterModule_NonRelativistic_TABLE.o: \
 Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.o \
   FluidFieldsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
-  Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
+  Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
+
+Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryComputationModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  UnitsModule.o \
+  TimersModule_Euler.o \
+  Euler_ErrorModule.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.f90
 
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule.F90
 
 Euler_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
-  ReferenceElementModuleX.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
+  TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_BoundaryConditionsModule.F90
 
@@ -123,18 +147,21 @@ Euler_DiscontinuityDetectionModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
-  MeshModule.o \
-  PolynomialBasisModule_Lagrange.o \
+  LinearAlgebraModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
+  UtilitiesModule.o \
   TimersModule_Euler.o \
-  Euler_DiscontinuityDetectionModule.f90
+  Euler_ErrorModule.o \
+  Euler_DiscontinuityDetectionModule.F90
 
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
   PolynomialBasisModule_Legendre.o \
@@ -168,9 +195,11 @@ Euler_SlopeLimiterModule_NonRelativistic_TABLE.o: \
 Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
-  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  PolynomialBasisModuleX_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
   GeometryFieldsModule.o \
@@ -181,31 +210,49 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   TimersModule_Euler.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 
+Euler_SlopeLimiterModule_Relativistic_TABLE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_DiscontinuityDetectionModule.o \
+  UnitsModule.o \
+  TimersModule_Euler.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.F90
+
 Euler_SlopeLimiterModule.o: \
   KindModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_SlopeLimiterModule.F90
 
 Euler_dgDiscretizationModule.o: \
   KindModule.o \
-  TimersModule_Euler.o \
   ProgramHeaderModule.o \
-  MeshModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
+  MeshModule.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.o \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
   Euler_DiscontinuityDetectionModule.o \
   EquationOfStateModule.o \
+  TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_dgDiscretizationModule.F90
 
-Euler_TallyModule_NonRelativistic_IDEAL.o: \
+Euler_TallyModule_NonRelativistic.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
@@ -214,35 +261,23 @@ Euler_TallyModule_NonRelativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
-  Euler_TallyModule_NonRelativistic_IDEAL.f90
+  Euler_TallyModule_NonRelativistic.f90
 
-Euler_TallyModule_NonRelativistic_TABLE.o: \
+Euler_TallyModule_Relativistic.o: \
   KindModule.o \
-  UnitsModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  Euler_TallyModule_NonRelativistic_TABLE.f90
-
-Euler_TallyModule_Relativistic_IDEAL.o: \
-  KindModule.o \
   UnitsModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  Euler_TallyModule_Relativistic_IDEAL.f90
+  Euler_TallyModule_Relativistic.f90
 
 Euler_TallyModule.o: \
   KindModule.o \
-  Euler_TallyModule_NonRelativistic_IDEAL.o \
-  Euler_TallyModule_NonRelativistic_TABLE.o \
-  Euler_TallyModule_Relativistic_IDEAL.o \
+  FluidFieldsModule.o \
+  Euler_TallyModule_NonRelativistic.o \
+  Euler_TallyModule_Relativistic.o \
   Euler_TallyModule.F90
 
 Euler_PerturbationModule.o: \

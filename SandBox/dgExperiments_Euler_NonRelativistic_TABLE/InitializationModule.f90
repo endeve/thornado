@@ -111,9 +111,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       AdvectionProfile_Option
 
-    REAL(DP), PARAMETER :: D_0 = 1.0d12 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: Amp = 1.0d11 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: L   = 1.0d02 * Kilometer
+    REAL(DP), PARAMETER :: D_0    = 1.0d12 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Amp    = 1.0d11 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: L      = 1.0d02 * Kilometer
+    REAL(DP), PARAMETER :: Ye_0   = 0.0125_DP
+    REAL(DP), PARAMETER :: Amp_Ye = 0.030_DP
 
     CHARACTER(32) :: AdvectionProfile
     INTEGER       :: iX1, iX2, iX3
@@ -260,7 +262,41 @@ CONTAINS
               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
                 = 0.3_DP
 
-          END IF
+            END IF
+
+          CASE( 'TopHat' )
+
+            IF( ( X1 .GE. -0.4_DP * L ) .AND. ( X1 .LE. 0.4_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.5d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = Ye_0 + Amp_Ye
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.5d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = Ye_0
+
+            END IF
 
         END SELECT
 
@@ -354,6 +390,28 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
               uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.00d31 * Erg / Centimeter**3
               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+
+            END IF
+
+          CASE( 'Pochik' )
+
+            IF( X1 <= Zero )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0d13 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.07d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.04_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.25d12 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.023d30 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.1_DP
 
             END IF
 
@@ -482,6 +540,7 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
 
+
   SUBROUTINE InitiaizeFields_InitializeShockEntropyWaveInteraction1D
 
     INTEGER       :: iX1, iX2, iX3
@@ -505,69 +564,69 @@ CONTAINS
     WRITE(*,*)
 
     DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
   
-        DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
   
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
   
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
       
-            IF( X1 <= X_D )THEN
+        IF( X1 <= X_D )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 3.60632d12 * Gram / Centimeter**3
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 7.425d4 * Kilometer / Second !2.629369d4
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 10.333333d31 * Erg / Centimeter**3
-              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.5_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 3.60632d12 * Gram / Centimeter**3
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 7.425d4 * Kilometer / Second !2.629369d4
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+          uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 10.333333d31 * Erg / Centimeter**3
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.5_DP
 
-            ELSE
+        ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = & 
-                ( 1.00d12 + Amplitude * SIN( Wavenumber * X1 ) ) * Gram / Centimeter**3
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.00d31 * Erg / Centimeter**3
-              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.5_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+            = ( 1.00d12 + Amplitude * SIN( Wavenumber * X1 ) ) * Gram / Centimeter**3
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+          uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.00d31 * Erg / Centimeter**3
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.5_DP
 
-            END IF
-    
-          CALL ComputeTemperatureFromPressure &
-                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                   uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
-                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
-                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
+        END IF
+
+        CALL ComputeTemperatureFromPressure &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
   
-          CALL ComputeThermodynamicStates_Primitive &
-                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
-                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
-                   uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+        CALL ComputeThermodynamicStates_Primitive &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
   
-          CALL ComputeConserved_Euler_NonRelativistic &
-                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
-                   uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
-                   uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
-                   uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
-                   uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
-                   uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
-  
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
         END DO
-  
+
       END DO
       END DO
       END DO

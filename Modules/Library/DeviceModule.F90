@@ -4,15 +4,13 @@ MODULE DeviceModule
   USE KindModule, ONLY: &
     DP
 
-#if defined(THORNADO_GPU)
+#if defined(THORNADO_CUDA)
   USE CudaModule, ONLY: &
     stream, &
     cudaGetDeviceCount, &
     cudaSetDevice, &
-    cudaStreamCreate
-#endif
-
-#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+    cudaStreamCreate, &
+    cudaStreamSynchronize
   USE CublasModule, ONLY: &
     cublas_handle, &
     cublasCreate_v2, &
@@ -26,6 +24,39 @@ MODULE DeviceModule
     cusparse_handle, &
     cusparseCreate, &
     cusparseSetStream
+#elif defined(THORNADO_HIP)
+  USE HipModule, ONLY: &
+    stream, &
+    hipGetDeviceCount, &
+    hipSetDevice, &
+    hipStreamCreate, &
+    hipStreamSynchronize, &
+    hipCheck, &
+    hipblasCheck, &
+    hipsparseCheck, &
+    rocblasCheck, &
+    rocsparseCheck, &
+    rocsolverCheck
+  USE RocblasModule, ONLY: &
+    rocblas_handle, &
+    rocblas_create_handle, &
+    rocblas_get_stream, &
+    rocblas_set_stream, &
+    rocblas_set_pointer_mode, &
+    rocblas_pointer_mode_device
+  USE RocsolverModule, ONLY: &
+    rocsolver_handle
+  USE RocsparseModule, ONLY: &
+    rocsparse_handle
+  USE HipblasModule, ONLY: &
+    hipblas_handle, &
+    hipblasCreate, &
+    hipblasGetStream, &
+    hipblasSetStream
+  USE HipsparseModule, ONLY: &
+    hipsparse_handle, &
+    hipsparseCreate, &
+    hipsparseSetStream
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -47,14 +78,18 @@ MODULE DeviceModule
 
 #if defined(THORNADO_OACC)
   USE OpenACCModule, ONLY: &
+    acc_set_device_num, &
     acc_get_device_num, &
     acc_on_device, &
     acc_is_present, &
+    acc_get_cuda_stream, &
     acc_set_cuda_stream, &
     acc_get_default_async, &
+    acc_set_default_async, &
     acc_device_host, &
-    acc_device_nvidia, &
-    acc_async_default
+    acc_device_default, &
+    acc_async_sync, &
+    acc_async_noval
 #endif
 
   IMPLICIT NONE
@@ -63,6 +98,12 @@ MODULE DeviceModule
   INCLUDE 'mpif.h'
 
   INTEGER, PUBLIC :: mydevice, ndevices
+
+  INTERFACE dev_ptr
+    MODULE PROCEDURE dev_ptr_int
+    MODULE PROCEDURE dev_ptr_dp
+    MODULE PROCEDURE dev_ptr_cptr
+  END INTERFACE
 
   INTERFACE QueryOnGPU
     MODULE PROCEDURE QueryOnGPU_3D_DP_1
@@ -85,6 +126,8 @@ MODULE DeviceModule
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
   PUBLIC :: on_device
+  PUBLIC :: stream_sync
+  PUBLIC :: dev_ptr
   PUBLIC :: QueryOnGpu
 
 CONTAINS
@@ -97,46 +140,73 @@ CONTAINS
 #if defined(THORNADO_GPU)
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, nranks, ierr )
+#if defined(THORNADO_CUDA)
     ierr = cudaGetDeviceCount( ndevices )
+#elif defined(THORNADO_HIP)
+    CALL hipCheck( hipGetDeviceCount( ndevices ) )
+#endif
     IF ( ndevices > 0 ) THEN
       mydevice = MOD( myrank, ndevices )
     ELSE
-      WRITE(*,*) 'No CUDA capable device found'
+      WRITE(*,*) 'No capable device found'
       CALL MPI_FINALIZE( ierr )
     END IF
+#if defined(THORNADO_CUDA)
     ierr = cudaSetDevice( mydevice )
+#elif defined(THORNADO_HIP)
+    CALL hipCheck( hipSetDevice( mydevice ) )
+#endif
 #else
     mydevice = -1
     ndevices = 0
 #endif
-
-#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
-    ierr = cublasCreate_v2( cublas_handle )
-    ierr = cudaStreamCreate( stream )
-    ierr = cublasSetStream_v2( cublas_handle, stream )
-    !ierr = cublasGetStream_v2( cublas_handle, stream )
-
-    ierr = cusolverDnCreate( cusolver_handle )
-    ierr = cusolverDnSetStream( cusolver_handle, stream )
-
-    ierr = cusparseCreate( cusparse_handle )
-    ierr = cusparseSetStream( cusparse_handle, stream )
-#endif
-
-#if defined(THORNADO_LA_MAGMA)
-    CALL magma_getdevice( magma_device )
-    CALL magma_init()
-    CALL magma_queue_create_from_cuda &
-           ( magma_device, stream, cublas_handle, cusparse_handle, magma_queue )
-#endif
-
 #if defined(THORNADO_OMP_OL)
     CALL omp_set_default_device( mydevice )
 #endif
 
+    ! Setup linear algebra library handles
+#if defined(THORNADO_CUDA)
+    ierr = cublasCreate_v2( cublas_handle )
+    ierr = cusparseCreate( cusparse_handle )
+    ierr = cusolverDnCreate( cusolver_handle )
+#elif defined(THORNADO_HIP)
+    CALL hipblasCheck( hipblasCreate( hipblas_handle ) )
+    CALL hipsparseCheck( hipsparseCreate( hipsparse_handle ) )
+    CALL rocblasCheck( rocblas_create_handle( rocblas_handle ) )
+    rocsolver_handle = rocblas_handle
+    !rocsparse_handle = rocblas_handle
+#endif
+
+    ! Create a stream and associate with linear algebra libraries
 #if defined(THORNADO_OACC)
-    acc_async_default = acc_get_default_async()
-    ierr = acc_set_cuda_stream( acc_async_default, stream )
+    stream = acc_get_cuda_stream( acc_async_noval )
+    CALL acc_set_cuda_stream( acc_async_sync, stream )
+    !CALL acc_set_default_async( acc_async_noval )
+#elif defined(THORNADO_CUDA)
+    ierr = cudaStreamCreate( stream )
+#elif defined(THORNADO_HIP)
+    CALL hipCheck( hipStreamCreate( stream ) )
+#endif
+
+#if defined(THORNADO_CUDA)
+    ierr = cublasSetStream_v2( cublas_handle, stream )
+    ierr = cusparseSetStream( cusparse_handle, stream )
+    ierr = cusolverDnSetStream( cusolver_handle, stream )
+#elif defined(THORNADO_HIP)
+    CALL hipblasCheck( hipblasSetStream( hipblas_handle, stream ) )
+    CALL hipsparseCheck( hipsparseSetStream( hipsparse_handle, stream ) )
+    CALL rocblasCheck( rocblas_set_stream( rocblas_handle, stream ) )
+#endif
+
+#if defined(THORNADO_LA_MAGMA)
+    CALL magma_init()
+#if defined(THORNADO_CUDA)
+    CALL magma_queue_create_from_cuda &
+           ( magma_device, stream, cublas_handle, cusparse_handle, magma_queue )
+#elif defined(THORNADO_HIP)
+    CALL magma_queue_create_from_cuda &
+           ( magma_device, stream, hipblas_handle, hipsparse_handle, magma_queue )
+#endif
 #endif
 
     RETURN
@@ -167,7 +237,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     get_device_num = omp_get_default_device()
 #elif defined(THORNADO_OACC)
-    get_device_num = acc_get_device_num( acc_device_nvidia )
+    get_device_num = acc_get_device_num( acc_device_default )
 #else
     get_device_num = -1
 #endif
@@ -187,6 +257,73 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION on_device
+
+
+  SUBROUTINE stream_sync( stream )
+    TYPE(C_PTR), INTENT(in) :: stream
+    INTEGER :: ierr
+#if defined(THORNADO_CUDA)
+    ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_HIP)
+    CALL hipCheck( hipStreamSynchronize( stream ) )
+#endif
+    RETURN
+  END SUBROUTINE stream_sync
+
+
+  TYPE(C_PTR) FUNCTION dev_ptr_int( a )
+#if defined(THORNADO_OMP_OL)
+    INTEGER, TARGET, INTENT(IN) :: a
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    INTEGER, TARGET, INTENT(IN) :: a
+    !$ACC HOST_DATA USE_DEVICE( a )
+#else
+    INTEGER, TARGET, INTENT(IN) :: a
+#endif
+    dev_ptr_int = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_int
+
+  TYPE(C_PTR) FUNCTION dev_ptr_dp( a )
+#if defined(THORNADO_OMP_OL)
+    REAL(DP), TARGET, INTENT(IN) :: a
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    REAL(DP), TARGET, INTENT(IN) :: a
+    !$ACC HOST_DATA USE_DEVICE( a )
+#else
+    REAL(DP), TARGET, INTENT(IN) :: a
+#endif
+    dev_ptr_dp = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_dp
+
+  TYPE(C_PTR) FUNCTION dev_ptr_cptr( a )
+#if defined(THORNADO_OMP_OL)
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
+    !$OMP TARGET DATA USE_DEVICE_PTR( a )
+#elif defined(THORNADO_OACC)
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
+    !$ACC HOST_DATA USE_DEVICE( a )
+#else
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
+#endif
+    dev_ptr_cptr = C_LOC( a )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+  END FUNCTION dev_ptr_cptr
 
 
   FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )

@@ -183,10 +183,14 @@ PROGRAM TwoMomentClosure
 
     F_E(:,i) &
       = Flux_E( D(i), I1(i), I2(i), I3(i), &
+                V1(i), V2(i), V3(i), &
                 dV1dX1, dV2dX1, dV3dX1, &
                 dV1dX2, dV2dX2, dV3dX2, &
                 dV1dX3, dV2dX3, dV3dX3, &
-                One, One, One )
+                One, One, One, &
+                Zero, Zero, Zero, &
+                Zero, Zero, Zero, &
+                Zero, Zero, Zero )
 
     ! --- Number Flux Source ---
 

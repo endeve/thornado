@@ -1,19 +1,12 @@
 MODULE Euler_UtilitiesModule
 
-  USE KindModule,           ONLY: &
-    DP, Half
-  USE ProgramHeaderModule,  ONLY: &
-    nDOFX
-  USE GeometryFieldsModule, ONLY: &
-    nGF
-  USE FluidFieldsModule,    ONLY: &
+  USE KindModule, ONLY: &
+    DP, &
+    Half
+  USE FluidFieldsModule, ONLY: &
     nCF
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
-
-  USE Euler_UtilitiesModule_NonRelativistic
-
-#elif defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
   USE Euler_UtilitiesModule_Relativistic
 
@@ -46,6 +39,11 @@ MODULE Euler_UtilitiesModule
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_Euler
 
+  INTERFACE ComputeConserved_Euler
+    MODULE PROCEDURE ComputeConserved_Scalar
+    MODULE PROCEDURE ComputeConserved_Vector
+  END INTERFACE ComputeConserved_Euler
+
 
 CONTAINS
 
@@ -53,7 +51,14 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Scalar &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+      iErr )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
@@ -61,13 +66,16 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    INTEGER,  INTENT(inout), OPTIONAL :: &
+      iErr
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+             iErr )
 
 #else
 
@@ -93,7 +101,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
@@ -112,22 +120,23 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector
 
 
-  SUBROUTINE ComputeConserved_Euler &
+  SUBROUTINE ComputeConserved_Scalar &
     ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
       AF_P )
 
-    REAL(DP), INTENT(in)  :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
-                             PF_E(:), PF_Ne(:)
-    REAL(DP), INTENT(out) :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
-                             CF_E(:), CF_Ne(:)
-    REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+    REAL(DP), INTENT(in)  :: &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+    REAL(DP), INTENT(out) :: &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), INTENT(in)  :: &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
     ! --- Only needed for relativistic code ---
-    REAL(DP), INTENT(in) :: AF_P(:)
+    REAL(DP), INTENT(in) :: AF_P
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeConserved_Euler_Relativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -144,7 +153,43 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeConserved_Euler
+  END SUBROUTINE ComputeConserved_Scalar
+
+
+  SUBROUTINE ComputeConserved_Vector &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+      AF_P )
+
+    REAL(DP), INTENT(in)  :: &
+      PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
+    REAL(DP), INTENT(out) :: &
+      CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
+    REAL(DP), INTENT(in)  :: &
+      GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+
+    ! --- Only needed for relativistic code ---
+    REAL(DP), INTENT(in) :: AF_P(:)
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL ComputeConserved_Euler_Relativistic &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+             AF_P )
+
+#else
+
+    CALL ComputeConserved_Euler_NonRelativistic &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+#endif
+
+  END SUBROUTINE ComputeConserved_Vector
 
 
   SUBROUTINE ComputeFromConserved_Euler &
@@ -159,7 +204,7 @@ CONTAINS
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
@@ -187,7 +232,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       TimeStep
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeTimeStep_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
@@ -202,26 +247,32 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_Euler
 
 
-  PURE FUNCTION Eigenvalues_Euler &
-    ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
+  FUNCTION Eigenvalues_Euler &
+    ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
 
-    REAL(DP), INTENT(in) :: V, Cs, Gmii
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi
 
     REAL(DP) :: Eigenvalues_Euler(nCF)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     Eigenvalues_Euler = Eigenvalues_Euler_Relativistic &
-                          ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
+                          ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
                             Lapse, Shift_Xi )
 
 #else
 
     Eigenvalues_Euler = Eigenvalues_Euler_NonRelativistic &
-                          ( V, Cs, Gmii )
+                          ( Vi, Cs, Gmii )
 
 #endif
 
@@ -231,24 +282,33 @@ CONTAINS
 
   REAL(DP) FUNCTION AlphaMiddle_Euler &
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
-      Gmii, aP, aM, Lapse, Shift_Xi )
+      Gmii, aP, aM, Lapse, Shift_Xi, iErr )
 
-    ! --- Gm is the covariant ii-component of the spatial three-metric
-    !     Shift is the ith contravariant component of the shift-vector ---
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Gmii is the covariant ii-component of the spatial three-metric
+    !     Shift_Xi is the ith contravariant component of the shift-vector ---
 
     REAL(DP), INTENT(in) :: DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
                             Gmii, aP, aM
 
     ! --- Only needed for relativistic code ---
-    REAL(DP), INTENT(in) :: Lapse, Shift_Xi
 
-#if defined HYDRO_RELATIVISTIC
+    REAL(DP), INTENT(in)    :: Lapse, Shift_Xi
+    INTEGER,  INTENT(inout) :: iErr
+
+#ifdef HYDRO_RELATIVISTIC
 
     AlphaMiddle_Euler = AlphaMiddle_Euler_Relativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
-                            Gmii, aP, aM, Lapse, Shift_Xi )
+                            Gmii, aP, aM, Lapse, Shift_Xi, &
+                            iErr )
 
 #else
 
@@ -263,8 +323,14 @@ CONTAINS
   END FUNCTION AlphaMiddle_Euler
 
 
-  PURE FUNCTION Flux_X1_Euler &
+  FUNCTION Flux_X1_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X1 )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
@@ -275,7 +341,7 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift_X1
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     Flux_X1_Euler = Flux_X1_Euler_Relativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
@@ -292,8 +358,14 @@ CONTAINS
   END FUNCTION Flux_X1_Euler
 
 
-  PURE FUNCTION Flux_X2_Euler &
+  FUNCTION Flux_X2_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X2 )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the second contravariant component of the shift-vector ---
 
@@ -304,7 +376,7 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift_X2
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     Flux_X2_Euler = Flux_X2_Euler_Relativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
@@ -321,8 +393,14 @@ CONTAINS
   END FUNCTION Flux_X2_Euler
 
 
-  PURE FUNCTION Flux_X3_Euler &
+  FUNCTION Flux_X3_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X3 )
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the third contravariant component of the shift-vector ---
 
@@ -333,7 +411,7 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift_X3
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     Flux_X3_Euler = Flux_X3_Euler_Relativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
@@ -350,13 +428,13 @@ CONTAINS
   END FUNCTION Flux_X3_Euler
 
 
-  PURE FUNCTION StressTensor_Diagonal_Euler( S1, S2, S3, V1, V2, V3, P )
+  FUNCTION StressTensor_Diagonal_Euler( S1, S2, S3, V1, V2, V3, P )
 
     REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
 
     REAL(DP) :: StressTensor_Diagonal_Euler(3)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     StressTensor_Diagonal_Euler &
       = StressTensor_Diagonal_Euler_Relativistic( S1, S2, S3, V1, V2, V3, P )
@@ -377,6 +455,12 @@ CONTAINS
       vL, vR, pL, pR, Lapse, Shift_X1,  &
       ShockL_X2, ShockR_X2, ShockL_X3, ShockR_X3 )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11, &
                             ShockL_X2, ShockR_X2, ShockL_X3, ShockR_X3
@@ -393,7 +477,7 @@ CONTAINS
                      .OR. ShockL_X3 .GT. Half &
                      .OR. ShockR_X3 .GT. Half
 
-#if defined HYDRO_RIEMANN_SOLVER_HYBRID
+#if defined(HYDRO_RIEMANN_SOLVER_HYBRID)
 
     IF( ShockPresent )THEN
 
@@ -401,16 +485,7 @@ CONTAINS
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
-!!$      NumericalFlux_Euler_X1 &
-!!$        = NumericalFlux_Euler_HLLC_X1 &
-!!$            ( uL, uR, fL, fR, aP, aM, &
-!!$              aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
-
     ELSE
-
-!!$      NumericalFlux_Euler_X1 &
-!!$        = NumericalFlux_Euler_HLL &
-!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X1 &
         = NumericalFlux_Euler_HLLC_X1 &
@@ -419,7 +494,7 @@ CONTAINS
 
     END IF
 
-#elif defined HYDRO_RIEMANN_SOLVER_HLLC
+#elif defined(HYDRO_RIEMANN_SOLVER_HLLC)
 
     NumericalFlux_Euler_X1 &
       = NumericalFlux_Euler_HLLC_X1 &
@@ -442,6 +517,12 @@ CONTAINS
       vL, vR, pL, pR, Lapse, Shift_X2,  &
       ShockL_X1, ShockR_X1, ShockL_X3, ShockR_X3 )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22, &
                             ShockL_X1, ShockR_X1, ShockL_X3, ShockR_X3
@@ -458,7 +539,7 @@ CONTAINS
                      .OR. ShockL_X3 .GT. Half &
                      .OR. ShockR_X3 .GT. Half
 
-#if defined HYDRO_RIEMANN_SOLVER_HYBRID
+#if defined(HYDRO_RIEMANN_SOLVER_HYBRID)
 
     IF( ShockPresent )THEN
 
@@ -466,16 +547,7 @@ CONTAINS
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
-!!$      NumericalFlux_Euler_X2 &
-!!$        = NumericalFlux_Euler_HLLC_X2 &
-!!$            ( uL, uR, fL, fR, aP, aM, &
-!!$              aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
-
     ELSE
-
-!!$      NumericalFlux_Euler_X2 &
-!!$        = NumericalFlux_Euler_HLL &
-!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X2 &
         = NumericalFlux_Euler_HLLC_X2 &
@@ -484,7 +556,7 @@ CONTAINS
 
     END IF
 
-#elif defined HYDRO_RIEMANN_SOLVER_HLLC
+#elif defined(HYDRO_RIEMANN_SOLVER_HLLC)
 
     NumericalFlux_Euler_X2 &
       = NumericalFlux_Euler_HLLC_X2 &
@@ -507,6 +579,12 @@ CONTAINS
       vL, vR, pL, pR, Lapse, Shift_X3,  &
       ShockL_X1, ShockR_X1, ShockL_X2, ShockR_X2 )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm33, &
                             ShockL_X1, ShockR_X1, ShockL_X2, ShockR_X2
@@ -523,7 +601,7 @@ CONTAINS
                      .OR. ShockL_X2 .GT. Half &
                      .OR. ShockR_X2 .GT. Half
 
-#if defined HYDRO_RIEMANN_SOLVER_HYBRID
+#if defined(HYDRO_RIEMANN_SOLVER_HYBRID)
 
     IF( ShockPresent )THEN
 
@@ -531,16 +609,7 @@ CONTAINS
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
-!!$      NumericalFlux_Euler_X3 &
-!!$        = NumericalFlux_Euler_HLLC_X3 &
-!!$            ( uL, uR, fL, fR, aP, aM, &
-!!$              aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
-
     ELSE
-
-!!$      NumericalFlux_Euler_X3 &
-!!$        = NumericalFlux_Euler_HLL &
-!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X3 &
         = NumericalFlux_Euler_HLLC_X3 &
@@ -549,7 +618,7 @@ CONTAINS
 
     END IF
 
-#elif defined HYDRO_RIEMANN_SOLVER_HLLC
+#elif defined(HYDRO_RIEMANN_SOLVER_HLLC)
 
     NumericalFlux_Euler_X3 &
       = NumericalFlux_Euler_HLLC_X3 &
@@ -569,11 +638,17 @@ CONTAINS
 
   FUNCTION NumericalFlux_Euler_HLL( uL, uR, fL, fR, aP, aM )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
     REAL(DP) :: NumericalFlux_Euler_HLL(nCF)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     NumericalFlux_Euler_HLL = NumericalFlux_HLL_Euler_Relativistic &
                                 ( uL, uR, fL, fR, aP, aM )
@@ -592,6 +667,12 @@ CONTAINS
   FUNCTION NumericalFlux_Euler_HLLC_X1 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11
 
@@ -600,7 +681,7 @@ CONTAINS
 
     REAL(DP) :: NumericalFlux_Euler_HLLC_X1(nCF)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     NumericalFlux_Euler_HLLC_X1 &
       = NumericalFlux_X1_HLLC_Euler_Relativistic &
@@ -621,6 +702,12 @@ CONTAINS
   FUNCTION NumericalFlux_Euler_HLLC_X2 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22
 
@@ -629,7 +716,7 @@ CONTAINS
 
     REAL(DP) :: NumericalFlux_Euler_HLLC_X2(nCF)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     NumericalFlux_Euler_HLLC_X2 &
       = NumericalFlux_X2_HLLC_Euler_Relativistic &
@@ -650,6 +737,12 @@ CONTAINS
   FUNCTION NumericalFlux_Euler_HLLC_X3 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
 
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm33
 
@@ -658,7 +751,7 @@ CONTAINS
 
     REAL(DP) :: NumericalFlux_Euler_HLLC_X3(nCF)
 
-#if defined HYDRO_RELATIVISTIC
+#ifdef HYDRO_RELATIVISTIC
 
     NumericalFlux_Euler_HLLC_X3 &
       = NumericalFlux_X3_HLLC_Euler_Relativistic &

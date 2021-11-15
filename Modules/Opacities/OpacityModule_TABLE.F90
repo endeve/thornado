@@ -12,13 +12,8 @@ MODULE OpacityModule_TABLE
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable_1D3D, &
     LogInterpolateSingleVariable_1D3D_Custom, &
-    LogInterpolateSingleVariable_2D2D, &
-    LogInterpolateSingleVariable_2D2D_Custom, &
-    LogInterpolateSingleVariable_2D_Custom_Point, &
-    LinearInterp_Array_Point, &
-    GetIndexAndDelta
+    LogInterpolateSingleVariable_2D_Custom_Point
 
   ! ----------------------------------------------
 
@@ -35,7 +30,8 @@ MODULE OpacityModule_TABLE
     nE, &
     nNodesE
   USE MeshModule, ONLY: &
-    MeshE
+    MeshE, &
+    NodeCoordinate
 
   IMPLICIT NONE
   PRIVATE
@@ -85,7 +81,7 @@ MODULE OpacityModule_TABLE
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem      &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, & 
-  !$ACC   Brem_t, Brem_AT)
+  !$ACC   Brem_T, Brem_AT)
 #endif
 
 CONTAINS
@@ -106,8 +102,8 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     CHARACTER(128)     :: EquationOfStateTableName
-    REAL(DP) :: E1, E2
-    INTEGER :: iS, iM, iD, iEta, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
+    REAL(DP) :: LogE1, LogE2
+    INTEGER :: iS, iM, iEta, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
     LOGICAL :: Include_EmAb
     LOGICAL :: Include_Iso
     LOGICAL :: Include_NES
@@ -256,19 +252,19 @@ CONTAINS
     LogEtas_T = LOG10( Etas_T )
 
     ALLOCATE( OS_EmAb(1:OPACITIES % EmAb % nOpacities) )
-    OS_EmAb(:) = OPACITIES % EmAb % Offsets(:)
+    OS_EmAb = OPACITIES % EmAb % Offsets
 
     ALLOCATE( OS_Iso(1:OPACITIES % Scat_Iso % nOpacities, &
                      1:OPACITIES % Scat_Iso % nMoments) )
-    OS_Iso(:,:) = OPACITIES % Scat_Iso % Offsets(:,:)
+    OS_Iso = OPACITIES % Scat_Iso % Offsets
 
     ALLOCATE( OS_NES(1:OPACITIES % Scat_NES % nOpacities, &
                      1:OPACITIES % Scat_NES % nMoments) )
-    OS_NES(:,:) = OPACITIES % Scat_NES % Offsets(:,:)
+    OS_NES = OPACITIES % Scat_NES % Offsets
 
     ALLOCATE( OS_Pair(1:OPACITIES % Scat_Pair % nOpacities, &
                       1:OPACITIES % Scat_Pair % nMoments) )
-    OS_Pair(:,:) = OPACITIES % Scat_Pair % Offsets(:,:)
+    OS_Pair = OPACITIES % Scat_Pair % Offsets
 
     ALLOCATE( OS_Brem(1:OPACITIES % Scat_Brem % nOpacities, &
                       1:OPACITIES % Scat_Brem % nMoments) )
@@ -337,6 +333,7 @@ CONTAINS
                      1:OPACITIES % Scat_NES % nPoints(5), &
                      1:OPACITIES % Scat_NES % nMoments,   &
                      1:OPACITIES % Scat_NES % nOpacities) )
+    NES_AT = 0.0d0
 
     ALLOCATE( Pair_AT(1:nPointsE, &
                       1:nPointsE, &
@@ -344,6 +341,7 @@ CONTAINS
                       1:OPACITIES % Scat_Pair % nPoints(5), &
                       1:OPACITIES % Scat_Pair % nMoments,   &
                       1:OPACITIES % Scat_Pair % nOpacities) )
+    Pair_AT = 0.0d0
 
     ALLOCATE( Brem_AT(1:nPointsE, &
                       1:nPointsE, &
@@ -351,18 +349,20 @@ CONTAINS
                       1:OPACITIES % Scat_Brem % nPoints(5), &
                       1:OPACITIES % Scat_Brem % nMoments,   &
                       1:OPACITIES % Scat_Brem % nOpacities) )
+    Brem_AT = 0.0d0
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
-    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )      &
-    !$OMP MAP( alloc: NES_AT, Pair_AT, Brem_AT )
+    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP          NES_AT, Pair_AT, Brem_AT )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
-    !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
+    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$ACC   NES_AT, Pair_AT, Brem_AT )
 #endif
 
     ASSOCIATE ( CenterE => MeshE % Center, &
@@ -376,12 +376,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
-    !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+    !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
+    !$ACC PRESENT( LogEs_T, OS_NES, NES_T, NES_AT )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
     DO iS = 1, nSpecies
       DO iM = 1, nMoments
@@ -396,11 +398,11 @@ CONTAINS
                 iE2     = MOD( (iN_E2-1) / nNodesE, nE      ) + 1
                 iNodeE2 = MOD( (iN_E2-1)          , nNodesE ) + 1
 
-                E1 = ( CenterE(iE1) + WidthE(iE1) * NodesE(iNodeE1) ) / MeV
-                E2 = ( CenterE(iE2) + WidthE(iE2) * NodesE(iNodeE2) ) / MeV
+                LogE1 = LOG10( NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV )
+                LogE2 = LOG10( NodeCoordinate( CenterE(iE2), WidthE(iE2), NodesE(iNodeE2) ) / MeV )
 
                 CALL LogInterpolateSingleVariable_2D_Custom_Point &
-                       ( E1, E2, Es_T, Es_T, OS_NES(iS,iM), NES_T(:,:,iT,iEta,iM,iS), &
+                       ( LogE1, LogE2, LogEs_T, LogEs_T, OS_NES(iS,iM), NES_T(:,:,iT,iEta,iM,iS), &
                          NES_AT(iN_E1,iN_E2,iT,iEta,iM,iS) )
 
                 NES_AT(iN_E1,iN_E2,iT,iEta,iM,iS) &
@@ -422,12 +424,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
-    !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+    !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
+    !$ACC PRESENT( LogEs_T, OS_Pair, Pair_T, Pair_AT )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
     DO iS = 1, nSpecies
       DO iM = 1, nMoments
@@ -442,11 +446,11 @@ CONTAINS
                 iE2     = MOD( (iN_E2-1) / nNodesE, nE      ) + 1
                 iNodeE2 = MOD( (iN_E2-1)          , nNodesE ) + 1
 
-                E1 = ( CenterE(iE1) + WidthE(iE1) * NodesE(iNodeE1) ) / MeV
-                E2 = ( CenterE(iE2) + WidthE(iE2) * NodesE(iNodeE2) ) / MeV
+                LogE1 = LOG10( NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV )
+                LogE2 = LOG10( NodeCoordinate( CenterE(iE2), WidthE(iE2), NodesE(iNodeE2) ) / MeV )
 
                 CALL LogInterpolateSingleVariable_2D_Custom_Point &
-                       ( E1, E2, Es_T, Es_T, OS_Pair(iS,iM), Pair_T(:,:,iT,iEta,iM,iS), &
+                       ( LogE1, LogE2, LogEs_T, LogEs_T, OS_Pair(iS,iM), Pair_T(:,:,iT,iEta,iM,iS), &
                          Pair_AT(iN_E1,iN_E2,iT,iEta,iM,iS) )
 
                 Pair_AT(iN_E1,iN_E2,iT,iEta,iM,iS) &
@@ -461,7 +465,6 @@ CONTAINS
 
     END ASSOCIATE
 
-!Brem 
     ASSOCIATE ( nSpecies   => OPACITIES % Scat_Brem % nOpacities, &
                 nMoments   => OPACITIES % Scat_Brem % nMoments, &
                 nPointsD   => OPACITIES % Scat_Brem % nPoints(4), &
@@ -469,12 +472,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2, idxE1, idxE2, dE1, dE2 )
+    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
-    !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2, idxE1, idxE2, dE1, dE2 )
+    !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
+    !$ACC PRESENT( LogEs_T, OS_Brem, Brem_T, Brem_AT )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
     DO iS = 1, nSpecies
       DO iM = 1, nMoments
@@ -489,11 +494,11 @@ CONTAINS
                 iE2     = MOD( (iN_E2-1) / nNodesE, nE      ) + 1
                 iNodeE2 = MOD( (iN_E2-1)          , nNodesE ) + 1
 
-                E1 = ( CenterE(iE1) + WidthE(iE1) * NodesE(iNodeE1) ) / MeV
-                E2 = ( CenterE(iE2) + WidthE(iE2) * NodesE(iNodeE2) ) / MeV
+                LogE1 = LOG10( NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV )
+                LogE2 = LOG10( NodeCoordinate( CenterE(iE2), WidthE(iE2), NodesE(iNodeE2) ) / MeV )
 
                 CALL LogInterpolateSingleVariable_2D_Custom_Point &
-                       ( E1, E2, Es_T, Es_T, OS_Brem(iS,iM), Brem_T(:,:,iD,iT,iM,iS), &
+                       ( LogE1, LogE2, LogEs_T, LogEs_T, OS_Brem(iS,iM), Brem_T(:,:,iD,iT,iM,iS), &
                          Brem_AT(iN_E1,iN_E2,iD,iT,iM,iS) )
 
                 Brem_AT(iN_E1,iN_E2,iD,iT,iM,iS) &
@@ -556,30 +561,30 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    IF( .NOT. InterpTest )THEN
-
-      CALL LogInterpolateSingleVariable_1D3D &
-             ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
-               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], &
-               OPACITIES % EmAb % Offsets(1), &
-               OPACITIES % EmAb % Opacity(1) % Values, &
-               Chi )
-
-    ELSE
-
-      LogE = LOG10( E / MeV )
-
-      CALL LogInterpolateSingleVariable_1D3D_Custom           &
-             ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
-               LOG10( T / Kelvin ), Y, &
-               LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OPACITIES % EmAb % Offsets(1), &
-               OPACITIES % EmAb % Opacity(1) % Values, &
-               Chi )
-
-    END IF
-
-    Chi(:,:) = Chi(:,:) * ( 1.0_DP / Centimeter )
+!!$    IF( .NOT. InterpTest )THEN
+!!$
+!!$      CALL LogInterpolateSingleVariable_1D3D &
+!!$             ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+!!$               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], &
+!!$               OPACITIES % EmAb % Offsets(1), &
+!!$               OPACITIES % EmAb % Opacity(1) % Values, &
+!!$               Chi )
+!!$
+!!$    ELSE
+!!$
+!!$      LogE = LOG10( E / MeV )
+!!$
+!!$      CALL LogInterpolateSingleVariable_1D3D_Custom           &
+!!$             ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
+!!$               LOG10( T / Kelvin ), Y, &
+!!$               LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+!!$               OPACITIES % EmAb % Offsets(1), &
+!!$               OPACITIES % EmAb % Opacity(1) % Values, &
+!!$               Chi )
+!!$
+!!$    END IF
+!!$
+!!$    Chi(:,:) = Chi(:,:) * ( 1.0_DP / Centimeter )
 
 #else
 
@@ -600,30 +605,30 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    IF( .NOT. InterpTest )THEN
-
-      CALL LogInterpolateSingleVariable_1D3D &
-             ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
-               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], &
-               OPACITIES % Scat_Iso % Offsets(1,1), &
-               OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
-               Sigma )
-
-    ELSE
-
-      LogE = LOG10( E / MeV )
-
-      CALL LogInterpolateSingleVariable_1D3D_Custom         &
-             ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
-               LOG10( T / Kelvin ), Y, &
-               LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OPACITIES % Scat_Iso % Offsets(1,1), &
-               OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
-               Sigma )
-
-    END IF
-
-    Sigma(:,:) = Sigma(:,:) * ( 1.0_DP / Centimeter )
+!!$    IF( .NOT. InterpTest )THEN
+!!$
+!!$      CALL LogInterpolateSingleVariable_1D3D &
+!!$             ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+!!$               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], &
+!!$               OPACITIES % Scat_Iso % Offsets(1,1), &
+!!$               OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
+!!$               Sigma )
+!!$
+!!$    ELSE
+!!$
+!!$      LogE = LOG10( E / MeV )
+!!$
+!!$      CALL LogInterpolateSingleVariable_1D3D_Custom         &
+!!$             ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
+!!$               LOG10( T / Kelvin ), Y, &
+!!$               LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+!!$               OPACITIES % Scat_Iso % Offsets(1,1), &
+!!$               OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
+!!$               Sigma )
+!!$
+!!$    END IF
+!!$
+!!$    Sigma(:,:) = Sigma(:,:) * ( 1.0_DP / Centimeter )
 
 #else
 

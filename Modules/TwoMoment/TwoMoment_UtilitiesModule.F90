@@ -1,18 +1,20 @@
 MODULE TwoMoment_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP, &
-    Zero, &
-    SqrtTiny, &
-    Half, &
-    One, &
-    Three
+    DP, Zero, Half, One, Three, SqrtTiny
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX, nDimsX
+  USE MeshModule, ONLY: &
+    MeshX
+  USE GeometryFieldsModule, ONLY: &
+    nGF, iGF_h_1, iGF_h_2, iGF_h_3
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputeConserved_TwoMoment
+  PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
@@ -65,6 +67,51 @@ CONTAINS
     G_3 = Gm_dd_33 * I_3
 
   END SUBROUTINE ComputeConserved_TwoMoment
+
+
+  SUBROUTINE ComputeTimeStep_TwoMoment &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, CFL, TimeStep )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: dX(3), dt(3)
+
+    TimeStep = HUGE( One )
+    dt       = HUGE( One )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dX(1) = MeshX(1) % Width(iX1)
+      dX(2) = MeshX(2) % Width(iX2)
+      dX(3) = MeshX(3) % Width(iX3)
+
+      dt(1) = dX(1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
+
+      IF( nDimsX .GT. 1 ) &
+        dt(2) = dX(2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )
+
+      IF( nDimsX .GT. 2 ) &
+        dt(3) = dX(3) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_3) )
+
+      TimeStep = MIN( TimeStep, MINVAL( dt ) )
+
+    END DO
+    END DO
+    END DO
+
+    TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+
+  END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
   FUNCTION Flux_X1_Scalar &

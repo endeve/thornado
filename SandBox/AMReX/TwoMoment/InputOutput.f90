@@ -27,10 +27,12 @@ MODULE InputOutput
     iPR_I1, &
     iPR_I2, &
     iPR_I3, &
+    unitsPR, &
     iCR_N,  &
     iCR_G1, &
     iCR_G2, &
     iCR_G3, &
+    unitsCR, &
     ShortNamesCR, &
     ShortNamesPR
   USE UnitsModule,             ONLY: &
@@ -200,7 +202,7 @@ MODULE InputOutput
     pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
 
     FinestLevel = nLevels-1
-    
+
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevel, StepNo, dt, t, t_wrt, pBA, pDM, iChkFile )
     print*, 'here'
@@ -219,7 +221,7 @@ MODULE InputOutput
              ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
                nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), & 
+             ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
                nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
     END DO
 
@@ -252,7 +254,6 @@ MODULE InputOutput
     CHARACTER(3)                    :: iSC, iZ1C
     LOGICAL                         :: WriteFF_C, WriteFF_P
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3), iS, iZ1
-    TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
     TYPE(amrex_multifab)            :: MF_PR(0:nLevels-1)
     TYPE(amrex_geometry)            :: GEOM (0:nLevels-1)
@@ -313,12 +314,12 @@ MODULE InputOutput
 
     PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
 
-    nF = nF * nE * nSpecies    
+    nF = nF * nE * nSpecies
 
     ALLOCATE( VarNames(nF) )
 
     iOS = 0
-    
+
     IF( WriteFF_C )THEN
       DO iS = 1, nSpecies
       DO iZ1 = iZ_B0(1), iZ_E0(1)
@@ -365,8 +366,6 @@ MODULE InputOutput
       CALL amrex_multifab_build &
              ( MF_PR(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
       CALL MF_PR(iLevel) % setVal( 0.0d0 )
-
-      CALL amrex_mfiter_build( MFI, MF_PR(iLevel), tiling = .TRUE. )
 
       iOS = 0
 
@@ -444,13 +443,14 @@ MODULE InputOutput
 
         END DO
 
-      END DO 
-      END DO
-
-      END DO
       END DO
       END DO
 
+      END DO
+      END DO
+      END DO
+
+      CALL ConvertUnits( nComp, iOS, u_A, Field )
 
     END DO
 
@@ -459,6 +459,38 @@ MODULE InputOutput
   END SUBROUTINE MF_ComputeCellAverage
 
 
+  SUBROUTINE ConvertUnits( nComp, iOS, U_plt, Field )
+
+    INTEGER,      INTENT(in)    :: nComp, iOS
+    REAL(AR),     INTENT(inout) :: U_plt(:,:,:,:)
+    CHARACTER(2), INTENT(in)    :: Field
+
+    INTEGER  :: iComp
+
+
+    IF( Field .EQ. 'CR' )THEN
+
+      DO iComp = 1, nComp
+
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsCR(iComp)
+
+      END DO
+
+    ELSE IF( Field .EQ. 'PR' )THEN
+
+      DO iComp = 1, nComp
+
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsPR(iComp)
+
+      END DO
+
+    ELSE
+
+      RETURN
+
+    END IF
+
+  END SUBROUTINE ConvertUnits
 
 
 END MODULE InputOutput

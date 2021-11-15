@@ -47,10 +47,10 @@ PROGRAM ApplicationDriver
     ComputeTimeStep_Euler_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE Euler_TallyModule_NonRelativistic_IDEAL, ONLY: &
-    InitializeTally_Euler_NonRelativistic_IDEAL, &
-    FinalizeTally_Euler_NonRelativistic_IDEAL, &
-    ComputeTally_Euler_NonRelativistic_IDEAL
+  USE Euler_TallyModule_NonRelativistic, ONLY: &
+    InitializeTally_Euler_NonRelativistic, &
+    FinalizeTally_Euler_NonRelativistic, &
+    ComputeTally_Euler_NonRelativistic
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, FinalizeTimers_Euler, &
@@ -337,7 +337,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = [ 1, 0, 0 ], &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -421,10 +421,12 @@ PROGRAM ApplicationDriver
   t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
-  CALL InitializeTally_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+  CALL InitializeTally_Euler_NonRelativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+  CALL ComputeTally_Euler_NonRelativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+         SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -475,11 +477,9 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL ComputeTally_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+      CALL ComputeTally_Euler_NonRelativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+               Verbose_Option = .TRUE. )
 
       wrt = .FALSE.
 
@@ -496,14 +496,13 @@ PROGRAM ApplicationDriver
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-  CALL ComputeTally_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+  CALL ComputeTally_Euler_NonRelativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+           Verbose_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
-  CALL FinalizeTally_Euler_NonRelativistic_IDEAL
+
+  CALL FinalizeTally_Euler_NonRelativistic
 
   wTime = MPI_WTIME( ) - wTime
 

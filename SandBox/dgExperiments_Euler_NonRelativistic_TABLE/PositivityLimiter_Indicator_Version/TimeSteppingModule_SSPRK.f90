@@ -31,7 +31,8 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE FluidIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+        SuppressBC_Option, UseXCFC_Option )
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -42,9 +43,11 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(in)          :: &
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)         :: &
-        dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+        dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       LOGICAL, INTENT(in), OPTIONAL :: &
         SuppressBC_Option
+      LOGICAL, INTENT(in), OPTIONAL :: &
+        UseXCFC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
 
@@ -103,9 +106,9 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
   END SUBROUTINE InitializeFluid_SSPRK
@@ -211,7 +214,7 @@ CONTAINS
                  ( One, &
                    U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                    dt * a_SSPRK(iS,jS), &
-                   D_SSPRK(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,jS) )
+                   D_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,jS) )
 
         END IF
 
@@ -244,7 +247,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), D, &
-                 D_SSPRK(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,iS) )
+                 D_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,iS) )
 
       END IF
 
@@ -258,7 +261,7 @@ CONTAINS
                ( One, &
                  U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  dt * w_SSPRK(iS), &
-                 D_SSPRK(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,iS) )
+                 D_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,iS) )
 
       END IF
 
@@ -293,7 +296,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iCF, iX1, iX2, iX3
 

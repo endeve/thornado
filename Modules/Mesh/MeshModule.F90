@@ -23,6 +23,11 @@ MODULE MeshModule
   PUBLIC :: DestroyMesh
   PUBLIC :: NodeCoordinate
 
+  INTERFACE NodeCoordinate
+    MODULE PROCEDURE NodeCoordinate_INT
+    MODULE PROCEDURE NodeCoordinate_DBL
+  END INTERFACE NodeCoordinate
+
 CONTAINS
 
 
@@ -63,6 +68,15 @@ CONTAINS
 
     ALLOCATE( Mesh % Nodes(1:nN) )
     Mesh % Nodes = xQ
+
+! Requires deep copy (not supported on all compilers)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Mesh % Center, Mesh % Width, Mesh % Nodes)
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes)
+#endif
 
   END SUBROUTINE CreateMesh
 
@@ -253,6 +267,15 @@ CONTAINS
 
     TYPE(MeshType) :: Mesh
 
+! Requires deep copy (not supported on all compilers)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Mesh % Center, Mesh % Width, Mesh % Nodes)
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Mesh % Center, Mesh % Width, Mesh % Nodes)
+#endif
+
     IF (ALLOCATED( Mesh % Center )) THEN
        DEALLOCATE( Mesh % Center )
     END IF
@@ -268,16 +291,37 @@ CONTAINS
   END SUBROUTINE DestroyMesh
 
 
-  PURE REAL(DP) FUNCTION NodeCoordinate( Mesh, iC, iN )
+  REAL(DP) FUNCTION NodeCoordinate_INT( Mesh, iC, iN )
+! Requires deep copy (not supported on all compilers)
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP DECLARE TARGET
+!#elif defined(THORNADO_OACC)
+!    !$ACC ROUTINE SEQ
+!#endif
 
     TYPE(MeshType), INTENT(in) :: Mesh
     INTEGER,        INTENT(in) :: iC, iN
 
-    NodeCoordinate &
+    NodeCoordinate_INT &
       = Mesh % Center(iC) + Mesh % Width(iC) * Mesh % Nodes(iN)
 
     RETURN
-  END FUNCTION NodeCoordinate
+  END FUNCTION NodeCoordinate_INT
+
+
+  REAL(DP) FUNCTION NodeCoordinate_DBL( Center, Width, Node )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: Center, Width, Node
+
+    NodeCoordinate_DBL = Center + Width * Node
+
+    RETURN
+  END FUNCTION NodeCoordinate_DBL
 
 
 END MODULE MeshModule

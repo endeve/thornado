@@ -211,7 +211,7 @@ CONTAINS
 
     CASE ( 30 ) ! Reflecting (Inner), Zero (Outer)
 
-      ! --- Inner Boundary ---
+      ! --- Inner Boundary --
       IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
 
         DO iX3 = iX_B0(3), iX_E0(3)
@@ -241,6 +241,8 @@ CONTAINS
           END DO
           END DO
 
+            U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(:,iX_E0(1),iX2,iX3,iCF)
         END DO
         END DO
         END DO
@@ -357,24 +359,25 @@ CONTAINS
 
     CASE ( 22 ) ! Periodic
 
+      DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
           ! --- Inner Boundary ---
-          IF( ApplyInnerBC_Euler( iApplyBC ) ) THEN
-            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_D) = 1.0_DP
-            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_V1) = 0.0_DP
-            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_V2) = 0.0_DP
-            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_E) = 0.1_DP
-            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) &
+            U(:,iX_B0(1)-iX1,iX2,iX3,iCF) &
+              = U(:,iX_B0(1),iX2,iX3,iCF)
 
-          END IF
+          ! --- Outer Boundary ---
+          IF( ApplyOuterBC_Euler( iApplyBC ) ) &
+            U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(:,iX_E0(1),iX2,iX3,iCF)
 
         END DO
         END DO
         END DO
+      END DO
 
     CASE DEFAULT
 

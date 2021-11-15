@@ -72,6 +72,24 @@ MODULE ProgramHeaderModule
   PUBLIC :: DescribeProgramHeader
   PUBLIC :: DescribeProgramHeaderX
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE &
+  !$OMP TARGET( nE, nNodesE, nDimsE, nDOFE, swE, bcE, eL, eR, ZoomE, &
+  !$OMP         nX, nNodesX, nDimsX, nDOFX, swX, bcX, xL, xR, zoomX, &
+  !$OMP         nZ, nNodesZ, nDimsZ, nDOFZ, swZ, bcZ, zL, zR, zoomZ, &
+  !$OMP         iE_B0, iE_E0, iE_B1, iE_E1, &
+  !$OMP         iX_B0, iX_E0, iX_B1, iX_E1, &
+  !$OMP         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE &
+  !$ACC CREATE( nE, nNodesE, nDimsE, nDOFE, swE, bcE, eL, eR, ZoomE, &
+  !$ACC         nX, nNodesX, nDimsX, nDOFX, swX, bcX, xL, xR, zoomX, &
+  !$ACC         nZ, nNodesZ, nDimsZ, nDOFZ, swZ, bcZ, zL, zR, zoomZ, &
+  !$ACC         iE_B0, iE_E0, iE_B1, iE_E1, &
+  !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, &
+  !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#endif
+
 CONTAINS
 
 
@@ -221,6 +239,16 @@ CONTAINS
       CALL InitializeProgramHeaderZ
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP TO( nX, nNodesX, nDimsX, nDOFX, swX, bcX, xL, xR, zoomX, &
+    !$OMP     iX_B0, iX_E0, iX_B1, iX_E1 )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC DEVICE( nX, nNodesX, nDimsX, nDOFX, swX, bcX, xL, xR, zoomX, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
+
   END SUBROUTINE InitializeProgramHeaderX
 
 
@@ -296,6 +324,16 @@ CONTAINS
       CALL InitializeProgramHeaderZ
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP TO( nE, nNodesE, nDimsE, nDOFE, swE, bcE, eL, eR, ZoomE, &
+    !$OMP     iE_B0, iE_E0, iE_B1, iE_E1 )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC DEVICE( nE, nNodesE, nDimsE, nDOFE, swE, bcE, eL, eR, ZoomE, &
+    !$ACC         iE_B0, iE_E0, iE_B1, iE_E1 )
+#endif
+
   END SUBROUTINE InitializeProgramHeaderE
 
 
@@ -320,11 +358,13 @@ CONTAINS
     nDOF  = nNodes**nDims
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
+    !$OMP TARGET UPDATE &
+    !$OMP TO( nZ, nNodesZ, nDimsZ, nDOFZ, swZ, bcZ, zL, zR, zoomZ, &
+    !$OMP     iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
+    !$ACC UPDATE &
+    !$ACC DEVICE( nZ, nNodesZ, nDimsZ, nDOFZ, swZ, bcZ, zL, zR, zoomZ, &
+    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderZ

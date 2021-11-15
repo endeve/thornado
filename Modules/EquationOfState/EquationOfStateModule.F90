@@ -170,14 +170,15 @@ CONTAINS
 
         CALL InitializeEquationOfState_IDEAL &
                ( Gamma_IDEAL_Option &
-                   = Gamma_IDEAL_Option )
+                   = Gamma_IDEAL_Option, &
+                 Verbose_Option = Verbose )
 
       CASE ( 'TABLE' )
 
         CALL InitializeEquationOfState_TABLE &
                ( EquationOfStateTableName_Option &
                    = EquationOfStateTableName_Option, &
-                 Verbose_Option = .TRUE. )
+                 Verbose_Option = Verbose )
 
       CASE DEFAULT
 
@@ -494,6 +495,12 @@ CONTAINS
   SUBROUTINE ComputePressureFromPrimitive_Scalar &
     ( D, Ev, Ne, P )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P
 
@@ -534,6 +541,12 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar &
     ( D, Em, Y, P )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Em, Y
     REAL(DP), INTENT(out) :: P
@@ -613,6 +626,12 @@ CONTAINS
   SUBROUTINE ComputeSoundSpeedFromPrimitive_Scalar &
     ( D, Ev, Ne, Cs )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: Cs
 
@@ -653,6 +672,12 @@ CONTAINS
 
   SUBROUTINE ComputeAuxiliary_Fluid_Scalar &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P, T, Y, S, Em, Gm, Cs

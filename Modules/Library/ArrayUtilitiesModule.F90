@@ -52,16 +52,19 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayCopy1D_2
     MODULE PROCEDURE ArrayCopy1D_3
     MODULE PROCEDURE ArrayCopy1D_4
+    MODULE PROCEDURE ArrayCopy1D_5
     MODULE PROCEDURE ArrayCopy1D_8
     MODULE PROCEDURE ArrayCopy2D_1
     MODULE PROCEDURE ArrayCopy2D_2
     MODULE PROCEDURE ArrayCopy2D_3
     MODULE PROCEDURE ArrayCopy2D_4
+    MODULE PROCEDURE ArrayCopy2D_5
     MODULE PROCEDURE ArrayCopy2D_8
     MODULE PROCEDURE ArrayCopy3D_1
     MODULE PROCEDURE ArrayCopy3D_2
     MODULE PROCEDURE ArrayCopy3D_3
     MODULE PROCEDURE ArrayCopy3D_4
+    MODULE PROCEDURE ArrayCopy3D_5
     MODULE PROCEDURE ArrayCopy3D_8
   END INTERFACE ArrayCopy
 
@@ -123,7 +126,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -160,7 +163,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -198,7 +201,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -237,7 +240,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -281,7 +284,7 @@ CONTAINS
       !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
       !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -327,7 +330,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -366,7 +369,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -406,7 +409,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -447,7 +450,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -493,7 +496,7 @@ CONTAINS
       !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
       !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -541,7 +544,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -582,7 +585,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -624,7 +627,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -667,7 +670,7 @@ CONTAINS
       !$ACC PRIVATE( i ) &
       !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -715,7 +718,7 @@ CONTAINS
       !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
       !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
@@ -766,7 +769,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
@@ -806,7 +809,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
@@ -847,7 +850,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
@@ -889,7 +892,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
@@ -936,7 +939,7 @@ CONTAINS
       !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
       !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
@@ -985,7 +988,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
@@ -1027,7 +1030,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
@@ -1070,7 +1073,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
@@ -1114,7 +1117,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
@@ -1163,7 +1166,7 @@ CONTAINS
       !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
       !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
@@ -1214,7 +1217,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
@@ -1258,7 +1261,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
@@ -1303,7 +1306,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
@@ -1349,7 +1352,7 @@ CONTAINS
       !$ACC PRIVATE( iPack ) &
       !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
@@ -1400,7 +1403,7 @@ CONTAINS
       !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
       !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
@@ -1446,7 +1449,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( X1, Y1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
@@ -1469,7 +1472,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( X1, X2, Y1, Y2 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
@@ -1493,7 +1496,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( X1, X2, X3, Y1, Y2, Y3 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
@@ -1518,7 +1521,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
@@ -1528,6 +1531,33 @@ CONTAINS
     END DO
 
   END SUBROUTINE ArrayCopy1D_4
+
+
+  SUBROUTINE ArrayCopy1D_5 &
+    ( X1, X2, X3, X4, X5, Y1, Y2, Y3, Y4, Y5 )
+
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: X1, X2, X3, X4, X5
+    REAL(DP), DIMENSION(1:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5
+
+    INTEGER  :: i
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( X1, X2, X3, X4, X5, Y1, Y2, Y3, Y4, Y5 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO i = 1, SIZE(X1,1)
+      Y1(i) = X1(i)
+      Y2(i) = X2(i)
+      Y3(i) = X3(i)
+      Y4(i) = X4(i)
+      Y5(i) = X5(i)
+    END DO
+
+  END SUBROUTINE ArrayCopy1D_5
 
 
   SUBROUTINE ArrayCopy1D_8 &
@@ -1545,7 +1575,7 @@ CONTAINS
     !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, &
     !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
@@ -1575,7 +1605,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRESENT( X1, Y1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO i = 1, SIZE(X1,2)
     DO j = 1, SIZE(X1,1)
@@ -1600,7 +1630,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRESENT( X1, X2, Y1, Y2 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO i = 1, SIZE(X1,2)
     DO j = 1, SIZE(X1,1)
@@ -1626,7 +1656,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRESENT( X1, X2, X3, Y1, Y2, Y3 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO i = 1, SIZE(X1,2)
     DO j = 1, SIZE(X1,1)
@@ -1653,7 +1683,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRESENT( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO i = 1, SIZE(X1,2)
     DO j = 1, SIZE(X1,1)
@@ -1665,6 +1695,35 @@ CONTAINS
     END DO
 
   END SUBROUTINE ArrayCopy2D_4
+
+
+  SUBROUTINE ArrayCopy2D_5 &
+    ( X1, X2, X3, X4, X5, Y1, Y2, Y3, Y4, Y5 )
+
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: X1, X2, X3, X4, X5
+    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5
+
+    INTEGER  :: i, j
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( X1, X2, X3, X4, X5, Y1, Y2, Y3, Y4, Y5 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+    DO i = 1, SIZE(X1,2)
+    DO j = 1, SIZE(X1,1)
+      Y1(j,i) = X1(j,i)
+      Y2(j,i) = X2(j,i)
+      Y3(j,i) = X3(j,i)
+      Y4(j,i) = X4(j,i)
+      Y5(j,i) = X5(j,i)
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayCopy2D_5
 
 
   SUBROUTINE ArrayCopy2D_8 &
@@ -1682,7 +1741,7 @@ CONTAINS
     !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, &
     !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO i = 1, SIZE(X1,2)
     DO j = 1, SIZE(X1,1)
@@ -1714,7 +1773,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( X1, Y1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO i = 1, SIZE(X1,3)
     DO j = 1, SIZE(X1,2)
@@ -1741,7 +1800,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( X1, X2, Y1, Y2 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO i = 1, SIZE(X1,3)
     DO j = 1, SIZE(X1,2)
@@ -1769,7 +1828,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( X1, X2, X3, Y1, Y2, Y3 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO i = 1, SIZE(X1,3)
     DO j = 1, SIZE(X1,2)
@@ -1798,7 +1857,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO i = 1, SIZE(X1,3)
     DO j = 1, SIZE(X1,2)
@@ -1812,6 +1871,37 @@ CONTAINS
     END DO
 
   END SUBROUTINE ArrayCopy3D_4
+
+
+  SUBROUTINE ArrayCopy3D_5 &
+    ( X1, X2, X3, X4, X5, Y1, Y2, Y3, Y4, Y5 )
+
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: X1, X2, X3, X4, X5
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5
+
+    INTEGER  :: i, j, k
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( X1, X2, X3, X4, X5, Y1, Y2, Y3, Y4, Y5 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO i = 1, SIZE(X1,3)
+    DO j = 1, SIZE(X1,2)
+    DO k = 1, SIZE(X1,1)
+      Y1(k,j,i) = X1(k,j,i)
+      Y2(k,j,i) = X2(k,j,i)
+      Y3(k,j,i) = X3(k,j,i)
+      Y4(k,j,i) = X4(k,j,i)
+      Y5(k,j,i) = X5(k,j,i)
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayCopy3D_5
 
 
   SUBROUTINE ArrayCopy3D_8 &
@@ -1829,7 +1919,7 @@ CONTAINS
     !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, &
     !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO i = 1, SIZE(X1,3)
     DO j = 1, SIZE(X1,2)

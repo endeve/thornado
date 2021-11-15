@@ -269,10 +269,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$OMP MAP( to: Weights_q, Weights_E, Weights_X1, Weights_X2, Weights_X3, &
+    !$OMP          NodeNumberTable4D )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$ACC COPYIN( Weights_q, Weights_E, Weights_X1, Weights_X2, Weights_X3, &
+    !$ACC         NodeNumberTable4D )
 #endif
 
   END SUBROUTINE InitializeReferenceElement
@@ -282,10 +284,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$OMP MAP( release: Weights_q, Weights_E, Weights_X1, Weights_X2, Weights_X3, &
+    !$OMP               NodeNumberTable4D )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$ACC DELETE( Weights_q, Weights_E, Weights_X1, Weights_X2, Weights_X3, &
+    !$ACC         NodeNumberTable4D )
 #endif
 
     DEALLOCATE( NodeNumbersX )

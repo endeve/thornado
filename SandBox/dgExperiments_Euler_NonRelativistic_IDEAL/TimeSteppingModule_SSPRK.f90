@@ -14,6 +14,10 @@ MODULE TimeSteppingModule_SSPRK
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_UpdateFluid
+  USE Euler_dgDiscretizationModule, ONLY: &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_NonRelativistic, ONLY: &
+    IncrementOffGridTally_Euler_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -34,7 +38,8 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE FluidIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+        SuppressBC_Option, UseXCFC_Option )
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -45,9 +50,11 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(inout)        :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
+      LOGICAL,  INTENT(in), OPTIONAL :: &
+        UseXCFC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
 
@@ -106,9 +113,9 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
   END SUBROUTINE InitializeFluid_SSPRK
@@ -195,6 +202,10 @@ CONTAINS
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS
 
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
+
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     IF( PRESENT( ComputeGravitationalPotential ) )THEN
@@ -242,6 +253,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+
       END IF
 
     END DO
@@ -271,6 +285,8 @@ CONTAINS
 
     END IF
 
+    CALL IncrementOffGridTally_Euler_NonRelativistic( dM_OffGrid_Euler )
+
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
@@ -283,7 +299,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iCF, iX1, iX2, iX3
 

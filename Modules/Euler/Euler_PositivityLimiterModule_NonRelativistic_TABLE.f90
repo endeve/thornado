@@ -1,29 +1,51 @@
 MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, &
+    Zero, &
+    Half, &
+    One
   USE UnitsModule, ONLY: &
-    Gram, Centimeter, Kelvin, AtomicMassUnit, Erg, Second
+    Gram, &
+    Centimeter, &
+    Kelvin, &
+    AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX
+    nNodesX, &
+    nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    NodesX_q, WeightsX_q, &
-    nDOFX_X1, NodesX1, &
-    nDOFX_X2, NodesX2, &
-    nDOFX_X3, NodesX3
+    WeightsX_q, &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, LX_X1_Up, &
-    LX_X2_Dn, LX_X2_Up, &
-    LX_X3_Dn, LX_X3_Up
+    LX_X1_Dn, &
+    LX_X1_Up, &
+    LX_X2_Dn, &
+    LX_X2_Up, &
+    LX_X3_Dn, &
+    LX_X3_Up
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    iDF_T1, iDF_T2, iDF_T3, iDF_MinE, iDF_MaxE
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
+    iDF_T1, &
+    iDF_T2, &
+    iDF_T3, &
+    iDF_MinE, &
+    iDF_MaxE
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE
@@ -43,7 +65,8 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   LOGICAL               :: Verbose
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
-  REAL(DP)              :: Min_D, Max_D, Min_T, Max_T, &
+  REAL(DP)              :: Min_D, Max_D, &
+                           Min_T, Max_T, &
                            Min_Y, Max_Y
   REAL(DP), ALLOCATABLE :: U_PP(:,:)
 
@@ -98,9 +121,12 @@ CONTAINS
       Max_Y = Max_3_Option
 
     IF( Verbose )THEN
+
       WRITE(*,*)
-      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_PositivityLimiterModule_NonRelativistic_TABLE'
-      WRITE(*,'(A2,A)') '',    '-------------------------------------------------------------'
+      WRITE(*,'(A2,A6,A)') '', &
+        'INFO: ', 'Euler_PositivityLimiterModule_NonRelativistic_TABLE'
+      WRITE(*,'(A2,A)')    '', &
+        '---------------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
@@ -160,11 +186,15 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! Diagnostic Fluid
 
-    LOGICAL  :: NegativeStates(3)
-    INTEGER  :: iX1, iX2, iX3, iCF, iP, Iteration
-    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, Min_E_K
+    LOGICAL  :: NegativeStates
+    INTEGER  :: iX1, iX2, iX3, iCF, iQ, iP
+    INTEGER  :: ITERATION
+    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K
+    REAL(DP) :: Min_Y_K, Max_Y_K, Min_E_K
     REAL(DP) :: Min_N, Max_N, Min_E(nPT), Max_E(nPT)
-    REAL(DP) :: Theta_1, Theta_2, Theta_3, Theta_P
+    REAL(DP) :: Theta_1, Theta_2, Theta_3, Theta_P, Alpha
+    REAL(DP) :: D_P, N_P
+    REAL(DP) :: G_q(nDOFX,nGF)
     REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF)
     REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K, E_K
 
@@ -181,73 +211,187 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
+      G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
       NegativeStates = .FALSE.
 
+      ! --- Compute Fluid Cell Averages ---
+
+      DO iCF = 1, nCF
+
+        U_K(iCF) &
+          = SUM( WeightsX_q(:) * U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+
+      END DO
+
+      Y_K = BaryonMass * U_K(iCF_Ne) / U_K(iCF_D)
+
+      IF( U_K(iCF_D) < Min_D .OR. U_K(iCF_D) > Max_D )THEN
+
+        ! --- Cell Average Density Outside Bounds ---
+
+        PRINT*
+        PRINT*, "Cell Average Density Outside Bounds"
+        PRINT*
+        PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
+        PRINT*
+        PRINT*, "Min_D, Max_D, D_K = ", &
+          Min_D / Unit_D, Max_D / Unit_D, U_K(iCF_D) / Unit_D
+        DO iQ = 1, nDOFX
+          PRINT*, "iQ, D(iQ) = ", iQ, U_q(iQ,iCF_D) / Unit_D
+        END DO
+        PRINT*
+        PRINT*, "Y_K = ", Y_K
+        PRINT*
+
+        ! --- Force Cell Averages Inside Table Bounds ---
+
+        IF( U_K(iCF_D) < Min_D )THEN
+
+          U_q(1:nDOFX,iCF_D) = ( One + 1.0d-6 ) * Min_D
+
+        ELSE
+
+          U_q(1:nDOFX,iCF_D) = ( One - 1.0d-6 ) * Max_D
+
+        END IF
+
+        ! --- Reset Electron Density by Preserving Cell-Averaged Ye ---
+
+        U_q(1:nDOFX,iCF_Ne) = Y_K * U_q(1:nDOFX,iCF_D) / BaryonMass
+
+        ! --- Recompute Cell Averages ---
+
+        U_K(iCF_D ) &
+          = SUM( WeightsX_q(:) * U_q(:,iCF_D ) * G_q(:,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+
+        U_K(iCF_Ne) &
+          = SUM( WeightsX_q(:) * U_q(:,iCF_Ne) * G_q(:,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+
+        NegativeStates = .TRUE.
+
+        ! --- Flag That Cell Average Violated Bounds ---
+
+        D(:,iX1,iX2,iX3,iDF_T1) = - One
+
+      END IF
+
       CALL ComputePointValues_Fluid( U_q, U_PP )
 
-      ! --- Ensure Positive Mass Density ---
+      ! -------------------------------------------------------------------
+      ! --- Step 1 --------------------------------------------------------
+      ! --- Ensure Bounded Mass Density and Positive Electron Density -----
+      ! -------------------------------------------------------------------
 
-      Min_D_K = MINVAL( U_PP(:,iCF_D) )
-      Max_D_K = MAXVAL( U_PP(:,iCF_D) )
+      Min_D_K = MINVAL( U_PP(:,iCF_D)  ) ! --- Minimum D  in Element
+      Max_D_K = MAXVAL( U_PP(:,iCF_D)  ) ! --- Maximum D  in Element
+      Min_N_K = MINVAL( U_PP(:,iCF_Ne) ) ! --- Minimum Ne in Element
 
-      IF( Min_D_K < Min_D .OR. Max_D_K > Max_D )THEN
+      IF( ANY( [ Min_D_K - Min_D  , &
+                 Max_D   - Max_D_K, &
+                 Min_N_K - Min_N ] < Zero ) ) &
+      THEN
 
-        ! --- Cell Average ---
+        PRINT*, "Step 1"
 
-        U_K(iCF_D) &
-          = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-              / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+        PRINT*, "Min_D, Min_D_K, D_K = ", Min_D, Min_D_K, U_K(iCF_D)
+        PRINT*, "Max_D, Max_D_K, D_K = ", Max_D, Max_D_K, U_K(iCF_D)
+        PRINT*, "Min_N, Min_N_K, N_K = ", Min_N, Min_N_K, U_K(iCF_Ne)
 
-        Theta_1 = MIN( One, &
-                       ABS( ( Min_D   - U_K(iCF_D) )    &
-                          / ( Min_D_K - U_K(iCF_D) ) ), &
-                       ABS( ( Max_D   - U_K(iCF_D) )    &
-                          / ( Max_D_K - U_K(iCF_D) ) ) )
+        Theta_1 = One
 
-        Theta_1 = SafetyFactor * Theta_1
+        DO iP = 1, nPT
 
-        ! --- Limit Density Towards Cell Average ---
+          Theta_P = One
 
-        U_q(:,iCF_D) &
-          = Theta_1 * U_q(:,iCF_D) + ( One - Theta_1 ) * U_K(iCF_D)
+          D_P = U_PP(iP,iCF_D )
+          N_P = U_PP(iP,iCF_Ne)
+          DO WHILE( ANY( [D_P-Min_D,Max_D-D_P,N_P-Min_N] < Zero ) )
+
+            IF( Theta_P > 1.0d-2 )THEN
+
+              Theta_P = 0.95_DP * Theta_P ! --- Shrink Theta_P
+
+            ELSE
+
+              Theta_P = Zero
+
+            END IF
+
+            D_P = (One-Theta_P) * U_K(iCF_D ) + Theta_P * U_PP(iP,iCF_D )
+            N_P = (One-Theta_P) * U_K(iCF_Ne) + Theta_P * U_PP(iP,iCF_Ne)
+
+          END DO
+
+          Theta_1 = MIN( Theta_1, SafetyFactor * Theta_P )
+
+        END DO
+
+        ! --- Limit Mass and Electron Density Towards Cell Average ---
+
+        U_q(:,iCF_D ) &
+          = Theta_1 * U_q(:,iCF_D ) + ( One - Theta_1 ) * U_K(iCF_D )
+
+        U_q(:,iCF_Ne) &
+          = Theta_1 * U_q(:,iCF_Ne) + ( One - Theta_1 ) * U_K(iCF_Ne)
 
         ! --- Recompute Point Values ---
 
         CALL ComputePointValues_Fluid( U_q, U_PP )
 
-        ! --- Flag for Negative Density ---
+        NegativeStates = .TRUE.
 
-        NegativeStates(1) = .TRUE.
+        ! --- Set Diagnostic Fields Theta 1 ---
 
         D(:,iX1,iX2,iX3,iDF_T1) &
           = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T1) ), Theta_1 )
 
+        IF( ANY( U_PP(:,iCF_D) < Min_D ) )THEN
+
+          PRINT*, "Failed Step 1"
+          STOP
+
+        END IF
+
+        PRINT*, "Passed Step 1.  Theta_1 = ", Theta_1
+
       END IF
 
-      ! --- Ensure Bounded Electron Density ---
+      ! -------------------------------------------------------------------
+      ! --- Step 2 --------------------------------------------------------
+      ! --- Ensure Bounded Electron Fraction ------------------------------
+      ! -------------------------------------------------------------------
 
-      Min_N_K = MINVAL( U_PP(:,iCF_Ne) )
-      Max_N_K = MAXVAL( U_PP(:,iCF_Ne) )
+      Min_Y_K = BaryonMass * MINVAL( U_PP(:,iCF_Ne) / U_PP(:,iCF_D) )
+      Max_Y_K = BaryonMass * MAXVAL( U_PP(:,iCF_Ne) / U_PP(:,iCF_D) )
 
-      IF( Min_N_K < Min_N .OR. Max_N_K > Max_N )THEN
+      IF( Min_Y_K < Min_Y .OR. Max_Y_K > Max_Y )THEN
 
-        ! --- Cell Average ---
+        PRINT*, "Step 2"
 
-        U_K(iCF_Ne) &
-          = SUM( WeightsX_q(:) * U_q(:,iCF_Ne) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-              / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+        PRINT*, "Min_Y, Min_Y_K, Y_K = ", Min_Y, Min_Y_K, Y_K
+        PRINT*, "Max_Y, Max_Y_K, Y_K = ", Max_Y, Max_Y_K, Y_K
 
-        Theta_2 = MIN( One, &
-                       ABS( ( Min_N   - U_K(iCF_Ne) )    &
-                          / ( Min_N_K - U_K(iCF_Ne) ) ), &
-                       ABS( ( Max_N   - U_K(iCF_Ne) )    &
-                          / ( Max_N_K - U_K(iCF_Ne) ) ) )
+        Alpha = MIN( One, &
+                     ABS( ( Min_Y - Y_K ) / ( Min_Y_K - Y_K ) ), &
+                     ABS( ( Max_Y - Y_K ) / ( Max_Y_K - Y_K ) ) )
 
-        Theta_2 = SafetyFactor * Theta_2
+        PRINT*, "Alpha   = ", Alpha
 
-        ! --- Limit Electron Density Towards Cell Average ---
+        Theta_2 &
+          = SafetyFactor * Alpha * U_K(iCF_D) &
+            / ( Alpha * U_K(iCF_D) + (One-Alpha) * MAXVAL(U_PP(:,iCF_D)) )
+
+        PRINT*, "Theta_2 = ", Theta_2
+
+        ! --- Limit Mass and Electron Density Towards Cell Average ---
+
+        U_q(:,iCF_D ) &
+          = Theta_2 * U_q(:,iCF_D ) + ( One - Theta_2 ) * U_K(iCF_D )
 
         U_q(:,iCF_Ne) &
           = Theta_2 * U_q(:,iCF_Ne) + ( One - Theta_2 ) * U_K(iCF_Ne)
@@ -256,16 +400,17 @@ CONTAINS
 
         CALL ComputePointValues_Fluid( U_q, U_PP )
 
-        ! --- Flag for Negative Electron Density --
-
-        NegativeStates(2) = .TRUE.
+        NegativeStates = .TRUE.
 
         D(:,iX1,iX2,iX3,iDF_T2) &
           = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T2) ), Theta_2 )
 
       END IF
 
-      ! --- Ensure Positive Specific Internal Energy ---
+      ! -------------------------------------------------------------------
+      ! --- Step 3 --------------------------------------------------------
+      ! --- Ensure Bounded Specific Internal Energy -----------------------
+      ! -------------------------------------------------------------------
 
       DO iP = 1, nPT
 
@@ -278,25 +423,17 @@ CONTAINS
          CALL ComputeSpecificInternalEnergy_TABLE &
                 ( U_PP(iP,iCF_D), Max_T, Y_PP(iP), Max_E(iP) )
 
-
       END DO
 
-      DO iP = 1, nDOFX ! --- Doesn't include points on interfaces
+      ITERATION = 0
+      DO WHILE( ANY( E_PP < Min_E ) )
 
-        D(iP,iX1,iX2,iX3,iDF_MinE) = Min_E(iP)
-        D(iP,iX1,iX2,iX3,iDF_MaxE) = Max_E(iP)
+        ITERATION = ITERATION + 1
 
-      END DO
+        DO iP = 1, nDOFX ! --- Diagnostics (excludes points on interfaces)
 
-      IF( ANY( E_PP(:) < Min_E(:) ) )THEN
-
-        ! --- Cell Average ---
-
-        DO iCF = 1, nCF
-
-          U_K(iCF) &
-            = SUM( WeightsX_q(:) * U_q(:,iCF) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+          D(iP,iX1,iX2,iX3,iDF_MinE) = Min_E(iP)
+          D(iP,iX1,iX2,iX3,iDF_MaxE) = Max_E(iP)
 
         END DO
 
@@ -306,22 +443,9 @@ CONTAINS
         CALL ComputeSpecificInternalEnergy_TABLE &
                ( U_K(iCF_D), Min_T, Y_K, Min_E_K )
 
-        Iteration = 0
-
-        DO WHILE( ANY( E_PP(:) < Min_E(:) ) )
-
-          Iteration = Iteration + 1
-
-          IF( Iteration .EQ. 1000 )THEN
-
-            PRINT*,"ERROR: Euler_PositivityLimiterModule_NonRelativistic_TABLE"
-            PRINT*,"Iteration limit exceeded"
-            STOP ''
-
-          END IF
+        IF( ITERATION .LT. 10 )THEN
 
           Theta_3 = One
-
           DO iP = 1, nPT
 
             IF( E_PP(iP) < Min_E(iP) )THEN
@@ -335,38 +459,45 @@ CONTAINS
 
           END DO
 
-          ! --- Limit Towards Cell Average ---
+        ELSE
 
-          DO iCF = 1, nCF
+          Theta_3 = Zero
 
-            U_q(:,iCF) = Theta_3 * U_q(:,iCF) + ( One - Theta_3 ) * U_K(iCF)
+        END IF
 
-          END DO
+        ! --- Limit Towards Cell Average ---
 
-          CALL ComputePointValues_Fluid( U_q, U_PP )
+        DO iCF = 1, nCF
 
-          DO iP = 1, nPT
-
-            CALL ComputeSpecificInternalEnergyAndElectronFraction &
-                   ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
-
-            CALL ComputeSpecificInternalEnergy_TABLE &
-                   ( U_PP(iP,iCF_D), Min_T, Y_PP(iP), Min_E(iP) )
-
-          END DO
+          U_q(:,iCF) = Theta_3 * U_q(:,iCF) + ( One - Theta_3 ) * U_K(iCF)
 
         END DO
 
-        ! --- Flag for Negative Specific Internal Energy ---
-
-        NegativeStates(3) = .TRUE.
+        NegativeStates = .TRUE.
 
         D(:,iX1,iX2,iX3,iDF_T3) &
           = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T3) ), Theta_3 )
 
-      END IF
+        ! --- Recompute Point Values ---
 
-      IF( ANY( NegativeStates ) )THEN
+        CALL ComputePointValues_Fluid( U_q, U_PP )
+
+        DO iP = 1, nPT
+
+          CALL ComputeSpecificInternalEnergyAndElectronFraction &
+                 ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
+
+          CALL ComputeSpecificInternalEnergy_TABLE &
+                 ( U_PP(iP,iCF_D), Min_T, Y_PP(iP), Min_E(iP) )
+
+          CALL ComputeSpecificInternalEnergy_TABLE &
+                 ( U_PP(iP,iCF_D), Max_T, Y_PP(iP), Max_E(iP) )
+
+        END DO
+
+      END DO ! --- WHILE( ANY( E_PP < Min_E ) )
+
+      IF( NegativeStates )THEN
 
         U(1:nDOFX,iX1,iX2,iX3,1:nCF) = U_q(1:nDOFX,1:nCF)
 
@@ -472,9 +603,9 @@ CONTAINS
   END FUNCTION eFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, MinEK, Theta_P )
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, MinE_K, Theta_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE, MinEK
+    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE, MinE_K
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -492,7 +623,7 @@ CONTAINS
               x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2), &
               x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3), &
               x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E) ) &
-          - ( x_a * MinE + ( One - x_a ) * MinEK )
+          - ( x_a * MinE + ( One - x_a ) * MinE_K )
 
     x_b = One
     f_b = eFun &
@@ -501,7 +632,7 @@ CONTAINS
               x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2), &
               x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3), &
               x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E) ) &
-          - ( x_b * MinE + ( One - x_b ) * MinEK )
+          - ( x_b * MinE + ( One - x_b ) * MinE_K )
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
@@ -534,7 +665,7 @@ CONTAINS
                 x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2), &
                 x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3), &
                 x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E) ) &
-            - ( x_c * MinE + ( One - x_c ) * MinEK )
+            - ( x_c * MinE + ( One - x_c ) * MinE_K )
 
       IF( f_a * f_c < Zero )THEN
 

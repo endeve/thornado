@@ -4,12 +4,21 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFE, nDOFX, nDimsX
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_SL, &
+    Timer_SL_Permute, &
+    Timer_SL_LinearAlgebra, &
+    Timer_SL_MinMod, &
+    Timer_SL_ReplaceSlopes, &
+    Timer_SL_Correction
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
   USE UtilitiesModule, ONLY: &
     MinModB
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
+    NodesX_q, WeightsX_q
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModalX, &
     MapModalToNodalX
@@ -18,7 +27,7 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
-    nGF
+    nGF, iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
@@ -26,6 +35,8 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
     nCR
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    DetectTroubledCells_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -36,8 +47,29 @@ MODULE TwoMoment_SlopeLimiterModule_OrderV
 
   CHARACTER(4) :: SlopeLimiterMethod
   LOGICAL      :: UseSlopeLimiter
+  INTEGER      :: nE, nE_G
   REAL(DP)     :: BetaTVD, BetaTVB
   REAL(DP)     :: SlopeTolerance
+  REAL(DP), ALLOCATABLE :: N2M_Vec_0(:)
+  REAL(DP), ALLOCATABLE :: N2M_Vec_1(:)
+  REAL(DP), ALLOCATABLE :: N2M_Vec_2(:)
+  REAL(DP), ALLOCATABLE :: N2M_Vec_3(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_0(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_1(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_2(:)
+  REAL(DP), ALLOCATABLE :: M2N_Vec_3(:)
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE &
+  !$OMP TARGET( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+  !$OMP         M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+  !$OMP         BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE &
+  !$ACC CREATE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+  !$ACC         M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+  !$ACC         BetaTVD, BetaTVB, SlopeTolerance )
+#endif
 
 CONTAINS
 
@@ -54,6 +86,7 @@ CONTAINS
     LOGICAL,      INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
+    INTEGER :: iNodeX
 
     IF( PRESENT( BetaTVD_Option ) )THEN
       BetaTVD = BetaTVD_Option
@@ -113,10 +146,57 @@ CONTAINS
 
     END IF
 
+    ! --- For Computing Modal Coefficients from Nodal Values ---
+
+    ALLOCATE( N2M_Vec_0(nDOFX) )
+    ALLOCATE( N2M_Vec_1(nDOFX) )
+    ALLOCATE( N2M_Vec_2(nDOFX) )
+    ALLOCATE( N2M_Vec_3(nDOFX) )
+
+    DO iNodeX = 1, nDOFX
+
+      N2M_Vec_0(iNodeX) =           WeightsX_q(iNodeX)
+      N2M_Vec_1(iNodeX) = 12.0_DP * WeightsX_q(iNodeX) * NodesX_q(1,iNodeX)
+      N2M_Vec_2(iNodeX) = 12.0_DP * WeightsX_q(iNodeX) * NodesX_q(2,iNodeX)
+      N2M_Vec_3(iNodeX) = 12.0_DP * WeightsX_q(iNodeX) * NodesX_q(3,iNodeX)
+
+    END DO
+
+    ! --- For Computing Nodal Values from Modal Coefficients ---
+
+    ALLOCATE( M2N_Vec_0(nDOFX) )
+    ALLOCATE( M2N_Vec_1(nDOFX) )
+    ALLOCATE( M2N_Vec_2(nDOFX) )
+    ALLOCATE( M2N_Vec_3(nDOFX) )
+
+    DO iNodeX = 1, nDOFX
+
+      M2N_Vec_0(iNodeX) = One
+      M2N_Vec_1(iNodeX) = NodesX_q(1,iNodeX)
+      M2N_Vec_2(iNodeX) = NodesX_q(2,iNodeX)
+      M2N_Vec_3(iNodeX) = NodesX_q(3,iNodeX)
+
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP TO( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+    !$OMP     M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+    !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC DEVICE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+    !$ACC         M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+    !$ACC         BetaTVD, BetaTVB, SlopeTolerance )
+#endif
+
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment
 
 
   SUBROUTINE FinalizeSlopeLimiter_TwoMoment
+
+    DEALLOCATE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3 )
+    DEALLOCATE( M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3 )
 
   END SUBROUTINE FinalizeSlopeLimiter_TwoMoment
 
@@ -154,15 +234,22 @@ CONTAINS
       SuppressBC = .FALSE.
     END IF
 
+    CALL TimersStart( Timer_SL )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+#endif
+
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
     END IF
-
-    PRINT*
-    PRINT*, "      ApplySlopeLimiter_TwoMoment"
 
     SELECT CASE ( TRIM( SlopeLimiterMethod ) )
 
@@ -182,6 +269,18 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
     END SELECT
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R )
+
+    !$ACC WAIT
+#endif
+
+    CALL TimersStop( Timer_SL )
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment
 
@@ -208,180 +307,182 @@ CONTAINS
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER  :: &
-      iX1, iX2, iX3, iZ1, iCR, iS, iE_G, nE_G, &
-      iNodeZ, iNodeE, iNodeX, nV_KX, iDim
+      iZ1, iZ2, iZ3, iZ4, iCR, iS, iE_G, &
+      iNodeZ, iNodeE, iNodeX
     REAL(DP) :: &
-      dX1, dX2, dX3
+      dSlope, wSqrtGm, Alpha, uCR_K, &
+      C_0, C_X1, C_X2, C_X3, &
+      C0_L, C0_R, CL_X1, CL_X2, CL_X3
     REAL(DP) :: &
-      SlopeDifference(1:nCR)
-    REAL(DP) :: &
-      uCR_M(1:nCR,1:nDOFX), dCR(1:nCR,1:nDimsX)
-    REAL(DP) :: &
-      uCR  (1:nDOFX, &
-            1:nCR,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: &
-      uCR_K(1:nCR,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+      uCR(1:nDOFX)
+    LOGICAL  :: &
+      TroubledCell &
+           (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
 
-    PRINT*, "      ApplySlopeLimiter_TVD"
+    nE   = iZ_E0(1) - iZ_B0(1) + 1
+    nE_G = nE * nDOFE
 
-    iX_B0 = iZ_B0(2:4)
-    iX_E0 = iZ_E0(2:4)
-    iX_B1 = iZ_B1(2:4)
-    iX_E1 = iZ_E1(2:4)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
+    !$OMP MAP( alloc: TroubledCell )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
+    !$ACC CREATE( TroubledCell )
+#endif
 
-    nE_G = ( iZ_E0(1) - iZ_B0(1) + 1 ) * nDOFE
+    CALL DetectTroubledCells_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, TroubledCell )
 
-    ! --- Reorder Data ---
+    CALL TimersStart( Timer_SL_ReplaceSlopes )
 
-    DO iS     = 1, nSpecies
-    DO iZ1    = iZ_B0(1), iZ_E0(1)
-    DO iNodeE = 1, nDOFE
-    DO iX3    = iX_B1(3), iX_E1(3)
-    DO iX2    = iX_B1(2), iX_E1(2)
-    DO iX1    = iX_B1(1), iX_E1(1)
-    DO iCR    = 1, nCR
-    DO iNodeX = 1, nDOFX
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
 
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE 
-      iE_G   = (iZ1   -1) * nDOFE + iNodeE
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: dX1, dX2, dX3 ) &
+    !$OMP PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
+    !$OMP          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$OMP          CL_X1, CL_X2, CL_X3, C0_L, C0_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
+    !$ACC COPYIN( dX1, dX2, dX3 ) &
+    !$ACC PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
+    !$ACC          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$ACC          CL_X1, CL_X2, CL_X3, C0_L, C0_R ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, TroubledCell, WeightsX_q, GX, U_R, &
+    !$ACC          M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
+    !$OMP          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$OMP          CL_X1, CL_X2, CL_X3, C0_L, C0_R )
+#endif
+    DO iS   = 1       , nSpecies
+    DO iCR  = 1       , nCR
+    DO iE_G = 1       , nE_G
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      uCR(iNodeX,iCR,iX1,iX2,iX3,iE_G,iS) &
-        = U_R(iNodeZ,iZ1,iX1,iX2,iX3,iCR,iS)
+      IF( TroubledCell(iZ2,iZ3,iZ4,iE_G,iS) )THEN
 
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+        iZ1    = MOD( (iE_G-1) / nDOFE, nE    ) + iZ_B0(1)
+        iNodeE = MOD( (iE_G-1)        , nDOFE ) + 1
 
-    ! --- Compute Cell Averages ---
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          uCR(iNodeX) = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+        END DO
 
-    ! --- Variables Per Spatial Element ---
+        ! --- Compute Legendre Coefficients ---
 
-    nV_KX = nCR * PRODUCT(iX_E1-iX_B1+1) * nE_G * nSpecies
+        C_0  = Zero
+        C_X1 = Zero
+        C_X2 = Zero
+        C_X3 = Zero
+        DO iNodeX = 1, nDOFX
+          C_0  = C_0  + N2M_Vec_0(iNodeX) * uCR(iNodeX)
+          C_X1 = C_X1 + N2M_Vec_1(iNodeX) * uCR(iNodeX)
+          C_X2 = C_X2 + N2M_Vec_2(iNodeX) * uCR(iNodeX)
+          C_X3 = C_X3 + N2M_Vec_3(iNodeX) * uCR(iNodeX)
+        END DO
 
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nV_KX, One, uCR, nDOFX, WeightsX_q, 1, Zero, uCR_K, 1 )
+        ! --- Limited Legendre Coefficients ---
 
-    DO iS   = 1, nSpecies
-    DO iE_G = 1, nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+        C0_L = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
+        END DO
+        C0_R = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2+1,iZ3,iZ4,iCR,iS)
+        END DO
+        CL_X1 &
+          = MinModB( C_X1, &
+                     BetaTVD * ( C_0 - C0_L ), &
+                     BetaTVD * ( C0_R - C_0 ), &
+                     dX1(iZ2), BetaTVB )
 
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
+        C0_L = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3-1,iZ4,iCR,iS)
+        END DO
+        C0_R = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3+1,iZ4,iCR,iS)
+        END DO
+        CL_X2 &
+          = MinModB( C_X2, &
+                     BetaTVD * ( C_0 - C0_L ), &
+                     BetaTVD * ( C0_R - C_0 ), &
+                     dX2(iZ3), BetaTVB )
 
-      ! --- Map to Modal Representation ---
+        C0_L = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4-1,iCR,iS)
+        END DO
+        C0_R = Zero
+        DO iNodeX = 1, nDOFX
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4+1,iCR,iS)
+        END DO
+        CL_X3 &
+          = MinModB( C_X3, &
+                     BetaTVD * ( C_0 - C0_L ), &
+                     BetaTVD * ( C0_R - C_0 ), &
+                     dX3(iZ4), BetaTVB )
 
-      DO iCR = 1, nCR
+        dSlope &
+          = MAX( ABS( CL_X1 - C_X1 ), &
+                 ABS( CL_X2 - C_X2 ), &
+                 ABS( CL_X3 - C_X3 ) )
 
-        CALL MapNodalToModalX &
-               ( uCR(1:nDOFX,iCR,iX1,iX2,iX3,iE_G,iS), uCR_M(iCR,1:nDOFX) )
+        IF( dSlope > SlopeTolerance * ABS( C_0 ) )THEN
 
-      END DO
+          ! --- Conservative Correction ---
 
-      ! --- Compute Limited Slopes ---
+          uCR_K = Zero
+          Alpha = Zero
 
-      dCR(:,1) &
-        = MinModB( uCR_M(:,2), &
-                   BetaTVD * ( uCR_K  (:,iX1  ,iX2,iX3,iE_G,iS)    &
-                               - uCR_K(:,iX1-1,iX2,iX3,iE_G,iS) ), &
-                   BetaTVD * ( uCR_K  (:,iX1+1,iX2,iX3,iE_G,iS)    &
-                               - uCR_K(:,iX1  ,iX2,iX3,iE_G,iS) ), &
-                   dX1, BetaTVB )
+          DO iNodeX = 1, nDOFX
 
-      IF( nDimsX > 1 )THEN
+            wSqrtGm = WeightsX_q(iNodeX) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
 
-        dCR(:,2) &
-          = MinModB( uCR_M(:,3), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2  ,iX3,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2-1,iX3,iE_G,iS) ), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2+1,iX3,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2  ,iX3,iE_G,iS) ), &
-                     dX2, BetaTVB )
+            uCR_K = uCR_K + wSqrtGm * uCR(iNodeX)
 
-      END IF
+            uCR(iNodeX) &
+              =   M2N_Vec_0(iNodeX) * C_0 &
+                + M2N_Vec_1(iNodeX) * CL_X1 &
+                + M2N_Vec_2(iNodeX) * CL_X2 &
+                + M2N_Vec_3(iNodeX) * CL_X3
 
-      IF( nDimsX > 2 )THEN
-
-        dCR(:,3) &
-          = MinModB( uCR_M(:,4), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2,iX3  ,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2,iX3-1,iE_G,iS) ), &
-                     BetaTVD * ( uCR_K  (:,iX1,iX2,iX3+1,iE_G,iS)    &
-                                 - uCR_K(:,iX1,iX2,iX3  ,iE_G,iS) ), &
-                     dX3, BetaTVB )
-
-      END IF
-
-      ! --- Compare Limited Slopes to Original Slopes ---
-
-      SlopeDifference = Zero
-
-      DO iDim = 1, nDimsX
-      DO iCR  = 1, nCR
-
-        SlopeDifference(iCR) &
-          = MAX( SlopeDifference(iCR), &
-                 ABS( dCR(iCR,iDim) - uCR_M(iCR,1+iDim) ) )
-
-      END DO
-      END DO
-
-      ! --- Replace Slopes and Discard High-Order Components ---
-      ! --- if Limited Slopes Deviate too Much from Original ---
-
-      DO iCR = 1, nCR
-
-        IF( SlopeDifference(iCR) &
-              > SlopeTolerance * ABS( uCR_K(iCR,iX1,iX2,iX3,iE_G,iS) ) )THEN
-
-          uCR_M(iCR,2:nDOFX) = Zero
-
-          DO iDim = 1, nDimsX
-
-            uCR_M(iCR,1+iDim) = dCR(iCR,iDim)
+            Alpha = Alpha + wSqrtGm * uCR(iNodeX)
 
           END DO
 
-          CALL MapModalToNodalX &
-                 ( uCR(:,iCR,iX1,iX2,iX3,iE_G,iS), uCR_M(iCR,:) )
+          IF( ABS( Alpha ) > Zero )THEN
+            DO iNodeX = 1, nDOFX
+              iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+              U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = uCR(iNodeX) * uCR_K / Alpha
+            END DO
+          END IF
 
         END IF
 
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Reorder Data ---
-
-    DO iS     = 1, nSpecies
-    DO iCR    = 1, nCR
-    DO iX3    = iX_B0(3), iX_E0(3)
-    DO iX2    = iX_B0(2), iX_E0(2)
-    DO iX1    = iX_B0(1), iX_E0(1)
-    DO iZ1    = iZ_B0(1), iZ_E0(1)
-    DO iNodeX = 1, nDOFX
-    DO iNodeE = 1, nDOFE
-
-      iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-      iE_G   = (iZ1   -1) * nDOFE + iNodeE
-
-      U_R(iNodeZ,iZ1,iX1,iX2,iX3,iCR,iS) &
-        = uCR(iNodeX,iCR,iX1,iX2,iX3,iE_G,iS)
+      END IF
 
     END DO
     END DO
@@ -389,8 +490,20 @@ CONTAINS
     END DO
     END DO
     END DO
-    END DO
-    END DO
+
+    END ASSOCIATE
+
+    CALL TimersStop( Timer_SL_ReplaceSlopes )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
+    !$OMP               TroubledCell )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
+    !$ACC         TroubledCell )
+#endif
 
   END SUBROUTINE ApplySlopeLimiter_TVD
 
