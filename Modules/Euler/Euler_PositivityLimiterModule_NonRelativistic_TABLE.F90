@@ -333,15 +333,14 @@ CONTAINS
       U_P_E (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
       U_P_Ne(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
-    INTEGER  :: &
-      ITER_Debug(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: &
-      Eps_P_Debug    (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
-      Min_Eps_P_Debug(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
-      Ye_P_Debug     (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
-      Eps_K_Debug    (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
-      Min_Eps_K_Debug(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
-      Ye_K_Debug     (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Eps_P    (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Min_Eps_P(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Max_Eps_P(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Ye_P     (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Eps_K    (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Min_Eps_K(nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
+      Ye_K     (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
       Theta_3_Debug  (nPT,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3) )
 
     IF( nDOFX == 1 ) RETURN
@@ -364,9 +363,9 @@ CONTAINS
     !$ACC         U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
     !$ACC         U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
     !$ACC         U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-    !$ACC         Eps_P_Debug, Min_Eps_P_Debug, Ye_P_Debug, &
-    !$ACC         Eps_K_Debug, Min_Eps_K_Debug, Ye_K_Debug, &
-    !$ACC         Theta_3_Debug, ITER_Debug )
+    !$ACC         Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$ACC         Eps_K, Min_Eps_K, Ye_K, &
+    !$ACC         Theta_3_Debug )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_PL_CopyIn )
@@ -582,10 +581,6 @@ CONTAINS
     !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
 #endif
 
-!    PRINT*
-!    PRINT*,"1: MIN/MAX/SUM U_Q_D   = ", MINVAL( U_Q_D  ), MAXVAL( U_Q_D  ), SUM( U_Q_D  )
-!    PRINT*,"1: MIN/MAX/SUM U_Q_Ne  = ", MINVAL( U_Q_Ne ), MAXVAL( U_Q_Ne ), SUM( U_Q_Ne )
-
     ! -------------------------------------------------------------------
     ! --- Step 1 --------------------------------------------------------
     ! --- Ensure Bounded Mass Density and Positive Electron Density -----
@@ -683,10 +678,6 @@ CONTAINS
     !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
 #endif
 
-!    PRINT*
-!    PRINT*,"2: MIN/MAX/SUM U_Q_D   = ", MINVAL( U_Q_D  ), MAXVAL( U_Q_D  ), SUM( U_Q_D  )
-!    PRINT*,"2: MIN/MAX/SUM U_Q_Ne  = ", MINVAL( U_Q_Ne ), MAXVAL( U_Q_Ne ), SUM( U_Q_Ne )
-
     ! -------------------------------------------------------------------
     ! --- Step 2 --------------------------------------------------------
     ! --- Ensure Bounded Electron Fraction ------------------------------
@@ -769,28 +760,6 @@ CONTAINS
     !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
 #endif
 
-    DO iX1 = 127, 131
-      PRINT*
-      PRINT*,"1: iX1  = ", iX1
-      PRINT*,"1: D_Q  = ", U_Q_D (:,iX1,1,1)
-      PRINT*,"1: S1_Q = ", U_Q_S1(:,iX1,1,1)
-      PRINT*,"1: S2_Q = ", U_Q_S2(:,iX1,1,1)
-      PRINT*,"1: S3_Q = ", U_Q_S3(:,iX1,1,1)
-      PRINT*,"1: E_Q  = ", U_Q_E (:,iX1,1,1)
-      PRINT*,"1: Ne_Q = ", U_Q_Ne(:,iX1,1,1)
-    END DO
-
-    DO iX1 = 127, 131
-      PRINT*
-      PRINT*,"2: iX1  = ", iX1
-      PRINT*,"2: D_P  = ", U_P_D (:,iX1,1,1)
-      PRINT*,"2: S1_P = ", U_P_S1(:,iX1,1,1)
-      PRINT*,"2: S2_P = ", U_P_S2(:,iX1,1,1)
-      PRINT*,"2: S3_P = ", U_P_S3(:,iX1,1,1)
-      PRINT*,"2: E_P  = ", U_P_E (:,iX1,1,1)
-      PRINT*,"2: Ne_P = ", U_P_Ne(:,iX1,1,1)
-    END DO
-
     ! -------------------------------------------------------------------
     ! --- Step 3 --------------------------------------------------------
     ! --- Ensure Bounded Specific Internal Energy -----------------------
@@ -808,9 +777,9 @@ CONTAINS
     !$ACC          U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
     !$ACC          U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
     !$ACC          G_P_Gm_dd_11, G_P_Gm_dd_22, G_P_Gm_dd_33, &
-    !$ACC          Eps_P_Debug, Min_Eps_P_Debug, Ye_P_Debug, &
-    !$ACC          Eps_K_Debug, Min_Eps_K_Debug, Ye_K_Debug, &
-    !$ACC          Theta_3_Debug, ITER_Debug )
+    !$ACC          Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$ACC          Eps_K, Min_Eps_K, Ye_K, &
+    !$ACC          Theta_3_Debug )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 )
@@ -831,30 +800,27 @@ CONTAINS
                  G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
                  G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
                  G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                 Eps_P_Debug (iP,iX1,iX2,iX3), &
-                 Ye_P_Debug  (iP,iX1,iX2,iX3) )
+                 Eps_P       (iP,iX1,iX2,iX3), &
+                 Ye_P        (iP,iX1,iX2,iX3) )
 
         Theta_3_Debug(iP,iX1,iX2,iX3) = One
 
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P_Debug(iP,iX1,iX2,iX3), &
-                 Min_Eps_P_Debug(iP,iX1,iX2,iX3) )
+               ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P(iP,iX1,iX2,iX3), &
+                 Min_Eps_P(iP,iX1,iX2,iX3) )
 
-!        CALL ComputeSpecificInternalEnergy_TABLE &
-!               ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P_Debug(iP,iX1,iX2,iX3), Max_Eps_P(iP) )
+        CALL ComputeSpecificInternalEnergy_TABLE &
+               ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P(iP,iX1,iX2,iX3),&
+                 Max_Eps_P(iP,iX1,iX2,iX3) )
 
         END DO
 
-      DoStep_3 = .FALSE.
-      DoStep_3 = DoStep_3 .OR. ANY( Eps_P_Debug(:,iX1,iX2,iX3) -  Min_Eps_P_Debug(:,iX1,iX2,iX3) < Zero )
+      DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) -  Min_Eps_P(:,iX1,iX2,iX3) < Zero )
 
       ITERATION = 0
-      ITER_Debug(iX1,iX2,iX3) = ITERATION
       DO WHILE( DoStep_3 )
 
         ITERATION = ITERATION + 1
-
-        ITER_Debug(iX1,iX2,iX3) = ITERATION
 
         DO iP = 1, nPT
 
@@ -868,12 +834,12 @@ CONTAINS
                    G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
                    G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
                    G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                   Eps_K_Debug (iP,iX1,iX2,iX3), &
-                   Ye_K_Debug  (iP,iX1,iX2,iX3) )
+                   Eps_K       (iP,iX1,iX2,iX3), &
+                   Ye_K        (iP,iX1,iX2,iX3) )
 
           CALL ComputeSpecificInternalEnergy_TABLE &
-                 ( U_K_D(iX1,iX2,iX3), Min_T, Ye_K_Debug(iP,iX1,iX2,iX3), &
-                   Min_Eps_K_Debug(iP,iX1,iX2,iX3) )
+                 ( U_K_D(iX1,iX2,iX3), Min_T, Ye_K(iP,iX1,iX2,iX3), &
+                   Min_Eps_K(iP,iX1,iX2,iX3) )
 
         END DO
 
@@ -882,7 +848,7 @@ CONTAINS
           Theta_3 = One
           DO iP = 1, nPT
 
-            IF( Eps_P_Debug(iP,iX1,iX2,iX3) < Min_Eps_P_Debug(iP,iX1,iX2,iX3) )THEN
+            IF( Eps_P(iP,iX1,iX2,iX3) < Min_Eps_P(iP,iX1,iX2,iX3) )THEN
 
               CALL SolveTheta_Bisection &
                      ( U_P_D       (iP,iX1,iX2,iX3), &
@@ -898,13 +864,11 @@ CONTAINS
                        G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
                        G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
                        G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                       Min_Eps_P_Debug(iP,iX1,iX2,iX3), &
-                       Min_Eps_K_Debug(iP,iX1,iX2,iX3), &
+                       Min_Eps_P   (iP,iX1,iX2,iX3), &
+                       Min_Eps_K   (iP,iX1,iX2,iX3), &
                        Theta_P )
 
               Theta_3 = MIN( Theta_3, SafetyFactor * Theta_P )
-
-              Theta_3_Debug(iP,iX1,iX2,iX3) = Theta_3
 
             END IF
 
@@ -913,8 +877,6 @@ CONTAINS
         ELSE ! --- ITERATION .GE. 10
 
           Theta_3 = Zero
-
-          Theta_3_Debug(iP,iX1,iX2,iX3) = Theta_3
 
         END IF ! IF( ITERATION .LT. 10 )
 
@@ -975,19 +937,20 @@ CONTAINS
                    G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
                    G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
                    G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                   Eps_P_Debug (iP,iX1,iX2,iX3), &
-                   Ye_P_Debug  (iP,iX1,iX2,iX3) )
+                   Eps_P       (iP,iX1,iX2,iX3), &
+                   Ye_P        (iP,iX1,iX2,iX3) )
 
           CALL ComputeSpecificInternalEnergy_TABLE &
-                 ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P_Debug(iP,iX1,iX2,iX3), &
-                   Min_Eps_P_Debug(iP,iX1,iX2,iX3) )
+                 ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P(iP,iX1,iX2,iX3), &
+                   Min_Eps_P(iP,iX1,iX2,iX3) )
 
-          !CALL ComputeSpecificInternalEnergy_TABLE &
-          !       ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P_Debug(iP,iX1,iX2,iX3), Max_Eps_P(iP) )
+          CALL ComputeSpecificInternalEnergy_TABLE &
+                 ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P(iP,iX1,iX2,iX3), &
+                   Max_Eps_P(iP,iX1,iX2,iX3) )
 
         END DO
-        DoStep_3 = .FALSE.
-        DoStep_3 = DoStep_3 .OR. ANY( Eps_P_Debug(:,iX1,iX2,iX3) -  Min_Eps_P_Debug(:,iX1,iX2,iX3) < Zero )
+
+        DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) -  Min_Eps_P(:,iX1,iX2,iX3) < Zero )
 
       END DO ! --- WHILE( DoStep_3 )
 
@@ -1001,54 +964,10 @@ CONTAINS
     !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
     !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
     !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
-    !$ACC              Eps_P_Debug, Min_Eps_P_Debug, Ye_P_Debug, &
-    !$ACC              Eps_K_Debug, Min_Eps_K_Debug, Ye_K_Debug, &
-    !$ACC              Theta_3_Debug, ITER_Debug )
+    !$ACC              Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$ACC              Eps_K, Min_Eps_K, Ye_K, &
+    !$ACC              Theta_3_Debug )
 #endif
-
-!    PRINT*
-!    PRINT*,"2: MIN/MAX/SUM U_K_D  = ", MINVAL( U_K_D  ), MAXVAL( U_K_D  ), SUM( U_K_D  )
-!    PRINT*,"2: MIN/MAX/SUM U_K_S1 = ", MINVAL( U_K_S1 ), MAXVAL( U_K_S1 ), SUM( U_K_S1 )
-!    PRINT*,"2: MIN/MAX/SUM U_K_S2 = ", MINVAL( U_K_S2 ), MAXVAL( U_K_S2 ), SUM( U_K_S2 )
-!    PRINT*,"2: MIN/MAX/SUM U_K_S3 = ", MINVAL( U_K_S3 ), MAXVAL( U_K_S3 ), SUM( U_K_S3 )
-!    PRINT*,"2: MIN/MAX/SUM U_K_E  = ", MINVAL( U_K_E  ), MAXVAL( U_K_E  ), SUM( U_K_E  )
-!    PRINT*,"2: MIN/MAX/SUM U_K_Ne = ", MINVAL( U_K_Ne ), MAXVAL( U_K_Ne ), SUM( U_K_Ne )
-
-    DO iX1 = 127, 131
-      PRINT*
-      PRINT*,"3: iX1     = ", iX1
-      PRINT*,"3: ITER    = ", ITER_Debug(iX1,1,1)
-      PRINT*,"3: Eps_P   = ", Eps_P_Debug    (:,iX1,1,1)
-      PRINT*,"3: M_Eps_P = ", Min_Eps_P_Debug(:,iX1,1,1)
-      PRINT*,"3: Ye_P    = ", Ye_P_Debug     (:,iX1,1,1)
-      PRINT*,"3: Theta_3 = ", Theta_3_Debug  (:,iX1,1,1)
-      PRINT*,"3: D_Q     = ", U_Q_D (:,iX1,1,1)
-      PRINT*,"3: S1_Q    = ", U_Q_S1(:,iX1,1,1)
-      PRINT*,"3: S2_Q    = ", U_Q_S2(:,iX1,1,1)
-      PRINT*,"3: S3_Q    = ", U_Q_S3(:,iX1,1,1)
-      PRINT*,"3: E_Q     = ", U_Q_E (:,iX1,1,1)
-      PRINT*,"3: Ne_Q    = ", U_Q_Ne(:,iX1,1,1)
-!      PRINT*,"3: D_K     = ", U_K_D (  iX1,1,1)
-!      PRINT*,"3: S1_K    = ", U_K_S1(  iX1,1,1)
-!      PRINT*,"3: S2_K    = ", U_K_S2(  iX1,1,1)
-!      PRINT*,"3: S3_K    = ", U_K_S3(  iX1,1,1)
-!      PRINT*,"3: E_K     = ", U_K_E (  iX1,1,1)
-!      PRINT*,"3: Ne_K    = ", U_K_Ne(  iX1,1,1)
-!      PRINT*,"3: D_P     = ", U_P_D (:,iX1,1,1)
-!      PRINT*,"3: S1_P    = ", U_P_S1(:,iX1,1,1)
-!      PRINT*,"3: S2_P    = ", U_P_S2(:,iX1,1,1)
-!      PRINT*,"3: S3_P    = ", U_P_S3(:,iX1,1,1)
-!      PRINT*,"3: E_P     = ", U_P_E (:,iX1,1,1)
-!      PRINT*,"3: Ne_P    = ", U_P_Ne(:,iX1,1,1)
-    END DO
-
-!    PRINT*
-!    PRINT*,"4: MIN/MAX/SUM U_Q_D  = ", MINVAL( U_Q_D  ), MAXVAL( U_Q_D  ), SUM( U_Q_D  )
-!    PRINT*,"4: MIN/MAX/SUM U_Q_S1 = ", MINVAL( U_Q_S1 ), MAXVAL( U_Q_S1 ), SUM( U_Q_S1 )
-!    PRINT*,"4: MIN/MAX/SUM U_Q_S2 = ", MINVAL( U_Q_S2 ), MAXVAL( U_Q_S2 ), SUM( U_Q_S2 )
-!    PRINT*,"4: MIN/MAX/SUM U_Q_S3 = ", MINVAL( U_Q_S3 ), MAXVAL( U_Q_S3 ), SUM( U_Q_S3 )
-!    PRINT*,"4: MIN/MAX/SUM U_Q_E  = ", MINVAL( U_Q_E  ), MAXVAL( U_Q_E  ), SUM( U_Q_E  )
-!    PRINT*,"4: MIN/MAX/SUM U_Q_Ne = ", MINVAL( U_Q_Ne ), MAXVAL( U_Q_Ne ), SUM( U_Q_Ne )
 
     ! --- Copy Back Fluid Variables ---
 
@@ -1097,9 +1016,9 @@ CONTAINS
     !$ACC         U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne,  &
     !$ACC         U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne,  &
     !$ACC         U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne,  &
-    !$ACC         Eps_P_Debug, Min_Eps_P_Debug, Ye_P_Debug, &
-    !$ACC         Eps_K_Debug, Min_Eps_K_Debug, Ye_K_Debug, &
-    !$ACC         Theta_3_Debug, ITER_Debug )
+    !$ACC         Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$ACC         Eps_K, Min_Eps_K, Ye_K, &
+    !$ACC         Theta_3_Debug )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_PL_CopyOut )
