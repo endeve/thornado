@@ -88,6 +88,8 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
+  PUBLIC :: ComputeProtonMassFraction_TABLE
+  PUBLIC :: ComputeNeutronMassFraction_TABLE
 
   REAL(DP), PUBLIC :: MinD, MinT, MinY
   REAL(DP), PUBLIC :: MaxD, MaxT, MaxY
@@ -160,6 +162,16 @@ MODULE EquationOfStateModule_TABLE
   INTERFACE ComputeNeutronChemicalPotential_TABLE
     MODULE PROCEDURE ComputeNeutronChemicalPotential_TABLE_Scalar
     MODULE PROCEDURE ComputeNeutronChemicalPotential_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeProtonMassFraction_TABLE
+    MODULE PROCEDURE ComputeProtonMassFraction_TABLE_Scalar
+    MODULE PROCEDURE ComputeProtonMassFraction_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeNeutronMassFraction_TABLE
+    MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Scalar
+    MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeDependentVariable_TABLE
@@ -1498,12 +1510,12 @@ CONTAINS
       END IF
 
       CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mp_T, Os_Mp, Units_V = UnitMp )
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mp_T, OS_Mp, Units_V = UnitMp )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE_Scalar &
-             ( D, T, Y, M, Mp_T, Os_Mp, Units_V = UnitMp )
+             ( D, T, Y, M, Mp_T, OS_Mp, Units_V = UnitMp )
 
     END IF
 
@@ -1677,6 +1689,232 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Vector
+
+
+  SUBROUTINE ComputeProtonMassFraction_TABLE_Scalar &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: X
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF ( ComputeDerivatives ) THEN
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD => dXdD_Option
+      ELSE
+        dXdD => dXdD_Local
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT => dXdT_Option
+      ELSE
+        dXdT => dXdT_Local
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY => dXdY_Option
+      ELSE
+        dXdY => dXdY_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Xp_T, OS_Xp, Units_V = UnitXp )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, X, Xp_T, OS_Xp, Units_V = UnitXp )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonMassFraction_TABLE_Scalar
+
+
+  SUBROUTINE ComputeProtonMassFraction_TABLE_Vector &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: X(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD(1:nP) => dXdD_Option(:)
+      ELSE
+        dXdD(1:nP) => dXdD_Local(:)
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT(1:nP) => dXdT_Option(:)
+      ELSE
+        dXdT(1:nP) => dXdT_Local(:)
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY(1:nP) => dXdY_Option(:)
+      ELSE
+        dXdY(1:nP) => dXdY_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Xp_T, OS_Xp, Units_V = UnitXp )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, X, Xp_T, OS_Xp, Units_V = UnitXp )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonMassFraction_TABLE_Vector
+
+
+  SUBROUTINE ComputeNeutronMassFraction_TABLE_Scalar &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: X
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD => dXdD_Option
+      ELSE
+        dXdD => dXdD_Local
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT => dXdT_Option
+      ELSE
+        dXdT => dXdT_Local
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY => dXdY_Option
+      ELSE
+        dXdY => dXdY_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Xn_T, OS_Xn, Units_V = UnitXn )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, X, Xn_T, OS_Xn, Units_V = UnitXn )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronMassFraction_TABLE_Scalar
+
+
+  SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: X(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD(1:nP) => dXdD_Option(:)
+      ELSE
+        dXdD(1:nP) => dXdD_Local(:)
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT(1:nP) => dXdT_Option(:)
+      ELSE
+        dXdT(1:nP) => dXdT_Local(:)
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY(1:nP) => dXdY_Option(:)
+      ELSE
+        dXdY(1:nP) => dXdY_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Xn_T, OS_Xn, Units_V = UnitXn )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, X, Xn_T, OS_Xn, Units_V = UnitXn )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector
 
 
   SUBROUTINE ComputeDependentVariable_TABLE_Scalar &
