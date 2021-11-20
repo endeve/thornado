@@ -258,6 +258,10 @@ CONTAINS
 
     DO iS = 1, nStages_SSPRK
 
+      PRINT*
+      PRINT*, "  Stage = ", iS
+      PRINT*
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
@@ -330,11 +334,33 @@ CONTAINS
 
     END DO
 
+    print*,"  After Assembly"
+
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
+#if defined( THORNADO_OACC )
+    !$ACC UPDATE HOST( U )
+#endif
+
+    DO iCF = 1, nCF
+      PRINT*,"1*: iCF = ", iCF
+      PRINT*,"1*: MIN/MAX/SUM = ", &
+        MINVAL(U(:,127:131,1,1,iCF)), MAXVAL(U(:,127:131,1,1,iCF)), SUM(U(:,127:131,1,1,iCF))
+    END DO
+
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+#if defined( THORNADO_OACC )
+    !$ACC UPDATE HOST( U )
+#endif
+
+    DO iCF = 1, nCF
+      PRINT*,"2*: iCF = ", iCF
+      PRINT*,"2*: MIN/MAX/SUM = ", &
+        MINVAL(U(:,127:131,1,1,iCF)), MAXVAL(U(:,127:131,1,1,iCF)), SUM(U(:,127:131,1,1,iCF))
+    END DO
 
     IF( SolveGravity )THEN
 

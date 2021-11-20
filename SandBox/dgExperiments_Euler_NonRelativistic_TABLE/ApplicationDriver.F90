@@ -181,7 +181,7 @@ PROGRAM ApplicationDriver
 
       CASE( 'Pochik' )
 
-        t_end  = 2.0d-1 * Millisecond
+        t_end  = 3.0d-4 * Millisecond
         dt_wrt = 5.0d-2 * t_end
 
       END SELECT
