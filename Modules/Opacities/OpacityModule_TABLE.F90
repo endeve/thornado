@@ -103,7 +103,7 @@ CONTAINS
 
     CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: LogE1, LogE2
-    INTEGER :: iS, iM, iEta, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
+    INTEGER :: iS, iM, iEta, iD, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
     LOGICAL :: Include_EmAb
     LOGICAL :: Include_Iso
     LOGICAL :: Include_NES
