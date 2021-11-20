@@ -37,7 +37,8 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
-    Xps_T, Xns_T, OS_Xp, OS_Xn, UnitXp, UnitXn
+    ComputeProtonMassFraction_TABLE, &
+    ComputeNeutronMassFraction_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
@@ -3713,8 +3714,7 @@ CONTAINS
     REAL(dp), PARAMETER :: coef_np  = 28.d0/3.d0
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( Phi_Ann, Phi_Pro ) &
-       .AND. QueryOnGPU( Xps_T, Xns_T )
+       .AND. QueryOnGPU( Phi_Ann, Phi_Pro )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
       WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points] Data not present on device'
@@ -3730,9 +3730,9 @@ CONTAINS
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Phi_Pro missing'
       IF ( .not. QueryOnGPU( Phi_Ann ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Phi_Ann missing'
-      IF ( .not. QueryOnGPU( Xps_T ) ) &
+      IF ( .not. QueryOnGPU( Xp_T ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Proton fraction missing'
-      IF ( .not. QueryOnGPU( Xns_T ) ) &
+      IF ( .not. QueryOnGPU( Xn_T ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Neutron fraction missing'
     END IF
 #endif
@@ -3773,12 +3773,11 @@ CONTAINS
 
     ! --- Compute proton and neutron fractions ---
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Xp, Xps_T, OS_Xp, UnitXp )
+    CALL ComputeProtonMassFraction_TABLE &
+           ( D, T, Y, Xp )
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, Xn, Xns_T, OS_Xn, UnitXn )
-
+    CALL ComputeNeutronMassFraction_TABLE &
+           ( D, T, Y, Xn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
