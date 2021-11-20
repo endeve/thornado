@@ -79,7 +79,7 @@ MODULE OpacityModule_TABLE
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
-  !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem      &
+  !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, & 
   !$ACC   Brem_T, Brem_AT)
 #endif
