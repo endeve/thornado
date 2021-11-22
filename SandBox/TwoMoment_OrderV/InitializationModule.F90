@@ -106,6 +106,11 @@ CONTAINS
 
     END SELECT
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uCF, uPF, uCR, uPR )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uCF, uPF, uCR, uPR )
+#endif
 
   END SUBROUTINE InitializeFields
 
@@ -1625,7 +1630,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RadiatingSphere
 
-    CHARACTER(32) :: Profile = 'Collapse'
+    CHARACTER(32) :: Profile = 'Shock'
     INTEGER       :: iNodeX, iX1, iX2, iX3
     INTEGER       :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER       :: iNodeX1

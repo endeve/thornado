@@ -10,6 +10,10 @@ PROGRAM ApplicationDriver
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Evolve
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -43,6 +47,7 @@ PROGRAM ApplicationDriver
   IMPLICIT NONE
 
   CHARACTER(32) :: ProgramName
+  CHARACTER(32) :: TimeSteppingScheme
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: EosTableName
   CHARACTER(64) :: OpacityTableName_AbEm
@@ -51,8 +56,11 @@ PROGRAM ApplicationDriver
   CHARACTER(64) :: OpacityTableName_Pair
   CHARACTER(64) :: ProgenitorFileName
   LOGICAL       :: wrt
-  LOGICAL       :: EvolveFluid
-  LOGICAL       :: EvolveNeutrinos
+  LOGICAL       :: EvolveEuler
+  LOGICAL       :: EvolveTwoMoment
+  LOGICAL       :: UseSlopeLimiter_Euler
+  LOGICAL       :: UsePositivityLimiter_Euler
+  LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: RampTimeStep
   INTEGER       :: RestartFileNumber
   INTEGER       :: nNodes, nSpecies
@@ -68,7 +76,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'SPHERICAL'
 
-  EosTableName          = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
+  EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
   OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
@@ -80,20 +88,20 @@ PROGRAM ApplicationDriver
 
   ! --- Evolution Parameters ---
 
-  t_end   = 2.37d+2 * Millisecond
+  t_end   = 3.50d+2 * Millisecond
   dt_wrt  = 1.00d-0 * Millisecond
   wrt     = .FALSE.
   iCycleD = 10
 
   ! --- Position Space Grid Parameters ---
 
-  nX  = [ 200, 1, 1 ]
+  nX  = [ 400, 1, 1 ]
   xL  = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ]
   xR  = [ 8.0d3 * Kilometer, Pi   , TwoPi ]
   bcX = [ 30, 0, 0 ]
 
-  nEquidistantX = 50
-  dEquidistantX = 1.0d0 * Kilometer
+  nEquidistantX = 100
+  dEquidistantX = 0.5d0 * Kilometer
 
   ! --- Energy Space Grid Parameters ---
 
@@ -102,7 +110,7 @@ PROGRAM ApplicationDriver
   eR  = 3.0d2 * MeV
   bcE = 10
 
-  zoomE = 1.290361891685686_DP
+  zoomE = 1.25_DP
 
   ! --- Time Step Control ---
 
@@ -115,8 +123,15 @@ PROGRAM ApplicationDriver
   nNodes          = 2
   nSpecies        = 2
   CFL             = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One )
-  EvolveFluid     = .TRUE.
-  EvolveNeutrinos = .TRUE.
+
+  EvolveEuler                = .TRUE.
+  UseSlopeLimiter_Euler      = .TRUE.
+  UsePositivityLimiter_Euler = .TRUE.
+
+  EvolveTwoMoment                = .TRUE.
+  UsePositivityLimiter_TwoMoment = .TRUE.
+
+  TimeSteppingScheme = 'IMEX_PDARS'
 
   ! --- Auxiliary Initialization ---
 
@@ -212,7 +227,15 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_TwoMoment &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt_Neutrinos )
 
-    dt = MIN( dt_Fluid, dt_Neutrinos, dt_Ramp )
+    IF( EvolveTwoMoment )THEN
+
+      dt = MIN( dt_Fluid, dt_Neutrinos, dt_Ramp )
+
+    ELSE
+
+      dt = MIN( dt_Fluid, dt_Ramp )
+
+    END IF
 
     IF( t + dt > t_end )THEN
 
@@ -243,7 +266,11 @@ PROGRAM ApplicationDriver
 
     END IF
 
+    CALL TimersStart( Timer_Evolve )
+
     CALL UpdateFields( dt, uGE, uGF, uCF, uCR )
+
+    CALL TimersStop( Timer_Evolve )
 
     t = t + dt
 
@@ -283,7 +310,10 @@ CONTAINS
   SUBROUTINE InitializeDriver
 
     USE ProgramInitializationModule, ONLY: &
-      InitializeProgram
+         InitializeProgram
+    USE TimersModule, ONLY: &
+      InitializeTimers, &
+      FinalizeTimers
     USE MeshModule, ONLY: &
       MeshX, &
       CreateMesh_Custom
@@ -359,6 +389,8 @@ CONTAINS
              BasicInitialization_Option &
                = .TRUE. )
 
+    CALL InitializeTimers
+
     CALL CreateMesh_Custom &
            ( MeshX(1), nX(1), nNodes, 1, xL(1), xR(1), &
              nEquidistantX, dEquidistantX, Verbose_Option = .TRUE. )
@@ -426,7 +458,7 @@ CONTAINS
              SlopeTolerance_Option &
                = 1.0d-6, &
              UseSlopeLimiter_Option &
-               = .TRUE., &
+               = UseSlopeLimiter_Euler, &
              UseCharacteristicLimiting_Option &
                = .FALSE., &
              UseTroubledCellIndicator_Option &
@@ -438,7 +470,7 @@ CONTAINS
 
     CALL InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
-               = .TRUE., &
+               = UsePositivityLimiter_Euler, &
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
@@ -464,7 +496,7 @@ CONTAINS
            Min_2_Option &
              = SqrtTiny, &
            UsePositivityLimiter_Option &
-             = .TRUE. )
+             = UsePositivityLimiter_TwoMoment )
 
     ! --- Initialize Gravity Solver ---
 
@@ -473,10 +505,12 @@ CONTAINS
     ! --- Initialize Time Stepping ---
 
     CALL InitializeTimeStepping &
-           ( EvolveFluid_Option &
-               = EvolveFluid, &
-             EvolveNeutrinos_Option &
-               = EvolveNeutrinos )
+         ( Scheme_Option &
+             = TimeSteppingScheme, &
+           EvolveEuler_Option &
+             = EvolveEuler, &
+           EvolveTwoMoment_Option &
+             = EvolveTwoMoment )
 
   END SUBROUTINE InitializeDriver
 
@@ -513,6 +547,10 @@ CONTAINS
       FinalizeGravitySolver_Newtonian_Poseidon
     USE TimeSteppingModule_CCSN, ONLY: &
       FinalizeTimeStepping
+    USE TimersModule, ONLY: &
+      FinalizeTimers
+
+    CALL FinalizeTimers
 
     CALL FinalizeTimeStepping
 

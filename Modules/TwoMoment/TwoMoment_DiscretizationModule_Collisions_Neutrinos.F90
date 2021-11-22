@@ -594,7 +594,7 @@ CONTAINS
 
           dR_N(iN_E,iN_X,iCR_G3,iS) &
             = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G3)
-            
+
         END DO
       END DO
     END DO
@@ -644,7 +644,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRIVATE( iN_X ) &
-    !$ACC PRESENT( nX, iX_B0, dU_F, CF_N, dF_N )
+    !$ACC PRESENT( nX, iX_B0, iX_E0, dU_F, CF_N, dF_N )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iN_X )

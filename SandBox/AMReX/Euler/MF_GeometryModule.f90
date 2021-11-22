@@ -2,8 +2,6 @@ MODULE MF_GeometryModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,                         ONLY: &
-    AR => amrex_real
   USE amrex_box_module,                          ONLY: &
     amrex_box
   USE amrex_multifab_module,                     ONLY: &
@@ -29,6 +27,8 @@ MODULE MF_GeometryModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                             ONLY: &
+    DP
   USE InputParsingModule,                        ONLY: &
     nLevels, &
     UseTiling
@@ -53,15 +53,15 @@ CONTAINS
   SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(AR),             INTENT(in)    :: Mass
+    REAL(DP),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
                                      iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: G(:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
@@ -111,15 +111,15 @@ CONTAINS
   SUBROUTINE MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(AR),             INTENT(in)    :: Mass
+    REAL(DP),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
                                      iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: G(:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 

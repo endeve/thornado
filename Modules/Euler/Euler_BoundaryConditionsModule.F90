@@ -161,9 +161,9 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iCF, iX1, iX2, iX3
-    INTEGER :: iNode, iNodeX, iNodeX_0
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
+    INTEGER  :: iCF, iX1, iX2, iX3
+    INTEGER  :: iNX, iNX_0
+    INTEGER  :: iNX1, iNX2, iNX3, jNX, jNX1
     REAL(DP) :: D_0, E_0, R_0, R_q
 
     SELECT CASE ( bcX(1) )
@@ -184,16 +184,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF) &
-            = U(iNode,iX_E0(1)-(iX1-1),iX2,iX3,iCF)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCF)
 
         END DO
         END DO
@@ -213,16 +213,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX_E0(1)+iX1,iX2,iX3,iCF) &
-            = U(iNode,iX_B0(1)+(iX1-1),iX2,iX3,iCF)
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCF)
 
         END DO
         END DO
@@ -246,16 +246,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF) &
-            = U(iNode,iX_B0(1),iX2,iX3,iCF)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) &
+            = U(iNX,iX_B0(1),iX2,iX3,iCF)
 
         END DO
         END DO
@@ -275,16 +275,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX_E0(1)+iX1,iX2,iX3,iCF) &
-            = U(iNode,iX_E0(1),iX2,iX3,iCF)
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) &
+            = U(iNX,iX_E0(1),iX2,iX3,iCF)
 
         END DO
         END DO
@@ -302,40 +302,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX1 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-              = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_D)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+              = - U(jNX,iX_B0(1),iX2,iX3,iCF_S1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_S2)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_S3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
 
           END DO
           END DO
@@ -353,40 +353,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX1 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
-            U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX_E0(1),iX2,iX3,iCF_D)
-            U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_S1) &
-              = - U(jNodeX,iX_E0(1),iX2,iX3,iCF_S1)
-            U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_S2) &
-              = + U(jNodeX,iX_E0(1),iX2,iX3,iCF_S2)
-            U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX_E0(1),iX2,iX3,iCF_S3)
-            U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX_E0(1),iX2,iX3,iCF_E)
-            U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX_E0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_D) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_D)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S1) &
+              = - U(jNX,iX_E0(1),iX2,iX3,iCF_S1)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S2) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_S2)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S3) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_S3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_E) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_E)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_Ne)
 
           END DO
           END DO
@@ -404,40 +404,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX1 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-            DO iNodeX3 = 1, nNodesX(3)
-            DO iNodeX2 = 1, nNodesX(2)
-            DO iNodeX1 = 1, nNodesX(1)
+            DO iNX3 = 1, nNodesX(3)
+            DO iNX2 = 1, nNodesX(2)
+            DO iNX1 = 1, nNodesX(1)
 
-              jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+              jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-              jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+              iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+              jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-                = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-                = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-                = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-                = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-                = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
-                = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+                = + U(jNX,iX_B0(1),iX2,iX3,iCF_D)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+                = - U(jNX,iX_B0(1),iX2,iX3,iCF_S1)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+                = + U(jNX,iX_B0(1),iX2,iX3,iCF_S2)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+                = + U(jNX,iX_B0(1),iX2,iX3,iCF_S3)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+                = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+                = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
 
           END DO
           END DO
@@ -457,40 +457,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX1 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX1 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-              = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_D)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+              = - U(jNX,iX_B0(1),iX2,iX3,iCF_S1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_S2)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_S3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
 
           END DO
           END DO
@@ -512,19 +512,101 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-            U(iNode,iX_E0(1)+iX1,iX2,iX3,iCF) &
-              = U(iNode,iX_E0(1),iX2,iX3,iCF)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCF)
 
         END DO
         END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 23 ) ! Homogeneous (Inner), Reflecting (Outer)
+
+     ! --- Inner Boundary ---
+
+     IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_D) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_D)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S1) &
+              = - U(jNX,iX_E0(1),iX2,iX3,iCF_S1)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S2) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_S2)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S3) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_S3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_E) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_E)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
         END DO
         END DO
         END DO
@@ -545,41 +627,41 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6), &
-        !$OMP PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
         !$OMP FIRSTPRIVATE( R_0 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
         !$ACC COPYIN( X1_C, dX1, eta_q ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX ) &
-        !$ACC PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$ACC PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
         !$ACC FIRSTPRIVATE( R_0 )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
         !$OMP FIRSTPRIVATE( R_0 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+            iNX   = NodeNumberX( iNX1, iNX2, iNX3 )
+            iNX_0 = NodeNumberX( 1,       iNX2, iNX3 )
 
-            D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
-            E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
+            D_0 = U(iNX_0,1,iX2,iX3,iCF_D)
+            E_0 = U(iNX_0,1,iX2,iX3,iCF_E)
 
             R_q = NodeCoordinate &
                     ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &
-                      eta_q( iNodeX1 ) )
+                      eta_q( iNX1 ) )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
               = D_0 * ( R_0 / R_q )**3
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
               = E_0 * ( R_0 / R_q )**4
 
           END DO
@@ -608,41 +690,41 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6), &
-        !$OMP PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
         !$OMP FIRSTPRIVATE( R_0 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
         !$ACC COPYIN( X1_C, dX1, eta_q ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX, ExpD, ExpE ) &
-        !$ACC PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$ACC PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
         !$ACC FIRSTPRIVATE( R_0 )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
         !$OMP FIRSTPRIVATE( R_0 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+            iNX   = NodeNumberX( iNX1, iNX2, iNX3 )
+            iNX_0 = NodeNumberX( 1,       iNX2, iNX3 )
 
-            D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
-            E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
+            D_0 = U(iNX_0,1,iX2,iX3,iCF_D)
+            E_0 = U(iNX_0,1,iX2,iX3,iCF_E)
 
             R_q = NodeCoordinate &
                     ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &
-                      eta_q( iNodeX1 ) )
+                      eta_q( iNX1 ) )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
               = D_0 * ( R_0 / R_q )**( ExpD )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
               = E_0 * ( R_0 / R_q )**( ExpE )
 
           END DO
@@ -669,16 +751,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-            U(iNode,iX_E0(1)+iX1,iX2,iX3,iCF) &
-              = U(iNode,iX_E0(1),iX2,iX3,iCF)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCF)
 
         END DO
         END DO
@@ -706,7 +788,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iCF, iX1, iX2, iX3
-    INTEGER :: iNode, iNodeX, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX2
+    INTEGER :: iNX, iNX1, iNX2, iNX3, jNX, jNX2
 
     SELECT CASE ( bcX(2) )
 
@@ -726,16 +808,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX_B0(2)-iX2,iX3,iCF) &
-            = U(iNode,iX1,iX_E0(2)-(iX2-1),iX3,iCF)
+          U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF)
 
         END DO
         END DO
@@ -755,16 +837,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX_E0(2)+iX2,iX3,iCF) &
-            = U(iNode,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
+          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
 
         END DO
         END DO
@@ -788,16 +870,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX_B0(2)-iX2,iX3,iCF) &
-            = U(iNode,iX1,iX_B0(2),iX3,iCF)
+          U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_B0(2),iX3,iCF)
 
         END DO
         END DO
@@ -817,16 +899,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX_E0(2)+iX2,iX3,iCF) &
-            = U(iNode,iX1,iX_E0(2),iX3,iCF)
+          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_E0(2),iX3,iCF)
 
         END DO
         END DO
@@ -844,40 +926,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX2 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX2 = ( nNodesX(2) - iNodeX2 ) + 1
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( iNodeX1, jNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
 
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_D)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_S1)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
-              = - U(jNodeX,iX1,iX_B0(2),iX3,iCF_S2)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_S3)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_E)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
 
           END DO
           END DO
@@ -895,40 +977,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX2 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX2 = ( nNodesX(2) - iNodeX2 ) + 1
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( iNodeX1, jNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
 
-            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX1,iX_E0(2),iX3,iCF_D)
-            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_S1) &
-              = + U(jNodeX,iX1,iX_E0(2),iX3,iCF_S1)
-            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) &
-              = - U(jNodeX,iX1,iX_E0(2),iX3,iCF_S2)
-            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX1,iX_E0(2),iX3,iCF_S3)
-            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX1,iX_E0(2),iX3,iCF_E)
-            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX1,iX_E0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_E0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S3) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_Ne)
 
           END DO
           END DO
@@ -946,40 +1028,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX2 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX2 = ( nNodesX(2) - iNodeX2 ) + 1
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( iNodeX1, jNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
 
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_D)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_S1)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
-              = - U(jNodeX,iX1,iX_B0(2),iX3,iCF_S2)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_S3)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_E)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
 
           END DO
           END DO
@@ -999,40 +1081,40 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX2 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            jNodeX2 = ( nNodesX(2) - iNodeX2 ) + 1
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( iNodeX1, jNodeX2, iNodeX3 )
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
 
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_D)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_S1)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
-              = - U(jNodeX,iX1,iX_B0(2),iX3,iCF_S2)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_S3)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_E)
-            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
-              = + U(jNodeX,iX1,iX_B0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
 
           END DO
           END DO
@@ -1050,23 +1132,23 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX2 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PARALLEL DO COLLAPSE(5) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX_E0(2)+iX2,iX3,iCF) &
-            = U(iNode,iX1,iX_E0(2),iX3,iCF)
+          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_E0(2),iX3,iCF)
 
         END DO
         END DO
@@ -1084,23 +1166,23 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-        !$ACC PRIVATE( iNodeX, jNodeX, jNodeX2 ) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
-        !$OMP PRIVATE( iNodeX, jNodeX, jNodeX2 )
+        !$OMP PARALLEL DO COLLAPSE(5) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX_E0(2)+iX2,iX3,iCF) &
-            = U(iNode,iX1,iX_E0(2),iX3,iCF)
+          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_E0(2),iX3,iCF)
 
         END DO
         END DO
@@ -1128,7 +1210,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iCF, iX1, iX2, iX3
-    INTEGER :: iNode, iNodeX, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX3
+    INTEGER :: iNX
 
     SELECT CASE ( bcX(3) )
 
@@ -1148,16 +1230,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX2,iX_B0(3)-iX3,iCF) &
-            = U(iNode,iX1,iX2,iX_E0(3)-(iX3-1),iCF)
+          U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) &
+            = U(iNX,iX1,iX2,iX_E0(3)-(iX3-1),iCF)
 
         END DO
         END DO
@@ -1177,16 +1259,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-            U(iNode,iX1,iX2,iX_E0(3)+iX3,iCF) &
-              = U(iNode,iX1,iX2,iX_B0(3)+(iX3-1),iCF)
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) &
+              = U(iNX,iX1,iX2,iX_B0(3)+(iX3-1),iCF)
 
         END DO
         END DO
@@ -1210,16 +1292,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX2,iX_B0(3)-iX3,iCF) &
-            = U(iNode,iX1,iX2,iX_B0(3),iCF)
+          U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) &
+            = U(iNX,iX1,iX2,iX_B0(3),iCF)
 
 
         END DO
@@ -1240,16 +1322,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX2,iX_E0(3)+iX3,iCF) &
-            = U(iNode,iX1,iX2,iX_E0(3),iCF)
+          U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) &
+            = U(iNX,iX1,iX2,iX_E0(3),iCF)
 
         END DO
         END DO
@@ -1271,16 +1353,16 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5)
+        !$OMP PARALLEL DO COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNode = 1, nDOFX
+        DO iNX = 1, nDOFX
 
-          U(iNode,iX1,iX2,iX_E0(3)+iX3,iCF) &
-            = U(iNode,iX1,iX2,iX_E0(3),iCF)
+          U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) &
+            = U(iNX,iX1,iX2,iX_E0(3),iCF)
 
         END DO
         END DO

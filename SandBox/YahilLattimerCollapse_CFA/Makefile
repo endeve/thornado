@@ -80,4 +80,5 @@ TimeSteppingModule_SSPRK.o: \
   TimersModule_Euler.o \
   Poseidon_UtilitiesModule.o \
   Euler_dgDiscretizationModule.o \
+  Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90

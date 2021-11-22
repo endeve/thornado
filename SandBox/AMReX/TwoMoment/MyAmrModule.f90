@@ -33,13 +33,12 @@ MODULE MyAmrModule
     UnitsDisplay, &
     Centimeter, &
     Kilometer, &
+    MeV, &
     SolarMass
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
     FinalizeDataAMReX
-
-
   ! --- thornado ---
   REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
@@ -79,6 +78,11 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_AbEm
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Iso
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_NES
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Pair
+
   ! --- Positivity limiter ---
   LOGICAL  :: UsePositivityLimiter
   REAL(AR) :: Min_1, Min_2
@@ -87,7 +91,7 @@ MODULE MyAmrModule
   REAL(AR) :: BetaTVD
   
 
-  REAL(AR) :: Mass, R0
+  REAL(AR) :: Mass, R0, kT, mu0, E0
 
 CONTAINS
 
@@ -106,13 +110,15 @@ CONTAINS
 
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
-
     DEBUG = .FALSE.
     CALL amrex_parmparse_build( PP )
       CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
     UsePhysicalUnits = .FALSE.
+    Chi = 0.0_AR
+    Sigma = 0.0_AR
+    D_0 = 0.0_AR
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
@@ -130,9 +136,9 @@ CONTAINS
       CALL PP % get   ( 'bcE',              bcE )
       CALL PP % get   ( 'eL',  eL )
       CALL PP % get   ( 'eR',  eR )  
-      CALL PP % get   ( 'D_0',  D_0 )
-      CALL PP % get   ( 'Chi',  Chi )
-      CALL PP % get   ( 'Sigma',  Sigma )
+      CALL PP % query   ( 'D_0',  D_0 )
+      CALL PP % query   ( 'Chi',  Chi )
+      CALL PP % query   ( 'Sigma',  Sigma )
       CALL PP % get   ( 'zoomE',  zoomE )
       CALL PP % get   ( 'nSpecies',        nSpecies )
       CALL PP % get   ( 'iCycleD',          iCycleD )
@@ -143,6 +149,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
           
 
+    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
@@ -163,10 +170,16 @@ CONTAINS
     END IF
 
     Mass = 0.0_AR
-    R0 = 1000.0_AR
+    R0 = 0.0_AR
+    E0 = 0.0_AR
+    mu0 = 0.0_AR
+    kT = 0.0_AR
     CALL amrex_parmparse_build( PP, 'ST' )
       CALL PP % query( 'Mass', Mass )
       CALL PP % query( 'R0'               ,R0 )
+      CALL PP % query( 'mu0'               ,mu0 )
+      CALL PP % query( 'E0'               ,E0 )
+      CALL PP % query( 'kT'               ,kT )
     CALL amrex_parmparse_destroy( PP )
 
     IF( UsePhysicalUnits )THEN
@@ -183,14 +196,15 @@ CONTAINS
       xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
       xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
       xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
-
       eL = eL * UnitsDisplay % EnergyUnit 
       eR = eR * UnitsDisplay % EnergyUnit 
 
       Chi = Chi * ( 1.0_AR / Centimeter )
 
       Mass = Mass * SolarMass
-
+      E0 = E0 * MeV 
+      mu0 = mu0 * MeV 
+      kT = kT * MeV 
       R0 = R0 * kilometer
 
     END IF
@@ -216,6 +230,17 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
+    OpacityTableName_AbEm = ''
+    OpacityTableName_Iso  = ''
+    OpacityTableName_NES  = ''
+    OpacityTableName_Pair  = ''
+    CALL amrex_parmparse_build( PP, 'OP' )
+      CALL PP % query( 'OpacityTableName_AbEm',OpacityTableName_AbEm )
+      CALL PP % query( 'OpacityTableName_Iso', OpacityTableName_Iso )
+      CALL PP % query( 'OpacityTableName_NES', OpacityTableName_NES )
+      CALL PP % query( 'OpacityTableName_Pair', OpacityTableName_Pair )
+    CALL amrex_parmparse_destroy( PP )
+
     Gamma_IDEAL     = 5.0_AR / 3.0_AR
     EquationOfState = 'IDEAL'
     EosTableName    = ''
@@ -224,7 +249,6 @@ CONTAINS
       CALL PP % query( 'EquationOfState', EquationOfState )
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
-
     ! --- Positivitiy limiter parameters PL.* ---
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_AR

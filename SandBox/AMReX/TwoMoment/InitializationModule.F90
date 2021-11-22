@@ -58,6 +58,8 @@ MODULE InitializationModule
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    InitializeReferenceElementE_Lagrange
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange
   USE ReferenceElementModule,           ONLY: &
@@ -68,6 +70,8 @@ MODULE InitializationModule
     InitializeReferenceElement
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
+  USE EquationOfStateModule_TABLE,            ONLY: &
+    InitializeEquationOfState_TABLE
   USE MeshModule,                       ONLY: &
     MeshX,      &
     MeshE,      &
@@ -94,6 +98,8 @@ MODULE InitializationModule
   USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
     CreateOpacities,         &
     SetOpacities
+  USE OpacityModule_Table, ONLY:   &
+    InitializeOpacities_TABLE
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -153,7 +159,16 @@ MODULE InitializationModule
     D_0,                       &
     Chi,                       &
     Sigma,                     &
+    kT,                        &
+    E0,                        &
+    mu0,                       &
+    R0,                        &
     EquationOfState,           &
+    EosTableName,              &
+    OpacityTableName_AbEm,     &
+    OpacityTableName_Iso,     &
+    OpacityTableName_NES,     &
+    OpacityTableName_Pair,     &
     Min_1,                     &
     Min_2,                     &
     UsePositivityLimiter,      &
@@ -188,18 +203,15 @@ CONTAINS
   SUBROUTINE InitializeProgram
 
     INTEGER               :: iLevel, iDim
-    TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
-    REAL(AR)              :: Mass, W, Vad
 
-    ! --- Initialize AMReX ---
+    ! --- Initialize AMReX --
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
 
     ! --- Parse parameter file ---
     CALL MyAmrInit
-
     IF( iRestart .LT. 0 )THEN
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
@@ -291,25 +303,26 @@ CONTAINS
     CALL InitializePolynomialBasis_Legendre
 
     CALL InitializeReferenceElementX_Lagrange
+    CALL InitializeReferenceElementE_Lagrange
     CALL InitializeReferenceElement_Lagrange
 
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
                                 Verbose_Option = amrex_parallel_ioprocessor()  )
 
-!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-!                              Verbose_Option = amrex_parallel_ioprocessor()  )
-!
-!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-!                               Verbose_Option = amrex_parallel_ioprocessor()  )
-    
-    
-
-
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
+    
+    
+
+
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+!
+!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+!                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -322,20 +335,36 @@ CONTAINS
 
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
-    CALL InitializeEquationOfState &
+
+#if defined(MICROPHYSICS_WEAKLIB)
+      CALL InitializeEquationOfState_TABLE &
+             (EquationOfStateTableName_Option &
+                 = EosTableName, &
+              Verbose_Option =  amrex_parallel_ioprocessor() )
+      CALL InitializeOpacities_TABLE &
+        ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
+          OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
+          OpacityTableName_NES_Option  = OpacityTableName_NES,  &
+          OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          EquationOfStateTableName_Option = EosTableName, &
+          Verbose_Option =  amrex_parallel_ioprocessor())
+
+#else
+
+      CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
                Gamma_IDEAL_Option = Gamma_IDEAL, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateOpacities &
+      CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
 
-    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, & 
+      CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, & 
                        Verbose_Option = amrex_parallel_ioprocessor()  )
+#endif
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
                               Verbose_Option = amrex_parallel_ioprocessor() )
-
     DO iLevel = 0, nLevels-1
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )

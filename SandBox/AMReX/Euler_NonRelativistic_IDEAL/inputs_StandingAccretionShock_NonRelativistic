@@ -1,0 +1,82 @@
+##### inputs_StandingAccretionShock_NonRelativistic #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
+
+thornado.ProgramName = "StandingAccretionShock_NonRelativistic"
+
+SAS.Mass               = 1.4    # [Msun]
+SAS.ShockRadius        = 180.0  # [km]
+SAS.AccretionRate      = 0.3    # [Msun/s]
+SAS.PolytropicConstant = 2.0e14 # [cgs]
+
+SAS.ApplyPerturbation     = 1
+SAS.PerturbationOrder     = 1
+SAS.rPerturbationInner    = 260.0 # [km]
+SAS.rPerturbationOuter    = 280.0 # [km]
+SAS.PerturbationAmplitude = 0.04  # Fractional density increase
+
+SAS.WriteNodalData_SAS        = 0
+SAS.NodalDataFileNameBase_SAS = "MPNS1.4_Rs180_Mdot0.3"
+SAS.InitializeFromFile        = 0
+
+thornado.iRestart           = -1
+thornado.InitializeFromFile = 0
+thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
+
+thornado.UsePhysicalUnits = 1
+
+thornado.SolveGravity = 1
+
+thornado.PlotFileBaseName = "plt"
+thornado.t_end   = 6.0e+2
+thornado.iCycleD = 10
+
+thornado.dt_wrt  = 1.0e+0
+thornado.iCycleW = -1
+
+thornado.CheckpointFileBaseName = "chk"
+thornado.dt_chk    = 6.1e+2
+thornado.iCycleChk = -1
+
+thornado.nNodes  = 3
+thornado.nStages = 3
+
+thornado.CFL = 0.5
+
+thornado.bcX         = 11 03 00
+geometry.is_periodic = 0  0  1
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 040.0 0.0               0.0
+geometry.prob_hi   = 1000.0 3.1415926535897931 6.2831853071795862
+
+amr.n_cell            = 512 32 001
+thornado.swX          = 01   01  00
+amr.max_grid_size_x   = 64
+amr.max_grid_size_y   = 16
+amr.blocking_factor_x = 8
+amr.blocking_factor_x = 8
+amr.max_level         = 0
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.SlopeLimiterMethod        = "TVD"
+SL.BetaTVD                   = 1.75e+0
+SL.BetaTVB                   = 0.00e+0
+SL.SlopeTolerance            = 1.00e-6
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
+SL.LimiterThresholdParameter = 5.00e-3
+SL.UseConservativeCorrection = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-13
+PL.Min_2                = 1.0e-13
+
+# Equation of state parameters
+#EoS.Gamma = 1.6666666666666667
+EoS.Gamma = 1.3333333333333333

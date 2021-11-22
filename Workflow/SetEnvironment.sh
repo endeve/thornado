@@ -28,6 +28,16 @@ elif [[ $THORNADO_MACHINE == summit* ]]; then
   module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
   module unload DefApps
 
+elif [[ $THORNADO_MACHINE == ascent* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
+  module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
+  module unload DefApps
+
 elif [[ $THORNADO_MACHINE == darter* ]]; then
 
   echo
@@ -104,9 +114,6 @@ elif [[ $THORNADO_MACHINE == accre* ]]; then
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
   module purge
-  module load GCC/6.4.0-2.28
-  module load OpenMPI/2.1.1
-  module load HDF5/1.10.1
 
 elif [[ $THORNADO_MACHINE == ranchu* ]]; then
 
@@ -177,6 +184,16 @@ elif [[ $THORNADO_MACHINE == summit_pgi ]]; then
   module load netlib-lapack/3.8.0
   module load essl
 
+elif [[ $THORNADO_MACHINE == summit_nvhpc ]]; then
+
+  echo
+
+  module load nvhpc
+  module load spectrum-mpi
+  module load hdf5
+  module load netlib-lapack
+  module load essl
+
 elif [[ $THORNADO_MACHINE == summit_xl ]]; then
 
   echo
@@ -186,6 +203,17 @@ elif [[ $THORNADO_MACHINE == summit_xl ]]; then
   module load hdf5/1.10.3
   module load netlib-lapack/3.8.0
   module load essl
+
+elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
+
+  echo
+
+  module load pgi
+  module load spectrum-mpi
+  module load hdf5
+  module load netlib-lapack
+  module load essl
+  module load cuda
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
@@ -258,9 +286,15 @@ elif [[ $THORNADO_MACHINE == rmurph ]]; then
 
   echo
 
-elif [[ $THORNADO_MACHINE == accre ]]; then
+elif [[ $THORNADO_MACHINE == accre_gnu ]]; then
 
   echo
+
+  module load GCC/6.4.0-2.28
+  module load OpenMPI/2.1.1
+  module load HDF5/1.10.1
+
+  export LAPACK_DIR=$EBROOTSCALAPACK
 
 elif [[ $THORNADO_MACHINE == ranchu ]]; then
 

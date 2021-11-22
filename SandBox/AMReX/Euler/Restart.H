@@ -12,4 +12,4 @@ extern "C"
   std::string restart_chkfile = "";
   std::string chk_file = "";
 
-};
+}

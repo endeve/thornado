@@ -437,10 +437,10 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
     CALL WriteFieldsHDF &
@@ -452,9 +452,15 @@ PROGRAM ApplicationDriver
            ( RestartFileNumber, t, &
              ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( uGF, uCF )
+#endif
+
   END IF
 
-  iCycleD = 1
+  iCycleD = 10
 !!$  iCycleW = 1; dt_wrt = -1.0_DP
   dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
@@ -472,6 +478,10 @@ PROGRAM ApplicationDriver
   CALL InitializeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
            SuppressTally_Option = SuppressTally )
+
+  CALL ComputeTally_Euler_Relativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+         SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -535,17 +545,18 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
       CALL ComputeTally_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
+             Verbose_Option = .FALSE. )
 
       wrt = .FALSE.
 
@@ -566,10 +577,10 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
   CALL WriteFieldsHDF &

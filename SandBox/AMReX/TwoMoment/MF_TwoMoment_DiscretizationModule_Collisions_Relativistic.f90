@@ -30,7 +30,6 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z
   USE MyAmrModule,                       ONLY: &
@@ -75,7 +74,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U (:,:,:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iZ1, iZ2, iZ3, iZ4, iNodeZ
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
 
@@ -156,13 +155,13 @@ CONTAINS
                              iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
 
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
@@ -172,10 +171,11 @@ CONTAINS
 
         CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )
-        
+
+ 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, duCR, dU )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
 
       END DO
 

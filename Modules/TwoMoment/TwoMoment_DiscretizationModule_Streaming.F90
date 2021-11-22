@@ -2153,7 +2153,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( GX_X2, GX, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( GX_X2, GX, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
@@ -2316,7 +2316,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeX, h2, h3, G11, G22, G33, dU_G1, dU_G2, &
     !$ACC          PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress ) &
-    !$ACC PRESENT( dh2dX1, dh3dX1, dh3dX2, G, U, dU )
+    !$ACC PRESENT( iZ_B0, iZ_E0, dh2dX1, dh3dX1, dh3dX2, G, U, dU )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeX, h2, h3, G11, G22, G33, dU_G1, dU_G2, &

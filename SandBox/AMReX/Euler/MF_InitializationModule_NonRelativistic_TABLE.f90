@@ -2,10 +2,10 @@ MODULE MF_InitializationModule_NonRelativistic_TABLE
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,       ONLY: &
-    AR => amrex_real
   USE amrex_box_module,        ONLY: &
     amrex_box
+  USE amrex_geometry_module,   ONLY: &
+    amrex_geometry
   USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
@@ -82,6 +82,14 @@ MODULE MF_InitializationModule_NonRelativistic_TABLE
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,           ONLY: &
+    DP, &
+    Zero, &
+    Half, &
+    One, &
+    Pi, &
+    TwoPi, &
+    FourPi
   USE InputParsingModule,      ONLY: &
     nLevels, &
     xL,      &
@@ -94,23 +102,17 @@ MODULE MF_InitializationModule_NonRelativistic_TABLE
 
   PUBLIC :: MF_InitializeFields_NonRelativistic_TABLE
 
-  REAL(AR), PARAMETER :: Zero   = 0.0_AR
-  REAL(AR), PARAMETER :: Half   = 0.5_AR
-  REAL(AR), PARAMETER :: One    = 1.0_AR
-  REAL(AR), PARAMETER :: Pi     = ACOS( -1.0_AR )
-  REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
-  REAL(AR), PARAMETER :: FourPi = 4.0_AR * Pi
-
 
 CONTAINS
 
 
   SUBROUTINE MF_InitializeFields_NonRelativistic_TABLE &
-    ( ProgramName, MF_uGF, MF_uCF )
+    ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -178,11 +180,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -191,13 +193,13 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR), PARAMETER :: D_0 = 1.0e12_AR * Gram / Centimeter**3
-    REAL(AR), PARAMETER :: Amp = 1.0e11_AR * Gram / Centimeter**3
-    REAL(AR), PARAMETER :: L   = 1.0e02_AR * Kilometer
+    REAL(DP), PARAMETER :: D_0 = 1.0e12_DP * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Amp = 1.0e11_DP * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: L   = 1.0e02_DP * Kilometer
 
     uGF_K = Zero
     uCF_K = Zero
@@ -245,15 +247,15 @@ CONTAINS
             uPF_K(iNodeX,iPF_D ) &
               = D_0 + Amp * SIN( TwoPi * X1 / L )
             uPF_K(iNodeX,iPF_V1) &
-              = 0.1_AR * SpeedOfLight
+              = 0.1_DP * SpeedOfLight
             uPF_K(iNodeX,iPF_V2) &
-              = 0.0_AR * Kilometer / Second
+              = 0.0_DP * Kilometer / Second
             uPF_K(iNodeX,iPF_V3) &
-              = 0.0_AR * Kilometer / Second
+              = 0.0_DP * Kilometer / Second
             uAF_K(iNodeX,iAF_P ) &
-              = 1.0e-2_AR * D_0 * SpeedOfLight**2
+              = 1.0e-2_DP * D_0 * SpeedOfLight**2
             uAF_K(iNodeX,iAF_Ye) &
-              = 0.3_AR
+              = 0.3_DP
 
           END DO
 
@@ -307,11 +309,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -320,8 +322,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -368,21 +370,21 @@ CONTAINS
 
             IF( X1 .LE. Zero ) THEN
 
-              uPF_K(iNodeX,iPF_D ) = 1.0e12_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.0e12_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero      * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero      * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero      * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e32_AR * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.4_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_DP * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.4_DP
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D ) = 1.25e11_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.25e11_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e31_AR  * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.3_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e31_DP  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.3_DP
 
             END IF
 
@@ -439,11 +441,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -452,8 +454,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -498,23 +500,23 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            IF( X1 .LE. 5.0_AR * Kilometer ) THEN
+            IF( X1 .LE. 5.0_DP * Kilometer ) THEN
 
-              uPF_K(iNodeX,iPF_D ) = 1.0e12_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.0e12_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero      * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero      * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero      * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e32_AR * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.4_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_DP * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.4_DP
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D ) = 1.25e11_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.25e11_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e31_AR  * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.4_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e31_DP  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.4_DP
 
             END IF
 
@@ -570,11 +572,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -583,8 +585,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -631,23 +633,23 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-            IF( SQRT( X1**2 + X2**2 ) <= 5.0_AR * Kilometer ) THEN
+            IF( SQRT( X1**2 + X2**2 ) <= 5.0_DP * Kilometer ) THEN
 
-              uPF_K(iNodeX,iPF_D ) = 1.0e12_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.0e12_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero      * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero      * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero      * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e32_AR * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.4_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_DP * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.4_DP
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D ) = 1.25e11_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.25e11_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e31_AR  * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.4_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e31_DP  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.4_DP
 
             END IF
 
@@ -704,11 +706,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -717,8 +719,8 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -768,43 +770,43 @@ CONTAINS
             IF( X1 .LE. Half * Kilometer .AND. X2 .LE. Half * Kilometer )THEN
 
               !SW
-              uPF_K(iNodeX,iPF_D ) = 0.80e12_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 0.80e12_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e32_AR  * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.3e0_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_DP  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.3e0_DP
 
             ELSE IF( X1 .LE. Half * Kilometer &
                        .AND. X2 .GT. Half * Kilometer )THEN
               !NW
-              uPF_K(iNodeX,iPF_D ) = 1.0e12_AR  * Gram / Centimeter**3
-              uPF_K(iNodeX,iPF_V1) = 7.275e4_AR * Kilometer / Second
+              uPF_K(iNodeX,iPF_D ) = 1.0e12_DP  * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_V1) = 7.275e4_DP * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e32_AR  * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.3e0_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_DP  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.3e0_DP
 
             ELSE IF( X1 .GT. Half * Kilometer &
                        .AND. X2 .GT. Half * Kilometer )THEN
 
               !NE
-              uPF_K(iNodeX,iPF_D ) = 0.5313e12_AR * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 0.5313e12_DP * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero         * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero         * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero         * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 0.4e32_AR    * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.3e0_AR
+              uAF_K(iNodeX,iAF_P ) = 0.4e32_DP    * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.3e0_DP
 
             ELSE
 
               !SE
-              uPF_K(iNodeX,iPF_D ) = 1.0e12_AR  * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_D ) = 1.0e12_DP  * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
-              uPF_K(iNodeX,iPF_V2) = 7.275e4_AR * Kilometer / Second
+              uPF_K(iNodeX,iPF_V2) = 7.275e4_DP * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e32_AR  * Erg / Centimeter**3
-              uAF_K(iNodeX,iAF_Ye) = 0.3e0_AR
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_DP  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.3e0_DP
 
             END IF
 
@@ -860,11 +862,11 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2
-    REAL(AR)       :: X1, X2
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    REAL(DP)       :: X1, X2
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCF_K(nDOFX,nCF)
+    REAL(DP)       :: uPF_K(nDOFX,nPF)
+    REAL(DP)       :: uAF_K(nDOFX,nAF)
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -873,16 +875,16 @@ CONTAINS
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-dependent Parameters ---
-    REAL(AR), PARAMETER :: D_0  = 1.25e13_AR * ( Gram / Centimeter**3 )
-    REAL(AR), PARAMETER :: P_0  = 1.0e32_AR  * ( Erg / Centimeter**3 )
-    REAL(AR), PARAMETER :: Ye_0 = 1.35e-1_AR
-    REAL(AR), PARAMETER :: D_1  = 1.0e14_AR  * ( Gram / Centimeter**3 )
-    REAL(AR), PARAMETER :: P_1  = 1.0e33_AR  * ( Erg / Centimeter**3 )
-    REAL(AR), PARAMETER :: Ye_1 = 1.5e-1_AR
+    REAL(DP), PARAMETER :: D_0  = 1.25e13_DP * ( Gram / Centimeter**3 )
+    REAL(DP), PARAMETER :: P_0  = 1.0e32_DP  * ( Erg / Centimeter**3 )
+    REAL(DP), PARAMETER :: Ye_0 = 1.35e-1_DP
+    REAL(DP), PARAMETER :: D_1  = 1.0e14_DP  * ( Gram / Centimeter**3 )
+    REAL(DP), PARAMETER :: P_1  = 1.0e33_DP  * ( Erg / Centimeter**3 )
+    REAL(DP), PARAMETER :: Ye_1 = 1.5e-1_DP
 
     uGF_K = Zero
     uCF_K = Zero
@@ -929,7 +931,7 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-            IF( X1 + X2 .LT. 0.15_AR * Kilometer )THEN
+            IF( X1 + X2 .LT. 0.15_DP * Kilometer )THEN
 
                uPF_K(iNodeX,iPF_D) &
                  = D_0

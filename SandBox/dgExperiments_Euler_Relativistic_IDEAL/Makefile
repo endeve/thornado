@@ -2,7 +2,7 @@ THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-DEFINES += -DTHORNADO_DEBUG
+#DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
@@ -90,4 +90,21 @@ TimeSteppingModule_SSPRK.o: \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
   TimersModule_Euler.o \
+  Euler_dgDiscretizationModule.o \
+  Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.F90
+
+ComputePrimitiveTest.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ProgramHeaderModule.o \
+  UnitsModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_ErrorModule.o \
+  TimersModule_Euler.o \
+  ComputePrimitiveTest.F90

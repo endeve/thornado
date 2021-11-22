@@ -18,7 +18,7 @@ PROGRAM ApplicationDriver
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment  
+    ComputeFromConserved_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -32,6 +32,8 @@ PROGRAM ApplicationDriver
   USE InitializationModule, ONLY: &
     InitializeFields, &
     ComputeError
+  USE TwoMoment_TallyModule_OrderV, ONLY: &
+    ComputeTally
 
   IMPLICIT NONE
 
@@ -42,6 +44,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: TimeSteppingScheme
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -116,7 +119,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 1.0d0
+      t_end   = 1.0d-1
       iCycleD = 10
       iCycleW = 10
       maxCycles = 1000000
@@ -127,9 +130,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .FALSE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'IsotropicRadiation' )
 
@@ -158,9 +161,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .FALSE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'StreamingDopplerShift' )
 
@@ -224,9 +227,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
 
     CASE( 'TransparentTurbulence' )
 
@@ -287,9 +290,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'TransparentShock' )
 
@@ -352,9 +355,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .TRUE.
-
+      UseSlopeLimiter      = .TRUE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'TransparentVortex' )
 
@@ -402,9 +405,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'RadiatingSphere' )
 
@@ -419,14 +422,14 @@ PROGRAM ApplicationDriver
       nE    = 16
       eL    = 0.0d0
       eR    = 3.0d2
-      bcE   = 10
+      bcE   = 2
       ZoomE = 1.310262775587271_DP
 
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end = 1.0d+1
+      t_end = 2.0d+4
       iCycleD = 1
       iCycleW = 2000
       maxCycles = 1000000
@@ -435,9 +438,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
 
     CASE( 'GaussianDiffusion' )
 
@@ -466,9 +469,9 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE( 'HomogeneousSphere1D' )
 
@@ -505,6 +508,7 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator = .TRUE.
       UseSlopeLimiter          = .TRUE.
       UsePositivityLimiter     = .TRUE.
+      UseEnergyLimiter         = .FALSE.
 
     CASE( 'HomogeneousSphere2D' )
 
@@ -533,9 +537,9 @@ PROGRAM ApplicationDriver
       Chi   = 4.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter = .FALSE.
-
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
 
     CASE DEFAULT
 
@@ -556,6 +560,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields( V_0, LengthScale, Direction, Spectrum )
 
+  t = 0.0_DP
+
   ! --- Apply Slope Limiter to Initial Data ---
 
   CALL ApplySlopeLimiter_TwoMoment &
@@ -568,15 +574,23 @@ PROGRAM ApplicationDriver
 
   ! --- Write Initial Condition ---
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
+#endif
+
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
-  ! --- Evolve ---
+  CALL ComputeTally &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
+           SetInitialValues_Option = .TRUE. )
 
-  t  = 0.0_DP
+  ! --- Evolve ---
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -628,6 +642,12 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uGF, uCF, uCR )
+#endif
+
       CALL ComputeFromConserved_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
@@ -637,9 +657,17 @@ PROGRAM ApplicationDriver
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
 
+      CALL ComputeTally( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+
     END IF
 
   END DO
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST( uGF, uCF, uCR )
+#endif
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
@@ -649,6 +677,8 @@ PROGRAM ApplicationDriver
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
+
+  CALL ComputeTally( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
   CALL ComputeError( t )
 
@@ -695,6 +725,8 @@ CONTAINS
       InitializeSlopeLimiter_TwoMoment
     USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
       InitializePositivityLimiter_TwoMoment
+    USE TwoMoment_TallyModule_OrderV, ONLY: &
+      InitializeTally
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Initialize_IMEX_RK
 
@@ -805,8 +837,14 @@ CONTAINS
                = SqrtTiny, &
              UsePositivityLimiter_Option &
                = UsePositivityLimiter, &
+             UseEnergyLimiter_Option &
+               = UseEnergyLimiter, &
              Verbose_Option &
                = .TRUE. )
+
+    ! --- Initialize Tally ---
+
+    CALL InitializeTally
 
     ! --- Initialize Time Stepper ---
 
@@ -819,6 +857,8 @@ CONTAINS
 
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Finalize_IMEX_RK
+    USE TwoMoment_TallyModule_OrderV, ONLY: &
+      FinalizeTally
     USE TwoMoment_OpacityModule_OrderV, ONLY: &
       DestroyOpacities
     USE EquationOfStateModule, ONLY: &
@@ -849,6 +889,8 @@ CONTAINS
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
+
+    CALL FinalizeTally
 
     CALL DestroyOpacities
 

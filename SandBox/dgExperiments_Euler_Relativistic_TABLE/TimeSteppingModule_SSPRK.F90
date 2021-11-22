@@ -20,6 +20,10 @@ MODULE TimeSteppingModule_SSPRK
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_UpdateFluid
+  USE Euler_dgDiscretizationModule, ONLY: &
+    OffGridFlux_Euler
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    IncrementOffGridTally_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -38,7 +42,8 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE FluidIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+        SuppressBC_Option, UseXCFC_Option )
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -52,6 +57,8 @@ MODULE TimeSteppingModule_SSPRK
         dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
+      LOGICAL,  INTENT(in), OPTIONAL :: &
+        UseXCFC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
 
@@ -99,10 +106,28 @@ CONTAINS
                  iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    a_SSPRK, c_SSPRK, w_SSPRK ) &
+    !$OMP MAP( alloc: U_SSPRK, D_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     a_SSPRK, c_SSPRK, w_SSPRK ) &
+    !$ACC CREATE(     U_SSPRK, D_SSPRK )
+#endif
+
   END SUBROUTINE InitializeFluid_SSPRK
 
 
   SUBROUTINE FinalizeFluid_SSPRK
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: U_SSPRK, D_SSPRK, a_SSPRK, c_SSPRK, w_SSPRK )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       U_SSPRK, D_SSPRK, a_SSPRK, c_SSPRK, w_SSPRK )
+#endif
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
@@ -180,16 +205,46 @@ CONTAINS
 
     LOGICAL :: DEBUG = .FALSE.
 
-    INTEGER :: iS, jS, iX1, iX2, iX3
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
+    INTEGER :: iS, jS
+
+    REAL(DP) :: dM_OffGrid_Euler(nCF)
+
+    dM_OffGrid_Euler = Zero
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    U_SSPRK = Zero ! --- State
-    D_SSPRK = Zero ! --- Increment
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+#endif
 
     DO iS = 1, nStages_SSPRK
 
-      U_SSPRK = U
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B1, iX_E1, U_SSPRK, U )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iCF = 1, nCF
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nDOFX
+
+        U_SSPRK(iNX,iX1,iX2,iX3,iCF) = U(iNX,iX1,iX2,iX3,iCF)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
       DO jS = 1, iS - 1
 
@@ -197,7 +252,7 @@ CONTAINS
 
           IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
           CALL AddIncrement_Fluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
+                 ( jS, One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK )
 
         END IF
 
@@ -216,6 +271,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
+        dM_OffGrid_Euler &
+          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+
       END IF
 
     END DO
@@ -225,7 +283,7 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
+               ( iS, One, U, dt * w_SSPRK(iS), D_SSPRK )
 
       END IF
 
@@ -237,36 +295,58 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    U, D ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      U, D ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G )
+#endif
+
+    CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
+
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
 
 
-  SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
+  SUBROUTINE AddIncrement_Fluid( iS, alpha, U, beta, D )
 
+    INTEGER,  INTENT(in)    :: &
+      iS
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:,:)
 
-    INTEGER :: iCF, iX1, iX2, iX3
+    INTEGER :: iNX, iX1, iX2, iX3, iCF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, U, D )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
     DO iCF = 1, nCF
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = alpha * U(iNX,iX1,iX2,iX3,iCF) &
+            + beta * D(iNX,iX1,iX2,iX3,iCF,iS)
 
-        U(:,iX1,iX2,iX3,iCF) &
-          = alpha * U(:,iX1,iX2,iX3,iCF) &
-              + beta * D(:,iX1,iX2,iX3,iCF)
-
-      END DO
-      END DO
-      END DO
-
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE AddIncrement_Fluid

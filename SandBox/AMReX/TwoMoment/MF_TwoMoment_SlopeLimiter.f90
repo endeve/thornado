@@ -29,7 +29,6 @@ MODULE MF_TwoMoment_SlopeLimiter
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z
   USE MyAmrModule,                       ONLY: &
@@ -67,7 +66,7 @@ CONTAINS
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iZ2, iZ1, iLo_MF(4)
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iLo_MF(4)
 
 
     LOGICAL :: Verbose
@@ -138,21 +137,21 @@ CONTAINS
 
 
         CALL amrex2thornado_X &
-               ( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL amrex2thornado_X &
-               ( nCF, iX_B1, iX_E1, iLo_MF, uCF, C )
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
 
         CALL ApplySlopeLimiter_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, Verbose_Option = Verbose )
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, uCR, U )
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
 
       END DO
 

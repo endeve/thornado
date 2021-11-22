@@ -11,10 +11,15 @@ MODULE RadiationFieldsModule
   LOGICAL :: Verbose
 
   INTEGER, PUBLIC            :: nSpecies
-  INTEGER, PUBLIC, PARAMETER :: iNuE     = 1
-  INTEGER, PUBLIC, PARAMETER :: iNuE_Bar = 2
-  INTEGER, PUBLIC, PARAMETER :: iNuX     = 3
-  INTEGER, PUBLIC, PARAMETER :: iNuX_Bar = 4
+  INTEGER, PUBLIC, PARAMETER :: iNuE     = 1 ! Electron Neutrino
+  INTEGER, PUBLIC, PARAMETER :: iNuE_Bar = 2 ! Electron Antineutrino
+  INTEGER, PUBLIC, PARAMETER :: iNuM     = 3 ! Muon Neutrino
+  INTEGER, PUBLIC, PARAMETER :: iNuM_Bar = 4 ! Muon Antineutrino
+  INTEGER, PUBLIC, PARAMETER :: iNuT     = 5 ! Tau Neutrino
+  INTEGER, PUBLIC, PARAMETER :: iNuT_Bar = 6 ! Tau Antineutrino
+
+  REAL(DP), DIMENSION(6), PUBLIC, PARAMETER :: &
+    LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
 
   ! --- Eulerian (Conserved) Radiation Fields ---
 
@@ -35,7 +40,6 @@ MODULE RadiationFieldsModule
                      'CR_G1', &
                      'CR_G2', &
                      'CR_G3' ]
-
 
   REAL(DP), DIMENSION(nCR), PUBLIC :: unitsCR
 
@@ -190,6 +194,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nPR, 1:nSpecies) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uPR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uPR )
+#endif
+
   END SUBROUTINE CreateRadiationFields_Primitive
 
 
@@ -224,10 +236,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCR )
+    !$OMP MAP( release: uCR, uPR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( uCR )
+    !$ACC DELETE( uCR, uPR )
 #endif
 
     DEALLOCATE( uCR, rhsCR, uPR, uAR )

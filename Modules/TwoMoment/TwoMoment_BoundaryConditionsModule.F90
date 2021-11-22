@@ -1,7 +1,8 @@
 MODULE TwoMoment_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP, sqrttiny
+    DP, Zero, Half, One, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, nE, &
     nNodesZ, nDOF, nDOFE, nDOFX
@@ -54,7 +55,7 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: U, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
+    !$ACC ENTER DATA ASYNC &
     !$ACC COPYIN( U, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
@@ -75,7 +76,7 @@ CONTAINS
     !$OMP MAP( from: U ) &
     !$OMP MAP( release: iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
+    !$ACC EXIT DATA ASYNC &
     !$ACC COPYOUT( U ) &
     !$ACC DELETE( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
@@ -94,13 +95,28 @@ CONTAINS
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
         1:nCR,1:nSpecies)
+
     INTEGER, PARAMETER :: nE_LeastSquares = 5
+    INTEGER  :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
+    REAL(DP) :: E_K(2), E_R
+    REAL(DP) :: &
+      N_K(2, &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nSpecies), &
+      a_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nSpecies), &
+      b_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nSpecies)
     REAL(DP) :: L_lnN( nE_LeastSquares, nDOFE, nDOFX)
     REAL(DP) :: L_N( nE_LeastSquares, nDOFE, nDOFX)
     REAL(DP) :: N(nE_LeastSquares, nDOFE), lnN(nE_LeastSquares, nDOFE)
-    REAL(DP) :: E(nE_LeastSquares, nDOFE), E_R, A_T(nDOFX), B_T(nDOFX)
-    INTEGER :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
-
+    REAL(DP) :: E(nE_LeastSquares, nDOFE), A_T(nDOFX), B_T(nDOFX)
     
     SELECT CASE ( bcZ(1) )
 
@@ -111,7 +127,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -149,7 +165,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -184,13 +200,93 @@ CONTAINS
 
     CASE ( 10 ) ! Custom
 
+      ! --- Compute Cell Averaged Density in Last Two Elements ---
+
+      ASSOCIATE &
+        ( CenterE => MeshE % Center, &
+          WidthE  => MeshE % Width )
+
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: N_K, a_K, b_K ) &
+      !$OMP MAP( to: CenterE, WidthE )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+      !$ACC ENTER DATA ASYNC &
+      !$ACC CREATE( N_K, a_K, b_K ) &
+      !$ACC COPYIN( CenterE, WidthE )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, N_K, Weights_q )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, 2
+
+        N_K(iZ1,iZ2,iZ3,iZ4,iS) = Zero
+
+        DO iNodeZ = 1, nDOF
+
+          N_K(iZ1,iZ2,iZ3,iZ4,iS) &
+            = N_K(iZ1,iZ2,iZ3,iZ4,iS) &
+                + Weights_q(iNodeZ) &
+                    * U(iNodeZ,iZ_E0(1)-(2-iZ1),iZ2,iZ3,iZ4,iCR_N,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      ! --- Compute Exponential Extrapolation Coefficients ---
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) ASYNC &
+      !$ACC PRESENT( iZ_B0, iZ_E0, N_K, a_K, b_K, CenterE )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+        a_K(iZ2,iZ3,iZ4,iS) &
+          = ( CenterE(iZ_E0(1)-1) * LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) &
+                - CenterE(iZ_E0(1)) * LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) ) &
+            / ( CenterE(iZ_E0(1)) - CenterE(iZ_E0(1)-1) )
+
+        b_K(iZ2,iZ3,iZ4,iS) &
+          = ( LOG( N_K(1,iZ2,iZ3,iZ4,iS) ) &
+                - LOG( N_K(2,iZ2,iZ3,iZ4,iS) ) ) &
+            / ( CenterE(iZ_E0(1)) - CenterE(iZ_E0(1)-1) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+      !$OMP PRIVATE( E_R )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ ) &
+      !$ACC PRIVATE( E_R )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7) &
+      !$OMP PRIVATE( E_R )
 #endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
@@ -208,8 +304,66 @@ CONTAINS
 
           ! --- Outer Boundary ---
 
-          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-            = U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+          IF( iCR == iCR_N )THEN
+
+            E_R = CenterE(iZ_E0(1)) + Half * WidthE(iZ_E0(1))
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+              = One / ( EXP(   a_K(iZ2,iZ3,iZ4,iS) &
+                             + b_K(iZ2,iZ3,iZ4,iS) * E_R ) + One )
+
+          ELSE
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+              = Zero
+
+          END IF
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: N_K, a_K, b_K, CenterE, WidthE )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA ASYNC &
+      !$ACC DELETE( N_K, a_K, b_K, CenterE, WidthE )
+#endif
+
+      END ASSOCIATE
+
+    CASE ( 11 ) ! Custom
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          IF( iCR == iCR_N )THEN
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = SqrtTiny
+
+          ELSE
+
+            U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+
+          END IF
 
         END DO
 
@@ -356,7 +510,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -392,7 +546,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -429,7 +583,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
       !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
@@ -499,6 +653,14 @@ CONTAINS
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7)
+#endif
       DO iS = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -530,7 +692,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
       !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
@@ -683,7 +845,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -719,7 +881,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -756,7 +918,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
       !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
@@ -826,6 +988,14 @@ CONTAINS
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -857,7 +1027,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
       !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
@@ -959,7 +1129,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -995,7 +1165,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(7)
@@ -1032,7 +1202,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
       !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
@@ -1102,6 +1272,14 @@ CONTAINS
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(7)
+#endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = 1, swZ(4)
@@ -1133,7 +1311,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
       !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)

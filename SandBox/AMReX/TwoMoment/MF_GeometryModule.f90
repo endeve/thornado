@@ -74,12 +74,12 @@ CONTAINS
                              iX_B1(3):iX_E1(3),1:nGF) )
 print*, iX_B1
 print*, iX_E1
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, uGF, G )
+        CALL thornado2amrex_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         DEALLOCATE( G )
 

@@ -2,8 +2,6 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,                  ONLY: &
-    AR => amrex_real
   USE amrex_box_module,                   ONLY: &
     amrex_box
   USE amrex_geometry_module,              ONLY: &
@@ -13,6 +11,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module,              ONLY: &
+    amrex_parallel_reduce_sum
 
   ! --- thornado Modules ---
 
@@ -25,15 +25,21 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE GeometryFieldsModule,               ONLY: &
     nGF
   USE Euler_dgDiscretizationModule,       ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    OffGridFlux_Euler
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                      ONLY: &
+    DP, &
+    Zero
   USE MF_UtilitiesModule,                 ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
+  USE MF_FieldsModule,                    ONLY: &
+    MF_OffGridFlux_Euler
   USE InputParsingModule,                 ONLY: &
     nLevels, &
     UseTiling, &
@@ -68,20 +74,22 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: duCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: duCF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: D (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: dU(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dU(:,:,:,:,:)
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iCF
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     TYPE(EdgeMap) :: Edge_Map
+
+    MF_OffGridFlux_Euler = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -182,7 +190,7 @@ CONTAINS
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-      CALL MF_duCF(iLevel) % setval( 0.0_AR )
+      CALL MF_duCF(iLevel) % setval( Zero )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -243,6 +251,9 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE. )
 
+        MF_OffGridFlux_Euler(iLevel,:) &
+          = MF_OffGridFlux_Euler(iLevel,:) + OffGridFlux_Euler
+
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
 
@@ -261,6 +272,12 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iCF = 1, nCF
+
+      CALL amrex_parallel_reduce_sum( MF_OffGridFlux_Euler(:,iCF), nLevels )
 
     END DO
 

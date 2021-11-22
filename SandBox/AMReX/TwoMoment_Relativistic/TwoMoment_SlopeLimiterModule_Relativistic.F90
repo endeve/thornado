@@ -168,7 +168,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, SuppressBC_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, SuppressBC_Option, Verbose_Option )
 
     INTEGER, INTENT(in)            :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -189,8 +189,11 @@ CONTAINS
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      Verbose_Option
 
     LOGICAL :: SuppressBC
+    LOGICAL :: Verbose
 
     IF( .NOT. UseSlopeLimiter .OR. nDOFX == 1 ) RETURN
 
@@ -200,6 +203,22 @@ CONTAINS
     ELSE
       SuppressBC = .FALSE.
     END IF
+
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    END IF
+
+
+
+    IF (Verbose) THEN
+
+      PRINT*, "      ApplySlopeLimiter_TwoMoment"
+
+    END IF
+
+
 
     IF( .NOT. SuppressBC )THEN
 
@@ -314,7 +333,6 @@ CONTAINS
             iZ_B0(3):iZ_E0(3), &
             iZ_B0(4):iZ_E0(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nCR,1:nSpecies)
-
 
 
     iE_B0 = iZ_B0(1); iX_B0 = iZ_B0(2:4)

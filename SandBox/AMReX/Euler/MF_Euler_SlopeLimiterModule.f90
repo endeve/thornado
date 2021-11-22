@@ -4,8 +4,6 @@ MODULE MF_Euler_SlopeLimiterModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,                 ONLY: &
-    AR => amrex_real
   USE amrex_box_module,                  ONLY: &
     amrex_box
   USE amrex_geometry_module,             ONLY: &
@@ -31,6 +29,8 @@ MODULE MF_Euler_SlopeLimiterModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule,                     ONLY: &
+    DP
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
@@ -68,13 +68,13 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: D(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER       :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
                      iLo_MF(4), iApplyBC(3)

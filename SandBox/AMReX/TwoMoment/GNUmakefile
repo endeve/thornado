@@ -5,8 +5,8 @@ THORNADO_HOME ?= $(THORNADO_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
 
-HDF5_INC       = $(HDF5_HOME)/include
-HDF5_LIB       = $(HDF5_HOME)/lib
+HDF5_INC       = $(HDF5_HOME)/serial/include
+HDF5_LIB       = $(HDF5_HOME)/serial/lib
 
 DEBUG     = TRUE
 
@@ -24,6 +24,17 @@ COMP      = gnu
 DIM       = 1
 
 EBASE     = main
+
+WEAK ?=TABLE
+
+ifeq ($(WEAK),TABLE)
+#  USE_HDF5 = TRUE
+  INCLUDE_LOCATIONS += $(HDF5_INC)
+  LIBRARY_LOCATIONS += $(HDF5_LIB)
+  LIBRARIES += -lhdf5_fortran -lhdf5
+  include $(THORNADO_HOME)/SandBox/AMReX/TwoMoment/Make.weaklib
+endif
+
 
 INCLUDE_LOCATIONS += /usr/include
 LIBRARY_LOCATIONS += /usr/lib/x86_64-linux-gnu/lapack

@@ -39,6 +39,11 @@ MODULE Euler_UtilitiesModule
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_Euler
 
+  INTERFACE ComputeConserved_Euler
+    MODULE PROCEDURE ComputeConserved_Scalar
+    MODULE PROCEDURE ComputeConserved_Vector
+  END INTERFACE ComputeConserved_Euler
+
 
 CONTAINS
 
@@ -87,8 +92,7 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-      iErr )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
@@ -96,16 +100,13 @@ CONTAINS
       PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
-    INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr(:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-             iErr )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #else
 
@@ -119,7 +120,43 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector
 
 
-  SUBROUTINE ComputeConserved_Euler &
+  SUBROUTINE ComputeConserved_Scalar &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+      AF_P )
+
+    REAL(DP), INTENT(in)  :: &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+    REAL(DP), INTENT(out) :: &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), INTENT(in)  :: &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+
+    ! --- Only needed for relativistic code ---
+    REAL(DP), INTENT(in) :: AF_P
+
+#ifdef HYDRO_RELATIVISTIC
+
+    CALL ComputeConserved_Euler_Relativistic &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+             AF_P )
+
+#else
+
+    CALL ComputeConserved_Euler_NonRelativistic &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+#endif
+
+  END SUBROUTINE ComputeConserved_Scalar
+
+
+  SUBROUTINE ComputeConserved_Vector &
     ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
@@ -152,7 +189,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeConserved_Euler
+  END SUBROUTINE ComputeConserved_Vector
 
 
   SUBROUTINE ComputeFromConserved_Euler &
@@ -211,15 +248,15 @@ CONTAINS
 
 
   FUNCTION Eigenvalues_Euler &
-    ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
+    ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: V, Cs, Gmii
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi
@@ -229,13 +266,13 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     Eigenvalues_Euler = Eigenvalues_Euler_Relativistic &
-                          ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
+                          ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
                             Lapse, Shift_Xi )
 
 #else
 
     Eigenvalues_Euler = Eigenvalues_Euler_NonRelativistic &
-                          ( V, Cs, Gmii )
+                          ( Vi, Cs, Gmii )
 
 #endif
 
@@ -247,9 +284,9 @@ CONTAINS
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
       Gmii, aP, aM, Lapse, Shift_Xi, iErr )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -289,9 +326,9 @@ CONTAINS
   FUNCTION Flux_X1_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X1 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -324,9 +361,9 @@ CONTAINS
   FUNCTION Flux_X2_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X2 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -359,9 +396,9 @@ CONTAINS
   FUNCTION Flux_X3_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X3 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -418,9 +455,9 @@ CONTAINS
       vL, vR, pL, pR, Lapse, Shift_X1,  &
       ShockL_X2, ShockR_X2, ShockL_X3, ShockR_X3 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -480,9 +517,9 @@ CONTAINS
       vL, vR, pL, pR, Lapse, Shift_X2,  &
       ShockL_X1, ShockR_X1, ShockL_X3, ShockR_X3 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -542,9 +579,9 @@ CONTAINS
       vL, vR, pL, pR, Lapse, Shift_X3,  &
       ShockL_X1, ShockR_X1, ShockL_X2, ShockR_X2 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -601,9 +638,9 @@ CONTAINS
 
   FUNCTION NumericalFlux_Euler_HLL( uL, uR, fL, fR, aP, aM )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -630,9 +667,9 @@ CONTAINS
   FUNCTION NumericalFlux_Euler_HLLC_X1 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -665,9 +702,9 @@ CONTAINS
   FUNCTION NumericalFlux_Euler_HLLC_X2 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 
@@ -700,9 +737,9 @@ CONTAINS
   FUNCTION NumericalFlux_Euler_HLLC_X3 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
 
-#if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ROUTINE SEQ
 #endif
 

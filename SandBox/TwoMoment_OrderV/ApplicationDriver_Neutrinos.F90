@@ -25,7 +25,8 @@ PROGRAM ApplicationDriver_Neutrinos
   USE RadiationFieldsModule, ONLY: &
     uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
@@ -37,7 +38,10 @@ PROGRAM ApplicationDriver_Neutrinos
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK
   USE InitializationModule_Neutrinos, ONLY: &
-    InitializeFields
+    InitializeFields, &
+    ComputeError
+  USE TwoMoment_TallyModule_OrderV, ONLY: &
+    ComputeTally
 
   IMPLICIT NONE
 
@@ -55,10 +59,11 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: FixedTimeStep
+  INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
-  INTEGER       :: iCycle, iCycleD, iCycleW
+  INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
@@ -74,6 +79,8 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
 
   FixedTimeStep = .FALSE.
+
+  RestartFileNumber = - 1
 
   SELECT CASE( TRIM( ProgramName ) )
 
@@ -95,18 +102,19 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'BackwardEuler'
 
-      t_end = 1.0d0 * Millisecond
+      t_end = 1.0d1 * Millisecond
 
       FixedTimeStep = .TRUE.
       dt_FXD        = 1.0d-3 * Millisecond
       iCycleD       = 1
-      iCycleW       = 10
+      iCycleW       = 100
+      maxCycles     = 100000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .FALSE.
+      UsePositivityLimiter_TwoMoment = .TRUE.
 
     CASE( 'Deleptonization' )
 
@@ -130,6 +138,37 @@ PROGRAM ApplicationDriver_Neutrinos
 
       iCycleD = 1
       iCycleW = 10
+      maxCycles = 100000
+
+      EvolveEuler                    = .TRUE.
+      UseSlopeLimiter_Euler          = .FALSE.
+      UseSlopeLimiter_TwoMoment      = .FALSE.
+      UsePositivityLimiter_Euler     = .TRUE.
+      UsePositivityLimiter_TwoMoment = .TRUE.
+
+    CASE( 'EquilibriumAdvection' )
+
+      nSpecies = 2
+      nNodes   = 2
+
+      nX  = [ 8, 1, 1 ]
+      xL  = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR  = [ + 5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+      bcX = [ 1, 1, 1 ]
+
+      nE    = 16
+      eL    = 0.0d0 * MeV
+      eR    = 3.0d2 * MeV
+      bcE   = 10
+      ZoomE = 1.266038160710160_DP
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end = 1.0d1 * Millisecond
+
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 100000
 
       EvolveEuler                    = .TRUE.
       UseSlopeLimiter_Euler          = .FALSE.
@@ -150,31 +189,47 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeFields
 
-  ! --- Apply Slope Limiter to Initial Data ---
+  IF( RestartFileNumber .LT. 0 )THEN
 
-  CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+    t = Zero
 
-  CALL ApplySlopeLimiter_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+    ! --- Apply Slope Limiter to Initial Data ---
 
-  ! --- Apply Positivity Limiter to Initial Data ---
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
-  CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+    CALL ApplySlopeLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
 
-  CALL ApplyPositivityLimiter_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+    ! --- Apply Positivity Limiter to Initial Data ---
 
-  CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, &
-           WriteGF_Option = .TRUE., &
-           WriteFF_Option = .TRUE., &
-           WriteRF_Option = .TRUE. )
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    CALL ApplyPositivityLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+
+    CALL WriteFieldsHDF &
+           ( Time = 0.0_DP, &
+             WriteGF_Option = .TRUE., &
+             WriteFF_Option = .TRUE., &
+             WriteRF_Option = .TRUE. )
+
+    CALL ComputeTally &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
+             SetInitialValues_Option = .TRUE. )
+
+  ELSE
+
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadGF_Option = .TRUE., &
+             ReadFF_Option = .TRUE., &
+             ReadRF_Option = .TRUE. )
+
+  END IF
 
   ! --- Evolve ---
-
-  t = Zero
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -182,7 +237,7 @@ PROGRAM ApplicationDriver_Neutrinos
   WRITE(*,*)
 
   iCycle = 0
-  DO WHILE( t < t_end )
+  DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
     iCycle = iCycle + 1
 
@@ -220,6 +275,12 @@ PROGRAM ApplicationDriver_Neutrinos
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uGF, uCF, uCR )
+#endif
+
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
@@ -232,9 +293,18 @@ PROGRAM ApplicationDriver_Neutrinos
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
 
+      CALL ComputeTally &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+
     END IF
 
   END DO
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST( uGF, uCF, uCR )
+#endif
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -248,6 +318,11 @@ PROGRAM ApplicationDriver_Neutrinos
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
+  CALL ComputeTally &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
+
+  CALL ComputeError( t )
+
   CALL FinalizeDriver
 
 CONTAINS
@@ -257,6 +332,8 @@ CONTAINS
 
     USE TwoMoment_TimersModule_OrderV, ONLY: &
       InitializeTimers
+    USE TimersModule_Euler, ONLY: &
+      InitializeTimers_Euler
     USE ProgramInitializationModule, ONLY: &
       InitializeProgram
     USE ReferenceElementModuleX, ONLY: &
@@ -294,10 +371,14 @@ CONTAINS
       InitializeSlopeLimiter_TwoMoment
     USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
       InitializePositivityLimiter_TwoMoment
+    USE TwoMoment_TallyModule_OrderV, ONLY: &
+      InitializeTally
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Initialize_IMEX_RK
 
     CALL InitializeTimers
+
+    CALL InitializeTimers_Euler
 
     CALL InitializeProgram &
            ( ProgramName_Option &
@@ -412,17 +493,17 @@ CONTAINS
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
-               = ( One + EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinD, &
              Min_2_Option &
-               = ( One + EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinT, &
              Min_3_Option &
-               = ( One + EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * MinY, &
              Max_1_Option &
-               = ( One - EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxD, &
              Max_2_Option &
-               = ( One - EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxT, &
              Max_3_Option &
-               = ( One - EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d3 * EPSILON( One ) ) * MaxY )
 
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 
@@ -456,6 +537,10 @@ CONTAINS
              Verbose_Option &
                = .TRUE. )
 
+    ! --- Initialize Tally ---
+
+    CALL InitializeTally
+
     ! --- Initialize Time Stepper ---
 
     CALL Initialize_IMEX_RK &
@@ -468,6 +553,8 @@ CONTAINS
 
     USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
       Finalize_IMEX_RK
+    USE TwoMoment_TallyModule_OrderV, ONLY: &
+      FinalizeTally
     USE EquationOfStateModule_TABLE, ONLY: &
       FinalizeEquationOfState_TABLE
     USE OpacityModule_TABLE, ONLY: &
@@ -498,10 +585,14 @@ CONTAINS
       FinalizeReferenceElement_Lagrange
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
+    USE TimersModule_Euler, ONLY: &
+      FinalizeTimers_Euler
     USE TwoMoment_TimersModule_OrderV, ONLY: &
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
+
+    CALL FinalizeTally
 
     CALL FinalizeEquationOfState_TABLE
 
@@ -532,6 +623,8 @@ CONTAINS
     CALL FinalizeReferenceElement_Lagrange
 
     CALL FinalizeProgram
+
+    CALL FinalizeTimers_Euler
 
     CALL FinalizeTimers
 
