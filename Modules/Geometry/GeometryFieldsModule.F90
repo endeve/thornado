@@ -28,23 +28,35 @@ MODULE GeometryFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 11 ! Shift Vector 2
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 12 ! Shift Vector 3
   INTEGER, PUBLIC, PARAMETER :: iGF_Psi      = 13 ! Conformal Factor
-  INTEGER, PUBLIC, PARAMETER :: nGF          = 13 ! n Geometry Fields
+  INTEGER, PUBLIC, PARAMETER :: iGF_K_dd_11  = 14 ! Extrinsic Curvature 11
+  INTEGER, PUBLIC, PARAMETER :: iGF_K_dd_12  = 15 ! Extrinsic Curvature 12
+  INTEGER, PUBLIC, PARAMETER :: iGF_K_dd_13  = 16 ! Extrinsic Curvature 13
+  INTEGER, PUBLIC, PARAMETER :: iGF_K_dd_22  = 17 ! Extrinsic Curvature 22
+  INTEGER, PUBLIC, PARAMETER :: iGF_K_dd_23  = 18 ! Extrinsic Curvature 23
+  INTEGER, PUBLIC, PARAMETER :: iGF_K_dd_33  = 19 ! Extrinsic Curvature 33
+  INTEGER, PUBLIC, PARAMETER :: nGF          = 19 ! n Geometry Fields
 
 
   CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
-    namesGF = [ 'Newtonian Potential                         ', &
-                'Spatial Scale Factor (1)                    ', &
-                'Spatial Scale Factor (2)                    ', &
-                'Spatial Scale Factor (3)                    ', &
-                'Spatial Metric Component (11)               ', &
-                'Spatial Metric Component (22)               ', &
-                'Spatial Metric Component (33)               ', &
-                'Sqrt of Spatial Metric Determinant          ', &
-                'Lapse Function                              ', &
-                'Shift Vector (1)                            ', &
-                'Shift Vector (2)                            ', &
-                'Shift Vector (3)                            ', &
-                'Conformal Factor                            ' ]
+    namesGF = [ 'Newtonian Potential             ', &
+                'Spatial Scale Factor (1)        ', &
+                'Spatial Scale Factor (2)        ', &
+                'Spatial Scale Factor (3)        ', &
+                'Spatial Metric Component (11)   ', &
+                'Spatial Metric Component (22)   ', &
+                'Spatial Metric Component (33)   ', &
+                'Sqrt Spatial Metric Determinant ', &
+                'Lapse Function                  ', &
+                'Shift Vector (1)                ', &
+                'Shift Vector (2)                ', &
+                'Shift Vector (3)                ', &
+                'Conformal Factor                ', &
+                'Extrinsic Curvature Comp. (11)  ', &
+                'Extrinsic Curvature Comp. (12)  ', &
+                'Extrinsic Curvature Comp. (13)  ', &
+                'Extrinsic Curvature Comp. (22)  ', &
+                'Extrinsic Curvature Comp. (23)  ', &
+                'Extrinsic Curvature Comp. (33)  ' ]
 
   CHARACTER(10), DIMENSION(nGF), PUBLIC, PARAMETER :: &
    ShortNamesGF = [ 'GF_Phi_N  ', &
@@ -59,7 +71,13 @@ MODULE GeometryFieldsModule
                     'GF_Beta_1 ', &
                     'GF_Beta_2 ', &
                     'GF_Beta_3 ', &
-                    'GF_Psi    ' ]
+                    'GF_Psi    ', &
+                    'GF_K_11   ', &
+                    'GF_K_12   ', &
+                    'GF_K_13   ', &
+                    'GF_K_22   ', &
+                    'GF_K_23   ', &
+                    'GF_K_33   ' ]
 
   REAL(DP), DIMENSION(nGF), PUBLIC :: unitsGF
   REAL(DP), ALLOCATABLE,    PUBLIC :: uGF(:,:,:,:,:)
@@ -119,6 +137,12 @@ CONTAINS
     uGF(:,:,:,:,iGF_Beta_2)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_3)   = 0.0_DP
     uGF(:,:,:,:,iGF_Psi)      = 1.0_DP
+    uGF(:,:,:,:,iGF_K_dd_11)  = 0.0_DP
+    uGF(:,:,:,:,iGF_K_dd_12)  = 0.0_DP
+    uGF(:,:,:,:,iGF_K_dd_13)  = 0.0_DP
+    uGF(:,:,:,:,iGF_K_dd_22)  = 0.0_DP
+    uGF(:,:,:,:,iGF_K_dd_23)  = 0.0_DP
+    uGF(:,:,:,:,iGF_K_dd_33)  = 0.0_DP
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -190,17 +214,38 @@ CONTAINS
         unitsGF(iGF_h_2) = 1.0_DP
         unitsGF(iGF_h_3) = 1.0_DP
 
+        unitsGF(iGF_K_dd_11) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_12) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_13) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_22) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_23) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_33) = 1.0_DP / U % LengthX1Unit
+
       ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
 
         unitsGF(iGF_h_1) = 1.0_DP
         unitsGF(iGF_h_2) = 1.0_DP
         unitsGF(iGF_h_3) = U % LengthX1Unit
 
+        unitsGF(iGF_K_dd_11) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_12) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_13) = 1.0_DP
+        unitsGF(iGF_K_dd_22) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_23) = 1.0_DP
+        unitsGF(iGF_K_dd_33) = 1.0_DP
+
       ELSE IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
 
         unitsGF(iGF_h_1) = 1.0_DP
         unitsGF(iGF_h_2) = U % LengthX1Unit
         unitsGF(iGF_h_3) = U % LengthX1Unit
+
+        unitsGF(iGF_K_dd_11) = 1.0_DP / U % LengthX1Unit
+        unitsGF(iGF_K_dd_12) = 1.0_DP
+        unitsGF(iGF_K_dd_13) = 1.0_DP
+        unitsGF(iGF_K_dd_22) = U % LengthX1Unit
+        unitsGF(iGF_K_dd_23) = U % LengthX1Unit
+        unitsGF(iGF_K_dd_33) = U % LengthX1Unit
 
       ELSE
 
