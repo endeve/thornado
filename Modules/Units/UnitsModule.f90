@@ -1,7 +1,9 @@
 MODULE UnitsModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, &
+    Half, &
+    FourPi
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightMKS, &
     GravitationalConstantMKS, &
@@ -18,7 +20,8 @@ MODULE UnitsModule
   REAL(DP), PUBLIC, PARAMETER :: &
     SpeedOfLight          = 1.0_DP, &
     GravitationalConstant = 1.0_DP, &
-    BoltzmannConstant     = 1.0_DP
+    BoltzmannConstant     = 1.0_DP, &
+    MagneticPermeability  = 1.0_DP
 
   ! --- Length ---
 
@@ -54,8 +57,8 @@ MODULE UnitsModule
     Newton         = Joule / Meter, &
     Dyne           = Erg / Centimeter, &
     PlanckConstant = PlanckConstantMKS * Joule * Second, &
-    AtomicMassUnit = Gram / AvogadroConstantMKS
-
+    AtomicMassUnit = Gram / AvogadroConstantMKS, &
+    Gauss          = SQRT( Gram / ( FourPi * Centimeter ) ) / Second
 
   ! --- Units Displayed During Execution and for IO ---
 
@@ -75,7 +78,8 @@ MODULE UnitsModule
     DisplayLabel_EnergyGlobal    = 'B', &
     DisplayLabel_EnergyDensity   = 'erg/cm^3', &
     DisplayLabel_Pressure        = 'erg/cm^3', &
-    DisplayLabel_Temperature     = 'K'
+    DisplayLabel_Temperature     = 'K', &
+    DisplayLabel_MagneticField   = 'Gauss'
 
   REAL(DP), PRIVATE, PARAMETER :: &
     DisplayUnit_Length_L        = Kilometer, &
@@ -92,7 +96,8 @@ MODULE UnitsModule
     DisplayUnit_EnergyGlobal    = Bethe, &
     DisplayUnit_EnergyDensity   = Erg / Centimeter**3, &
     DisplayUnit_Pressure        = Erg / Centimeter**3, &
-    DisplayUnit_Temperature     = Kelvin
+    DisplayUnit_Temperature     = Kelvin, &
+    DisplayUnit_MagneticField   = Gauss
 
   TYPE, PRIVATE :: UnitsDisplayType
     LOGICAL  :: &
@@ -114,7 +119,8 @@ MODULE UnitsModule
       EnergyGlobalLabel    = DisplayLabel_Null, &
       EnergyDensityLabel   = DisplayLabel_Null, &
       PressureLabel        = DisplayLabel_Null, &
-      TemperatureLabel     = DisplayLabel_Null
+      TemperatureLabel     = DisplayLabel_Null, &
+      MagneticFieldLabel   = DisplayLabel_Null
     REAL(DP) :: &
       LengthX1Unit        = 1.0_DP, &
       LengthX2Unit        = 1.0_DP, &
@@ -132,7 +138,8 @@ MODULE UnitsModule
       EnergyGlobalUnit    = 1.0_DP, &
       EnergyDensityUnit   = 1.0_DP, &
       PressureUnit        = 1.0_DP, &
-      TemperatureUnit     = 1.0_DP
+      TemperatureUnit     = 1.0_DP, &
+      MagneticFieldUnit   = 1.0_DP
   END type UnitsDisplayType
 
   TYPE(UnitsDisplayType), PUBLIC :: UnitsDisplay
@@ -208,6 +215,7 @@ CONTAINS
     UnitsDisplay % EnergyDensityLabel   = DisplayLabel_EnergyDensity
     UnitsDisplay % PressureLabel        = DisplayLabel_Pressure
     UnitsDisplay % TemperatureLabel     = DisplayLabel_Temperature
+    UnitsDisplay % MagneticFieldLabel   = DisplayLabel_MagneticField
 
     UnitsDisplay % TimeUnit            = DisplayUnit_Time
     UnitsDisplay % MassUnit            = DisplayUnit_Mass
@@ -260,6 +268,7 @@ CONTAINS
     UnitsDisplay % EnergyDensityUnit   = DisplayUnit_EnergyDensity
     UnitsDisplay % PressureUnit        = DisplayUnit_Pressure
     UnitsDisplay % TemperatureUnit     = DisplayUnit_Temperature
+    UnitsDisplay % MagneticFieldUnit   = DisplayUnit_MagneticField
 
   END SUBROUTINE ActivateUnitsDisplay
 
@@ -323,6 +332,9 @@ CONTAINS
     WRITE(*,'(A7,A24,A)') &
       '', 'Temperature Units: ', &
       TRIM( UnitsDisplay % TemperatureLabel )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Magnetic Field Units: ', &
+      TRIM( UnitsDisplay % MagneticFieldLabel )
     WRITE(*,*)
 
   END SUBROUTINE DescribeUnitsDisplay
