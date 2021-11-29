@@ -24,7 +24,7 @@ MODULE MagnetofluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iCM_Chi = 10 ! Divergence Violation Field
   INTEGER, PUBLIC, PARAMETER :: nCM     = 10 ! n Conserved Magnetofluid Fields
 
-  CHARACTER(40), DIMENSION(nCM), PUBLIC, PARAMETER :: &
+  CHARACTER(32), DIMENSION(nCM), PUBLIC, PARAMETER :: &
     namesCM = [ 'Conserved Baryon Density        ', &
                 'Conserved Momentum Density (1)  ', &
                 'Conserved Momentum Density (2)  ', &
@@ -53,7 +53,7 @@ MODULE MagnetofluidFieldsModule
   REAL(DP), ALLOCATABLE, PUBLIC :: uCM  (:,:,:,:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: rhsCM(:,:,:,:,:)
 
-  ! --- PrimitiveMagneto Fields ---
+  ! --- Primitive Magnetofluid Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iPM_D   = 1  ! Comoving Baryon Density
   INTEGER, PUBLIC, PARAMETER :: iPM_V1  = 2  ! Three-Velocity 1
@@ -77,7 +77,7 @@ MODULE MagnetofluidFieldsModule
                 'Eulerian Magnetic Field (1)     ', &
                 'Eulerian Magnetic Field (2)     ', &
                 'Eulerian Magnetic Field (3)     ', &
-                'Divergence Violation Field       ' ]
+                'Divergence Violation Field      ' ]
 
   CHARACTER(10),  DIMENSION(nPM), PUBLIC, PARAMETER :: &
     ShortNamesPM = [ 'PM_D      ', &
