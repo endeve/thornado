@@ -1,13 +1,11 @@
 MODULE ReferenceElementModuleX
 
   USE KindModule, ONLY: &
-    DP, &
-    One, &
-    Half
+    DP
   USE QuadratureModule, ONLY: &
     GetQuadrature
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX, nDimsX
+    nNodesX, nDOFX
 
   IMPLICIT NONE
   PRIVATE
@@ -32,9 +30,6 @@ MODULE ReferenceElementModuleX
   REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX2(:), WeightsLX2(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX3(:), WeightsLX3(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX_q(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: CoarseToFine_X1(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: CoarseToFine_X2(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: CoarseToFine_X3(:)
 
   PUBLIC :: InitializeReferenceElementX
   PUBLIC :: FinalizeReferenceElementX
@@ -45,8 +40,6 @@ CONTAINS
   SUBROUTINE InitializeReferenceElementX
 
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-
-    REAL(DP) :: xi_X1, xi_X2, xi_X3
 
     nDOFX_X1 = nNodesX(2) * nNodesX(3)
     nDOFX_X2 = nNodesX(1) * nNodesX(3)
@@ -199,16 +192,6 @@ CONTAINS
 
     END DO
 
-    ! --- Coarse element points interpolated to fine element faces ---
-
-    ALLOCATE( CoarseToFine_X1(2**(nDimsX)*nDOFX_X1) )
-    ALLOCATE( CoarseToFine_X2(2**(nDimsX)*nDOFX_X2) )
-    ALLOCATE( CoarseToFine_X3(2**(nDimsX)*nDOFX_X3) )
-
-    CALL ComputeCoarseToFine_X1( CoarseToFine_X1 )
-    CALL ComputeCoarseToFine_X2( CoarseToFine_X2 )
-    CALL ComputeCoarseToFine_X3( CoarseToFine_X3 )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: WeightsX_q, WeightsX_X1, WeightsX_X2, WeightsX_X3 )
@@ -230,9 +213,6 @@ CONTAINS
     !$ACC DELETE( WeightsX_q, WeightsX_X1, WeightsX_X2, WeightsX_X3 )
 #endif
 
-    DEALLOCATE( CoarseToFine_X3 )
-    DEALLOCATE( CoarseToFine_X2 )
-    DEALLOCATE( CoarseToFine_X1 )
     DEALLOCATE( NodeNumberTableX )
     DEALLOCATE( NodeNumberTableX_X1 )
     DEALLOCATE( NodeNumberTableX_X2 )
@@ -248,272 +228,6 @@ CONTAINS
     DEALLOCATE( NodesX_q )
 
   END SUBROUTINE FinalizeReferenceElementX
-
-
-  ! --- PRIVATE SUBROUTINES ---
-
-
-  REAL(DP) FUNCTION EtaOfXi_1D( k, xi ) RESULT( eta )
-
-    INTEGER,  INTENT(in) :: k
-    REAL(DP), INTENT(in) :: xi
-
-    eta = Half * ( xi + Half * ( -One )**( k ) )
-
-    RETURN
-  END FUNCTION EtaOfXi_1D
-
-
-  SUBROUTINE ComputeCoarseToFine_X1( CoarseToFine_X1 )
-
-    REAL(DP), INTENT(out) :: CoarseToFine_X1(:)
-
-    INTEGER :: iNodeX_X1, iNodeX2, iNodeX3
-
-    DO iNodeX3 = 1, nNodesX(3)
-    DO iNodeX2 = 1, nNodesX(2)
-
-      iNodeX_X1 = iNodeX2 + iNodeX3 - 1
-
-      IF( nDimsX .EQ. 1 )THEN
-
-        CoarseToFine_X1(iNodeX_X1)          = EtaOfXi_1D( 1, -Half )
-        CoarseToFine_X1(iNodeX_X1+nDOFX_X1) = EtaOfXi_1D( 2, +Half )
-
-      ELSE IF( nDimsX .EQ. 2 )THEN
-
-        CoarseToFine_X1(iNodeX_X1+0*nDOFX_X1) &
-          =   EtaOfXi_1D( 1, -Half ) &
-            * EtaOfXi_1D( 1, NodesX2(iNodeX2) )
-
-        CoarseToFine_X1(iNodeX_X1+1*nDOFX_X1) &
-          =   EtaOfXi_1D( 2, +Half ) &
-            * EtaOfXi_1D( 1, NodesX2(iNodeX2) )
-
-        CoarseToFine_X1(iNodeX_X1+2*nDOFX_X1) &
-          =   EtaOfXi_1D( 1, -Half ) &
-            * EtaOfXi_1D( 2, NodesX2(iNodeX2) )
-
-        CoarseToFine_X1(iNodeX_X1+3*nDOFX_X1) &
-          =   EtaOfXi_1D( 2, +Half ) &
-            * EtaOfXi_1D( 2, NodesX2(iNodeX2) )
-
-      ELSE
-
-        CoarseToFine_X1(iNodeX_X1+0*nDOFX_X1) &
-          =   EtaOfXi_1D( 1, -Half ) &
-            * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+1*nDOFX_X1) &
-          =   EtaOfXi_1D( 2, +Half ) &
-            * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+2*nDOFX_X1) &
-          =   EtaOfXi_1D( 1, -Half ) &
-            * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+3*nDOFX_X1) &
-          =   EtaOfXi_1D( 2, +Half ) &
-            * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+4*nDOFX_X1) &
-          =   EtaOfXi_1D( 1, -Half ) &
-            * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+5*nDOFX_X1) &
-          =   EtaOfXi_1D( 2, +Half ) &
-            * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+6*nDOFX_X1) &
-          =   EtaOfXi_1D( 1, -Half ) &
-            * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-        CoarseToFine_X1(iNodeX_X1+7*nDOFX_X1) &
-          =   EtaOfXi_1D( 2, +Half ) &
-            * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-            * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-      END IF
-
-    END DO
-    END DO
-
-  END SUBROUTINE ComputeCoarseToFine_X1
-
-
-  SUBROUTINE ComputeCoarseToFine_X2( CoarseToFine_X2 )
-
-    REAL(DP), INTENT(out) :: CoarseToFine_X2(:)
-
-    INTEGER :: iNodeX_X2, iNodeX1, iNodeX3, iNodeX
-
-    DO iNodeX_X2 = 1, nDOFX_X2
-
-      IF( nDimsX .EQ. 1 )THEN
-
-        CoarseToFine_X2(iNodeX_X2) = One
-
-      ELSE IF( nDimsX .EQ. 2 )THEN
-
-        DO iNodeX1 = 1, nNodesX(1)
-
-          CoarseToFine_X2(iNodeX1+0*nDOFX_X2) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, -Half )
-
-          CoarseToFine_X2(iNodeX1+1*nDOFX_X2) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, -Half )
-
-          CoarseToFine_X2(iNodeX1+2*nDOFX_X2) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, +Half )
-
-          CoarseToFine_X2(iNodeX1+3*nDOFX_X2) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, +Half )
-
-        END DO
-
-      ELSE
-
-        iNodeX = 0
-
-        DO iNodeX3 = 1, nNodesX(3)
-        DO iNodeX1 = 1, nNodesX(1)
-
-          iNodeX = iNodeX + 1
-
-          CoarseToFine_X2(iNodeX+0*nDOFX_X2) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, -Half ) &
-              * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+1*nDOFX_X2) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, -Half ) &
-              * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+2*nDOFX_X2) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, +Half ) &
-              * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+3*nDOFX_X2) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, +Half ) &
-              * EtaOfXi_1D( 1, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+4*nDOFX_X2) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, -Half ) &
-              * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+5*nDOFX_X2) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, -Half ) &
-              * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+6*nDOFX_X2) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, +Half ) &
-              * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-          CoarseToFine_X2(iNodeX+7*nDOFX_X2) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, +Half ) &
-              * EtaOfXi_1D( 2, NodesX3(iNodeX3) )
-
-        END DO
-        END DO
-
-      END IF
-
-    END DO
-
-  END SUBROUTINE ComputeCoarseToFine_X2
-
-
-  SUBROUTINE ComputeCoarseToFine_X3( CoarseToFine_X3 )
-
-    REAL(DP), INTENT(out) :: CoarseToFine_X3(:)
-
-    INTEGER :: iNodeX_X3, iNodeX1, iNodeX2, iNodeX
-
-    DO iNodeX_X3 = 1, nDOFX_X3
-
-      IF( nDimsX .EQ. 1 )THEN
-
-        CoarseToFine_X3 = One
-
-      ELSE IF( nDimsX .EQ. 2 )THEN
-
-        CoarseToFine_X3 = One
-
-      ELSE
-
-        iNodeX = 0
-
-        DO iNodeX2 = 1, nNodesX(2)
-        DO iNodeX1 = 1, nNodesX(1)
-
-          iNodeX = iNodeX + 1
-
-          CoarseToFine_X3(iNodeX+0*nDOFX_X3) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 1, +Half )
-
-          CoarseToFine_X3(iNodeX+1*nDOFX_X3) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 1, +Half )
-
-          CoarseToFine_X3(iNodeX+2*nDOFX_X3) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 1, +Half )
-
-          CoarseToFine_X3(iNodeX+3*nDOFX_X3) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 1, +Half )
-
-          CoarseToFine_X3(iNodeX+4*nDOFX_X3) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 2, -Half )
-
-          CoarseToFine_X3(iNodeX+5*nDOFX_X3) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 1, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 2, -Half )
-
-          CoarseToFine_X3(iNodeX+6*nDOFX_X3) &
-            =   EtaOfXi_1D( 1, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 2, -Half )
-
-          CoarseToFine_X3(iNodeX+7*nDOFX_X3) &
-            =   EtaOfXi_1D( 2, NodesX1(iNodeX1) ) &
-              * EtaOfXi_1D( 2, NodesX2(iNodeX2) ) &
-              * EtaOfXi_1D( 2, -Half )
-
-        END DO
-        END DO
-
-      END IF
-
-    END DO
-
-  END SUBROUTINE ComputeCoarseToFine_X3
 
 
 END MODULE ReferenceElementModuleX

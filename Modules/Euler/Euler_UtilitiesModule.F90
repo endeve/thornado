@@ -92,8 +92,7 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-      iErr )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
@@ -101,16 +100,13 @@ CONTAINS
       PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
-    INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr(:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-             iErr )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #else
 
@@ -252,7 +248,7 @@ CONTAINS
 
 
   FUNCTION Eigenvalues_Euler &
-    ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
+    ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -260,7 +256,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: V, Cs, Gmii
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift_Xi
@@ -270,13 +266,13 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     Eigenvalues_Euler = Eigenvalues_Euler_Relativistic &
-                          ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
+                          ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
                             Lapse, Shift_Xi )
 
 #else
 
     Eigenvalues_Euler = Eigenvalues_Euler_NonRelativistic &
-                          ( V, Cs, Gmii )
+                          ( Vi, Cs, Gmii )
 
 #endif
 

@@ -58,6 +58,8 @@ MODULE InitializationModule
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    InitializeReferenceElementE_Lagrange
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange
   USE ReferenceElementModule,           ONLY: &
@@ -68,6 +70,8 @@ MODULE InitializationModule
     InitializeReferenceElement
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
+  USE EquationOfStateModule_TABLE,            ONLY: &
+    InitializeEquationOfState_TABLE
   USE MeshModule,                       ONLY: &
     MeshX,      &
     MeshE,      &
@@ -199,18 +203,15 @@ CONTAINS
   SUBROUTINE InitializeProgram
 
     INTEGER               :: iLevel, iDim
-    TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
-    REAL(AR)              :: Mass, W, Vad
 
-    ! --- Initialize AMReX ---
+    ! --- Initialize AMReX --
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
 
     ! --- Parse parameter file ---
     CALL MyAmrInit
-
     IF( iRestart .LT. 0 )THEN
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
@@ -302,25 +303,26 @@ CONTAINS
     CALL InitializePolynomialBasis_Legendre
 
     CALL InitializeReferenceElementX_Lagrange
+    CALL InitializeReferenceElementE_Lagrange
     CALL InitializeReferenceElement_Lagrange
 
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
                                 Verbose_Option = amrex_parallel_ioprocessor()  )
 
-!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-!                              Verbose_Option = amrex_parallel_ioprocessor()  )
-!
-!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-!                               Verbose_Option = amrex_parallel_ioprocessor()  )
-    
-    
-
-
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
+    
+    
+
+
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+!
+!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+!                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -334,13 +336,11 @@ CONTAINS
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
 
-    #ifdef MICROPHYSICS_WEAKLIB
-
-      CALL InitializeEquationOfState &
-             ( EquationOfState_Option = EquationOfState, &
-               EquationOfStateTableName_Option &
-                 = EosTableName )
-
+#if defined(MICROPHYSICS_WEAKLIB)
+      CALL InitializeEquationOfState_TABLE &
+             (EquationOfStateTableName_Option &
+                 = EosTableName, &
+              Verbose_Option =  amrex_parallel_ioprocessor() )
       CALL InitializeOpacities_TABLE &
         ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
           OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
@@ -349,8 +349,7 @@ CONTAINS
           EquationOfStateTableName_Option = EosTableName, &
           Verbose_Option =  amrex_parallel_ioprocessor())
 
-    #else
-
+#else
 
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
@@ -362,8 +361,7 @@ CONTAINS
 
       CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, & 
                        Verbose_Option = amrex_parallel_ioprocessor()  )
-
-    #endif
+#endif
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
                               Verbose_Option = amrex_parallel_ioprocessor() )

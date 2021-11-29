@@ -15,7 +15,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE UtilitiesModule, ONLY: &
     MinModB, &
     NodeNumberX
-  USE PolynomialBasisModuleX_Legendre, ONLY: &
+  USE PolynomialBasisModule_Legendre, ONLY: &
     P_X1, &
     P_X2, &
     P_X3, &

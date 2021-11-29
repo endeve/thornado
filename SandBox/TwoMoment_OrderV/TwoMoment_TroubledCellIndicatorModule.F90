@@ -35,12 +35,25 @@ MODULE TwoMoment_TroubledCellIndicatorModule
   PUBLIC :: DetectTroubledCells_TwoMoment
 
   LOGICAL               :: UseTroubledCellIndicator
-  INTEGER               :: iX_B0(3), iX_E0(3)
-  INTEGER               :: iE_B0, iE_E0, nE_G
+  INTEGER               :: nE, nE_G
   REAL(DP)              :: C_TCI
   REAL(DP), ALLOCATABLE :: WeightsX_X1_Up(:), WeightsX_X1_Dn(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_Up(:), WeightsX_X2_Dn(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_Up(:), WeightsX_X3_Dn(:)
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE &
+  !$OMP TARGET( WeightsX_X1_Up, WeightsX_X1_Dn, &
+  !$OMP         WeightsX_X2_Up, WeightsX_X2_Dn, &
+  !$OMP         WeightsX_X3_Up, WeightsX_X3_Dn, &
+  !$OMP         C_TCI )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE &
+  !$ACC CREATE( WeightsX_X1_Up, WeightsX_X1_Dn, &
+  !$ACC         WeightsX_X2_Up, WeightsX_X2_Dn, &
+  !$ACC         WeightsX_X3_Up, WeightsX_X3_Dn, &
+  !$ACC         C_TCI )
+#endif
 
 CONTAINS
 
@@ -161,6 +174,20 @@ CONTAINS
 
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP TO( WeightsX_X1_Up, WeightsX_X1_Dn, &
+    !$OMP     WeightsX_X2_Up, WeightsX_X2_Dn, &
+    !$OMP     WeightsX_X3_Up, WeightsX_X3_Dn, &
+    !$OMP     C_TCI )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC DEVICE( WeightsX_X1_Up, WeightsX_X1_Dn, &
+    !$ACC         WeightsX_X2_Up, WeightsX_X2_Dn, &
+    !$ACC         WeightsX_X3_Up, WeightsX_X3_Dn, &
+    !$ACC         C_TCI )
+#endif
+
   END SUBROUTINE InitializeTroubledCellIndicator_TwoMoment
 
 
@@ -195,7 +222,7 @@ CONTAINS
       SuppressBC_Option
 
     LOGICAL  :: SuppressBC
-    INTEGER  :: iX1, iX2, iX3, iE_G, iS
+    INTEGER  :: iZ2, iZ3, iZ4, iE_G, iS
     REAL(DP) :: TCI
     REAL(DP) :: & ! --- Cell Averaged Density in Target Cell ---
       N_K0 (iZ_B0(2):iZ_E0(2), &
@@ -258,7 +285,7 @@ CONTAINS
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
 
     IF( .NOT. UseTroubledCellIndicator )THEN
-      TroubledCell = .FALSE.
+      TroubledCell = .TRUE.
       RETURN
     END IF
 
@@ -270,17 +297,31 @@ CONTAINS
       SuppressBC = .FALSE.
     END IF
 
+    nE   = iZ_E0(1) - iZ_B0(1) + 1
+    nE_G = nE * nDOFE ! --- Global Energy Points
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iZ_B0, iZ_E0, U_R ) &
+    !$OMP MAP( alloc: TroubledCell, N_K0, &
+    !$OMP             N_KW, N_KW0, N_KE, N_KE0, &
+    !$OMP             N_KS, N_KS0, N_KN, N_KN0, &
+    !$OMP             N_KB, N_KB0, N_KT, N_KT0 )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( iZ_B0, iZ_E0, U_R ) &
+    !$ACC CREATE( TroubledCell, N_K0, &
+    !$ACC         N_KW, N_KW0, N_KE, N_KE0, &
+    !$ACC         N_KS, N_KS0, N_KN, N_KN0, &
+    !$ACC         N_KB, N_KB0, N_KT, N_KT0 )
+#endif
+
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
     END IF
-
-    iE_B0 = iZ_B0(1); iX_B0 = iZ_B0(2:4)
-    iE_E0 = iZ_B0(1); iX_E0 = iZ_E0(2:4)
-
-    nE_G  = ( iE_E0 - iE_B0 + 1 ) * nDOFE ! --- Global Energy Points
 
     CALL ComputeCellAverages_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
@@ -294,41 +335,47 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Compute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( TCI )
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRIVATE( TCI ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, TroubledCell, N_K0, &
+    !$ACC          N_KW, N_KW0, N_KE, N_KE0, &
+    !$ACC          N_KS, N_KS0, N_KN, N_KN0, &
+    !$ACC          N_KB, N_KB0, N_KT, N_KT0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( TCI )
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
       TCI &
-        = (   ABS( N_K0(iX1,iX2,iX3,iE_G,iS) - N_KW0(iX1,iX2,iX3,iE_G,iS) ) &
-            + ABS( N_K0(iX1,iX2,iX3,iE_G,iS) - N_KE0(iX1,iX2,iX3,iE_G,iS) ) &
-            + ABS( N_K0(iX1,iX2,iX3,iE_G,iS) - N_KS0(iX1,iX2,iX3,iE_G,iS) ) &
-            + ABS( N_K0(iX1,iX2,iX3,iE_G,iS) - N_KN0(iX1,iX2,iX3,iE_G,iS) ) &
-            + ABS( N_K0(iX1,iX2,iX3,iE_G,iS) - N_KB0(iX1,iX2,iX3,iE_G,iS) ) &
-            + ABS( N_K0(iX1,iX2,iX3,iE_G,iS) - N_KT0(iX1,iX2,iX3,iE_G,iS) ) ) &
-          / MAX( ABS( N_K0(iX1,iX2,iX3,iE_G,iS) ), &
-                 ABS( N_KW(iX1,iX2,iX3,iE_G,iS) ), &
-                 ABS( N_KE(iX1,iX2,iX3,iE_G,iS) ), &
-                 ABS( N_KS(iX1,iX2,iX3,iE_G,iS) ), &
-                 ABS( N_KN(iX1,iX2,iX3,iE_G,iS) ), &
-                 ABS( N_KB(iX1,iX2,iX3,iE_G,iS) ), &
-                 ABS( N_KT(iX1,iX2,iX3,iE_G,iS) ) )
+        = (   ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) - N_KW0(iZ2,iZ3,iZ4,iE_G,iS) ) &
+            + ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) - N_KE0(iZ2,iZ3,iZ4,iE_G,iS) ) &
+            + ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) - N_KS0(iZ2,iZ3,iZ4,iE_G,iS) ) &
+            + ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) - N_KN0(iZ2,iZ3,iZ4,iE_G,iS) ) &
+            + ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) - N_KB0(iZ2,iZ3,iZ4,iE_G,iS) ) &
+            + ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) - N_KT0(iZ2,iZ3,iZ4,iE_G,iS) ) ) &
+          / MAX( ABS( N_K0(iZ2,iZ3,iZ4,iE_G,iS) ), &
+                 ABS( N_KW(iZ2,iZ3,iZ4,iE_G,iS) ), &
+                 ABS( N_KE(iZ2,iZ3,iZ4,iE_G,iS) ), &
+                 ABS( N_KS(iZ2,iZ3,iZ4,iE_G,iS) ), &
+                 ABS( N_KN(iZ2,iZ3,iZ4,iE_G,iS) ), &
+                 ABS( N_KB(iZ2,iZ3,iZ4,iE_G,iS) ), &
+                 ABS( N_KT(iZ2,iZ3,iZ4,iE_G,iS) ) )
 
       IF( TCI > C_TCI )THEN
 
-        TroubledCell(iX1,iX2,iX3,iE_G,iS) = .TRUE.
+        TroubledCell(iZ2,iZ3,iZ4,iE_G,iS) = .TRUE.
 
       ELSE
 
-        TroubledCell(iX1,iX2,iX3,iE_G,iS) = .FALSE.
+        TroubledCell(iZ2,iZ3,iZ4,iE_G,iS) = .FALSE.
 
       END IF
 
@@ -339,6 +386,20 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_TCI_Compute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: iZ_B0, iZ_E0, U_R, TroubledCell, N_K0, &
+    !$OMP               N_KW, N_KW0, N_KE, N_KE0, &
+    !$OMP               N_KS, N_KS0, N_KN, N_KN0, &
+    !$OMP               N_KB, N_KB0, N_KT, N_KT0 )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( iZ_B0, iZ_E0, U_R, TroubledCell, N_K0, &
+    !$ACC         N_KW, N_KW0, N_KE, N_KE0, &
+    !$ACC         N_KS, N_KS0, N_KN, N_KN0, &
+    !$ACC         N_KB, N_KB0, N_KT, N_KT0 )
+#endif
 
     CALL TimersStop( Timer_TCI )
 
@@ -358,70 +419,81 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_K0 (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_K0 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KW (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KW (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KW0(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KW0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KE (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KE (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KE0(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KE0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
 
     INTEGER  :: &
-      iE, iE_G, iX1, iX2, iX3, iS, &
+      iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
     REAL(DP) :: &
       N  (1:nDOFX, &
-          iX_B0(2):iX_E0(2), &
-          iX_B0(3):iX_E0(3), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
           1:nE_G,1:nSpecies, &
-          iX_B0(1)-1:iX_E0(1)+1)
+          iZ_B0(2)-1:iZ_E0(2)+1)
     REAL(DP) :: &
-      N_K(iX_B0(2):iX_E0(2), &
-          iX_B0(3):iX_E0(3), &
+      N_K(iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
           1:nE_G,1:nSpecies, &
-          iX_B0(1):iX_E0(1))
+          iZ_B0(2):iZ_E0(2))
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: N, N_K )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC CREATE( N, N_K )
+#endif
 
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+    !$ACC PRIVATE( iNodeZ, iE_G ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iE_G )
 #endif
-    DO iX1    = iX_B0(1)-1, iX_E0(1)+1
+    DO iZ2    = iZ_B0(2)-1, iZ_E0(2)+1
     DO iS     = 1         , nSpecies
-    DO iE     = iE_B0     , iE_E0
+    DO iE     = iZ_B0(1)  , iZ_E0(1)
     DO iNodeE = 1         , nDOFE
-    DO iX3    = iX_B0(3)  , iX_E0(3)
-    DO iX2    = iX_B0(2)  , iX_E0(2)
+    DO iZ4    = iZ_B0(4)  , iZ_E0(4)
+    DO iZ3    = iZ_B0(3)  , iZ_E0(3)
 
       DO iNodeX = 1, nDOFX
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
         iE_G   = (iE    -1) * nDOFE + iNodeE
 
-        N(iNodeX,iX2,iX3,iE_G,iS,iX1) &
-          = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+        N(iNodeX,iZ3,iZ4,iE_G,iS,iZ2) &
+          = U_R(iNodeZ,iE,iZ2,iZ3,iZ4,iCR_N,iS)
 
       END DO
 
@@ -441,7 +513,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(2),iX_B0(3),1,1,iX_B0(1)  ), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -449,19 +521,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_K0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_K0(iX1,iX2,iX3,iE_G,iS) = N_K(iX2,iX3,iE_G,iS,iX1)
+      N_K0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ3,iZ4,iE_G,iS,iZ2)
 
     END DO
     END DO
@@ -476,7 +549,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(2),iX_B0(3),1,1,iX_B0(1)-1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -484,19 +557,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KW, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KW(iX1,iX2,iX3,iE_G,iS) = N_K(iX2,iX3,iE_G,iS,iX1)
+      N_KW(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ3,iZ4,iE_G,iS,iZ2)
 
     END DO
     END DO
@@ -511,7 +585,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(2),iX_B0(3),1,1,iX_B0(1)-1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), &
              nDOFX, WeightsX_X1_Up, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -519,19 +593,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KW0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KW0(iX1,iX2,iX3,iE_G,iS) = N_K(iX2,iX3,iE_G,iS,iX1)
+      N_KW0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ3,iZ4,iE_G,iS,iZ2)
 
     END DO
     END DO
@@ -546,7 +621,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(2),iX_B0(3),1,1,iX_B0(1)+1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)+1), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -554,19 +629,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KE, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KE(iX1,iX2,iX3,iE_G,iS) = N_K(iX2,iX3,iE_G,iS,iX1)
+      N_KE(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ3,iZ4,iE_G,iS,iZ2)
 
     END DO
     END DO
@@ -581,7 +657,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(2),iX_B0(3),1,1,iX_B0(1)+1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)+1), &
              nDOFX, WeightsX_X1_Dn, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -589,19 +665,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KE0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KE0(iX1,iX2,iX3,iE_G,iS) = N_K(iX2,iX3,iE_G,iS,iX1)
+      N_KE0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ3,iZ4,iE_G,iS,iZ2)
 
     END DO
     END DO
@@ -610,6 +687,14 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_TCI_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: N, N_K )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( N, N_K )
+#endif
 
   END SUBROUTINE ComputeCellAverages_X1
 
@@ -627,78 +712,109 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
     REAL(DP), INTENT(in)  :: &
-      N_K0 (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_K0 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KS (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KS (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KS0(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KS0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KN (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KN (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KN0(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KN0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
 
     INTEGER  :: &
-      iE, iE_G, iX1, iX2, iX3, iS, &
+      iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
     REAL(DP) :: &
       N  (1:nDOFX, &
-          iX_B0(1):iX_E0(1), &
-          iX_B0(3):iX_E0(3), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(4):iZ_E0(4), &
           1:nE_G,1:nSpecies, &
-          iX_B0(2)-1:iX_E0(2)+1)
+          iZ_B0(3)-1:iZ_E0(3)+1)
     REAL(DP) :: &
-      N_K(iX_B0(1):iX_E0(1), &
-          iX_B0(3):iX_E0(3), &
+      N_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(4):iZ_E0(4), &
           1:nE_G,1:nSpecies, &
-          iX_B0(2):iX_E0(2))
+          iZ_B0(3):iZ_E0(3))
 
-    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
-       N_KS  = N_K0
-       N_KS0 = N_K0
-       N_KN  = N_K0
-       N_KN0 = N_K0
+    IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+      !$ACC PRESENT( iZ_B0, iZ_E0, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+       DO iS   = 1       , nSpecies
+       DO iE_G = 1       , nE_G
+       DO iZ4  = iZ_B0(4), iZ_E0(4)
+       DO iZ3  = iZ_B0(3), iZ_E0(3)
+       DO iZ2  = iZ_B0(2), iZ_E0(2)
+
+         N_KS (iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+         N_KS0(iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+         N_KN (iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+         N_KN0(iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+
+       END DO
+       END DO
+       END DO
+       END DO
+       END DO
        RETURN
     END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: N, N_K )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC CREATE( N, N_K )
+#endif
 
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+    !$ACC PRIVATE( iNodeZ, iE_G ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iE_G )
 #endif
-    DO iX2    = iX_B0(2)-1, iX_E0(2)+1
+    DO iZ3    = iZ_B0(3)-1, iZ_E0(3)+1
     DO iS     = 1         , nSpecies
-    DO iE     = iE_B0     , iE_E0
+    DO iE     = iZ_B0(1)  , iZ_E0(1)
     DO iNodeE = 1         , nDOFE
-    DO iX3    = iX_B0(3)  , iX_E0(3)
-    DO iX1    = iX_B0(1)  , iX_E0(1)
+    DO iZ4    = iZ_B0(4)  , iZ_E0(4)
+    DO iZ2    = iZ_B0(2)  , iZ_E0(2)
 
       DO iNodeX = 1, nDOFX
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
         iE_G   = (iE    -1) * nDOFE + iNodeE
 
-        N(iNodeX,iX1,iX3,iE_G,iS,iX2) &
-          = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+        N(iNodeX,iZ2,iZ4,iE_G,iS,iZ3) &
+          = U_R(iNodeZ,iE,iZ2,iZ3,iZ4,iCR_N,iS)
 
       END DO
 
@@ -718,7 +834,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(3),1,1,iX_B0(2)-1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)-1), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -726,19 +842,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KS, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KS(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX3,iE_G,iS,iX2)
+      N_KS(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ4,iE_G,iS,iZ3)
 
     END DO
     END DO
@@ -753,7 +870,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(2),iX_B0(3),1,1,iX_B0(2)-1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(3),iZ_B0(4),1,1,iZ_B0(3)-1), &
              nDOFX, WeightsX_X2_Up, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -761,19 +878,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KS0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KS0(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX3,iE_G,iS,iX2)
+      N_KS0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ4,iE_G,iS,iZ3)
 
     END DO
     END DO
@@ -788,7 +906,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(3),1,1,iX_B0(2)+1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)+1), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -796,19 +914,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KN, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KN(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX3,iE_G,iS,iX2)
+      N_KN(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ4,iE_G,iS,iZ3)
 
     END DO
     END DO
@@ -823,7 +942,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(3),1,1,iX_B0(2)+1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)+1), &
              nDOFX, WeightsX_X2_Dn, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -831,19 +950,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KN0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KN0(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX3,iE_G,iS,iX2)
+      N_KN0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ4,iE_G,iS,iZ3)
 
     END DO
     END DO
@@ -852,6 +972,14 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_TCI_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: N, N_K )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( N, N_K )
+#endif
 
   END SUBROUTINE ComputeCellAverages_X2
 
@@ -869,78 +997,109 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCR,1:nSpecies)
     REAL(DP), INTENT(in)  :: &
-      N_K0 (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_K0 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KB (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KB (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KB0(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KB0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KT (iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KT (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      N_KT0(iX_B0(1):iX_E0(1), &
-            iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
+      N_KT0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
             1:nE_G,1:nSpecies)
 
     INTEGER  :: &
-      iE, iE_G, iX1, iX2, iX3, iS, &
+      iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
     REAL(DP) :: &
       N  (1:nDOFX, &
-          iX_B0(1):iX_E0(1), &
-          iX_B0(2):iX_E0(2), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
           1:nE_G,1:nSpecies, &
-          iX_B0(3)-1:iX_E0(3)+1)
+          iZ_B0(4)-1:iZ_E0(4)+1)
     REAL(DP) :: &
-      N_K(iX_B0(1):iX_E0(1), &
-          iX_B0(2):iX_E0(2), &
+      N_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
           1:nE_G,1:nSpecies, &
-          iX_B0(3):iX_E0(3))
+          iZ_B0(4):iZ_E0(4))
 
-    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
-      N_KB  = N_K0
-      N_KB0 = N_K0
-      N_KT  = N_K0
-      N_KT0 = N_K0
+    IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+      !$ACC PRESENT( iZ_B0, iZ_E0, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+       DO iS   = 1       , nSpecies
+       DO iE_G = 1       , nE_G
+       DO iZ4  = iZ_B0(4), iZ_E0(4)
+       DO iZ3  = iZ_B0(3), iZ_E0(3)
+       DO iZ2  = iZ_B0(2), iZ_E0(2)
+
+         N_KB (iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+         N_KB0(iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+         N_KT (iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+         N_KT0(iZ2,iZ3,iZ4,iE_G,iS) = N_K0(iZ2,iZ3,iZ4,iE_G,iS)
+
+       END DO
+       END DO
+       END DO
+       END DO
+       END DO
       RETURN
     END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: N, N_K )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC CREATE( N, N_K )
+#endif
 
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iE_G )
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+    !$ACC PRIVATE( iNodeZ, iE_G ) &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iE_G )
 #endif
-    DO iX3    = iX_B0(3)-1, iX_E0(3)+1
+    DO iZ4    = iZ_B0(4)-1, iZ_E0(4)+1
     DO iS     = 1         , nSpecies
-    DO iE     = iE_B0     , iE_E0
+    DO iE     = iZ_B0(1)  , iZ_E0(1)
     DO iNodeE = 1         , nDOFE
-    DO iX2    = iX_B0(2)  , iX_E0(2)
-    DO iX1    = iX_B0(1)  , iX_E0(1)
+    DO iZ3    = iZ_B0(3)  , iZ_E0(3)
+    DO iZ2    = iZ_B0(2)  , iZ_E0(2)
 
       DO iNodeX = 1, nDOFX
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
         iE_G   = (iE    -1) * nDOFE + iNodeE
 
-        N(iNodeX,iX1,iX2,iE_G,iS,iX3) &
-          = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+        N(iNodeX,iZ2,iZ3,iE_G,iS,iZ4) &
+          = U_R(iNodeZ,iE,iZ2,iZ3,iZ4,iCR_N,iS)
 
       END DO
 
@@ -960,7 +1119,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(2),1,1,iX_B0(3)-1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)-1), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -968,19 +1127,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KB, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KB(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX2,iE_G,iS,iX3)
+      N_KB(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ3,iE_G,iS,iZ4)
 
     END DO
     END DO
@@ -995,7 +1155,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(2),1,1,iX_B0(3)-1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)-1), &
              nDOFX, WeightsX_X3_Up, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -1003,19 +1163,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KB0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KB0(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX2,iE_G,iS,iX3)
+      N_KB0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ3,iE_G,iS,iZ4)
 
     END DO
     END DO
@@ -1030,7 +1191,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(2),1,1,iX_B0(3)+1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)+1), &
              nDOFX, WeightsX_q, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -1038,19 +1199,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KT, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KT(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX2,iE_G,iS,iX3)
+      N_KT(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ3,iE_G,iS,iZ4)
 
     END DO
     END DO
@@ -1065,7 +1227,7 @@ CONTAINS
     CALL TimersStart( Timer_TCI_LinearAlgebra )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFx, nV_KX, One, N(1,iX_B0(1),iX_B0(2),1,1,iX_B0(3)+1), &
+           ( 'T', nDOFx, nV_KX, One, N(1,iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)+1), &
              nDOFX, WeightsX_X3_Dn, 1, Zero, N_K, 1 )
 
     CALL TimersStop( Timer_TCI_LinearAlgebra )
@@ -1073,19 +1235,20 @@ CONTAINS
     CALL TimersStart( Timer_TCI_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
-
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+    !$ACC PRESENT( iZ_B0, iZ_E0, N_KT0, N_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iS   = 1       , nSpecies
     DO iE_G = 1       , nE_G
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iX1  = iX_B0(1), iX_E0(1)
+    DO iZ4  = iZ_B0(4), iZ_E0(4)
+    DO iZ3  = iZ_B0(3), iZ_E0(3)
+    DO iZ2  = iZ_B0(2), iZ_E0(2)
 
-      N_KT0(iX1,iX2,iX3,iE_G,iS) = N_K(iX1,iX2,iE_G,iS,iX3)
+      N_KT0(iZ2,iZ3,iZ4,iE_G,iS) = N_K(iZ2,iZ3,iE_G,iS,iZ4)
 
     END DO
     END DO
@@ -1094,6 +1257,14 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_TCI_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: N, N_K )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC DELETE( N, N_K )
+#endif
 
   END SUBROUTINE ComputeCellAverages_X3
 
