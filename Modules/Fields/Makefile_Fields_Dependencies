@@ -4,6 +4,12 @@ FluidFieldsModule.o: \
   ProgramHeaderModule.o \
   FluidFieldsModule.F90
 
+MagnetofluidFieldsModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  MagnetofluidFieldsModule.F90
+
 FluidFieldsUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \

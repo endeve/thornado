@@ -1,5 +1,6 @@
 FIELDS = \
   FluidFieldsModule.o \
+  MagnetofluidFieldsModule.o \
   FluidFieldsUtilitiesModule.o \
   RadiationFieldsModule.o \
   RadiationFieldsUtilitiesModule.o
