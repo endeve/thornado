@@ -57,11 +57,9 @@ MODULE TimeSteppingModule_SSPRK
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)           :: &
-        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(inout)        :: &
-        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(inout)        :: &
+        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
         dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
