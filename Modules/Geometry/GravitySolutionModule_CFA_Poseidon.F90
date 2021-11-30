@@ -104,19 +104,20 @@ CONTAINS
     WRITE(*,*)
 
     CALL Initialize_Poseidon &
-         ( Units_Option       = 'G',                       &
-           Dimensions_Option  = 3,                         &
-           FEM_Degree_Option  = MAX( 1, nNodes - 1 ),      &
-           L_Limit_Option     = 0,                         &
-           Domain_Edge_Option = [ xL(1), xR(1) ],          &
-           NE_Option          = nX,                        &
-           NQ_Option          = [ nNodes, 1, 1 ],          &
-           dr_Option          = MeshX(1) % Width(1:nX(1)), &
-           dt_Option          = MeshX(2) % Width(1:nX(2)), &
-           dp_Option          = MeshX(3) % Width(1:nX(3)), &
-           Method_Flag_Option = 3,                         &
-           Print_Setup_Option = .TRUE.,                    &
-           Verbose_Option     = .FALSE. )
+         ( Units_Option                = 'G',                       &
+           Dimensions_Option           = 3,                         &
+           FEM_Degree_Option           = MAX( 1, nNodes - 1 ),      &
+           L_Limit_Option              = 0,                         &
+           Domain_Edge_Option          = [ xL(1), xR(1) ],          &
+           NE_Option                   = nX,                        &
+           NQ_Option                   = [ nNodes, 1, 1 ],          &
+           dr_Option                   = MeshX(1) % Width(1:nX(1)), &
+           dt_Option                   = MeshX(2) % Width(1:nX(2)), &
+           dp_Option                   = MeshX(3) % Width(1:nX(3)), &
+           Method_Flag_Option          = 3,                         &
+           Print_Setup_Option          = .TRUE.,                    &
+           Convergence_Criteria_Option = 1.0e-08_DP,                &
+           Verbose_Option              = .FALSE. )
 
 #endif
 

@@ -10,20 +10,27 @@ MODULE TimeSteppingModule_SSPRK
     iX_E0, &
     iX_E1, &
     nDOFX
+  USE GeometryFieldsModule, ONLY: &
+    iGF_Psi
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+    ComputeConformalFactor_Poseidon, &
+    ComputeLapseAndShift_Poseidon
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
-    ApplySlopeLimiter_Euler_Relativistic_IDEAL
-  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
-    ApplyPositivityLimiter_Euler_Relativistic_IDEAL
+  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_Relativistic_TABLE
+  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_Relativistic_TABLE
+  USE Poseidon_UtilitiesModule, ONLY: &
+    ComputeMatterSources_Poseidon, &
+    ComputePressureTensorTrace_Poseidon, &
+    MultiplyByPsi6, &
+    DivideByPsi6
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
     Timer_Euler_UpdateFluid
-  USE Poseidon_UtilitiesModule, ONLY: &
-    ComputeSourceTerms_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    WriteSourceTerms, &
     OffGridFlux_Euler
   USE Euler_TallyModule_Relativistic, ONLY: &
     IncrementOffGridTally_Euler_Relativistic
@@ -36,14 +43,12 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
-  REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: U_SSPRK
-  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
+  REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: Ustar
+  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: Dstar
 
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
-
-  LOGICAL, PUBLIC :: WritePlotFile
 
   INTERFACE
     SUBROUTINE FluidIncrement &
@@ -52,11 +57,9 @@ MODULE TimeSteppingModule_SSPRK
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)           :: &
-        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(inout)        :: &
-        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-      REAL(DP), INTENT(inout)        :: &
+        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)          :: &
         dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -65,18 +68,6 @@ MODULE TimeSteppingModule_SSPRK
       LOGICAL,  INTENT(in), OPTIONAL :: &
         UseXCFC_Option
     END SUBROUTINE FluidIncrement
-  END INTERFACE
-
-  INTERFACE
-    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
-      USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)     :: &
-        iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(inout) :: &
-        G         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(in)    :: &
-        U_Poseidon(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    END SUBROUTINE GravitySolver
   END INTERFACE
 
 
@@ -88,8 +79,6 @@ CONTAINS
     INTEGER, INTENT(in) :: nStages
 
     INTEGER :: i
-
-    WritePlotFile = .FALSE.
 
     nStages_SSPRK = nStages
 
@@ -111,14 +100,14 @@ CONTAINS
     END DO
     WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
 
-    ALLOCATE( U_SSPRK &
+    ALLOCATE( Ustar &
                 (1:nDOFX, &
                  iX_B1(1):iX_E1(1), &
                  iX_B1(2):iX_E1(2), &
                  iX_B1(3):iX_E1(3), &
                  1:nCF) )
 
-    ALLOCATE( D_SSPRK &
+    ALLOCATE( Dstar &
                 (1:nDOFX, &
                  iX_B1(1):iX_E1(1), &
                  iX_B1(2):iX_E1(2), &
@@ -132,7 +121,7 @@ CONTAINS
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
-    DEALLOCATE( U_SSPRK, D_SSPRK )
+    DEALLOCATE( Ustar, Dstar )
 
   END SUBROUTINE FinalizeFluid_SSPRK
 
@@ -191,7 +180,7 @@ CONTAINS
 
 
   SUBROUTINE UpdateFluid_SSPRK &
-    ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravity )
+    ( t, dt, G, U, D, ComputeIncrement_Fluid )
 
     REAL(DP), INTENT(in)    :: &
       t, dt
@@ -203,16 +192,21 @@ CONTAINS
       D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
-    PROCEDURE (GravitySolver), OPTIONAL :: &
-      ComputeGravity
 
-    ! --- E, S, S^1, S^2, S^3, Mg ---
-    REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
-                                 iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),6)
-
-    LOGICAL :: SolveGravity
     INTEGER :: iS, jS, iX1, iX2, iX3
+
+    REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: Si(nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),3)
+    REAL(DP) :: S (nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3))
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
@@ -220,23 +214,20 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    SolveGravity = .FALSE.
-    IF( PRESENT( ComputeGravity ) ) &
-      SolveGravity = .TRUE.
+    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U ) ! Ustar = psi^6 * U
 
-    U_SSPRK = Zero ! --- State
-    D_SSPRK = Zero ! --- Increment
+    Dstar = Zero ! --- Increment
 
     DO iS = 1, nStages_SSPRK
 
-      U_SSPRK = U
+      Ustar = U
 
       DO jS = 1, iS - 1
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Fluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
+                 ( One, Ustar, dt * a_SSPRK(iS,jS), Dstar(:,:,:,:,:,jS) )
 
         END IF
 
@@ -245,32 +236,48 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+        IF( iS .NE. 1 )THEN ! At first stage, U and psi are known
 
-        CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+          CALL ComputeMatterSources_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
 
-        IF( SolveGravity )THEN
+          CALL ComputeConformalFactor_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-          CALL ComputeSourceTerms_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, U_Poseidon )
+          CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
 
-          CALL ComputeGravity &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+          CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
+
+          CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
+
+          CALL MultiplyByPsi6( iX_B1, iX_E1, G, Ustar )
+
+          CALL ComputeMatterSources_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
+
+          CALL ComputeConformalFactor_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+
+          CALL ComputePressureTensorTrace_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, S )
+
+          CALL ComputeLapseAndShift_Poseidon &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
         END IF
 
-        WriteSourceTerms = .FALSE.
-        IF( WritePlotFile .AND. iS .EQ. nStages_SSPRK ) &
-          WriteSourceTerms = .TRUE.
+        CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+                 G, Ustar, D, Dstar(:,:,:,:,:,iS), &
+                 UseXCFC_Option = .TRUE. )
 
         dM_OffGrid_Euler &
-          = dM_OffGrid_Euler + dt * w_SSPRK(iS) * OffGridFlux_Euler
+          = dM_OffGrid_Euler &
+              + dt * w_SSPRK(iS) * OffGridFlux_Euler
 
       END IF
 
@@ -281,33 +288,50 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
+               ( One, U, dt * w_SSPRK(iS), Dstar(:,:,:,:,:,iS) )
 
       END IF
 
     END DO
 
-    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+
+    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
+
+    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    IF( SolveGravity )THEN
+    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
 
-      CALL ComputeSourceTerms_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, U_Poseidon )
+    CALL ComputeMatterSources_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
 
-      CALL ComputeGravity &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+    CALL ComputeConformalFactor_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-    END IF
+    CALL ComputePressureTensorTrace_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
+
+    CALL ComputeLapseAndShift_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
+
+    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
 
     CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK
+
+
+  ! --- PRIVATE Subroutines ---
 
 
   SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
@@ -319,22 +343,22 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER :: iCF, iX1, iX2, iX3
+    INTEGER :: iCF, iNX, iX1, iX2, iX3
 
-    DO iCF = 1, nCF
+    DO iCF = 1       , nCF
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1       , nDOFX
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = alpha * U(iNX,iX1,iX2,iX3,iCF) &
+            + beta * D(iNX,iX1,iX2,iX3,iCF)
 
-        U(:,iX1,iX2,iX3,iCF) &
-          = alpha * U(:,iX1,iX2,iX3,iCF) &
-              + beta * D(:,iX1,iX2,iX3,iCF)
-
-      END DO
-      END DO
-      END DO
-
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE AddIncrement_Fluid

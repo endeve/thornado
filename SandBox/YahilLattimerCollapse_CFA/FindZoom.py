@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+
 import numpy as np
 from scipy.optimize import bisect
 
-eta = 0.75 / 1.0e5
+eta = 0.25 / 1.0e5
 
-N = 256
+N = 512
 
 def f( z ):
     return eta * ( z**N - 1.0 ) - ( z - 1.0 )

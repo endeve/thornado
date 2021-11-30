@@ -60,8 +60,7 @@ PROGRAM ApplicationDriver
     InitializeGravitySolver_CFA_Poseidon, &
     FinalizeGravitySolver_CFA_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit, &
-    Time
+    ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
@@ -74,6 +73,8 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_Relativistic, &
     FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
+  USE Poseidon_UtilitiesModule, ONLY: &
+    ComputeNewtonianPotential_SphericalSymmetry
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, &
@@ -135,11 +136,11 @@ PROGRAM ApplicationDriver
 
   bcX = [ 30, 0, 0 ]
 
-  nX    = [ 256                 , 1     , 1      ]
+  nX    = [ 512                 , 1     , 1      ]
   swX   = [ 1                   , 0     , 0      ]
   xL    = [ Zero     * Kilometer, Zero  , Zero   ]
   xR    = [ 8.0e3_DP * Kilometer, Pi    , TwoPi  ]
-  ZoomX = [ 1.020059256924852_DP, 1.0_DP, 1.0_DP ]
+  ZoomX = [ 1.009967685243838_DP, 1.0_DP, 1.0_DP ]
 
   ! --- DG ---
 
@@ -252,6 +253,9 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+    CALL ComputeNewtonianPotential_SphericalSymmetry &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
+
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -347,6 +351,9 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+      CALL ComputeNewtonianPotential_SphericalSymmetry &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -378,6 +385,9 @@ PROGRAM ApplicationDriver
 !
 !  CALL SolveGravity_CFA_Poseidon &
 !         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
+
+  CALL ComputeNewtonianPotential_SphericalSymmetry &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -411,16 +421,16 @@ PROGRAM ApplicationDriver
   WRITE(*,'(2x,A)') 'git info'
   WRITE(*,'(2x,A)') '--------'
   WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git branch:'
+  WRITE(*,'(2x,A)')          'git branch:'
   CALL EXECUTE_COMMAND_LINE( 'git branch' )
   WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git describe --tags:'
+  WRITE(*,'(2x,A)')          'git describe --tags:'
   CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
   WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  WRITE(*,'(2x,A)')          'git rev-parse HEAD:'
   CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
   WRITE(*,*)
-  WRITE(*,'(2x,A)') 'date:'
+  WRITE(*,'(2x,A)')          'date:'
   CALL EXECUTE_COMMAND_LINE( 'date' )
   WRITE(*,*)
 

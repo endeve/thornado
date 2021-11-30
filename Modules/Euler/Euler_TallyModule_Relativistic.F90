@@ -22,6 +22,13 @@ MODULE Euler_TallyModule_Relativistic
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+  USE ADM_Mass_Module, ONLY: &
+    Calc_ADM_Mass
+
+#endif
+
   IMPLICIT NONE
   PRIVATE
 
@@ -43,6 +50,16 @@ MODULE Euler_TallyModule_Relativistic
   REAL(DP)       :: Energy_Initial
   REAL(DP)       :: Energy_OffGrid
   REAL(DP)       :: Energy_Change
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+  CHARACTER(256) :: ADMMass_FileName
+  REAL(DP)       :: ADMMass_Interior
+  REAL(DP)       :: ADMMass_Initial
+  REAL(DP)       :: ADMMass_OffGrid
+  REAL(DP)       :: ADMMass_Change
+
+#endif
 
 
 CONTAINS
@@ -139,6 +156,39 @@ CONTAINS
 
     CLOSE( FileUnit )
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ! --- ADM Mass ---
+
+    ADMMass_FileName &
+      = TRIM( BaseFileName ) // '_Tally_ADMMass.dat'
+
+    ADMMass_Interior = Zero
+    ADMMass_Initial  = Zero
+    ADMMass_OffGrid  = Zero
+    ADMMass_Change   = Zero
+
+    TimeLabel     &
+      = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
+
+#endif
+
   END SUBROUTINE InitializeTally_Euler_Relativistic
 
 
@@ -177,6 +227,13 @@ CONTAINS
       BaryonicMass_Initial = BaryonicMass_Interior
       Energy_Initial       = Energy_Interior
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      ADMMass_Initial      = ADMMass_Interior
+
+#endif
+
+
     END IF
 
     BaryonicMass_Change &
@@ -186,6 +243,14 @@ CONTAINS
     Energy_Change &
       = Energy_Interior &
           - ( Energy_Initial + Energy_OffGrid )
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ADMMass_Change &
+      = ADMMass_Interior &
+          - ( ADMMass_Initial + ADMMass_OffGrid )
+
+#endif
 
     CALL WriteTally_Euler( Time )
 
@@ -240,6 +305,12 @@ CONTAINS
     END DO
     END DO
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    CALL Calc_ADM_Mass( ADMMass_Interior )
+
+#endif
+
     END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeTally_Euler
@@ -254,6 +325,13 @@ CONTAINS
 
     Energy_OffGrid &
       = Energy_OffGrid + dM(iCF_E)
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ADMMass_OffGrid &
+      = Zero
+
+#endif
 
   END SUBROUTINE IncrementOffGridTally_Euler_Relativistic
 
@@ -292,6 +370,24 @@ CONTAINS
 
     CLOSE( FileUnit )
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ! --- ADM Mass ---
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+      Time / UnitsDisplay % TimeUnit, &
+      ADMMass_Interior / UnitsDisplay % MassUnit, &
+      ADMMass_OffGrid  / UnitsDisplay % MassUnit, &
+      ADMMass_Initial  / UnitsDisplay % MassUnit, &
+      ADMMass_Change   / UnitsDisplay % MassUnit
+
+    CLOSE( FileUnit )
+
+#endif
+
   END SUBROUTINE WriteTally_Euler
 
 
@@ -300,11 +396,14 @@ CONTAINS
     REAL(DP), INTENT(in) :: Time
 
     WRITE(*,*)
+
     WRITE(*,'(A8,A,ES8.2E2,x,A)') &
       '', 'Euler Tally. t = ', &
       Time / UnitsDisplay % TimeUnit, &
       UnitsDisplay % TimeLabel
+
     WRITE(*,*)
+
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
       '', 'Baryonic Mass Interior.: ', &
       BaryonicMass_Interior / UnitsDisplay % MassUnit, &
@@ -321,7 +420,9 @@ CONTAINS
       '', 'Baryonic Mass Change...: ', &
       BaryonicMass_Change   / UnitsDisplay % MassUnit, &
       UnitsDisplay % MassLabel
+
     WRITE(*,*)
+
     WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
       '', 'Energy Interior.: ', &
       Energy_Interior / UnitsDisplay % EnergyGlobalUnit, &
@@ -338,6 +439,29 @@ CONTAINS
       '', 'Energy Change...: ', &
       Energy_Change   / UnitsDisplay % EnergyGlobalUnit, &
       UnitsDisplay % EnergyGlobalLabel
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    WRITE(*,*)
+
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'ADM Mass Interior.: ', &
+      ADMMass_Interior / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'ADM Mass Initial..: ', &
+      ADMMass_Initial  / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'ADM Mass Off Grid.: ', &
+      ADMMass_OffGrid  / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+    WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+      '', 'ADM Mass Change...: ', &
+      ADMMass_Change   / UnitsDisplay % MassUnit, &
+      UnitsDisplay % MassLabel
+
+#endif
 
     WRITE(*,*)
 
