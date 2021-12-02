@@ -418,6 +418,8 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, FF
     REAL(DP)             :: HeatFluxFactor
 
+    REAL(DP) :: x
+
 #ifdef MOMENT_CLOSURE_MINERBO
 
     ! --- Maximum Entropy (ME) Minerbo Closure -------------------
@@ -430,7 +432,12 @@ CONTAINS
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
-    HeatFluxFactor = 0.0_DP
+    ! --- Expression derived from Richers (2020), PRD, 102 -------
+    x = FF / ( One - D )
+    HeatFluxFactor &
+      = ( One - D ) &
+        * ( ( ( One - Two * D + Two * D**2) - Three / 5.0_DP ) * x**6 &
+            + Three * x / 5.0_DP )
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
 
@@ -477,8 +484,9 @@ CONTAINS
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
-    HeatFluxFactor = 0.0_DP
-
+    DO i = 1, SIZE( D )
+        HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
+    END DO
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
 
     HeatFluxFactor = 0.0_DP
