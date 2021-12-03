@@ -2294,6 +2294,11 @@ CONTAINS
     REAL(DP) :: V_u_1, V_u_2, V_u_3
     REAL(DP) :: W3_K, SUM_N, SUM_G1, SUM_G2, SUM_G3
 
+    SUM_N  = Zero
+    SUM_G1 = Zero
+    SUM_G2 = Zero
+    SUM_G3 = Zero
+    
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
@@ -2371,17 +2376,19 @@ CONTAINS
     END DO
     END DO
     END DO
+
     EnergyMomentum(iCR_N ) = SUM_N
     EnergyMomentum(iCR_G1) = SUM_G1
     EnergyMomentum(iCR_G2) = SUM_G2
     EnergyMomentum(iCR_G3) = SUM_G3
+    
 #if defined(THORNADO_OMP_OL)
     !$OMP END TARGET
 #elif defined(THORNADO_OACC)
     !$ACC END PARALLEL
 #endif
 
-    END ASSOCIATE
+    END ASSOCIATE ! dZ1, etc.
 
   END SUBROUTINE ComputeGlobalEnergyMomentum
 
