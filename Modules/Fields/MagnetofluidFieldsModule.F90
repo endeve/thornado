@@ -61,9 +61,9 @@ MODULE MagnetofluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iPM_V3  = 4  ! Three-Velocity 3
   INTEGER, PUBLIC, PARAMETER :: iPM_E   = 5  ! Internal Energy Density
   INTEGER, PUBLIC, PARAMETER :: iPM_Ne  = 6  ! Comoving Electron Density
-  INTEGER, PUBLIC, PARAMETER :: iPM_B1  = 7  ! Eulerian Magnetic Field 1
-  INTEGER, PUBLIC, PARAMETER :: iPM_B2  = 8  ! Eulerian Magnetic Field 2
-  INTEGER, PUBLIC, PARAMETER :: iPM_B3  = 9  ! Eulerian Magnetic Field 3
+  INTEGER, PUBLIC, PARAMETER :: iPM_B1  = 7  ! Comoving Magnetic Field 1
+  INTEGER, PUBLIC, PARAMETER :: iPM_B2  = 8  ! Comoving Magnetic Field 2
+  INTEGER, PUBLIC, PARAMETER :: iPM_B3  = 9  ! Comoving Magnetic Field 3
   INTEGER, PUBLIC, PARAMETER :: iPM_Chi = 10 ! Divergence Violation Field
   INTEGER, PUBLIC, PARAMETER :: nPM     = 10 ! n Primitive Magnetofluid Fields
 
@@ -74,9 +74,9 @@ MODULE MagnetofluidFieldsModule
                 'Three-Velocity (3)              ', &
                 'Internal Energy Density         ', &
                 'Comoving Electron Density       ', &
-                'Eulerian Magnetic Field (1)     ', &
-                'Eulerian Magnetic Field (2)     ', &
-                'Eulerian Magnetic Field (3)     ', &
+                'Comoving Magnetic Field (1)     ', &
+                'Comoving Magnetic Field (2)     ', &
+                'Comoving Magnetic Field (3)     ', &
                 'Divergence Violation Field      ' ]
 
   CHARACTER(10),  DIMENSION(nPM), PUBLIC, PARAMETER :: &
