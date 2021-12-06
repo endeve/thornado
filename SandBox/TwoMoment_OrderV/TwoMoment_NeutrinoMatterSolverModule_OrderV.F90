@@ -4,7 +4,7 @@
 MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, FourPi, Half, SqrtTiny
+    DP, Zero, One, Two, FourPi, Half
   USE UnitsModule, ONLY: &
     PlanckConstant, &
     AtomicMassUnit, &
@@ -63,9 +63,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     EddingtonTensorComponents_dd
 
-  USE, INTRINSIC :: ieee_arithmetic, ONLY: &
-    IEEE_IS_NAN
-
   IMPLICIT NONE
   PRIVATE
 
@@ -74,8 +71,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
 
-  LOGICAL, PARAMETER :: Include_NES  = .FALSE.
-  LOGICAL, PARAMETER :: Include_Pair = .FALSE.
+  LOGICAL, PARAMETER :: Include_NES  = .TRUE.
+  LOGICAL, PARAMETER :: Include_Pair = .TRUE.
 
   ! --- Units Only for Displaying to Screen ---
 
@@ -314,8 +311,6 @@ CONTAINS
     ALLOCATE(  BVEC_inner(n_FP_inner,        nX_G) )
     ALLOCATE( GVECm_inner(n_FP_inner,        nX_G) )
     ALLOCATE( FVECm_inner(n_FP_inner,        nX_G) )
-    FVECm_inner = Zero
-    GVECm_inner = Zero
     ALLOCATE(   TAU_inner(n_FP_inner,        nX_G) )
     ALLOCATE( Alpha_inner(           M_inner,nX_G) )
 
@@ -661,10 +656,6 @@ CONTAINS
 
         CALL TimersStart( Timer_Collisions_ComputeRates )
 
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(J) ) )STOP 'NaN J'
-#endif
-
         CALL ComputeRates_Packed &
                ( J, ITERATE_inner, nX_P_inner, PackIndex_inner, &
                  UnpackIndex_inner, nX_P_outer )
@@ -675,25 +666,10 @@ CONTAINS
 
         CALL TimersStart( Timer_Collisions_NeutrinoRHS )
 
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(FVECm_inner) ) )STOP 'NaN FVECm_inner enter ComputeNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(GVECm_inner) ) )STOP 'NaN GVECm_inner enter ComputeNeutrinoRHS_FP'
-#endif
-
         CALL ComputeNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
                  J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(J) ) )STOP 'NaN J after ComputeNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(H_u_1) ) )STOP 'NaN H1 after ComputeNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(H_u_2) ) )STOP 'NaN H2 after ComputeNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(H_u_3) ) )STOP 'NaN H3 after ComputeNeutrinoRHS_FP'
-
-        IF( ANY(IEEE_IS_NAN(FVECm_inner) ) )STOP 'NaN FVECm_inner after ComputeNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(GVECm_inner) ) )STOP 'NaN GVECm_inner after ComputeNeutrinoRHS_FP'
-#endif
 
         CALL TimersStop( Timer_Collisions_NeutrinoRHS )
 
@@ -707,32 +683,16 @@ CONTAINS
                  AMAT_inner, BVEC_inner, Alpha_inner, TAU_inner, &
                  LWORK_inner, WORK_inner )
 
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(FVECm_inner) ) )STOP 'NaN FVECm_inner after SolveLS_FP'
-        IF( ANY(IEEE_IS_NAN(GVECm_inner) ) )STOP 'NaN GVECm_inner after SolveLS_FP'
-#endif
-
         CALL TimersStop( Timer_Collisions_SolveLS )
 
         ! --- Update Residuals and Solution Vectors (inner) ---
 
         CALL TimersStart( Timer_Collisions_UpdateFP )
 
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(GVECm_inner) ) )STOP 'NaN GVECm_inner before UpdateNeutrinoRHS_FP'
-#endif
-
         CALL UpdateNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, &
                  J, H_u_1, H_u_2, H_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(J) ) )STOP 'NaN J after UpdateNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(H_u_1) ) )STOP 'NaN H1 after UpdateNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(H_u_2) ) )STOP 'NaN H2 after UpdateNeutrinoRHS_FP'
-        IF( ANY(IEEE_IS_NAN(H_u_3) ) )STOP 'NaN H3 after UpdateNeutrinoRHS_FP'
-#endif
 
         ! --- Check Convergence (inner) ---
 
@@ -765,13 +725,6 @@ CONTAINS
                J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-#ifdef THORNADO_DEBUG
-      IF( ANY(IEEE_IS_NAN(J) ) )STOP 'NaN J after ComputeMatterRHS_FP'
-      IF( ANY(IEEE_IS_NAN(H_u_1) ) )STOP 'NaN H1 after ComputeMatterRHS_FP'
-      IF( ANY(IEEE_IS_NAN(H_u_2) ) )STOP 'NaN H2 after ComputeMatterRHS_FP'
-      IF( ANY(IEEE_IS_NAN(H_u_3) ) )STOP 'NaN H3 after ComputeMatterRHS_FP'
-#endif
-
       CALL TimersStop( Timer_Collisions_MatterRHS )
 
       ! --- Anderson Acceleration (outer) ---
@@ -794,13 +747,6 @@ CONTAINS
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
                Y, E, V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-#ifdef THORNADO_DEBUG
-      IF( ANY(IEEE_IS_NAN(J) ) )STOP 'NaN J after UpdateMatterRHS_FP'
-      IF( ANY(IEEE_IS_NAN(H_u_1) ) )STOP 'NaN H1 after UpdateMatterRHS_FP'
-      IF( ANY(IEEE_IS_NAN(H_u_2) ) )STOP 'NaN H2 after UpdateMatterRHS_FP'
-      IF( ANY(IEEE_IS_NAN(H_u_3) ) )STOP 'NaN H3 after UpdateMatterRHS_FP'
-#endif
 
       ! --- Update Temperature ---
 
@@ -877,10 +823,6 @@ CONTAINS
       Y_P => P1D(1:nX,iP1D_Y)
 
       CALL ArrayPack( nX, UnpackIndex, D, T, Y, D_P, T_P, Y_P )
-
-#ifdef THORNADO_DEBUG
-      IF( ANY(IEEE_IS_NAN(P2D)) ) STOP 'NaN P2D in ComputeOpacities_Packed in'
-#endif
 
       J0_1_P  => P2D(:,1:nX,iP2D_J0_1)
       J0_2_P  => P2D(:,1:nX,iP2D_J0_2)
@@ -971,41 +913,26 @@ CONTAINS
           Phi_0_In_NES_1_P(iE1,iE2,iX) &
             = Phi_0_Ot_NES_1_P(iE1,iE2,iX) &
               * ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) ) &
-              / MAX( ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) ), SqrtTiny)
+              / ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) )
 
           Phi_0_In_NES_2_P(iE1,iE2,iX) &
             = Phi_0_Ot_NES_2_P(iE1,iE2,iX) &
               * ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) ) &
-              / MAX( ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) ), SqrtTiny)
+              / ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) )
 
         ELSE
 
           Phi_0_Ot_NES_1_P(iE1,iE2,iX) &
             = Phi_0_In_NES_1_P(iE1,iE2,iX) &
               * ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) ) &
-              / MAX( ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) ), SqrtTiny)
+              / ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) )
 
           Phi_0_Ot_NES_2_P(iE1,iE2,iX) &
             = Phi_0_In_NES_2_P(iE1,iE2,iX) &
               * ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) ) &
-              / MAX( ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) ), SqrtTiny)
+              / ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) )
 
         END IF
-
-#ifdef THORNADO_DEBUG
-        IF( IEEE_IS_NAN(Phi_0_In_NES_1_P(iE1,iE2,iX)) .or. &
-            IEEE_IS_NAN(Phi_0_In_NES_2_P(iE1,iE2,iX)) .or. &
-            IEEE_IS_NAN(Phi_0_Ot_NES_1_P(iE1,iE2,iX)) .or. &
-            IEEE_IS_NAN(Phi_0_Ot_NES_2_P(iE1,iE2,iX)) )THEN
-          PRINT*, 'NaN NES rates, 992' 
-          PRINT*, ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) ), &
-                  ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) ), &
-                  ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) ), &
-                  ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) ), &
-                  iE1,iE2,iX, J0_1_P(iE1,iX)
-          STOP
-        END IF
-#endif
 
       END DO
       END DO
@@ -1061,12 +988,12 @@ CONTAINS
         Phi_0_In_Pair_1_P(iE1,iE2,iX) &
           = Phi_0_Ot_Pair_1_P(iE1,iE2,iX) &
             * (         J0_1_P(iE2,iX)   *         J0_2_P(iE1,iX)   ) &
-            / MAX( ( ( One - J0_1_P(iE2,iX) ) * ( One - J0_2_P(iE1,iX) ) ), SqrtTiny)
+            / ( ( One - J0_1_P(iE2,iX) ) * ( One - J0_2_P(iE1,iX) ) )
 
         Phi_0_In_Pair_2_P(iE1,iE2,iX) &
           = Phi_0_Ot_Pair_2_P(iE1,iE2,iX) &
             * (         J0_2_P(iE2,iX)   *         J0_1_P(iE1,iX)   ) &
-            / MAX( ( ( One - J0_2_P(iE2,iX) ) * ( One - J0_1_P(iE1,iX) ) ), SqrtTiny)
+            / ( ( One - J0_2_P(iE2,iX) ) * ( One - J0_1_P(iE1,iX) ) )
 
       END DO
       END DO
@@ -1125,10 +1052,6 @@ CONTAINS
 
     END IF
 
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(P2D)) ) PRINT*, 'NaN P2D in ComputeOpacities_Packed out'
-#endif
-
   END SUBROUTINE ComputeOpacities_Packed
 
 
@@ -1164,10 +1087,6 @@ CONTAINS
     ELSE
       nX0 = nX_G
     END IF
-
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(P2D)) ) STOP 'NaN P2D in ComputeRates_Packed'
-#endif
 
     IF ( nX < nX_G ) THEN
 
@@ -1239,17 +1158,6 @@ CONTAINS
 
     ! --- NES Emissivities and Opacities ---
 
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(J_1_P)) .or. &
-        ANY(IEEE_IS_NAN(Phi_0_In_NES_1_P)) .or. &
-        ANY(IEEE_IS_NAN(Phi_0_Ot_NES_1_P)))THEN
-      IF( ANY(IEEE_IS_NAN(J_1_P)) ) PRINT*, 'NaN J_1_P'
-      IF( ANY(IEEE_IS_NAN(Phi_0_In_NES_1_P)) ) PRINT*, 'NaN Phi_0_In_NES_1_P'
-      IF( ANY(IEEE_IS_NAN(Phi_0_Ot_NES_1_P)) ) PRINT*, 'NaN Phi_0_Ot_NES_1_P'
-      STOP 'NaN before ComputeNeutrinoOpacitiesRates_NES_Points'
-    END IF
-#endif
-
     CALL ComputeNeutrinoOpacitiesRates_NES_Points &
            ( 1, nE_G, 1, nX, W2_N, J_1_P, &
              Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
@@ -1259,16 +1167,6 @@ CONTAINS
            ( 1, nE_G, 1, nX, W2_N, J_2_P, &
              Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
              Eta_NES_2_P, Chi_NES_2_P )
-
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(Chi_NES_1_P)) .or. ANY(IEEE_IS_NAN(Chi_NES_2_P)))THEN
-      WRITE(*,*) 'Chi_NES_1_P'
-      WRITE(*,'(10ES12.3)')  Chi_NES_1_P
-      WRITE(*,*) 'Chi_NES_2_P'
-      WRITE(*,'(10ES12.3)')  Chi_NES_2_P
-      STOP
-    END IF
-#endif
 
     ! --- Pair Emissivities and Opacities ---
 
@@ -1298,10 +1196,6 @@ CONTAINS
                Eta_Pair(:,:,iS_1), Eta_Pair(:,:,iS_2) )
 
     END IF
-
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(P2D)) ) STOP 'NaN P2D in ComputeRates_Packed out'
-#endif
 
   END SUBROUTINE ComputeRates_Packed
 
@@ -1778,11 +1672,6 @@ CONTAINS
     REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: Eta_T, Chi_T, Kappa
 
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(Fm) ) ) STOP 'NaN in Fm when enter ComputeNeutrinoRHS_FP'
-    IF( ANY(IEEE_IS_NAN(Gm) ) ) STOP 'NaN in Gm when enter ComputeNeutrinoRHS_FP'
-#endif
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
@@ -1882,25 +1771,11 @@ CONTAINS
         Fm(iOS+iCR_G3,iN_X) &
           = Gm(iOS+iCR_G3,iN_X) - H_d_3(iN_E,iN_X,iS)
 
-#ifdef THORNADO_DEBUG
-        IF( ANY(IEEE_IS_NAN(Fm) ) )THEN
-          WRITE(*,*) Fm(iOS+iCR_G3,iN_X), iOS+iCR_G3,iN_X, Gm(iOS+iCR_G3,iN_X), H_d_3(iN_E,iN_X,iS)
-          WRITE(*,*) Kappa,  Chi_T,  Sig(iN_E,iN_X,iS), Chi(iN_E,iN_X,iS), Chi_NES(iN_E,iN_X,iS), &
-                     Chi_Pair(iN_E,iN_X,iS)
-          STOP
-        END IF
-#endif
-
       END IF
 
     END DO
     END DO
     END DO
-
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(Fm) ) ) STOP 'NaN in Fm when exit ComputeNeutrinoRHS_FP'
-    IF( ANY(IEEE_IS_NAN(Gm) ) ) STOP 'NaN in Gm when exit ComputeNeutrinoRHS_FP'
-#endif
 
   END SUBROUTINE ComputeNeutrinoRHS_FP
 
@@ -2022,10 +1897,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-#ifdef THORNADO_DEBUG
-    IF( ANY(IEEE_IS_NAN(J) ) ) STOP 'NaN J when exit UpdateNeutrinoRHS_FP'
-#endif
 
   END SUBROUTINE UpdateNeutrinoRHS_FP
 
