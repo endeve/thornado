@@ -78,7 +78,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'TopHat'
+      AdvectionProfile = 'SineWave'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
