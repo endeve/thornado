@@ -30,7 +30,8 @@ PROGRAM ApplicationDriver
   USE InitializationModule, ONLY: &
     InitializeFields_Relativistic_MHD
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
-    ComputeFromConserved_MHD_Relativistic
+    ComputeFromConserved_MHD_Relativistic, &
+    ComputeTimeStep_MHD_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF
@@ -41,6 +42,8 @@ PROGRAM ApplicationDriver
     uDM
   USE GeometryFieldsModule, ONLY: &
     uGF
+  USE MHD_DiscretizationModule_Relativistic, ONLY: &
+    ComputeIncrement_MHD_DG_Explicit
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -55,6 +58,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
   CHARACTER(32) :: CoordinateSystem
+  LOGICAL       :: wrt
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
@@ -62,6 +66,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: ZoomX(3)
+  REAL(DP)      :: Timer_Evolution
 
   LOGICAL  :: WriteGF = .TRUE., WriteMF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
@@ -160,18 +165,132 @@ PROGRAM ApplicationDriver
   uCM = Zero ! Without this, crashes when copying data in TimeStepper
   uDM = Zero ! Without this, crashes in IO
 
-  PRINT*, 'Initializing.'
+  !PRINT*, 'Initializing.'
 
   CALL InitializeFields_Relativistic_MHD &
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ) )
 
-  PRINT*, 'Computing from conserved.'
+  IF( RestartFileNumber .LT. 0 )THEN
+
+    CALL ComputeFromConserved_MHD_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
+
+    CALL WriteFieldsHDF &
+           ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
+
+  ELSE
+
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadMF_Option = .TRUE., ReadGF_Option = .TRUE. )
+
+  END IF
+
+  iCycleD = 10
+  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
+
+  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
+    STOP 'dt_wrt and iCycleW cannot both be present'
+
+  WRITE(*,*)
+  WRITE(*,'(A2,A)') '', 'Begin evolution'
+  WRITE(*,'(A2,A)') '', '---------------'
+
+  t_wrt = t + dt_wrt
+  wrt = .FALSE.
+
+  iCycle = 0
+  Timer_Evolution = MPI_WTIME()
+  DO WHILE( t .LT. t_end )
+
+    iCycle = iCycle + 1
+
+    !PRINT*, 'Computing timestep.'
+
+    CALL ComputeTimeStep_MHD_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             uGF, uCM, &
+             CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+             dt )
+
+    !PRINT*, 'Timestep computation completed.'
+
+    IF( t + dt .LT. t_end )THEN
+
+      t = t + dt
+
+    ELSE
+
+      dt = t_end - t
+      t  = t_end
+
+    END IF
+
+    IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
+
+      WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+        'Cycle: ', iCycle, ' t = ', t / UnitsDisplay % TimeUnit, &
+        TRIM( UnitsDisplay % TimeLabel ), &
+        ' dt = ', dt /  UnitsDisplay % TimeUnit, &
+        TRIM( UnitsDisplay % TimeLabel )
+
+    END IF
+
+    !PRINT*, 'Updating magnetofluid.'
+
+    CALL UpdateMagnetoFluid_SSPRK &
+           ( t, dt, uGF, uCM, uDM, &
+             ComputeIncrement_MHD_DG_Explicit )
+
+    IF( iCycleW .GT. 0 )THEN
+
+      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
+
+    ELSE
+
+      IF( t + dt .GT. t_wrt )THEN
+
+        t_wrt = t_wrt + dt_wrt
+        wrt = .TRUE.
+
+      END IF
+
+    END IF
+
+    IF( wrt )THEN
+
+      !PRINT*, 'Begin writing procedure.'
+
+      !PRINT*, 'Computing from conserved.'
+
+      CALL ComputeFromConserved_MHD_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
+
+      !PRINT*, 'Writing.'
+
+      CALL WriteFieldsHDF &
+             ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
+
+      wrt = .FALSE.
+
+    END IF
+
+  END DO
+
+  Timer_Evolution = MPI_WTIME() - Timer_Evolution
+  WRITE(*,*)
+  WRITE(*,'(A,I8.8,A,ES10.3E3,A)') &
+    'Finished ', iCycle, ' cycles in ', Timer_Evolution, ' s'
+  WRITE(*,*)
+
+  !PRINT*, 'Computing from conserved.'
 
   CALL ComputeFromConserved_MHD_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
 
-  PRINT*, 'Writing.'
+  !PRINT*, 'Writing.'
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
