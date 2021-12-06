@@ -1,7 +1,8 @@
 PROGRAM ApplicationDriver_Neutrinos
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, SqrtTiny
+    DP, Zero, One, Two, &
+    Pi, TwoPi, SqrtTiny
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -28,7 +29,8 @@ PROGRAM ApplicationDriver_Neutrinos
     WriteFieldsHDF, &
     ReadFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
+    ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -48,6 +50,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
   CHARACTER(32) :: CoordinateSystem
+  CHARACTER(64) :: ProfileName
   CHARACTER(64) :: EosTableName
   CHARACTER(64) :: OpacityTableName_AbEm
   CHARACTER(64) :: OpacityTableName_Iso
@@ -116,15 +119,18 @@ PROGRAM ApplicationDriver_Neutrinos
       UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .TRUE.
 
-    CASE( 'Deleptonization' )
+    CASE( 'DeleptonizationWave1D' )
+
+      CoordinateSystem = 'SPHERICAL'
 
       nSpecies = 2
       nNodes   = 2
 
-      nX  = [ 64, 1, 1 ]
-      xL  = [ - 50.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ + 50.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
-      bcX = [ 31, 1, 1 ]
+      nX    = [ 128, 1, 1 ]
+      xL    = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
+      xR    = [ 3.0d2 * Kilometer, Pi    , TwoPi  ]
+      bcX   = [ 31, 1, 1 ]
+      ZoomX = [ 1.011986923647337_DP, 1.0_DP, 1.0_DP ]
 
       nE    = 16
       eL    = 0.0d0 * MeV
@@ -134,17 +140,19 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end = 1.0d0 * Millisecond
+      t_end = 1.0d1 * Millisecond
 
       iCycleD = 1
-      iCycleW = 10
-      maxCycles = 100000
+      iCycleW = 303
+      maxCycles = 1000000
 
-      EvolveEuler                    = .TRUE.
+      EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
-      UsePositivityLimiter_Euler     = .TRUE.
+      UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+
+      ProfileName = 'input_thornado_VX_100ms.dat'
 
     CASE( 'EquilibriumAdvection' )
 
@@ -187,7 +195,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeDriver
 
-  CALL InitializeFields
+  CALL InitializeFields( ProfileName )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -247,7 +255,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
     ELSE
 
-      dt_CFL = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
+      CALL ComputeTimeStep_TwoMoment &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, &
+               0.3_DP/(Two*DBLE(nNodes-1)+One), dt_CFL )
 
       dt = dt_CFL
 
