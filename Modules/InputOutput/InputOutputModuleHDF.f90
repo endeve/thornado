@@ -31,8 +31,12 @@ MODULE InputOutputModuleHDF
     uCF, nCF, namesCF, unitsCF, &
     uPF, nPF, namesPF, unitsPF, &
     uAF, nAF, namesAF, unitsAF, &
-    uDF, nDF, namesDF, unitsDF, &
-    Shock, Theta1, Theta2, Theta3
+    uDF, nDF, namesDF, unitsDF
+  USE MagnetofluidFieldsModule, ONLY: &
+    uCM, nCM, namesCM, unitsCM, &
+    uPM, nPM, namesPM, unitsPM, &
+    uAM, nAM, namesAM, unitsAM, &
+    uDM, nDM, namesDM, unitsDM
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, namesCR, unitsCR, &
@@ -51,15 +55,17 @@ MODULE InputOutputModuleHDF
   PRIVATE
 
   CHARACTER(9),  PARAMETER :: &
-    OutputDirectory = '../Output'
+    OutputDirectory    = '../Output'
   CHARACTER(14), PARAMETER :: &
-    GeometrySuffix  = 'GeometryFields'
+    GeometrySuffix     = 'GeometryFields'
   CHARACTER(11), PARAMETER :: &
-    FluidSuffix     = 'FluidFields'
+    FluidSuffix        = 'FluidFields'
+  CHARACTER(18), PARAMETER :: &
+    MagnetofluidSuffix = 'MagnetofluidFields'
   CHARACTER(15), PARAMETER :: &
-    RadiationSuffix = 'RadiationFields'
+    RadiationSuffix    = 'RadiationFields'
   CHARACTER(9),  PARAMETER :: &
-    OpacitySuffix   = 'Opacities'
+    OpacitySuffix      = 'Opacities'
   INTEGER :: FileNumber = 0
 
   ! --- Accretion Shock Diagnostics ---
@@ -83,32 +89,41 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsHDF &
-    ( Time, WriteGF_Option, WriteFF_Option, WriteRF_Option, WriteOP_Option )
+    ( Time, WriteGF_Option, WriteFF_Option, &
+      WriteMF_Option, WriteRF_Option, WriteOP_Option )
 
     REAL(DP), INTENT(in) :: Time
     LOGICAL,  INTENT(in), OPTIONAL :: WriteGF_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteFF_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteMF_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteRF_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteOP_Option
 
     LOGICAL :: WriteGF
     LOGICAL :: WriteFF
+    LOGICAL :: WriteMF
     LOGICAL :: WriteRF
     LOGICAL :: WriteOP
 
-    IF( PRESENT( WriteGF_Option ) )THEN
+    IF( PRESENT( WriteGF_Option ) .AND. ALLOCATED( uGF ) )THEN
       WriteGF = WriteGF_Option
     ELSE
       WriteGF = .FALSE.
     END IF
 
-    IF( PRESENT( WriteFF_Option ) )THEN
+    IF( PRESENT( WriteFF_Option ) .AND. ALLOCATED( uCF ) )THEN
       WriteFF = WriteFF_Option
     ELSE
       WriteFF = .FALSE.
     END IF
 
-    IF( PRESENT( WriteRF_Option ) )THEN
+    IF( PRESENT( WriteMF_Option ) .AND. ALLOCATED( uCM ) )THEN
+      WriteMF = WriteMF_Option
+    ELSE
+      WriteMF = .FALSE.
+    END IF
+
+    IF( PRESENT( WriteRF_Option ) .AND. ALLOCATED( uCR ) )THEN
       WriteRF = WriteRF_Option
     ELSE
       WriteRF = .FALSE.
@@ -132,6 +147,12 @@ CONTAINS
 
     END IF
 
+    IF( WriteMF )THEN
+
+      CALL WriteMagnetofluidFieldsHDF( Time )
+
+    END IF
+
     IF( WriteRF )THEN
 
       CALL WriteRadiationFieldsHDF( Time )
@@ -150,16 +171,18 @@ CONTAINS
 
 
   SUBROUTINE ReadFieldsHDF &
-    ( ReadFileNumber, Time, ReadGF_Option, ReadFF_Option, ReadRF_Option )
+    ( ReadFileNumber, Time, ReadGF_Option, ReadFF_Option, &
+      ReadMF_Option, ReadRF_Option )
 
     INTEGER,  INTENT(in)  :: &
       ReadFileNumber
     REAL(DP), INTENT(out) :: &
       Time
     LOGICAL,  INTENT(in), OPTIONAL :: &
-      ReadGF_Option, ReadFF_Option, ReadRF_Option
+      ReadGF_Option, ReadFF_Option, &
+      ReadMF_Option, ReadRF_Option
 
-    LOGICAL  :: ReadGF, ReadFF, ReadRF
+    LOGICAL  :: ReadGF, ReadFF, ReadMF, ReadRF
 
     FileNumber    = ReadFileNumber
     FileNumber_AS = ReadFileNumber
@@ -171,12 +194,17 @@ CONTAINS
     ReadFF = .FALSE.
     IF( PRESENT( ReadFF_Option ) ) ReadFF = ReadFF_Option
 
+    ReadMF = .FALSE.
+    IF( PRESENT( ReadMF_Option ) ) ReadMF = ReadMF_Option
+
     ReadRF = .FALSE.
     IF( PRESENT( ReadRF_Option ) ) ReadRF = ReadRF_Option
 
     IF( ReadGF ) CALL ReadGeometryFieldsHDF( Time )
 
     IF( ReadFF ) CALL ReadFluidFieldsHDF( Time )
+
+    IF( ReadMF ) CALL ReadMagnetofluidFieldsHDF( Time )
 
     IF( ReadRF ) CALL ReadRadiationFieldsHDF( Time )
 
@@ -654,6 +682,291 @@ CONTAINS
     CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE ReadFluidFieldsHDF
+
+
+  SUBROUTINE WriteMagnetofluidFieldsHDF( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: GroupName2
+    CHARACTER(256) :: GroupName_PL
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: DatasetName1
+    CHARACTER(256) :: DatasetName2
+    CHARACTER(256) :: DatasetName3
+    INTEGER        :: iMF
+    INTEGER(HID_T) :: FILE_ID
+    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        MagnetofluidSuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthX1Unit, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthX2Unit, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthX3Unit, DatasetName, FILE_ID )
+
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/X1_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Center(1:nX(1)) / U % LengthX1Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Center(1:nX(2)) / U % LengthX2Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
+             DatasetName, FILE_ID )
+
+    ! --- Write Cell Widths ---
+
+    DatasetName = TRIM( GroupName ) // '/dX1'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Width(1:nX(1)) / U % LengthX1Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/dX2'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Width(1:nX(2)) / U % LengthX2Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/dX3'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Width(1:nX(3)) / U % LengthX3Unit, &
+             DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
+
+    ! --- Write Fluid Variables ---
+
+    GroupName = 'Magnetofluid Fields'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    ! --- Conserved ---
+
+    GroupName2 = TRIM( GroupName ) // '/Conserved'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iMF = 1, nCM
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesCM(iMF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uCM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsCM(iMF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Primitive ---
+
+    GroupName2 = TRIM( GroupName ) // '/Primitive'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iMF = 1, nPM
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesPM(iMF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uPM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsPM(iMF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Auxiliary ---
+
+    GroupName2 = TRIM( GroupName ) // '/Auxiliary'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iMF = 1, nAM
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesAM(iMF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uAM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsAM(iMF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Diagnostic ---
+
+    GroupName2 = TRIM( GroupName ) // '/Diagnostic'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iMF = 1, nDM
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesDM(iMF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uDM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsDM(iMF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE WriteMagnetofluidFieldsHDF
+
+
+  SUBROUTINE ReadMagnetofluidFieldsHDF( Time )
+
+    REAL(DP), INTENT(out) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: GroupName
+    INTEGER(HID_T) :: FILE_ID
+    INTEGER        :: iMF
+    REAL(DP)       :: Dataset1D(1)
+    REAL(DP)       :: Dataset3D(nX(1)*nNodesX(1), &
+                                nX(2)*nNodesX(2), &
+                                nX(3)*nNodesX(3))
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        MagnetofluidSuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Read Time ---
+
+    DatasetName = '/Time'
+
+    CALL ReadDataset1DHDF( Dataset1D, DatasetName, FILE_ID )
+
+    Time = Dataset1D(1) * U % TimeUnit
+
+    END ASSOCIATE
+
+    ! --- Read Fluid Variables ---
+
+    ! --- Conserved ---
+
+    GroupName = 'Magnetofluid Fields/Conserved'
+
+    DO iMF = 1, nCM
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(iMF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uCM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsCM(iMF)
+
+    END DO
+
+    ! --- Primitive ---
+
+    GroupName = 'Magnetofluid Fields/Primitive'
+
+    DO iMF = 1, nPM
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesPM(iMF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uPM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsPM(iMF)
+
+    END DO
+
+    ! --- Auxiliary ---
+
+    GroupName = 'Magnetofluid Fields/Auxiliary'
+
+    DO iMF = 1, nAM
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesAM(iMF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uAM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsAM(iMF)
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE ReadMagnetofluidFieldsHDF
 
 
   SUBROUTINE WriteRadiationFieldsHDF( Time )
