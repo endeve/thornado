@@ -23,9 +23,9 @@ function...
   uPM_V3  = h5read( FileName, '/Magnetofluid Fields/Primitive/Three-Velocity (3)' );
   uPM_E   = h5read( FileName, '/Magnetofluid Fields/Primitive/Internal Energy Density' );
   uPM_Ne  = h5read( FileName, '/Magnetofluid Fields/Primitive/Comoving Electron Density' );
-  uPM_B1  = h5read( FileName, '/Magnetofluid Fields/Primitive/Eulerian Magnetic Field (1)' );
-  uPM_B2  = h5read( FileName, '/Magnetofluid Fields/Primitive/Eulerian Magnetic Field (2)' );
-  uPM_B3  = h5read( FileName, '/Magnetofluid Fields/Primitive/Eulerian Magnetic Field (3)' );
+  uPM_B1  = h5read( FileName, '/Magnetofluid Fields/Primitive/Comoving Magnetic Field (1)' );
+  uPM_B2  = h5read( FileName, '/Magnetofluid Fields/Primitive/Comoving Magnetic Field (2)' );
+  uPM_B3  = h5read( FileName, '/Magnetofluid Fields/Primitive/Comoving Magnetic Field (3)' );
   uPM_Chi = h5read( FileName, '/Magnetofluid Fields/Primitive/Divergence Violation Field' ); 
   
 end
