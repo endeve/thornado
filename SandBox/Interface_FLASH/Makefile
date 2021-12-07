@@ -7,11 +7,6 @@ INCDIR = ../../../include
 .PHONY: default
 default: $(LIBNAME)
 
-USE_GPU    ?= TRUE
-USE_OMP_OL ?= FALSE
-USE_OACC   ?= TRUE
-USE_CUBLAS ?= TRUE
-
 # Import site specific information.
 # At setup time, this file will exist in the local library directory.
 include ../../../Makefile.h
