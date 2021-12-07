@@ -7,19 +7,22 @@ MODULE TimeSteppingModule_Flash
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOFE, nDOF, nDOFZ, nNodesZ, &
-    iX_B0, iX_B1, iX_E0, iX_E1, &
+    iX_B0, iX_B1, iX_E0, iX_E1, nNodesX, &
     iZ_B0, iZ_B1, iZ_E0, iZ_E1
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_AddFieldsF, &
     Timer_AddFieldsR
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_Ne
+    nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
+    iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies, iCR_N, iCR_G1
+    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2
 #ifdef TWOMOMENT_ORDER_1
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
@@ -36,13 +39,20 @@ MODULE TimeSteppingModule_Flash
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY : &
     ApplySlopeLimiter_TwoMoment
+  USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
+
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: &
+    IEEE_IS_NAN
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Update_IMEX_PDARS
+
+  LOGICAL :: DEBUG = .FALSE.
 
 CONTAINS
 
@@ -188,6 +198,10 @@ CONTAINS
       BoundaryCondition = 0 ! No Boundary Condition
     END IF
 
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when enter TimeStep'
+#endif
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: U_F, U_R, uGE, uGF ) &
@@ -202,6 +216,13 @@ CONTAINS
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
+#ifdef TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+#endif
+
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
     ! --- arXiv:1809.06949 -------------------------------------------
@@ -212,7 +233,6 @@ CONTAINS
 
     CALL AddFields_Radiation &
            ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
-
 
     ! ---------------
     ! --- Stage 1 ---
@@ -249,10 +269,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$OMP MAP( to: iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
     ! --- Explicit Step (Radiation Only) ---
@@ -262,12 +282,10 @@ CONTAINS
       ! --- Apply Limiter ---
 
 #ifdef TWOMOMENT_ORDER_1
-
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
-
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
@@ -280,16 +298,19 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
 
+#ifdef TWOMOMENT_ORDER_V
+      CALL ApplyBoundaryConditions_Euler_FLASH &
+             ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
+#endif
+
       ! --- Explicit Solver ---
 
 #ifdef TWOMOMENT_ORDER_1
-
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                uGE, uGF, U_R, T0_R )
 
 #elif TWOMOMENT_ORDER_V
-
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                uGE, uGF, U_F, U_R, T0_R )
@@ -330,12 +351,10 @@ CONTAINS
     ! --- Apply Limiter ---
 
 #ifdef TWOMOMENT_ORDER_1
-
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
 #elif TWOMOMENT_ORDER_V
-
     CALL ApplySlopeLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
@@ -421,12 +440,19 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_1
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
 #elif TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+
     CALL ApplySlopeLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
 #endif
 
     IF( .NOT. SingleStage ) THEN
@@ -437,6 +463,13 @@ CONTAINS
 
       iX_SW = [ 0, 0, 0 ]
       iZ_SW = [ 0, 0, 0, 0 ]
+      if (nDimsX .eq. 3) then
+         iZ_SW_P = [ 0, 1, 1, 1 ]
+      else if (nDimsX .eq. 2) then
+         iZ_SW_P = [ 0, 1, 1, 0 ]
+      else if (nDimsX .eq. 1) then
+         iZ_SW_P = [ 0, 1, 0, 0 ]
+      end if
 
       iX_B0_SW = iX_B0 - iX_SW
       iX_E0_SW = iX_E0 + iX_SW
@@ -445,10 +478,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET UPDATE &
-      !$OMP TO( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW )
+      !$OMP TO( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_SW_P )
 #elif defined(THORNADO_OACC)
       !$ACC UPDATE &
-      !$ACC DEVICE( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW )
+      !$ACC DEVICE( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_SW_P )
 #endif
 
       ! --- Explicit Step (Radiation Only) ---
@@ -456,12 +489,18 @@ CONTAINS
       IF( Explicit )THEN
 
         CALL ApplyBoundaryConditions_Radiation &
-               ( [0,1,0,0], iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
+               ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
+
+#ifdef TWOMOMENT_ORDER_V
+        CALL ApplyBoundaryConditions_Euler_FLASH &
+               ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
+#endif
 
 #ifdef TWOMOMENT_ORDER_1
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                  uGE, uGF, U_R, T1_R )
+
 #elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -515,11 +554,14 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_1
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
 #elif TWOMOMENT_ORDER_V
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
 #endif
 
       ! --- Implicit Step ---
@@ -532,6 +574,7 @@ CONTAINS
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R )
+
 #elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Implicit &
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
@@ -539,6 +582,7 @@ CONTAINS
                  U_F, Q1_F, &
                  U_R, Q1_R )
 #endif
+
       ELSE
 
 #if defined(THORNADO_OMP_OL)
@@ -597,14 +641,25 @@ CONTAINS
 #ifdef TWOMOMENT_ORDER_1
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
 #elif TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+      CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
     END IF
+
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN @ end of [Update_IMEX_PDARS]'
+#endif
 
 #ifdef THORNADO_DEBUG_IMEX
 #if defined(THORNADO_OMP_OL)
@@ -626,12 +681,12 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: U_F, U_R ) &
     !$OMP MAP( release: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
-    !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT( U_F, U_R ) &
     !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
-    !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P )
+    !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
   END SUBROUTINE Update_IMEX_PDARS
@@ -790,6 +845,60 @@ CONTAINS
     END IF
 
   END SUBROUTINE ApplyBoundaryConditions_Radiation
+
+
+  SUBROUTINE ApplyBoundaryConditions_Euler_FLASH &
+    ( swZ, iX_B0, iX_E0, iX_B1, iX_E1, U, BoundaryCondition )
+
+    INTEGER,  INTENT(in)           :: &
+      swZ(4), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), BoundaryCondition
+    REAL(DP), INTENT(inout)        :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX1, iNodeX, jNodeX
+
+    IF( BoundaryCondition == 0 ) RETURN
+
+    IF( BoundaryCondition == 3 )THEN
+    !! For 1D Reflecting Inner Boundary ONLY
+       DO iX3 = iX_B0(3), iX_E0(3)
+       DO iX2 = iX_B0(2), iX_E0(2)
+       DO iX1 = 1, swZ(2)
+
+         DO iNodeX3 = 1, nNodesX(3)
+         DO iNodeX2 = 1, nNodesX(2)
+         DO iNodeX1 = 1, nNodesX(1)
+
+           jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+           iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+           jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+             = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
+           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+
+         END DO
+         END DO
+         END DO
+
+       END DO
+       END DO
+       END DO
+
+    END IF
+    
+  END SUBROUTINE ApplyBoundaryConditions_Euler_FLASH
 
 
   SUBROUTINE ApplyBoundaryConditions_Radiation_Reflecting &

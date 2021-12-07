@@ -1,11 +1,12 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP, SqrtTiny
+    DP, SqrtTiny, One, Zero
   use UnitsModule, only : &
     MeV
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
+    DescribeProgramHeader, &
     InitializeProgramHeaderX, &
     bcZ, nNodesE, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -46,7 +47,8 @@ module ThornadoInitializationModule
 #ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
-    FinalizeEquationOfState_TABLE
+    FinalizeEquationOfState_TABLE, &
+    MinD, MaxD, MinT, MaxT, MinY, MaxY
   use wlEquationOfStateTableModule, only: &
     EquationOfStateTableType
 #else
@@ -81,6 +83,9 @@ module ThornadoInitializationModule
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
     InitializeClosure_TwoMoment
+  use TwoMoment_MeshRefinementModule, only : &
+    InitializeMeshRefinement_TwoMoment, &
+    FinalizeMeshRefinement_TwoMoment
 #ifdef TWOMOMENT_ORDER_1
   use TwoMoment_PositivityLimiterModule, only: &
     InitializePositivityLimiter_TwoMoment, &
@@ -92,10 +97,10 @@ module ThornadoInitializationModule
   use TwoMoment_PositivityLimiterModule_OrderV, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
+  use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
+    InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
+    FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
-  use TwoMoment_MeshRefinementModule, only : &
-    InitializeMeshRefinement_TwoMoment, &
-    FinalizeMeshRefinement_TwoMoment
 
   implicit none
   private
@@ -112,6 +117,7 @@ contains
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
+      SlopeLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       Verbose_Option )
@@ -130,6 +136,7 @@ contains
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
     logical,          intent(in), optional :: PositivityLimiter_Option
+    logical,          intent(in), optional :: SlopeLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
@@ -137,7 +144,7 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
     logical,          intent(in), optional :: Verbose_Option
 
-    logical  :: PositivityLimiter, Verbose
+    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
     integer  :: nX(3), bcX(3)
     integer  :: i
     real(dp) :: eL, eR, UpperBry1
@@ -147,6 +154,19 @@ contains
     ELSE
       PositivityLimiter = .FALSE.
     END IF
+
+    IF( PRESENT(SlopeLimiter_Option) )THEN
+      SlopeLimiter = SlopeLimiter_Option
+    ELSE
+      SlopeLimiter = .FALSE.
+    END IF
+
+    EnergyLimiter = .TRUE.
+!!    IF( PRESENT(EnergyLimiter_Option) )THEN
+!!      EnergyLimiter = EnergyLimiter_Option
+!!    ELSE
+!!      EnergyLimiter = .FALSE.
+!!    END IF
 
     IF( PRESENT(Verbose_Option) )THEN
       Verbose = Verbose_Option
@@ -160,17 +180,25 @@ contains
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
     END IF
 
-    WRITE(*,*)
+    IF(Verbose)THEN
+      WRITE(*,*)
 #ifdef TWOMOMENT_ORDER_V
-    IF(Verbose) WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_V'
+      WRITE(*,*) 'INFO: USE TWOMOMENT_ORDER_V'
 #elif TWOMOMENT_ORDER_1
-    IF(Verbose) WRITE(*,*) 'INFO: use TWOMOMENT_ORDER_1'
+      WRITE(*,*) 'INFO: USE TWOMOMENT_ORDER_1'
 #else
-    IF(Verbose) WRITE(*,*) 'INFO: use Default TWOMOMENT_ORDER'
+      WRITE(*,*) 'INFO: USE Default TWOMOMENT_ORDER'
 #endif
-    WRITE(*,*) '---------------------------------------'
+      WRITE(*,*) '---------------------------------------'
+    END IF
 
     ! --- Convert from MeV (expected) to thornado code units ---
+
+    IF(Verbose)THEN
+      WRITE(*,'(A12,ES12.3,A4)') 'Emin = ', eL_MeV, 'MeV'
+      WRITE(*,'(A12,ES12.3,A4)') 'Emax = ', eR_MeV, 'MeV'
+      WRITE(*,'(A12,ES12.3)')   'ZoomE = ', zoomE
+    END IF
 
     eL = eL_MeV * MeV
     eR = eR_MeV * MeV
@@ -180,6 +208,10 @@ contains
       nX(i) = nX(i) + 1
     END DO
 
+
+    ! bcX is for general thornado setting
+    ! flash calling thornado is handled differently
+    ! check TimeSteppingModule_Flash.F90 for details
     bcX = [ 0, 0, 0 ]
 
     call InitializeDevice
@@ -189,6 +221,10 @@ contains
              nX_Option = nX, bcX_Option = bcX, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
              eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE )
+
+#ifdef THORNADO_DEBUG
+    call DescribeProgramHeader
+#endif
 
     call InitializeTimers
 
@@ -235,17 +271,27 @@ contains
            ( BetaTVD_Option &
                = 1.75_DP, &
              UseSlopeLimiter_Option &
-               = .FALSE., &
+               = SlopeLimiter, &
              Verbose_Option &
-               = .TRUE. )
+               = Verbose )
 #endif
 
+#ifdef TWOMOMENT_ORDER_1
     call InitializePositivityLimiter_TwoMoment &
            ( Min_1_Option = 0.0_DP + SqrtTiny, &
              Max_1_Option = UpperBry1, &
              Min_2_Option = 0.0_DP + SqrtTiny, &
              UsePositivityLimiter_Option = PositivityLimiter, &
              Verbose_Option = Verbose )
+#elif TWOMOMENT_ORDER_V
+    call InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option = 0.0_DP + SqrtTiny, &
+             Max_1_Option = UpperBry1, &
+             Min_2_Option = 0.0_DP + SqrtTiny, &
+             UsePositivityLimiter_Option = PositivityLimiter, &
+             UseEnergyLimiter_Option = EnergyLimiter, &
+             Verbose_Option = Verbose )
+#endif
 
     ! --- Nuclear Equation of State ---
 #ifdef MICROPHYSICS_WEAKLIB
@@ -277,6 +323,29 @@ contains
     ! --- For refinement and coarsening of DG data
 
     call InitializeMeshRefinement_TwoMoment
+
+    ! --- For applying limiter on fluid field
+#if defined TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( UsePositivityLimiter_Option &
+               = .TRUE., &
+             Verbose_Option &
+               = Verbose, &
+             Min_1_Option &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * MinD, &
+             Min_2_Option &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * MinT, &
+             Min_3_Option &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * MinY, &
+             Max_1_Option &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxD, &
+             Max_2_Option &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxT, &
+             Max_3_Option &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxY )
+#endif
+#endif
 
   end subroutine InitThornado
 
@@ -315,11 +384,16 @@ contains
 
     call FinalizeMeshRefinement_TwoMoment
 
-    call FinalizePositivityLimiter_TwoMoment
-
 #ifdef TWOMOMENT_ORDER_V
+
+#ifdef MICROPHYSICS_WEAKLIB
+    call FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+#endif
+
     call FinalizeSlopeLimiter_TwoMoment
 #endif
+
+    call FinalizePositivityLimiter_TwoMoment
 
     call FinalizeDevice
 
@@ -353,6 +427,9 @@ contains
       CoordinateSystem = 'CARTESIAN'
     END IF
 
+    ! bcX is for general thornado setting
+    ! flash calling thornado is handled differently
+    ! check TimeSteppingModule_Flash.F90 for details
     bcX = [ 0, 0, 0 ]
 
     call InitializeProgramHeaderX &
