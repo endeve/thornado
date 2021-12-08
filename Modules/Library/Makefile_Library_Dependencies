@@ -148,4 +148,6 @@ SubcellReconstructionModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   PolynomialBasisModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  MeshModule.o \
   SubcellReconstructionModule.F90

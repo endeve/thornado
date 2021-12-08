@@ -4,6 +4,7 @@ MODULE TwoMoment_ClosureModule
     DP, SqrtTiny, &
     Zero, One, Two, Three, Four, &
     Fifth, Third
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: IEEE_IS_NAN
 
   IMPLICIT NONE
   PRIVATE
@@ -305,6 +306,10 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D, FF
     REAL(DP) :: EddingtonFactor
+
+#ifdef THORNADO_DEBUG
+    IF( IEEE_IS_NAN(D) ) STOP 'NAN in D when call EddingtonFactor_Scalar'
+#endif
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
