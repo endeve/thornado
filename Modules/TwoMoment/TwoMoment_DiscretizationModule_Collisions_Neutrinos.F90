@@ -431,7 +431,7 @@ CONTAINS
                AF_N(:,iAF_Ye), &
                AF_N(:,iAF_E ), &
                nIterations(:), &
-               1.0d-7 )
+               TOL = 1.0d-7 )
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 
