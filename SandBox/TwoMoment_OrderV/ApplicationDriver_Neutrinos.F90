@@ -61,6 +61,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UseSlopeLimiter_TwoMoment
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
+  LOGICAL       :: UseEnergyLimiter_TwoMoment
   LOGICAL       :: FixedTimeStep
   INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
@@ -118,6 +119,7 @@ PROGRAM ApplicationDriver_Neutrinos
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .FALSE.
 
     CASE( 'DeleptonizationWave1D' )
 
@@ -143,7 +145,7 @@ PROGRAM ApplicationDriver_Neutrinos
       t_end = 1.0d1 * Millisecond
 
       iCycleD = 1
-      iCycleW = 303
+      iCycleW = 1
       maxCycles = 1000000
 
       EvolveEuler                    = .FALSE.
@@ -151,6 +153,7 @@ PROGRAM ApplicationDriver_Neutrinos
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .TRUE.
 
       ProfileName = 'input_thornado_VX_100ms.dat'
 
@@ -183,6 +186,7 @@ PROGRAM ApplicationDriver_Neutrinos
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .TRUE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .FALSE.
 
     CASE DEFAULT
 
@@ -544,6 +548,8 @@ CONTAINS
                = SqrtTiny, &
              UsePositivityLimiter_Option &
                = UsePositivityLimiter_TwoMoment, &
+             UseEnergyLimiter_Option &
+               = UseEnergyLimiter_TwoMoment, &
              Verbose_Option &
                = .TRUE. )
 
