@@ -145,7 +145,7 @@ PROGRAM ApplicationDriver_Neutrinos
       t_end = 1.0d1 * Millisecond
 
       iCycleD = 1
-      iCycleW = 1
+      iCycleW = 333
       maxCycles = 1000000
 
       EvolveEuler                    = .FALSE.
