@@ -775,12 +775,19 @@ CONTAINS
 
       V_K = SUM( WeightsE * E_Q(:,iE)**2 )
 
-      f0_1_Q(:,iE,iX) = MIN( f0_1_Q(:,iE,iX), f0_Max)
-      f0_2_Q(:,iE,iX) = MIN( f0_2_Q(:,iE,iX), f0_Max)
-
       f0_1_K(iE,iX) = SUM( WeightsE * f0_1_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
 
       f0_2_K(iE,iX) = SUM( WeightsE * f0_2_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
+
+      IF( f0_1_K(iE,iX) > f0_Max )THEN
+        f0_1_K(iE,iX) = f0_Max
+        f0_1_Q(:,iE,iX) = f0_Max
+      END IF
+
+      IF( f0_2_K(iE,iX) > f0_Max )THEN
+        f0_2_K(iE,iX) = f0_Max
+        f0_2_Q(:,iE,iX) = f0_Max
+      END IF
 
     END DO
     END DO
