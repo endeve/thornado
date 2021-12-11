@@ -56,6 +56,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
+  CHARACTER(64) :: OpacityTableName_Brem
   LOGICAL       :: EvolveEuler
   LOGICAL       :: UseSlopeLimiter_Euler
   LOGICAL       :: UseSlopeLimiter_TwoMoment
@@ -72,15 +73,21 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
 
-  ProgramName = 'Relaxation'
+  ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+  OpacityTableName_AbEm = ''
   OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
+  OpacityTableName_Iso  = ''
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
-  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
-  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
+  OpacityTableName_NES  = ''
+  !OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
+  OpacityTableName_Pair = ''
+  !OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
+  OpacityTableName_Brem = ''
+  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
   FixedTimeStep = .FALSE.
 
@@ -145,8 +152,8 @@ PROGRAM ApplicationDriver_Neutrinos
       t_end = 1.0d1 * Millisecond
 
       iCycleD = 1
-      iCycleW = 333
-      maxCycles = 1000000
+      iCycleW = 10 !333
+      maxCycles = 20 !1000000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
@@ -477,6 +484,8 @@ CONTAINS
                = TRIM( OpacityTableName_NES ), &
              OpacityTableName_Pair_Option &
                = TRIM( OpacityTableName_Pair ), &
+             OpacityTableName_Brem_Option &
+               = TRIM( OpacityTableName_Brem ), &
              EquationOfStateTableName_Option &
                = TRIM( EosTableName ), &
              Verbose_Option = .TRUE. )
