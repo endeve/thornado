@@ -3890,6 +3890,7 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutrinoOpacities_Brem_Points
 
+
   SUBROUTINE ComputeNeutrinoOpacitiesRates_Brem_Points &
     ( iE_B, iE_E, iX_B, iX_E, W2, J, Phi_Ann, Phi_Pro, Eta, Chi )
 
@@ -3992,6 +3993,7 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeNeutrinoOpacitiesRates_Brem_Points
+
 
   FUNCTION FermiDirac_Scalar( E, Mu, kT ) RESULT( FermiDirac )
 #if defined(THORNADO_OMP_OL)
