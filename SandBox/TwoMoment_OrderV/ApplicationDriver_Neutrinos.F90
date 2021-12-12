@@ -86,7 +86,7 @@ PROGRAM ApplicationDriver_Neutrinos
   !OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
   OpacityTableName_Pair = ''
   !OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
-  OpacityTableName_Brem = ''
+  !OpacityTableName_Brem = ''
   OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
   FixedTimeStep = .FALSE.

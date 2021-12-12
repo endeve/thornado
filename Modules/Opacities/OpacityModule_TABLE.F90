@@ -10,7 +10,8 @@ MODULE OpacityModule_TABLE
   USE wlOpacityTableIOModuleHDF, ONLY: &
     ReadOpacityTableHDF
   USE wlOpacityTableModule, ONLY: &
-    OpacityTableType
+    OpacityTableType, &
+    DescribeOpacityTable
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D_Custom_Point
@@ -203,6 +204,11 @@ CONTAINS
              EquationOfStateTableName_Option = EquationOfStateTableName )
 
     CALL FinalizeHDF( )
+
+#ifdef THORNADO_DEBUG
+    IF( Verbose ) &
+      CALL DescribeOpacityTable( OPACITIES )
+#endif
 
     nPointsE = nE * nNodesE
 
