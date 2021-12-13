@@ -122,7 +122,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
   REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_In_Pair, Phi_0_Ot_Pair
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Brem, Eta_Brem
-  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_In_Brem, Phi_0_Ot_Brem
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Phi_0_In_Brem, Phi_0_Ot_Brem
 
   ! --- Least-squares scratch arrays ---
 
@@ -196,13 +196,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_1 = 6
   INTEGER, PARAMETER :: iP3D_Phi_0_In_Pair_2 = 7
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_2 = 8
-  INTEGER, PARAMETER :: iP3D_Phi_0_In_Brem_1 = 9
-  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Brem_1 = 10
-  INTEGER, PARAMETER :: iP3D_Phi_0_In_Brem_2 = 11
-  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Brem_2 = 12
-  INTEGER, PARAMETER :: iP3D_WORK1           = 13
-  INTEGER, PARAMETER :: iP3D_WORK2           = 14
-  INTEGER, PARAMETER :: nP3D                 = 14
+  INTEGER, PARAMETER :: iP3D_Phi_0_In_Brem   = 9
+  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Brem   = 10
+  INTEGER, PARAMETER :: iP3D_WORK1           = 11
+  INTEGER, PARAMETER :: iP3D_WORK2           = 12
+  INTEGER, PARAMETER :: nP3D                 = 12
 
 CONTAINS
 
@@ -313,8 +311,8 @@ CONTAINS
 
     ALLOCATE(      Chi_Brem(     nE_G,nX_G,nSpecies) )
     ALLOCATE(      Eta_Brem(     nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_In_Brem(nE_G,nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_Ot_Brem(nE_G,nE_G,nX_G,nSpecies) )
+    ALLOCATE( Phi_0_In_Brem(nE_G,nE_G,nX_G) ) !! flavor identical
+    ALLOCATE( Phi_0_Ot_Brem(nE_G,nE_G,nX_G) ) !! flavor identical
 
     ALLOCATE(  AMAT_outer(n_FP_outer,M_outer,nX_G) )
     ALLOCATE(  GVEC_outer(n_FP_outer,M_outer,nX_G) )
@@ -821,8 +819,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_2_P,  Phi_0_Ot_NES_2_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Brem_1_P, Phi_0_Ot_Brem_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Brem_2_P, Phi_0_Ot_Brem_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Brem_P, Phi_0_Ot_Brem_P
     ! --- to be changed to handle cases when iSpecies > 2 ---
 
     INTEGER :: nX, nX0, iX, iE1, iE2
@@ -864,10 +861,8 @@ CONTAINS
       Phi_0_Ot_Pair_1_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Pair_1)
       Phi_0_In_Pair_2_P => P3D(:,:,1:nX,iP3D_Phi_0_In_Pair_2)
       Phi_0_Ot_Pair_2_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Pair_2)
-      Phi_0_In_Brem_1_P => P3D(:,:,1:nX,iP3D_Phi_0_In_Brem_1)
-      Phi_0_Ot_Brem_1_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Brem_1)
-      Phi_0_In_Brem_2_P => P3D(:,:,1:nX,iP3D_Phi_0_In_Brem_2)
-      Phi_0_Ot_Brem_2_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Brem_2)
+      Phi_0_In_Brem_P   => P3D(:,:,1:nX,iP3D_Phi_0_In_Brem)
+      Phi_0_Ot_Brem_P   => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Brem)
 
     ELSE
 
@@ -890,10 +885,8 @@ CONTAINS
       Phi_0_Ot_Pair_1_P => Phi_0_Ot_Pair(:,:,:,iS_1)
       Phi_0_In_Pair_2_P => Phi_0_In_Pair(:,:,:,iS_2)
       Phi_0_Ot_Pair_2_P => Phi_0_Ot_Pair(:,:,:,iS_2)
-      Phi_0_In_Brem_1_P => Phi_0_In_Brem(:,:,:,iS_1)
-      Phi_0_Ot_Brem_1_P => Phi_0_Ot_Brem(:,:,:,iS_1)
-      Phi_0_In_Brem_2_P => Phi_0_In_Brem(:,:,:,iS_2)
-      Phi_0_Ot_Brem_2_P => Phi_0_Ot_Brem(:,:,:,iS_2)
+      Phi_0_In_Brem_P   => Phi_0_In_Brem(:,:,:)
+      Phi_0_Ot_Brem_P   => Phi_0_Ot_Brem(:,:,:)
 
     END IF
 
@@ -1062,15 +1055,16 @@ CONTAINS
 !!$      ! NEED TO CONFIRM
 !!$      CALL ComputeNeutrinoOpacities_Brem_Points &
 !!$             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, &
-!!$               Phi_0_In_Brem_1_P, Phi_0_Ot_Brem_1_P, &
+!!$               Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
 !!$               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 !!$
 !!$      CALL ComputeNeutrinoOpacities_Brem_Points &
 !!$             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, &
-!!$               Phi_0_In_Brem_2_P, Phi_0_Ot_Brem_2_P, &
+!!$               Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
 !!$               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 !!$
 !!$    ELSE
+!!!!!!!    DETAIL BALANCE
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -1083,10 +1077,8 @@ CONTAINS
       DO iE2 = 1, nE_G
       DO iE1 = 1, nE_G
 
-        Phi_0_In_Brem_1_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_Brem_1_P(iE1,iE2,iX) = Zero
-        Phi_0_In_Brem_2_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_Brem_2_P(iE1,iE2,iX) = Zero
+        Phi_0_In_Brem_P(iE1,iE2,iX) = Zero
+        Phi_0_Ot_Brem_P(iE1,iE2,iX) = Zero
 
       END DO
       END DO
@@ -1114,14 +1106,12 @@ CONTAINS
                  Phi_0_In_NES_2_P , Phi_0_Ot_NES_2_P, &
                  Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
                  Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-                 Phi_0_In_Brem_1_P, Phi_0_Ot_Brem_1_P, &
-                 Phi_0_In_Brem_2_P, Phi_0_Ot_Brem_2_P, &
+                 Phi_0_In_Brem_P,   Phi_0_Ot_Brem_P, &
                  Phi_0_In_NES (:,:,:,iS_1), Phi_0_Ot_NES (:,:,:,iS_1), &
                  Phi_0_In_NES (:,:,:,iS_2), Phi_0_Ot_NES (:,:,:,iS_2), &
                  Phi_0_In_Pair(:,:,:,iS_1), Phi_0_Ot_Pair(:,:,:,iS_1), &
                  Phi_0_In_Pair(:,:,:,iS_2), Phi_0_Ot_Pair(:,:,:,iS_2), &
-                 Phi_0_In_Brem(:,:,:,iS_1), Phi_0_Ot_Brem(:,:,:,iS_1), &
-                 Phi_0_In_Brem(:,:,:,iS_2), Phi_0_Ot_Brem(:,:,:,iS_2) )
+                 Phi_0_In_Brem(:,:,:),      Phi_0_Ot_Brem(:,:,:) )
 
       END IF
 
@@ -1144,8 +1134,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Brem_1_P, Phi_0_Ot_Brem_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Brem_2_P, Phi_0_Ot_Brem_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Brem_P, Phi_0_Ot_Brem_P
     REAL(DP), DIMENSION(:,:),   POINTER :: Chi_NES_1_P, Chi_NES_2_P
     REAL(DP), DIMENSION(:,:),   POINTER :: Eta_NES_1_P, Eta_NES_2_P
     REAL(DP), DIMENSION(:,:),   POINTER :: Chi_Pair_1_P, Chi_Pair_2_P
@@ -1198,10 +1187,8 @@ CONTAINS
       Phi_0_Ot_Pair_1_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Pair_1)
       Phi_0_In_Pair_2_P => P3D(:,:,1:nX,iP3D_Phi_0_In_Pair_2)
       Phi_0_Ot_Pair_2_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Pair_2)
-      Phi_0_In_Brem_1_P => P3D(:,:,1:nX,iP3D_Phi_0_In_Brem_1)
-      Phi_0_Ot_Brem_1_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Brem_1)
-      Phi_0_In_Brem_2_P => P3D(:,:,1:nX,iP3D_Phi_0_In_Brem_2)
-      Phi_0_Ot_Brem_2_P => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Brem_2)
+      Phi_0_In_Brem_P   => P3D(:,:,1:nX,iP3D_Phi_0_In_Brem)
+      Phi_0_Ot_Brem_P   => P3D(:,:,1:nX,iP3D_Phi_0_Ot_Brem)
 
       IF ( nX < nX0 ) THEN
 
@@ -1211,14 +1198,12 @@ CONTAINS
                  Phi_0_In_NES (:,:,:,iS_2), Phi_0_Ot_NES (:,:,:,iS_2), &
                  Phi_0_In_Pair(:,:,:,iS_1), Phi_0_Ot_Pair(:,:,:,iS_1), &
                  Phi_0_In_Pair(:,:,:,iS_2), Phi_0_Ot_Pair(:,:,:,iS_2), &
-                 Phi_0_In_Brem(:,:,:,iS_1), Phi_0_Ot_Brem(:,:,:,iS_1), &
-                 Phi_0_In_Brem(:,:,:,iS_2), Phi_0_Ot_Brem(:,:,:,iS_2), &
+                 Phi_0_In_Brem(:,:,:),      Phi_0_Ot_Brem(:,:,:), &
                  Phi_0_In_NES_1_P , Phi_0_Ot_NES_1_P , &
                  Phi_0_In_NES_2_P , Phi_0_Ot_NES_2_P , &
                  Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
                  Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-                 Phi_0_In_Brem_1_P, Phi_0_Ot_Brem_1_P, &
-                 Phi_0_In_Brem_2_P, Phi_0_Ot_Brem_2_P )
+                 Phi_0_In_Brem_P,   Phi_0_Ot_Brem_P )
 
       END IF
 
@@ -1248,10 +1233,8 @@ CONTAINS
       Phi_0_Ot_Pair_1_P => Phi_0_Ot_Pair(:,:,:,iS_1)
       Phi_0_In_Pair_2_P => Phi_0_In_Pair(:,:,:,iS_2)
       Phi_0_Ot_Pair_2_P => Phi_0_Ot_Pair(:,:,:,iS_2)
-      Phi_0_In_Brem_1_P => Phi_0_In_Brem(:,:,:,iS_1)
-      Phi_0_Ot_Brem_1_P => Phi_0_Ot_Brem(:,:,:,iS_1)
-      Phi_0_In_Brem_2_P => Phi_0_In_Brem(:,:,:,iS_2)
-      Phi_0_Ot_Brem_2_P => Phi_0_Ot_Brem(:,:,:,iS_2)
+      Phi_0_In_Brem_P   => Phi_0_In_Brem(:,:,:)
+      Phi_0_Ot_Brem_P   => Phi_0_Ot_Brem(:,:,:)
 
     END IF
 
@@ -1280,15 +1263,15 @@ CONTAINS
              Eta_Pair_2_P, Chi_Pair_2_P )
 
 !!$    ! --- Brem Emissivities and Opacities ---
-!!$    !! NEED TO CONFIRM
+!!$    !! NEED TO CONFIRM, what's tabulated
 !!$    CALL ComputeNeutrinoOpacitiesRates_Brem_Points &
 !!$           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
-!!$             Phi_0_In_Brem_1_P, Phi_0_Ot_Brem_1_P, &
+!!$             Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
 !!$             Eta_Brem_1_P, Chi_Brem_1_P )
 !!$
 !!$    CALL ComputeNeutrinoOpacitiesRates_Brem_Points &
 !!$           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
-!!$             Phi_0_In_Brem_2_P, Phi_0_Ot_Brem_2_P, &
+!!$             Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
 !!$             Eta_Brem_2_P, Chi_Brem_2_P )
 
     IF ( nX < nX_G ) THEN
