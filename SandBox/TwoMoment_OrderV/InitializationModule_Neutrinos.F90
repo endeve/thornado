@@ -344,6 +344,22 @@ CONTAINS
       CALL ComputeNeutrinoOpacities_EC_Points &
              ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, iS, Chi(:,:,iS) )
 
+      ! --- Prevent too large drop-off of the opacity -------
+      ! --- This is mainly to prevent opacity for Nue_Bar ---
+      ! --- be close to zero for low neutrino energies ------
+
+      DO iR = 1, nR
+      DO iE = 1, nE-1
+
+        IF( Chi(iE,iR,iS) < 1.d-16 * Chi(iE+1,iR,iS) )THEN
+
+          Chi(1:iE,iR,iS) = Chi(iE+1,iR,iS) * ( E_Nu(1:iE) / E_Nu(iE+1) )**2
+
+        END IF
+
+      END DO
+      END DO
+
     END DO
 
     CALL ComputeEquilibriumDistributions_DG_Points &
