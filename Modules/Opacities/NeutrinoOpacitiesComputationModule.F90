@@ -3864,7 +3864,7 @@ CONTAINS
 #endif
 
     IF ( .NOT. PRESENT( WORK1 ) ) DEALLOCATE( Phi_Ann_Xp )
-    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xp )
+    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xn )
     IF ( .NOT. PRESENT( WORK3 ) ) DEALLOCATE( Phi_Ann_XpXn )
 
 #else
