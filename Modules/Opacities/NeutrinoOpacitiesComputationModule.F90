@@ -3693,7 +3693,7 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_Brem_Points &
     ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, &
-      iMoment, Phi_Ann, Phi_Pro, WORK1, WORK2, WORK3)
+      iMoment, Phi_Pro, Phi_Ann, WORK1, WORK2, WORK3)
 
     ! --- Brem Opacities (Multiple D,T) ---
 
@@ -3892,7 +3892,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacitiesRates_Brem_Points &
-    ( iE_B, iE_E, iX_B, iX_E, W2, J, Phi_Ann, Phi_Pro, Eta, Chi )
+    ( iE_B, iE_E, iX_B, iX_E, W2, J, Phi_Pro, Phi_Ann, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3900,8 +3900,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: W2     (:)
     REAL(DP), INTENT(in)  :: J      (:,:)
-    REAL(DP), INTENT(in)  :: Phi_Ann(:,:,:)
     REAL(DP), INTENT(in)  :: Phi_Pro(:,:,:)
+    REAL(DP), INTENT(in)  :: Phi_Ann(:,:,:)
     REAL(DP), INTENT(out) :: Eta    (:,:)
     REAL(DP), INTENT(out) :: Chi    (:,:)
 
