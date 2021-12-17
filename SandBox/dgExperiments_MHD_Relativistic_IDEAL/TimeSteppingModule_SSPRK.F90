@@ -12,14 +12,11 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE MagnetofluidFieldsModule, ONLY: &
     nCM
-  USE MHD_DiscretizationModule_Relativistic, ONLY: &
-    OffGridFlux_MHD
-  !USE Euler_TallyModule_Relativistic, ONLY: &
-    !IncrementOffGridTally_MHD_Relativistic
 
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL :: EvolveOnlyMagnetic
   INTEGER :: nStages_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
@@ -57,11 +54,19 @@ MODULE TimeSteppingModule_SSPRK
 CONTAINS
 
 
-  SUBROUTINE InitializeMagnetofluid_SSPRK( nStages )
+  SUBROUTINE InitializeMagnetofluid_SSPRK( nStages, EvolveOnlyMagnetic_Option )
 
     INTEGER, INTENT(in) :: nStages
 
+    LOGICAL, INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
+
     INTEGER :: i
+
+    IF( PRESENT( EvolveOnlyMagnetic_Option ) )THEN
+      EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
+    ELSE
+      EvolveOnlyMagnetic = .FALSE.
+    END IF
 
     nStages_SSPRK = nStages
 
@@ -179,10 +184,6 @@ CONTAINS
     INTEGER :: iNX, iX1, iX2, iX3, iCM
     INTEGER :: iS, jS
 
-    REAL(DP) :: dM_OffGrid_MHD(nCM)
-
-    dM_OffGrid_MHD = Zero
-
     DO iS = 1, nStages_SSPRK
 
       DO iCM = 1, nCM
@@ -217,10 +218,6 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
-        dM_OffGrid_MHD &
-          = dM_OffGrid_MHD &
-              + dt * w_SSPRK(iS) * OffGridFlux_MHD
-
       END IF
 
     END DO
@@ -235,8 +232,6 @@ CONTAINS
       END IF
 
     END DO
-
-    !CALL IncrementOffGridTally_MHD_Relativistic( dM_OffGrid_MHD )
 
   END SUBROUTINE UpdateMagnetofluid_SSPRK
 
@@ -260,9 +255,28 @@ CONTAINS
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
 
-      U(iNX,iX1,iX2,iX3,iCM) &
-        = alpha * U(iNX,iX1,iX2,iX3,iCM) &
+      IF( EvolveOnlyMagnetic )THEN
+
+        IF( iCM .LE. 6 )THEN
+
+          U(iNX,iX1,iX2,iX3,iCM) &
+            = U(iNX,iX1,iX2,iX3,iCM)
+
+        ELSE
+
+          U(iNX,iX1,iX2,iX3,iCM) &
+            = alpha * U(iNX,iX1,iX2,iX3,iCM) &
+              + beta * D(iNX,iX1,iX2,iX3,iCM,iS)
+
+        END IF
+
+      ELSE
+
+        U(iNX,iX1,iX2,iX3,iCM) &
+          = alpha * U(iNX,iX1,iX2,iX3,iCM) &
             + beta * D(iNX,iX1,iX2,iX3,iCM,iS)
+
+      END IF
 
     END DO
     END DO
