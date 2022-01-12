@@ -38,8 +38,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi,            &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, & 
-      iErr )
+      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3 )
 
     REAL(DP), INTENT(in)  :: &
       CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
@@ -50,8 +49,6 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
       GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3
-    INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr
 
     CALL ComputePrimitive_MHD_Relativistic &
            ( CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
@@ -59,8 +56,7 @@ CONTAINS
              PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
              PM_B1, PM_B2, PM_B3, PM_Chi,            &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
-             iErr )
+             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3 )
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -201,7 +197,7 @@ CONTAINS
 
   FUNCTION Eigenvalues_MHD &
     ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
-      B1, B2, B3, &
+      B1, B2, B3, Chi, &
       Gm11, Gm22, Gm33, &
       Lapse, Shift_X1, Shift_X2, Shift_X3 )
 
@@ -209,7 +205,7 @@ CONTAINS
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
-                            B1, B2, B3, &
+                            B1, B2, B3, Chi, &
                             Gm11, Gm22, Gm33, Lapse, & 
                             Shift_X1, Shift_X2, Shift_X3
 
@@ -217,7 +213,7 @@ CONTAINS
 
     Eigenvalues_MHD = Eigenvalues_MHD_Relativistic &
                           ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
-                            B1, B2, B3, &
+                            B1, B2, B3, Chi, &
                             Gm11, Gm22, Gm33, &
                             Lapse, Shift_X1, Shift_X2, Shift_X3 )
 
@@ -248,13 +244,10 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_MHD_X1 &
-    ( uL, uR, fL, fR, aP, aM, &
-      vL, vR, pL, pR )
+    ( uL, uR, fL, fR, aP, aM )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
                             aP, aM
-
-    REAL(DP), INTENT(in) :: vL, vR, pL, pR
 
     REAL(DP) :: NumericalFlux_MHD_X1(nCM)
 
