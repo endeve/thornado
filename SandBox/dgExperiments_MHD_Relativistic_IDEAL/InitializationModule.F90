@@ -144,15 +144,15 @@ CONTAINS
 
           CASE( 'SineWave' )
 
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One             
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
-            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = 1.0_DP
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = 0.0001_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
               = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.25_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.25_DP + 0.1_DP * SIN( TwoPi * X1 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0001_DP * SIN( TwoPi * X1 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
