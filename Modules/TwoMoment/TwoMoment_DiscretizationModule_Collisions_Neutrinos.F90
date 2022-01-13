@@ -389,6 +389,9 @@ CONTAINS
           Chi_Pair(iN_E,iN_X,iS) = Zero
           Eta_Pair(iN_E,iN_X,iS) = Zero
 
+          Sig_0   (iN_E,iN_X,iS) = FourPi * E_N(iN_E)**2 * Sig_0(iN_E,iN_X,iS)
+          Sig_1   (iN_E,iN_X,iS) = FourPi * E_N(iN_E)**2 * Sig_1(iN_E,iN_X,iS)
+
         END DO
       END DO
     END DO
