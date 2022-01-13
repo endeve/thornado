@@ -1,7 +1,7 @@
 PROGRAM NeutrinoOpacities
 
   USE KindModule, ONLY: &
-    DP
+    DP, FourPi
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -84,6 +84,8 @@ PROGRAM NeutrinoOpacities
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
     Chi, &     ! --- Absorption Opacity
     Sigma, &   ! --- Scattering Opacity (Isoenergetic)
+    Sigma1, &  !
+    Sigma2, &  !
     Chi_NES, & ! --- Integrated NES Opacity
     Chi_Pair   ! --- Integrated Pair Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX,nSpecies) :: &
@@ -179,12 +181,12 @@ PROGRAM NeutrinoOpacities
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y ) &
-  !$OMP MAP( alloc: Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$OMP MAP( alloc: J0, Chi, Chi_NES, Chi_Pair, Chi_Brem, Sigma, Sigma1, Sigma2, &
   !$OMP             Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y ) &
-  !$ACC CREATE( Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$ACC CREATE( J0, Chi, Chi_NES, Chi_Pair, Chi_Brem, Sigma, Sigma1, Sigma2, &
   !$ACC         Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
 #endif
 
@@ -235,7 +237,10 @@ PROGRAM NeutrinoOpacities
   DO iS = 1, nSpecies
 
     CALL ComputeNeutrinoOpacities_ES_Points &
-           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, 1, Sigma(:,:,iS) )
+           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, 1, Sigma1(:,:,iS) )
+
+    CALL ComputeNeutrinoOpacities_ES_Points &
+           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, 2, Sigma2(:,:,iS) )
 
   END DO
 
@@ -249,23 +254,31 @@ PROGRAM NeutrinoOpacities
   !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
 #elif defined(THORNADO_OACC)
   !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-  !$ACC PRESENT( E, D, T, Y, Sigma )
+  !$ACC PRESENT( E, D, T, Y, Sigma, Sigma1, Sigma2 )
 #endif
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
 
     CALL ComputeNeutrinoOpacities_ES_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, Sigma(:,iX,iS) )
+           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, Sigma1(:,iX,iS) )
+
+    CALL ComputeNeutrinoOpacities_ES_Point &
+           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 2, Sigma2(:,iX,iS) )
 
   END DO
+  END DO
+
+  DO iE = 1, nPointsE
+    Sigma(iE,:,:) = FourPi * E(iE)**2 * ( Sigma1(iE,:,:) - Sigma2(iE,:,:) / 3.0d0 )
+                    ! (A41) in Bruenn 85
   END DO
 
   Timer_Compute_ES_Point = MPI_WTIME() - Timer_Compute_ES_Point
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( Sigma )
+  !$OMP TARGET UPDATE FROM( Sigma, Sigma1, Sigma2 )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( Sigma )
+  !$ACC UPDATE HOST( Sigma, Sigma1, Sigma2 )
 #endif
 
   ! --- Compute NES Opacities ---
@@ -344,6 +357,8 @@ PROGRAM NeutrinoOpacities
   END DO
   END DO
 
+  Chi_NES = Chi_NES * FourPi ! (A38) in Bruenn85
+
   ! --- Compute Pair Opacities ---
 
   Timer_Compute_Pair = MPI_WTIME()
@@ -420,15 +435,17 @@ PROGRAM NeutrinoOpacities
   END DO
   END DO
 
+  Chi_Pair  = Chi_Pair * FourPi ! (A47) in Bruenn85
+
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
   !$OMP MAP( release: E, D, T, Y, &
-  !$OMP               Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$OMP               Chi, Chi_NES, Chi_Pair, Sigma, Sigma1, Sigma2, &
   !$OMP               Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC DELETE( E, D, T, Y, &
-  !$ACC         Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$ACC         Chi, Chi_NES, Chi_Pair, Sigma, Sigma1, Sigma2, &
   !$ACC         Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
 #endif
 
