@@ -887,17 +887,19 @@ CONTAINS
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, Sig_2_P )
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO
 #endif
     DO iX = 1, nX
+    DO iE1 = 1, nE_G
 
-      Sig_1_P(:,iX) = FourPiEp2 * Sig_1_P(:,iX)
-      Sig_2_P(:,iX) = FourPiEp2 * Sig_2_P(:,iX)
+      Sig_1_P(iE1,iX) = FourPiEp2(iE1) * Sig_1_P(iE1,iX)
+      Sig_2_P(iE1,iX) = FourPiEp2(iE1) * Sig_2_P(iE1,iX)
 
+    END DO
     END DO
 
     IF( Include_NES )THEN
