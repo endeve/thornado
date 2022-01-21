@@ -90,6 +90,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), ALLOCATABLE :: W3_N(:)       ! --- Integration Weights (E^3)
   REAL(DP), ALLOCATABLE :: W2_S(:)
   REAL(DP), ALLOCATABLE :: W3_S(:)
+  REAL(DP), ALLOCATABLE :: FourPiEp2(:)
 
   ! --- Solver scratch arrays ---
 
@@ -213,11 +214,13 @@ CONTAINS
     ALLOCATE( W3_N(nE_G) )
     ALLOCATE( W2_S(nE_G) )
     ALLOCATE( W3_S(nE_G) )
+    ALLOCATE( FourPiEp2(nE_G) )
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
-    W2_S(:) = WFactor_FP * W2_N(:)
-    W3_S(:) = WFactor_FP * W3_N(:)
+    W2_S(:)      = WFactor_FP * W2_N(:)
+    W3_S(:)      = WFactor_FP * W3_N(:)
+    FourPiEp2(:) = FourPi * E_N(:) * E_N(:)
 
     ALLOCATE(     ITERATE_outer(nX_G) )
     ALLOCATE(   PackIndex_outer(nX_G) )
@@ -522,7 +525,7 @@ CONTAINS
     !$ACC         WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
-    DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
+    DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
     DEALLOCATE( INFO, P1D, P2D, P3D )
     DEALLOCATE( Omega, Jnorm )
     DEALLOCATE( C_J )
@@ -882,6 +885,22 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacities_ES_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, Sig_2_P )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+    DO iX = 1, nX
+    DO iE1 = 1, nE_G
+
+      Sig_1_P(iE1,iX) = FourPiEp2(iE1) * Sig_1_P(iE1,iX)
+      Sig_2_P(iE1,iX) = FourPiEp2(iE1) * Sig_2_P(iE1,iX)
+
+    END DO
+    END DO
 
     IF( Include_NES )THEN
 

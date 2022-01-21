@@ -112,7 +112,7 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitE    = MeV
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
-  REAL(DP), PARAMETER :: UnitES   = One / Centimeter
+  REAL(DP), PARAMETER :: UnitES   = One / ( Centimeter * MeV**2 )
   REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
@@ -3864,7 +3864,7 @@ CONTAINS
 #endif
 
     IF ( .NOT. PRESENT( WORK1 ) ) DEALLOCATE( Phi_Ann_Xp )
-    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xp )
+    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xn )
     IF ( .NOT. PRESENT( WORK3 ) ) DEALLOCATE( Phi_Ann_XpXn )
 
 #else
