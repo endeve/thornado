@@ -11,7 +11,8 @@ MODULE MF_UtilitiesModule
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
-    amrex_mfiter_build
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
   USE amrex_geometry_module,             ONLY: &
     amrex_geometry
   ! --- thornado Modules ---
@@ -53,27 +54,51 @@ MODULE MF_UtilitiesModule
     iGF_Beta_2, &
     iGF_Beta_3, &
     iGF_Alpha
-  USE FluidFieldsModule,                 ONLY: &
-    nCF,     &
-    iCF_D,   &
-    iCF_S1,  &
-    iCF_S2,  &
-    iCF_S3,  &
-    iCF_E,   &
-    iCF_Ne,  &
-    nPF,     &
-    iPF_D,   &
-    iPF_V1,  &
-    iPF_V2,  &
-    iPF_V3,  &
-    iPF_E,   &
-    iPF_Ne
+  USE FluidFieldsModule,       ONLY: &
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iPF_Ne, &
+    nPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E,  &
+    iCF_Ne, &
+    nAF,    &
+    iAF_P, &
+    iAF_T, &
+    iAF_Ye, &
+    iAF_S, &
+    iAF_E, &
+    iAF_Gm, &
+    iAF_Cs, &
+    iAF_Me, &
+    iAF_Mp, &
+    iAF_Mn, &
+    iAF_Xp, &
+    iAF_Xn, &
+    iAF_Xa, &
+    iAF_Xh, &
+    unitsPF, &
+    unitsAF
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE GeometryFieldsModuleE,     ONLY: &
     nGE, uGE
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeThermodynamicStates_Primitive_TABLE, &
+    ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputeAuxiliary_Fluid_TABLE, & 
+    ApplyEquationOfState_TABLE
+  USE UnitsModule, ONLY: &
+    MeV
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, &
@@ -93,6 +118,7 @@ MODULE MF_UtilitiesModule
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
   PUBLIC :: WriteNodalDataToFile
+  PUBLIC :: WriteEulertoFile
 
   CONTAINS
 
@@ -637,6 +663,202 @@ MODULE MF_UtilitiesModule
 
     print*, "Writing Nodal Values"
   END SUBROUTINE WriteNodalDataToFile
+
+
+  SUBROUTINE WriteEulertoFile( MF_uCF, MF_uGF, n )
+ 
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    INTEGER, INTENT(in) :: n
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+
+    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: AF(:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: PF(:,:,:,:,:)
+
+    REAL(AR) :: Mu(1:nDOFX), num
+
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iX1, iX2, iX3, l
+
+    character(len=64) :: nm
+    CHARACTER(LEN=16) :: FMT
+
+    WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
+
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
+
+        ALLOCATE( PF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nPF) )
+        
+        ALLOCATE( AF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3),1:nAF) )
+
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+
+
+        DO iX3 = 1, nX(3)
+        DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          CALL ComputePrimitive_Euler_Relativistic &
+               ( U(:,iX1,iX2,iX3,iCF_D ),       &
+                 U(:,iX1,iX2,iX3,iCF_S1),       &
+                 U(:,iX1,iX2,iX3,iCF_S2),       &
+                 U(:,iX1,iX2,iX3,iCF_S3),       &
+                 U(:,iX1,iX2,iX3,iCF_E ),       &
+                 U(:,iX1,iX2,iX3,iCF_Ne),       &
+                 PF(:,iX1,iX2,iX3,iPF_D ),       &
+                 PF(:,iX1,iX2,iX3,iPF_V1),       &
+                 PF(:,iX1,iX2,iX3,iPF_V2),       &
+                 PF(:,iX1,iX2,iX3,iPF_V3),       &
+                 PF(:,iX1,iX2,iX3,iPF_E ),       &
+                 PF(:,iX1,iX2,iX3,iPF_Ne),       &
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+ 
+           CALL ComputeAuxiliary_Fluid_TABLE &
+               ( PF(:,iX1,iX2,iX3,iPF_D ), &
+                 PF(:,iX1,iX2,iX3,iPF_E ), &
+                 PF(:,iX1,iX2,iX3,iPF_Ne), &
+                 AF(:,iX1,iX2,iX3,iAF_P ), &
+                 AF(:,iX1,iX2,iX3,iAF_T ), &
+                 AF(:,iX1,iX2,iX3,iAF_Ye), &
+                 AF(:,iX1,iX2,iX3,iAF_S ), &
+                 AF(:,iX1,iX2,iX3,iAF_E ), &
+                 AF(:,iX1,iX2,iX3,iAF_Gm), &
+                 AF(:,iX1,iX2,iX3,iAF_Cs) )
+
+
+             
+          CALL ApplyEquationOfState_TABLE &
+               ( PF(:,iX1,iX2,iX3,iPF_D ), &
+                 AF(:,iX1,iX2,iX3,iAF_T ), &
+                 AF(:,iX1,iX2,iX3,iAF_Ye), &
+                 AF(:,iX1,iX2,iX3,iAF_P ), &
+                 AF(:,iX1,iX2,iX3,iAF_S ), &
+                 AF(:,iX1,iX2,iX3,iAF_E ), &
+                 AF(:,iX1,iX2,iX3,iAF_Me), &
+                 AF(:,iX1,iX2,iX3,iAF_Mp), &
+                 AF(:,iX1,iX2,iX3,iAF_Mn), &
+                 AF(:,iX1,iX2,iX3,iAF_Xp), &
+                 AF(:,iX1,iX2,iX3,iAF_Xn), &
+                 AF(:,iX1,iX2,iX3,iAF_Xa), &
+                 AF(:,iX1,iX2,iX3,iAF_Xh), &
+                 AF(:,iX1,iX2,iX3,iAF_Gm) )
+
+
+        END DO
+        END DO
+        END DO
+        WRITE(nm,*) n
+
+        nm = ADJUSTL(nm)
+
+        OPEN( UNIT = 101, FILE = 'DF.dat'      )
+        OPEN( UNIT = 102, FILE = 'V1.dat'      )
+        OPEN( UNIT = 103, FILE = 'V2.dat'      )
+        OPEN( UNIT = 104, FILE = 'V3.dat'      )
+        OPEN( UNIT = 105, FILE = 'Ye.dat'      )
+        OPEN( UNIT = 106, FILE = 'Mu'//trim(nm) //'.dat'      )
+        OPEN( UNIT = 107, FILE = 'E.dat'      )
+        OPEN( UNIT = 108, FILE = 'T'//trim(nm) //'.dat'      )
+ 
+
+        DO iX3 = 1, nX(3)
+        DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          Mu(:) = AF(:,iX1,iX2,iX3,iAF_Me) + AF(:,iX1,iX2,iX3,iAF_Mp) - AF(:,iX1,iX2,iX3,iAF_Mn)
+
+
+          WRITE(101,FMT) &
+            PF(:,iX1,iX2,iX3,iPF_D) &
+              / unitsPF(iPF_D)
+
+          WRITE(102,FMT) &
+            PF(:,iX1,iX2,iX3,iPF_V1) &
+              / unitsPF(iPF_V1)
+
+          WRITE(103,FMT) &
+            PF(:,iX1,iX2,iX3,iPF_V2) &
+              / unitsPF(iPF_V2)
+
+          WRITE(104,FMT) &
+            PF(:,iX1,iX2,iX3,iPF_V3) &
+              / unitsPF(iPF_V3)
+
+          WRITE(105,FMT) &
+            AF(:,iX1,iX2,iX3,iAF_Ye) &
+              / unitsAF(iAF_Ye)
+
+          WRITE(106,FMT) &
+            Mu(:) &
+              / unitsAF(iAF_Me)
+
+          WRITE(107,FMT) &
+            PF(:,iX1,iX2,iX3,iPF_E) &
+              / unitsPF(iPF_E)
+
+          WRITE(108,FMT) &
+            AF(:,iX1,iX2,iX3,iAF_T) &
+              / MeV
+        END DO
+        END DO
+        END DO
+        DEALLOCATE( U )
+        DEALLOCATE( G )
+        DEALLOCATE( PF )
+        DEALLOCATE( AF )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+
+
+
+
+
+
+  END SUBROUTINE WriteEulertoFile
 
 
 END MODULE MF_UtilitiesModule

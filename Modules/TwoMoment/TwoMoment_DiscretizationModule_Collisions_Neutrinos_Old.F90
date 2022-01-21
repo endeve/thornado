@@ -299,6 +299,13 @@ CONTAINS
                ( 1, nE_G, 1, nDOFX, E_N, PF_N(:,iPF_D), &
                  AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, 1, Sig(:,iS,:) )
 
+        DO iX1 = 1, nDOFX
+
+          Sig(1:nE_G,iS,iX1) &
+            = Sig(1:nE_G,iS,iX1) * FourPi * E_N(1:nE_G) * E_N(1:nE_G)
+
+        END DO
+
       END DO
 
       Chi_NES  = Zero
@@ -853,6 +860,8 @@ CONTAINS
              ( 1, nE_G, E_N(1:nE_G), PF_N(iPF_D), AF_N(iAF_T), AF_N(iAF_Ye), &
                iSpecies = 1, iMoment = 1, opES_Point = Sig(1:nE_G,1) )
 
+      Sig(1:nE_G,1) = Sig(1:nE_G,1) * FourPi * E_N(1:nE_G) * E_N(1:nE_G)
+
       wTime = MPI_WTIME( ) - wTime
 
       !      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNuOp_Point: ', wTime
@@ -1080,6 +1089,8 @@ CONTAINS
       CALL ComputeNeutrinoOpacities_ES_Point &
              ( 1, nE_G, E_N(1:nE_G), PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), &
                iSpecies = 1, iMoment = 1, opES_Point = Sig(1:nE_G,1) )
+
+      Sig(1:nE_G,1) = Sig(1:nE_G,1) * FourPi * E_N(1:nE_G) * E_N(1:nE_G)
 
       ! --- Map Radiation Data for Collision Update ---
 

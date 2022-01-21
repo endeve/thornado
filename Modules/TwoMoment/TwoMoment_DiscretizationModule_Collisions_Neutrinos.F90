@@ -4,7 +4,7 @@
 MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, FourPi
   USE ProgramHeaderModule, ONLY: &
     nNodesE, &
     nNodesZ, &
@@ -376,7 +376,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    !$ACC PRESENT( Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, Sig_0, Sig_1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -388,6 +388,9 @@ CONTAINS
           Eta_NES (iN_E,iN_X,iS) = Zero
           Chi_Pair(iN_E,iN_X,iS) = Zero
           Eta_Pair(iN_E,iN_X,iS) = Zero
+
+          Sig_0   (iN_E,iN_X,iS) = FourPi * E_N(iN_E)**2 * Sig_0(iN_E,iN_X,iS)
+          Sig_1   (iN_E,iN_X,iS) = FourPi * E_N(iN_E)**2 * Sig_1(iN_E,iN_X,iS)
 
         END DO
       END DO

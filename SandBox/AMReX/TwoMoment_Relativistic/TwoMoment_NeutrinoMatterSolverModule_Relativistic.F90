@@ -10,7 +10,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
     Centimeter, &
     Gram, &
     MeV, &
-    BaryonMass, &
+    Erg, &
+    Kelvin, &
+    Dyne, &
     SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
@@ -39,7 +41,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
-    ComputePressure_TABLE
+    ComputeSpecificInternalEnergy_TABLE, &
+    ComputePressure_TABLE, &
+    MinT
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions_DG_Points, &
     ComputeNeutrinoOpacities_EC_Points, &
@@ -94,7 +98,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
 
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Omega
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: S_Eps, C_Eps, U_Eps, G_Eps
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: S_Eps, C_Eps, U_Eps, G_Eps, Eps_old
   REAL(DP), DIMENSION(:), ALLOCATABLE :: cD_old, Y_old, C_Y, S_Y, G_Y, U_Y
   REAL(DP), DIMENSION(:), ALLOCATABLE :: rho_old, C_rho, S_rho, G_rho, U_rho
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1
@@ -131,7 +135,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
   INTEGER :: iS_2 = iNuE_Bar
 
   INTEGER, PARAMETER :: iY  = 1
-  INTEGER, PARAMETER :: iE  = 2
+  INTEGER, PARAMETER :: iEps= 2
   INTEGER, PARAMETER :: iV1 = 3
   INTEGER, PARAMETER :: iV2 = 4
   INTEGER, PARAMETER :: iV3 = 5
@@ -195,7 +199,7 @@ CONTAINS
     nE_G = nZ(1) * nNodesZ(1)
     nX_G = PRODUCT( nZ(2:4) * nNodesZ(2:4) )
 
-    n_FP_outer = 5
+    n_FP_outer = 6 
     n_FP_inner = nE_G * nCR * nSpecies
 
     ALLOCATE( E_N (nE_G) )
@@ -578,7 +582,7 @@ CONTAINS
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:),     INTENT(inout) :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: D, T, Y, E, P
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: D, T, Y, E
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), DIMENSION(:),     INTENT(inout) :: alp, B_u_1, B_u_2, B_u_3
     INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner, nIterations_Outer
@@ -587,17 +591,12 @@ CONTAINS
 
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
-    REAL(DP), DIMENSION(:) :: P
+    REAL(DP) :: P(SIZE(D))
 
 
     ! --- Initial RHS ---
-
- 
-
     CALL ComputePressure_TABLE & 
-           ( D, E, Y, P )
-
-
+           ( D, T, Y, P )
     CALL InitializeRHS_FP &
            ( J, H_u_1, H_u_2, H_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
@@ -680,7 +679,10 @@ CONTAINS
         CALL UpdateNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, &
                  J, H_u_1, H_u_2, H_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+                 V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 alp, B_u_1, B_u_2, B_u_3 )
+
 
         ! --- Check Convergence (inner) ---
 
@@ -688,8 +690,6 @@ CONTAINS
         CALL CheckConvergence_Inner &
                ( ITERATE_inner, n_FP_inner, k_inner, &
                  nIterations_Inner, FVECm_inner )
-
-
         ! --- Shift History Arrays (inner) ---
 
         CALL ShiftRHS_FP &
@@ -705,7 +705,7 @@ CONTAINS
 
       CALL ComputeMatterRHS_FP &
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
-               J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
+               J, H_u_1, H_u_2, H_u_3, D, E, P, V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
 
@@ -724,7 +724,7 @@ CONTAINS
 
       CALL UpdateMatterRHS_FP &
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
-               Y, E, V_u_1, V_u_2, V_u_3, &
+               D, Y, E, V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
       ! --- Update Temperature ---
@@ -735,8 +735,8 @@ CONTAINS
 
  
 
-      CALL ComputePressureFrom_TABLE & 
-             ( D, E, Y, P )
+      CALL ComputePressure_TABLE & 
+           ( D, T, Y, P )
 
       ! --- Check Convergence (outer) ---
 
@@ -1218,6 +1218,9 @@ CONTAINS
 
     END IF
 
+    CALL ComputeSpecificInternalEnergy_TABLE(D_P, T_P, Y_P, E_P)
+
+
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
            ( D_P, E_P, Y_P, T_P )
 
@@ -1277,10 +1280,10 @@ CONTAINS
       
       ! --- Store Initial Matter State ---
 
-      rho_old(iN_X)= D(iN_X)
-      Y_old (iN_X) = Y(iN_X)
-      E_old (iN_X) = E(iN_X)
-      cD_old(iN_X) = W * D(iN_X)
+      rho_old(iN_X)  = D(iN_X)
+      Y_old (iN_X)   = Y(iN_X)
+      Eps_old (iN_X) = E(iN_X)
+      cD_old(iN_X)   = W * D(iN_X)
 
       ! --- Scaling Factors ---
 
@@ -1386,7 +1389,7 @@ CONTAINS
 
       ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
 
-      E_nu(iN_E,iN_X,iS) = W * J(iN_E,iN_X,iS) +  W * Two * vDotH + vvDotK 
+      E_nu(iN_E,iN_X,iS) = W**2 * J(iN_E,iN_X,iS) +  W * Two * vDotH + vvDotK 
 
       ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
@@ -1456,19 +1459,18 @@ CONTAINS
 
 
  
-      C_Y(iN_X) = ( AtomicMassUnit / cD_old(iNX) ) * C_Y(iN_X)
+      C_Y(iN_X) = ( AtomicMassUnit / cD_old(iN_X) ) * C_Y(iN_X)
 
-      SJ(1) = ( 1.0_DP + E(iNX) + P(iNX) / D(iNX) ) * D(iNX) * W**2 * V_d_1(iNX)
-      SJ(2) = ( 1.0_DP + E(iNX) + P(iNX) / D(iNX) ) * D(iNX) * W**2 * V_d_2(iNX)
-      SJ(3) = ( 1.0_DP + E(iNX) + P(iNX) / D(iNX) ) * D(iNX) * W**2 * V_d_3(iNX)
+      SJ(1) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_1(iN_X)
+      SJ(2) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_2(iN_X)
+      SJ(3) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_3(iN_X)
 
 
       SJ = SJ / ( cD_old(iN_X) * SpeedOfLight)
 
 
-      Ef = ( 1.0_DP + E(iNX) + P(iNX) / D(iNX) ) * D(iNX) * W**2 - P(iNX)
+      Ef = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 - P(iN_X)
     
-      Ef = Ef / ( cD_old(iN_X) * E(iNX) )
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
@@ -1484,7 +1486,6 @@ CONTAINS
         = ( SJ(2) + C_V_d_2(iN_X) ) * S_V_d_2(iN_X) / cD_old(iN_X)
       C_V_d_3(iN_X) &
         = ( SJ(3) + C_V_d_3(iN_X) ) * S_V_d_3(iN_X) / cD_old(iN_X)
-
     END DO
 
   END SUBROUTINE InitializeRHS_FP
@@ -1532,7 +1533,7 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, W
+    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, W, h
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1591,7 +1592,7 @@ CONTAINS
 
       ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
 
-      E_nu(iN_E,iN_X,iS) = W * J(iN_E,iN_X,iS) +  W * Two * vDotH + vvDotK 
+      E_nu(iN_E,iN_X,iS) = W**2 * J(iN_E,iN_X,iS) +  W * Two * vDotH + vvDotK 
 
       ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
@@ -1677,29 +1678,32 @@ CONTAINS
 
         G_rho  (iN_X)  = ( 1.0_DP / W ) * C_rho  (iN_X) 
         G_Y    (iN_X)  = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * G_Y(iN_X) * S_Y(iN_X)
-        G_Eps  (iN_X)  = ( 1.0_DP / W ) * ( C_Eps(iN_X) - G_Eps(iN_X) * S_Eps(iN_X) / cD_old(iN_X) )
+        G_Eps  (iN_X)  = ( 1.0_DP / W ) * ( C_Eps(iN_X) - G_Eps(iN_X) * S_Eps(iN_X) / cD_old(iN_X) ) &
                        + S_Eps(iN_X)    * ( P(iN_X) / ( W * cD_old(iN_X) ) - ( 1.0_DP + P(iN_X) / D(iN_X) ))
+      
         G_V_d_1(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - G_V_d_1(iN_X) * S_V_d_1(iN_X) / cD_old(iN_X) ) 
         G_V_d_2(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - G_V_d_2(iN_X) * S_V_d_2(iN_X) / cD_old(iN_X) ) 
         G_V_d_3(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - G_V_d_3(iN_X) * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+        
+
+
 
         Gm(iD ,iN_X) = G_rho  (iN_X)
         Gm(iY ,iN_X) = G_Y    (iN_X)
-        Gm(iE ,iN_X) = G_Eps  (iN_X)
+        Gm(iEps,iN_X)= G_Eps  (iN_X)
         Gm(iV1,iN_X) = G_V_d_1(iN_X)
         Gm(iV2,iN_X) = G_V_d_2(iN_X)
         Gm(iV3,iN_X) = G_V_d_3(iN_X)
 
         Fm(iD ,iN_X) = G_rho  (iN_X) - U_rho  (iN_X)
         Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
-        Fm(iE ,iN_X) = G_Eps  (iN_X) - U_Eps  (iN_X)
+        Fm(iEps ,iN_X) = G_Eps  (iN_X) - U_Eps  (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
 
       END IF
     END DO
-
   END SUBROUTINE ComputeMatterRHS_FP
 
 
@@ -1790,7 +1794,7 @@ CONTAINS
 
         Gm(iOS+iCR_N,iN_X) &
           = ( One - Omega(iN_X) ) *     J(iN_E,iN_X,iS) &
-           + ( C_J(iN_E,iN_X,iS) - vDotH + dt * Eta_T ) &
+           + Omega(iN_X)   *  ( C_J(iN_E,iN_X,iS) - vDotH + dt * Eta_T ) &
               / ( W + dt * Chi_T )
 
         Fm(iOS+iCR_N,iN_X) &
@@ -1836,12 +1840,12 @@ CONTAINS
 
 
   SUBROUTINE UpdateMatterRHS_FP &
-    ( MASK, Fm, Gm, Y, E, V_u_1, V_u_2, V_u_3, &
+    ( MASK, Fm, Gm, D, Y, E, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:)    , INTENT(inout) :: Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: D, Y, E, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_X
@@ -1863,21 +1867,21 @@ CONTAINS
 
         Fm(iD ,iN_X) = Gm(iD ,iN_X) - U_rho  (iN_X)
         Fm(iY ,iN_X) = Gm(iY ,iN_X) - U_Y    (iN_X)
-        Fm(iE ,iN_X) = Gm(iE ,iN_X) - U_Eps  (iN_X)
+        Fm(iEps,iN_X)= Gm(iEps ,iN_X) - U_Eps  (iN_X)
         Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
 
         U_rho  (iN_X) = Gm(iD ,iN_X)
         U_Y    (iN_X) = Gm(iY ,iN_X)
-        U_Eps  (iN_X) = Gm(iE ,iN_X)
+        U_Eps  (iN_X) = Gm(iEps ,iN_X)
         U_V_d_1(iN_X) = Gm(iV1,iN_X)
         U_V_d_2(iN_X) = Gm(iV2,iN_X)
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
         D    (iN_X) = U_rho  (iN_X) * rho_old(iN_X)
-        Y    (iN_X) = U_Y    (iN_X) * Y_old(iN_X)
-        E    (iN_X) = U_Eps  (iN_X) * E_old(iN_X)
+        Y    (iN_X) = U_Y    (iN_X) * Y_old  (iN_X)
+        E    (iN_X) = U_Eps  (iN_X) * Eps_old(iN_X)
         V_d_1(iN_X) = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2(iN_X) = U_V_d_2(iN_X) * SpeedOfLight
         V_d_3(iN_X) = U_V_d_3(iN_X) * SpeedOfLight
@@ -1894,7 +1898,7 @@ CONTAINS
                 + V_u_2(iN_X) * V_d_2(iN_X) &
                 + V_u_3(iN_X) * V_d_3(iN_X)
  
-        W = 1.0_DP / SQRT( 1.0_DP - vDotV**2)
+        W = 1.0_DP / SQRT( 1.0_DP - vDotV)
 
         ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
 
@@ -1908,12 +1912,15 @@ CONTAINS
 
   SUBROUTINE UpdateNeutrinoRHS_FP &
     ( MASK, Fm, Gm, J, H_u_1, H_u_2, H_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: alp, B_u_1, B_u_2, B_u_3
 
     INTEGER  :: iN_E, iN_X, iS, iOS
     REAL(DP) :: B_d_1, B_d_2, B_d_3
@@ -1951,17 +1958,17 @@ CONTAINS
         B_d_2 = Gm_dd_22(iN_X) * B_u_2(iN_X)
         B_d_3 = Gm_dd_33(iN_X) * B_u_3(iN_X)
 
-        H_u_1(iZ) = ( 1.0_DP - B_d_1 * V_u_1(iN_X) / alp(iN_X) ) * H_u_1(iN_E,iN_X,iS) / Gm_dd_11(iN_X)  &
-                  - H_u_2(iN_E,iN_X,iS) * B_d_1 * V_u_2(iN_X) / ( alp(iN_X) *Gm_dd_11(iN_X) ) &
-                  - H_u_3(iN_E,iN_X,iS) * B_d_1 * V_u_3(iN_X) / ( Gm_dd_11(iN_X) * alp(iN_X) )
+        H_u_1(iN_E,iN_X,iS) = ( 1.0_DP - B_d_1 * V_u_1(iN_X) / alp(iN_X) ) * H_d_1(iN_E,iN_X,iS) / Gm_dd_11(iN_X)  &
+                 - H_d_2(iN_E,iN_X,iS) * B_d_1 * V_u_2(iN_X) / ( alp(iN_X) *Gm_dd_11(iN_X) ) &
+                 - H_d_3(iN_E,iN_X,iS) * B_d_1 * V_u_3(iN_X) / ( Gm_dd_11(iN_X) * alp(iN_X) )
 
-        H_u_2(iZ) =( 1.0_DP - B_d_2 * V_u_2(iN_X) / alp(iN_X) ) * H_u_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)  &
-                  - H_u_1(iN_E,iN_X,iS) * B_d_2 * V_u_1(iN_X) / ( alp(iN_X) *Gm_dd_22(iN_X) ) &
-                  - H_u_3(iN_E,iN_X,iS) * B_d_2 * V_u_3(iN_X) / ( Gm_dd_22(iN_X) * alp(iN_X) )
+        H_u_2(iN_E,iN_X,iS) =( 1.0_DP -   B_d_2 * V_u_2(iN_X) / alp(iN_X) ) * H_d_2(iN_E,iN_X,iS) / Gm_dd_22(iN_X)  &
+                  - H_d_1(iN_E,iN_X,iS) * B_d_2 * V_u_1(iN_X) / ( alp(iN_X) *Gm_dd_22(iN_X) ) &
+                  - H_d_3(iN_E,iN_X,iS) * B_d_2 * V_u_3(iN_X) / ( Gm_dd_22(iN_X) * alp(iN_X) )
 
-        H_u_3(iZ) =( 1.0_DP - B_d_3 * V_u_3(iN_X) / alp(iN_X) ) * H_u_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)  &
-                  - H_u_1(iN_E,iN_X,iS) * B_d_3 * V_u_1(iN_X) / ( alp(iN_X) *Gm_dd_33(iN_X) ) &
-                  - H_u_2(iN_E,iN_X,iS) * B_d_3 * V_u_2(iN_X) / ( Gm_dd_33(iN_X) * alp(iN_X) )
+        H_u_3(iN_E,iN_X,iS) =( 1.0_DP - B_d_3 * V_u_3(iN_X) / alp(iN_X) ) * H_d_3(iN_E,iN_X,iS) / Gm_dd_33(iN_X)  &
+                  - H_d_1(iN_E,iN_X,iS) * B_d_3 * V_u_1(iN_X) / ( alp(iN_X) *Gm_dd_33(iN_X) ) &
+                  - H_d_2(iN_E,iN_X,iS) * B_d_3 * V_u_2(iN_X) / ( Gm_dd_33(iN_X) * alp(iN_X) )
 
 
 
@@ -2275,7 +2282,7 @@ CONTAINS
       IF( MASK(iN_X) )THEN
 
         CONVERGED = .TRUE.
-
+ 
         DO iS   = 1, nSpecies
 
           Fnorm_N  = Zero
@@ -2347,8 +2354,9 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN
 
+
         Fnorm_Y  =      ABS( Fm(iY ,iN_X) )
-        Fnorm_E  =      ABS( Fm(iE ,iN_X) )
+        Fnorm_E  =      ABS( Fm(iEps ,iN_X) )
         Fnorm_V  = MAX( ABS( Fm(iV1,iN_X) ), &
                         ABS( Fm(iV2,iN_X) ), &
                         ABS( Fm(iV3,iN_X) ) )
