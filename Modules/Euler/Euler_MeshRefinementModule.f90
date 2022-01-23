@@ -16,7 +16,13 @@ MODULE Euler_MeshRefinementModule
     WeightsX1, &
     WeightsX2, &
     WeightsX3, &
-    WeightsX_q
+    WeightsX_q, &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3, &
+    NodeNumberTableX_X1, &
+    NodeNumberTableX_X2, &
+    NodeNumberTableX_X3
   USE PolynomialBasisModule_Lagrange, ONLY: &
     IndLX_Q, &
     L_X1, &
@@ -31,6 +37,13 @@ MODULE Euler_MeshRefinementModule
   PUBLIC :: Refine_Euler
   PUBLIC :: Coarsen_Euler
 
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Up_Refined(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Dn_Refined(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Up_Refined(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Dn_Refined(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Up_Refined(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Dn_Refined(:,:)
+
   INTEGER  :: nFine, nFineX(3)
   REAL(DP) :: VolumeRatio
   REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
@@ -44,7 +57,7 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, iN1, iN2, iN3
+    INTEGER :: i, k, kk, iN1, iN2, iN3
     REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
 
     nFineX      = 1
@@ -62,6 +75,13 @@ CONTAINS
     ALLOCATE( xiX1(nNodesX(1)) )
     ALLOCATE( xiX2(nNodesX(2)) )
     ALLOCATE( xiX3(nNodesX(3)) )
+
+    ALLOCATE( LX_X1_Up_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X1) )
+    ALLOCATE( LX_X1_Dn_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X1) )
+    ALLOCATE( LX_X2_Up_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X2) )
+    ALLOCATE( LX_X2_Dn_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X2) )
+    ALLOCATE( LX_X3_Up_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X3) )
+    ALLOCATE( LX_X3_Dn_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X3) )
 
     iFine = 0
     DO iFineX3 = 1, nFineX(3)
@@ -120,7 +140,7 @@ CONTAINS
     END DO
     END DO
 
-open(100,file='/Users/dunhamsj/Desktop/GaussLegendreWeights.txt')
+open(100,file='/home/kkadoogan/Desktop/GaussLegendreWeights.txt')
 write(100,'(A)') '{'
 do in1=1,ndofx
 if(.not.in1.eq.ndofx)then
@@ -132,7 +152,7 @@ enddo
 write(100,'(A)') '};'
 close(100)
 
-open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix.txt')
+open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix.txt')
 write(100,'(A)') '{'
 do ifine=1,nfine
 write(100,'(A)') '  {'
@@ -160,7 +180,7 @@ enddo
 write(100,'(A)') '};'
 close(100)
 
-open(100,file='/Users/dunhamsj/Desktop/ProjectionMatrix_T.txt')
+open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix_T.txt')
 write(100,'(A)') '{'
 do ifine=1,nfine
 write(100,'(A)') '  {'
@@ -191,6 +211,106 @@ close(100)
 print*,'  SHAPE( ProjMatrix ): ', shape(ProjectionMatrix)
 print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
 
+    DO i = 1, nDOFX ! DOFX of Coarse Element
+
+      kk = 0
+
+      DO iFineX3 = 1, nFineX(3)
+      DO iFineX2 = 1, nFineX(2)
+
+        DO k = 1, nDOFX_X1 ! DOF of fine interface (X1)
+
+          iN2 = NodeNumberTableX_X1(1,k)
+          iN3 = NodeNumberTableX_X1(2,k)
+
+          kk = kk + 1
+
+          LX_X1_Up_Refined(i,kk) &
+            =   L_X1(IndLX_Q(1,i)) % P( +Half ) &
+              * L_X2(IndLX_Q(2,i)) &
+                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
+              * L_X3(IndLX_Q(3,i)) &
+                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+
+          LX_X1_Dn_Refined(i,kk) &
+            =   L_X1(IndLX_Q(1,i)) % P( -Half ) &
+              * L_X2(IndLX_Q(2,i)) &
+                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
+              * L_X3(IndLX_Q(3,i)) &
+                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+
+        END DO
+
+      END DO
+      END DO
+
+      kk = 0
+
+      DO iFineX3 = 1, nFineX(3)
+      DO iFineX1 = 1, nFineX(1)
+
+        DO k = 1, nDOFX_X2 ! DOFX of fine interface (X2)
+
+          iN1 = NodeNumberTableX_X2(1,k)
+          iN3 = NodeNumberTableX_X2(2,k)
+
+          kk = kk + 1
+
+          LX_X2_Up_Refined(i,kk) &
+            =   L_X1(IndLX_Q(1,i)) &
+                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
+              * L_X2(IndLX_Q(2,i)) % P( +Half ) &
+              * L_X3(IndLX_Q(3,i)) &
+                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+
+          LX_X2_Dn_Refined(i,kk) &
+            =   L_X1(IndLX_Q(1,i)) &
+                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
+              * L_X2(IndLX_Q(2,i)) % P( -Half ) &
+              * L_X3(IndLX_Q(3,i)) &
+                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+
+        END DO
+
+      END DO
+      END DO
+
+      kk = 0
+
+      DO iFineX2 = 1, nFineX(2)
+      DO iFineX1 = 1, nFineX(1)
+
+        DO k = 1, nDOFX_X3 ! DOFX of fine interface (X3)
+
+          iN1 = NodeNumberTableX_X3(1,k)
+          iN2 = NodeNumberTableX_X3(2,k)
+
+          kk = kk + 1
+
+          LX_X3_Up_Refined(i,kk) &
+            =   L_X1(IndLX_Q(1,i)) &
+                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
+              * L_X2(IndLX_Q(2,i)) &
+                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
+              * L_X3(IndLX_Q(3,i)) % P( +Half )
+
+          LX_X3_Dn_Refined(i,kk) &
+            =   L_X1(IndLX_Q(1,i)) &
+                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
+              * L_X2(IndLX_Q(2,i)) &
+                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
+              * L_X3(IndLX_Q(3,i)) % P( -Half )
+
+        END DO
+
+      END DO
+      END DO
+
+    END DO ! i
+
+print*,LX_X1_Up_Refined(2,3)
+stop
+
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
     DEALLOCATE( xiX3 )
@@ -199,6 +319,13 @@ print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
 
 
   SUBROUTINE FinalizeMeshRefinement_Euler
+
+    DEALLOCATE( LX_X3_Dn_Refined )
+    DEALLOCATE( LX_X3_Up_Refined )
+    DEALLOCATE( LX_X2_Dn_Refined )
+    DEALLOCATE( LX_X2_Up_Refined )
+    DEALLOCATE( LX_X1_Dn_Refined )
+    DEALLOCATE( LX_X1_Up_Refined )
 
     DEALLOCATE( ProjectionMatrix )
     DEALLOCATE( ProjectionMatrix_T )

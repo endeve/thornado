@@ -58,6 +58,9 @@ PROGRAM ApplicationDriver
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_InputOutput
 
+use euler_meshrefinementmodule,only:&
+InitializeMeshRefinement_Euler
+
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
@@ -80,6 +83,8 @@ PROGRAM ApplicationDriver
   t_chk = dt_chk
 
   CALL InitializeProgram
+
+call InitializeMeshRefinement_Euler
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()

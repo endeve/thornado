@@ -22,7 +22,8 @@ MODULE MF_TimeSteppingModule_SSPRK
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nDimsX
   USE FluidFieldsModule, ONLY: &
     nCF
   USE GeometryFieldsModule, ONLY: &
@@ -142,6 +143,10 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_U
     TYPE(amrex_multifab) :: MF_D(1:nStages)
 
+    TYPE(amrex_multifab) :: FluxIncrement(1:2*nDimsX,0:amrex_max_level)
+    INTEGER              :: iDimX, nGhost(nDimsX)
+    LOGICAL              :: Nodal(nDimsX)
+
     INTEGER :: iS, jS
     INTEGER :: iLevel, iSubStep
 
@@ -149,7 +154,29 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
+    nGhost = 0
+
     DO iLevel = 0, amrex_max_level
+
+      DO iDimX = 1, nDimsX
+
+        Nodal        = .FALSE.
+        Nodal(iDimX) = .TRUE.
+
+        CALL amrex_multifab_build &
+               ( FluxIncrement(2*(iDimX-1)+1,iLevel), &
+                 MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+                 nDOFX * nCF, nGhost, Nodal )
+
+        CALL amrex_multifab_build &
+               ( FluxIncrement(2*(iDimX-1)+2,iLevel), &
+                 MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+                 nDOFX * nCF, nGhost, Nodal )
+
+        CALL FluxIncrement(2*(iDimX-1)+1,iLevel) % SetVal( Zero )
+        CALL FluxIncrement(2*(iDimX-1)+2,iLevel) % SetVal( Zero )
+
+      END DO
 
       DO iSubStep = 1, 1!nSubSteps(iLevel)
 
@@ -224,9 +251,9 @@ CONTAINS
 
             CALL ComputeIncrement_Euler_MF &
                    ( iLevel, t(iLevel), MF_uGF(iLevel), MF_uCF(iLevel), &
-                     MF_uDF(iLevel), MF_D(iS) )
+                     MF_uDF(iLevel), MF_D(iS), FluxIncrement(:,iLevel) )
 
-            dM_OffGrid_Euler(iLevel,:) &
+           dM_OffGrid_Euler(iLevel,:) &
               = dM_OffGrid_Euler(iLevel,:) &
                   + dt(iLevel) * w_SSPRK(iS) * MF_OffGridFlux_Euler(iLevel,:)
 
@@ -263,6 +290,16 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
 
 !!$    CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler )
+
+    DO iLevel = 0, amrex_max_level
+
+      DO iDimX = 1, 2*nDimsX
+
+        CALL amrex_multifab_destroy( FluxIncrement(iDimX,iLevel) )
+
+      END DO
+
+    END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
