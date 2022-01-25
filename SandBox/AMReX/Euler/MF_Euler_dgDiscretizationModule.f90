@@ -799,8 +799,8 @@ CONTAINS
                 / ( WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * dX1(iX1) * dX2(iX2) * dX3(iX3) )
 
-          FluxIncrement_X2_L_P(iNX,iX1,iX2,iX3,iCF) &
-            = FluxIncrement_X1_L_P(iNX,iCF,iX1,iX3,iX2) &
+          FluxIncrement_X2_L(iNX,iX1,iX2,iX3,iCF) &
+            = FluxIncrement_X2_L_P(iNX,iCF,iX1,iX3,iX2) &
                 * tau(iNX,iX1,iX2,iX3) &
                 / ( WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * dX1(iX1) * dX2(iX2) * dX3(iX3) )
