@@ -260,13 +260,12 @@ CONTAINS
     nDOFX_X(2) = nDOFX_X2
     nDOFX_X(3) = nDOFX_X3
 
+    nGhost = 0
+
     DO iDimX = 1, nDimsX
 
       Nodal        = .FALSE.
       Nodal(iDimX) = .TRUE.
-
-      nGhost        = 0
-      nGhost(iDimX) = 1
 
       CALL amrex_multifab_build &
              ( SurfaceFluxes(iDimX), &
@@ -317,15 +316,15 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
-      ALLOCATE( SurfaceFlux_X1(1:nDOFX_X1,iX_B0(1)-1:iX_E0(1)+1, &
-                                          iX_B0(2)  :iX_E0(2), &
-                                          iX_B0(3)  :iX_E0(3),1:nCF) )
-      ALLOCATE( SurfaceFlux_X2(1:nDOFX_X2,iX_B0(1)  :iX_E0(1), &
-                                          iX_B0(2)-1:iX_E0(2)+1, &
-                                          iX_B0(3)  :iX_E0(3),1:nCF) )
-      ALLOCATE( SurfaceFlux_X3(1:nDOFX_X3,iX_B0(1)  :iX_E0(1), &
-                                          iX_B0(2)  :iX_E0(2), &
-                                          iX_B0(3)-1:iX_E0(3)+1,1:nCF) )
+      ALLOCATE( SurfaceFlux_X1(1:nDOFX_X1,iX_B0(1):iX_E0(1)+1, &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3),1:nCF) )
+      ALLOCATE( SurfaceFlux_X2(1:nDOFX_X2,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2)+1, &
+                                          iX_B0(3):iX_E0(3),1:nCF) )
+      ALLOCATE( SurfaceFlux_X3(1:nDOFX_X3,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3)+1,1:nCF) )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
@@ -355,7 +354,7 @@ CONTAINS
       iLo_MF = LBOUND( uSurfaceFlux_X1 )
 
       CALL thornado2amrex_X_F &
-             ( nDOFX_X1, nCF, [ iX_B0(1)-1, iX_B0(2), iX_B0(3) ], &
+             ( nDOFX_X1, nCF, [ iX_B0(1)  , iX_B0(2), iX_B0(3) ], &
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], iLo_MF, &
                               [ iX_B0(1)  , iX_B0(2), iX_B0(3) ], &
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], &
@@ -365,7 +364,7 @@ CONTAINS
 
       IF( nDimsX .GT. 1 ) &
         CALL thornado2amrex_X_F &
-               ( nDOFX_X2, nCF, [ iX_B0(1), iX_B0(2)-1, iX_B0(3) ], &
+               ( nDOFX_X2, nCF, [ iX_B0(1), iX_B0(2)  , iX_B0(3) ], &
                                 [ iX_E0(1), iX_E0(2)+1, iX_E0(3) ], iLo_MF, &
                                 [ iX_B0(1), iX_B0(2)  , iX_B0(3) ], &
                                 [ iX_E0(1), iX_E0(2)+1, iX_E0(3) ], &
@@ -375,7 +374,7 @@ CONTAINS
 
       IF( nDimsX .GT. 2 ) &
         CALL thornado2amrex_X_F &
-               ( nDOFX_X3, nCF, [ iX_B0(1), iX_B0(2), iX_B0(3)-1 ], &
+               ( nDOFX_X3, nCF, [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], iLo_MF, &
                                 [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], &
@@ -559,15 +558,15 @@ CONTAINS
                                                    iX_B0(2):iX_E0(2), &
                                                    iX_B0(3):iX_E0(3)) )
 
-      ALLOCATE( SurfaceFlux_X1(1:nDOFX_X1,iX_B0(1)-1:iX_E0(1)+1, &
-                                          iX_B0(2)  :iX_E0(2), &
-                                          iX_B0(3)  :iX_E0(3),1:nCF) )
-      ALLOCATE( SurfaceFlux_X2(1:nDOFX_X2,iX_B0(1)  :iX_E0(1), &
-                                          iX_B0(2)-1:iX_E0(2)+1, &
-                                          iX_B0(3)  :iX_E0(3),1:nCF) )
-      ALLOCATE( SurfaceFlux_X3(1:nDOFX_X3,iX_B0(1)  :iX_E0(1), &
-                                          iX_B0(2)  :iX_E0(2), &
-                                          iX_B0(3)-1:iX_E0(3)+1,1:nCF) )
+      ALLOCATE( SurfaceFlux_X1(1:nDOFX_X1,iX_B0(1):iX_E0(1)+1, &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3),1:nCF) )
+      ALLOCATE( SurfaceFlux_X2(1:nDOFX_X2,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2)+1, &
+                                          iX_B0(3):iX_E0(3),1:nCF) )
+      ALLOCATE( SurfaceFlux_X3(1:nDOFX_X3,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3)+1,1:nCF) )
 
       ALLOCATE( SurfaceFlux_X1_P(1:nDOFX_X1,1:nCF,iX_B0(2):iX_E0(2), &
                                                   iX_B0(3):iX_E0(3), &
@@ -594,7 +593,7 @@ CONTAINS
       iLo_MF = LBOUND( uSurfaceFlux_X1 )
 
       CALL amrex2thornado_X_F &
-             ( nDOFX_X1, nCF, [ iX_B0(1)-1, iX_B0(2), iX_B0(3) ], &
+             ( nDOFX_X1, nCF, [ iX_B0(1)  , iX_B0(2), iX_B0(3) ], &
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], iLo_MF, &
                               [ iX_B0(1)  , iX_B0(2), iX_B0(3) ], &
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], &
@@ -604,7 +603,7 @@ CONTAINS
 
       IF( nDimsX .GT. 1 ) &
         CALL amrex2thornado_X_F &
-               ( nDOFX_X2, nCF, [ iX_B0(1), iX_B0(2)-1, iX_B0(3) ], &
+               ( nDOFX_X2, nCF, [ iX_B0(1), iX_B0(2)  , iX_B0(3) ], &
                                 [ iX_E0(1), iX_E0(2)+1, iX_E0(3) ], iLo_MF, &
                                 [ iX_B0(1), iX_B0(2)  , iX_B0(3) ], &
                                 [ iX_E0(1), iX_E0(2)+1, iX_E0(3) ], &
@@ -614,7 +613,7 @@ CONTAINS
 
       IF( nDimsX .GT. 2 ) &
         CALL amrex2thornado_X_F &
-               ( nDOFX_X3, nCF, [ iX_B0(1), iX_B0(2), iX_B0(3)-1 ], &
+               ( nDOFX_X3, nCF, [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], iLo_MF, &
                                 [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], &
