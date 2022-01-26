@@ -419,7 +419,7 @@ CONTAINS
         CALL ComputeFluxIncrement_Coarse &
                ( MF_uGF, UseXCFC, SurfaceFluxes, FluxIncrement )
 
-        CALL FluxRegister( iLevel+1 ) % CrseInit( FluxIncrement, -One )
+        CALL FluxRegister( iLevel+1 ) % CrseInit_DG( FluxIncrement, -One )
 
       END IF
 
