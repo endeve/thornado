@@ -162,7 +162,6 @@ CONTAINS
 
 
 
-!check this END DO too
   DO iLevel = 0, nLevels-1 
 
 
@@ -223,9 +222,8 @@ CONTAINS
           PRINT*, "    IMPLICIT: ", iS
         END IF
 #if defined(MICROPHYSICS_WEAKLIB)  
-
         CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
-               ( GEOM, MF_uGF, MF_uCF, MF_DU_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
+               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
                  dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
         CALL MF_U(iLevel) &
@@ -238,7 +236,7 @@ CONTAINS
                             dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
                             1, MF_F(iLevel) % nComp(), swX )
 
-#else      
+#else     
         CALL MF_TwoMoment_ComputeIncrement_Implicit &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
         

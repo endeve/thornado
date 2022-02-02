@@ -63,6 +63,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
+    LogInterpolateSingleVariable_4D_Custom, &
     LogInterpolateSingleVariable_2D2D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
@@ -111,7 +112,7 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitE    = MeV
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
-  REAL(DP), PARAMETER :: UnitES   = One / Centimeter
+  REAL(DP), PARAMETER :: UnitES   = One / ( Centimeter * MeV**2 )
   REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
@@ -697,7 +698,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0_1(:,:), f0_2(:,:)
     INTEGER,  INTENT(in)  :: iS_1, iS_2
 
-    REAL(DP), PARAMETER :: f0_Max = One
+    REAL(DP), PARAMETER :: f0_Max = One - EPSILON( One )
     INTEGER  :: iX, iE, iE_G, iNodeE, nE, nX
     REAL(DP) :: V_K, f0_Min, Min_K, Max_K, Theta
     REAL(DP), POINTER :: E_Q(:,:), f0_1_Q(:,:,:), f0_2_Q(:,:,:)
@@ -777,6 +778,16 @@ CONTAINS
       f0_1_K(iE,iX) = SUM( WeightsE * f0_1_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
 
       f0_2_K(iE,iX) = SUM( WeightsE * f0_2_Q(:,iE,iX) * E_Q(:,iE)**2 ) / V_K
+
+      IF( f0_1_K(iE,iX) > f0_Max )THEN
+        f0_1_K(iE,iX) = f0_Max
+        f0_1_Q(:,iE,iX) = f0_Max
+      END IF
+
+      IF( f0_2_K(iE,iX) > f0_Max )THEN
+        f0_2_K(iE,iX) = f0_Max
+        f0_2_Q(:,iE,iX) = f0_Max
+      END IF
 
     END DO
     END DO
@@ -1751,7 +1762,6 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
-
 
   SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
     ( iP_B, iP_E, E, D, T, Y, iSpecies, iMoment, opES_Points )
@@ -3854,7 +3864,7 @@ CONTAINS
 #endif
 
     IF ( .NOT. PRESENT( WORK1 ) ) DEALLOCATE( Phi_Ann_Xp )
-    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xp )
+    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xn )
     IF ( .NOT. PRESENT( WORK3 ) ) DEALLOCATE( Phi_Ann_XpXn )
 
 #else

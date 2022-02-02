@@ -11,6 +11,6 @@ USE_OMP_OL ?= FALSE
 USE_OACC   ?= FALSE
 USE_CUBLAS ?= FALSE
 USE_MAGMA  ?= FALSE
-USE_OMP    ?= TRUE
+USE_OMP    ?= FALSE
 
 include ../Makefile

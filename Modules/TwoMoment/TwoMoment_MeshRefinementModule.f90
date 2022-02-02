@@ -25,9 +25,9 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: Coarsen_TwoMoment
 
   INTEGER  :: nFine, nFineX(3)
-  REAL(DP) :: VolumeRatio
-  REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
-  REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
+  REAL(DP), PUBLIC :: VolumeRatio
+  REAL(DP), ALLOCATABLE, PUBLIC :: ProjectionMatrix  (:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
 
 CONTAINS
 
