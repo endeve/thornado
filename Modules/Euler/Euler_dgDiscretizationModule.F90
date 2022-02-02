@@ -4014,80 +4014,80 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-!!$    INTEGER  :: iX1, iX2, iX3, iCF
-!!$    REAL(DP) :: dX1, dX2, dX3
-!!$    REAL(DP) :: Phi_P_X1(nDOFX)
-!!$    REAL(DP) :: Phi_K   (nDOFX)
-!!$    REAL(DP) :: Phi_N_X1(nDOFX)
-!!$    REAL(DP) :: dPhidX1(nDOFX)
-!!$    REAL(DP) :: Phi_X1_Dn(nDOFX_X1)
-!!$    REAL(DP) :: Phi_X1_Up(nDOFX_X1)
-!!$    REAL(DP) :: uCF_K(nDOFX,nCF)
-!!$
-!!$    DO iX3 = iX_B0(3), iX_E0(3)
-!!$    DO iX2 = iX_B0(2), iX_E0(2)
-!!$    DO iX1 = iX_B0(1), iX_E0(1)
-!!$
-!!$      dX1 = MeshX(1) % Width(iX1)
-!!$      dX2 = MeshX(2) % Width(iX2)
-!!$      dX3 = MeshX(3) % Width(iX3)
-!!$
-!!$      DO iCF = 1, nCF
-!!$
-!!$        uCF_K(:,iCF) = U(:,iX1,iX2,iX3,iCF)
-!!$
-!!$      END DO
-!!$
-!!$      Phi_P_X1(:) = G(:,iX1-1,iX2,iX3,iGF_Phi_N)
-!!$      Phi_K   (:) = G(:,iX1,  iX2,iX3,iGF_Phi_N)
-!!$      Phi_N_X1(:) = G(:,iX1+1,iX2,iX3,iGF_Phi_N)
-!!$
-!!$      ! --- Derivative of Potential wrt X1 ---
-!!$
-!!$      ! --- Face States (Average of Left and Right States) ---
-!!$
-!!$      ! --- Face at X1_L ---
-!!$
-!!$      CALL DGEMV &
-!!$             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-!!$               Phi_P_X1(:), 1, Zero, Phi_X1_Dn(:), 1 )
-!!$      CALL DGEMV &
-!!$             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-!!$               Phi_K   (:), 1, Half, Phi_X1_Dn(:), 1 )
-!!$
-!!$      ! --- Face at X1_H ---
-!!$
-!!$      CALL DGEMV &
-!!$             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-!!$               Phi_K   (:), 1, Zero, Phi_X1_Up(:), 1 )
-!!$      CALL DGEMV &
-!!$             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-!!$               Phi_N_X1(:), 1, Half, Phi_X1_Up(:), 1 )
-!!$
-!!$      ! --- dPhidX1 ---
-!!$
-!!$      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-!!$                  WeightsX_X1(:) * Phi_X1_Up(:), 1, Zero, dPhidX1, 1 )
-!!$      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-!!$                  WeightsX_X1(:) * Phi_X1_Dn(:), 1,  One, dPhidX1, 1 )
-!!$      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-!!$                  WeightsX_q (:) * Phi_K    (:), 1,  One, dPhidX1, 1 )
-!!$
-!!$      dPhidX1 = dPhidX1 / ( WeightsX_q(:) * dX1 )
-!!$
-!!$      ! --- Increments ---
-!!$
-!!$      dU(:,iX1,iX2,iX3,iCF_S1) &
-!!$        = dU(:,iX1,iX2,iX3,iCF_S1) &
-!!$            - uCF_K(:,iCF_D) * dPhidX1(:)
-!!$
-!!$      dU(:,iX1,iX2,iX3,iCF_E) &
-!!$        = dU(:,iX1,iX2,iX3,iCF_E) &
-!!$            - uCF_K(:,iCF_S1) * dPhidX1(:)
-!!$
-!!$    END DO
-!!$    END DO
-!!$    END DO
+    INTEGER  :: iX1, iX2, iX3, iCF
+    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: Phi_P_X1(nDOFX)
+    REAL(DP) :: Phi_K   (nDOFX)
+    REAL(DP) :: Phi_N_X1(nDOFX)
+    REAL(DP) :: dPhidX1(nDOFX)
+    REAL(DP) :: Phi_X1_Dn(nDOFX_X1)
+    REAL(DP) :: Phi_X1_Up(nDOFX_X1)
+    REAL(DP) :: uCF_K(nDOFX,nCF)
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dX1 = MeshX(1) % Width(iX1)
+      dX2 = MeshX(2) % Width(iX2)
+      dX3 = MeshX(3) % Width(iX3)
+
+      DO iCF = 1, nCF
+
+        uCF_K(:,iCF) = U(:,iX1,iX2,iX3,iCF)
+
+      END DO
+
+      Phi_P_X1(:) = G(:,iX1-1,iX2,iX3,iGF_Phi_N)
+      Phi_K   (:) = G(:,iX1,  iX2,iX3,iGF_Phi_N)
+      Phi_N_X1(:) = G(:,iX1+1,iX2,iX3,iGF_Phi_N)
+
+      ! --- Derivative of Potential wrt X1 ---
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      ! --- Face at X1_L ---
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               Phi_P_X1(:), 1, Zero, Phi_X1_Dn(:), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               Phi_K   (:), 1, Half, Phi_X1_Dn(:), 1 )
+
+      ! --- Face at X1_H ---
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               Phi_K   (:), 1, Zero, Phi_X1_Up(:), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               Phi_N_X1(:), 1, Half, Phi_X1_Up(:), 1 )
+
+      ! --- dPhidX1 ---
+
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                  WeightsX_X1(:) * Phi_X1_Up(:), 1, Zero, dPhidX1, 1 )
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                  WeightsX_X1(:) * Phi_X1_Dn(:), 1,  One, dPhidX1, 1 )
+      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                  WeightsX_q (:) * Phi_K    (:), 1,  One, dPhidX1, 1 )
+
+      dPhidX1 = dPhidX1 / ( WeightsX_q(:) * dX1 )
+
+      ! --- Increments ---
+
+      dU(:,iX1,iX2,iX3,iCF_S1) &
+        = dU(:,iX1,iX2,iX3,iCF_S1) &
+            - uCF_K(:,iCF_D) * dPhidX1(:)
+
+      dU(:,iX1,iX2,iX3,iCF_E) &
+        = dU(:,iX1,iX2,iX3,iCF_E) &
+            - uCF_K(:,iCF_S1) * dPhidX1(:)
+
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ComputeIncrement_Gravity_NonRelativistic
 
