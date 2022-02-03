@@ -36,11 +36,9 @@ MODULE TimeSteppingModule_SSPRK
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)          :: &
-        G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout)       :: &
-        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(in)          :: &
+        G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)         :: &
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -182,8 +180,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       t, dt
     REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE(FluidIncrement) :: &
       ComputeIncrement_Fluid
