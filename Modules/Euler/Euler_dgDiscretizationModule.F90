@@ -2794,7 +2794,6 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3, iNX, iCF, iGF
     INTEGER :: nK(3), nGF_K
 
-
     REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)
     REAL(DP) :: Pressure
