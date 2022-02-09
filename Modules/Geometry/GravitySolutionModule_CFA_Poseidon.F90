@@ -36,7 +36,13 @@ MODULE GravitySolutionModule_CFA_Poseidon
     iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_K_dd_11, &
+    iGF_K_dd_12, &
+    iGF_K_dd_13, &
+    iGF_K_dd_22, &
+    iGF_K_dd_23, &
+    iGF_K_dd_33
   USE GeometryComputationModule, ONLY: &
     LapseFunction, &
     ConformalFactor, &
@@ -64,7 +70,8 @@ MODULE GravitySolutionModule_CFA_Poseidon
     Poseidon_XCFC_Run_Part2, &
     Poseidon_Return_ConFactor, &
     Poseidon_Return_Lapse, &
-    Poseidon_Return_Shift
+    Poseidon_Return_Shift!, &
+!    Poseidon_Return_ExtrinsicCurvature
   USE Initial_Guess_Module, ONLY: &
     Poseidon_Init_FlatGuess
 
@@ -76,7 +83,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
   PUBLIC :: InitializeGravitySolver_CFA_Poseidon
   PUBLIC :: FinalizeGravitySolver_CFA_Poseidon
   PUBLIC :: ComputeConformalFactor_Poseidon
-  PUBLIC :: ComputeLapseAndShift_Poseidon
+  PUBLIC :: ComputeGeometry_Poseidon
 
   REAL(DP) :: GravitationalMass
 
@@ -220,7 +227,7 @@ CONTAINS
   END SUBROUTINE ComputeConformalFactor_Poseidon
 
 
-  SUBROUTINE ComputeLapseAndShift_Poseidon &
+  SUBROUTINE ComputeGeometry_Poseidon &
     ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
     INTEGER,  INTENT(in)    :: &
@@ -232,8 +239,9 @@ CONTAINS
     REAL(DP), INTENT(inout)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    REAL(DP) :: Tmp_Lapse(nDOFX,nX(1),nX(2),nX(3)), &
-                Tmp_Shift(nDOFX,nX(1),nX(2),nX(3),1:3)
+    REAL(DP) :: Tmp_Lapse             (nDOFX,nX(1),nX(2),nX(3)), &
+                Tmp_Shift             (nDOFX,nX(1),nX(2),nX(3),1:3), &
+                Tmp_ExtrinsicCurvature(nDOFX,nX(1),nX(2),nX(3),1:6)
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -275,30 +283,42 @@ CONTAINS
     CALL Poseidon_XCFC_Run_Part2()
 
     CALL Poseidon_Return_Lapse &
-         ( NE               = nX,               &
-           NQ               = nNodesX,          &
-           RQ_Input         = MeshX(1) % Nodes, &
-           TQ_Input         = MeshX(2) % Nodes, &
-           PQ_Input         = MeshX(3) % Nodes, &
-           Left_Limit       = -Half,            &
-           Right_Limit      = +Half,            &
-           Return_Lapse     = Tmp_Lapse )
+         ( NE           = nX,               &
+           NQ           = nNodesX,          &
+           RQ_Input     = MeshX(1) % Nodes, &
+           TQ_Input     = MeshX(2) % Nodes, &
+           PQ_Input     = MeshX(3) % Nodes, &
+           Left_Limit   = -Half,            &
+           Right_Limit  = +Half,            &
+           Return_Lapse = Tmp_Lapse )
 
     CALL Poseidon_Return_Shift &
-         ( NE               = nX,               &
-           NQ               = nNodesX,          &
-           RQ_Input         = MeshX(1) % Nodes, &
-           TQ_Input         = MeshX(2) % Nodes, &
-           PQ_Input         = MeshX(3) % Nodes, &
-           Left_Limit       = -Half,            &
-           Right_Limit      = +Half,            &
-           Return_Shift     = Tmp_Shift )
+         ( NE           = nX,               &
+           NQ           = nNodesX,          &
+           RQ_Input     = MeshX(1) % Nodes, &
+           TQ_Input     = MeshX(2) % Nodes, &
+           PQ_Input     = MeshX(3) % Nodes, &
+           Left_Limit   = -Half,            &
+           Right_Limit  = +Half,            &
+           Return_Shift = Tmp_Shift )
+
+!!$    CALL Poseidon_Return_ExtrinsicCurvature &
+!!$         ( NE                        = nX,               &
+!!$           NQ                        = nNodesX,          &
+!!$           RQ_Input                  = MeshX(1) % Nodes, &
+!!$           TQ_Input                  = MeshX(2) % Nodes, &
+!!$           PQ_Input                  = MeshX(3) % Nodes, &
+!!$           Left_Limit                = -Half,            &
+!!$           Right_Limit               = +Half,            &
+!!$           Return_ExtrinsicCurvature = Tmp_ExtrinsicCurvature )
+
+    Tmp_ExtrinsicCurvature = Zero ! Remove once subroutine is in place
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
     CALL ComputeGeometryFromPoseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             Tmp_Lapse, Tmp_Shift, G )
+             Tmp_Lapse, Tmp_Shift, Tmp_ExtrinsicCurvature, G )
 
     CALL SetBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
@@ -307,7 +327,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GravitySolver )
 
-  END SUBROUTINE ComputeLapseAndShift_Poseidon
+  END SUBROUTINE ComputeGeometry_Poseidon
 
 
   ! --- PRIVATE Subroutines ---
@@ -352,12 +372,13 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryFromPoseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, Alpha, Beta, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, Alpha, Beta_u, K_dd, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: Alpha(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-    REAL(DP), INTENT(in)    :: Beta (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(inout) :: G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: Alpha (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(in)    :: Beta_u(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)    :: K_dd  (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout) :: G     (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
     REAL(DP) :: X1, X2
@@ -376,9 +397,9 @@ CONTAINS
 
         G(iNX,iX1,iX2,iX3,iGF_Alpha) = Alpha(iNX,iX1,iX2,iX3)
 
-        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Beta(iNX,iX1,iX2,iX3,1)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Beta(iNX,iX1,iX2,iX3,2)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Beta(iNX,iX1,iX2,iX3,3)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Beta_u(iNX,iX1,iX2,iX3,1)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Beta_u(iNX,iX1,iX2,iX3,2)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Beta_u(iNX,iX1,iX2,iX3,3)
 
         G(iNX,iX1,iX2,iX3,iGF_h_1) &
           = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
@@ -386,6 +407,13 @@ CONTAINS
           = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1
         G(iNX,iX1,iX2,iX3,iGF_h_3) &
           = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
+
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_11) = K_dd(iNX,iX1,iX2,iX3,1)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_12) = K_dd(iNX,iX1,iX2,iX3,2)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_13) = K_dd(iNX,iX1,iX2,iX3,3)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_22) = K_dd(iNX,iX1,iX2,iX3,4)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_23) = K_dd(iNX,iX1,iX2,iX3,5)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_33) = K_dd(iNX,iX1,iX2,iX3,6)
 
       END DO ! iNX
 
