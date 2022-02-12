@@ -23,11 +23,23 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDimsX
+    nDimsX, &
+    nNodesX
   USE FluidFieldsModule, ONLY: &
     nCF
   USE GeometryFieldsModule, ONLY: &
     nGF
+  USE MeshModule, ONLY: &
+    MeshX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
+  USE Euler_MeshRefinementModule, ONLY: &
+    LX_X1_Dn_1D, &
+    LX_X1_Up_1D, &
+    LX_X2_Dn_1D, &
+    LX_X2_Up_1D, &
+    LX_X3_Dn_1D, &
+    LX_X3_Up_1D
 
   ! --- Local Modules ---
 
@@ -49,11 +61,16 @@ MODULE MF_TimeSteppingModule_SSPRK
     CFL, &
     nNodes, &
     nStages, &
-    StepNo
+    StepNo, &
+    do_reflux
   USE FillPatchModule, ONLY: &
     FillPatch_uCF
   USE MF_FieldsModule, ONLY: &
-    MF_OffGridFlux_Euler
+    MF_OffGridFlux_Euler, &
+    FluxRegister
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 !  USE MF_Euler_TallyModule, ONLY: &
 !    MF_IncrementOffGridTally_Euler
   USE MF_Euler_TimersModule, ONLY: &
@@ -141,11 +158,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
 
     TYPE(amrex_multifab) :: MF_U
-    TYPE(amrex_multifab) :: MF_D(1:nStages)
-
-    TYPE(amrex_multifab) :: FluxIncrement(1:2*nDimsX,0:amrex_max_level)
-    INTEGER              :: iDimX, nGhost(nDimsX)
-    LOGICAL              :: Nodal(nDimsX)
+    TYPE(amrex_multifab) :: MF_D(1:nStages,0:amrex_max_level)
 
     INTEGER :: iS, jS
     INTEGER :: iLevel, iSubStep
@@ -154,27 +167,17 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
-    nGhost = 0
-
     DO iLevel = 0, amrex_max_level
 
-      DO iDimX = 1, nDimsX
+      CALL amrex_multifab_build &
+             ( MF_U, MF_uCF(iLevel) % BA, &
+                     MF_uCF(iLevel) % DM, nDOFX * nCF, swX )
 
-        Nodal        = .FALSE.
-        Nodal(iDimX) = .TRUE.
-
-        CALL amrex_multifab_build &
-               ( FluxIncrement(2*(iDimX-1)+1,iLevel), &
-                 MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nCF, nGhost, Nodal )
+      DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( FluxIncrement(2*(iDimX-1)+2,iLevel), &
-                 MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nCF, nGhost, Nodal )
-
-        CALL FluxIncrement(2*(iDimX-1)+1,iLevel) % SetVal( Zero )
-        CALL FluxIncrement(2*(iDimX-1)+2,iLevel) % SetVal( Zero )
+               ( MF_D(iS,iLevel), MF_uCF(iLevel) % BA, &
+                   MF_uCF(iLevel) % DM, nDOFX * nCF, swX )
 
       END DO
 
@@ -182,21 +185,9 @@ CONTAINS
 
         StepNo(iLevel) = StepNo(iLevel) + 1
 
-        CALL amrex_multifab_build &
-               ( MF_U, MF_uCF(iLevel) % BA, &
-                       MF_uCF(iLevel) % DM, nDOFX * nCF, swX )
-
         CALL MF_U &
                % COPY( MF_uCF(iLevel), 1, 1, &
                        MF_uCF(iLevel) % nComp(), swX )
-
-        DO iS = 1, nStages
-
-          CALL amrex_multifab_build &
-                 ( MF_D(iS), MF_uCF(iLevel) % BA, &
-                             MF_uCF(iLevel) % DM, nDOFX * nCF, swX )
-
-        END DO
 
         dM_OffGrid_Euler(iLevel,:) = Zero
 
@@ -204,7 +195,7 @@ CONTAINS
 
         DO iS = 1, nStages
 
-          CALL MF_D(iS) % SetVal( Zero )
+          CALL MF_D(iS,iLevel) % SetVal( Zero )
 
         END DO
 
@@ -234,7 +225,7 @@ CONTAINS
               CALL MF_uCF(iLevel) &
                      % LinComb( One, MF_uCF(iLevel), 1, &
                                 dt(iLevel) * a_SSPRK(iS,jS), &
-                                MF_D(jS), 1, 1, &
+                                MF_D(jS,iLevel), 1, 1, &
                                 MF_uCF(iLevel) % nComp(), swX )
 
           END DO
@@ -251,9 +242,15 @@ CONTAINS
 
             CALL ComputeIncrement_Euler_MF &
                    ( iLevel, t(iLevel), MF_uGF(iLevel), MF_uCF(iLevel), &
-                     MF_uDF(iLevel), MF_D(iS), FluxIncrement(:,iLevel) )
+                     MF_uDF(iLevel), MF_D(iS,iLevel) )
 
-           dM_OffGrid_Euler(iLevel,:) &
+            IF( iLevel .GT. 0 .AND. do_reflux )THEN
+
+              CALL Reflux_Euler_MF( iLevel, MF_D(iS,iLevel-1) )
+
+            END IF
+
+            dM_OffGrid_Euler(iLevel,:) &
               = dM_OffGrid_Euler(iLevel,:) &
                   + dt(iLevel) * w_SSPRK(iS) * MF_OffGridFlux_Euler(iLevel,:)
 
@@ -266,40 +263,38 @@ CONTAINS
           IF( w_SSPRK(iS) .NE. Zero ) &
             CALL MF_U &
                    % LinComb( One, MF_U, 1, &
-                              dt(iLevel) * w_SSPRK(iS), MF_D(iS), 1, 1, &
+                              dt(iLevel) * w_SSPRK(iS), MF_D(iS,iLevel), 1, 1, &
                               MF_U % nComp(), swX )
 
         END DO
 
         CALL MF_uCF(iLevel) % COPY( MF_U, 1, 1, MF_U % nComp(), swX )
 
+      END DO ! iSubStep
+
+      CALL amrex_multifab_destroy( MF_U )
+
+    END DO ! iLevel
+
+    DO iLevel = 0, amrex_max_level
+
         DO iS = 1, nStages
 
-          CALL amrex_multifab_destroy( MF_D(iS) )
+          CALL amrex_multifab_destroy( MF_D(iS,iLevel) )
 
         END DO
 
-        CALL amrex_multifab_destroy( MF_U )
+    END DO
 
-      END DO ! iSubStep
-
-    END DO ! iLevel
+!do finest level -> coarse
+!averagedown
+!enddo
 
     CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
 
 !!$    CALL MF_IncrementOffGridTally_Euler( dM_OffGrid_Euler )
-
-    DO iLevel = 0, amrex_max_level
-
-      DO iDimX = 1, 2*nDimsX
-
-        CALL amrex_multifab_destroy( FluxIncrement(iDimX,iLevel) )
-
-      END DO
-
-    END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
@@ -360,5 +355,30 @@ CONTAINS
 
   END SUBROUTINE AllocateButcherTables_SSPRK
 
+
+  SUBROUTINE Reflux_Euler_MF( iLevel, MF_D )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_D
+
+    CALL CreateMesh_MF( iLevel-1, MeshX )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, &
+               dX2 => MeshX(2) % Width, &
+               dX3 => MeshX(3) % Width )
+
+    CALL FluxRegister( iLevel ) &
+           % reflux_dg &
+               ( MF_D, nCF, nDOFX, nNodesX, &
+                 WeightsX_q, dX1, dX2, dX3, &
+                 LX_X1_Dn_1D, LX_X1_Up_1D, &
+                 LX_X2_Dn_1D, LX_X2_Up_1D, &
+                 LX_X3_Dn_1D, LX_X3_Up_1D )
+
+    END ASSOCIATE
+
+    CALL DestroyMesh_MF( MeshX )
+
+  END SUBROUTINE
 
 END MODULE MF_TimeSteppingModule_SSPRK
