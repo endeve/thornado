@@ -60,7 +60,8 @@ MODULE InitializationModule
   USE PolynomialBasisMappingModule, ONLY: &
     InitializePolynomialBasisMapping
   USE ReferenceElementModuleX, ONLY: &
-    InitializeReferenceElementX
+    InitializeReferenceElementX, &
+    nDOFX_X1
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
   USE MeshModule, ONLY: &
@@ -156,6 +157,8 @@ MODULE InitializationModule
     DescribeError_Euler_MF
   USE AverageDownModule, ONLY: &
     AverageDown
+  USE Euler_MeshRefinementModule, ONLY: &
+    InitializeMeshRefinement_Euler
   USE MF_Euler_TimersModule, ONLY: &
     InitializeTimers_AMReX_Euler, &
     TimersStart_AMReX_Euler, &
@@ -233,6 +236,8 @@ CONTAINS
 
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
+
+    CALL InitializeMeshRefinement_Euler
 
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
@@ -390,10 +395,11 @@ CONTAINS
 
     nCompCF = MF_uCF_new(iLevel) % nComp()
 
+    ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. do_reflux ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister(iLevel), BA, DM, &
-               amrex_ref_ratio(iLevel-1), iLevel, nCompCF )
+               amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -454,10 +460,11 @@ RETURN
 
     nCompCF = MF_uCF_new(iLevel) % nComp()
 
+    ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. do_reflux ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
-               iLevel, nCompCF )
+               iLevel, nDOFX_X1*nCF )
 
     CALL FillCoarsePatch_uGF( iLevel, Time, MF_uGF_new(iLevel) )
     CALL FillCoarsePatch_uCF( iLevel, Time, MF_uCF_new(iLevel) )
@@ -557,10 +564,11 @@ RETURN
     CALL amrex_multifab_build( MF_uDF_new( iLevel ), BA, DM, nCompDF, swX )
     CALL amrex_multifab_build( MF_uDF_old( iLevel ), BA, DM, nCompDF, swX )
 
-    IF ( iLevel .GT. 0 .AND. do_reflux ) &
-       CALL amrex_fluxregister_build &
-              ( FluxRegister(iLevel), BA, DM, &
-                amrex_ref_ratio(iLevel-1), iLevel, nCompCF )
+    ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
+    IF( iLevel .GT. 0 .AND. do_reflux ) &
+      CALL amrex_fluxregister_build &
+             ( FluxRegister(iLevel), BA, DM, &
+               amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
 
     CALL MF_uGF_new( iLevel ) % Copy( new_MF_uGF_new, 1, 1, nCompGF, swX )
     CALL MF_uCF_new( iLevel ) % Copy( new_MF_uCF_new, 1, 1, nCompCF, swX )
