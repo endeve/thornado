@@ -29,6 +29,7 @@ MODULE PolynomialBasisModuleX_Lagrange
   TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_X3(:), dL_X3(:)
 
   PUBLIC :: InitializePolynomialBasisX_Lagrange
+  PUBLIC :: Lagrange
 
 CONTAINS
 

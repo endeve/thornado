@@ -9,6 +9,13 @@ MODULE Euler_MeshRefinementModule
     nDimsX, &
     nNodesX, &
     nDOFX
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+     LX_X1_Dn, &
+     LX_X1_Up, &
+     LX_X2_Dn, &
+     LX_X2_Up, &
+     LX_X3_Dn, &
+     LX_X3_Up
   USE ReferenceElementModuleX, ONLY: &
     NodesX1, &
     NodesX2, &
@@ -23,11 +30,12 @@ MODULE Euler_MeshRefinementModule
     NodeNumberTableX_X1, &
     NodeNumberTableX_X2, &
     NodeNumberTableX_X3
-  USE PolynomialBasisModule_Lagrange, ONLY: &
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
     IndLX_Q, &
     L_X1, &
     L_X2, &
-    L_X3
+    L_X3, &
+    Lagrange
 
   IMPLICIT NONE
   PRIVATE
@@ -37,12 +45,20 @@ MODULE Euler_MeshRefinementModule
   PUBLIC :: Refine_Euler
   PUBLIC :: Coarsen_Euler
 
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Up_Refined(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Dn_Refined(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Up_Refined(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Dn_Refined(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Up_Refined(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Dn_Refined(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Refined(:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Refined(:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Refined(:,:,:)
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Refined_C(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Refined_C(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Refined_C(:)
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Up_1D(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Dn_1D(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Up_1D(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Dn_1D(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Up_1D(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Dn_1D(:)
 
   INTEGER  :: nFine, nFineX(3)
   REAL(DP) :: VolumeRatio
@@ -57,7 +73,7 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, kk, iN1, iN2, iN3
+    INTEGER :: i, k, kk, iN1, iN2, iN3, iNX_X_Crse, iNX_X_Fine
     REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
 
     nFineX      = 1
@@ -76,12 +92,41 @@ CONTAINS
     ALLOCATE( xiX2(nNodesX(2)) )
     ALLOCATE( xiX3(nNodesX(3)) )
 
-    ALLOCATE( LX_X1_Up_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X1) )
-    ALLOCATE( LX_X1_Dn_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X1) )
-    ALLOCATE( LX_X2_Up_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X2) )
-    ALLOCATE( LX_X2_Dn_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X2) )
-    ALLOCATE( LX_X3_Up_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X3) )
-    ALLOCATE( LX_X3_Dn_Refined(nDOFX,2**(nDimsX-1)*nDOFX_X3) )
+    ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
+    ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
+    ALLOCATE( LX_X3_Refined(nDOFX_X3,nFineX(1)*nFineX(2),nDOFX_X3) )
+
+    ALLOCATE( LX_X1_Refined_C(nDOFX_X1*nFineX(2)*nFineX(3)*nDOFX_X1) )
+    ALLOCATE( LX_X2_Refined_C(nDOFX_X2*nFineX(1)*nFineX(3)*nDOFX_X2) )
+    ALLOCATE( LX_X3_Refined_C(nDOFX_X3*nFineX(1)*nFineX(2)*nDOFX_X3) )
+
+    ALLOCATE( LX_X1_Up_1D(nNodesX(1)) )
+    ALLOCATE( LX_X1_Dn_1D(nNodesX(1)) )
+    ALLOCATE( LX_X2_Up_1D(nNodesX(2)) )
+    ALLOCATE( LX_X2_Dn_1D(nNodesX(2)) )
+    ALLOCATE( LX_X3_Up_1D(nNodesX(3)) )
+    ALLOCATE( LX_X3_Dn_1D(nNodesX(3)) )
+
+    DO i = 1, nNodesX(1)
+
+      LX_X1_Up_1D(i) = L_X1(i) % P( +Half )
+      LX_X1_Dn_1D(i) = L_X1(i) % P( -Half )
+
+    END DO
+
+    DO i = 1, nNodesX(2)
+
+      LX_X2_Up_1D(i) = L_X2(i) % P( +Half )
+      LX_X2_Dn_1D(i) = L_X2(i) % P( -Half )
+
+    END DO
+
+    DO i = 1, nNodesX(3)
+
+      LX_X3_Up_1D(i) = L_X3(i) % P( +Half )
+      LX_X3_Dn_1D(i) = L_X3(i) % P( -Half )
+
+    END DO
 
     iFine = 0
     DO iFineX3 = 1, nFineX(3)
@@ -90,19 +135,19 @@ CONTAINS
 
       iFine = iFine + 1
 
-      IF( nFineX(1) > 1 )THEN
+      IF( nFineX(1) .GT. 1 )THEN
         xiX1 = Half * ( NodesX1 + (-1)**iFineX1 * Half )
       ELSE
         xiX1 = Zero
       END IF
 
-      IF( nFineX(2) > 1 )THEN
+      IF( nFineX(2) .GT. 1 )THEN
         xiX2 = Half * ( NodesX2 + (-1)**iFineX2 * Half )
       ELSE
         xiX2 = Zero
       END IF
 
-      IF( nFineX(3) > 1 )THEN
+      IF( nFineX(3) .GT. 1 )THEN
         xiX3 = Half * ( NodesX3 + (-1)**iFineX3 * Half )
       ELSE
         xiX3 = Zero
@@ -211,105 +256,51 @@ close(100)
 print*,'  SHAPE( ProjMatrix ): ', shape(ProjectionMatrix)
 print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
 
-    DO i = 1, nDOFX ! DOFX of Coarse Element
+    k = 0
+    DO iNX_X_Crse = 1, nDOFX_X1
 
-      kk = 0
-
+      iFine = 0
       DO iFineX3 = 1, nFineX(3)
       DO iFineX2 = 1, nFineX(2)
 
-        DO k = 1, nDOFX_X1 ! DOF of fine interface (X1)
+        IF( nFineX(2) .GT. 1 )THEN
+          xiX2 = Half * ( NodesX2 + (-1)**iFineX2 * Half )
+        ELSE
+          xiX2 = Zero
+        END IF
 
-          iN2 = NodeNumberTableX_X1(1,k)
-          iN3 = NodeNumberTableX_X1(2,k)
+        IF( nFineX(3) .GT. 1 )THEN
+          xiX3 = Half * ( NodesX3 + (-1)**iFineX3 * Half )
+        ELSE
+          xiX3 = Zero
+        END IF
 
-          kk = kk + 1
+        iFine = iFine + 1
 
-          LX_X1_Up_Refined(i,kk) &
-            =   L_X1(IndLX_Q(1,i)) % P( +Half ) &
-              * L_X2(IndLX_Q(2,i)) &
-                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
-              * L_X3(IndLX_Q(3,i)) &
-                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+        DO iNX_X_Fine = 1, nDOFX_X1
 
-          LX_X1_Dn_Refined(i,kk) &
-            =   L_X1(IndLX_Q(1,i)) % P( -Half ) &
-              * L_X2(IndLX_Q(2,i)) &
-                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
-              * L_X3(IndLX_Q(3,i)) &
-                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+          iN2 = NodeNumberTableX_X1(1,iNX_X_Fine)
+          iN3 = NodeNumberTableX_X1(2,iNX_X_Fine)
 
-        END DO
+          LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) = One
+          IF( nDimsX .GT. 1 ) &
+            LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
+              = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
+                  * Lagrange( xiX2(iN2), NodesX2 )
+          IF( nDimsX .GT. 2 ) &
+            LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
+              = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
+                  * Lagrange( xiX3(iN3), NodesX3 )
 
-      END DO
-      END DO
-
-      kk = 0
-
-      DO iFineX3 = 1, nFineX(3)
-      DO iFineX1 = 1, nFineX(1)
-
-        DO k = 1, nDOFX_X2 ! DOFX of fine interface (X2)
-
-          iN1 = NodeNumberTableX_X2(1,k)
-          iN3 = NodeNumberTableX_X2(2,k)
-
-          kk = kk + 1
-
-          LX_X2_Up_Refined(i,kk) &
-            =   L_X1(IndLX_Q(1,i)) &
-                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
-              * L_X2(IndLX_Q(2,i)) % P( +Half ) &
-              * L_X3(IndLX_Q(3,i)) &
-                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
-
-          LX_X2_Dn_Refined(i,kk) &
-            =   L_X1(IndLX_Q(1,i)) &
-                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
-              * L_X2(IndLX_Q(2,i)) % P( -Half ) &
-              * L_X3(IndLX_Q(3,i)) &
-                  % P( xiX3(iN3) + One * DBLE( iFineX3 - 1 ) )
+          k = k + 1
+          LX_X1_Refined_C(k) = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine)
 
         END DO
 
       END DO
       END DO
 
-      kk = 0
-
-      DO iFineX2 = 1, nFineX(2)
-      DO iFineX1 = 1, nFineX(1)
-
-        DO k = 1, nDOFX_X3 ! DOFX of fine interface (X3)
-
-          iN1 = NodeNumberTableX_X3(1,k)
-          iN2 = NodeNumberTableX_X3(2,k)
-
-          kk = kk + 1
-
-          LX_X3_Up_Refined(i,kk) &
-            =   L_X1(IndLX_Q(1,i)) &
-                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
-              * L_X2(IndLX_Q(2,i)) &
-                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
-              * L_X3(IndLX_Q(3,i)) % P( +Half )
-
-          LX_X3_Dn_Refined(i,kk) &
-            =   L_X1(IndLX_Q(1,i)) &
-                  % P( xiX1(iN1) + One * DBLE( iFineX1 - 1 ) ) &
-              * L_X2(IndLX_Q(2,i)) &
-                  % P( xiX2(iN2) + One * DBLE( iFineX2 - 1 ) ) &
-              * L_X3(IndLX_Q(3,i)) % P( -Half )
-
-        END DO
-
-      END DO
-      END DO
-
-    END DO ! i
-
-print*,LX_X1_Up_Refined(2,3)
-stop
+    END DO ! iNX_X_Crse
 
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
@@ -320,12 +311,20 @@ stop
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
-    DEALLOCATE( LX_X3_Dn_Refined )
-    DEALLOCATE( LX_X3_Up_Refined )
-    DEALLOCATE( LX_X2_Dn_Refined )
-    DEALLOCATE( LX_X2_Up_Refined )
-    DEALLOCATE( LX_X1_Dn_Refined )
-    DEALLOCATE( LX_X1_Up_Refined )
+    DEALLOCATE( LX_X3_Dn_1D )
+    DEALLOCATE( LX_X3_Up_1D )
+    DEALLOCATE( LX_X2_Dn_1D )
+    DEALLOCATE( LX_X2_Up_1D )
+    DEALLOCATE( LX_X1_Dn_1D )
+    DEALLOCATE( LX_X1_Up_1D )
+
+    DEALLOCATE( LX_X3_Refined_C )
+    DEALLOCATE( LX_X2_Refined_C )
+    DEALLOCATE( LX_X1_Refined_C )
+
+    DEALLOCATE( LX_X3_Refined )
+    DEALLOCATE( LX_X2_Refined )
+    DEALLOCATE( LX_X1_Refined )
 
     DEALLOCATE( ProjectionMatrix )
     DEALLOCATE( ProjectionMatrix_T )
