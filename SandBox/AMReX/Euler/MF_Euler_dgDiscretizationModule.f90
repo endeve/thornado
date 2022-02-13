@@ -405,7 +405,7 @@ CONTAINS
 
         CALL FluxRegister( iLevel ) &
                % FineAdd_DG &
-                   ( SurfaceFluxes, +One, nCF,&
+                   ( SurfaceFluxes, nCF,&
                      nDOFX_X1, nDOFX_X2, nDOFX_X3, &
                      WeightsX_X1, WeightsX_X2, WeightsX_X3, &
                      LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C )
@@ -416,7 +416,7 @@ CONTAINS
 
         CALL FluxRegister( iLevel+1 ) &
                % CrseInit_DG &
-                   ( SurfaceFluxes, -One, nCF, &
+                   ( SurfaceFluxes, nCF, &
                      nDOFX_X1, nDOFX_X2, nDOFX_X3, &
                      WeightsX_X1, WeightsX_X2, WeightsX_X3 )
 
