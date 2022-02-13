@@ -60,10 +60,15 @@ MODULE Euler_MeshRefinementModule
   REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Up_1D(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Dn_1D(:)
 
-  INTEGER  :: nFine, nFineX(3)
-  REAL(DP) :: VolumeRatio
+  REAL(DP), ALLOCATABLE :: xiX1(:)
+  REAL(DP), ALLOCATABLE :: xiX2(:)
+  REAL(DP), ALLOCATABLE :: xiX3(:)
+
   REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
   REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
+
+  INTEGER  :: nFine, nFineX(3)
+  REAL(DP) :: VolumeRatio
 
 
 CONTAINS
@@ -73,7 +78,7 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, kk, iN1, iN2, iN3, iNX_X_Crse, iNX_X_Fine
+    INTEGER :: i, k, iN1, iN2, iN3, iNX_X_Crse, iNX_X_Fine
     REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
 
     nFineX      = 1
@@ -84,13 +89,6 @@ CONTAINS
       VolumeRatio  = Half * VolumeRatio
     END DO
     nFine = PRODUCT( nFineX )
-
-    ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
-    ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
-
-    ALLOCATE( xiX1(nNodesX(1)) )
-    ALLOCATE( xiX2(nNodesX(2)) )
-    ALLOCATE( xiX3(nNodesX(3)) )
 
     ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
     ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
@@ -106,6 +104,13 @@ CONTAINS
     ALLOCATE( LX_X2_Dn_1D(nNodesX(2)) )
     ALLOCATE( LX_X3_Up_1D(nNodesX(3)) )
     ALLOCATE( LX_X3_Dn_1D(nNodesX(3)) )
+
+    ALLOCATE( xiX1(nNodesX(1)) )
+    ALLOCATE( xiX2(nNodesX(2)) )
+    ALLOCATE( xiX3(nNodesX(3)) )
+
+    ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
+    ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
 
     DO i = 1, nNodesX(1)
 
@@ -185,76 +190,76 @@ CONTAINS
     END DO
     END DO
 
-open(100,file='/home/kkadoogan/Desktop/GaussLegendreWeights.txt')
-write(100,'(A)') '{'
-do in1=1,ndofx
-if(.not.in1.eq.ndofx)then
-write(100,'(2x,SP,ES24.16E3,A)') weightsx_q(in1),','
-else
-write(100,'(2x,SP,ES24.16E3)') weightsx_q(in1)
-endif
-enddo
-write(100,'(A)') '};'
-close(100)
-
-open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix.txt')
-write(100,'(A)') '{'
-do ifine=1,nfine
-write(100,'(A)') '  {'
-do i=1,ndofx
-write(100,'(A)') '    {'
-do k=1,ndofx
-if(.not.k.eq.ndofx)then
-write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix(i,k,iFine), ','
-else
-write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix(i,k,iFine)
-endif
-enddo
-if(.not.i.eq.ndofx)then
-write(100,'(A)') '    },'
-else
-write(100,'(A)') '    }'
-endif
-enddo
-if(.not.ifine.eq.4)then
-write(100,'(A)') '  },'
-else
-write(100,'(A)') '  }'
-endif
-enddo
-write(100,'(A)') '};'
-close(100)
-
-open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix_T.txt')
-write(100,'(A)') '{'
-do ifine=1,nfine
-write(100,'(A)') '  {'
-do i=1,ndofx
-write(100,'(A)') '    {'
-do k=1,ndofx
-if(.not.k.eq.ndofx)then
-write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix_T(i,k,iFine), ','
-else
-write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix_T(i,k,iFine)
-endif
-enddo
-if(.not.i.eq.ndofx)then
-write(100,'(A)') '    },'
-else
-write(100,'(A)') '    }'
-endif
-enddo
-if(.not.ifine.eq.4)then
-write(100,'(A)') '  },'
-else
-write(100,'(A)') '  }'
-endif
-enddo
-write(100,'(A)') '};'
-close(100)
-
-print*,'  SHAPE( ProjMatrix ): ', shape(ProjectionMatrix)
-print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
+!!$open(100,file='/home/kkadoogan/Desktop/GaussLegendreWeights.txt')
+!!$write(100,'(A)') '{'
+!!$do in1=1,ndofx
+!!$if(.not.in1.eq.ndofx)then
+!!$write(100,'(2x,SP,ES24.16E3,A)') weightsx_q(in1),','
+!!$else
+!!$write(100,'(2x,SP,ES24.16E3)') weightsx_q(in1)
+!!$endif
+!!$enddo
+!!$write(100,'(A)') '};'
+!!$close(100)
+!!$
+!!$open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix.txt')
+!!$write(100,'(A)') '{'
+!!$do ifine=1,nfine
+!!$write(100,'(A)') '  {'
+!!$do i=1,ndofx
+!!$write(100,'(A)') '    {'
+!!$do k=1,ndofx
+!!$if(.not.k.eq.ndofx)then
+!!$write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix(i,k,iFine), ','
+!!$else
+!!$write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix(i,k,iFine)
+!!$endif
+!!$enddo
+!!$if(.not.i.eq.ndofx)then
+!!$write(100,'(A)') '    },'
+!!$else
+!!$write(100,'(A)') '    }'
+!!$endif
+!!$enddo
+!!$if(.not.ifine.eq.4)then
+!!$write(100,'(A)') '  },'
+!!$else
+!!$write(100,'(A)') '  }'
+!!$endif
+!!$enddo
+!!$write(100,'(A)') '};'
+!!$close(100)
+!!$
+!!$open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix_T.txt')
+!!$write(100,'(A)') '{'
+!!$do ifine=1,nfine
+!!$write(100,'(A)') '  {'
+!!$do i=1,ndofx
+!!$write(100,'(A)') '    {'
+!!$do k=1,ndofx
+!!$if(.not.k.eq.ndofx)then
+!!$write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix_T(i,k,iFine), ','
+!!$else
+!!$write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix_T(i,k,iFine)
+!!$endif
+!!$enddo
+!!$if(.not.i.eq.ndofx)then
+!!$write(100,'(A)') '    },'
+!!$else
+!!$write(100,'(A)') '    }'
+!!$endif
+!!$enddo
+!!$if(.not.ifine.eq.4)then
+!!$write(100,'(A)') '  },'
+!!$else
+!!$write(100,'(A)') '  }'
+!!$endif
+!!$enddo
+!!$write(100,'(A)') '};'
+!!$close(100)
+!!$
+!!$print*,'  SHAPE( ProjMatrix ): ', shape(ProjectionMatrix)
+!!$print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
 
     k = 0
     DO iNX_X_Crse = 1, nDOFX_X1
@@ -302,14 +307,17 @@ print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
 
     END DO ! iNX_X_Crse
 
-    DEALLOCATE( xiX1 )
-    DEALLOCATE( xiX2 )
-    DEALLOCATE( xiX3 )
-
   END SUBROUTINE InitializeMeshRefinement_Euler
 
 
   SUBROUTINE FinalizeMeshRefinement_Euler
+
+    DEALLOCATE( ProjectionMatrix_T )
+    DEALLOCATE( ProjectionMatrix )
+
+    DEALLOCATE( xiX3 )
+    DEALLOCATE( xiX2 )
+    DEALLOCATE( xiX1 )
 
     DEALLOCATE( LX_X3_Dn_1D )
     DEALLOCATE( LX_X3_Up_1D )
@@ -325,9 +333,6 @@ print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
     DEALLOCATE( LX_X3_Refined )
     DEALLOCATE( LX_X2_Refined )
     DEALLOCATE( LX_X1_Refined )
-
-    DEALLOCATE( ProjectionMatrix )
-    DEALLOCATE( ProjectionMatrix_T )
 
   END SUBROUTINE FinalizeMeshRefinement_Euler
 
