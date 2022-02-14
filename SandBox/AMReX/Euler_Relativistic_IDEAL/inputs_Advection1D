@@ -24,7 +24,7 @@ geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
 amr.n_cell          = 32 01 01 # Number of cells in each dimension
-amr.max_grid_size   = 32
+amr.max_grid_size   = 8
 amr.blocking_factor = 4
 amr.max_level       = 1
 amr.UseTiling       = 0
@@ -33,3 +33,6 @@ amr.TagCriteria     = 0.5
 #amr.grid_eff        = 0.1
 amr.n_error_buf     = 0
 amr.ref_ratio       = 2
+
+SL.UseSlopeLimiter = 0
+PL.UsePositivityLimiter = 0
