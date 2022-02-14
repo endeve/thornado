@@ -81,6 +81,7 @@ MODULE InputOutputModuleAMReX
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
 
+
 CONTAINS
 
 
@@ -328,9 +329,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverage_MF &
-    ( nComp, MF_uGF, MF, iOS, Field, MF_plt )
+    ( nFields, MF_uGF, MF, iOS, Field, MF_plt )
 
-    INTEGER,              INTENT(in)    :: nComp, iOS
+    INTEGER,              INTENT(in)    :: nFields, iOS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(in)    :: MF
     CHARACTER(2),         INTENT(in)    :: Field
@@ -340,7 +341,7 @@ CONTAINS
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
     REAL(DP)                      :: G_K(nDOFX,nGF)
-    REAL(DP)                      :: U_K(nDOFX,nComp)
+    REAL(DP)                      :: U_K(nDOFX,nFields)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
@@ -367,10 +368,10 @@ CONTAINS
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-        U_K(1:nDOFX,1:nComp) &
-          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nComp ] )
+        U_K(1:nDOFX,1:nFields) &
+          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nFields ] )
 
-        DO iComp = 1, nComp
+        DO iComp = 1, nFields
 
           U_plt(iX1,iX2,iX3,iComp+iOS) &
             = SUM( WeightsX_q * U_K(:,iComp) * G_K(:,iGF_SqrtGm) ) &
