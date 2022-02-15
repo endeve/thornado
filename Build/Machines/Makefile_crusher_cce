@@ -28,7 +28,7 @@ INCLUDE_LAPACK   =
 INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
 INCLUDE_PETSC    =
 INCLUDE_POSEIDON =
-INCLUDE_ROCM     = -I$(ROCM_PATH)/include
+INCLUDE_ROCM     = -I$(ROCM_PATH)/include -I$(OLCF_HIPFORT_ROOT)/include/amdgcn
 
 LIBRARIES_CUDA     = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda -L$(CUDA_ROOT)/compat -lcuda
 LIBRARIES_HDF5     = -lhdf5_fortran -lhdf5
@@ -36,4 +36,4 @@ LIBRARIES_LAPACK   =
 LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
-LIBRARIES_ROCM     = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64
+LIBRARIES_ROCM     = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn
