@@ -20,5 +20,4 @@ ProgramInitializationModule.o: \
   RadiationEvolutionModule.o \
   RiemannSolverModule.o \
   FluidRadiationCouplingModule.o \
-  TimeSteppingModule.o \
   ProgramInitializationModule.f90

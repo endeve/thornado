@@ -12,6 +12,5 @@ $(THORNADO_DIR)/Modules/InputOutput: \
 $(THORNADO_DIR)/Modules/RadHydro: \
 $(THORNADO_DIR)/Modules/Euler: \
 $(THORNADO_DIR)/Modules/TwoMoment: \
-$(THORNADO_DIR)/Modules/TimeStepping: \
 $(THORNADO_DIR)/Modules/Runtime: \
 ..

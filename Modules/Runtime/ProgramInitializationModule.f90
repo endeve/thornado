@@ -66,9 +66,6 @@ MODULE ProgramInitializationModule
   USE FluidRadiationCouplingModule, ONLY: &
     InitializeFluidRadiationCoupling, &
     FinalizeFluidRadiationCoupling
-  USE TimeSteppingModule, ONLY: &
-    InitializeTimeStepping, &
-    FinalizeTimeStepping
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -475,22 +472,6 @@ CONTAINS
            ( FluidRadiationCoupling_Option &
                = FluidRadiationCoupling_Option )
 
-    ! --- Time Stepping ---
-
-    CALL InitializeTimeStepping &
-           ( EvolveGravity_Option &
-               = EvolveGravity_Option, &
-             EvolveFluid_Option &
-               = EvolveFluid_Option, &
-             EvolveRadiation_Option &
-               = EvolveRadiation_Option, &
-             nStages_SSP_RK_Option &
-               = nStages_SSP_RK_Option, &
-             nStages_SI_RK_Option &
-               = nStages_SI_RK_Option, &
-             IMEX_Scheme_Option &
-               = IMEX_Scheme_Option )
-
   END SUBROUTINE InitializeProgram
 
 
@@ -561,10 +542,6 @@ CONTAINS
     ! --- Fluid-Radiation Solver ---
 
     CALL FinalizeFluidRadiationCoupling
-
-    ! --- Time Stepping ---
-
-    CALL FinalizeTimeStepping
 
     ! --- Device ---
 
