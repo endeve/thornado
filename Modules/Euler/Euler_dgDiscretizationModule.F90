@@ -744,12 +744,12 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
@@ -1461,12 +1461,12 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
@@ -2177,12 +2177,12 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
