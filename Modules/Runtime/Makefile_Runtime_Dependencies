@@ -15,9 +15,4 @@ ProgramInitializationModule.o: \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \
   OpacityModule.o \
-  GravitySolutionModule.o \
-  FluidEvolutionModule.o \
-  RadiationEvolutionModule.o \
-  RiemannSolverModule.o \
-  FluidRadiationCouplingModule.o \
   ProgramInitializationModule.f90
