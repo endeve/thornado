@@ -70,8 +70,8 @@ MODULE GravitySolutionModule_CFA_Poseidon
     Poseidon_XCFC_Run_Part2, &
     Poseidon_Return_ConFactor, &
     Poseidon_Return_Lapse, &
-    Poseidon_Return_Shift!, &
-!    Poseidon_Return_ExtrinsicCurvature
+    Poseidon_Return_Shift, &
+    Poseidon_Return_ExtrinsicCurvature
   USE Initial_Guess_Module, ONLY: &
     Poseidon_Init_FlatGuess
 
@@ -302,17 +302,15 @@ CONTAINS
            Right_Limit  = +Half,            &
            Return_Shift = Tmp_Shift )
 
-!!$    CALL Poseidon_Return_ExtrinsicCurvature &
-!!$         ( NE                        = nX,               &
-!!$           NQ                        = nNodesX,          &
-!!$           RQ_Input                  = MeshX(1) % Nodes, &
-!!$           TQ_Input                  = MeshX(2) % Nodes, &
-!!$           PQ_Input                  = MeshX(3) % Nodes, &
-!!$           Left_Limit                = -Half,            &
-!!$           Right_Limit               = +Half,            &
-!!$           Return_ExtrinsicCurvature = Tmp_ExtrinsicCurvature )
-
-    Tmp_ExtrinsicCurvature = Zero ! Remove once subroutine is in place
+    CALL Poseidon_Return_ExtrinsicCurvature &
+         ( NE          = nX,               &
+           NQ          = nNodesX,          &
+           RQ_Input    = MeshX(1) % Nodes, &
+           TQ_Input    = MeshX(2) % Nodes, &
+           PQ_Input    = MeshX(3) % Nodes, &
+           Left_Limit  = -Half,            &
+           Right_Limit = +Half,            &
+           Return_Kij  = Tmp_ExtrinsicCurvature )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
