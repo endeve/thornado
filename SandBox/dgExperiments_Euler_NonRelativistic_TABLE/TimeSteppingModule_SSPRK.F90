@@ -52,9 +52,11 @@ MODULE TimeSteppingModule_SSPRK
       USE FluidFieldsModule   , ONLY: nCF
       INTEGER, INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      REAL(DP), INTENT(in)          :: &
+        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(inout)       :: &
-        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      REAL(DP), INTENT(inout)       :: &
         D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)         :: &
         dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -222,8 +224,10 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       t, dt
     REAL(DP), INTENT(inout) :: &
-      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
-      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF), &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+    REAL(DP), INTENT(out)   :: &
       D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
     PROCEDURE(FluidIncrement) :: &
       ComputeIncrement_Fluid
