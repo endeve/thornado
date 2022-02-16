@@ -498,9 +498,9 @@ CONTAINS
       Gm11, Gm22, Gm33, &
       AF_P )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -1580,10 +1580,10 @@ CONTAINS
     INTEGER  :: iX
     REAL(DP) :: S
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( S )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( S ) &
     !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
