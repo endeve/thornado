@@ -535,7 +535,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem   &
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
     !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, Brem_AT )
 #endif
 
