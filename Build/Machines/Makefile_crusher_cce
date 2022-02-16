@@ -5,7 +5,7 @@ FORTRAN = ftn
 FLINKER = ftn
 
 DEBUG    = -g -G0 -O0
-OPTIMIZE = -O3
+OPTIMIZE = -O2
 
 SUFFIX_f90 =
 
