@@ -595,7 +595,6 @@ CONTAINS
     REAL(DP) :: D, I_d_1, I_d_2, I_d_3, Kappa
     REAL(DP) ::    I_u_1, I_u_2, I_u_3
     REAL(DP) :: A_d_1, A_d_2, A_d_3, k_dd(3,3)
-    ! REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: D_00, D_ii
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
@@ -632,10 +631,6 @@ CONTAINS
 
       UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
 
-      ! CALL ComputeEddingtonTensorComponents_dd &
-      !        ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      !          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
       k_dd = EddingtonTensorComponents_dd &
                ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -671,10 +666,6 @@ CONTAINS
 
       LMAT = LMAT / DET
 
-      ! PRINT*, "Doing DGEMV"
-      ! CALL DGEMV( 'N', 4, 4, One, LMAT, 4, CVEC, 1, Zero, GVEC(:,mk), 1 )
-
-      PRINT*, "Doing GPU multiplication"
       GVEC(:,mk) = Zero
 
       DO j = 1, 4
@@ -696,19 +687,6 @@ CONTAINS
       ELSE
 
         ! --- Anderson Accelerated Fixed-Point ---
-
-        ! BVEC = - FVEC(:,mk)
-        !
-        ! AMAT(:,1:mk-1) &
-        !  = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
-        !
-        ! CALL DGELS( 'N', 4, mk-1, 1, AMAT(:,1:mk-1), 4, BVEC, 4, &
-        !            WORK, LWORK, INFO )
-        !
-        ! Alpha(1:mk-1) = BVEC(1:mk-1)
-        ! Alpha(mk)     = One - SUM( Alpha(1:mk-1) )
-
-        !CALL SolveAlpha_LS( M, mk, FVEC, Alpha )
 
         Alpha = Alpha_LS( M, mk, FVEC )
 
@@ -732,11 +710,6 @@ CONTAINS
       UVEC = GVECm
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
-
-        !GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-        !FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
-
-        !CALL ShiftVectors( M, mk, FVEC, GVEC )
 
         FVEC = ShiftVec( M, mk, FVEC )
         GVEC = ShiftVec( M, mk, GVEC )
@@ -1145,9 +1118,7 @@ CONTAINS
 
     ELSEIF( mk > 3 )THEN
 
-      PRINT*, "mk > 3"
-
-      STOP
+!      STOP
 
     END IF
 
