@@ -689,14 +689,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-        !$OMP PRIVATE( AA11, AB1, B )
+        !$OMP PRIVATE( AA11, AB1, A1, B, iP )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
-        !$ACC PRIVATE( AA11, AB1, B ) &
+        !$ACC PRIVATE( AA11, AB1, A1, B, iP ) &
         !$ACC PRESENT( MASK, Alpha, F, Fm )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO &
-        !$OMP PRIVATE( AA11, AB1, B )
+        !$OMP PRIVATE( AA11, AB1, A1, B, iP )
 #endif
         DO iZ = 1, nZ
           IF ( MASK(iZ) ) THEN
@@ -724,14 +724,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B )
+        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B, iP )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
-        !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B ) &
+        !$ACC PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B, iP ) &
         !$ACC PRESENT( MASK, Alpha, F, Fm )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO &
-        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B )
+        !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B, iP )
 #endif
         DO iZ = 1, nZ
           IF ( MASK(iZ) ) THEN
