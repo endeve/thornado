@@ -51,10 +51,10 @@ MODULE Euler_UtilitiesModule_Relativistic
     ComputeAuxiliary_Fluid, &
     ComputePressureFromSpecificInternalEnergy
   USE EquationOfStateModule_TABLE, ONLY: &
-    MinD, &
-    MaxD, &
-    MinT, &
-    MaxT, &
+    Min_D, &
+    Max_D, &
+    Min_T, &
+    Max_T, &
     ComputeSpecificInternalEnergy_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
@@ -301,7 +301,7 @@ CONTAINS
 #endif
     DO iX = 1, N
 
-      IF( uD(iX) .GT. MinD )THEN
+      IF( uD(iX) .GT. Min_D )THEN
 
         ! --- Eqs. C15/C16 ---
 
@@ -348,9 +348,9 @@ CONTAINS
 
       ErrorExists = ErrorExists + iErr(iX)
 
-      IF( uD(iX) .LT. MinD )THEN
+      IF( uD(iX) .LT. Min_D )THEN
 
-        pD (iX) = 1.01_DP * MinD
+        pD (iX) = 1.01_DP * Min_D
         pV1(iX) = Zero
         pV2(iX) = Zero
         pV3(iX) = Zero
@@ -442,9 +442,9 @@ CONTAINS
 
     ! --- Ensure primitive fields can be recovered ---
 
-    IF( CF_D .LT. MinD )THEN
+    IF( CF_D .LT. Min_D )THEN
 
-      PF_D  = 1.01_DP * MinD
+      PF_D  = 1.01_DP * Min_D
       PF_V1 = Zero
       PF_V2 = Zero
       PF_V3 = Zero
@@ -1598,7 +1598,7 @@ CONTAINS
 
        iErr(iX) = 0
 
-       IF( uD(iX) .GT. MinD )THEN
+       IF( uD(iX) .GT. Min_D )THEN
 
          ! --- Eq. C2 ---
 
@@ -1633,7 +1633,7 @@ CONTAINS
 
          IF( .NOT. fa(iX) * fb(iX) .LT. Zero ) iErr(iX) = 8
 
-       END IF ! IF( uD(iX) .GT. MinD )
+       END IF ! IF( uD(iX) .GT. Min_D )
 
      END DO
 
@@ -1654,7 +1654,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: q
     REAL(DP), INTENT(out)   :: FunZ
 
-    REAL(DP) :: epst, at, ht, Wt, epsh, rhoh, ph, Ye, MinE, MaxE
+    REAL(DP) :: epst, at, ht, Wt, epsh, rhoh, ph, Ye, Min_E, Max_E
 
     ! --- Eq. C15 ---
 
@@ -1666,31 +1666,31 @@ CONTAINS
 
     ! --- Eq. C17 ---
 
-    rhoh = MAX( MIN( MaxD, D / Wt ), MinD )
+    rhoh = MAX( MIN( Max_D, D / Wt ), Min_D )
 
     ! --- Eq. C18 ---
 
     Ye = Ne * AtomicMassUnit / D
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One + Offset_Temperature ) * MinT, Ye, MinE )
+           ( rhoh, ( One + Offset_Temperature ) * Min_T, Ye, Min_E )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One - Offset_Temperature ) * MaxT, Ye, MaxE )
+           ( rhoh, ( One - Offset_Temperature ) * Max_T, Ye, Max_E )
 
-    MinE = ( One + Offset_Epsilon ) * MinE
-    MaxE = ( One - Offset_Epsilon ) * MaxE
+    Min_E = ( One + Offset_Epsilon ) * Min_E
+    Max_E = ( One - Offset_Epsilon ) * Max_E
 
-    epsh = MAX( MIN( MaxE, epst ), MinE )
+    epsh = MAX( MIN( Max_E, epst ), Min_E )
 
     ! --- Eq. C27 ---
 
-    IF( epst .LT. MinE )THEN
+    IF( epst .LT. Min_E )THEN
 
       q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
 
       epst = epsh
 
-    ELSE IF( epst .GT. MaxE )THEN
+    ELSE IF( epst .GT. Max_E )THEN
 
       q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
 
@@ -1724,7 +1724,7 @@ CONTAINS
     REAL(DP), INTENT(out)   :: FunZ(N)
     LOGICAL,  INTENT(inout) :: ITERATE(N)
 
-    REAL(DP) :: Wt, MinE, MaxE, at, ht
+    REAL(DP) :: Wt, Min_E, Max_E, at, ht
     REAL(DP) :: epst(N), rhoh(N), Ye(N), epsh(N), ph(N)
 
     INTEGER :: iX
@@ -1741,14 +1741,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Wt, MinE, MaxE )
+    !$OMP PRIVATE( Wt, Min_E, Max_E )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( Wt, MinE, MaxE ) &
+    !$ACC PRIVATE( Wt, Min_E, Max_E ) &
     !$ACC PRESENT( ITERATE, z, epst, q, r, rhoh, D, Ye, Ne, epsh )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Wt, MinE, MaxE )
+    !$OMP PRIVATE( Wt, Min_E, Max_E )
 #endif
     DO iX = 1, N
 
@@ -1764,39 +1764,39 @@ CONTAINS
 
         ! --- Eq. C17 ---
 
-        rhoh(iX) = MAX( MIN( MaxD, D(iX) / Wt ), MinD )
+        rhoh(iX) = MAX( MIN( Max_D, D(iX) / Wt ), Min_D )
 
         ! --- Eq. C18 ---
 
         Ye(iX) = Ne(iX) * AtomicMassUnit / D(iX)
 
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( rhoh(iX), ( One + Offset_Temperature ) * MinT, Ye(iX), MinE )
+               ( rhoh(iX), ( One + Offset_Temperature ) * Min_T, Ye(iX), Min_E )
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( rhoh(iX), ( One - Offset_Temperature ) * MaxT, Ye(iX), MaxE )
+               ( rhoh(iX), ( One - Offset_Temperature ) * Max_T, Ye(iX), Max_E )
 
-        MinE = ( One + Offset_Epsilon ) * MinE
-        MaxE = ( One - Offset_Epsilon ) * MaxE
+        Min_E = ( One + Offset_Epsilon ) * Min_E
+        Max_E = ( One - Offset_Epsilon ) * Max_E
 
-        epsh(iX) = MAX( MIN( MaxE, epst(iX) ), MinE )
+        epsh(iX) = MAX( MIN( Max_E, epst(iX) ), Min_E )
 
         ! --- Eq. C27 ---
 
-        IF( epst(iX) .LT. MinE )THEN
+        IF( epst(iX) .LT. Min_E )THEN
 
           q(iX) = ( One + q(iX) ) &
                     * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
 
           epst(iX) = epsh(iX)
 
-        ELSE IF( epst(iX) .GT. MaxE )THEN
+        ELSE IF( epst(iX) .GT. Max_E )THEN
 
           q(iX) = ( One + q(iX) ) &
                     * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
 
           epst(iX) = epsh(iX)
 
-        END IF ! epst(iX) < MinE || epst(iX) > MaxE
+        END IF ! epst(iX) < Min_E || epst(iX) > Max_E
 
       END IF ! ITERATE(iX)
 
@@ -2087,8 +2087,8 @@ CONTAINS
 
     INTEGER,  INTENT(in)    :: N
     REAL(DP), INTENT(in)    :: uD(N), uNe(N), r(N), k(N)
-    REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N)
-    REAL(DP), INTENT(out)   :: dz(N), zc(N), fc(N)
+    REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N), dz(N)
+    REAL(DP), INTENT(out)   :: zc(N), fc(N)
     LOGICAL,  INTENT(inout) :: ITERATE(N)
 
     REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
@@ -2113,7 +2113,7 @@ CONTAINS
 #endif
       DO iX = 1, N
 
-        IF( uD(iX) .GT. MinD .AND. ITERATE(iX) )THEN
+        IF( uD(iX) .GT. Min_D .AND. ITERATE(iX) )THEN
 
           dz(iX) = Half * dz(iX)
           zc(iX) = za(iX) + dz(iX)
@@ -2138,7 +2138,7 @@ CONTAINS
 #endif
       DO iX = 1, N
 
-        IF( uD(iX) .GT. MinD .AND. ITERATE(iX) )THEN
+        IF( uD(iX) .GT. Min_D .AND. ITERATE(iX) )THEN
 
           IF( fa(iX) * fc(iX) .LT. Zero )THEN
 
@@ -2170,7 +2170,7 @@ CONTAINS
 
           ITERATE(iX) = .FALSE.
 
-        END IF ! uD(iX) .GT. MinD .AND. ITERATE(iX)
+        END IF ! uD(iX) .GT. Min_D .AND. ITERATE(iX)
 
       END DO ! iX
 #if   defined( THORNADO_OMP_OL )

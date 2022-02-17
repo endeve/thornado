@@ -367,7 +367,7 @@ CONTAINS
       InitializeReferenceElement_Lagrange
     USE EquationOfStateModule_TABLE, ONLY: &
       InitializeEquationOfState_TABLE, &
-      MinD, MaxD, MinT, MaxT, MinY, MaxY
+      Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
     USE OpacityModule_TABLE, ONLY: &
       InitializeOpacities_TABLE
     USE TwoMoment_ClosureModule, ONLY: &
@@ -506,17 +506,17 @@ CONTAINS
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_D, &
              Min_2_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_T, &
              Min_3_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_Y, &
              Max_1_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_D, &
              Max_2_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_T, &
              Max_3_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_Y )
 
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 
