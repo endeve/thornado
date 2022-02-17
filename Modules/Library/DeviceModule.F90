@@ -179,8 +179,8 @@ CONTAINS
 
     ! Create a stream and associate with linear algebra libraries
 #if defined(THORNADO_OACC)
-    stream = acc_get_cuda_stream( acc_async_noval )
-    CALL acc_set_cuda_stream( acc_async_sync, stream )
+    stream = acc_get_cuda_stream( INT( acc_async_noval, KIND=c_long_long ) )
+    CALL acc_set_cuda_stream( INT( acc_async_sync, KIND=c_long_long ), stream )
     !CALL acc_set_default_async( acc_async_noval )
 #elif defined(THORNADO_CUDA)
     ierr = cudaStreamCreate( stream )
