@@ -2087,8 +2087,8 @@ CONTAINS
 
     INTEGER,  INTENT(in)    :: N
     REAL(DP), INTENT(in)    :: uD(N), uNe(N), r(N), k(N)
-    REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N)
-    REAL(DP), INTENT(out)   :: dz(N), zc(N), fc(N)
+    REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N), dz(N)
+    REAL(DP), INTENT(out)   :: zc(N), fc(N)
     LOGICAL,  INTENT(inout) :: ITERATE(N)
 
     REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
