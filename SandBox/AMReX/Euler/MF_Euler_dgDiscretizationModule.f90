@@ -48,8 +48,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     iGF_Psi, &
     iGF_SqrtGm
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit, &
-    OffGridFlux_Euler
+    ComputeIncrement_Euler_DG_Explicit
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
   USE LinearAlgebraModule, ONLY: &
@@ -71,7 +70,12 @@ MODULE  MF_Euler_dgDiscretizationModule
     thornado2amrex_X_F, &
     amrex2thornado_X_F
   USE MF_FieldsModule, ONLY: &
-    MF_OffGridFlux_Euler, &
+    MF_uGF_old, &
+    MF_uGF_new, &
+    MF_uCF_old, &
+    MF_uCF_new, &
+    MF_uDF_old, &
+    MF_uDF_new, &
     FluxRegister
   USE InputParsingModule, ONLY: &
     UseTiling, &
@@ -85,8 +89,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
-    FillPatch_uGF, &
-    FillPatch_uCF
+    FillPatch
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -103,15 +106,13 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF &
-    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, &
-      UseXCFC_Option )
+    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uDF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
     LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 
@@ -126,10 +127,10 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X2(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X3(:,:,:,:)
 
-    REAL(DP), ALLOCATABLE :: G   (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: U   (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: D   (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: dU  (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G             (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U             (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D             (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dU            (:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: SurfaceFlux_X1(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: SurfaceFlux_X2(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: SurfaceFlux_X3(:,:,:,:,:)
@@ -159,9 +160,9 @@ CONTAINS
 !
 !      CALL MF_uDF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
 !
-!      CALL FillPatch_uGF( iLevel, Time(iLevel), MF_uGF(iLevel) )
+!      CALL FillPatch( iLevel, Time(iLevel), MF_uGF_old, MF_uGF_new, MF_uGF(iLevel) )
 !
-!      CALL FillPatch_uCF( iLevel, Time(iLevel), MF_uCF(iLevel) )
+!      CALL FillPatch( iLevel, Time(iLevel), MF_uCF_old, MF_uCF_new, MF_uCF(iLevel) )
 !
 !      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
@@ -239,12 +240,13 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
 !    CALL MF_uGF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch_uGF( iLevel, Time, MF_uGF )
+    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF_new, MF_uGF )
 
 !    CALL MF_uCF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch_uCF( iLevel, Time, MF_uCF )
+    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF_new, MF_uCF )
 
-    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
+!    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
+    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF_new, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -375,9 +377,6 @@ CONTAINS
                                 [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], &
                                 uSurfaceFlux_X3, SurfaceFlux_X3 )
-
-      MF_OffGridFlux_Euler(iLevel,:) &
-        = MF_OffGridFlux_Euler(iLevel,:) + OffGridFlux_Euler
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 

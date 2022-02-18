@@ -21,11 +21,11 @@ PROGRAM ApplicationDriver
     DP, &
     Two
   USE MF_FieldsModule, ONLY: &
-    MF_uGF_new, &
-    MF_uCF_new, &
-    MF_uPF_new, &
-    MF_uAF_new, &
-    MF_uDF_new
+    MF_uGF, &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uAF, &
+    MF_uDF
   USE InitializationModule, ONLY: &
     InitializeProgram
   USE FinalizationModule, ONLY: &
@@ -58,9 +58,6 @@ PROGRAM ApplicationDriver
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_InputOutput
 
-use euler_meshrefinementmodule,only:&
-InitializeMeshRefinement_Euler
-
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
@@ -69,8 +66,6 @@ InitializeMeshRefinement_Euler
   LOGICAL  :: wrt, chk
   REAL(DP) :: t_wrt, t_chk
   REAL(DP) :: Timer_Evolution
-
-  REAL(DP), ALLOCATABLE :: dtMultiplier(:)
 
   TimeIt_AMReX_Euler = .TRUE.
 
@@ -84,26 +79,18 @@ InitializeMeshRefinement_Euler
 
   CALL InitializeProgram
 
-call InitializeMeshRefinement_Euler
-
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
-
-  ALLOCATE( dtMultiplier(0:amrex_max_level) )
-
-  DO iLevel = 0, amrex_max_level
-
-    dtMultiplier(iLevel) = Two**( iLevel )
-
-  END DO
 
   ! --- Begin evolution ---
 
   DO WHILE( MAXVAL( t_new ) .LT. t_end )
 
+    StepNo = StepNo + 1
+
     t_old = t_new
 
-    CALL ComputeTimeStep_Euler_MF( MF_uGF_new, MF_uCF_new, CFL, dt )
+    CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
 
     dt = MINVAL( dt )
 
@@ -119,30 +106,11 @@ call InitializeMeshRefinement_Euler
 
     END IF
 
-!!$    IF( MAXVAL( t_old + dtMultiplier * dt ) .LT. t_end )THEN
-!!$
-!!$      t_new = t_old(0) + dt(0)
-!!$
-!!$    ELSE
-!!$
-!!$      dt(0) = t_end - t_old(0)
-!!$
-!!$      t_new = t_end
-!!$
-!!$    END IF
-!!$
-!!$    ! --- Normalize time-steps ---
-!!$
-!!$    DO iLevel = 0, amrex_max_level
-!!$
-!!$      dt(iLevel) = dt(0) / dtMultiplier(iLevel)
-!!$
-!!$    END DO
+    CALL UpdateFluid_SSPRK_MF( t_new, dt, MF_uGF, MF_uCF, MF_uDF )
 
-    CALL UpdateFluid_SSPRK_MF &
-          ( t_new, dt, MF_uGF_new, MF_uCF_new, MF_uDF_new )
-
-    CALL AverageDown( MF_uGF_new, MF_uCF_new, MF_uDF_new )
+    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uCF )
+    CALL AverageDown( MF_uDF )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -183,7 +151,7 @@ call InitializeMeshRefinement_Euler
 !!$      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 !!$
 !!$      CALL ComputeFromConserved_Euler_MF &
-!!$             ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
+!!$             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 !!$
 !!$      CALL WriteFieldsAMReX_Checkpoint &
 !!$             ( StepNo, nLevels, dt, t, &
@@ -226,15 +194,15 @@ call InitializeMeshRefinement_Euler
     IF( wrt )THEN
 
       CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
+             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t_new(0), StepNo, MF_uGF_new, &
-               MF_uGF_Option = MF_uGF_new, &
-               MF_uCF_Option = MF_uCF_new, &
-               MF_uPF_Option = MF_uPF_new, &
-               MF_uAF_Option = MF_uAF_new, &
-               MF_uDF_Option = MF_uDF_new )
+             ( t_new(0), StepNo, MF_uGF, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF, &
+               MF_uDF_Option = MF_uDF )
 
       wrt = .FALSE.
 
@@ -245,8 +213,6 @@ call InitializeMeshRefinement_Euler
   END DO
 
   ! --- END of evolution ---
-
-  DEALLOCATE( dtMultiplier )
 
   IF( amrex_parallel_ioprocessor() )THEN
 
