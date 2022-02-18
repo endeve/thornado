@@ -8,7 +8,7 @@ yt.funcs.mylog.setLevel(40) # Suppress initial yt output to screen
 from UtilitiesModule import OverwriteFile, GetData, ChoosePlotFile
 
 def MakeDataFile( Field, DataDirectory, DataFileName, \
-                  PlotFileBaseName, CoordinateSystem, \
+                  PlotFileBaseName, CoordinateSystem, FileArray, \
                   UsePhysicalUnits = True, ReturnMesh = False, \
                   MaxLevel = -1, \
                   WriteExtras = False, Verbose = False ):
@@ -25,9 +25,7 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
     # Append "/" to DataDirectory, if not present
     if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
 
-    File, FileArray \
-      = ChoosePlotFile( DataDirectory, PlotFileBaseName, \
-                        ReturnFileArray = True, Verbose = Verbose )
+    File = ChoosePlotFile( DataDirectory, PlotFileBaseName )
 
     # Get some general info about the computational domain
 
@@ -93,12 +91,11 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
 
                 Data[i], DataUnit, \
                   X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time[i] \
-                    = GetData( DataDirectory, PlotFileBaseName, \
-                               Field, CoordinateSystem, UsePhysicalUnits, \
+                    = GetData( DataDirectory, PlotFileBaseName, Field, \
+                               CoordinateSystem, UsePhysicalUnits, \
                                argv = [ 'a', FileArray[i] ], \
                                MaxLevel = MaxLevel, \
-                               ReturnTime = True, ReturnMesh = True, \
-                               Verbose = Verbose )
+                               ReturnTime = True, ReturnMesh = True )
 
             else:
 
@@ -107,8 +104,7 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
                              Field, CoordinateSystem, UsePhysicalUnits, \
                              argv = [ 'a', FileArray[i] ], \
                              MaxLevel = MaxLevel, \
-                             ReturnTime = True, ReturnMesh = False, \
-                             Verbose = Verbose )
+                             ReturnTime = True, ReturnMesh = False )
 
         if   nDimsX == 1: DataShape \
                             = (FileArray.shape[0],X1.shape[0])

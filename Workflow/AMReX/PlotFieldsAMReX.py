@@ -101,13 +101,13 @@ Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
              MaxLevel = MaxLevel, \
-             ReturnTime = True, ReturnMesh = True, Verbose = Verbose )
+             ReturnTime = True, ReturnMesh = True )
 
 Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = argv, \
              MaxLevel = MaxLevel, \
-             ReturnTime = True, ReturnMesh = True, Verbose = Verbose )
+             ReturnTime = True, ReturnMesh = True )
 
 nDims = 1
 if nX[1] > 1: nDims += 1
@@ -122,6 +122,7 @@ if nDims == 1:
 #    np.savetxt( '{:}.dat'.format( DataDirectory[79:-1] ), data )
     plt.plot( X10, Data0, 'r.' )
     plt.plot( X1, Data, 'k.' )
+#    plt.semilogy( X1, np.abs( ( Data - Data0 ) / Data0 ), 'k.' )
     if( UseLogScale ): plt.yscale( 'log' )
     plt.xlim( xL[0], xU[0] )
     plt.xlabel( 'X1' + ' ' + LengthUnit )

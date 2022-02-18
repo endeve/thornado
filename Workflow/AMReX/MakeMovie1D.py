@@ -6,7 +6,7 @@ from os.path import isfile
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-from UtilitiesModule import ChoosePlotFile, GetData, GetNorm
+from UtilitiesModule import ChoosePlotFile, GetData, GetNorm, GetFileArray
 from MakeDataFile import MakeDataFile
 
 # --- Get user's HOME directory ---
@@ -61,10 +61,6 @@ MovieName    = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 # Append "/" to DataDirectory, if not present
 if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
 
-File, FileArray \
-  = ChoosePlotFile( DataDirectory, PlotFileBaseName, \
-                    ReturnFileArray = True, Verbose = Verbose )
-
 TimeUnit = ''
 LengthUnit = ''
 if UsePhysicalUnits:
@@ -72,11 +68,10 @@ if UsePhysicalUnits:
     TimeUnit   = 'ms'
     LengthUnit = 'km'
 
-Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
+Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
-             CoordinateSystem, UsePhysicalUnits, MaxLevel = MaxLevel, \
-             ReturnTime = True, ReturnMesh = True, \
-             Verbose = False )
+             CoordinateSystem, UsePhysicalUnits, \
+             MaxLevel = MaxLevel, ReturnMesh = True )
 
 nDims = 1
 if nX[1] > 1: nDims += 1
@@ -85,8 +80,11 @@ if nX[2] > 1: nDims += 1
 assert ( nDims == 1 ), \
        'Invalid nDims: {:d}\nnDims must equal 1'.format( nDims )
 
+FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
+#FileArray = FileArray[0:10]
+
 MakeDataFile( Field, DataDirectory, DataFileName, \
-              PlotFileBaseName, CoordinateSystem, \
+              PlotFileBaseName, CoordinateSystem, FileArray, \
               UsePhysicalUnits = UsePhysicalUnits, \
               MaxLevel = MaxLevel )
 
@@ -98,16 +96,10 @@ header = f.readline()[16:-2]
 DataUnit = f.readline()[9:-1]
 DataShape = ( [ np.int64( dim ) for dim in header.split( ',' ) ] )
 
-if UsePhysicalUnits:
+if UsePhysicalUnits: nOS = 12
+else:                nOS = 7
 
-    Time = list( [ np.float64( t ) \
-                 for t in f.readline()[12:-2].split(' ') ] )
-
-else:
-
-    Time = list( [ np.float64( t ) \
-                 for t in f.readline()[7:-2].split(' ') ] )
-
+Time = list( [ np.float64( t ) for t in f.readline()[nOS:-2].split(' ') ] )
 Time = np.array( Time )
 
 Data = np.loadtxt( DataFileName ).reshape( DataShape )
@@ -129,6 +121,9 @@ ax.set_ylabel( Field + ' ' + DataUnit )
 Width     = xU[0] - xL[0]
 Height    = ymax - ymin
 time_text = plt.text( xL[0] + 0.5 * Width, ymin + 0.7 * Height, '' )
+
+for iX1 in range( X1.shape[0] ):
+    ax.axvline( X1[iX1] - 0.5 * dX1[iX1] )
 
 if( UseLogScale ): ax.set_yscale( 'log' )
 

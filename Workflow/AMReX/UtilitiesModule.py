@@ -21,49 +21,44 @@ def OverwriteFile( FileName ):
     return Overwrite
 
 
-def ChoosePlotFile( DataDirectory, PlotFileBaseName, argv = [ 'a' ], \
-                    ReturnFileArray = False, Verbose = True ):
+def GetFileArray( DataDirectory, PlotFileBaseName ):
 
     from os import listdir
 
-    if Verbose:
+    FileArray \
+      = np.sort( np.array( [ file for file in listdir( DataDirectory ) ] ) )
 
-        print( '\n  Calling ChoosePlotFile...' )
-        print(   '  -------------------------\n' )
-        print(   '    DataDirectory:    {:s}'.format( DataDirectory ) )
-        print(   '    PlotFileBaseName: {:s}'.format( PlotFileBaseName ) )
-        print(   '    argv:            ', argv )
-        print(   '    ReturnFileArray:  {:}\n'.format( ReturnFileArray ) )
+    FileList = []
+
+    for iFile in range( FileArray.shape[0] ):
+
+        sFile = FileArray[iFile]
+
+        if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
+              and sFile[len(PlotFileBaseName)+1].isdigit() ):
+            FileList.append( sFile )
+
+    FileArray = np.array( FileList )
+
+    if not FileArray.shape[0] > 0:
+
+        msg = 'No files found in DataDirectory:'
+        msg += ' {:s}\nDouble check the path\n'.format( DataDirectory )
+
+        assert ( FileArray.shape[0] > 0 ), msg
+
+    return FileArray
+
+
+def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
 
     if len( argv ) == 1:
 
         # Get last plotfile in directory
 
-        FileArray \
-          = np.sort( np.array( [ file for file in listdir( DataDirectory ) ] ) )
+        File = FileArray[-1]
 
-        FileList = []
-
-        for iFile in range( FileArray.shape[0] ):
-
-            sFile = FileArray[iFile]
-
-            if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
-                  and sFile[len(PlotFileBaseName)+1].isdigit() ):
-                FileList.append( sFile )
-
-        FileArray = np.array( FileList )
-
-        if not FileArray.shape[0] > 0:
-
-            msg = 'No files found in DataDirectory:'
-            msg += ' {:s}\nDouble check the path\n'.format( DataDirectory )
-
-            assert ( FileArray.shape[0] > 0 ), msg
-
-        File      = FileArray[-1]
-
-    elif( len( argv ) == 2 ):
+    elif len( argv ) == 2:
 
         if argv[1][0].isalpha():
 
@@ -88,32 +83,15 @@ def ChoosePlotFile( DataDirectory, PlotFileBaseName, argv = [ 'a' ], \
     # Remove "/" at end of filename, if present
     if ( File[-1] == '/' ): File = File[:-1]
 
-    if ReturnFileArray:
-
-        return File, FileArray
-
-    else:
-
-        return File
+    return File
 
 
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
-             MaxLevel = -1, ReturnTime = False, ReturnMesh = False, \
-             Verbose = True ):
+             MaxLevel = -1, ReturnTime = False, ReturnMesh = False ):
 
     import yt
     import numpy as np
-
-    if Verbose:
-
-        print( '\n  Calling GetData...' )
-        print(   '  ------------------' )
-        print(   '    DataDirectory:    {:s}'.format( DataDirectory ) )
-        print(   '    PlotFileBaseName: {:s}'.format( PlotFileBaseName ) )
-        print(   '    Field:            {:s}'.format( Field ) )
-        print(   '    CoordinateSystem: {:s}'.format( CoordinateSystem ) )
-        print(   '    ReturnTime:       {:}\n'.format( ReturnTime ) )
 
     msg = 'Invalid choice of CoordinateSystem: {:s}'.format( CoordinateSystem )
     msg += '\n\nValid Choices:\n'
@@ -129,19 +107,17 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     # https://yt-project.org/doc/faq/index.html#how-can-i-change-yt-s-log-level
     yt.funcs.mylog.setLevel(40) # Suppress yt warnings
 
-    File = ChoosePlotFile( DataDirectory, PlotFileBaseName, \
-                           argv = argv, Verbose = False )
+    FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
 
-    if Verbose:
-        print(   '    File:             {:}\n'.format( File ) )
+    File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv )
 
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
     if MaxLevel == -1: MaxLevel = ds.index.max_level
-    Time     = ds.current_time.to_ndarray()
-    nX       = ds.domain_dimensions
-    xL       = ds.domain_left_edge
-    xU       = ds.domain_right_edge
+    Time = ds.current_time.to_ndarray()
+    nX   = ds.domain_dimensions
+    xL   = ds.domain_left_edge
+    xU   = ds.domain_right_edge
 
     """
     https://yt-project.org/doc/reference/api/
@@ -174,17 +150,22 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     dX2 = CoveringGrid['dX2'].to_ndarray()[0,:,0]
     dX3 = CoveringGrid['dX3'].to_ndarray()[0,0,:]
 
-    if  ( Field == 'PF_D'  ):
+    if   Field == 'MPIProcess':
+
+        Data = CoveringGrid['MPIProcess'].to_ndarray()
+        DataUnit = ''
+
+    if   Field == 'PF_D':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'g/cm**3'
 
-    elif( Field == 'PF_V1' ):
+    elif Field == 'PF_V1':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'km/s'
 
-    elif( Field == 'PF_V2' ):
+    elif Field == 'PF_V2':
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -192,7 +173,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'km/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = '1/s'
 
-    elif( Field == 'PF_V3' ):
+    elif Field == 'PF_V3':
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -200,22 +181,27 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = '1/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = '1/s'
 
-    elif( Field == 'PF_E'  ):
+    elif Field == 'PF_E':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'CF_D'  ):
+    elif Field == 'PF_Ne':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '1/cm**3'
+
+    elif Field == 'CF_D':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'g/cm**3'
 
-    elif( Field == 'CF_S1' ):
+    elif Field == 'CF_S1':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'g/cm**2/s'
 
-    elif( Field == 'CF_S2' ):
+    elif Field == 'CF_S2':
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -223,7 +209,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'g/cm**2/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = 'g/cm/s'
 
-    elif( Field == 'CF_S3' ):
+    elif Field == 'CF_S3':
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -231,27 +217,32 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'g/cm/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = 'g/cm/s'
 
-    elif( Field == 'CF_E'  ):
+    elif Field == 'CF_E':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'AF_P'  ):
+    elif Field == 'CF_Ne':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '1/cm**3'
+
+    elif Field == 'AF_P':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'AF_Cs' ):
+    elif Field == 'AF_Cs':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'km/s'
 
-    elif( Field == 'GF_Gm_11' ):
+    elif Field == 'GF_Gm_11':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = ''
 
-    elif( Field == 'GF_Gm_22' ):
+    elif Field == 'GF_Gm_22':
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -259,7 +250,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = ''
         elif CoordinateSystem == 'spherical'  : DataUnit = 'km**2'
 
-    elif( Field == 'GF_Gm_33' ):
+    elif Field == 'GF_Gm_33':
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -267,24 +258,24 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'km**2'
         elif CoordinateSystem == 'spherical'  : DataUnit = 'km**2'
 
-    elif( Field == 'GF_Psi' ):
+    elif Field == 'GF_Psi':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = ''
 
-    elif( Field == 'GF_Alpha' ):
+    elif Field == 'GF_Alpha':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = ''
 
-    elif( Field == 'DF_TCI' ):
+    elif Field == 'DF_TCI':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = ''
 
     # --- Derived Fields ---
 
-    elif( Field == 'pr4' ):
+    elif Field == 'pr4':
 
         p = CoveringGrid['AF_P'].to_ndarray()
 
@@ -297,7 +288,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = 'erg*cm'
 
-    elif( Field == 'RelativisticBernoulliConstant' ):
+    elif Field == 'RelativisticBernoulliConstant':
 
         c = 2.99792458e10
 
@@ -321,7 +312,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = 'cm**2/s**2'
 
-    elif( Field == 'PolytropicConstant' ):
+    elif Field == 'PolytropicConstant':
 
         PF_D  = CoveringGrid['PF_D' ].to_ndarray()
         AF_P  = CoveringGrid['AF_P' ].to_ndarray()
@@ -331,7 +322,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = 'erg/cm**3/(g/cm**3)**(Gamma_IDEAL)'
 
-    elif( Field == 'NonRelativisticSpecificEnthalpy' ):
+    elif Field == 'NonRelativisticSpecificEnthalpy':
 
         e   = CoveringGrid['PF_D'].to_ndarray()
         p   = CoveringGrid['PF_E'].to_ndarray()
@@ -341,7 +332,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = 'cm**2/s**2'
 
-    elif( Field == 'RelativisticSpecificEnthalpy' ):
+    elif Field == 'RelativisticSpecificEnthalpy':
 
         c = 2.99792458e10
 
@@ -353,7 +344,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = ''
 
-    elif( Field == 'LorentzFactor' ):
+    elif Field == 'LorentzFactor':
 
         c = 2.99792458e5
 
@@ -371,7 +362,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = ''
 
-    elif( Field == 'TurbulentVelocity' ):
+    elif Field == 'TurbulentVelocity':
 
         Psi  = CoveringGrid['GF_Psi'  ].to_ndarray()
         Gm11 = CoveringGrid['GF_Gm_11'].to_ndarray()
@@ -421,7 +412,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = 'km/s'
 
-    elif( Field == 'TurbulentEnergyDensity' ):
+    elif Field == 'TurbulentEnergyDensity':
 
         Psi  = CoveringGrid['GF_Psi'  ].to_ndarray()
         Gm11 = CoveringGrid['GF_Gm_11'].to_ndarray()
@@ -482,7 +473,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'Vorticity' ):
+    elif Field == 'Vorticity':
 
         h1 = CoveringGrid['GF_h_1'].to_ndarray()
         h2 = CoveringGrid['GF_h_2'].to_ndarray()
@@ -546,11 +537,13 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  PF_V2' )
         print( '  PF_V3' )
         print( '  PF_E' )
+        print( '  PF_Ne' )
         print( '  CF_D' )
         print( '  CF_S1' )
         print( '  CF_S2' )
         print( '  CF_S3' )
         print( '  CF_E' )
+        print( '  CF_Ne' )
         print( '  AF_P' )
         print( '  AF_Cs' )
         print( '  GF_Gm_11' )
@@ -559,6 +552,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
         print( '  DF_TCI' )
+        print( '  pr4' )
         print( '  RelativisticBernoulliConstant' )
         print( '  PolytropicConstant' )
         print( '  NonRelativisticSpecificEnthalpy' )
