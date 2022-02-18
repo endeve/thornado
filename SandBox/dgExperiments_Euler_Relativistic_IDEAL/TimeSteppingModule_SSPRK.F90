@@ -242,7 +242,8 @@ CONTAINS
       DO iX1 = iX_B1(1), iX_E1(1)
       DO iNX = 1, nDOFX
 
-        U_SSPRK(iNX,iX1,iX2,iX3,iCF) = U(iNX,iX1,iX2,iX3,iCF)
+        U_SSPRK(iNX,iX1,iX2,iX3,iCF)    = U(iNX,iX1,iX2,iX3,iCF)
+        D_SSPRK(iNX,iX1,iX2,iX3,iCF,iS) = Zero
 
       END DO
       END DO
