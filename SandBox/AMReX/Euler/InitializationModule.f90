@@ -96,14 +96,19 @@ MODULE InitializationModule
     One
   USE MF_FieldsModule, ONLY: &
     CreateFields_MF, &
+    MF_uGF, &
     MF_uGF_old, &
     MF_uGF_new, &
+    MF_uCF, &
     MF_uCF_old, &
     MF_uCF_new, &
+    MF_uPF, &
     MF_uPF_old, &
     MF_uPF_new, &
+    MF_uAF, &
     MF_uAF_old, &
     MF_uAF_new, &
+    MF_uDF, &
     MF_uDF_old, &
     MF_uDF_new, &
     FluxRegister
@@ -165,6 +170,8 @@ MODULE InitializationModule
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_Initialize, &
     Timer_AMReX_Euler_InputOutput
+
+use mf_utilitiesmodule,only:showvariablefrommultifab,filename
 
   IMPLICIT NONE
   PRIVATE
@@ -232,7 +239,7 @@ CONTAINS
     CALL InitializePolynomialBasisMapping &
            ( [Zero], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
-    CALL CreateMesh_MF( 0, MeshX )
+    CALL DestroyMesh_MF( MeshX )
 
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
@@ -312,31 +319,40 @@ CONTAINS
 
     CALL amrex_init_from_scratch( 0.0_DP )
 
-    CALL AverageDown( MF_uGF_new, MF_uCF_new, MF_uDF_new )
+    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uCF )
+    CALL AverageDown( MF_uDF )
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF_new, MF_uCF_new, MF_uDF_new )
+           ( t_new, MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF_new, MF_uCF_new, MF_uDF_new )
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     CALL ComputeFromConserved_Euler_MF &
-           ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
+           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+write(filename,'(A)') 'nN03_nX032_UniGrid_I.dat'
+!write(filename,'(A)') 'nN03_nX032_MultiGrid_I_RefluxOff.dat'
+!write(filename,'(A)') 'nN03_nX032_MultiGrid_I_RefluxOn.dat'
+open(100,file=trim(filename))
+close(100)
+call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
 
     CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF_new, &
-             MF_uGF_Option = MF_uGF_new, &
-             MF_uCF_Option = MF_uCF_new, &
-             MF_uPF_Option = MF_uPF_new, &
-             MF_uAF_Option = MF_uAF_new, &
-             MF_uDF_Option = MF_uDF_new )
+           ( t_new(0), StepNo, MF_uGF, &
+             MF_uGF_Option = MF_uGF, &
+             MF_uCF_Option = MF_uCF, &
+             MF_uPF_Option = MF_uPF, &
+             MF_uAF_Option = MF_uAF, &
+             MF_uDF_Option = MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -368,32 +384,42 @@ CONTAINS
 
     CALL ClearLevel( iLevel )
 
+    CALL amrex_multifab_build( MF_uGF    (iLevel), BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uGF_new(iLevel), BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uGF_old(iLevel), BA, DM, nDOFX * nGF, swX )
+    CALL MF_uGF    (iLevel) % SetVal( Zero )
     CALL MF_uGF_new(iLevel) % SetVal( Zero )
     CALL MF_uGF_old(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uCF    (iLevel), BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uCF_new(iLevel), BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uCF_old(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL MF_uCF    (iLevel) % SetVal( Zero )
     CALL MF_uCF_new(iLevel) % SetVal( Zero )
     CALL MF_uCF_old(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uPF    (iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uPF_new(iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uPF_old(iLevel), BA, DM, nDOFX * nPF, swX )
+    CALL MF_uPF    (iLevel) % SetVal( Zero )
     CALL MF_uPF_new(iLevel) % SetVal( Zero )
     CALL MF_uPF_old(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uAF    (iLevel), BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uAF_new(iLevel), BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uAF_old(iLevel), BA, DM, nDOFX * nAF, swX )
+    CALL MF_uAF    (iLevel) % SetVal( Zero )
     CALL MF_uAF_new(iLevel) % SetVal( Zero )
     CALL MF_uAF_old(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uDF    (iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uDF_new(iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uDF_old(iLevel), BA, DM, nDOFX * nDF, swX )
+    CALL MF_uDF    (iLevel) % SetVal( Zero )
     CALL MF_uDF_new(iLevel) % SetVal( Zero )
     CALL MF_uDF_old(iLevel) % SetVal( Zero )
 
-    nCompCF = MF_uCF_new(iLevel) % nComp()
+    nCompCF = MF_uCF(iLevel) % nComp()
 
     ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. do_reflux ) &
@@ -403,16 +429,22 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    CALL ComputeGeometryX_MF( MF_uGF_new(iLevel) )
-    CALL InitializeFields_MF( iLevel, MF_uGF_new(iLevel), MF_uCF_new(iLevel) )
+    CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
+    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
     CALL MF_uGF_old(iLevel) &
-           % COPY( MF_uGF_new(iLevel), 1, 1, &
-                   MF_uGF_new(iLevel) % nComp(), swX )
+           % COPY( MF_uGF(iLevel), 1, 1, &
+                   MF_uGF(iLevel) % nComp(), swX )
+    CALL MF_uGF_new(iLevel) &
+           % COPY( MF_uGF(iLevel), 1, 1, &
+                   MF_uGF(iLevel) % nComp(), swX )
 
     CALL MF_uCF_old(iLevel) &
-           % COPY( MF_uCF_new(iLevel), 1, 1, &
-                   MF_uCF_new(iLevel) % nComp(), swX )
+           % COPY( MF_uCF(iLevel), 1, 1, &
+                   MF_uCF(iLevel) % nComp(), swX )
+    CALL MF_uCF_new(iLevel) &
+           % COPY( MF_uCF(iLevel), 1, 1, &
+                   MF_uCF(iLevel) % nComp(), swX )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -421,7 +453,7 @@ CONTAINS
 
   SUBROUTINE MakeNewLevelFromCoarse( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillCoarsePatch_uCF, FillCoarsePatch_uGF
+    USE FillPatchModule, ONLY: FillCoarsePatch
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -466,11 +498,11 @@ RETURN
              ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1*nCF )
 
-    CALL FillCoarsePatch_uGF( iLevel, Time, MF_uGF_new(iLevel) )
-    CALL FillCoarsePatch_uCF( iLevel, Time, MF_uCF_new(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uPF_new(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uAF_new(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uDF_new(iLevel) )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF_old, MF_uGF_new, MF_uGF(iLevel) )
+    CALL FillCoarsePatch( iLevel, Time, MF_uCF_old, MF_uCF_new, MF_uCF(iLevel) )
+    CALL FillCoarsePatch( iLevel, Time, MF_uPF_old, MF_uPF_new, MF_uPF(iLevel) )
+    CALL FillCoarsePatch( iLevel, Time, MF_uAF_old, MF_uAF_new, MF_uAF(iLevel) )
+    CALL FillCoarsePatch( iLevel, Time, MF_uDF_old, MF_uDF_new, MF_uDF(iLevel) )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -479,18 +511,23 @@ RETURN
 
     INTEGER, INTENT(in), VALUE :: iLevel
 
+    CALL amrex_multifab_destroy( MF_uDF    (iLevel) )
     CALL amrex_multifab_destroy( MF_uDF_new(iLevel) )
     CALL amrex_multifab_destroy( MF_uDF_old(iLevel) )
 
+    CALL amrex_multifab_destroy( MF_uAF    (iLevel) )
     CALL amrex_multifab_destroy( MF_uAF_new(iLevel) )
     CALL amrex_multifab_destroy( MF_uAF_old(iLevel) )
 
+    CALL amrex_multifab_destroy( MF_uPF    (iLevel) )
     CALL amrex_multifab_destroy( MF_uPF_new(iLevel) )
     CALL amrex_multifab_destroy( MF_uPF_old(iLevel) )
 
+    CALL amrex_multifab_destroy( MF_uCF    (iLevel) )
     CALL amrex_multifab_destroy( MF_uCF_new(iLevel) )
     CALL amrex_multifab_destroy( MF_uCF_old(iLevel) )
 
+    CALL amrex_multifab_destroy( MF_uGF    (iLevel) )
     CALL amrex_multifab_destroy( MF_uGF_new(iLevel) )
     CALL amrex_multifab_destroy( MF_uGF_old(iLevel) )
 
@@ -501,7 +538,7 @@ RETURN
 
   SUBROUTINE RemakeLevel( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillPatch_uCF, FillPatch_uGF
+    USE FillPatchModule, ONLY: FillPatch
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -525,19 +562,19 @@ RETURN
     DM = pDM
 
     CALL amrex_multifab_build( new_MF_uGF_new, BA, DM, nDOFX * nGF, swX )
-    CALL FillPatch_uGF( iLevel, Time, new_MF_uGF_new )
+    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF_new, new_MF_uGF_new )
 
     CALL amrex_multifab_build( new_MF_uCF_new, BA, DM, nDOFX * nCF, swX )
-    CALL FillPatch_uCF( iLevel, Time, new_MF_uCF_new )
+    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF_new, new_MF_uCF_new )
 
     CALL amrex_multifab_build( new_MF_uPF_new, BA, DM, nDOFX * nPF, swX )
-    CALL FillPatch( iLevel, Time, new_MF_uPF_new )
+    CALL FillPatch( iLevel, Time, MF_uPF_old, MF_uPF_new, new_MF_uPF_new )
 
     CALL amrex_multifab_build( new_MF_uAF_new, BA, DM, nDOFX * nAF, swX )
-    CALL FillPatch( iLevel, Time, new_MF_uAF_new )
+    CALL FillPatch( iLevel, Time, MF_uAF_old, MF_uAF_new, new_MF_uAF_new )
 
     CALL amrex_multifab_build( new_MF_uDF_new, BA, DM, nDOFX * nDF, swX )
-    CALL FillPatch( iLevel, Time, new_MF_uDF_new )
+    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF_new, new_MF_uDF_new )
 
     CALL ClearLevel( iLevel )
 
@@ -617,14 +654,14 @@ RETURN
     CALL CreateMesh_MF( iLevel, MeshX )
 
     !$OMP PARALLEL PRIVATE( MFI, BX, uCF, TagArr )
-    CALL amrex_mfiter_build( MFI, MF_uCF_new( iLevel ), Tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uCF( iLevel ), Tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
        BX = MFI % TileBox()
 
-       uCF    => MF_uCF_new( iLevel ) % DataPtr( MFI )
-       TagArr => Tag                  % DataPtr( MFI )
+       uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
+       TagArr => Tag              % DataPtr( MFI )
 
        ! TagCriteria(iLevel+1) because iLevel starts at 0 but
        ! TagCriteria starts with 1
@@ -641,5 +678,6 @@ RETURN
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
+
 
 END MODULE InitializationModule

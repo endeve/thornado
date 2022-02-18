@@ -21,11 +21,11 @@ MODULE FinalizationModule
   ! --- Local Modules ---
 
   USE MF_FieldsModule, ONLY: &
-    MF_uGF_new, &
-    MF_uCF_new, &
-    MF_uPF_new, &
-    MF_uAF_new, &
-    MF_uDF_new, &
+    MF_uGF, &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uAF, &
+    MF_uDF, &
     DestroyFields_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     FinalizeFluid_SSPRK_MF
@@ -49,6 +49,8 @@ MODULE FinalizationModule
     Timer_AMReX_Euler_InputOutput, &
     FinalizeTimers_AMReX_Euler
 
+use mf_utilitiesmodule,only:showvariablefrommultifab,filename
+
   IMPLICIT NONE
   PRIVATE
 
@@ -63,15 +65,22 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     CALL ComputeFromConserved_Euler_MF &
-           ( MF_uGF_new, MF_uCF_new, MF_uPF_new, MF_uAF_new )
+           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+write(filename,'(A)') 'nN03_nX032_UniGrid_F.dat'
+!write(filename,'(A)') 'nN03_nX032_MultiGrid_F_RefluxOff.dat'
+!write(filename,'(A)') 'nN03_nX032_MultiGrid_F_RefluxOn.dat'
+open(100,file=trim(filename))
+close(100)
+call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
 
     CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF_new, &
-             MF_uGF_Option = MF_uGF_new, &
-             MF_uCF_Option = MF_uCF_new, &
-             MF_uPF_Option = MF_uPF_new, &
-             MF_uAF_Option = MF_uAF_new, &
-             MF_uDF_Option = MF_uDF_new )
+           ( t_new(0), StepNo, MF_uGF, &
+             MF_uGF_Option = MF_uGF, &
+             MF_uCF_Option = MF_uCF, &
+             MF_uPF_Option = MF_uPF, &
+             MF_uAF_Option = MF_uAF, &
+             MF_uDF_Option = MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
