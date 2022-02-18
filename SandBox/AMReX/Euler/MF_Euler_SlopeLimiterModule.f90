@@ -43,14 +43,19 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_FieldsModule, ONLY: &
+    MF_uGF_old, &
+    MF_uGF_new, &
+    MF_uCF_old, &
+    MF_uCF_new, &
+    MF_uDF_old, &
+    MF_uDF_new
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
-    FillPatch_uGF, &
-    FillPatch_uCF, &
-    FillPatch_uDF
+    FillPatch
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -125,13 +130,13 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
 !    CALL MF_uGF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch_uGF( iLevel, Time, MF_uGF )
+    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF_new, MF_uGF )
 
 !    CALL MF_uCF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch_uCF( iLevel, Time, MF_uCF )
+    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF_new, MF_uCF )
 
 !    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch_uDF( iLevel, Time, MF_uDF )
+    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF_new, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
