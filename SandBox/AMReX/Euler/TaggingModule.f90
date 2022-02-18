@@ -62,7 +62,8 @@ CONTAINS
 
 !      IF( ANY( U(:,iX1,iX2,iX3,iCF_D) .GE. TagCriteria_this ) )THEN
 
-      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+!      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      IF( ABS( MeshX(1) % Center(iX1) - 0.5_DP ) .LT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
