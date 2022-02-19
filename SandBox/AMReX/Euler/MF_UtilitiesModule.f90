@@ -31,8 +31,6 @@ use meshmodule,only:meshx,nodecoordinate
   PUBLIC :: amrex2thornado_X_F
   PUBLIC :: ShowVariableFromMultiFab
 
-  CHARACTER(128), PUBLIC :: FileName
-
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
     MODULE PROCEDURE ShowVariableFromMultiFab_Vector
@@ -43,26 +41,36 @@ CONTAINS
 
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
-    ( iLevel, MF, iField, WriteToFile_Option )
+    ( iLevel, MF, iField, swXX_Option, WriteToFile_Option, FileName_Option )
 
     INTEGER             , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab), INTENT(in) :: MF
+    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
+    CHARACTER(*)        , INTENT(in), OPTIONAL :: FileName_Option
 
     INTEGER                       :: iX1, iX2, iX3, iNX
     INTEGER                       :: lo(4), hi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: U(:,:,:,:)
+    INTEGER                       :: swXX(3)
     LOGICAL                       :: WriteToFile
     CHARACTER(128)                :: FMT
+    CHARACTER(128)                :: FileName
 
     REAL(DP) :: NodesX1(nNodesX(1))
     REAL(DP) :: NodesX2(nNodesX(2))
     REAL(DP) :: NodesX3(nNodesX(3))
 
+    swXX = 0
+    IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
+
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
+
+    FileName = ''
+    IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
 
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
       '(I2.2,3I4.3,3ES25.16E3,', &
@@ -84,9 +92,9 @@ CONTAINS
 
       lo = LBOUND( U ); hi = UBOUND( U )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      DO iX3 = BX % lo(3) - swXX(3), BX % hi(3) + swXX(3)
+      DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
+      DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
 
         DO iNX = 1, nNodesX(1)
           NodesX1(iNX) = NodeCoordinate( MeshX(1), iX1, iNX )
@@ -137,23 +145,37 @@ CONTAINS
   END SUBROUTINE ShowVariableFromMultiFab_Single
 
 
-  SUBROUTINE ShowVariableFromMultiFab_Vector( MF, iField, WriteToFile_Option )
+  SUBROUTINE ShowVariableFromMultiFab_Vector &
+    ( MF, iField, swXX_Option, WriteToFile_Option, FileName_Option )
 
     INTEGER             , INTENT(in) :: iField
     TYPE(amrex_multifab), INTENT(in) :: MF(0:amrex_max_level)
+    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
+    CHARACTER(*)        , INTENT(in), OPTIONAL :: FileName_Option
 
     INTEGER :: iLevel
 
-    LOGICAL :: WriteToFile
+    INTEGER        :: swXX(3)
+    LOGICAL        :: WriteToFile
+    CHARACTER(128) :: FileName
+
+    swXX = 0
+    IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
 
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
+    FileName = ''
+    IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
+
     DO iLevel = 0, amrex_max_level
 
       CALL ShowVariableFromMultiFab_Single &
-             ( iLevel, MF(iLevel), iField, WriteToFile_Option = WriteToFile )
+             ( iLevel, MF(iLevel), iField, &
+               swXX_Option = swXX, &
+               WriteToFile_Option = WriteToFile, &
+               FileName_Option = TRIM( FileName ) )
 
     END DO
 
