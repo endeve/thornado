@@ -14,9 +14,7 @@ MODULE FillPatchModule
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio, &
-    amrex_interp_dg_order1, &
-    amrex_interp_dg_order2, &
-    amrex_interp_dg_order3
+    amrex_interp_dg
   USE amrex_amrcore_module, ONLY: &
     amrex_max_level
   USE amrex_fillpatch_module, ONLY: &
@@ -67,64 +65,33 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
-    INTEGER :: nComp
-
-    nComp = MF % nComp()
 
     IF( iLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch( MF, t_old(iLevel), MF_old(iLevel), &
-                                t_new(iLevel), MF_new(iLevel), &
+      CALL amrex_fillpatch( MF, &
+                            t_old(iLevel), MF_old(iLevel), &
+                            t_new(iLevel), MF_new(iLevel), &
                             amrex_geom(iLevel), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, nComp )
+                            Time, sComp, dComp, MF % nComp() )
+
+    ELSE IF( nNodes .LT. 4 )THEN
+
+      CALL amrex_fillpatch( MF, &
+                            t_old(iLevel-1), MF_old(iLevel-1), &
+                            t_new(iLevel-1), MF_new(iLevel-1), &
+                            amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+                            t_old(iLevel  ), MF_old(iLevel  ), &
+                            t_new(iLevel  ), MF_new(iLevel  ), &
+                            amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
+                            Time, sComp, dComp, MF % nComp(), &
+                            amrex_ref_ratio(iLevel-1), &
+                            amrex_interp_dg, &
+                            lo_bc, hi_bc )
 
     ELSE
 
-      IF( nNodes .EQ. 1 )THEN
-
-        CALL amrex_fillpatch( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                                  t_new(iLevel-1), MF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-                                      t_old(iLevel  ), MF_old(iLevel  ), &
-                                      t_new(iLevel  ), MF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-                              Time, sComp, dComp, nComp, &
-                              amrex_ref_ratio(iLevel-1), &
-                              amrex_interp_dg_order1, &
-                              lo_bc, hi_bc )
-
-      ELSE IF( nNodes .EQ. 2 )THEN
-
-        CALL amrex_fillpatch( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                                  t_new(iLevel-1), MF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-                                      t_old(iLevel  ), MF_old(iLevel  ), &
-                                      t_new(iLevel  ), MF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-                              Time, sComp, dComp, nComp, &
-                              amrex_ref_ratio(iLevel-1), &
-                              amrex_interp_dg_order2, &
-                              lo_bc, hi_bc )
-
-      ELSE IF( nNodes .EQ. 3 )THEN
-
-        CALL amrex_fillpatch( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                                  t_new(iLevel-1), MF_new(iLevel-1), &
-                              amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-                                      t_old(iLevel  ), MF_old(iLevel  ), &
-                                      t_new(iLevel  ), MF_new(iLevel  ), &
-                              amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-                              Time, sComp, dComp, nComp, &
-                              amrex_ref_ratio(iLevel-1), &
-                              amrex_interp_dg_order3, &
-                              lo_bc, hi_bc )
-
-      ELSE
-
-        CALL DescribeError_Euler_MF &
-               ( 04, Message_Option = 'MF', Int_Option = [ nNodes ] )
-
-      END IF
+      CALL DescribeError_Euler_MF &
+             ( 04, Message_Option = 'MF', Int_Option = [ nNodes ] )
 
     END IF
 
@@ -139,39 +106,15 @@ CONTAINS
                                            MF_new(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF
 
-    INTEGER :: nComp
-
-    nComp = MF % nComp()
-
-    IF( nNodes .EQ. 1 )THEN
+    IF( nNodes .LT. 4 )THEN
 
       CALL amrex_fillcoarsepatch &
              ( MF, t_old(iLevel-1), MF_old(iLevel-1), &
                    t_new(iLevel-1), MF_new(iLevel-1), &
                amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
                amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-               Time, 1, 1, nComp, amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg_order1, lo_bc, hi_bc )
-
-    ELSE IF( nNodes .EQ. 2 )THEN
-
-      CALL amrex_fillcoarsepatch &
-             ( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                   t_new(iLevel-1), MF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-               Time, 1, 1, nComp, amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg_order2, lo_bc, hi_bc )
-
-    ELSE IF( nNodes .EQ. 3 )THEN
-
-      CALL amrex_fillcoarsepatch &
-             ( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                   t_new(iLevel-1), MF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-               Time, 1, 1, nComp, amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg_order3, lo_bc, hi_bc )
+               Time, 1, 1, MF % nComp(), amrex_ref_ratio(iLevel-1), &
+               amrex_interp_dg, lo_bc, hi_bc )
 
     ELSE
 

@@ -1,5 +1,9 @@
 MODULE Euler_MeshRefinementModule
 
+  USE amrex_ThornadoInterfaceModule, ONLY: &
+    amrex_InitializeMeshRefinement_Thornado, &
+    amrex_FinalizeMeshRefinement_Thornado
+
   USE KindModule, ONLY: &
     DP, &
     Zero, &
@@ -65,6 +69,7 @@ MODULE Euler_MeshRefinementModule
   REAL(DP), ALLOCATABLE :: xiX3(:)
 
   REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
+  REAL(DP), ALLOCATABLE :: ProjectionMatrix_c(:)
   REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
 
   INTEGER  :: nFine, nFineX(3)
@@ -78,7 +83,7 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, iN1, iN2, iN3, iNX_X_Crse, iNX_X_Fine
+    INTEGER :: i, k, iN1, iN2, iN3, iNX_X_Crse, iNX_X_Fine, kk
     REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
 
     nFineX      = 1
@@ -110,6 +115,7 @@ CONTAINS
     ALLOCATE( xiX3(nNodesX(3)) )
 
     ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
+    ALLOCATE( ProjectionMatrix_c(nDOFX*nDOFX*nFine) )
     ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
 
     DO i = 1, nNodesX(1)
@@ -132,6 +138,8 @@ CONTAINS
       LX_X3_Dn_1D(i) = L_X3(i) % P( -Half )
 
     END DO
+
+    kk = 0
 
     iFine = 0
     DO iFineX3 = 1, nFineX(3)
@@ -180,6 +188,9 @@ CONTAINS
         END DO
         END DO
 
+        kk = kk + 1
+        ProjectionMatrix_c(kk) = ProjectionMatrix(i,k,iFine)
+
       END DO
       END DO
 
@@ -190,78 +201,7 @@ CONTAINS
     END DO
     END DO
 
-!!$open(100,file='/home/kkadoogan/Desktop/GaussLegendreWeights.txt')
-!!$write(100,'(A)') '{'
-!!$do in1=1,ndofx
-!!$if(.not.in1.eq.ndofx)then
-!!$write(100,'(2x,SP,ES24.16E3,A)') weightsx_q(in1),','
-!!$else
-!!$write(100,'(2x,SP,ES24.16E3)') weightsx_q(in1)
-!!$endif
-!!$enddo
-!!$write(100,'(A)') '};'
-!!$close(100)
-!!$
-!!$open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix.txt')
-!!$write(100,'(A)') '{'
-!!$do ifine=1,nfine
-!!$write(100,'(A)') '  {'
-!!$do i=1,ndofx
-!!$write(100,'(A)') '    {'
-!!$do k=1,ndofx
-!!$if(.not.k.eq.ndofx)then
-!!$write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix(i,k,iFine), ','
-!!$else
-!!$write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix(i,k,iFine)
-!!$endif
-!!$enddo
-!!$if(.not.i.eq.ndofx)then
-!!$write(100,'(A)') '    },'
-!!$else
-!!$write(100,'(A)') '    }'
-!!$endif
-!!$enddo
-!!$if(.not.ifine.eq.4)then
-!!$write(100,'(A)') '  },'
-!!$else
-!!$write(100,'(A)') '  }'
-!!$endif
-!!$enddo
-!!$write(100,'(A)') '};'
-!!$close(100)
-!!$
-!!$open(100,file='/home/kkadoogan/Desktop/ProjectionMatrix_T.txt')
-!!$write(100,'(A)') '{'
-!!$do ifine=1,nfine
-!!$write(100,'(A)') '  {'
-!!$do i=1,ndofx
-!!$write(100,'(A)') '    {'
-!!$do k=1,ndofx
-!!$if(.not.k.eq.ndofx)then
-!!$write(100,'(6x,SP,ES24.16E3,A)')ProjectionMatrix_T(i,k,iFine), ','
-!!$else
-!!$write(100,'(6x,SP,ES24.16E3)')ProjectionMatrix_T(i,k,iFine)
-!!$endif
-!!$enddo
-!!$if(.not.i.eq.ndofx)then
-!!$write(100,'(A)') '    },'
-!!$else
-!!$write(100,'(A)') '    }'
-!!$endif
-!!$enddo
-!!$if(.not.ifine.eq.4)then
-!!$write(100,'(A)') '  },'
-!!$else
-!!$write(100,'(A)') '  }'
-!!$endif
-!!$enddo
-!!$write(100,'(A)') '};'
-!!$close(100)
-!!$
-!!$print*,'  SHAPE( ProjMatrix ): ', shape(ProjectionMatrix)
-!!$print*,'SHAPE( ProjMatrix_T ): ', shape(ProjectionMatrix_T)
-
-    k = 0
+    kk = 0
     DO iNX_X_Crse = 1, nDOFX_X1
 
       iFine = 0
@@ -297,8 +237,8 @@ CONTAINS
               = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
                   * Lagrange( xiX3(iN3), NodesX3 )
 
-          k = k + 1
-          LX_X1_Refined_C(k) = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine)
+          kk = kk + 1
+          LX_X1_Refined_C(kk) = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine)
 
         END DO
 
@@ -307,10 +247,15 @@ CONTAINS
 
     END DO ! iNX_X_Crse
 
+    CALL amrex_InitializeMeshRefinement_Thornado &
+           ( nNodesX, ProjectionMatrix_c, WeightsX_q )
+
   END SUBROUTINE InitializeMeshRefinement_Euler
 
 
   SUBROUTINE FinalizeMeshRefinement_Euler
+
+    CALL amrex_FinalizeMeshRefinement_Thornado
 
     DEALLOCATE( ProjectionMatrix_T )
     DEALLOCATE( ProjectionMatrix )

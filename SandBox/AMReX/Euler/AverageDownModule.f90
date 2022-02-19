@@ -11,9 +11,7 @@ MODULE AverageDownModule
     amrex_geom, &
     amrex_ref_ratio
   USE amrex_multifabutil_module, ONLY: &
-    amrex_average_down_dg_order1, &
-    amrex_average_down_dg_order2, &
-    amrex_average_down_dg_order3
+    amrex_average_down_dg
 
   ! --- thornado Modules ---
 
@@ -47,23 +45,9 @@ CONTAINS
 
        nComp = MF(iLevel+1) % nComp()
 
-       IF( nNodes .EQ. 1 )THEN
+       IF( nNodes .LT. 4 )THEN
 
-         CALL amrex_average_down_dg_order1 &
-                ( MF        (iLevel+1), MF        (iLevel), &
-                  amrex_geom(iLevel+1), amrex_geom(iLevel), &
-                  1, nComp, amrex_ref_ratio(iLevel))
-
-       ELSE IF( nNodes .EQ. 2 )THEN
-
-         CALL amrex_average_down_dg_order2 &
-                ( MF        (iLevel+1), MF        (iLevel), &
-                  amrex_geom(iLevel+1), amrex_geom(iLevel), &
-                  1, nComp, amrex_ref_ratio(iLevel))
-
-       ELSE IF( nNodes .EQ. 3 )THEN
-
-         CALL amrex_average_down_dg_order3 &
+         CALL amrex_average_down_dg &
                 ( MF        (iLevel+1), MF        (iLevel), &
                   amrex_geom(iLevel+1), amrex_geom(iLevel), &
                   1, nComp, amrex_ref_ratio(iLevel))
@@ -86,23 +70,9 @@ CONTAINS
     INTEGER,              INTENT(IN)    :: CoarseLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
 
-    IF( nNodes .EQ. 1 )THEN
+    IF( nNodes .LT. 4 )THEN
 
-      CALL amrex_average_down_dg_order1 &
-             ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
-               amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-               1, 1, amrex_ref_ratio(CoarseLevel))
-
-    ELSE IF( nNodes .EQ. 2 )THEN
-
-      CALL amrex_average_down_dg_order2 &
-             ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
-               amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-               1, 1, amrex_ref_ratio(CoarseLevel))
-
-    ELSE IF( nNodes .EQ. 3 )THEN
-
-      CALL amrex_average_down_dg_order3 &
+      CALL amrex_average_down_dg &
              ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
                amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
                1, 1, amrex_ref_ratio(CoarseLevel))
