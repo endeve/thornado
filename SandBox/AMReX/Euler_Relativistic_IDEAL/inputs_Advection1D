@@ -17,6 +17,8 @@ thornado.CFL         = 0.5
 thornado.iCycleW     = 100
 thornado.iCycleChk   = 100000
 
+debug.FileName = "nN02_nX032_MultiGrid_RefluxOn"
+
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 
 geometry.coord_sys = 0           # CARTESIAN
