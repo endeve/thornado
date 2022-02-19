@@ -81,7 +81,7 @@ MODULE OpacityModule_TABLE
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, & 
-  !$ACC   Brem_T, Brem_AT)
+  !$ACC   Brem_T, Brem_AT )
 #endif
 
 CONTAINS
@@ -352,11 +352,11 @@ CONTAINS
     Brem_AT = 0.0d0
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP          NES_AT, Pair_AT, Brem_AT )
+    !$OMP TARGET UPDATE TO &
+    !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP   NES_AT, Pair_AT, Brem_AT )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
@@ -531,13 +531,6 @@ CONTAINS
   SUBROUTINE FinalizeOpacities_TABLE
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem   &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, Brem_AT )
-#endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )

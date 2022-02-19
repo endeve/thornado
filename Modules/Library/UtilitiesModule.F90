@@ -400,8 +400,11 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: a(:), b(:), c(:)
     REAL(DP) :: MinMod(SIZE(a))
+    INTEGER :: i
 
-    MinMod = MinMod2( a, MinMod2( b, c ) )
+    DO i = 1, SIZE(a)
+      MinMod(i) = MinMod2( a(i), MinMod2( b(i), c(i) ) )
+    END DO
 
     RETURN
   END FUNCTION MinMod_Vector
@@ -443,8 +446,19 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: a(:), b(:), c(:), dx, M
     REAL(DP) :: MinModB(SIZE(a))
+    INTEGER :: i
 
-    MinModB = MERGE( a, MinMod( a, b, c ), ABS( a ) < M * dx**2 )
+    DO i = 1, SIZE(a)
+      IF( ABS( a(i) ) < M * dx**2 )THEN
+
+        MinModB(i) = a(i)
+
+      ELSE
+
+        MinModB(i) = MinMod( a(i), b(i), c(i) )
+
+      END IF
+    END DO
 
   END FUNCTION MinModB_Vector
 
