@@ -1970,7 +1970,8 @@ CONTAINS
 
 #endif
 
-  SUBROUTINE SolveZ_Bisection_Scalar( CF_D, CF_Ne, q, r, k, z0, iErr )
+  SUBROUTINE SolveZ_Bisection_Scalar &
+    ( CF_D, CF_Ne, q, r, k, z0, iErr, dzMin_Option )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -1982,13 +1983,19 @@ CONTAINS
     REAL(DP), INTENT(inout) :: q
     REAL(DP), INTENT(out)   :: z0
     INTEGER,  INTENT(inout) :: iErr
+    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 
-    LOGICAL             :: CONVERGED
-    INTEGER             :: ITERATION
-    REAL(DP)            :: za, zb, zc, dz
-    REAL(DP)            :: fa, fb, fc
-    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
-    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+    REAL(DP) :: za, zb, zc, dz, dzMin
+    REAL(DP) :: fa, fb, fc
+    INTEGER  :: MAX_IT
+
+    dzMin = 1.0e-08_DP
+    IF( PRESENT( dzMin_Option ) ) &
+      dzMin = dzMin_Option
+
+    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ! --- Eq. C23 ---
 
@@ -2061,7 +2068,7 @@ CONTAINS
 
       END IF
 
-      IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dz_min ) &
+      IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dzMin ) &
         CONVERGED = .TRUE.
 
 !!$      IF( ITERATION .GT. MAX_IT - 3 )THEN
@@ -2083,18 +2090,25 @@ CONTAINS
   SUBROUTINE SolveZ_Bisection_Vector &
     ( N, uD, uNe, q, r, k, &
       za, zb, fa, fb, &
-      dz, zc, fc, ITERATE )
+      dz, zc, fc, ITERATE, dzMin_Option )
 
     INTEGER,  INTENT(in)    :: N
     REAL(DP), INTENT(in)    :: uD(N), uNe(N), r(N), k(N)
     REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N), dz(N)
     REAL(DP), INTENT(out)   :: zc(N), fc(N)
     LOGICAL,  INTENT(inout) :: ITERATE(N)
+    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 
-    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
-    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
+    REAL(DP) :: dzMin
+    INTEGER  :: MAX_IT
 
     INTEGER :: ITERATION, iX
+
+    dzMin = 1.0e-08
+    IF( PRESENT( dzMin_Option ) ) &
+      dzMin = dzMin_Option
+
+    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ITERATION = 0
     DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
@@ -2152,8 +2166,8 @@ CONTAINS
 
           END IF
 
-          !IF( ABS( dz(iX) ) / MAX( ABS( zc(iX) ), SqrtTiny ) .LE. dz_min ) &
-          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dz_min ) &
+          !IF( ABS( dz(iX) ) / MAX( ABS( zc(iX) ), SqrtTiny ) .LE. dzMin ) &
+          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dzMin ) &
             ITERATE(iX) = .FALSE.
 
 !!$          IF( ITERATION .GT. MAX_IT - 3 )THEN
