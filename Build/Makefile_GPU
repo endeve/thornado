@@ -16,7 +16,7 @@ ifeq ($(USE_ROCM),TRUE)
 endif
 ifeq ($(USE_ONEMKL),TRUE)
    USE_GPU = TRUE
-   USE_CUDA = TRUE
+   USE_CUDA = FALSE
    USE_HIP = FALSE
 endif
 ifeq ($(USE_MAGMA),TRUE)
