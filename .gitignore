@@ -19,6 +19,11 @@
 *.o
 *.mod
 *.a
+*.lst
+*.ptx
+*.dSYM
+*.acc.s
+pgipar*
 
 # AMReX
 *ApplicationDriver*ex
@@ -34,3 +39,6 @@ Documents/latex
 
 # Misc.
 *.DS_Store
+
+# core dumps
+core*

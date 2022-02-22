@@ -40,7 +40,7 @@ MODULE MyAmrModule
     InitializeDataAMReX, &
     FinalizeDataAMReX
   ! --- thornado ---
-  REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
+  REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk, dt_rel
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
   REAL(AR),          ALLOCATABLE :: V_0(:)
   REAL(AR)                       :: CFL
@@ -110,17 +110,21 @@ CONTAINS
 
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
-
     DEBUG = .FALSE.
     CALL amrex_parmparse_build( PP )
       CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
     UsePhysicalUnits = .FALSE.
+    Chi = 0.0_AR
+    Sigma = 0.0_AR
+    D_0 = 0.0_AR
+    dt_rel = 0.0_AR
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
       CALL PP % get   ( 'dt_chk',           dt_chk )
+      CALL PP % query ( 'dt_rel',           dt_rel )
       CALL PP % get   ( 't_end',            t_end )
       CALL PP % get   ( 'nNodes',           nNodes )
       CALL PP % get   ( 'CFL',              CFL )
@@ -134,9 +138,9 @@ CONTAINS
       CALL PP % get   ( 'bcE',              bcE )
       CALL PP % get   ( 'eL',  eL )
       CALL PP % get   ( 'eR',  eR )  
-      CALL PP % get   ( 'D_0',  D_0 )
-      CALL PP % get   ( 'Chi',  Chi )
-      CALL PP % get   ( 'Sigma',  Sigma )
+      CALL PP % query   ( 'D_0',  D_0 )
+      CALL PP % query   ( 'Chi',  Chi )
+      CALL PP % query   ( 'Sigma',  Sigma )
       CALL PP % get   ( 'zoomE',  zoomE )
       CALL PP % get   ( 'nSpecies',        nSpecies )
       CALL PP % get   ( 'iCycleD',          iCycleD )
@@ -168,7 +172,10 @@ CONTAINS
     END IF
 
     Mass = 0.0_AR
-    R0 = 1000.0_AR
+    R0 = 0.0_AR
+    E0 = 0.0_AR
+    mu0 = 0.0_AR
+    kT = 0.0_AR
     CALL amrex_parmparse_build( PP, 'ST' )
       CALL PP % query( 'Mass', Mass )
       CALL PP % query( 'R0'               ,R0 )
@@ -184,6 +191,7 @@ CONTAINS
       t_end  = t_end  * UnitsDisplay % TimeUnit
       dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
       dt_chk = dt_chk * UnitsDisplay % TimeUnit
+      dt_rel = dt_rel * UnitsDisplay % TimeUnit
 
       xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
       xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
@@ -191,7 +199,6 @@ CONTAINS
       xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
       xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
       xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
-
       eL = eL * UnitsDisplay % EnergyUnit 
       eR = eR * UnitsDisplay % EnergyUnit 
 

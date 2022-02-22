@@ -96,7 +96,7 @@ Euler_PositivityLimiterModule_NonRelativistic_TABLE.o: \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.o \
   TimersModule_Euler.o \
-  Euler_PositivityLimiterModule_NonRelativistic_TABLE.f90
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
 
 Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   KindModule.o \
@@ -271,7 +271,7 @@ Euler_TallyModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   UnitsModule.o \
-  Euler_TallyModule_Relativistic.f90
+  Euler_TallyModule_Relativistic.F90
 
 Euler_TallyModule.o: \
   KindModule.o \

@@ -37,6 +37,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ComputeIncrement_Explicit
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     MF_TwoMoment_ComputeIncrement_Implicit
+  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
   USE MF_TwoMoment_PositivityLimiter, ONLY: &
     MF_TwoMoment_ApplyPositivityLimiter
   USE MF_TwoMoment_SlopeLimiter, ONLY: &
@@ -51,14 +53,17 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   TYPE :: StageDataType
     REAL(AR), ALLOCATABLE :: dU_IM(:,:,:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: dU_EX(:,:,:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: dF_EX(:,:,:,:,:)
   END TYPE StageDataType
 
   INTEGER                          :: nStages
   REAL(AR),            ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(AR),            ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
   TYPE(amrex_multifab), DIMENSION(:),   ALLOCATABLE :: MF_U
+  TYPE(amrex_multifab), DIMENSION(:),   ALLOCATABLE :: MF_F
   TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU_Im
   TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU_Ex
+  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DF_Im
   REAL(AR),            ALLOCATABLE :: U0(:,:,:,:,:,:,:)
   REAL(AR),            ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType), ALLOCATABLE :: StageData(:)
@@ -90,9 +95,9 @@ CONTAINS
     ! --- For physical boundary conditions ---
     TYPE(amrex_mfiter)                    :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
     
     LOGICAL :: Verbose
-
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
@@ -100,12 +105,15 @@ CONTAINS
     ! --- Set temporary MultiFabs U and dU to zero --
     DO iLevel = 0, nLevels-1
 
+
+
       CALL MF_U(iLevel) % setval( 0.0_AR )
+      CALL MF_F(iLevel) % setval( 0.0_AR )
 
       DO iS = 1, nStages
-
         CALL MF_DU_Ex(iLevel,iS) % setval( 0.0_AR )
         CALL MF_DU_Im(iLevel,iS) % setval( 0.0_AR )
+        CALL MF_DF_Im(iLevel,iS) % setval( 0.0_AR )
 
       END DO
 
@@ -124,10 +132,14 @@ CONTAINS
                        MF_uCR(iLevel) % nComp(), swX )
 
 
+        CALL MF_F(iLevel) &
+               % COPY( MF_uCF(iLevel), 1, 1, &
+                       MF_uCF(iLevel) % nComp(), swX )
         ! --- Apply boundary conditions to interior domains ---
 
 
         CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
+        CALL MF_F(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
 
         ! --- Copy ghost data from physical boundaries ---
@@ -140,6 +152,9 @@ CONTAINS
           U   => MF_U  (iLevel) % DataPtr( MFI )
           U   =  uCR
 
+          uCF => MF_uCF(iLevel) % DataPtr( MFI )
+          F   => MF_F  (iLevel) % DataPtr( MFI )
+          F   =  uCF
         END DO
       
         CALL amrex_mfiter_destroy( MFI )
@@ -147,7 +162,6 @@ CONTAINS
 
 
 
-!check this END DO too
   DO iLevel = 0, nLevels-1 
 
 
@@ -162,10 +176,27 @@ CONTAINS
         END IF
 
         IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
-          CALL MF_U(iLevel) &
-                   % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                              dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), swX )
+
+#if defined(MICROPHYSICS_WEAKLIB)  
+
+
+        CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
+                            1, MF_U(iLevel) % nComp(), swX )
+
+        CALL MF_F(iLevel) &
+                 % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
+                            dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
+                            1, MF_F(iLevel) % nComp(), swX )
+
+#else      
+        
+        CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                            dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
+                            1, MF_U(iLevel) % nComp(), swX )
+#endif
         END IF
 
         IF( jS == iS - 1 )THEN
@@ -190,6 +221,22 @@ CONTAINS
         IF (Verbose) THEN
           PRINT*, "    IMPLICIT: ", iS
         END IF
+#if defined(MICROPHYSICS_WEAKLIB)  
+        CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
+               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
+                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+
+        CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
+                            1, MF_U(iLevel) % nComp(), swX )
+
+        CALL MF_F(iLevel) &
+                 % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
+                            dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
+                            1, MF_F(iLevel) % nComp(), swX )
+
+#else     
         CALL MF_TwoMoment_ComputeIncrement_Implicit &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
         
@@ -197,6 +244,7 @@ CONTAINS
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
+#endif
       END IF
 
       IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
@@ -218,7 +266,14 @@ CONTAINS
   DO iLevel = 0, nLevels-1
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
         ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
+
+#if defined(MICROPHYSICS_WEAKLIB)  
       U = uCR
+      F = uCF
+#else
+      U = uCR
+#endif
+
       IF (Verbose) THEN 
         PRINT*, "    ASSEMBLY:"
       END IF
@@ -227,10 +282,22 @@ CONTAINS
 
         IF( w_IM(iS) .NE. 0.0_AR )THEN
 
+#if defined(MICROPHYSICS_WEAKLIB)  
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
+          
+          CALL MF_F(iLevel) &
+                 % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
+                            dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
+                            1, MF_F(iLevel) % nComp(), swX )
+#else
+          CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                            dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
+                            1, MF_U(iLevel) % nComp(), swX )
+#endif
 
         END IF
 
@@ -253,8 +320,13 @@ CONTAINS
 
     END IF
   END DO
-  uCR = U
 
+#if defined(MICROPHYSICS_WEAKLIB)  
+  uCR = U
+  uCF = F
+#else
+  uCR = U
+#endif
 
   END SUBROUTINE MF_Update_IMEX_RK
 
@@ -272,8 +344,10 @@ CONTAINS
     CALL Initialize_IMEX_RK( Scheme, Verbose_Option )
 
     ALLOCATE( MF_U(0:nLevels-1) )
+    ALLOCATE( MF_F(0:nLevels-1) )
     ALLOCATE( MF_DU_Ex(0:nLevels-1,1:nStages) )
     ALLOCATE( MF_DU_Im(0:nLevels-1,1:nStages) )
+    ALLOCATE( MF_DF_Im(0:nLevels-1,1:nStages) )
 
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
@@ -282,12 +356,16 @@ CONTAINS
       CALL amrex_multifab_build &
         ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
+      CALL amrex_multifab_build &
+        ( MF_F(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
                ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
         CALL amrex_multifab_build &
                ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+        CALL amrex_multifab_build &
+               ( MF_DF_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
       END DO
 
@@ -311,6 +389,7 @@ CONTAINS
 
         CALL amrex_multifab_destroy( MF_DU_Ex(iLevel,iS) )
         CALL amrex_multifab_destroy( MF_DU_Im(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DF_Im(iLevel,iS) )
 
       END DO
 
@@ -319,6 +398,7 @@ CONTAINS
     DEALLOCATE( MF_U )
     DEALLOCATE( MF_DU_Ex)
     DEALLOCATE( MF_DU_Im)
+    DEALLOCATE( MF_DF_Im)
 
   END SUBROUTINE MF_FinalizeField_IMEX_RK
 
@@ -340,6 +420,15 @@ CONTAINS
     END IF
 
     SELECT CASE ( TRIM( Scheme ) )
+
+      CASE ( 'BackwardEuler' )
+
+        nStages = 1
+
+        CALL AllocateButcherTables
+
+        a_IM(1,1) = 1.0_AR
+        w_IM(1)   = 1.0_AR
 
       CASE ( 'SSPRK1' )
 
@@ -414,6 +503,7 @@ CONTAINS
         WRITE(*,'(A6,A)') &
           '', 'Available Options:'
         WRITE(*,*)
+        WRITE(*,'(A6,A)') '', 'BackwardEuler'
         WRITE(*,'(A6,A)') '', 'SSPRK1'
         WRITE(*,'(A6,A)') '', 'SSPRK2'
         WRITE(*,'(A6,A)') '', 'SSPRK3'
@@ -454,9 +544,15 @@ CONTAINS
 
     DO i = 1, nStages
 
+
+#if defined(MICROPHYSICS_WEAKLIB)  
       CALL AllocateArray7D( StageData(i) % dU_IM )
       CALL AllocateArray7D( StageData(i) % dU_EX )
-
+      CALL AllocateArray5D( StageData(i) % dF_EX )
+#else
+      CALL AllocateArray7D( StageData(i) % dU_IM )
+      CALL AllocateArray7D( StageData(i) % dU_EX )
+#endif
     END DO
 
 
@@ -478,8 +574,14 @@ CONTAINS
 
     DO i = 1, nStages
 
+#if defined(MICROPHYSICS_WEAKLIB)  
       CALL DeallocateArray7D( StageData(i) % dU_IM )
       CALL DeallocateArray7D( StageData(i) % dU_EX )
+      CALL DeallocateArray5D( StageData(i) % dF_EX )
+#else
+      CALL DeallocateArray7D( StageData(i) % dU_IM )
+      CALL DeallocateArray7D( StageData(i) % dU_EX )
+#endif
 
     END DO
 
@@ -527,6 +629,19 @@ CONTAINS
 
   END SUBROUTINE AllocateArray7D
 
+  SUBROUTINE AllocateArray5D( Array5D )
+
+    REAL(AR), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
+
+    ALLOCATE &
+      ( Array5D(nDOFZ, &
+                iZ_B1(2):iZ_E1(2), &
+                iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+                nCF) )
+
+    Array5D = 0.0_AR
+
+  END SUBROUTINE AllocateArray5D
 
   SUBROUTINE DeallocateArray7D( Array7D )
 
@@ -536,6 +651,13 @@ CONTAINS
 
   END SUBROUTINE DeallocateArray7D
 
+  SUBROUTINE DeallocateArray5D( Array5D )
+
+    REAL(AR), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
+
+    DEALLOCATE( Array5D )
+
+  END SUBROUTINE DeallocateArray5D
 
 
 

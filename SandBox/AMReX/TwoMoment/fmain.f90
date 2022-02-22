@@ -10,14 +10,18 @@ PROGRAM main
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
     MF_ComputeTimeStep,                &
-    MF_ComputeTimeStep_Fancy,                &
-    MF_ComputeFromConserved
+    MF_ComputeTimeStep_Fancy,          &
+    MF_ComputeFromConserved,           &      
+    MF_ComputeFromConserved_Euler
   USE MF_UtilitiesModule,     ONLY: & 
-    WriteNodalDataToFile
+    WriteNodalDataToFile, &
+    WriteEulerToFile
   USE MyAmrDataModule,                  ONLY: &
     MF_uCR, &
     MF_uPR, &
     MF_uCF, &
+    MF_uPF, &
+    MF_uAF, &
     MF_uGF
   USE InitializationModule,             ONLY: &
     wrt,              &
@@ -37,11 +41,7 @@ PROGRAM main
     CFL,       &
     t_wrt,     &
     dt_wrt,    &
-    t_chk,     &
-    dt_chk,    &
-    iCycleD,   &
-    iCycleW,   &
-    iCycleChk, &
+    dt_rel,    &
     BA,        &
     GEOM
   USE ProgramHeaderModule,  ONLY: &
@@ -54,6 +54,8 @@ PROGRAM main
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile
+  USE InputOutputEuler,           ONLY: &
+     WriteFieldsAMReX_PlotFile_Euler
   USE GeometryFieldsModuleE, ONLY: &
     uGE
   USE UnitsModule,            ONLY: &
@@ -65,25 +67,27 @@ PROGRAM main
 
   IMPLICIT NONE
 
-  REAL(amrex_real) :: n, m, dt_Fancy
+  INTEGER :: num
+  REAL(amrex_real) :: n
   
   n = 1.0_amrex_real
   CALL InitializeProgram
-
-!  CALL WriteFieldsAMReX_Checkpoint & 
-!      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-!        MF_uCR % P,  &
-!        MF_uPR % P  )
+  
+  CALL WriteEulertoFile( MF_uCF, MF_uGF, 0 )
+num = 1
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
- 
-    CALL MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
- !   dt_Fancy = dt(0)
- !   CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
+    IF ( dt_rel .NE. 0.0_amrex_real ) THEN
 
- !   print*, dt(0) / UnitsDisplay % TimeUnit, dt_Fancy / UnitsDisplay % TimeUnit
-!STOP
+      dt = dt_rel
+
+    ELSE
+
+      CALL MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
+
+    END IF
+
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE
@@ -96,7 +100,6 @@ PROGRAM main
        TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
        TRIM( UnitsDisplay % TimeLabel )
     END IF
-    !this is where the issue is
     CALL MF_Update_IMEX_RK &
            ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
             Verbose_Option = amrex_parallel_ioprocessor()  )
@@ -108,30 +111,36 @@ PROGRAM main
     END IF
 
     IF( wrt )THEN
-
+      
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
       CALL WriteFieldsAMReX_PlotFile &
                ( t(0), StepNo, &
                  MF_uCR_Option = MF_uCR, &
-                 MF_uPR_Option = MF_uPR )
+                 MF_uPR_Option = MF_uPR, &
+                 num_Option = num )
+
+
+
+
+
+      CALL MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+
+      CALL WriteFieldsAMReX_PlotFile_Euler &
+             ( t(0), StepNo, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF, &
+               num_Option = num )
+
+
+      num = num + 1
       wrt = .FALSE.
     END IF
 
 
-!    IF (t(0) .GE. n) THEN
-!
-!  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
-!
-!   CALL WriteFieldsAMReX_PlotFile &
-!         ( t(0), StepNo, &
-!             MF_uCR_Option = MF_uCR, &
-!             MF_uPR_Option = MF_uPR )
-!
-!             n = n+1.0_amrex_real
-!        
-!    END IF
-!
   END DO
  
   IF (nDOFZ .GT. 1) THEN
@@ -150,8 +159,19 @@ PROGRAM main
   CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
+             MF_uPR_Option = MF_uPR, &
+             num_Option = num )
 
+  CALL MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+
+  CALL WriteFieldsAMReX_PlotFile_Euler &
+             ( t(0), StepNo, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF, &
+               num_Option = num )
 
   CALL FinalizeProgram( GEOM )
   

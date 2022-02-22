@@ -1,7 +1,8 @@
 PROGRAM ApplicationDriver_Neutrinos
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, SqrtTiny
+    DP, Zero, One, Two, &
+    Pi, TwoPi, SqrtTiny
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -28,7 +29,8 @@ PROGRAM ApplicationDriver_Neutrinos
     WriteFieldsHDF, &
     ReadFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
+    ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -48,6 +50,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
   CHARACTER(32) :: CoordinateSystem
+  CHARACTER(64) :: ProfileName
   CHARACTER(64) :: EosTableName
   CHARACTER(64) :: OpacityTableName_AbEm
   CHARACTER(64) :: OpacityTableName_Iso
@@ -58,12 +61,13 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UseSlopeLimiter_TwoMoment
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
+  LOGICAL       :: UseEnergyLimiter_TwoMoment
   LOGICAL       :: FixedTimeStep
   INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
-  INTEGER       :: iCycle, iCycleD, iCycleW
+  INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
@@ -108,22 +112,27 @@ PROGRAM ApplicationDriver_Neutrinos
       dt_FXD        = 1.0d-3 * Millisecond
       iCycleD       = 1
       iCycleW       = 100
+      maxCycles     = 100000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .FALSE.
 
-    CASE( 'Deleptonization' )
+    CASE( 'DeleptonizationWave1D' )
+
+      CoordinateSystem = 'SPHERICAL'
 
       nSpecies = 2
       nNodes   = 2
 
-      nX  = [ 64, 1, 1 ]
-      xL  = [ - 50.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ + 50.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
-      bcX = [ 31, 1, 1 ]
+      nX    = [ 128, 1, 1 ]
+      xL    = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
+      xR    = [ 3.0d2 * Kilometer, Pi    , TwoPi  ]
+      bcX   = [ 31, 1, 1 ]
+      ZoomX = [ 1.011986923647337_DP, 1.0_DP, 1.0_DP ]
 
       nE    = 16
       eL    = 0.0d0 * MeV
@@ -133,16 +142,20 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end = 1.0d0 * Millisecond
+      t_end = 1.0d1 * Millisecond
 
       iCycleD = 1
-      iCycleW = 10
+      iCycleW = 333
+      maxCycles = 1000000
 
-      EvolveEuler                    = .TRUE.
+      EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
-      UsePositivityLimiter_Euler     = .TRUE.
+      UsePositivityLimiter_Euler     = .FALSE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .TRUE.
+
+      ProfileName = 'input_thornado_VX_100ms.dat'
 
     CASE( 'EquilibriumAdvection' )
 
@@ -166,12 +179,14 @@ PROGRAM ApplicationDriver_Neutrinos
 
       iCycleD = 1
       iCycleW = 100
+      maxCycles = 100000
 
       EvolveEuler                    = .TRUE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .TRUE.
       UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .FALSE.
 
     CASE DEFAULT
 
@@ -184,7 +199,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeDriver
 
-  CALL InitializeFields
+  CALL InitializeFields( ProfileName )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -234,7 +249,7 @@ PROGRAM ApplicationDriver_Neutrinos
   WRITE(*,*)
 
   iCycle = 0
-  DO WHILE( t < t_end )
+  DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
     iCycle = iCycle + 1
 
@@ -244,7 +259,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
     ELSE
 
-      dt_CFL = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
+      CALL ComputeTimeStep_TwoMoment &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, &
+               0.3_DP/(Two*DBLE(nNodes-1)+One), dt_CFL )
 
       dt = dt_CFL
 
@@ -353,7 +370,7 @@ CONTAINS
       InitializeReferenceElement_Lagrange
     USE EquationOfStateModule_TABLE, ONLY: &
       InitializeEquationOfState_TABLE, &
-      MinD, MaxD, MinT, MaxT, MinY, MaxY
+      Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
     USE OpacityModule_TABLE, ONLY: &
       InitializeOpacities_TABLE
     USE TwoMoment_ClosureModule, ONLY: &
@@ -490,17 +507,17 @@ CONTAINS
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_D, &
              Min_2_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_T, &
              Min_3_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_Y, &
              Max_1_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_D, &
              Max_2_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_T, &
              Max_3_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_Y )
 
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 
@@ -531,6 +548,8 @@ CONTAINS
                = SqrtTiny, &
              UsePositivityLimiter_Option &
                = UsePositivityLimiter_TwoMoment, &
+             UseEnergyLimiter_Option &
+               = UseEnergyLimiter_TwoMoment, &
              Verbose_Option &
                = .TRUE. )
 

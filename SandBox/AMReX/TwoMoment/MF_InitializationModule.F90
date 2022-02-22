@@ -127,6 +127,8 @@ MODULE MF_InitializationModule
     Erg,          &
     Gram,         &
     Centimeter,   &
+    MeV,          &
+    BoltzmannConstant, &
     GravitationalConstant
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -1415,7 +1417,7 @@ END IF
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR)                      :: kT, f_E, E
+    REAL(AR)                      :: kT, f_E, E, Mu, E12
 
     REAL(AR), PARAMETER :: D_0   = 1.032d12 * Gram / Centimeter**3
     REAL(AR), PARAMETER :: T_0   = 7.588d0 * MeV
@@ -1424,7 +1426,7 @@ END IF
     REAL(AR), PARAMETER :: V_u_2 = 0.0_AR * SpeedOfLight
     REAL(AR), PARAMETER :: V_u_3 = 0.0_AR * SpeedOfLight
     REAL(AR), PARAMETER :: Mu_0  = - 1.0_AR ! \in [-1,1]
-   
+     
 
     uCR_K = Zero
     uPF_K = Zero
@@ -1432,7 +1434,6 @@ END IF
     uGF_K = Zero
     uAF_K = Zero
 
-    Ones=1.0_AR
    
    
     DO iDim = 1, 3
@@ -1552,11 +1553,25 @@ END IF
 
               kT = BoltzmannConstant * uAF_K(iNodeX,iAF_T)
 
+              !Mu = uAF_K(iNodeX,iAF_Me) + uAF_K(iNodeX,iAF_Mp) - uAF_K(iNodeX,iAF_Mn)
               E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
+              IF (iNodeE .EQ. 2) THEN
+               print*, E / MeV
+              END IF
+
+
+      !        IF( iS .EQ. 1 ) THEN
+
+      !          f_E = 1.0_AR / ( EXP(( E - Mu ) / kT ) + 1.0_AR )
+
+      !        ELSE
+
+      !          f_E = 1.0_AR / ( EXP(( E + Mu ) / kT ) + 1.0_AR )
+
+      !        ENDIF
               f_E = MAX( 0.99_AR * EXP( - ( E - Two*kT )**2 &
                                     / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
-
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
                 = f_E * 0.50_AR * ( One - Mu_0 )
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
@@ -1566,7 +1581,6 @@ END IF
 
               uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
                 = 0.0_AR
-
               
             CALL ComputeConserved_TwoMoment &
                    ( uPR_K(iNodeZ,iZ1,iPR_D,iS), &
@@ -1592,7 +1606,6 @@ END IF
               
             END DO
             END DO
-!Reshape here instead of up top look at Hydro example
           END DO 
            
             uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
@@ -1604,11 +1617,20 @@ END IF
         END DO
 
       END DO
-      
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-  END SUBROUTINE InitializeFields_HomogeneousSphereGR
+
+
+
+    DO iZ1 = 0, nE+1
+
+      E12 = ( MeshE % Center(iZ1) - Half * MeshE % Width(iZ1) )
+      print *, E12 / MeV
+    END DO
+  END SUBROUTINE InitializeFields_Relaxation
+
+
   SUBROUTINE ComputeAlphaPsi( M, R, R0, theta, G ) 
 
     REAL(AR), INTENT(in) :: M, R, R0, theta

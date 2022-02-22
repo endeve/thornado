@@ -9,7 +9,7 @@ module OpenACCModule
   !-------------------------------------------------------------------------------------------------
   use, intrinsic :: iso_c_binding
   use openacc, only: acc_init, acc_set_device_num, acc_get_device_num, &
-    acc_device_nvidia, acc_device_host, acc_device_default, acc_async_sync
+    acc_device_nvidia, acc_device_host, acc_device_default, acc_async_sync, acc_async_noval
   implicit none
 
   !integer(c_int) :: acc_async_default
@@ -65,17 +65,17 @@ module OpenACCModule
       integer(c_size_t), value :: bytes
     end function acc_is_present
 
-    integer(c_int) function acc_set_cuda_stream(async,stream) &
+    subroutine acc_set_cuda_stream(async,stream) &
         bind(c,name="acc_set_cuda_stream" )
       use, intrinsic :: iso_c_binding
       integer(c_long_long), value :: async
       type(c_ptr), value :: stream
-    end function acc_set_cuda_stream
+    end subroutine acc_set_cuda_stream
 
     type(c_ptr) function acc_get_cuda_stream(async) &
         bind(c,name="acc_get_cuda_stream")
       use, intrinsic :: iso_c_binding
-      integer(c_int), value :: async
+      integer(c_long_long), value :: async
     end function acc_get_cuda_stream
 
     type(c_ptr) function acc_get_current_cuda_device() &
@@ -96,7 +96,7 @@ module OpenACCModule
     subroutine acc_set_default_async(async) &
         bind(c,name="acc_set_default_async" )
       use, intrinsic :: iso_c_binding
-      integer(c_int), value :: async
+      integer(c_long_long), value :: async
     end subroutine acc_set_default_async
 
     integer(c_int) function acc_on_device_i(devicetype) &

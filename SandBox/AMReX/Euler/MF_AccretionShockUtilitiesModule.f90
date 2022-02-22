@@ -63,8 +63,6 @@ MODULE MF_AccretionShockUtilitiesModule
     ComputePressureFromPrimitive
   USE UnitsModule, ONLY: &
     UnitsDisplay
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   ! --- Local Modules ---
 
@@ -134,8 +132,6 @@ CONTAINS
 
     INTEGER :: FileUnit
     LOGICAL :: IsFile
-
-    INTEGER :: iErr(nDOFX)
 
     CHARACTER(256) :: TimeLabel, PowerLabel(0:nLegModes-1), ShockRadiusLabel
 
@@ -241,8 +237,6 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          iErr = 0
-
           CALL ComputePrimitive_Euler &
                  ( U   (:,iX1,iX2,iX3,iCF_D ), &
                    U   (:,iX1,iX2,iX3,iCF_S1), &
@@ -258,18 +252,7 @@ CONTAINS
                    P   (:,iX1,iX2,iX3,iPF_Ne), &
                    G   (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    G   (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   G   (:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   iErr )
-
-          IF( ANY( iErr .NE. 0 ) )THEN
-
-            DO iNX = 1, nDOFX
-
-              CALL DescribeError_Euler( iErr(iNX) )
-
-            END DO
-
-          END IF
+                   G   (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
           CALL ComputePressureFromPrimitive &
                  ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E), &
@@ -374,10 +357,6 @@ CONTAINS
                           1-swX(3):nX(3)+swX(3), &
                   1:nCF)
 
-    INTEGER :: iErr(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                            1-swX(2):nX(2)+swX(2), &
-                            1-swX(3):nX(3)+swX(3))
-
     IF( .NOT. WriteNodal1DIC_SAS ) RETURN
 
     IF( .NOT. nDimsX .EQ. 1 ) RETURN
@@ -403,8 +382,6 @@ CONTAINS
       DO iX2 = iLo(2), iHi(2)
       DO iX1 = iLo(1), iHi(1)
 
-        iErr(:,iX1,iX2,iX3) = 0
-
         IF( IsCornerCell( iLo, iHi, iX1, iX2, iX3 ) ) CYCLE
 
         CALL ComputePrimitive_Euler &
@@ -422,18 +399,7 @@ CONTAINS
                  P   (:,iPF_Ne), &
                  G   (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G   (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G   (:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 iErr(:,iX1,iX2,iX3) )
-
-        IF( ANY( iErr(:,iX1,iX2,iX3) .NE. 0 ) )THEN
-
-          DO iNX = 1, nDOFX
-
-            CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
-
-          END DO
-
-        END IF
+                 G   (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         CALL ComputePressureFromPrimitive &
                ( P(:,iPF_D ), P(:,iPF_E ), P(:,iPF_Ne), A(:,iAF_P) )

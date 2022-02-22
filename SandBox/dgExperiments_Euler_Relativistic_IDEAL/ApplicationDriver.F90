@@ -437,10 +437,10 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
     CALL WriteFieldsHDF &
@@ -452,9 +452,15 @@ PROGRAM ApplicationDriver
            ( RestartFileNumber, t, &
              ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( uGF, uCF )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( uGF, uCF )
+#endif
+
   END IF
 
-  iCycleD = 1
+  iCycleD = 10
 !!$  iCycleW = 1; dt_wrt = -1.0_DP
   dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
@@ -539,10 +545,10 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
       CALL WriteFieldsHDF &
@@ -571,10 +577,10 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uGF )
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uPF, uAF )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uPF, uAF )
 #endif
 
   CALL WriteFieldsHDF &

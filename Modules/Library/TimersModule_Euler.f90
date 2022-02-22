@@ -31,21 +31,24 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_Divergence
   REAL(DP), PUBLIC :: Timer_Euler_SurfaceTerm
   REAL(DP), PUBLIC :: Timer_Euler_VolumeTerm
-  REAL(DP), PUBLIC :: Timer_Euler_ComputePrimitive
   REAL(DP), PUBLIC :: Timer_Euler_Geometry
   REAL(DP), PUBLIC :: Timer_Euler_Gravity
   REAL(DP), PUBLIC :: Timer_Euler_DG_CopyIn
   REAL(DP), PUBLIC :: Timer_Euler_DG_CopyOut
+  REAL(DP), PUBLIC :: Timer_Euler_DG_ComputePrimitive
   REAL(DP), PUBLIC :: Timer_Euler_DG_Permute
   REAL(DP), PUBLIC :: Timer_Euler_DG_Interpolate
   REAL(DP), PUBLIC :: Timer_Euler_DG_ErrorCheck
 
-  ! --- Data Manipulation ---
+  ! --- Compute Primitive --
 
-  REAL(DP), PUBLIC :: Timer_Euler_CopyIn
-  REAL(DP), PUBLIC :: Timer_Euler_CopyOut
-  REAL(DP), PUBLIC :: Timer_Euler_Permute
-  REAL(DP), PUBLIC :: Timer_Euler_Interpolate
+  REAL(DP), PUBLIC :: Timer_Euler_ComputePrimitive
+  REAL(DP), PUBLIC :: Timer_Euler_CP_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_CP_CopyOut
+  REAL(DP), PUBLIC :: Timer_Euler_CP_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_CP_GetBounds
+  REAL(DP), PUBLIC :: Timer_Euler_CP_Bisection
+  REAL(DP), PUBLIC :: Timer_Euler_CP_RecoverPrimitives
 
   ! --- Discontinuity Detection ---
 
@@ -141,24 +144,27 @@ CONTAINS
     Timer_Euler_CTS_CopyIn          = SqrtTiny
     Timer_Euler_CTS_CopyOut         = SqrtTiny
 
-    Timer_Euler_DG               = SqrtTiny
-    Timer_Euler_Increment        = SqrtTiny
-    Timer_Euler_Divergence       = SqrtTiny
-    Timer_Euler_SurfaceTerm      = SqrtTiny
-    Timer_Euler_VolumeTerm       = SqrtTiny
-    Timer_Euler_ComputePrimitive = SqrtTiny
-    Timer_Euler_Geometry         = SqrtTiny
-    Timer_Euler_Gravity          = SqrtTiny
-    Timer_Euler_DG_CopyIn        = SqrtTiny
-    Timer_Euler_DG_CopyOut       = SqrtTiny
-    Timer_Euler_DG_Permute       = SqrtTiny
-    Timer_Euler_DG_Interpolate   = SqrtTiny
-    Timer_Euler_DG_ErrorCheck    = SqrtTiny
+    Timer_Euler_DG                  = SqrtTiny
+    Timer_Euler_Increment           = SqrtTiny
+    Timer_Euler_Divergence          = SqrtTiny
+    Timer_Euler_SurfaceTerm         = SqrtTiny
+    Timer_Euler_VolumeTerm          = SqrtTiny
+    Timer_Euler_Geometry            = SqrtTiny
+    Timer_Euler_Gravity             = SqrtTiny
+    Timer_Euler_DG_CopyIn           = SqrtTiny
+    Timer_Euler_DG_CopyOut          = SqrtTiny
+    Timer_Euler_DG_ComputePrimitive = SqrtTiny
+    Timer_Euler_DG_Permute          = SqrtTiny
+    Timer_Euler_DG_Interpolate      = SqrtTiny
+    Timer_Euler_DG_ErrorCheck       = SqrtTiny
 
-    Timer_Euler_CopyIn      = SqrtTiny
-    Timer_Euler_CopyOut     = SqrtTiny
-    Timer_Euler_Permute     = SqrtTiny
-    Timer_Euler_Interpolate = SqrtTiny
+    Timer_Euler_ComputePrimitive     = SqrtTiny
+    TImer_Euler_CP_CopyIn            = SqrtTiny
+    TImer_Euler_CP_CopyOut           = SqrtTiny
+    TImer_Euler_CP_Permute           = SqrtTiny
+    TImer_Euler_CP_GetBounds         = SqrtTiny
+    TImer_Euler_CP_Bisection         = SqrtTiny
+    TImer_Euler_CP_RecoverPrimitives = SqrtTiny
 
     Timer_Euler_DD_TCI                     = SqrtTiny
     Timer_Euler_DD_TCI_DetectTroubledCells = SqrtTiny
@@ -219,8 +225,12 @@ CONTAINS
     LOGICAL, INTENT(in), OPTIONAL :: SuppressApplicationDriver_Option
     LOGICAL, INTENT(in), OPTIONAL :: WriteAtIntermediateTime_Option
 
+    INTEGER  :: iT, nT
     LOGICAL  :: Verbose, SuppressApplicationDriver, WriteAtIntermediateTime
     REAL(DP) :: TotalTime
+
+    REAL(DP),      ALLOCATABLE :: Timers(:)
+    CHARACTER(64), ALLOCATABLE :: Labels(:)
 
     CHARACTER(6)  :: Label = '(6x,A)'
 
@@ -261,41 +271,43 @@ CONTAINS
       WRITE(*,TRIM(Label)) 'Application Driver'
       WRITE(*,TRIM(Label)) '------------------'
       WRITE(*,*)
-      TotalTime = Timer_Euler_Initialize &
-                    + Timer_Euler_ComputeTimeStep &
-                    + Timer_Euler_UpdateFluid &
-                    + Timer_Euler_InputOutput &
-                    + Timer_Euler_Finalize
+
+      nT = 5
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_Initialize, &
+                 Timer_Euler_ComputeTimeStep, &
+                 Timer_Euler_UpdateFluid, &
+                 Timer_Euler_InputOutput, &
+                 Timer_Euler_Finalize ]
+
+      Labels = [ 'Initialize        : ', &
+                 'Compute Time-Step : ', &
+                 'Update Fluid      : ', &
+                 'Input/Output      : ', &
+                 'Finalize          : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,'(8x,A,ES13.6E3,A,F7.3,A)') &
         'Timers = ', TotalTime, ' s = ', &
         TotalTime / Timer_Euler_Program
+
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
-        'Initialize:        ', &
-        Timer_Euler_Initialize, ' s = ', &
-        Timer_Euler_Initialize / Timer_Euler_Program
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL1)) &
-        'Compute Time-Step: ', &
-        Timer_Euler_ComputeTimeStep, ' s = ', &
-        Timer_Euler_ComputeTimeStep / Timer_Euler_Program
+        CALL WriteTimer &
+               ( TimeL1, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program )
 
-      WRITE(*,TRIM(TimeL1)) &
-        'Update Fluid:      ', &
-        Timer_Euler_UpdateFluid, ' s = ', &
-        Timer_Euler_UpdateFluid / Timer_Euler_Program
+      END DO
 
-      WRITE(*,TRIM(TimeL1)) &
-        'Input/Output:      ', &
-        Timer_Euler_InputOutput, ' s = ', &
-        Timer_Euler_InputOutput / Timer_Euler_Program
+      WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
-        'Finalize:          ', &
-        Timer_Euler_Finalize, ' s = ', &
-        Timer_Euler_Finalize / Timer_Euler_Program
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
     END IF
 
@@ -306,490 +318,461 @@ CONTAINS
       WRITE(*,TRIM(Label)) '-----------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_DG_CopyIn &
-                    + Timer_Euler_Increment &
-                    + Timer_Euler_Divergence &
-                    + Timer_Euler_Geometry &
-                    + Timer_Euler_Gravity &
-                    + Timer_Euler_DG_CopyOut
+      nT = 6
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_Increment, &
+                 Timer_Euler_Geometry, &
+                 Timer_Euler_Gravity, &
+                 Timer_Euler_Divergence, &
+                 Timer_Euler_DG_CopyIn, &
+                 Timer_Euler_DG_CopyOut ]
+
+      Labels = [ 'Increment   : ', &
+                 'Geometry    : ', &
+                 'Gravity     : ', &
+                 'Divergence  : ', &
+                 'CopyIn      : ', &
+                 'CopyOut     : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'dgDiscretization: ', &
+        'dgDiscretization : ', &
         Timer_Euler_DG, ' s = ', &
         Timer_Euler_DG / Timer_Euler_Program, ' = ', &
         Timer_Euler_DG / TotalTime
+
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Increment:    ', &
-        Timer_Euler_Increment, ' s = ', &
-        Timer_Euler_Increment / Timer_Euler_Program, ' = ', &
-        Timer_Euler_Increment / Timer_Euler_DG
+      DO iT = 1, nT - 2
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Geometry:     ', &
-        Timer_Euler_Geometry, ' s = ', &
-        Timer_Euler_Geometry / Timer_Euler_Program, ' = ', &
-        Timer_Euler_Geometry / Timer_Euler_DG
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_DG )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Gravity:      ', &
-        Timer_Euler_Gravity, ' s = ', &
-        Timer_Euler_Gravity / Timer_Euler_Program, ' = ', &
-        Timer_Euler_Gravity / Timer_Euler_DG
-
-      WRITE(*,TRIM(TimeL2)) &
-        '  Divergence:   ', &
-        Timer_Euler_Divergence, ' s = ', &
-        Timer_Euler_Divergence / Timer_Euler_Program, ' = ', &
-        Timer_Euler_Divergence / Timer_Euler_DG
+      END DO
 
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL2)) &
-        '    Surface Term: ', &
+        '  Surface Term       : ', &
         Timer_Euler_SurfaceTerm, ' s = ', &
         Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' = ', &
         Timer_Euler_SurfaceTerm / Timer_Euler_Divergence
 
       WRITE(*,TRIM(TimeL2)) &
-        '    Volume Term:  ', &
+        '  Volume Term        : ', &
         Timer_Euler_VolumeTerm, ' s = ', &
         Timer_Euler_VolumeTerm / Timer_Euler_Program, ' = ', &
         Timer_Euler_VolumeTerm / Timer_Euler_Divergence
 
+      WRITE(*,TRIM(TimeL2)) &
+        '  Compute Primitive  : ', &
+        Timer_Euler_DG_ComputePrimitive, ' s = ', &
+        Timer_Euler_DG_ComputePrimitive / Timer_Euler_Program, ' = ', &
+        Timer_Euler_DG_ComputePrimitive / Timer_Euler_Divergence
+
       WRITE(*,*)
 
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
+
+      nT = 5
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_DG_CopyIn, &
+                 Timer_Euler_DG_CopyOut, &
+                 Timer_Euler_DG_Interpolate, &
+                 Timer_Euler_DG_Permute, &
+                 Timer_Euler_DG_ErrorCheck ]
+
+      Labels = [ 'CopyIn      : ', &
+                 'CopyOut     : ', &
+                 'Interpolate : ', &
+                 'Permute     : ', &
+                 'Error Check : ' ]
+
+      DO iT = 1, nT
+
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_DG )
+
+      END DO
+
+      WRITE(*,*)
+
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label)) 'Compute Primitive'
+      WRITE(*,TRIM(Label)) '-----------------'
+      WRITE(*,*)
+
+      nT = 6
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_CP_CopyIn, &
+                 Timer_Euler_CP_CopyOut, &
+                 Timer_Euler_CP_Permute, &
+                 Timer_Euler_CP_GetBounds, &
+                 Timer_Euler_CP_Bisection, &
+                 Timer_Euler_CP_RecoverPrimitives ]
+
+      Labels = [ 'CopyIn            : ', &
+                 'CopyOut           : ', &
+                 'Permute           : ', &
+                 'GetBounds         : ', &
+                 'Bisection         : ', &
+                 'RecoverPrimitives : ' ]
+
+      TotalTime = SUM( Timers )
+
       WRITE(*,TRIM(TimeL2)) &
-        '      ComputePrimitive: ', &
+        'ComputePrimitive : ', &
         Timer_Euler_ComputePrimitive, ' s = ', &
         Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' = ', &
-        Timer_Euler_ComputePrimitive &
-          / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm )
+        Timer_Euler_ComputePrimitive / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL1)) &
-        '  CopyIn:       ', &
-        Timer_Euler_DG_CopyIn, ' s = ', &
-        Timer_Euler_DG_CopyIn / Timer_Euler_Program
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL1)) &
-        '  CopyOut:      ', &
-        Timer_Euler_DG_CopyOut, ' s = ', &
-        Timer_Euler_DG_CopyOut / Timer_Euler_Program
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_ComputePrimitive )
 
-      WRITE(*,TRIM(TimeL1)) &
-        '  Interpolate:  ', &
-        Timer_Euler_DG_Interpolate, ' s = ', &
-        Timer_Euler_DG_Interpolate / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        '  Permute:      ', &
-        Timer_Euler_DG_Permute, ' s = ', &
-        Timer_Euler_DG_Permute / Timer_Euler_Program
+      END DO
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Error Check:  ', &
-        Timer_Euler_DG_ErrorCheck, ' s = ', &
-        Timer_Euler_DG_ErrorCheck / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DG_ErrorCheck / Timer_Euler_DG
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Troubled-Cell Indicator'
       WRITE(*,TRIM(Label)) '-----------------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_DD_TCI_DetectTroubledCells &
-                    + Timer_Euler_DD_TCI_CopyIn &
-                    + Timer_Euler_DD_TCI_CopyOut &
-                    + Timer_Euler_DD_TCI_Permute &
-                    + Timer_Euler_DD_TCI_Integrate
+      nT = 5
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_DD_TCI_DetectTroubledCells, &
+                 Timer_Euler_DD_TCI_CopyIn, &
+                 Timer_Euler_DD_TCI_CopyOut, &
+                 Timer_Euler_DD_TCI_Permute, &
+                 Timer_Euler_DD_TCI_Integrate ]
+
+      Labels = [ 'Detect Troubled Cells : ', &
+                 'CopyIn                : ', &
+                 'CopyOut               : ', &
+                 'Permute               : ', &
+                 'Integrate             : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'Troubled-Cell Indicator: ', &
+        'Troubled-Cell Indicator : ', &
         Timer_Euler_DD_TCI, ' s = ', &
         Timer_Euler_DD_TCI / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_DD_TCI
+        Timer_Euler_DD_TCI / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Detect Troubled Cells: ', &
-        Timer_Euler_DD_TCI_DetectTroubledCells, ' s = ', &
-        Timer_Euler_DD_TCI_DetectTroubledCells / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_TCI_DetectTroubledCells / Timer_Euler_DD_TCI
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:                ', &
-        Timer_Euler_DD_TCI_CopyIn, ' s = ', &
-        Timer_Euler_DD_TCI_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_TCI_CopyIn / Timer_Euler_DD_TCI
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_DD_TCI )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:               ', &
-        Timer_Euler_DD_TCI_CopyOut, ' s = ', &
-        Timer_Euler_DD_TCI_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_TCI_CopyOut / Timer_Euler_DD_TCI
+      END DO
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Permute:               ', &
-        Timer_Euler_DD_TCI_Permute, ' s = ', &
-        Timer_Euler_DD_TCI_Permute / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_TCI_Permute / Timer_Euler_DD_TCI
+      WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Integrate:             ', &
-        Timer_Euler_DD_TCI_Integrate, ' s = ', &
-        Timer_Euler_DD_TCI_Integrate / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_TCI_Integrate / Timer_Euler_DD_TCI
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Shock Detector'
       WRITE(*,TRIM(Label)) '--------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_DD_SD_DetectShocks &
-                    + Timer_Euler_DD_SD_CopyIn &
-                    + Timer_Euler_DD_SD_CopyOut &
-                    + Timer_Euler_DD_SD_Permute &
-                    + Timer_Euler_DD_SD_Integrate &
-                    + Timer_Euler_DD_SD_ComputePrimitive &
-                    + Timer_Euler_DD_SD_ErrorCheck
+      nT = 7
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_DD_SD_DetectShocks, &
+                 Timer_Euler_DD_SD_CopyIn, &
+                 Timer_Euler_DD_SD_CopyOut, &
+                 Timer_Euler_DD_SD_Permute, &
+                 Timer_Euler_DD_SD_Integrate, &
+                 Timer_Euler_DD_SD_ComputePrimitive, &
+                 Timer_Euler_DD_SD_ErrorCheck ]
+
+      Labels = [ 'Detect Shocks     : ', &
+                 'CopyIn            : ', &
+                 'CopyOut           : ', &
+                 'Permute           : ', &
+                 'Integrate         : ', &
+                 'Compute Primitive : ', &
+                 'Error Check       : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'Shock Detector: ', &
+        'Shock Detector : ', &
         Timer_Euler_DD_SD, ' s = ', &
         Timer_Euler_DD_SD / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_DD_SD
+        Timer_Euler_DD_SD / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Detect Shocks:     ', &
-        Timer_Euler_DD_SD_DetectShocks, ' s = ', &
-        Timer_Euler_DD_SD_DetectShocks / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_DetectShocks / Timer_Euler_DD_SD
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:            ', &
-        Timer_Euler_DD_SD_CopyIn, ' s = ', &
-        Timer_Euler_DD_SD_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_CopyIn / Timer_Euler_DD_SD
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_DD_SD )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:           ', &
-        Timer_Euler_DD_SD_CopyOut, ' s = ', &
-        Timer_Euler_DD_SD_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_CopyOut / Timer_Euler_DD_SD
+      END DO
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Permute:           ', &
-        Timer_Euler_DD_SD_Permute, ' s = ', &
-        Timer_Euler_DD_SD_Permute / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_Permute / Timer_Euler_DD_SD
+      WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Integrate:         ', &
-        Timer_Euler_DD_SD_Integrate, ' s = ', &
-        Timer_Euler_DD_SD_Integrate / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_Integrate / Timer_Euler_DD_SD
-
-      WRITE(*,TRIM(TimeL2)) &
-        '  Compute Primitive: ', &
-        Timer_Euler_DD_SD_ComputePrimitive, ' s = ', &
-        Timer_Euler_DD_SD_ComputePrimitive / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_ComputePrimitive / Timer_Euler_DD_SD
-
-      WRITE(*,TRIM(TimeL2)) &
-        '  Error Check:       ', &
-        Timer_Euler_DD_SD_ErrorCheck, ' s = ', &
-        Timer_Euler_DD_SD_ErrorCheck / Timer_Euler_Program, ' = ', &
-        Timer_Euler_DD_SD_ErrorCheck / Timer_Euler_DD_SD
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Slope-Limiter'
       WRITE(*,TRIM(Label)) '-------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_SL_LimitCells &
-                    + Timer_Euler_SL_CharDecomp &
-                    + Timer_Euler_SL_ConsCorr &
-                    + Timer_Euler_SL_Mapping &
-                    + Timer_Euler_SL_CopyIn &
-                    + Timer_Euler_SL_CopyOut &
-                    + Timer_Euler_SL_Permute &
-                    + Timer_Euler_SL_Integrate
+      nT = 8
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_SL_LimitCells, &
+                 Timer_Euler_SL_CharDecomp, &
+                 Timer_Euler_SL_ConsCorr, &
+                 Timer_Euler_SL_Mapping, &
+                 Timer_Euler_SL_CopyIn, &
+                 Timer_Euler_SL_CopyOut, &
+                 Timer_Euler_SL_Permute, &
+                 Timer_Euler_SL_Integrate ]
+
+      Labels = [ 'Limit Cells                  : ', &
+                 'Characteristic Decomposition : ', &
+                 'Polynomial Mapping           : ', &
+                 'Conservative Correction      : ', &
+                 'CopyIn                       : ', &
+                 'CopyOut                      : ', &
+                 'Permute                      : ', &
+                 'Integrate                    : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'Slope-Limiter: ', &
+        'Slope-Limiter : ', &
         Timer_Euler_SlopeLimiter, ' s = ', &
         Timer_Euler_SlopeLimiter / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_SlopeLimiter
+        Timer_Euler_SlopeLimiter / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Limit Cells:                  ', &
-        Timer_Euler_SL_LimitCells, ' s = ', &
-        Timer_Euler_SL_LimitCells / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_LimitCells / Timer_Euler_SlopeLimiter
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Characteristic Decomposition: ', &
-        Timer_Euler_SL_CharDecomp, ' s = ', &
-        Timer_Euler_SL_CharDecomp / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_CharDecomp / Timer_Euler_SlopeLimiter
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_SlopeLimiter )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Polynomial Mapping:           ', &
-        Timer_Euler_SL_Mapping, ' s = ', &
-        Timer_Euler_SL_Mapping / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_Mapping / Timer_Euler_SlopeLimiter
+      END DO
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Conservative Correction:      ', &
-        Timer_Euler_SL_ConsCorr, ' s = ', &
-        Timer_Euler_SL_ConsCorr / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_ConsCorr / Timer_Euler_SlopeLimiter
+      WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:                       ', &
-        Timer_Euler_SL_CopyIn, ' s = ', &
-        Timer_Euler_SL_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_CopyIn / Timer_Euler_SlopeLimiter
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:                      ', &
-        Timer_Euler_SL_CopyOut, ' s = ', &
-        Timer_Euler_SL_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_CopyOut / Timer_Euler_SlopeLimiter
-
-      WRITE(*,TRIM(TimeL2)) &
-        '  Permute:                      ', &
-        Timer_Euler_SL_Permute, ' s = ', &
-        Timer_Euler_SL_Permute / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_Permute / Timer_Euler_SlopeLimiter
-
-      WRITE(*,TRIM(TimeL2)) &
-        '  Integrate:                    ', &
-        Timer_Euler_SL_Integrate, ' s = ', &
-        Timer_Euler_SL_Integrate / Timer_Euler_Program, ' = ', &
-        Timer_Euler_SL_Integrate / Timer_Euler_SlopeLimiter
+      nT = 6
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Positivity-Limiter'
       WRITE(*,TRIM(Label)) '------------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_PL_LimitCells &
-                    + Timer_Euler_PL_CopyIn &
-                    + Timer_Euler_PL_CopyOut &
-                    + Timer_Euler_PL_Permute &
-                    + Timer_Euler_PL_Integrate &
-                    + Timer_Euler_PL_ErrorCheck
+      Timers = [ Timer_Euler_PL_LimitCells, &
+                 Timer_Euler_PL_CopyIn, &
+                 Timer_Euler_PL_CopyOut, &
+                 Timer_Euler_PL_Permute, &
+                 Timer_Euler_PL_Integrate, &
+                 Timer_Euler_PL_ErrorCheck ]
+
+      Labels = [ 'Limit Cells : ', &
+                 'CopyIn      : ', &
+                 'CopyOut     : ', &
+                 'Permute     : ', &
+                 'Integrate   : ', &
+                 'Error Check : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'Positivity-Limiter: ', &
+        'Positivity-Limiter : ', &
         Timer_Euler_PositivityLimiter, ' s = ', &
         Timer_Euler_PositivityLimiter / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_PositivityLimiter
+        Timer_Euler_PositivityLimiter / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Limit Cells: ', &
-        Timer_Euler_PL_LimitCells, ' s = ', &
-        Timer_Euler_PL_LimitCells / Timer_Euler_Program, ' = ', &
-        Timer_Euler_PL_LimitCells / Timer_Euler_PositivityLimiter
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:      ', &
-        Timer_Euler_PL_CopyIn, ' s = ', &
-        Timer_Euler_PL_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_PL_CopyIn / Timer_Euler_PositivityLimiter
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_PositivityLimiter )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:     ', &
-        Timer_Euler_PL_CopyOut, ' s = ', &
-        Timer_Euler_PL_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_PL_CopyOut / Timer_Euler_PositivityLimiter
+      END DO
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Permute:     ', &
-        Timer_Euler_PL_Permute, ' s = ', &
-        Timer_Euler_PL_Permute / Timer_Euler_Program, ' = ', &
-        Timer_Euler_PL_Permute / Timer_Euler_PositivityLimiter
+      WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Integrate:   ', &
-        Timer_Euler_PL_Integrate, ' s = ', &
-        Timer_Euler_PL_Integrate / Timer_Euler_Program, ' = ', &
-        Timer_Euler_PL_Integrate / Timer_Euler_PositivityLimiter
-
-      WRITE(*,TRIM(TimeL2)) &
-        '  Error Check: ', &
-        Timer_Euler_PL_ErrorCheck, ' s = ', &
-        Timer_Euler_PL_ErrorCheck / Timer_Euler_Program, ' = ', &
-        Timer_Euler_PL_ErrorCheck / Timer_Euler_PositivityLimiter
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Compute From Conserved'
       WRITE(*,TRIM(Label)) '----------------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_CFC_ComputePrimitive &
-                    + Timer_Euler_CFC_ErrorCheck &
-                    + Timer_Euler_CFC_CopyIn &
-                    + Timer_Euler_CFC_CopyOut
+      nT = 4
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
+
+      Timers = [ Timer_Euler_CFC_ComputePrimitive, &
+                 Timer_Euler_CFC_ErrorCheck, &
+                 Timer_Euler_CFC_CopyIn, &
+                 Timer_Euler_CFC_CopyOut ]
+
+      Labels = [ 'Compute Primitive : ', &
+                 'ErrorCheck        : ', &
+                 'CopyIn            : ', &
+                 'CopyOut           : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'ComputeFromConserved: ', &
+        'ComputeFromConserved : ', &
         Timer_Euler_ComputeFromConserved, ' s = ', &
         Timer_Euler_ComputeFromConserved / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_ComputeFromConserved
+        Timer_Euler_ComputeFromConserved / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  ComputePrimitive: ', &
-        Timer_Euler_CFC_ComputePrimitive, ' s = ', &
-        Timer_Euler_CFC_ComputePrimitive / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CFC_ComputePrimitive / Timer_Euler_ComputeFromConserved
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  ErrorCheck:       ', &
-        Timer_Euler_CFC_ErrorCheck, ' s = ', &
-        Timer_Euler_CFC_ErrorCheck / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CFC_ErrorCheck / Timer_Euler_ComputeFromConserved
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_ComputeFromConserved )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:           ', &
-        Timer_Euler_CFC_CopyIn, ' s = ', &
-        Timer_Euler_CFC_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CFC_CopyIn / Timer_Euler_ComputeFromConserved
+      END DO
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:          ', &
-        Timer_Euler_CFC_CopyOut, ' s = ', &
-        Timer_Euler_CFC_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CFC_CopyOut / Timer_Euler_ComputeFromConserved
+      WRITE(*,*)
+
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
+
+      nT = 3
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Compute Time Step'
       WRITE(*,TRIM(Label)) '-----------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_CTS_ComputeTimeStep &
-                    + Timer_Euler_CTS_CopyIn &
-                    + Timer_Euler_CTS_CopyOut
+      Timers = [ Timer_Euler_CTS_ComputeTimeStep, &
+                 Timer_Euler_CTS_CopyIn, &
+                 Timer_Euler_CTS_CopyOut ]
+
+      Labels = [ 'Compute TimeStep : ', &
+                 'CopyIn           : ', &
+                 'CopyOut          : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
-        'ComputeTimeStep: ', &
+        'ComputeTimeStep : ', &
         Timer_Euler_ComputeTimeStep, ' s = ', &
         Timer_Euler_ComputeTimeStep / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_ComputeTimeStep
+        Timer_Euler_ComputeTimeStep / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Compute TimeStep: ', &
-        Timer_Euler_CTS_ComputeTimeStep, ' s = ', &
-        Timer_Euler_CTS_ComputeTimeStep / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CTS_ComputeTimeStep / Timer_Euler_ComputeTimeStep
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:           ', &
-        Timer_Euler_CTS_CopyIn, ' s = ', &
-        Timer_Euler_CTS_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CTS_CopyIn / Timer_Euler_ComputeTimeStep
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_ComputeTimeStep )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:          ', &
-        Timer_Euler_CTS_CopyOut, ' s = ', &
-        Timer_Euler_CTS_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_CTS_CopyOut / Timer_Euler_ComputeTimeStep
+      END DO
+
+      WRITE(*,*)
+
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
+
+      nT = 3
+      ALLOCATE( Timers(nT) )
+      ALLOCATE( Labels(nT) )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Boundary Conditions'
       WRITE(*,TRIM(Label)) '-------------------'
       WRITE(*,*)
 
-      TotalTime = Timer_Euler_BC_ApplyBC &
-                    + Timer_Euler_BC_CopyIn &
-                    + Timer_Euler_BC_CopyOut
+      Timers = [ Timer_Euler_BC_ApplyBC, &
+                 Timer_Euler_BC_CopyIn, &
+                 Timer_Euler_BC_CopyOut ]
+
+      Labels = [ 'Apply Boundary Conditions : ', &
+                 'CopyIn                    : ', &
+                 'CopyOut                   : ' ]
+
+      TotalTime = SUM( Timers )
 
       WRITE(*,TRIM(TimeL2)) &
         'BoundaryConditions: ', &
         Timer_Euler_BoundaryConditions, ' s = ', &
         Timer_Euler_BoundaryConditions / Timer_Euler_Program, ' = ', &
-        TotalTime / Timer_Euler_BoundaryConditions
+        Timer_Euler_BoundaryConditions / TotalTime
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Apply Boundary Conditions: ', &
-        Timer_Euler_BC_ApplyBC, ' s = ', &
-        Timer_Euler_BC_ApplyBC / Timer_Euler_Program, ' = ', &
-        Timer_Euler_BC_ApplyBC / Timer_Euler_BoundaryConditions
+      DO iT = 1, nT
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyIn:                    ', &
-        Timer_Euler_BC_CopyIn, ' s = ', &
-        Timer_Euler_BC_CopyIn / Timer_Euler_Program, ' = ', &
-        Timer_Euler_BC_CopyIn / Timer_Euler_BoundaryConditions
+        CALL WriteTimer &
+               ( TimeL2, Labels(iT), &
+                 Timers(iT), Timer_Euler_Program, &
+                 SubroutineRunTime_Option = Timer_Euler_BoundaryConditions )
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  CopyOut:                   ', &
-        Timer_Euler_BC_CopyOut, ' s = ', &
-        Timer_Euler_BC_CopyOut / Timer_Euler_Program, ' = ', &
-        Timer_Euler_BC_CopyOut / Timer_Euler_BoundaryConditions
+      END DO
 
       WRITE(*,*)
-      WRITE(*,TRIM(Label)) 'Data Manipulation'
-      WRITE(*,TRIM(Label)) '-----------------'
-      WRITE(*,*)
 
-      Timer_Euler_CopyIn = Timer_Euler_CTS_CopyIn &
-                             + Timer_Euler_DG_CopyIn &
-                             + Timer_Euler_DD_TCI_CopyIn &
-                             + Timer_Euler_DD_SD_CopyIn &
-                             + Timer_Euler_SL_CopyIn &
-                             + Timer_Euler_PL_CopyIn &
-                             + Timer_Euler_BC_CopyIn &
-                             + Timer_Euler_CFC_CopyIn
-
-      Timer_Euler_CopyOut = Timer_Euler_CTS_CopyOut &
-                             + Timer_Euler_DG_CopyOut &
-                             + Timer_Euler_DD_TCI_CopyOut &
-                             + Timer_Euler_DD_SD_CopyOut &
-                             + Timer_Euler_SL_CopyOut &
-                             + Timer_Euler_PL_CopyOut &
-                             + Timer_Euler_BC_CopyOut &
-                             + Timer_Euler_CFC_CopyOut
-
-      Timer_Euler_Permute = Timer_Euler_DG_Permute &
-                             + Timer_Euler_DD_TCI_Permute &
-                             + Timer_Euler_DD_SD_Permute &
-                             + Timer_Euler_SL_Permute &
-                             + Timer_Euler_PL_Permute
-
-      WRITE(*,TRIM(TimeL1)) &
-        'CopyIn:  ', &
-        Timer_Euler_CopyIn, ' s = ', &
-        Timer_Euler_CopyIn / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        'CopyOut: ', &
-        Timer_Euler_CopyOut, ' s = ', &
-        Timer_Euler_CopyOut / Timer_Euler_Program
-
-      WRITE(*,TRIM(TimeL1)) &
-        'Permute: ', &
-        Timer_Euler_Permute, ' s = ', &
-        Timer_Euler_Permute / Timer_Euler_Program
+      DEALLOCATE( Labels )
+      DEALLOCATE( Timers )
 
       WRITE(*,*)
       WRITE(*,TRIM(Label)) 'Gravity Solver'
@@ -797,11 +780,12 @@ CONTAINS
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
-        'Solve Gravity:        ', &
+        'Solve Gravity : ', &
         Timer_GravitySolver, ' s = ', &
         Timer_GravitySolver / Timer_Euler_Program
+
       WRITE(*,TRIM(TimeL1)) &
-        'Compute Source Terms: ', &
+        'ComputeSourceTerms : ', &
         Timer_GS_ComputeSourceTerms, ' s = ', &
         Timer_GS_ComputeSourceTerms / Timer_Euler_Program
 
@@ -850,6 +834,34 @@ CONTAINS
 
     RETURN
   END FUNCTION TimersWtime_Euler
+
+
+  SUBROUTINE WriteTimer &
+    ( FMT, Label, Timer, ProgramRunTime, SubroutineRunTime_Option )
+
+    CHARACTER(64), INTENT(in) :: FMT
+    CHARACTER(64), INTENT(in) :: Label
+    REAL(DP),      INTENT(in) :: Timer, ProgramRunTime
+    REAL(DP),      INTENT(in), OPTIONAL :: SubroutineRunTime_Option
+
+    IF( PRESENT( SubroutineRunTime_Option ) )THEN
+
+      WRITE(*,TRIM( FMT )) &
+        TRIM( Label ), &
+        Timer, ' s = ', &
+        Timer / ProgramRunTime, ' = ', &
+        Timer / SubroutineRunTime_Option
+
+    ELSE
+
+      WRITE(*,TRIM( FMT )) &
+        TRIM( Label ), &
+        Timer, ' s = ', &
+        Timer / ProgramRunTime
+
+    END IF
+
+  END SUBROUTINE WriteTimer
 
 
 END MODULE TimersModule_Euler

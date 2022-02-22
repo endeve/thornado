@@ -2,13 +2,23 @@ MODULE Poseidon_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, &
+    Zero, &
+    Half, &
     One, &
     Two, &
-    Three
+    Three, &
+    FourPi
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nDimsX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q, &
+    NodesX1
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
+    iGF_Phi_N, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -32,6 +42,9 @@ MODULE Poseidon_UtilitiesModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne
+  USE UnitsModule, ONLY: &
+    Kilometer, &
+    SolarMass
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
@@ -50,6 +63,7 @@ MODULE Poseidon_UtilitiesModule
   PUBLIC :: ComputePressureTensorTrace_Poseidon
   PUBLIC :: MultiplyByPsi6
   PUBLIC :: DivideByPsi6
+  PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
 
 
 CONTAINS
@@ -321,6 +335,60 @@ CONTAINS
     END DO
 
   END SUBROUTINE DivideByPsi6
+
+
+  SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, P, G )
+
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iX1
+    REAL(DP) :: X1C, dX, X1q(nDOFX), dM, dPhi
+    REAL(DP) :: EnclosedMass(iX_B0(1):iX_E0(1))
+
+    IF( .NOT. nDimsX .EQ. 1 ) RETURN
+
+    ! --- Compute enclosed mass ---
+
+    dM = Zero
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      X1C = MeshX(1) % Center(iX1)
+      dX  = MeshX(1) % Width (iX1)
+
+      X1q = X1C + NodesX1 * dX
+
+      dM &
+        = dM &
+            + FourPi * dX &
+                 * SUM( WeightsX_q * X1q**2 * P(:,iX1,1,1,iPF_D) )
+
+      EnclosedMass(iX1) = dM
+
+    END DO
+
+    ! --- Compute Newtonian gravitational potential ---
+
+    G(:,iX_E0(1),1,1,iGF_Phi_N) &
+      = -EnclosedMass(iX_E0(1)) / MeshX(1) % Center(iX_E0(1))
+
+    dPhi = Zero
+
+    DO iX1 = iX_E0(1)-1, iX_B0(1), -1
+
+      X1C = MeshX(1) % Center(iX1)
+      dX  = MeshX(1) % Width (iX1)
+
+      dPhi = dPhi - EnclosedMass(iX1) / X1C**2 * dX
+
+      G(:,iX1,1,1,iGF_Phi_N) = G(:,iX_E0(1),1,1,iGF_Phi_N) + dPhi
+
+    END DO
+
+  END SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry
 
 
 END MODULE Poseidon_UtilitiesModule

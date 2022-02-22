@@ -2,10 +2,13 @@ MICROPHYSICS = WEAKLIB
 
 THORNADO_DIR ?= $(HOME)/thornado
 include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
+.DEFAULT_GOAL := all
 
 all: ApplicationDriver ComputePrimitiveTest TestPressure
 
@@ -79,6 +82,7 @@ ApplicationDriver.o: \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
+  Poseidon_UtilitiesModule.o \
   ApplicationDriver.f90
 
 ProgenitorModule.o: \
@@ -90,11 +94,15 @@ ProgenitorModule.o: \
 Poseidon_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  UnitsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule.o \
   Euler_ErrorModule.o \
+  TimersModule_Euler.o \
   Poseidon_UtilitiesModule.F90
 
 InitializationModule_Relativistic.o: \
@@ -121,9 +129,10 @@ TimeSteppingModule_SSPRK.o: \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
-  Euler_dgDiscretizationModule.o \
   Poseidon_UtilitiesModule.o \
   TimersModule_Euler.o \
+  Euler_dgDiscretizationModule.o \
+  Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90
 
 ComputePrimitiveTest.o: \

@@ -36,7 +36,7 @@ MODULE FinalizationModule
 
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
     
-    INTEGER :: iLevel, iDim
+    INTEGER :: iLevel
 
     CALL DestroyRadiationFields
 

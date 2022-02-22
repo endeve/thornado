@@ -150,7 +150,7 @@ ApplicationDriver_CCSN: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.lst *.acc.s
 
 clobber: clean
 	rm -f  TwoMomentClosure_$(MACHINE)
@@ -221,7 +221,7 @@ ApplicationDriver.o: \
   EquationOfStateModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_TroubledCellIndicatorModule.o \
-  ApplicationDriver.f90
+  ApplicationDriver.F90
 
 ApplicationDriver_Neutrinos.o: \
   KindModule.o \
