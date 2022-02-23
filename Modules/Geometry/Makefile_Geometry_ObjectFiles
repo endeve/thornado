@@ -1,6 +1,7 @@
 GEOMETRY = \
   GeometryFieldsModule.o \
   GeometryComputationModule.o \
+  GeometryComputationModule_CFC.o \
   GeometryFieldsModuleE.o \
   GeometryComputationModuleE.o \
   GravitySolutionModule_Newtonian_PointMass.o \
