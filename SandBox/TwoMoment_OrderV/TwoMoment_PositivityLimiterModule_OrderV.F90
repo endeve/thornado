@@ -2313,7 +2313,7 @@ CONTAINS
     !$ACC COPYOUT( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$ACC PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$ACC REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, EnergyMomentum, Weights_Q, GE, GX, U_F, U_R )
+    !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
