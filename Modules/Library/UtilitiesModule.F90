@@ -599,15 +599,23 @@ CONTAINS
   END FUNCTION IsCornerCell
 
 
-  SUBROUTINE thornado_abort
+  SUBROUTINE thornado_abort( Message_Option )
+
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Message_Option
+
+    CHARACTER(LEN=128) :: Message
+
+    Message = ''
+    IF( PRESENT( Message_Option ) ) &
+      Message = Message_Option
 
 #if defined USE_AMREX_TRUE
 
-    CALL amrex_abort('')
+    CALL amrex_abort( TRIM( Message ) )
 
 #else
 
-    STOP ''
+    STOP TRIM( Message )
 
 #endif
 
