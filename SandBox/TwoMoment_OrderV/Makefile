@@ -150,7 +150,7 @@ ApplicationDriver_CCSN: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.lst *.acc.s
 
 clobber: clean
 	rm -f  TwoMomentClosure_$(MACHINE)
