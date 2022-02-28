@@ -49,8 +49,6 @@ MODULE FinalizationModule
     Timer_AMReX_Euler_InputOutput, &
     FinalizeTimers_AMReX_Euler
 
-use mf_utilitiesmodule,only:showvariablefrommultifab,filename
-
   IMPLICIT NONE
   PRIVATE
 
@@ -66,13 +64,6 @@ CONTAINS
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-write(filename,'(A)') 'nN03_nX032_UniGrid_F.dat'
-!write(filename,'(A)') 'nN03_nX032_MultiGrid_F_RefluxOff.dat'
-!write(filename,'(A)') 'nN03_nX032_MultiGrid_F_RefluxOn.dat'
-open(100,file=trim(filename))
-close(100)
-call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &

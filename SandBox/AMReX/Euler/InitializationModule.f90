@@ -171,8 +171,6 @@ MODULE InitializationModule
     Timer_AMReX_Euler_Initialize, &
     Timer_AMReX_Euler_InputOutput
 
-use mf_utilitiesmodule,only:showvariablefrommultifab,filename
-
   IMPLICIT NONE
   PRIVATE
 
@@ -339,13 +337,6 @@ CONTAINS
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-write(filename,'(A)') 'nN03_nX032_UniGrid_I.dat'
-!write(filename,'(A)') 'nN03_nX032_MultiGrid_I_RefluxOff.dat'
-!write(filename,'(A)') 'nN03_nX032_MultiGrid_I_RefluxOn.dat'
-open(100,file=trim(filename))
-close(100)
-call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
-
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
@@ -373,8 +364,6 @@ call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-
-    INTEGER :: nCompCF
 
     BA = pBA
     DM = pDM
@@ -419,8 +408,6 @@ call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
     CALL MF_uDF_new(iLevel) % SetVal( Zero )
     CALL MF_uDF_old(iLevel) % SetVal( Zero )
 
-    nCompCF = MF_uCF(iLevel) % nComp()
-
     ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. do_reflux ) &
       CALL amrex_fluxregister_build &
@@ -461,7 +448,6 @@ call showvariablefrommultifab(mf_ucf,1,writetofile_option=.true.)
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-    INTEGER :: nCompCF
 
 print*,'Hello and goodbye from MakeNewLevelFromCoarse'
 stop
@@ -489,8 +475,6 @@ RETURN
 
     CALL amrex_multifab_build( MF_uDF_new(iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uDF_old(iLevel), BA, DM, nDOFX * nDF, swX )
-
-    nCompCF = MF_uCF_new(iLevel) % nComp()
 
     ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. do_reflux ) &

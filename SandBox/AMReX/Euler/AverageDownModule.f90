@@ -13,16 +13,6 @@ MODULE AverageDownModule
   USE amrex_multifabutil_module, ONLY: &
     amrex_average_down_dg
 
-  ! --- thornado Modules ---
-
-  USE ProgramHeaderModule, ONLY: &
-    nNodes
-
-  ! --- Local Modules ---
-
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
-
   IMPLICIT NONE
   PRIVATE
 
@@ -37,28 +27,13 @@ CONTAINS
 
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
 
-    INTEGER :: iLevel, FinestLevel, nComp
+    INTEGER :: iLevel, FinestLevel
 
     FinestLevel = amrex_get_finest_level()
 
     DO iLevel = FinestLevel-1, 0, -1
 
-       nComp = MF(iLevel+1) % nComp()
-
-       IF( nNodes .LT. 4 )THEN
-
-         CALL amrex_average_down_dg &
-                ( MF        (iLevel+1), MF        (iLevel), &
-                  amrex_geom(iLevel+1), amrex_geom(iLevel), &
-                  1, nComp, amrex_ref_ratio(iLevel))
-
-       ELSE
-
-        CALL DescribeError_Euler_MF &
-               ( 03, Message_Option = '  SUBROUTINE: AverageDown', &
-                     Int_Option = [ nNodes ] )
-
-       END IF
+      CALL AverageDownTo( iLevel, MF )
 
     END DO
 
@@ -70,20 +45,14 @@ CONTAINS
     INTEGER,              INTENT(IN)    :: CoarseLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
 
-    IF( nNodes .LT. 4 )THEN
+    INTEGER :: nComp
 
-      CALL amrex_average_down_dg &
-             ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
-               amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-               1, 1, amrex_ref_ratio(CoarseLevel))
+    nComp = MF(CoarseLevel) % nComp()
 
-    ELSE
-
-      CALL DescribeError_Euler_MF &
-             ( 03, Message_Option = '  SUBROUTINE: AverageDownTo', &
-                   Int_Option = [ nNodes ] )
-
-    END IF
+    CALL amrex_average_down_dg &
+           ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
+             amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
+             1, nComp, amrex_ref_ratio(CoarseLevel))
 
   END SUBROUTINE AverageDownTo
 

@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 
 def GetData( nN, nX, Grid, Reflux = '' ):
 
-    i = np.loadtxt( 'nN{:}_nX{:}_{:}_I{:}.dat'.format( nN, nX, Grid, Reflux ) )
-    f = np.loadtxt( 'nN{:}_nX{:}_{:}_F{:}.dat'.format( nN, nX, Grid, Reflux ) )
+    i = np.loadtxt( 'nN{:}_nX{:}_{:}{:}_I.dat'.format( nN, nX, Grid, Reflux ) )
+    f = np.loadtxt( 'nN{:}_nX{:}_{:}{:}_F.dat'.format( nN, nX, Grid, Reflux ) )
 
     N = np.int64( nN )
 
@@ -43,8 +43,8 @@ def GetData( nN, nX, Grid, Reflux = '' ):
 def PlotData \
     ( axs, di, df, indi, indf, c = 'k', label = '' ):
 
-    axs[0].plot( di[0,indi], di[1,indi], c+'o', label = label + '_i' )
-    axs[0].plot( df[0,indf], df[1,indf], c+'s', label = label + '_f' )
+    axs[0].plot( di[0,indi], di[1,indi], c+'.', label = label + '_i' )
+    axs[0].plot( df[0,indf], df[1,indf], c+'s', markerfacecolor='none',label = label + '_f' )
     axs[1].plot( di[0,indi], \
                   np.abs( ( df[1,indf] - di[1,indi] ) / di[1,indi] ), \
                   c, label = label )
@@ -53,12 +53,12 @@ def PlotData \
 
 fig, axs = plt.subplots(2,1)
 
-#dxiU, dxfU, diU, dfU, indiU, indfU \
-#  = GetData( '02', '032', 'UniGrid' )
-#PlotData( axs, diU, dfU, indiU, indfU, 'r', 'UniGrid' )
+dxiU, dxfU, diU, dfU, indiU, indfU \
+  = GetData( '01', '032', 'UniGrid' )
+PlotData( axs, diU, dfU, indiU, indfU, 'r', 'UniGrid' )
 
 dxiU, dxfU, diU, dfU, indiU, indfU \
-  = GetData( '02', '032', 'MultiGrid', Reflux = '_RefluxOn' )
+  = GetData( '01', '032', 'MultiGrid', Reflux = '_RefluxOn' )
 PlotData( axs, diU, dfU, indiU, indfU, 'm', 'MultiGrid_RefluxOn' )
 
 #dxiU, dxfU, diU, dfU, indiU, indfU \

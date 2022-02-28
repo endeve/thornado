@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-nN = np.array( [ '02', '03' ], str )
+nN = np.array( [ '03' ], str )
 nX = np.array( [ '032' ], str )
 
 Mass = np.ones( (3,nN.shape[0],nX.shape[0]), np.float64 )
@@ -13,9 +13,9 @@ Root += 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
 
 def GetData( nN, nX, Grid, Reflux = '' ):
 
-    i = np.loadtxt( Root + 'nN{:}_nX{:}_{:}_I{:}.dat'.format \
+    i = np.loadtxt( Root + 'nN{:}_nX{:}_{:}{:}_I.dat'.format \
           ( nN, nX, Grid, Reflux ) )
-    f = np.loadtxt( Root + 'nN{:}_nX{:}_{:}_F{:}.dat'.format \
+    f = np.loadtxt( Root + 'nN{:}_nX{:}_{:}{:}_F.dat'.format \
           ( nN, nX, Grid, Reflux ) )
 
     N = np.int64( nN )
@@ -72,23 +72,27 @@ for i in range( nN.shape[0] ):
 
     for j in range( nX.shape[0] ):
 
-#        dxi, dxf, di, df, indi, indf \
-#          = GetData( nN[i], nX[j], 'UniGrid' )
-#        Mi = ComputeMass( np.int64( nN[i] ), di[1], dxi )
-#        Mf = ComputeMass( np.int64( nN[i] ), df[1], dxf )
-#        Mass[0,i,j] = abs( ( Mf - Mi ) / Mi )
-
         dxi, dxf, di, df, indi, indf \
-          = GetData( nN[i], nX[j], 'MultiGrid', Reflux = '_RefluxOff' )
+          = GetData( nN[i], nX[j], 'UniGrid' )
         Mi = ComputeMass( np.int64( nN[i] ), di[1], dxi )
         Mf = ComputeMass( np.int64( nN[i] ), df[1], dxf )
-        Mass[1,i,j] = abs( ( Mf - Mi ) / Mi )
+        Mass[0,i,j] = abs( ( Mf - Mi ) / Mi )
+
+        print( 'UniGrid: Mi = {:.16e}, Mf = {:.16e}'.format( Mi, Mf ) )
+
+#        dxi, dxf, di, df, indi, indf \
+#          = GetData( nN[i], nX[j], 'MultiGrid', Reflux = '_RefluxOff' )
+#        Mi = ComputeMass( np.int64( nN[i] ), di[1], dxi )
+#        Mf = ComputeMass( np.int64( nN[i] ), df[1], dxf )
+#        Mass[1,i,j] = abs( ( Mf - Mi ) / Mi )
 
         dxi, dxf, di, df, indi, indf \
           = GetData( nN[i], nX[j], 'MultiGrid', Reflux = '_RefluxOn' )
         Mi = ComputeMass( np.int64( nN[i] ), di[1], dxi )
         Mf = ComputeMass( np.int64( nN[i] ), df[1], dxf )
         Mass[2,i,j] = abs( ( Mf - Mi ) / Mi )
+
+        print( 'MultiGrid: Mi = {:.16e}, Mf = {:.16e}'.format( Mi, Mf ) )
 
         for k in range( Mass.shape[0] ):
             Mass[k,i,j] = max( Mass[k,i,j], 1.0e-17 )
@@ -103,8 +107,8 @@ for N in range( nN.shape[0] ):
         nDOFX = nN[N] * nX[K]
         ax.plot( nDOFX, Mass[0,N,K], 'rs', markersize = 10, \
                  label = 'nN{:}_nX{:}_UniGrid'.format( nN[N], nX[K] ) )
-        ax.plot( nDOFX, Mass[1,N,K], 'ms', markersize = 5, \
-                 label = 'nN{:}_nX{:}_MultiGrid_RfxOff'.format( nN[N], nX[K] ) )
+#        ax.plot( nDOFX, Mass[1,N,K], 'ms', markersize = 5, \
+#                 label = 'nN{:}_nX{:}_MultiGrid_RfxOff'.format( nN[N], nX[K] ) )
         ax.plot( nDOFX, Mass[2,N,K], 'bs', markersize = 2, \
                  label = 'nN{:}_nX{:}_MultiGrid_RfxOn'.format( nN[N], nX[K] ) )
 

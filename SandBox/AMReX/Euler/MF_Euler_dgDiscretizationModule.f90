@@ -4,7 +4,6 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE amrex_amrcore_module, ONLY: &
     amrex_max_level, &
-    amrex_geom, &
     amrex_get_finest_level
   USE amrex_box_module, ONLY: &
     amrex_box
@@ -108,61 +107,15 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF &
     ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
 
-    INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
-    LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
-
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
-
-    REAL(DP), CONTIGUOUS, POINTER :: uGF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: duCF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X1(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X2(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X3(:,:,:,:)
-
-    REAL(DP), ALLOCATABLE :: G             (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: U             (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: D             (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: dU            (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: SurfaceFlux_X1(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: SurfaceFlux_X2(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: SurfaceFlux_X3(:,:,:,:,:)
-
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    LOGICAL :: UseXCFC
-
-    TYPE(amrex_multifab) :: SurfaceFluxes(1:nDimsX)
-    INTEGER              :: iDimX, nGhost(nDimsX), nDOFX_X(3)
-    LOGICAL              :: Nodal(nDimsX)
-
-    TYPE(EdgeMap) :: Edge_Map
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
-
 !    DO iLevel = 0, amrex_max_level
 !
 !      ! --- Apply boundary conditions to interior domains ---
 !
 !      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
-!      CALL MF_uGF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
-!
-!      CALL MF_uCF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
-!
-!      CALL MF_uDF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
-!
-!      CALL FillPatch( iLevel, Time(iLevel), MF_uGF_old, MF_uGF_new, MF_uGF(iLevel) )
-!
-!      CALL FillPatch( iLevel, Time(iLevel), MF_uCF_old, MF_uCF_new, MF_uCF(iLevel) )
+!      CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF, MF_uGF(iLevel) )
+!      CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF, MF_uCF(iLevel) )
+!      CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF, MF_uDF(iLevel) )
 !
 !      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
@@ -232,6 +185,46 @@ CONTAINS
 !
 !    END DO
 
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
+    LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF  (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF  (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF  (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: duCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X1(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X2(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X3(:,:,:,:)
+
+    REAL(DP), ALLOCATABLE :: G             (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U             (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D             (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dU            (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: SurfaceFlux_X1(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: SurfaceFlux_X2(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: SurfaceFlux_X3(:,:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    LOGICAL :: UseXCFC
+
+    TYPE(amrex_multifab) :: SurfaceFluxes(1:nDimsX)
+    INTEGER              :: iDimX, nGhost(nDimsX), nDOFX_X(3)
+    LOGICAL              :: Nodal(nDimsX)
+
+    TYPE(EdgeMap) :: Edge_Map
+
+    UseXCFC = .FALSE.
+    IF( PRESENT( UseXCFC_Option ) ) &
+      UseXCFC = UseXCFC_Option
+
     ! --- Maybe don't need to apply boundary conditions since
     !     they're applied in the shock detector ---
 
@@ -239,14 +232,9 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-!    CALL MF_uGF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF_new, MF_uGF )
-
-!    CALL MF_uCF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF_new, MF_uCF )
-
-!    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF_new, MF_uDF )
+    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF, MF_uGF(iLevel) )
+    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF, MF_uCF(iLevel) )
+    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF, MF_uDF(iLevel) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -267,20 +255,20 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( SurfaceFluxes(iDimX), &
-               MF_uGF % BA, MF_uGF % DM, &
+               MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX_X(iDimX) * nCF, nGhost, Nodal )
 
       CALL SurfaceFluxes(iDimX) % SetVal( Zero )
 
     END DO
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF  => MF_uGF  % DataPtr( MFI )
-      uCF  => MF_uCF  % DataPtr( MFI )
-      uDF  => MF_uDF  % DataPtr( MFI )
+      uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF  => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF  => MF_uDF(iLevel) % DataPtr( MFI )
       duCF => MF_duCF % DataPtr( MFI )
 
       uSurfaceFlux_X1 => SurfaceFluxes(1) % DataPtr( MFI )
