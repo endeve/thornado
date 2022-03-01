@@ -2,8 +2,6 @@ PROGRAM ApplicationDriver
 
   ! --- AMReX Modules ---
 
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
 
@@ -62,7 +60,6 @@ PROGRAM ApplicationDriver
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iLevel
   LOGICAL  :: wrt, chk
   REAL(DP) :: t_wrt, t_chk
   REAL(DP) :: Timer_Evolution

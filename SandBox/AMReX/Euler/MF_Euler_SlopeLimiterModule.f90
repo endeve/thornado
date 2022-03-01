@@ -43,13 +43,6 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_FieldsModule, ONLY: &
-    MF_uGF_old, &
-    MF_uGF_new, &
-    MF_uCF_old, &
-    MF_uCF_new, &
-    MF_uDF_old, &
-    MF_uDF_new
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap, &
@@ -89,8 +82,7 @@ CONTAINS
     DO iLevel = 0, amrex_max_level
 
       CALL ApplySlopeLimiter_Euler_MF_SingleLevel &
-             ( iLevel, Time(iLevel), &
-               MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF )
 
     END DO
 
@@ -102,9 +94,9 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -129,26 +121,21 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-!    CALL MF_uGF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF_new, MF_uGF )
-
-!    CALL MF_uCF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF_new, MF_uCF )
-
-!    CALL MF_uDF % Fill_Boundary( amrex_geom(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF_new, MF_uDF )
+    CALL FillPatch( iLevel, Time, MF_uGF )
+    CALL FillPatch( iLevel, Time, MF_uCF )
+    CALL FillPatch( iLevel, Time, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
-      uDF => MF_uDF % DataPtr( MFI )
+      uGF => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF => MF_uDF(iLevel) % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 

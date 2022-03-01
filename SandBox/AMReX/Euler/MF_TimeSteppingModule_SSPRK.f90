@@ -53,8 +53,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE FillPatchModule, ONLY: &
     FillPatch
   USE MF_FieldsModule, ONLY: &
-    MF_uCF_old, &
-    MF_uCF_new, &
 !    MF_OffGridFlux_Euler, &
     FluxRegister
   USE MF_MeshModule, ONLY: &
@@ -92,7 +90,7 @@ CONTAINS
 
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER :: iS, iLevel
+    INTEGER :: iS
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -165,8 +163,7 @@ CONTAINS
 
         CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nComp, 0 )
 
-        CALL FillPatch &
-               ( iLevel, t(iLevel), MF_uCF_old, MF_U(iS,:), MF_U(iS,iLevel) )
+        CALL FillPatch( iLevel, t(iLevel), MF_U(iS,:) )
 
         DO jS = 1, iS-1
 
@@ -182,8 +179,7 @@ CONTAINS
             .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
           CALL ApplySlopeLimiter_Euler_MF &
-                 ( iLevel, t(iLevel), &
-                   MF_uGF(iLevel), MF_U(iS,iLevel), MF_uDF(iLevel) )
+                 ( iLevel, t(iLevel), MF_uGF, MF_U(iS,:), MF_uDF )
 
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF(iLevel), MF_U(iS,iLevel), MF_uDF(iLevel) )

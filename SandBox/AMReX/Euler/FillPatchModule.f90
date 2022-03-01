@@ -52,14 +52,26 @@ MODULE FillPatchModule
 
   PUBLIC :: FillPatch, FillCoarsePatch
 
+  INTERFACE FillPatch
+    MODULE PROCEDURE FillPatch_MultiTime
+    MODULE PROCEDURE FillPatch_SingleTime
+  END INTERFACE FillPatch
+
+  INTERFACE FillCoarsePatch
+    MODULE PROCEDURE FillCoarsePatch_MultiTime
+    MODULE PROCEDURE FillCoarsePatch_SingleTime
+  END INTERFACE FillCoarsePatch
+
 
 CONTAINS
 
 
-  SUBROUTINE FillPatch( iLevel, Time, MF_old, MF_new, MF )
+  SUBROUTINE FillPatch_MultiTime( iLevel, t_old, t_new, t, MF_old, MF_new, MF )
 
     INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
+    REAL(DP),             INTENT(in)    :: t_old(0:amrex_max_level), &
+                                           t_new(0:amrex_max_level), &
+                                           t
     TYPE(amrex_multifab), INTENT(in)    :: MF_old(0:amrex_max_level), &
                                            MF_new(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF
@@ -72,9 +84,9 @@ CONTAINS
                             t_old(iLevel), MF_old(iLevel), &
                             t_new(iLevel), MF_new(iLevel), &
                             amrex_geom(iLevel), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF % nComp() )
+                            t, sComp, dComp, MF % nComp() )
 
-    ELSE IF( nNodes .LT. 4 )THEN
+    ELSE
 
       CALL amrex_fillpatch( MF, &
                             t_old(iLevel-1), MF_old(iLevel-1), &
@@ -83,47 +95,96 @@ CONTAINS
                             t_old(iLevel  ), MF_old(iLevel  ), &
                             t_new(iLevel  ), MF_new(iLevel  ), &
                             amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF % nComp(), &
+                            t, sComp, dComp, MF % nComp(), &
                             amrex_ref_ratio(iLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
 
-    ELSE
-
-      CALL DescribeError_Euler_MF &
-             ( 04, Message_Option = 'MF', Int_Option = [ nNodes ] )
-
     END IF
 
-  END SUBROUTINE FillPatch
+  END SUBROUTINE FillPatch_MultiTime
 
 
-  SUBROUTINE FillCoarsePatch( iLevel, Time, MF_old, MF_new, MF )
+  SUBROUTINE FillPatch_SingleTime( iLevel, Time, MF )
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
+
+    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+
+    ! Assume MF_old = MF_new = MF and t_old = t_new = t
+
+    IF( iLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch( MF(iLevel), &
+                            Time, MF(iLevel), &
+                            Time, MF(iLevel), &
+                            amrex_geom(iLevel), FillPhysicalBC_Dummy, &
+                            Time, sComp, dComp, MF(iLevel) % nComp() )
+
+    ELSE
+
+      CALL amrex_fillpatch( MF(iLevel), &
+                            Time, MF(iLevel-1), &
+                            Time, MF(iLevel-1), &
+                            amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+                            Time, MF(iLevel  ), &
+                            Time, MF(iLevel  ), &
+                            amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
+                            Time, sComp, dComp, MF(iLevel) % nComp(), &
+                            amrex_ref_ratio(iLevel-1), &
+                            amrex_interp_dg, &
+                            lo_bc, hi_bc )
+
+    END IF
+
+  END SUBROUTINE FillPatch_SingleTime
+
+
+  SUBROUTINE FillCoarsePatch_MultiTime &
+    ( iLevel, t_old, t_new, t, MF_old, MF_new, MF )
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: t_old(0:amrex_max_level), &
+                                           t_new(0:amrex_max_level), &
+                                           t
     TYPE(amrex_multifab), INTENT(in)    :: MF_old(0:amrex_max_level), &
                                            MF_new(0:amrex_max_level)
     TYPE(amrex_multifab), INTENT(inout) :: MF
 
-    IF( nNodes .LT. 4 )THEN
+    CALL amrex_fillcoarsepatch &
+           ( MF, t_old(iLevel-1), MF_old(iLevel-1), &
+                 t_new(iLevel-1), MF_new(iLevel-1), &
+             amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+             amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
+             t, 1, 1, MF % nComp(), amrex_ref_ratio(iLevel-1), &
+             amrex_interp_dg, lo_bc, hi_bc )
 
-      CALL amrex_fillcoarsepatch &
-             ( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                   t_new(iLevel-1), MF_new(iLevel-1), &
-               amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-               amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-               Time, 1, 1, MF % nComp(), amrex_ref_ratio(iLevel-1), &
-               amrex_interp_dg, lo_bc, hi_bc )
+  END SUBROUTINE FillCoarsePatch_MultiTime
 
-    ELSE
 
-      CALL DescribeError_Euler_MF &
-             ( 05, Message_Option = 'MF', Int_Option = [ nNodes ] )
+  SUBROUTINE FillCoarsePatch_SingleTime( iLevel, Time, MF )
 
-    END IF
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
 
-  END SUBROUTINE FillCoarsePatch
+    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+
+    ! Assume t_old = t_new = t and MF_old = MF_new = MF
+
+    CALL amrex_fillcoarsepatch &
+           ( MF(iLevel), &
+             Time, MF(iLevel-1), &
+             Time, MF(iLevel-1), &
+             amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+             amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
+             Time, sComp, dComp, MF(iLevel) % nComp(), &
+             amrex_ref_ratio(iLevel-1), &
+             amrex_interp_dg, lo_bc, hi_bc )
+
+  END SUBROUTINE FillCoarsePatch_SingleTime
 
 
   ! --- PRIVATE SUBROUTINES ---

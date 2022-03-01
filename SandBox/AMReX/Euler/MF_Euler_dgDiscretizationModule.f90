@@ -69,12 +69,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     thornado2amrex_X_F, &
     amrex2thornado_X_F
   USE MF_FieldsModule, ONLY: &
-    MF_uGF_old, &
-    MF_uGF_new, &
-    MF_uCF_old, &
-    MF_uCF_new, &
-    MF_uDF_old, &
-    MF_uDF_new, &
     FluxRegister
   USE InputParsingModule, ONLY: &
     UseTiling, &
@@ -113,9 +107,9 @@ CONTAINS
 !
 !      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
-!      CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF, MF_uGF(iLevel) )
-!      CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF, MF_uCF(iLevel) )
-!      CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF, MF_uDF(iLevel) )
+!      CALL FillPatch( iLevel, Time, MF_uGF )
+!      CALL FillPatch( iLevel, Time, MF_uCF )
+!      CALL FillPatch( iLevel, Time, MF_uDF )
 !
 !      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
@@ -232,9 +226,9 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF, MF_uGF(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF, MF_uCF(iLevel) )
-    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF, MF_uDF(iLevel) )
+    CALL FillPatch( iLevel, Time, MF_uGF )
+    CALL FillPatch( iLevel, Time, MF_uCF )
+    CALL FillPatch( iLevel, Time, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -401,11 +395,7 @@ CONTAINS
 
       IF( iLevel .LT. amrex_get_finest_level() )THEN
 
-        CALL FluxRegister( iLevel+1 ) &
-               % CrseInit_DG &
-                   ( SurfaceFluxes, nCF, &
-                     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
-                     WeightsX_X1, WeightsX_X2, WeightsX_X3 )
+        CALL FluxRegister( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
 
       END IF
 

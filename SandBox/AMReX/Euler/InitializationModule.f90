@@ -97,20 +97,10 @@ MODULE InitializationModule
   USE MF_FieldsModule, ONLY: &
     CreateFields_MF, &
     MF_uGF, &
-    MF_uGF_old, &
-    MF_uGF_new, &
     MF_uCF, &
-    MF_uCF_old, &
-    MF_uCF_new, &
     MF_uPF, &
-    MF_uPF_old, &
-    MF_uPF_new, &
     MF_uAF, &
-    MF_uAF_old, &
-    MF_uAF_new, &
     MF_uDF, &
-    MF_uDF_old, &
-    MF_uDF_new, &
     FluxRegister
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler_MF
@@ -373,40 +363,20 @@ CONTAINS
 
     CALL ClearLevel( iLevel )
 
-    CALL amrex_multifab_build( MF_uGF    (iLevel), BA, DM, nDOFX * nGF, swX )
-    CALL amrex_multifab_build( MF_uGF_new(iLevel), BA, DM, nDOFX * nGF, swX )
-    CALL amrex_multifab_build( MF_uGF_old(iLevel), BA, DM, nDOFX * nGF, swX )
-    CALL MF_uGF    (iLevel) % SetVal( Zero )
-    CALL MF_uGF_new(iLevel) % SetVal( Zero )
-    CALL MF_uGF_old(iLevel) % SetVal( Zero )
+    CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
+    CALL MF_uGF(iLevel) % SetVal( Zero )
 
-    CALL amrex_multifab_build( MF_uCF    (iLevel), BA, DM, nDOFX * nCF, swX )
-    CALL amrex_multifab_build( MF_uCF_new(iLevel), BA, DM, nDOFX * nCF, swX )
-    CALL amrex_multifab_build( MF_uCF_old(iLevel), BA, DM, nDOFX * nCF, swX )
-    CALL MF_uCF    (iLevel) % SetVal( Zero )
-    CALL MF_uCF_new(iLevel) % SetVal( Zero )
-    CALL MF_uCF_old(iLevel) % SetVal( Zero )
+    CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL MF_uCF(iLevel) % SetVal( Zero )
 
-    CALL amrex_multifab_build( MF_uPF    (iLevel), BA, DM, nDOFX * nPF, swX )
-    CALL amrex_multifab_build( MF_uPF_new(iLevel), BA, DM, nDOFX * nPF, swX )
-    CALL amrex_multifab_build( MF_uPF_old(iLevel), BA, DM, nDOFX * nPF, swX )
-    CALL MF_uPF    (iLevel) % SetVal( Zero )
-    CALL MF_uPF_new(iLevel) % SetVal( Zero )
-    CALL MF_uPF_old(iLevel) % SetVal( Zero )
+    CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
+    CALL MF_uPF(iLevel) % SetVal( Zero )
 
-    CALL amrex_multifab_build( MF_uAF    (iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL amrex_multifab_build( MF_uAF_new(iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL amrex_multifab_build( MF_uAF_old(iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL MF_uAF    (iLevel) % SetVal( Zero )
-    CALL MF_uAF_new(iLevel) % SetVal( Zero )
-    CALL MF_uAF_old(iLevel) % SetVal( Zero )
+    CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
+    CALL MF_uAF(iLevel) % SetVal( Zero )
 
-    CALL amrex_multifab_build( MF_uDF    (iLevel), BA, DM, nDOFX * nDF, swX )
-    CALL amrex_multifab_build( MF_uDF_new(iLevel), BA, DM, nDOFX * nDF, swX )
-    CALL amrex_multifab_build( MF_uDF_old(iLevel), BA, DM, nDOFX * nDF, swX )
-    CALL MF_uDF    (iLevel) % SetVal( Zero )
-    CALL MF_uDF_new(iLevel) % SetVal( Zero )
-    CALL MF_uDF_old(iLevel) % SetVal( Zero )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
+    CALL MF_uDF(iLevel) % SetVal( Zero )
 
     ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. do_reflux ) &
@@ -417,21 +387,8 @@ CONTAINS
     CALL CreateMesh_MF( iLevel, MeshX )
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
+
     CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
-
-    CALL MF_uGF_old(iLevel) &
-           % COPY( MF_uGF(iLevel), 1, 1, &
-                   MF_uGF(iLevel) % nComp(), swX )
-    CALL MF_uGF_new(iLevel) &
-           % COPY( MF_uGF(iLevel), 1, 1, &
-                   MF_uGF(iLevel) % nComp(), swX )
-
-    CALL MF_uCF_old(iLevel) &
-           % COPY( MF_uCF(iLevel), 1, 1, &
-                   MF_uCF(iLevel) % nComp(), swX )
-    CALL MF_uCF_new(iLevel) &
-           % COPY( MF_uCF(iLevel), 1, 1, &
-                   MF_uCF(iLevel) % nComp(), swX )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -446,47 +403,8 @@ CONTAINS
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
-    TYPE(amrex_boxarray)  :: BA
-    TYPE(amrex_distromap) :: DM
-
 print*,'Hello and goodbye from MakeNewLevelFromCoarse'
-stop
-RETURN
-
-    BA = pBA
-    DM = pDM
-
-    CALL ClearLevel( iLevel )
-
-    t_new(iLevel) = Time
-    t_old(iLevel) = Time - 1.0e200_DP
-
-    CALL amrex_multifab_build( MF_uGF_new(iLevel), BA, DM, nDOFX * nGF, swX )
-    CALL amrex_multifab_build( MF_uGF_old(iLevel), BA, DM, nDOFX * nGF, swX )
-
-    CALL amrex_multifab_build( MF_uCF_new(iLevel), BA, DM, nDOFX * nCF, swX )
-    CALL amrex_multifab_build( MF_uCF_old(iLevel), BA, DM, nDOFX * nCF, swX )
-
-    CALL amrex_multifab_build( MF_uPF_new(iLevel), BA, DM, nDOFX * nPF, swX )
-    CALL amrex_multifab_build( MF_uPF_old(iLevel), BA, DM, nDOFX * nPF, swX )
-
-    CALL amrex_multifab_build( MF_uAF_new(iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL amrex_multifab_build( MF_uAF_old(iLevel), BA, DM, nDOFX * nAF, swX )
-
-    CALL amrex_multifab_build( MF_uDF_new(iLevel), BA, DM, nDOFX * nDF, swX )
-    CALL amrex_multifab_build( MF_uDF_old(iLevel), BA, DM, nDOFX * nDF, swX )
-
-    ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-    IF( iLevel .GT. 0 .AND. do_reflux ) &
-      CALL amrex_fluxregister_build &
-             ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
-               iLevel, nDOFX_X1*nCF )
-
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF_old, MF_uGF_new, MF_uGF(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uCF_old, MF_uCF_new, MF_uCF(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uPF_old, MF_uPF_new, MF_uPF(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uAF_old, MF_uAF_new, MF_uAF(iLevel) )
-    CALL FillCoarsePatch( iLevel, Time, MF_uDF_old, MF_uDF_new, MF_uDF(iLevel) )
+stop 'InitializationModule.f90'
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -495,113 +413,26 @@ RETURN
 
     INTEGER, INTENT(in), VALUE :: iLevel
 
-    CALL amrex_multifab_destroy( MF_uDF    (iLevel) )
-    CALL amrex_multifab_destroy( MF_uDF_new(iLevel) )
-    CALL amrex_multifab_destroy( MF_uDF_old(iLevel) )
-
-    CALL amrex_multifab_destroy( MF_uAF    (iLevel) )
-    CALL amrex_multifab_destroy( MF_uAF_new(iLevel) )
-    CALL amrex_multifab_destroy( MF_uAF_old(iLevel) )
-
-    CALL amrex_multifab_destroy( MF_uPF    (iLevel) )
-    CALL amrex_multifab_destroy( MF_uPF_new(iLevel) )
-    CALL amrex_multifab_destroy( MF_uPF_old(iLevel) )
-
-    CALL amrex_multifab_destroy( MF_uCF    (iLevel) )
-    CALL amrex_multifab_destroy( MF_uCF_new(iLevel) )
-    CALL amrex_multifab_destroy( MF_uCF_old(iLevel) )
-
-    CALL amrex_multifab_destroy( MF_uGF    (iLevel) )
-    CALL amrex_multifab_destroy( MF_uGF_new(iLevel) )
-    CALL amrex_multifab_destroy( MF_uGF_old(iLevel) )
+    CALL amrex_multifab_destroy( MF_uDF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uAF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uPF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uCF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uGF(iLevel) )
 
     CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
+
 
   END SUBROUTINE ClearLevel
 
 
   SUBROUTINE RemakeLevel( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillPatch
-
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
-    TYPE(amrex_boxarray)  :: BA
-    TYPE(amrex_distromap) :: DM
-    TYPE(amrex_multifab)  :: new_MF_uGF_new
-    TYPE(amrex_multifab)  :: new_MF_uCF_new
-    TYPE(amrex_multifab)  :: new_MF_uPF_new
-    TYPE(amrex_multifab)  :: new_MF_uAF_new
-    TYPE(amrex_multifab)  :: new_MF_uDF_new
-
-    INTEGER :: nCompGF, nCompCF, nCompPF, nCompAF, nCompDF
-
 print*,'Hello and goodbye from RemakeLevel'
-stop
-RETURN
-
-    BA = pBA
-    DM = pDM
-
-    CALL amrex_multifab_build( new_MF_uGF_new, BA, DM, nDOFX * nGF, swX )
-    CALL FillPatch( iLevel, Time, MF_uGF_old, MF_uGF_new, new_MF_uGF_new )
-
-    CALL amrex_multifab_build( new_MF_uCF_new, BA, DM, nDOFX * nCF, swX )
-    CALL FillPatch( iLevel, Time, MF_uCF_old, MF_uCF_new, new_MF_uCF_new )
-
-    CALL amrex_multifab_build( new_MF_uPF_new, BA, DM, nDOFX * nPF, swX )
-    CALL FillPatch( iLevel, Time, MF_uPF_old, MF_uPF_new, new_MF_uPF_new )
-
-    CALL amrex_multifab_build( new_MF_uAF_new, BA, DM, nDOFX * nAF, swX )
-    CALL FillPatch( iLevel, Time, MF_uAF_old, MF_uAF_new, new_MF_uAF_new )
-
-    CALL amrex_multifab_build( new_MF_uDF_new, BA, DM, nDOFX * nDF, swX )
-    CALL FillPatch( iLevel, Time, MF_uDF_old, MF_uDF_new, new_MF_uDF_new )
-
-    CALL ClearLevel( iLevel )
-
-    t_new( iLevel ) = Time
-    t_old( iLevel ) = Time - 1.0e200_DP
-
-    nCompGF = new_MF_uGF_new % nComp()
-    CALL amrex_multifab_build( MF_uGF_new( iLevel ), BA, DM, nCompGF, swX )
-    CALL amrex_multifab_build( MF_uGF_old( iLevel ), BA, DM, nCompGF, swX )
-
-    nCompCF = new_MF_uCF_new % nComp()
-    CALL amrex_multifab_build( MF_uCF_new( iLevel ), BA, DM, nCompCF, swX )
-    CALL amrex_multifab_build( MF_uCF_old( iLevel ), BA, DM, nCompCF, swX )
-
-    nCompPF = new_MF_uPF_new % nComp()
-    CALL amrex_multifab_build( MF_uPF_new( iLevel ), BA, DM, nCompPF, swX )
-    CALL amrex_multifab_build( MF_uPF_old( iLevel ), BA, DM, nCompPF, swX )
-
-    nCompAF = new_MF_uAF_new % nComp()
-    CALL amrex_multifab_build( MF_uAF_new( iLevel ), BA, DM, nCompAF, swX )
-    CALL amrex_multifab_build( MF_uAF_old( iLevel ), BA, DM, nCompAF, swX )
-
-    nCompDF = new_MF_uDF_new % nComp()
-    CALL amrex_multifab_build( MF_uDF_new( iLevel ), BA, DM, nCompDF, swX )
-    CALL amrex_multifab_build( MF_uDF_old( iLevel ), BA, DM, nCompDF, swX )
-
-    ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-    IF( iLevel .GT. 0 .AND. do_reflux ) &
-      CALL amrex_fluxregister_build &
-             ( FluxRegister(iLevel), BA, DM, &
-               amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
-
-    CALL MF_uGF_new( iLevel ) % Copy( new_MF_uGF_new, 1, 1, nCompGF, swX )
-    CALL MF_uCF_new( iLevel ) % Copy( new_MF_uCF_new, 1, 1, nCompCF, swX )
-    CALL MF_uPF_new( iLevel ) % Copy( new_MF_uPF_new, 1, 1, nCompPF, swX )
-    CALL MF_uAF_new( iLevel ) % Copy( new_MF_uAF_new, 1, 1, nCompAF, swX )
-    CALL MF_uDF_new( iLevel ) % Copy( new_MF_uDF_new, 1, 1, nCompDF, swX )
-
-    CALL amrex_multifab_destroy( new_MF_uDF_new )
-    CALL amrex_multifab_destroy( new_MF_uAF_new )
-    CALL amrex_multifab_destroy( new_MF_uPF_new )
-    CALL amrex_multifab_destroy( new_MF_uCF_new )
-    CALL amrex_multifab_destroy( new_MF_uGF_new )
+stop 'InitializationModule.f90'
 
   END SUBROUTINE RemakeLevel
 
