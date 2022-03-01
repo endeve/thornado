@@ -248,7 +248,8 @@ CONTAINS
     END DO ! iNX_X_Crse
 
     CALL amrex_InitializeMeshRefinement_Thornado &
-           ( nNodesX, ProjectionMatrix_c, WeightsX_q )
+           ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
+             LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C )
 
   END SUBROUTINE InitializeMeshRefinement_Euler
 
