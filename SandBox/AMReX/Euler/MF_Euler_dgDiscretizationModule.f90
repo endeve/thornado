@@ -384,12 +384,7 @@ CONTAINS
 
       IF( iLevel .GT. 0 )THEN
 
-        CALL FluxRegister( iLevel ) &
-               % FineAdd_DG &
-                   ( SurfaceFluxes, nCF,&
-                     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
-                     WeightsX_X1, WeightsX_X2, WeightsX_X3, &
-                     LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C )
+        CALL FluxRegister( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
 
       END IF
 
