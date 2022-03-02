@@ -90,7 +90,7 @@ MODULE NeutrinoOpacitiesComputationModule_New
   PUBLIC :: ComputeNeutrinoOpacities_NES_Point
   PUBLIC :: ComputeNeutrinoOpacities_NES_Points
   PUBLIC :: ComputeNeutrinoOpacitiesAndDerivatives_NES_Point
-  PUBLIC :: ComputeNeutrinoOpacitiesRates_NES_Points
+  PUBLIC :: ComputeNeutrinoOpacityRates_NES_Points
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Point
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Points
   PUBLIC :: ComputeNeutrinoOpacitiesRates_Pair_Points
@@ -2588,7 +2588,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE ComputeNeutrinoOpacitiesRates_NES_Points
+  END SUBROUTINE ComputeNeutrinoOpacityRates_NES_Points
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair_Point_1 &
