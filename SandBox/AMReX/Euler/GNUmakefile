@@ -55,7 +55,7 @@ include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
 include $(THORNADO_HOME)/SandBox/AMReX/Euler/Make.thornado
-include $(AMREX_HOME)/Src/thornado/Make.package
+include $(AMREX_HOME)/Src/DG/Make.package
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

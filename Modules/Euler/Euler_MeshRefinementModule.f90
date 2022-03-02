@@ -1,8 +1,8 @@
 MODULE Euler_MeshRefinementModule
 
-  USE amrex_ThornadoInterfaceModule, ONLY: &
-    amrex_InitializeMeshRefinement_Thornado, &
-    amrex_FinalizeMeshRefinement_Thornado
+  USE amrex_DGInterfaceModule, ONLY: &
+    amrex_InitializeMeshRefinement_DG, &
+    amrex_FinalizeMeshRefinement_DG
 
   USE KindModule, ONLY: &
     DP, &
@@ -247,7 +247,7 @@ CONTAINS
 
     END DO ! iNX_X_Crse
 
-    CALL amrex_InitializeMeshRefinement_Thornado &
+    CALL amrex_InitializeMeshRefinement_DG &
            ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
              LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C )
 
@@ -256,7 +256,7 @@ CONTAINS
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
-    CALL amrex_FinalizeMeshRefinement_Thornado
+    CALL amrex_FinalizeMeshRefinement_DG
 
     DEALLOCATE( ProjectionMatrix_T )
     DEALLOCATE( ProjectionMatrix )
