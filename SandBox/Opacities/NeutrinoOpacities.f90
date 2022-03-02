@@ -25,16 +25,10 @@ PROGRAM NeutrinoOpacities
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeNeutrinoOpacities_EC_Point, &
     ComputeNeutrinoOpacities_EC_Points, &
-    ComputeNeutrinoOpacities_ES_Point, &
     ComputeNeutrinoOpacities_ES_Points, &
-    ComputeNeutrinoOpacities_NES_Point, &
     ComputeNeutrinoOpacities_NES_Points, &
-    ComputeNeutrinoOpacitiesAndDerivatives_NES_Point, &
-    ComputeNeutrinoOpacities_Pair_Point, &
-    ComputeNeutrinoOpacities_Pair_Points, &
-    ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point
+    ComputeNeutrinoOpacities_Pair_Points
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -67,14 +61,9 @@ PROGRAM NeutrinoOpacities
     Timer_ReadEos, &
     Timer_ReadOpacities, &
     Timer_Compute_EC, &
-    Timer_Compute_EC_Point, &
     Timer_Compute_ES, &
-    Timer_Compute_ES_Point, &
     Timer_Compute_NES, &
-    Timer_Compute_NES_Point, &
-    Timer_Compute_NES_D_Point, &
     Timer_Compute_Pair, &
-    Timer_Compute_Pair_Point, &
     Timer_Compute_Pair_D_Point, &
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
@@ -203,25 +192,6 @@ PROGRAM NeutrinoOpacities
 
   ! --- Compute Electron Capture Opacities (Point) ---
 
-  Timer_Compute_EC_Point = MPI_WTIME()
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-  !$ACC PRESENT( E, D, T, Y, Chi )
-#endif
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    CALL ComputeNeutrinoOpacities_EC_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, Chi(:,iX,iS) )
-
-  END DO
-  END DO
-
-  Timer_Compute_EC_Point = MPI_WTIME() - Timer_Compute_EC_Point
-
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE FROM( Chi )
 #elif defined(THORNADO_OACC)
@@ -241,27 +211,6 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_ES = MPI_WTIME() - Timer_Compute_ES
 
-  ! --- Compute Elastic Scattering Opacities (Point) ---
-
-  Timer_Compute_ES_Point = MPI_WTIME()
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-  !$ACC PRESENT( E, D, T, Y, Sigma )
-#endif
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    CALL ComputeNeutrinoOpacities_ES_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, Sigma(:,iX,iS) )
-
-  END DO
-  END DO
-
-  Timer_Compute_ES_Point = MPI_WTIME() - Timer_Compute_ES_Point
-
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE FROM( Sigma )
 #elif defined(THORNADO_OACC)
@@ -272,64 +221,20 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_NES = MPI_WTIME()
 
-  DO iS = 1, nSpecies
-
-    CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, 1, &
-             Phi_0_NES_In(:,:,:,iS), Phi_0_NES_Out(:,:,:,iS) )
-
-  END DO
+  CALL ComputeNeutrinoOpacities_NES_Points &
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 2, 1, &
+           Phi_0_NES_In(:,:,:,1), Phi_0_NES_Out(:,:,:,1), &
+           Phi_0_NES_In(:,:,:,2), Phi_0_NES_Out(:,:,:,2) )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
   ! --- Compute NES Opacities (Point) ---
-
-  Timer_Compute_NES_Point = MPI_WTIME()
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-  !$ACC PRESENT( E, D, T, Y, Phi_0_NES_In, Phi_0_NES_Out )
-#endif
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    CALL ComputeNeutrinoOpacities_NES_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
-             Phi_0_NES_In(:,:,iX,iS), Phi_0_NES_Out(:,:,iX,iS) )
-
-  END DO
-  END DO
-
-  Timer_Compute_NES_Point = MPI_WTIME() - Timer_Compute_NES_Point
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE FROM( Phi_0_NES_In, Phi_0_NES_Out )
 #elif defined(THORNADO_OACC)
   !$ACC UPDATE HOST( Phi_0_NES_In, Phi_0_NES_Out )
 #endif
-
-  ! --- Compute NES Opacities and Derivatives (Point) ---
-
-  Timer_Compute_NES_D_Point = MPI_WTIME()
-
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    CALL ComputeNeutrinoOpacitiesAndDerivatives_NES_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
-             Phi_0_NES_In     (:,:,iX,iS), &
-             Phi_0_NES_Out    (:,:,iX,iS), &
-             dPhi_0_NES_In_dY (:,:,iX,iS), &
-             dPhi_0_NES_In_dE (:,:,iX,iS), &
-             dPhi_0_NES_Out_dY(:,:,iX,iS), &
-             dPhi_0_NES_Out_dE(:,:,iX,iS) )
-
-  END DO
-  END DO
-
-  Timer_Compute_NES_D_Point = MPI_WTIME() - Timer_Compute_NES_D_Point
 
   ! --- Integrated NES Opacity ---
 
@@ -348,64 +253,18 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_Pair = MPI_WTIME()
 
-  DO iS = 1, nSpecies
-
-    CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, 1, &
-             Phi_0_Pair_In(:,:,:,iS), Phi_0_Pair_Out(:,:,:,iS) )
-
-  END DO
+  CALL ComputeNeutrinoOpacities_Pair_Points &
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 2, 1, &
+           Phi_0_Pair_In(:,:,:,1), Phi_0_Pair_Out(:,:,:,1), &
+           Phi_0_Pair_In(:,:,:,2), Phi_0_Pair_Out(:,:,:,2) )
 
   Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
-
-  ! --- Compute Pair Opacities (Point) ---
-
-  Timer_Compute_Pair_Point = MPI_WTIME()
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-  !$ACC PRESENT( E, D, T, Y, Phi_0_Pair_In, Phi_0_Pair_Out )
-#endif
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    CALL ComputeNeutrinoOpacities_Pair_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
-             Phi_0_Pair_In(:,:,iX,iS), Phi_0_Pair_Out(:,:,iX,iS) )
-
-  END DO
-  END DO
-
-  Timer_Compute_Pair_Point = MPI_WTIME() - Timer_Compute_Pair_Point
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE FROM( Phi_0_Pair_In, Phi_0_Pair_Out )
 #elif defined(THORNADO_OACC)
   !$ACC UPDATE HOST( Phi_0_Pair_In, Phi_0_Pair_Out )
 #endif
-
-  ! --- Compute Pair Opacities and Derivatives (Point) ---
-
-  Timer_Compute_Pair_D_Point = MPI_WTIME()
-
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    CALL ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point &
-           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
-             Phi_0_Pair_In     (:,:,iX,iS), &
-             Phi_0_Pair_Out    (:,:,iX,iS), &
-             dPhi_0_Pair_In_dY (:,:,iX,iS), &
-             dPhi_0_Pair_In_dE (:,:,iX,iS), &
-             dPhi_0_Pair_Out_dY(:,:,iX,iS), &
-             dPhi_0_Pair_Out_dE(:,:,iX,iS) )
-
-  END DO
-  END DO
-
-  Timer_Compute_Pair_D_Point = MPI_WTIME() - Timer_Compute_Pair_D_Point
 
   ! --- Integrated Pair Opacity ---
 
@@ -470,11 +329,8 @@ PROGRAM NeutrinoOpacities
   CALL FinalizeOpacities_TABLE
 
   Timer_Total &
-    = Timer_Compute_EC + Timer_Compute_EC_Point &
-      + Timer_Compute_ES + Timer_Compute_ES_Point &
-      + Timer_Compute_NES + Timer_Compute_NES_Point &
-      + Timer_Compute_NES_D_Point + Timer_Compute_Pair &
-      + Timer_Compute_Pair_Point + Timer_Compute_Pair_D_Point
+    = Timer_Compute_EC + Timer_Compute_ES &
+      + Timer_Compute_NES + Timer_Compute_Pair
 
   WRITE(*,*)
   WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadEos = ',       &
@@ -483,24 +339,12 @@ PROGRAM NeutrinoOpacities
     Timer_ReadOpacities
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_EC = ',    &
     Timer_Compute_EC, Timer_Compute_EC / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_EC (P) = ',    &
-    Timer_Compute_EC_Point, Timer_Compute_EC_Point / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES = ',    &
     Timer_Compute_ES, Timer_Compute_ES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES (P) = ',    &
-    Timer_Compute_ES_Point, Timer_Compute_ES_Point / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES = ',   &
     Timer_Compute_NES, Timer_Compute_NES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES (P) = ',   &
-    Timer_Compute_NES_Point, Timer_Compute_NES_Point / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES_D (P) = ',   &
-    Timer_Compute_NES_D_Point, Timer_Compute_NES_D_Point / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair = ',  &
     Timer_Compute_Pair, Timer_Compute_Pair / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair (P) = ',  &
-    Timer_Compute_Pair_Point, Timer_Compute_Pair_Point / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair_D (P) = ',   &
-    Timer_Compute_Pair_D_Point, Timer_Compute_Pair_D_Point / Timer_Total
   WRITE(*,*)
 
   CALL FinalizeDevice
