@@ -13,9 +13,9 @@ MDEFS =
 PP    = -D
 
 ifeq ($(USE_OMP),TRUE)
-  OPENMP = -mp
+  OPENMP = -mp=multicore
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -mp
+  OPENMP = -mp=gpu
 endif
 
 ifeq ($(USE_OACC),TRUE)

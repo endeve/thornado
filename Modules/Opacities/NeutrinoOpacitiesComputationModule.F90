@@ -152,15 +152,15 @@ CONTAINS
 
     kT = BoltzmannConstant * T
 
-    Mnu = ( Me + Mp ) - Mn
-
     IF ( iSpecies == iNuE ) THEN
-      f0 = FermiDirac( E, +Mnu, kT )
+      Mnu = ( Me + Mp ) - Mn
     ELSE IF ( iSpecies == iNuE_Bar ) THEN
-      f0 = FermiDirac( E, -Mnu, kT )
+      Mnu = Mn - ( Me + Mp )
     ELSE
-      f0 = FermiDirac( E, Zero, kT )
+      Mnu = Zero
     END IF
+
+    f0 = FermiDirac( E, Mnu, kT )
 
   END SUBROUTINE ComputeEquilibriumDistributions_Point
 
@@ -242,21 +242,15 @@ CONTAINS
 
       kT = BoltzmannConstant * T(iX)
 
-      Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
-
       IF ( iS == iNuE ) THEN
-
-        f0(iE,iX,iS) = FermiDirac( E(iE), + Mnu, kT )
-
+        Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
       ELSE IF ( iS == iNuE_Bar ) THEN
-
-        f0(iE,iX,iS) = FermiDirac( E(iE), - Mnu, kT )
-
+        Mnu = Mn(iX) - ( Me(iX) + Mp(iX) )
       ELSE
-
-        f0(iE,iX,iS) = FermiDirac( E(iE),  Zero, kT )
-
+        Mnu = Zero
       END IF
+
+      f0(iE,iX,iS) = FermiDirac( E(iE), Mnu, kT )
 
     END DO
     END DO
@@ -541,15 +535,15 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP IF( do_gpu ) &
-    !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY )
+    !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRIVATE( kT, Mnu, dMnudT, dMnudY ) &
+    !$ACC PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T ) &
     !$ACC PRESENT( f0, df0dY, df0dU, E, T, dUdT, dUdY )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY )
+    !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #endif
     DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
@@ -557,23 +551,23 @@ CONTAINS
 
       kT = BoltzmannConstant * T(iX)
 
-      Mnu    = ( Me   (iX) + Mp   (iX) ) - Mn   (iX)
-      dMnudT = ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX)
-      dMnudY = ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX)
-
       IF ( iS == iNuE ) THEN
-        f0(iE,iX,iS) = FermiDirac   ( E(iE), +Mnu, kT )
-        df0dT_Y      = dFermiDiracdT( E(iE), +Mnu, kT, +dMnudT, T(iX) ) ! Constant T
-        df0dY_T      = dFermiDiracdY( E(iE), +Mnu, kT, +dMnudY, T(iX) ) ! Constant Y
+        Mnu    = ( Me   (iX) + Mp   (iX) ) - Mn   (iX)
+        dMnudT = ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX)
+        dMnudY = ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX)
       ELSE IF ( iS == iNuE_Bar ) THEN
-        f0(iE,iX,iS) = FermiDirac   ( E(iE), -Mnu, kT )
-        df0dT_Y      = dFermiDiracdT( E(iE), -Mnu, kT, -dMnudT, T(iX) ) ! Constant T
-        df0dY_T      = dFermiDiracdY( E(iE), -Mnu, kT, -dMnudY, T(iX) ) ! Constant Y
+        Mnu    = Mn   (iX) - ( Me   (iX) + Mp   (iX) )
+        dMnudT = dMndT(iX) - ( dMedT(iX) + dMpdT(iX) )
+        dMnudY = dMndY(iX) - ( dMedY(iX) + dMpdY(iX) )
       ELSE
-        f0(iE,iX,iS) = FermiDirac   ( E(iE), Zero, kT )
-        df0dT_Y      = dFermiDiracdT( E(iE), Zero, kT, Zero, T(iX) ) ! Constant T
-        df0dY_T      = dFermiDiracdY( E(iE), Zero, kT, Zero, T(iX) ) ! Constant Y
+        Mnu    = Zero
+        dMnudT = Zero
+        dMnudY = Zero
       END IF
+
+      f0(iE,iX,iS) = FermiDirac   ( E(iE), Mnu, kT )
+      df0dT_Y      = dFermiDiracdT( E(iE), Mnu, kT, dMnudT, T(iX) ) ! Constant T
+      df0dY_T      = dFermiDiracdY( E(iE), Mnu, kT, dMnudY, T(iX) ) ! Constant Y
 
       df0dU(iE,iX,iS) = df0dT_Y / dUdT(iX)
       df0dY(iE,iX,iS) = df0dY_T - df0dU(iE,iX,iS) * dUdY(iX)
@@ -1299,7 +1293,6 @@ CONTAINS
     REAL(DP), INTENT(out) :: J2(:,:,:)
 
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2
-    REAL(DP) :: kT, DetBal
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
