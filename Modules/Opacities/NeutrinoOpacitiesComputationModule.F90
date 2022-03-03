@@ -1244,7 +1244,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
-    !$ACC PRESENT( H1, H2, Eta, Chi, W2, J, C1, C2 )
+    !$ACC PRESENT( H1, H2, Eta, Chi, W2, J, J0, C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out )
@@ -1457,7 +1457,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
-    !$ACC PRESENT( H1, H2, Eta, Chi, W2, J, C1, C2 )
+    !$ACC PRESENT( J1, J2, Eta, Chi, W2, J, J0, C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann )
@@ -1657,7 +1657,7 @@ CONTAINS
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
     !$ACC PRESENT( S_Sigma, Eta, Chi, W2, J )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
