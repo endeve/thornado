@@ -14,21 +14,11 @@ MODULE MF_TimeSteppingModule_SSPRK
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, &
-    nNodesX
+    nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
   USE MeshModule, ONLY: &
     MeshX
-  USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
-  USE Euler_MeshRefinementModule, ONLY: &
-    LX_X1_Dn_1D, &
-    LX_X1_Up_1D, &
-    LX_X2_Dn_1D, &
-    LX_X2_Up_1D, &
-    LX_X3_Dn_1D, &
-    LX_X3_Up_1D
 
   ! --- Local Modules ---
 
@@ -297,12 +287,7 @@ CONTAINS
                dX3 => MeshX(3) % Width )
 
     CALL FluxRegister( iLevel ) &
-           % reflux_dg &
-               ( MF_D(iLevel-1), nCF, nDOFX, nNodesX, &
-                 WeightsX_q, dX1, dX2, dX3, &
-                 LX_X1_Dn_1D, LX_X1_Up_1D, &
-                 LX_X2_Dn_1D, LX_X2_Up_1D, &
-                 LX_X3_Dn_1D, LX_X3_Up_1D )
+           % reflux_dg( MF_D(iLevel-1), nCF, dX1, dX2, dX3 )
 
     END ASSOCIATE
 
