@@ -6,7 +6,8 @@ PROGRAM NeutrinoOpacities
     Gram, &
     Centimeter, &
     Kelvin, &
-    MeV
+    MeV, &
+    BoltzmannConstant
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -21,14 +22,15 @@ PROGRAM NeutrinoOpacities
     FinalizeEquationOfState_TABLE
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
-    FinalizeOpacities_TABLE
+    FinalizeOpacities_TABLE, &
+    C1, C2
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeNeutrinoOpacities_EC_Points, &
-    ComputeNeutrinoOpacities_ES_Points, &
-    ComputeNeutrinoOpacities_NES_Points, &
-    ComputeNeutrinoOpacities_Pair_Points
+    ComputeNeutrinoOpacities_EC, &
+    ComputeNeutrinoOpacities_ES, &
+    ComputeNeutrinoOpacities_NES, &
+    ComputeNeutrinoOpacities_Pair
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -51,35 +53,36 @@ PROGRAM NeutrinoOpacities
     Unit_E     = MeV, &
     Unit_Chi   = 1.0_DP / Centimeter, &
     Unit_Sigma = 1.0_DP / Centimeter, &
+    UnitNES    = 1.0_DP / ( Centimeter * MeV**3 ), &
+    UnitPair   = 1.0_DP / ( Centimeter * MeV**3 ), &
     eL         = 0.0e0_DP * Unit_E, &
     eR         = 3.0e2_DP * Unit_E, &
     ZoomE      = 1.183081754893913_DP
 
   INTEGER :: &
-    mpierr, iE, iX, iS, iNodeE, iN_E
+    mpierr, iE, iX, iS, iNodeE, iN_E, iE1, iE2
   REAL(DP) :: &
+    kT, DetBal, &
     Timer_ReadEos, &
     Timer_ReadOpacities, &
     Timer_Compute_EC, &
     Timer_Compute_ES, &
     Timer_Compute_NES, &
     Timer_Compute_Pair, &
-    Timer_Compute_Pair_D_Point, &
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
     D, T, Y
   REAL(DP), DIMENSION(nPointsE) :: &
-    E, dE
+    E, dE, &
+    Phi_0_In, Phi_0_Out
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
     Chi, &     ! --- Absorption Opacity
     Sigma, &   ! --- Scattering Opacity (Isoenergetic)
     Chi_NES, & ! --- Integrated NES Opacity
     Chi_Pair   ! --- Integrated Pair Opacity
-  REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX,nSpecies) :: &
-    Phi_0_NES_In,   dPhi_0_NES_In_dY,   dPhi_0_NES_In_dE, &
-    Phi_0_NES_Out,  dPhi_0_NES_Out_dY,  dPhi_0_NES_Out_dE, &
-    Phi_0_Pair_In,  dPhi_0_Pair_In_dY,  dPhi_0_Pair_In_dE, &
-    Phi_0_Pair_Out, dPhi_0_Pair_Out_dY, dPhi_0_Pair_Out_dE
+  REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
+    H1, H2, &  ! --- NES  Scattering Functions
+    J1, J2     ! --- Pair Scattering Functions
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -169,28 +172,22 @@ PROGRAM NeutrinoOpacities
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y ) &
   !$OMP MAP( alloc: Chi, Chi_NES, Chi_Pair, Sigma, &
-  !$OMP             Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+  !$OMP             H1, H2, J1, J2 )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y ) &
   !$ACC CREATE( Chi, Chi_NES, Chi_Pair, Sigma, &
-  !$ACC         Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+  !$ACC         H1, H2, J1, J2 )
 #endif
 
   ! --- Compute Electron Capture Opacities ---
 
   Timer_Compute_EC = MPI_WTIME()
 
-  DO iS = 1, nSpecies
-
-    CALL ComputeNeutrinoOpacities_EC_Points &
-           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, Chi(:,:,iS) )
-
-  END DO
+  CALL ComputeNeutrinoOpacities_EC &
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, Chi )
 
   Timer_Compute_EC = MPI_WTIME() - Timer_Compute_EC
-
-  ! --- Compute Electron Capture Opacities (Point) ---
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE FROM( Chi )
@@ -202,12 +199,8 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_ES = MPI_WTIME()
 
-  DO iS = 1, nSpecies
-
-    CALL ComputeNeutrinoOpacities_ES_Points &
-           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, iS, 1, Sigma(:,:,iS) )
-
-  END DO
+  CALL ComputeNeutrinoOpacities_ES &
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, 1, Sigma )
 
   Timer_Compute_ES = MPI_WTIME() - Timer_Compute_ES
 
@@ -221,31 +214,42 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_NES = MPI_WTIME()
 
-  CALL ComputeNeutrinoOpacities_NES_Points &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 2, 1, &
-           Phi_0_NES_In(:,:,:,1), Phi_0_NES_Out(:,:,:,1), &
-           Phi_0_NES_In(:,:,:,2), Phi_0_NES_Out(:,:,:,2) )
+  CALL ComputeNeutrinoOpacities_NES &
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, H1, H2 )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
-  ! --- Compute NES Opacities (Point) ---
-
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( Phi_0_NES_In, Phi_0_NES_Out )
+  !$OMP TARGET UPDATE FROM( H1, H2 )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( Phi_0_NES_In, Phi_0_NES_Out )
+  !$ACC UPDATE HOST( H1, H2 )
 #endif
 
   ! --- Integrated NES Opacity ---
 
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
-  DO iE = 1, nPointsE
 
-    Chi_NES(iE,iX,iS) &
-      = TRAPEZ( nPointsE, E, Phi_0_NES_Out(:,iE,iX,iS) * E**2 )
+    kT = BoltzmannConstant * T(iX)
 
-  END DO
+    DO iE2 = 1, nPointsE
+
+      DO iE1 = 1, nPointsE
+        DetBal = EXP( - ABS( E(iE2) - E(iE1) ) / kT )
+        IF ( iE1 <= iE2 ) THEN
+          Phi_0_Out(iE1) = ( C1(iS) * H1(iE1,iE2,iX) + C2(iS) * H2(iE1,iE2,iX) ) * UnitNES
+          Phi_0_In (iE1) = Phi_0_Out(iE1) * DetBal
+        ELSE
+          Phi_0_In (iE1) = ( C1(iS) * H1(iE2,iE1,iX) + C2(iS) * H2(iE2,iE1,iX) ) * UnitNES
+          Phi_0_Out(iE1) = Phi_0_In (iE1) * DetBal
+        END IF
+      END DO
+
+      Chi_NES(iE2,iX,iS) &
+        = TRAPEZ( nPointsE, E, Phi_0_Out * E**2 )
+
+    END DO
+
   END DO
   END DO
 
@@ -253,29 +257,42 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_Pair = MPI_WTIME()
 
-  CALL ComputeNeutrinoOpacities_Pair_Points &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, 2, 1, &
-           Phi_0_Pair_In(:,:,:,1), Phi_0_Pair_Out(:,:,:,1), &
-           Phi_0_Pair_In(:,:,:,2), Phi_0_Pair_Out(:,:,:,2) )
+  CALL ComputeNeutrinoOpacities_Pair &
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, J1, J2 )
 
   Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( Phi_0_Pair_In, Phi_0_Pair_Out )
+  !$OMP TARGET UPDATE FROM( J1, J2 )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( Phi_0_Pair_In, Phi_0_Pair_Out )
+  !$ACC UPDATE HOST( J1, J2 )
 #endif
 
   ! --- Integrated Pair Opacity ---
 
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
-  DO iE = 1, nPointsE
 
-    Chi_Pair(iE,iX,iS) &
-      = TRAPEZ( nPointsE, E, Phi_0_Pair_In(:,iE,iX,iS) * E**2 )
+    kT = BoltzmannConstant * T(iX)
 
-  END DO
+    DO iE2 = 1, nPointsE
+
+      DO iE1 = 1, nPointsE
+        DetBal = EXP( - ABS( E(iE2) + E(iE1) ) / kT )
+        IF ( iE1 <= iE2 ) THEN
+          Phi_0_Out(iE1) = ( C1(iS) * J1(iE1,iE2,iX) + C2(iS) * J2(iE1,iE2,iX) ) * UnitPair
+          Phi_0_In (iE1) = Phi_0_Out(iE1) * DetBal
+        ELSE
+          Phi_0_In (iE1) = ( C1(iS) * J2(iE2,iE1,iX) + C2(iS) * J1(iE2,iE1,iX) ) * UnitPair
+          Phi_0_Out(iE1) = Phi_0_In (iE1) * DetBal
+        END IF
+      END DO
+
+      Chi_Pair(iE2,iX,iS) &
+        = TRAPEZ( nPointsE, E, Phi_0_In * E**2 )
+
+    END DO
+
   END DO
   END DO
 
@@ -283,12 +300,12 @@ PROGRAM NeutrinoOpacities
   !$OMP TARGET EXIT DATA &
   !$OMP MAP( release: E, D, T, Y, &
   !$OMP               Chi, Chi_NES, Chi_Pair, Sigma, &
-  !$OMP               Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+  !$OMP               H1, H2, J1, J2 )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC DELETE( E, D, T, Y, &
   !$ACC         Chi, Chi_NES, Chi_Pair, Sigma, &
-  !$ACC         Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+  !$ACC         H1, H2, J1, J2 )
 #endif
 
   CALL WriteVector &
@@ -319,10 +336,10 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Chi_Pair(:,1,iNuE_Bar) / Unit_Chi, 'Chi_Pair_NuE_Bar.dat' )
 
   CALL WriteMatrix &
-         ( nPointsE, nPointsE, Phi_0_NES_Out (:,:,1,1), 'Phi_0_NES_Out.dat'  )
+         ( nPointsE, nPointsE, H1(:,:,1), 'H1.dat'  )
 
   CALL WriteMatrix &
-         ( nPointsE, nPointsE, Phi_0_Pair_Out(:,:,1,1), 'Phi_0_Pair_Out.dat' )
+         ( nPointsE, nPointsE, J1(:,:,1), 'J1.dat' )
 
   CALL FinalizeEquationOfState_TABLE
 
