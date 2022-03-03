@@ -1703,32 +1703,6 @@ CONTAINS
     END DO
     END DO
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( SUM1, SUM2 )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( SUM1, SUM2 ) &
-      !$ACC PRESENT( Phi_0_Ann, Phi_0_Pro, Eta, Chi, W2, J )
-#endif
-      DO iX = iX_B, iX_E
-        DO iE2 = iE_B, iE_E
-
-          SUM1 = Zero
-          DO iE1 = iE_B, iE_E
-            SUM1 = SUM1 + Phi_0_Pro(iE1,iE2,iX) * W2(iE1) * ( One - J(iE1,iX) )
-          END DO
-          Eta(iE2,iX) = SUM1
-
-          SUM2 = Zero
-          DO iE1 = iE_B, iE_E
-            SUM2 = SUM2 + Phi_0_Ann(iE1,iE2,iX) * W2(iE1) * J(iE1,iX)
-          END DO
-          Chi(iE2,iX) = SUM1 + SUM2
-
-        END DO
-      END DO
-
   END SUBROUTINE ComputeNeutrinoOpacityRates_Brem
 
   
