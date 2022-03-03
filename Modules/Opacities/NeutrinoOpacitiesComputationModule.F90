@@ -40,6 +40,8 @@ MODULE NeutrinoOpacitiesComputationModule
 #endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     C1, C2
+  USE RadiationFieldsModule, ONLY: &
+    iNuE, iNuE_Bar
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -49,16 +51,9 @@ MODULE NeutrinoOpacitiesComputationModule
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_4D_Custom, &
-    LogInterpolateSingleVariable_4D_Custom_Point, &
     LogInterpolateSingleVariable_1D3D_Custom, &
-    LogInterpolateSingleVariable_1D3D_Custom_Point, &
-    LogInterpolateSingleVariable_2D2D_Custom, &
-    LogInterpolateSingleVariable_4D_Custom, &
-    LogInterpolateSingleVariable_2D2D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
-    LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
-    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point, &
-    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P
+    SumLogInterpolateSingleVariable_2D2D_Custom_Aligned
 
   ! ----------------------------------------------
 
@@ -364,8 +359,8 @@ CONTAINS
       N_K = Zero
 
       DO iNodeE = 1, nDOFE
-        V_K = V_K + WeightsE(iNodeE) * E_Q(iNodeE,iE,iS)**2
-        N_K = N_K + WeightsE(iNodeE) * E_Q(iNodeE,iE,iS)**2 * f0_Q(iNodeE,iE,iX,iS)
+        V_K = V_K + WeightsE(iNodeE) * E_Q(iNodeE,iE)**2
+        N_K = N_K + WeightsE(iNodeE) * E_Q(iNodeE,iE)**2 * f0_Q(iNodeE,iE,iX,iS)
       END DO
 
       f0_K(iE,iX,iS) = N_K / V_K
@@ -568,20 +563,20 @@ CONTAINS
 
       IF ( iS == iNuE ) THEN
         f0(iE,iX,iS) = FermiDirac   ( E(iE), +Mnu, kT )
-        df0dT_Y      = dFermiDiracdT( E(iE), +Mnu, kT, +dMnudT, T ) ! Constant T
-        df0dY_T      = dFermiDiracdY( E(iE), +Mnu, kT, +dMnudY, T ) ! Constant Y
+        df0dT_Y      = dFermiDiracdT( E(iE), +Mnu, kT, +dMnudT, T(iX) ) ! Constant T
+        df0dY_T      = dFermiDiracdY( E(iE), +Mnu, kT, +dMnudY, T(iX) ) ! Constant Y
       ELSE IF ( iS == iNuE_Bar ) THEN
         f0(iE,iX,iS) = FermiDirac   ( E(iE), -Mnu, kT )
-        df0dT_Y      = dFermiDiracdT( E(iE), -Mnu, kT, -dMnudT, T ) ! Constant T
-        df0dY_T      = dFermiDiracdY( E(iE), -Mnu, kT, -dMnudY, T ) ! Constant Y
+        df0dT_Y      = dFermiDiracdT( E(iE), -Mnu, kT, -dMnudT, T(iX) ) ! Constant T
+        df0dY_T      = dFermiDiracdY( E(iE), -Mnu, kT, -dMnudY, T(iX) ) ! Constant Y
       ELSE
         f0(iE,iX,iS) = FermiDirac   ( E(iE), Zero, kT )
-        df0dT_Y      = dFermiDiracdT( E(iE), Zero, kT, Zero, T ) ! Constant T
-        df0dY_T      = dFermiDiracdY( E(iE), Zero, kT, Zero, T ) ! Constant Y
+        df0dT_Y      = dFermiDiracdT( E(iE), Zero, kT, Zero, T(iX) ) ! Constant T
+        df0dY_T      = dFermiDiracdY( E(iE), Zero, kT, Zero, T(iX) ) ! Constant Y
       END IF
 
       df0dU(iE,iX,iS) = df0dT_Y / dUdT(iX)
-      df0dY(iE,iX,iS) = df0dY_T - df0dU(iE,iX) * dUdY(iX)
+      df0dY(iE,iX,iS) = df0dY_T - df0dU(iE,iX,iS) * dUdY(iX)
 
     END DO
     END DO
@@ -744,7 +739,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Y(:)
     REAL(DP), INTENT(out) :: opEC(:,:)
 
-    INTEGER  :: iP
+    INTEGER  :: iP, iS
     REAL(DP) :: LogE_P(iP_B:iP_E), LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     LOGICAL  :: do_gpu
 
@@ -965,7 +960,7 @@ CONTAINS
 
   
   SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
-    ( iP_B, iP_E, iS_B, iS_E, E, D, T, Y, iMoment, opES_Points )
+    ( iP_B, iP_E, iS_B, iS_E, E, D, T, Y, iMoment, opES )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
     ! --- Modified by Sherwood Richers to take in particle data ---
@@ -1135,21 +1130,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu ) &
-    !$OMP PRIVATE( kT )
+    !$OMP IF( do_gpu )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRIVATE( kT ) &
     !$ACC PRESENT( T, LogT_P, LogEta_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
     DO iX = iX_B, iX_E
       LogT_P(iX) = LOG10( T(iX) / UnitT )
-
-      kT = BoltzmannConstant * T(iX)
-      LogEta_P(iX) = LOG10( LogEta_P(iX) / kT / UnitEta )
+      LogEta_P(iX) = LOG10( LogEta_P(iX) / ( BoltzmannConstant * T(iX) ) / UnitEta )
     END DO
 
     ! --- Interpolate HI  ---
@@ -1300,7 +1291,6 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    INTEGER,  INTENT(in)  :: iS_B, iS_E
     REAL(DP), INTENT(in)  :: D(:)
     REAL(DP), INTENT(in)  :: T(:)
     REAL(DP), INTENT(in)  :: Y(:)
@@ -1421,7 +1411,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_Pair &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, J1, J2 Eta, Chi )
+    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, J1, J2, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -1636,8 +1626,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: J      (:,:,:)
     REAL(DP), INTENT(in)  :: J0     (:,:,:)
     REAL(DP), INTENT(in)  :: S_Sigma(:,:,:)
-    REAL(DP), INTENT(out) :: Eta    (:,:)
-    REAL(DP), INTENT(out) :: Chi    (:,:)
+    REAL(DP), INTENT(out) :: Eta    (:,:,:)
+    REAL(DP), INTENT(out) :: Chi    (:,:,:)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
