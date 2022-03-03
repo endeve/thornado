@@ -74,7 +74,8 @@ PROGRAM NeutrinoOpacities
     D, T, Y
   REAL(DP), DIMENSION(nPointsE) :: &
     E, dE, &
-    Phi_0_In, Phi_0_Out
+    Phi_0_In , Phi_0_Out, &
+    Phi_0_Pro, Phi_0_Ann
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
     Chi, &     ! --- Absorption Opacity
     Sigma, &   ! --- Scattering Opacity (Isoenergetic)
@@ -280,16 +281,15 @@ PROGRAM NeutrinoOpacities
       DO iE1 = 1, nPointsE
         DetBal = EXP( - ABS( E(iE2) + E(iE1) ) / kT )
         IF ( iE1 <= iE2 ) THEN
-          Phi_0_Out(iE1) = ( C1(iS) * J1(iE1,iE2,iX) + C2(iS) * J2(iE1,iE2,iX) ) * UnitPair
-          Phi_0_In (iE1) = Phi_0_Out(iE1) * DetBal
+          Phi_0_Ann(iE1) = ( C1(iS) * J1(iE1,iE2,iX) + C2(iS) * J2(iE1,iE2,iX) ) * UnitPair
         ELSE
-          Phi_0_In (iE1) = ( C1(iS) * J2(iE2,iE1,iX) + C2(iS) * J1(iE2,iE1,iX) ) * UnitPair
-          Phi_0_Out(iE1) = Phi_0_In (iE1) * DetBal
+          Phi_0_Ann(iE1) = ( C1(iS) * J2(iE2,iE1,iX) + C2(iS) * J1(iE2,iE1,iX) ) * UnitPair
         END IF
+        Phi_0_Pro(iE1) = Phi_0_Ann(iE1) * DetBal
       END DO
 
       Chi_Pair(iE2,iX,iS) &
-        = TRAPEZ( nPointsE, E, Phi_0_In * E**2 )
+        = TRAPEZ( nPointsE, E, Phi_0_Pro * E**2 )
 
     END DO
 
