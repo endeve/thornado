@@ -27,6 +27,8 @@ PROGRAM NeutrinoOpacities
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar
   USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeEquilibriumDistributions, &
+    ComputeEquilibriumDistributions_DG, &
     ComputeNeutrinoOpacities_EC, &
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
@@ -77,6 +79,8 @@ PROGRAM NeutrinoOpacities
     Phi_0_In , Phi_0_Out, &
     Phi_0_Pro, Phi_0_Ann
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
+    f0, &      ! --- Equilibrium Distribution
+    f0_DG, &   ! --- Equilibrium Distribution (DG Approximation)
     Chi, &     ! --- Absorption Opacity
     Sigma, &   ! --- Scattering Opacity (Isoenergetic)
     Chi_NES, & ! --- Integrated NES Opacity
@@ -129,16 +133,12 @@ PROGRAM NeutrinoOpacities
 
   ! --- Energy Grid ---
 
-  !dE(1:3) = 2.0_DP * Unit_E
-  !DO iE = 4, nPointsE
-  !  dE(iE) = 1.095_DP * dE(iE-1)
-  !END DO
-
   DO iN_E = 1, nPointsE
     iE      = MOD( (iN_E-1) / nNodes, nE     ) + 1
     iNodeE  = MOD( (iN_E-1)         , nNodes ) + 1
     E(iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
-    WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') '','E(',iN_E,') [MeV] = ', E(iN_E) / Unit_E
+    WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') &
+      '', 'E(',iN_E,') [MeV] = ', E(iN_E) / Unit_E
   END DO
 
   ! --- Initialize Equation of State ---
@@ -181,6 +181,16 @@ PROGRAM NeutrinoOpacities
   !$ACC         H1, H2, J1, J2 )
 #endif
 
+  ! --- Compute Equilibrium Distributions ---
+
+  CALL ComputeEquilibriumDistributions &
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, f0 )
+
+  ! --- Compute Equilibrium Distributions (DG) ---
+
+  CALL ComputeEquilibriumDistributions &
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, f0_DG )
+  
   ! --- Compute Electron Capture Opacities ---
 
   Timer_Compute_EC = MPI_WTIME()
@@ -310,6 +320,15 @@ PROGRAM NeutrinoOpacities
 
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, f0   (:,1,iNuE    ), 'f0_NuE.dat'        )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, f0   (:,1,iNuE_Bar), 'f0_NuE_Bar.dat'    )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, f0_DG(:,1,iNuE    ), 'f0_DG_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, f0_DG(:,1,iNuE_Bar), 'f0_DG_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, Chi(:,1,iNuE) / Unit_Chi, 'Chi_NuE.dat' )
