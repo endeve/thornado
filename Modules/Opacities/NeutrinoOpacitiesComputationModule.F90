@@ -1064,7 +1064,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_NES &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, H1, H2 )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, H_I, H_II )
 
     ! --- Neutrino-Electron Scattering Opacities (Multiple D,T,Y) ---
 
@@ -1074,15 +1074,15 @@ CONTAINS
     REAL(DP), INTENT(in)  :: T(:)
     REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: H1(:,:,:)
-    REAL(DP), INTENT(out) :: H2(:,:,:)
+    REAL(DP), INTENT(out) :: H_I (:,:,:)
+    REAL(DP), INTENT(out) :: H_II(:,:,:)
 
-    INTEGER  :: iX, iE1, iE2, iH1, iH2
+    INTEGER  :: iX, iE1, iE2, iH_I, iH_II
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( D, T, Y ) &
-       .AND. QueryOnGPU( H1, H2 )
+       .AND. QueryOnGPU( H_I, H_II )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
       WRITE(*,*) &
@@ -1095,17 +1095,17 @@ CONTAINS
         WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   T missing'
       IF ( .not. QueryOnGPU( Y ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   Y missing'
-      IF ( .not. QueryOnGPU( H1 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   H1 missing'
-      IF ( .not. QueryOnGPU( H2 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   H2 missing'
+      IF ( .not. QueryOnGPU( H_I ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   H_I missing'
+      IF ( .not. QueryOnGPU( H_II ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   H_II missing'
     END IF
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    iH1 = ( iMoment - 1 ) * 2 + 1
-    iH2 = ( iMoment - 1 ) * 2 + 2
+    iH_I  = ( iMoment - 1 ) * 2 + 1
+    iH_II = ( iMoment - 1 ) * 2 + 2
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1141,14 +1141,14 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_NES(1,iH1), NES_AT(:,:,:,:,iH1,1), H1, &
+             OS_NES(1,iH_I), NES_AT(:,:,:,:,iH_I,1), H_I, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
     ! --- Interpolate HII ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_NES(1,iH2), NES_AT(:,:,:,:,iH2,1), H2, &
+             OS_NES(1,iH_II), NES_AT(:,:,:,:,iH_II,1), H_II, &
              GPU_Option = do_gpu, ASYNC_Option = 1  )
 
 #if defined(THORNADO_OMP_OL)
@@ -1171,15 +1171,15 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( H1, H2 )
+    !$ACC PRESENT( H_I, H_II )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX = iX_B, iX_E
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE_E
-      H1(iE1,iE2,iX) = Zero
-      H2(iE1,iE2,iX) = Zero
+      H_I (iE1,iE2,iX) = Zero
+      H_II(iE1,iE2,iX) = Zero
     END DO
     END DO
     END DO
@@ -1190,20 +1190,20 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NES &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, H1, H2, Eta, Chi )
+    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, H_I, H_II, Eta, Chi )
 
     ! --- Neutrino-Electron Scattering Rates (Multiple J) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: W2 (:)
-    REAL(DP), INTENT(in)  :: J  (:,:,:)
-    REAL(DP), INTENT(in)  :: J0 (:,:,:)
-    REAL(DP), INTENT(in)  :: H1 (:,:,:)
-    REAL(DP), INTENT(in)  :: H2 (:,:,:)
-    REAL(DP), INTENT(out) :: Eta(:,:,:)
-    REAL(DP), INTENT(out) :: Chi(:,:,:)
+    REAL(DP), INTENT(in)  :: W2  (:)
+    REAL(DP), INTENT(in)  :: J   (:,:,:)
+    REAL(DP), INTENT(in)  :: J0  (:,:,:)
+    REAL(DP), INTENT(in)  :: H_I (:,:,:)
+    REAL(DP), INTENT(in)  :: H_II(:,:,:)
+    REAL(DP), INTENT(out) :: Eta (:,:,:)
+    REAL(DP), INTENT(out) :: Chi (:,:,:)
 
     REAL(DP) :: DetBal, Phi_Out, Phi_In
     REAL(DP) :: SUM1, SUM2
@@ -1211,7 +1211,7 @@ CONTAINS
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( W2 ) &
-       .AND. QueryOnGPU( J, J0, Eta, Chi, H1, H2 )
+       .AND. QueryOnGPU( J, J0, Eta, Chi, H_I, H_II )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
       WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES] Data not present on device'
@@ -1225,10 +1225,10 @@ CONTAINS
         WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   Eta missing'
       IF ( .not. QueryOnGPU( Chi ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   Chi missing'
-      IF ( .not. QueryOnGPU( H1 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   H1 missing'
-      IF ( .not. QueryOnGPU( H2 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   H2 missing'
+      IF ( .not. QueryOnGPU( H_I ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   H_I missing'
+      IF ( .not. QueryOnGPU( H_II ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   H_II missing'
     END IF
 #endif
 
@@ -1238,7 +1238,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
-    !$ACC PRESENT( H1, H2, Eta, Chi, W2, J, J0, C1, C2 )
+    !$ACC PRESENT( H_I, H_II, Eta, Chi, W2, J, J0, C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out )
@@ -1256,10 +1256,10 @@ CONTAINS
                  / ( J0(iE1,iX,iS) * ( One - J0(iE2,iX,iS) ) )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_Out = ( C1(iS) * H1(iE1,iE2,iX) + C2(iS) * H2(iE1,iE2,iX) ) * UnitNES
+          Phi_Out = ( C1(iS) * H_I(iE1,iE2,iX) + C2(iS) * H_II(iE1,iE2,iX) ) * UnitNES
           Phi_In  = Phi_Out * DetBal
         ELSE
-          Phi_In  = ( C1(iS) * H1(iE2,iE1,iX) + C2(iS) * H2(iE2,iE1,iX) ) * UnitNES
+          Phi_In  = ( C1(iS) * H_I(iE2,iE1,iX) + C2(iS) * H_II(iE2,iE1,iX) ) * UnitNES
           Phi_Out = Phi_In / DetBal
         END IF
 
@@ -1279,7 +1279,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, J1, J2 )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, J_I, J_II )
 
     ! --- Pair Opacities (Multiple D,T,Y) ---
 
@@ -1289,15 +1289,15 @@ CONTAINS
     REAL(DP), INTENT(in)  :: T(:)
     REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: J1(:,:,:)
-    REAL(DP), INTENT(out) :: J2(:,:,:)
+    REAL(DP), INTENT(out) :: J_I (:,:,:)
+    REAL(DP), INTENT(out) :: J_II(:,:,:)
 
-    INTEGER  :: iX, iE1, iE2, iJ1, iJ2
+    INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( D, T, Y ) &
-       .AND. QueryOnGPU( J1, J2 )
+       .AND. QueryOnGPU( J_I, J_II )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
       WRITE(*,*) '[ComputeNeutrinoOpacities_Pair] Data not present on device'
@@ -1309,17 +1309,17 @@ CONTAINS
         WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   T missing'
       IF ( .not. QueryOnGPU( Y ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   Y missing'
-      IF ( .not. QueryOnGPU( J1 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   J1 missing'
-      IF ( .not. QueryOnGPU( J2 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   J2 missing'
+      IF ( .not. QueryOnGPU( J_I ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   J_I missing'
+      IF ( .not. QueryOnGPU( J_II ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   J_II missing'
     END IF
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    iJ1 = ( iMoment - 1 ) * 2 + 1
-    iJ2 = ( iMoment - 1 ) * 2 + 2
+    iJ_I  = ( iMoment - 1 ) * 2 + 1
+    iJ_II = ( iMoment - 1 ) * 2 + 2
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1355,14 +1355,14 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_Pair(1,iJ1), Pair_AT(:,:,:,:,iJ1,1), J1, &
+             OS_Pair(1,iJ_I), Pair_AT(:,:,:,:,iJ_I,1), J_I, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
     ! --- Interpolate JII ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_Pair(1,iJ2), Pair_AT(:,:,:,:,iJ2,1), J2, &
+             OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
 #if defined(THORNADO_OMP_OL)
@@ -1385,15 +1385,15 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( J1, J2)
+    !$ACC PRESENT( J_I, J_II)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX = iX_B, iX_E
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE_E
-      J1(iE1,iE2,iX) = Zero
-      J2(iE1,iE2,iX) = Zero
+      J_I (iE1,iE2,iX) = Zero
+      J_II(iE1,iE2,iX) = Zero
     END DO
     END DO
     END DO
@@ -1404,7 +1404,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_Pair &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, J1, J2, Eta, Chi )
+    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, J_I, J_II, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -1412,12 +1412,12 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     REAL(DP), INTENT(in)  :: W2 (:)
-    REAL(DP), INTENT(in)  :: J  (:,:,:)
-    REAL(DP), INTENT(in)  :: J0 (:,:,:)
-    REAL(DP), INTENT(in)  :: J1 (:,:,:)
-    REAL(DP), INTENT(in)  :: J2 (:,:,:)
-    REAL(DP), INTENT(out) :: Eta(:,:,:)
-    REAL(DP), INTENT(out) :: Chi(:,:,:)
+    REAL(DP), INTENT(in)  :: J   (:,:,:)
+    REAL(DP), INTENT(in)  :: J0  (:,:,:)
+    REAL(DP), INTENT(in)  :: J_I (:,:,:)
+    REAL(DP), INTENT(in)  :: J_II(:,:,:)
+    REAL(DP), INTENT(out) :: Eta (:,:,:)
+    REAL(DP), INTENT(out) :: Chi (:,:,:)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
@@ -1425,7 +1425,7 @@ CONTAINS
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( W2 ) &
-       .AND. QueryOnGPU( J, J0, Eta, Chi, J1, J2 )
+       .AND. QueryOnGPU( J, J0, Eta, Chi, J_I, J_II )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
       WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair] Data not present on device'
@@ -1450,7 +1450,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
-    !$ACC PRESENT( J1, J2, Eta, Chi, W2, J, J0, C1, C2 )
+    !$ACC PRESENT( J_I, J_II, Eta, Chi, W2, J, J0, C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann )
@@ -1471,9 +1471,9 @@ CONTAINS
                  / ( ( One - J0(iE2,iX,iS) ) * ( One - J0(iE1,iX,iS_A) ) )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_0_Ann = ( C1(iS) * J1(iE1,iE2,iX) + C2(iS) * J2(iE1,iE2,iX) ) * UnitPair
+          Phi_0_Ann = ( C1(iS) * J_I (iE1,iE2,iX) + C2(iS) * J_II(iE1,iE2,iX) ) * UnitPair
         ELSE
-          Phi_0_Ann = ( C1(iS) * J2(iE2,iE1,iX) + C2(iS) * J1(iE2,iE1,iX) ) * UnitPair
+          Phi_0_Ann = ( C1(iS) * J_II(iE2,iE1,iX) + C2(iS) * J_I (iE2,iE1,iX) ) * UnitPair
         END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
