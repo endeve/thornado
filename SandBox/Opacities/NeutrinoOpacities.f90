@@ -32,6 +32,7 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_EC, &
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
+    ComputeNeutrinoOpacityRates_NES, &
     ComputeNeutrinoOpacities_Pair
   USE DeviceModule, ONLY: &
     InitializeDevice, &
@@ -74,8 +75,10 @@ PROGRAM NeutrinoOpacities
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
     D, T, Y
+  REAL(DP), DIMENSION(nE) :: &
+    dE
   REAL(DP), DIMENSION(nPointsE) :: &
-    E, dE, &
+    E, W2, &
     Phi_0_In , Phi_0_Out, &
     Phi_0_Pro, Phi_0_Ann
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
@@ -83,6 +86,7 @@ PROGRAM NeutrinoOpacities
     f0_DG, &   ! --- Equilibrium Distribution (DG Approximation)
     Chi, &     ! --- Absorption Opacity
     Sigma, &   ! --- Scattering Opacity (Isoenergetic)
+    Eta_NES, & ! --- Integrated NES Emissivity
     Chi_NES, & ! --- Integrated NES Opacity
     Chi_Pair   ! --- Integrated Pair Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
@@ -136,6 +140,7 @@ PROGRAM NeutrinoOpacities
   DO iN_E = 1, nPointsE
     iE      = MOD( (iN_E-1) / nNodes, nE     ) + 1
     iNodeE  = MOD( (iN_E-1)         , nNodes ) + 1
+    dE(iE)  = MeshE % Width(iE)
     E(iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
     WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') &
       '', 'E(',iN_E,') [MeV] = ', E(iN_E) / Unit_E
@@ -227,6 +232,10 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeNeutrinoOpacities_NES &
          ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, H1, H2 )
+
+!  CALL ComputeNeutrinoOpacityRates_NES &
+!         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, W2, &
+!           f0_DG, f0_DG, H1, H2, Eta_NES, Chi_NES )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
