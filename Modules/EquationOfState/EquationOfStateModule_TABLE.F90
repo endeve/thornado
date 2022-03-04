@@ -1980,8 +1980,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: V_T(:,:,:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
 
-    INTEGER :: iP, nP
-    LOGICAL :: do_gpu
+    INTEGER  :: iP, nP
+    REAL(DP) :: D_P, T_P, Y_P, V_P
+    LOGICAL  :: do_gpu
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -2004,18 +2005,27 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP IF( do_gpu )
+      !$OMP IF( do_gpu ) &
+      !$OMP PRIVATE( D_P, T_P, Y_P, V_P )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC IF( do_gpu ) &
-      !$ACC PRESENT( D, T, Y, V, OS_V, V_T )
+      !$ACC PRIVATE( D_P, T_P, Y_P, V_P ) &
+      !$ACC PRESENT( D, T, Y, D_T, T_T, Y_T, V, OS_V, V_T )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( D_P, T_P, Y_P, V_P )
 #endif
     DO iP = 1, nP
 
-      CALL ComputeDependentVariable_TABLE_Scalar &
-             ( D(iP), T(iP), Y(iP), V(iP), V_T, OS_V, Units_V )
+      D_P = D(iP) / UnitD
+      T_P = T(iP) / UnitT
+      Y_P = Y(iP) / UnitY
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+
+      V(iP) = V_P * Units_V
 
     END DO
 
