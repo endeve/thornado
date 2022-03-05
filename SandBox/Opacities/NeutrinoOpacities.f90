@@ -17,6 +17,9 @@ PROGRAM NeutrinoOpacities
   USE UtilitiesModule, ONLY: &
     WriteVector, &
     WriteMatrix
+  USE ReferenceElementModuleE, ONLY: &
+    InitializeReferenceElementE, &
+    WeightsE
   USE EquationOfStateModule_TABLE, ONLY: &
     InitializeEquationOfState_TABLE, &
     FinalizeEquationOfState_TABLE
@@ -33,7 +36,8 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
     ComputeNeutrinoOpacityRates_NES, &
-    ComputeNeutrinoOpacities_Pair
+    ComputeNeutrinoOpacities_Pair, &
+    ComputeNeutrinoOpacityRates_Pair
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -79,16 +83,16 @@ PROGRAM NeutrinoOpacities
     dE
   REAL(DP), DIMENSION(nPointsE) :: &
     E, W2, &
-    Phi_0_In , Phi_0_Out, &
     Phi_0_Pro, Phi_0_Ann
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
-    f0, &      ! --- Equilibrium Distribution
-    f0_DG, &   ! --- Equilibrium Distribution (DG Approximation)
-    Chi, &     ! --- Absorption Opacity
-    Sigma, &   ! --- Scattering Opacity (Isoenergetic)
-    Eta_NES, & ! --- Integrated NES Emissivity
-    Chi_NES, & ! --- Integrated NES Opacity
-    Chi_Pair   ! --- Integrated Pair Opacity
+    f0      , & ! --- Equilibrium Distribution
+    f0_DG   , & ! --- Equilibrium Distribution (DG Approximation)
+    Chi     , & ! --- Absorption Opacity
+    Sigma   , & ! --- Scattering Opacity (Isoenergetic)
+    Eta_NES , & ! --- Integrated NES Emissivity
+    Chi_NES , & ! --- Integrated NES Opacity
+    Eta_Pair, & ! --- Integrated Pair Emissivity
+    Chi_Pair    ! --- Integrated Pair Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
     H1, H2, &  ! --- NES  Scattering Functions
     J1, J2     ! --- Pair Scattering Functions
@@ -128,6 +132,8 @@ PROGRAM NeutrinoOpacities
   WRITE(*,'(A6,A,I8.8)') '', 'nPointsE = ', nPointsE
   WRITE(*,*)
 
+  CALL InitializeReferenceElementE
+
   ! --- Thermodynamic State ---
 
 !  D = 1.3d14 * Unit_D
@@ -138,10 +144,11 @@ PROGRAM NeutrinoOpacities
   ! --- Energy Grid ---
 
   DO iN_E = 1, nPointsE
-    iE      = MOD( (iN_E-1) / nNodes, nE     ) + 1
-    iNodeE  = MOD( (iN_E-1)         , nNodes ) + 1
-    dE(iE)  = MeshE % Width(iE)
-    E(iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
+    iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
+    iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
+    dE(iE)   = MeshE % Width(iE)
+    E(iN_E)  = NodeCoordinate( MeshE, iE, iNodeE )
+    W2(iN_E) = WeightsE(iNodeE) * E(iN_E)**2 * dE(iE)
     WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') &
       '', 'E(',iN_E,') [MeV] = ', E(iN_E) / Unit_E
   END DO
@@ -233,45 +240,11 @@ PROGRAM NeutrinoOpacities
   CALL ComputeNeutrinoOpacities_NES &
          ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, H1, H2 )
 
-!  CALL ComputeNeutrinoOpacityRates_NES &
-!         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, W2, &
-!           f0_DG, f0_DG, H1, H2, Eta_NES, Chi_NES )
+  CALL ComputeNeutrinoOpacityRates_NES &
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, W2, &
+           f0_DG, f0_DG, H1, H2, Eta_NES, Chi_NES )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( H1, H2 )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( H1, H2 )
-#endif
-
-  ! --- Integrated NES Opacity ---
-
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    kT = BoltzmannConstant * T(iX)
-
-    DO iE2 = 1, nPointsE
-
-      DO iE1 = 1, nPointsE
-        DetBal = EXP( - ABS( E(iE2) - E(iE1) ) / kT )
-        IF ( iE1 <= iE2 ) THEN
-          Phi_0_Out(iE1) = ( C1(iS) * H1(iE1,iE2,iX) + C2(iS) * H2(iE1,iE2,iX) ) * UnitNES
-          Phi_0_In (iE1) = Phi_0_Out(iE1) * DetBal
-        ELSE
-          Phi_0_In (iE1) = ( C1(iS) * H1(iE2,iE1,iX) + C2(iS) * H2(iE2,iE1,iX) ) * UnitNES
-          Phi_0_Out(iE1) = Phi_0_In (iE1) * DetBal
-        END IF
-      END DO
-
-      Chi_NES(iE2,iX,iS) &
-        = TRAPEZ( nPointsE, E, Phi_0_Out * E**2 )
-
-    END DO
-
-  END DO
-  END DO
 
   ! --- Compute Pair Opacities ---
 
@@ -280,40 +253,11 @@ PROGRAM NeutrinoOpacities
   CALL ComputeNeutrinoOpacities_Pair &
          ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, J1, J2 )
 
+  CALL ComputeNeutrinoOpacityRates_Pair &
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, W2, &
+           f0_DG, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
+
   Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( J1, J2 )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( J1, J2 )
-#endif
-
-  ! --- Integrated Pair Opacity ---
-
-  DO iS = 1, nSpecies
-  DO iX = 1, nPointsX
-
-    kT = BoltzmannConstant * T(iX)
-
-    DO iE2 = 1, nPointsE
-
-      DO iE1 = 1, nPointsE
-        DetBal = EXP( - ABS( E(iE2) + E(iE1) ) / kT )
-        IF ( iE1 <= iE2 ) THEN
-          Phi_0_Ann(iE1) = ( C1(iS) * J1(iE1,iE2,iX) + C2(iS) * J2(iE1,iE2,iX) ) * UnitPair
-        ELSE
-          Phi_0_Ann(iE1) = ( C1(iS) * J2(iE2,iE1,iX) + C2(iS) * J1(iE2,iE1,iX) ) * UnitPair
-        END IF
-        Phi_0_Pro(iE1) = Phi_0_Ann(iE1) * DetBal
-      END DO
-
-      Chi_Pair(iE2,iX,iS) &
-        = TRAPEZ( nPointsE, E, Phi_0_Pro * E**2 )
-
-    END DO
-
-  END DO
-  END DO
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
@@ -352,16 +296,22 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Sigma(:,1,iNuE_Bar) / Unit_Sigma, 'Sigma_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         ( nPointsE, Chi_NES(:,1,iNuE) / Unit_Chi, 'Chi_NES_NuE.dat' )
-
+         ( nPointsE, Chi_NES(:,1,iNuE    ) / Unit_Chi, 'Chi_NES_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Eta_NES(:,1,iNuE    ) / Unit_Chi, 'Eta_NES_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Chi_NES(:,1,iNuE_Bar) / Unit_Chi, 'Chi_NES_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Eta_NES(:,1,iNuE_Bar) / Unit_Chi, 'Eta_NES_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         ( nPointsE, Chi_Pair(:,1,iNuE) / Unit_Chi,  'Chi_Pair_NuE.dat' )
-
+         ( nPointsE, Chi_Pair(:,1,iNuE    ) / Unit_Chi, 'Chi_Pair_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Eta_Pair(:,1,iNuE    ) / Unit_Chi, 'Eta_Pair_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Chi_Pair(:,1,iNuE_Bar) / Unit_Chi, 'Chi_Pair_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Eta_Pair(:,1,iNuE_Bar) / Unit_Chi, 'Eta_Pair_NuE_Bar.dat' )
 
   CALL WriteMatrix &
          ( nPointsE, nPointsE, H1(:,:,1), 'H1.dat'  )
