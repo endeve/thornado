@@ -85,14 +85,15 @@ PROGRAM NeutrinoOpacities
     E, W2, &
     Phi_0_Pro, Phi_0_Ann
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
-    f0      , & ! --- Equilibrium Distribution
-    f0_DG   , & ! --- Equilibrium Distribution (DG Approximation)
-    Chi     , & ! --- Absorption Opacity
-    Sigma   , & ! --- Scattering Opacity (Isoenergetic)
-    Eta_NES , & ! --- Integrated NES Emissivity
-    Chi_NES , & ! --- Integrated NES Opacity
-    Eta_Pair, & ! --- Integrated Pair Emissivity
-    Chi_Pair    ! --- Integrated Pair Opacity
+    f0       , & ! --- Equilibrium Distribution
+    f0_DG    , & ! --- Equilibrium Distribution (DG Approximation)
+    Chi_AbEm , & ! --- Electron Capture Opacity
+    Eta_AbEm , & ! --- Electron Capture Emissivity
+    Sigma_Iso, & ! --- Iso-energertic Scattering Opacity
+    Eta_NES  , & ! --- NES Emissivity
+    Chi_NES  , & ! --- NES Opacity
+    Eta_Pair , & ! --- Pair Emissivity
+    Chi_Pair     ! --- Pair Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
     H1, H2, &  ! --- NES  Scattering Functions
     J1, J2     ! --- Pair Scattering Functions
@@ -184,12 +185,12 @@ PROGRAM NeutrinoOpacities
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y ) &
-  !$OMP MAP( alloc: Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$OMP MAP( alloc: Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
   !$OMP             H1, H2, J1, J2 )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y ) &
-  !$ACC CREATE( Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$ACC CREATE( Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
   !$ACC         H1, H2, J1, J2 )
 #endif
 
@@ -208,22 +209,32 @@ PROGRAM NeutrinoOpacities
   Timer_Compute_EC = MPI_WTIME()
 
   CALL ComputeNeutrinoOpacities_EC &
-         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, Chi )
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, Chi_AbEm )
 
   Timer_Compute_EC = MPI_WTIME() - Timer_Compute_EC
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( Chi )
+  !$OMP TARGET UPDATE FROM( Chi_AbEm )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( Chi )
+  !$ACC UPDATE HOST( Chi_AbEm )
 #endif
+
+  DO iS = 1, nSpecies
+  DO iX = 1, nPointsX
+  DO iE = 1, nPointsE
+
+    Eta_AbEm(iE,iX,iS) = Chi_AbEm(iE,iX,iS) * f0_DG(iE,iX,iS)
+
+  END DO
+  END DO
+  END DO
 
   ! --- Compute Elastic Scattering Opacities ---
 
   Timer_Compute_ES = MPI_WTIME()
 
   CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, 1, Sigma )
+         ( 1, nPointsE, 1, nPointsX, 1, nSpecies, E, D, T, Y, 1, Sigma_Iso )
 
   Timer_Compute_ES = MPI_WTIME() - Timer_Compute_ES
 
@@ -262,12 +273,12 @@ PROGRAM NeutrinoOpacities
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
   !$OMP MAP( release: E, D, T, Y, &
-  !$OMP               Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$OMP               Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
   !$OMP               H1, H2, J1, J2 )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC DELETE( E, D, T, Y, &
-  !$ACC         Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$ACC         Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
   !$ACC         H1, H2, J1, J2 )
 #endif
 
@@ -284,16 +295,18 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, f0_DG(:,1,iNuE_Bar), 'f0_DG_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         ( nPointsE, Chi(:,1,iNuE) / Unit_Chi, 'Chi_NuE.dat' )
-
+         ( nPointsE, Chi_AbEm(:,1,iNuE    ) / Unit_Chi, 'Chi_AbEm_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Eta_AbEm(:,1,iNuE    ) / Unit_Chi, 'Eta_AbEm_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
-         ( nPointsE, Chi(:,1,iNuE_Bar) / Unit_Chi, 'Chi_NuE_Bar.dat' )
+         ( nPointsE, Chi_AbEm(:,1,iNuE_Bar) / Unit_Chi, 'Chi_AbEm_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Eta_AbEm(:,1,iNuE_Bar) / Unit_Chi, 'Eta_AbEm_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         ( nPointsE, Sigma(:,1,iNuE) / Unit_Sigma, 'Sigma_NuE.dat' )
-
+         ( nPointsE, Sigma_Iso(:,1,iNuE    ) / Unit_Sigma, 'Sigma_Iso_NuE.dat' )
   CALL WriteVector & ! --- NuE_Bar
-         ( nPointsE, Sigma(:,1,iNuE_Bar) / Unit_Sigma, 'Sigma_NuE_Bar.dat' )
+         ( nPointsE, Sigma_Iso(:,1,iNuE_Bar) / Unit_Sigma, 'Sigma_Iso_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, Chi_NES(:,1,iNuE    ) / Unit_Chi, 'Chi_NES_NuE.dat'     )
