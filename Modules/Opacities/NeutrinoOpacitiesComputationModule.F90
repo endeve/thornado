@@ -1477,8 +1477,8 @@ CONTAINS
         END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
-        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iX,iS) )
-        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iX,iS)
+        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iX,iS_A) )
+        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iX,iS_A)
 
       END DO
 
