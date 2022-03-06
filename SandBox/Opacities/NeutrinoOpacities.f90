@@ -151,7 +151,7 @@ PROGRAM NeutrinoOpacities
     iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
     dE(iE)   = MeshE % Width(iE)
     E(iN_E)  = NodeCoordinate( MeshE, iE, iNodeE )
-    W2(iN_E) = WeightsE(iNodeE) * E(iN_E)**2 * dE(iE)
+    W2(iN_E) = FourPi * WeightsE(iNodeE) * E(iN_E)**2 * dE(iE)
     WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') &
       '', 'E(',iN_E,') [MeV] = ', E(iN_E) / Unit_E
   END DO
