@@ -1,7 +1,7 @@
 PROGRAM NeutrinoOpacities
 
   USE KindModule, ONLY: &
-    DP
+    DP, FourPi
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -87,9 +87,11 @@ PROGRAM NeutrinoOpacities
   REAL(DP), DIMENSION(nPointsE,nPointsX,nSpecies) :: &
     f0       , & ! --- Equilibrium Distribution
     f0_DG    , & ! --- Equilibrium Distribution (DG Approximation)
-    Chi_AbEm , & ! --- Electron Capture Opacity
     Eta_AbEm , & ! --- Electron Capture Emissivity
-    Sigma_Iso, & ! --- Iso-energertic Scattering Opacity
+    Chi_AbEm , & ! --- Electron Capture Opacity
+    Sigma_Iso, & ! --- Iso-energertic Kernel
+    Eta_Iso  , & ! --- Iso Emissivity
+    Chi_Iso  , & ! --- Iso Opacity
     Eta_NES  , & ! --- NES Emissivity
     Chi_NES  , & ! --- NES Opacity
     Eta_Pair , & ! --- Pair Emissivity
@@ -244,6 +246,17 @@ PROGRAM NeutrinoOpacities
   !$ACC UPDATE HOST( Sigma )
 #endif
 
+  DO iS = 1, nSpecies
+  DO iX = 1, nPointsX
+  DO iE = 1, nPointsE
+
+    Chi_Iso(iE,iX,iS) = FourPi * E(iE)**2 * Sigma_Iso(iE,iX,iS)
+    Eta_Iso(iE,iX,iS) = Chi_Iso(iE,iX,iS) * f0_DG(iE,iX,iS)
+
+  END DO
+  END DO
+  END DO
+
   ! --- Compute NES Opacities ---
 
   Timer_Compute_NES = MPI_WTIME()
@@ -304,9 +317,13 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Eta_AbEm(:,1,iNuE_Bar) / Unit_Chi, 'Eta_AbEm_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         ( nPointsE, Sigma_Iso(:,1,iNuE    ) / Unit_Sigma, 'Sigma_Iso_NuE.dat' )
+         ( nPointsE, Chi_Iso(:,1,iNuE    ) / Unit_Chi, 'Chi_Iso_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Eta_Iso(:,1,iNuE    ) / Unit_Chi, 'Eta_Iso_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
-         ( nPointsE, Sigma_Iso(:,1,iNuE_Bar) / Unit_Sigma, 'Sigma_Iso_NuE_Bar.dat' )
+         ( nPointsE, Chi_Iso(:,1,iNuE_Bar) / Unit_Chi, 'Chi_Iso_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Eta_Iso(:,1,iNuE_Bar) / Unit_Chi, 'Eta_Iso_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, Chi_NES(:,1,iNuE    ) / Unit_Chi, 'Chi_NES_NuE.dat'     )
