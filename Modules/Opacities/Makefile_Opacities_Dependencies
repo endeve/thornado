@@ -45,7 +45,6 @@ NeutrinoOpacitiesComputationModule.o: \
   PhysicalConstantsModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
-  DeviceModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleE.o \
   ReferenceElementModuleE_Lagrange.o \

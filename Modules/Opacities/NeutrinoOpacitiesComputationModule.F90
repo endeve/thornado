@@ -17,8 +17,6 @@ MODULE NeutrinoOpacitiesComputationModule
     MeV
   USE ProgramHeaderModule, ONLY: &
     nDOF, nDOFE, nDOFX
-  USE DeviceModule, ONLY: &
-    QueryOnGpu
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE ReferenceElementModuleE, ONLY: &
@@ -521,13 +519,6 @@ CONTAINS
     REAL(DP) :: LogE_P(iE_B:iE_E)
     REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     INTEGER  :: iX, iE, iS
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -569,8 +560,7 @@ CONTAINS
 
       CALL LogInterpolateSingleVariable_1D3D_Custom &
              ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(:,:,iS), &
-               GPU_Option = do_gpu )
+               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(:,:,iS) )
 
     END DO
 
@@ -638,13 +628,6 @@ CONTAINS
     REAL(DP) :: LogE_P(iP_B:iP_E)
     REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     INTEGER  :: iP, iS
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -675,8 +658,7 @@ CONTAINS
 
       CALL LogInterpolateSingleVariable_4D_Custom &
              ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(:,iS), &
-               GPU_Option = do_gpu )
+               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(:,iS) )
 
     END DO
 
@@ -741,13 +723,6 @@ CONTAINS
     REAL(DP) :: LogE_P(iE_B:iE_E)
     REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     INTEGER  :: iX, iE, iS
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -789,8 +764,7 @@ CONTAINS
 
       CALL LogInterpolateSingleVariable_1D3D_Custom &
              ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_Iso(iS,iMoment), Iso_T(:,:,:,:,iMoment,iS), opES(:,:,iS), &
-               GPU_Option = do_gpu )
+               OS_Iso(iS,iMoment), Iso_T(:,:,:,:,iMoment,iS), opES(:,:,iS) )
 
     END DO
 
@@ -859,13 +833,6 @@ CONTAINS
     REAL(DP) :: LogE_P(iP_B:iP_E)
     REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     INTEGER  :: iP, iS
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -896,8 +863,7 @@ CONTAINS
 
       CALL LogInterpolateSingleVariable_4D_Custom &
              ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_Iso(iS,iMoment), Iso_T(:,:,:,:,iMoment,iS), opES(:,iS), &
-               GPU_Option = do_gpu )
+               OS_Iso(iS,iMoment), Iso_T(:,:,:,:,iMoment,iS), opES(:,iS) )
 
     END DO
 
@@ -960,13 +926,6 @@ CONTAINS
 
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     INTEGER  :: iX, iE1, iE2, iH_I, iH_II
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1004,14 +963,14 @@ CONTAINS
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
              OS_NES(1,iH_I), NES_AT(:,:,:,:,iH_I,1), H_I, &
-             GPU_Option = do_gpu, ASYNC_Option = 1 )
+             ASYNC_Option = 1 )
 
     ! --- Interpolate HII ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
              OS_NES(1,iH_II), NES_AT(:,:,:,:,iH_II,1), H_II, &
-             GPU_Option = do_gpu, ASYNC_Option = 1  )
+             ASYNC_Option = 1  )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1129,13 +1088,6 @@ CONTAINS
 
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1173,14 +1125,14 @@ CONTAINS
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
              OS_Pair(1,iJ_I), Pair_AT(:,:,:,:,iJ_I,1), J_I, &
-             GPU_Option = do_gpu, ASYNC_Option = 1 )
+             ASYNC_Option = 1 )
 
     ! --- Interpolate JII ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
              OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II, &
-             GPU_Option = do_gpu, ASYNC_Option = 1 )
+             ASYNC_Option = 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1300,13 +1252,6 @@ CONTAINS
     REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions
     REAL(DP) :: LogT_P(iX_B:iX_E)
     REAL(DP) :: LogDX_P(3,iX_B:iX_E)
-    LOGICAL  :: do_gpu
-
-#if defined(THORNADO_GPU)
-    do_gpu = .true.
-#else
-    do_gpu = .false.
-#endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1347,7 +1292,7 @@ CONTAINS
     CALL SumLogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogDX_P, LogT_P, LogDs_T, LogTs_T, Alpha_Brem, &
              OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), S_Sigma, &
-             GPU_Option = do_gpu, ASYNC_Option = 1 )
+             ASYNC_Option = 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &

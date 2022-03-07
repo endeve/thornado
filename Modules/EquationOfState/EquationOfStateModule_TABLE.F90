@@ -41,8 +41,6 @@ MODULE EquationOfStateModule_TABLE
     Dyne, &
     Erg, &
     MeV
-  USE DeviceModule, ONLY: &
-    QueryOnGpu
 
   IMPLICIT NONE
   PRIVATE
