@@ -186,13 +186,17 @@ PROGRAM NeutrinoOpacities
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
-  !$OMP MAP( to: E, D, T, Y ) &
-  !$OMP MAP( alloc: Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
+  !$OMP MAP( to: E, D, T, Y, W2 ) &
+  !$OMP MAP( alloc: Chi_AbEm, Chi_NES, Chi_Pair, Chi_Iso, Sigma_Iso, &
+  !$OMP             Eta_AbEm, Eta_NES, Eta_Pair, Eta_Iso, &
+  !$OMP             f0, f0_DG, &
   !$OMP             H1, H2, J1, J2 )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
-  !$ACC COPYIN( E, D, T, Y ) &
-  !$ACC CREATE( Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
+  !$ACC COPYIN( E, D, T, Y, W2 ) &
+  !$ACC CREATE( Chi_AbEm, Chi_NES, Chi_Pair, Chi_Iso, Sigma_Iso, &
+  !$ACC         Eta_AbEm, Eta_NES, Eta_Pair, Eta_Iso, &
+  !$ACC         f0, f0_DG, &
   !$ACC         H1, H2, J1, J2 )
 #endif
 
@@ -216,11 +220,11 @@ PROGRAM NeutrinoOpacities
   Timer_Compute_EC = MPI_WTIME() - Timer_Compute_EC
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( Chi_AbEm )
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( Chi_AbEm )
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+  !$ACC PRESENT( Eta_AbEm, Chi_AbEm, f0_DG )
 #endif
-
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
   DO iE = 1, nPointsE
@@ -241,11 +245,11 @@ PROGRAM NeutrinoOpacities
   Timer_Compute_ES = MPI_WTIME() - Timer_Compute_ES
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( Sigma )
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( Sigma )
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+  !$ACC PRESENT( Eta_Iso, Chi_Iso, Sigma_Iso, f0_DG, E  )
 #endif
-
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
   DO iE = 1, nPointsE
@@ -285,14 +289,18 @@ PROGRAM NeutrinoOpacities
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
-  !$OMP MAP( release: E, D, T, Y, &
-  !$OMP               Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
-  !$OMP               H1, H2, J1, J2 )
+  !$OMP MAP( from: f0, f0_DG, &
+  !$OMP            Chi_AbEm, Chi_NES, Chi_Pair, Chi_Iso, &
+  !$OMP            Eta_AbEm, Eta_NES, Eta_Pair, Eta_Iso, &
+  !$OMP            H1, H2, J1, J2 ) &
+  !$OMP MAP( release: E, D, T, Y, W2, Sigma_Iso )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
-  !$ACC DELETE( E, D, T, Y, &
-  !$ACC         Chi_AbEm, Chi_NES, Chi_Pair, Sigma_Iso, &
-  !$ACC         H1, H2, J1, J2 )
+  !$ACC COPYOUT( f0, f0_DG, &
+  !$ACC          Chi_AbEm, Chi_NES, Chi_Pair, Chi_Iso, &
+  !$ACC          Eta_AbEm, Eta_NES, Eta_Pair, Eta_Iso, &
+  !$ACC          H1, H2, J1, J2 ) &
+  !$ACC DELETE( E, D, T, Y, W2, Sigma_Iso )
 #endif
 
   CALL WriteVector &
