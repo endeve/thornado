@@ -10,7 +10,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     AtomicMassUnit, &
     Centimeter, &
     Gram, &
-    MeV
+    MeV, &
+    SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
     nDOFE
