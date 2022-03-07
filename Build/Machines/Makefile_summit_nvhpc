@@ -19,7 +19,7 @@ else ifeq ($(USE_OMP_OL),TRUE)
 endif
 
 ifeq ($(USE_OACC),TRUE)
-  OPENACC = -acc -gpu=cc70,cuda11.0,ptxinfo -Minfo=accel
+  OPENACC = -acc -gpu=cc70,ptxinfo -Minfo=accel
 endif
 
 INCLUDE_CUDA     = -I$(OLCF_CUDA_ROOT)/include
