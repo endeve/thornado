@@ -521,9 +521,9 @@ CONTAINS
   SUBROUTINE ApplyEquationOfState_TABLE_Vector &
     ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
 
-    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out) :: P(:), S(:), E(:), Me(:), Mp(:), Mn(:)
-    REAL(DP), INTENT(out) :: Xp(:), Xn(:), Xa(:), Xh(:), Gm(:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out) :: P(1:), S(1:), E(1:), Me(1:), Mp(1:), Mn(1:)
+    REAL(DP), INTENT(out) :: Xp(1:), Xn(1:), Xa(1:), Xh(1:), Gm(1:)
 
     INTEGER :: iP, nP
 
@@ -590,32 +590,16 @@ CONTAINS
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
     ( D, E, Y, T, Guess_Option, Error_Option )
 
-    REAL(DP), INTENT(in )           :: D(:), E(:), Y(:)
-    REAL(DP), INTENT(out)           :: T(:)
-    REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(:)
-    INTEGER,  INTENT(out), OPTIONAL :: Error_Option(:)
+    REAL(DP), INTENT(in )           :: D(1:), E(1:), Y(1:)
+    REAL(DP), INTENT(out)           :: T(1:)
+    REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
+    INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
 
-    LOGICAL  :: do_gpu
     INTEGER  :: iP, nP
     INTEGER  :: Error(SIZE(D))
     REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-    do_gpu = QueryOnGPU( D, E, Y, T )
-#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE] Data not present on device'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE]   D    missing'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE]   E    missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE]   Y    missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE]   T    missing'
-    END IF
-#endif
 
     nP = SIZE( D )
 
@@ -623,12 +607,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu ) &
     !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
     !$OMP MAP( from: Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
     !$ACC PRESENT( D, E, Y, T, D_T, T_T, Y_T, E_T, Guess_Option ) &
     !$ACC COPYOUT( Error )
@@ -656,12 +638,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu ) &
     !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
     !$OMP MAP( from: Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
     !$ACC PRESENT( D, E, Y, T, D_T, T_T, Y_T, E_T ) &
     !$ACC COPYOUT( Error )
@@ -740,8 +720,8 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector( D, Ev, Ne, P )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: P
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(1:), INTENT(out) :: P
 
     INTEGER :: iP, nP
 
@@ -842,8 +822,8 @@ CONTAINS
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector( D, Ev, Ne, Cs )
 
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
-    REAL(DP), INTENT(out) :: Cs(:)
+    REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:)
+    REAL(DP), INTENT(out) :: Cs(1:)
 
     REAL(DP), DIMENSION(SIZE(D)) :: P, T, Y, Em, Gm
 
@@ -896,8 +876,8 @@ CONTAINS
 
   SUBROUTINE ComputeTemperatureFromPressure_TABLE_Vector( D, P, Y, T )
 
-    REAL(DP), INTENT(in)  :: D(:), P(:), Y(:)
-    REAL(DP), INTENT(out) :: T(:)
+    REAL(DP), INTENT(in)  :: D(1:), P(1:), Y(1:)
+    REAL(DP), INTENT(out) :: T(1:)
 
     INTEGER :: iP, nP
 
@@ -943,39 +923,17 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector &
     ( D, T, Y, Ev, Em, Ne )
 
-    REAL(DP), INTENT(in)  :: D (:), T (:), Y (:)
-    REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:)
+    REAL(DP), INTENT(in)  :: D (1:), T (1:), Y (1:)
+    REAL(DP), INTENT(out) :: Ev(1:), Em(1:), Ne(1:)
 
     INTEGER :: iP, nP
-    LOGICAL :: do_gpu
 
     nP = SIZE( D )
 
-    do_gpu = QueryOnGPU( D, T, Y, Ev, Em, Ne )
-#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE] Data not present on device'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   D    missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   T    missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Y    missing'
-      IF ( .not. QueryOnGPU( Ev ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Ev   missing'
-      IF ( .not. QueryOnGPU( Em ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Em   missing'
-      IF ( .not. QueryOnGPU( Ne ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Ne   missing'
-    END IF
-#endif
-
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, T, Y, Em, Ev, Ne )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -1014,43 +972,21 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector &
     ( D, Ev, Ne, T, Em, Y )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(1:), INTENT(out) :: T, Em, Y
 
     INTEGER :: iP, nP, Error(SIZE(D))
-    LOGICAL :: do_gpu
     REAL(DP) :: D_P, E_P, Y_P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     nP = SIZE( D )
 
-    do_gpu = QueryOnGPU( D, Ev, Ne, T, Em, Y )
-#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE] Data not present on device'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   D    missing'
-      IF ( .not. QueryOnGPU( Ev ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Ev   missing'
-      IF ( .not. QueryOnGPU( Ne ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Ne   missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   T    missing'
-      IF ( .not. QueryOnGPU( Em ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Em   missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Y    missing'
-    END IF
-#endif
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( from: Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
     !$ACC COPYOUT( Error )
 #elif defined(THORNADO_OMP)
@@ -1127,8 +1063,8 @@ CONTAINS
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
-    REAL(DP), INTENT(out) :: P(:), T (:), Y (:), S(:), Em(:), Gm(:), Cs(:)
+    REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:)
+    REAL(DP), INTENT(out) :: P(1:), T (1:), Y (1:), S(1:), Em(1:), Gm(1:), Cs(1:)
 
     INTEGER :: iP, nP
 
@@ -1205,11 +1141,11 @@ CONTAINS
   SUBROUTINE ComputePressure_TABLE_Vector &
     ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: P(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: P(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1318,11 +1254,11 @@ CONTAINS
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Vector &
     ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: E(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: E(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1431,11 +1367,11 @@ CONTAINS
   SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector &
     ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: M(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: M(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1544,11 +1480,11 @@ CONTAINS
   SUBROUTINE ComputeProtonChemicalPotential_TABLE_Vector &
     ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: M(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: M(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1657,11 +1593,11 @@ CONTAINS
   SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Vector &
     ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: M(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: M(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1770,11 +1706,11 @@ CONTAINS
   SUBROUTINE ComputeProtonMassFraction_TABLE_Vector &
     ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: X(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: X(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1883,11 +1819,11 @@ CONTAINS
   SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector &
     ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out)                   :: X(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: X(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
@@ -1947,7 +1883,7 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: V
-    REAL(DP), INTENT(in)  :: V_T(:,:,:)
+    REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
 
     REAL(DP) :: D_P, T_P, Y_P, V_P
@@ -1975,41 +1911,23 @@ CONTAINS
   SUBROUTINE ComputeDependentVariable_TABLE_Vector &
     ( D, T, Y, V, V_T, OS_V, Units_V )
 
-    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out) :: V(:)
-    REAL(DP), INTENT(in)  :: V_T(:,:,:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out) :: V(1:)
+    REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
 
     INTEGER  :: iP, nP
     REAL(DP) :: D_P, T_P, Y_P, V_P
-    LOGICAL  :: do_gpu
-
-#ifdef MICROPHYSICS_WEAKLIB
 
     nP = SIZE( D )
 
-    do_gpu = QueryOnGPU( D, T, Y, V )
-#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeDependentVariable_TABLE] Data not present on device'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeDependentVariable_TABLE]   D    missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeDependentVariable_TABLE]   T    missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeDependentVariable_TABLE]   Y    missing'
-      IF ( .not. QueryOnGPU( V ) ) &
-        WRITE(*,*) '[ComputeDependentVariable_TABLE]   V    missing'
-    END IF
-#endif
+#ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP IF( do_gpu ) &
       !$OMP PRIVATE( D_P, T_P, Y_P, V_P )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC IF( do_gpu ) &
       !$ACC PRIVATE( D_P, T_P, Y_P, V_P ) &
       !$ACC PRESENT( D, T, Y, D_T, T_T, Y_T, V, OS_V, V_T )
 #elif defined(THORNADO_OMP)
@@ -2029,6 +1947,20 @@ CONTAINS
 
     END DO
 
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( V )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+      V(iP) = Zero
+    END DO
+
 #endif
 
   END SUBROUTINE ComputeDependentVariable_TABLE_Vector
@@ -2045,7 +1977,7 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdY
-    REAL(DP), INTENT(in)  :: V_T(:,:,:)
+    REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
 
     REAL(DP) :: D_P, T_P, Y_P, V_P, dV_P(3)
@@ -2080,45 +2012,21 @@ CONTAINS
   SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE_Vector &
     ( D, T, Y, V, dVdD, dVdT, dVdY, V_T, OS_V, Units_V )
 
-    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
-    REAL(DP), INTENT(out) :: V(:), dVdD(:), dVdT(:), dVdY(:)
-    REAL(DP), INTENT(in)  :: V_T(:,:,:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out) :: V(1:), dVdD(1:), dVdT(1:), dVdY(1:)
+    REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
 
     INTEGER :: iP, nP
-    LOGICAL :: do_gpu
-
-#ifdef MICROPHYSICS_WEAKLIB
 
     nP = SIZE( D )
 
-    do_gpu = QueryOnGPU( D, T, Y, V, dVdD, dVdT, dVdY )
-#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE] Data not present on device'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   D    missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   T    missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   Y    missing'
-      IF ( .not. QueryOnGPU( V ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   V    missing'
-      IF ( .not. QueryOnGPU( dVdD ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   dVdD missing'
-      IF ( .not. QueryOnGPU( dVdT ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   dVdT missing'
-      IF ( .not. QueryOnGPU( dVdY ) ) &
-        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   dVdY missing'
-    END IF
-#endif
+#ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP IF( do_gpu )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC IF( do_gpu ) &
       !$ACC PRESENT( D, T, Y, V, dVdD, dVdT, dVdY, OS_V, V_T )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO
@@ -2133,10 +2041,20 @@ CONTAINS
 
 #else
 
-    V    = Zero
-    dVdD = Zero
-    dVdT = Zero
-    dVdY = Zero
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( V, dVdD, dVdT, dVdY )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+      V   (iP) = Zero
+      dVdD(iP) = Zero
+      dVdT(iP) = Zero
+      dVdY(iP) = Zero
+    END DO
 
 #endif
 
