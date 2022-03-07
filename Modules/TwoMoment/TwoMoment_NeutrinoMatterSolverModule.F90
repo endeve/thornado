@@ -76,7 +76,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER,  PARAMETER :: M_FP = 3
   INTEGER,  PARAMETER :: M_outer = 2
   INTEGER,  PARAMETER :: M_inner = 3
-  REAL(DP), PARAMETER :: WFactor_FP = FourPi / PlanckConstant**3
 
   INTEGER  :: nE_G, nX_G, nZ(4)
   INTEGER  :: n_FP, n_FP_inner, n_FP_outer
@@ -86,8 +85,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), ALLOCATABLE :: E_N(:)        ! --- Energy Grid
   REAL(DP), ALLOCATABLE :: W2_N(:)       ! --- Ingegration Weights (E^2)
   REAL(DP), ALLOCATABLE :: W3_N(:)       ! --- Integration Weights (E^3)
-  REAL(DP), ALLOCATABLE :: W2_S(:)
-  REAL(DP), ALLOCATABLE :: W3_S(:)
+  REAL(DP), ALLOCATABLE :: W2_S(:)       ! --- Ingegration Weights (E^2) Scaled by (hc)^3
+  REAL(DP), ALLOCATABLE :: W3_S(:)       ! --- Ingegration Weights (E^3) Scaled by (hc)^3
 
   REAL(DP), ALLOCATABLE :: AMAT(:,:,:)
   REAL(DP), ALLOCATABLE :: BVEC(:,:)
@@ -174,8 +173,8 @@ CONTAINS
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
-    W2_S(:) = WFactor_FP * W2_N(:)
-    W3_S(:) = WFactor_FP * W3_N(:)
+    W2_S(:) = W2_N(:) / ( PlanckConstant * SpeedOfLight )**3
+    W3_S(:) = W3_N(:) / ( PlanckConstant * SpeedOfLight )**3
 
     ALLOCATE( AMAT(n_FP,M_FP,nX_G) )
     ALLOCATE( BVEC(n_FP,nX_G) )
@@ -280,8 +279,8 @@ CONTAINS
 
       E (iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
 
-      W2(iN_E) = WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**2
-      W3(iN_E) = WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**3
+      W2(iN_E) = FourPi * WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**2
+      W3(iN_E) = FourPi * WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**3
 
     END DO
 
