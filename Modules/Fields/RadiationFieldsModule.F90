@@ -91,6 +91,12 @@ MODULE RadiationFieldsModule
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET( LeptonNumber )
+#elif defined(THORNADO_OACC)
+    !$ACC DECLARE COPYIN( LeptonNumber )
+#endif
+
 CONTAINS
 
 

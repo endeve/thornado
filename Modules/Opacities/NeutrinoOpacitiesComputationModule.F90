@@ -41,7 +41,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     C1, C2
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar
+    iNuE, iNuE_Bar, LeptonNumber
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -61,8 +61,6 @@ MODULE NeutrinoOpacitiesComputationModule
 
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeNeutrinoOpacities_EC
   PUBLIC :: ComputeNeutrinoOpacities_EC_Vector
@@ -137,7 +135,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: f0
     INTEGER,  INTENT(in)  :: iSpecies
 
-    REAL(DP) :: Me, Mp, Mn, Mnu, kT
+    REAL(DP) :: Me, Mp, Mn
+    REAL(DP) :: Mnu, kT
 
     ! --- Compute Chemical Potentials ---
 
@@ -152,12 +151,10 @@ CONTAINS
 
     kT = BoltzmannConstant * T
 
-    IF ( iSpecies == iNuE ) THEN
-      Mnu = ( Me + Mp ) - Mn
-    ELSE IF ( iSpecies == iNuE_Bar ) THEN
-      Mnu = Mn - ( Me + Mp )
-    ELSE
+    IF ( iSpecies > iNuE_Bar ) THEN
       Mnu = Zero
+    ELSE
+      Mnu = ( ( Me + Mp ) - Mn ) * LeptonNumber(iSpecies)
     END IF
 
     f0 = FermiDirac( E, Mnu, kT )
@@ -173,42 +170,21 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(:)
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
-    REAL(DP), INTENT(out) :: f0(:,:,:)
+    REAL(DP), INTENT(in)  :: E(iE_B:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
+    REAL(DP), INTENT(out) :: f0(iE_B:,iX_B:,iS_B:)
 
-    INTEGER  :: iX, iE, iS
     REAL(DP) :: Me(iX_B:iX_E), Mp(iX_B:iX_E), Mn(iX_B:iX_E)
     REAL(DP) :: Mnu, kT
-    LOGICAL  :: do_gpu
-
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( f0 )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeEquilibriumDistributions] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions]   Y missing'
-      IF ( .not. QueryOnGPU( f0 ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions]   f0 missing'
-    END IF
-#endif
+    INTEGER  :: iX, iE, iS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: Me, Mp, Mn )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( Me, Mp, Mn )
 #endif
 
@@ -225,11 +201,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu ) &
     !$OMP PRIVATE( Mnu, kT )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( Mnu, kT ) &
     !$ACC PRESENT( Me, Mp, Mn, E, T, f0 )
 #elif defined(THORNADO_OMP)
@@ -242,12 +216,10 @@ CONTAINS
 
       kT = BoltzmannConstant * T(iX)
 
-      IF ( iS == iNuE ) THEN
-        Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
-      ELSE IF ( iS == iNuE_Bar ) THEN
-        Mnu = Mn(iX) - ( Me(iX) + Mp(iX) )
-      ELSE
+      IF ( iS > iNuE_Bar ) THEN
         Mnu = Zero
+      ELSE
+        Mnu = ( ( Me(iX) + Mp(iX) ) - Mn(iX) ) * LeptonNumber(iS)
       END IF
 
       f0(iE,iX,iS) = FermiDirac( E(iE), Mnu, kT )
@@ -258,11 +230,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: Me, Mp, Mn )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( Me, Mp, Mn )
 #endif
 
@@ -277,36 +247,18 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: E(:)
-    REAL(DP), INTENT(in) , TARGET :: D(:)
-    REAL(DP), INTENT(in) , TARGET :: T(:)
-    REAL(DP), INTENT(in) , TARGET :: Y(:)
-    REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0(:,:,:)
+    REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: E(iE_B:)
+    REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: D(iX_B:)
+    REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: T(iX_B:)
+    REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: Y(iX_B:)
+    REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0(iE_B:,iX_B:,iS_B:)
 
-    INTEGER  :: iX, iE, iS, iNodeE, nE, nX, nS
-    REAL(DP) :: N_K, V_K, f0_Min, Min_K, Max_K, Theta
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
-    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iX_E-iX_B+1),iS_B:iS_E)
-    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iX_E-iX_B+1),iS_B:iS_E)
-    LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( f0 )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeEquilibriumDistributions_DG] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions_DG]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions_DG]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions_DG]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions_DG]   Y missing'
-      IF ( .not. QueryOnGPU( f0 ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributions_DG]   f0 missing'
-    END IF
-#endif
+    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iX_E-iX_B+1),1:(iS_B-iS_E+1))
+    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iX_E-iX_B+1),1:(iS_B-iS_E+1))
+    REAL(DP) :: N_K, V_K, f0_Min, Min_K, Max_K, Theta
+    INTEGER  :: iX, iE, iS, iNodeE, nE, nX, nS
 
     CALL ComputeEquilibriumDistributions &
            ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, f0 )
@@ -318,15 +270,13 @@ CONTAINS
     ! --- Permute Data ---
 
     E_Q(1:nDOFE,1:nE) => E(:)
-    f0_Q(1:nDOFE,1:nE,1:nX,iS_B:iS_E) => f0(:,:,:)
+    f0_Q(1:nDOFE,1:nE,1:nX,1:nS) => f0(:,:,:)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: E_Q, f0_K, f0_Q, f0_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( E_Q, f0_K, f0_Q, f0_P )
 #endif
 
@@ -334,18 +284,16 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu ) &
     !$OMP PRIVATE( V_K, N_K )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( V_K, N_K ) &
     !$ACC PRESENT( WeightsE, E_Q, f0_K, f0_Q )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( V_K, N_K )
 #endif
-    DO iS = iS_B, iS_E
+    DO iS = 1, nS
     DO iX = 1, nX
     DO iE = 1, nE
 
@@ -373,16 +321,14 @@ CONTAINS
     ! --- Estimate Cell Average in Outer Ghost Element ---
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( f0_K )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
-    DO iS = iS_B, iS_E
+    DO iS = 1, nS
     DO iX = 1, nX
 
       f0_K(nE+1,iX,iS) = f0_K(nE,iX,iS)**2 / f0_K(nE-1,iX,iS)
@@ -398,18 +344,16 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu ) &
     !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta ) &
     !$ACC PRESENT( f0_K, f0_Q, f0_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
 #endif
-    DO iS = iS_B, iS_E
+    DO iS = 1, nS
     DO iX = 1, nX
     DO iE = 1, nE
 
@@ -443,11 +387,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: E_Q, f0_K, f0_Q, f0_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( E_Q, f0_K, f0_Q, f0_P )
 #endif
 
@@ -462,56 +404,31 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(:)
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
-    REAL(DP), INTENT(out) :: f0   (:,:,:)
-    REAL(DP), INTENT(out) :: df0dY(:,:,:)
-    REAL(DP), INTENT(out) :: df0dU(:,:,:)
+    REAL(DP), INTENT(in)  :: E(iE_B:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
+    REAL(DP), INTENT(out) :: f0   (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: df0dY(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: df0dU(iE_B:,iX_B:,iS_B:)
 
-    REAL(DP), DIMENSION(iX_B:iX_E) :: Me,  dMedT , dMedY
-    REAL(DP), DIMENSION(iX_B:iX_E) :: Mp,  dMpdT , dMpdY
-    REAL(DP), DIMENSION(iX_B:iX_E) :: Mn,  dMndT , dMndY
-    REAL(DP), DIMENSION(iX_B:iX_E) :: U,   dUdT,   dUdY, dUdD
-    REAL(DP)                       :: Mnu, dMnudT, dMnudY
+    REAL(DP) :: Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedY(iX_B:iX_E)
+    REAL(DP) :: Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdY(iX_B:iX_E)
+    REAL(DP) :: Mn(iX_B:iX_E), dMndT(iX_B:iX_E), dMndY(iX_B:iX_E)
+    REAL(DP) :: U (iX_B:iX_E), dUdT (iX_B:iX_E), dUdY (iX_B:iX_E), dUdD(iX_B:iX_E)
+    REAL(DP) :: Mnu          , dMnudT          , dMnudY
 
     REAL(DP) :: kT, df0dT_Y, df0dY_T
     INTEGER  :: iX, iE, iS
-    LOGICAL  :: do_gpu
-
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( f0, df0dY, df0dU )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   Y missing'
-      IF ( .not. QueryOnGPU( f0 ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   f0 missing'
-      IF ( .not. QueryOnGPU( df0dY ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   df0dY missing'
-      IF ( .not. QueryOnGPU( df0dU ) ) &
-        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives]   df0dU missing'
-    END IF
-#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: Me,  dMedT,  dMedY, &
     !$OMP             Mp,  dMpdT,  dMpdY, &
     !$OMP             Mn,  dMndT,  dMndY, &
     !$OMP             U,   dUdT,   dUdY, dUdD )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( Me,  dMedT,  dMedY, &
     !$ACC         Mp,  dMpdT,  dMpdY, &
     !$ACC         Mn,  dMndT,  dMndY, &
@@ -534,11 +451,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu ) &
     !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T ) &
     !$ACC PRESENT( f0, df0dY, df0dU, E, T, dUdT, dUdY )
 #elif defined(THORNADO_OMP)
@@ -551,18 +466,14 @@ CONTAINS
 
       kT = BoltzmannConstant * T(iX)
 
-      IF ( iS == iNuE ) THEN
-        Mnu    = ( Me   (iX) + Mp   (iX) ) - Mn   (iX)
-        dMnudT = ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX)
-        dMnudY = ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX)
-      ELSE IF ( iS == iNuE_Bar ) THEN
-        Mnu    = Mn   (iX) - ( Me   (iX) + Mp   (iX) )
-        dMnudT = dMndT(iX) - ( dMedT(iX) + dMpdT(iX) )
-        dMnudY = dMndY(iX) - ( dMedY(iX) + dMpdY(iX) )
-      ELSE
+      IF ( iS > iNuE_Bar ) THEN
         Mnu    = Zero
         dMnudT = Zero
         dMnudY = Zero
+      ELSE
+        Mnu    = ( ( Me   (iX) + Mp   (iX) ) - Mn   (iX) ) * LeptonNumber(iS)
+        dMnudT = ( ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX) ) * LeptonNumber(iS)
+        dMnudY = ( ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX) ) * LeptonNumber(iS)
       END IF
 
       f0(iE,iX,iS) = FermiDirac   ( E(iE), Mnu, kT )
@@ -578,14 +489,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: Me,  dMedT,  dMedY, &
     !$OMP               Mp,  dMpdT,  dMpdY, &
     !$OMP               Mn,  dMndT,  dMndY, &
     !$OMP               U,   dUdT,   dUdY, dUdD )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( Me,  dMedT,  dMedY, &
     !$ACC         Mp,  dMpdT,  dMpdY, &
     !$ACC         Mn,  dMndT,  dMndY, &
@@ -603,52 +512,37 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(:)
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
-    REAL(DP), INTENT(out) :: opEC(:,:,:)
+    REAL(DP), INTENT(in)  :: E(iE_B:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
+    REAL(DP), INTENT(out) :: opEC(iE_B:,iX_B:,iS_B:)
 
+    REAL(DP) :: LogE_P(iE_B:iE_E)
+    REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     INTEGER  :: iX, iE, iS
-    REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( opEC )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_EC] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC]   Y missing'
-      IF ( .not. QueryOnGPU( opEC ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC]   opEC missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -656,15 +550,13 @@ CONTAINS
     DO iX = iX_B, iX_E
       LogD_P(iX) = LOG10( D(iX) / UnitD )
       LogT_P(iX) = LOG10( T(iX) / UnitT )
-      Y_P(iX) = Y(iX) / UnitY
+      Y_P   (iX) =        Y(iX) / UnitY
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( E, LogE_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -683,11 +575,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( opEC )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
@@ -702,17 +592,29 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #else
 
-    opEC = Zero
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( opEC )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iS = iS_B, iS_E
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+      opEC(iE,iX,iS) = Zero
+    END DO
+    END DO
+    END DO
 
 #endif
 
@@ -727,52 +629,37 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iP_B, iP_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(:)
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
-    REAL(DP), INTENT(out) :: opEC(:,:)
+    REAL(DP), INTENT(in)  :: E(iP_B:)
+    REAL(DP), INTENT(in)  :: D(iP_B:)
+    REAL(DP), INTENT(in)  :: T(iP_B:)
+    REAL(DP), INTENT(in)  :: Y(iP_B:)
+    REAL(DP), INTENT(out) :: opEC(iP_B:,iS_B:)
 
+    REAL(DP) :: LogE_P(iP_B:iP_E)
+    REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     INTEGER  :: iP, iS
-    REAL(DP) :: LogE_P(iP_B:iP_E), LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( opEC )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Vector] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Vector]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Vector]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Vector]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Vector]   Y missing'
-      IF ( .not. QueryOnGPU( opEC ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Vector]   opEC missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P, E, LogE_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -780,7 +667,7 @@ CONTAINS
     DO iP = iP_B, iP_E
       LogD_P(iP) = LOG10( D(iP) / UnitD )
       LogT_P(iP) = LOG10( T(iP) / UnitT )
-      Y_P(iP) = Y(iP) / UnitY
+      Y_P   (iP) =        Y(iP) / UnitY
       LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
@@ -794,11 +681,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( opEC )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
@@ -811,17 +696,27 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #else
 
-    opEC = Zero
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( opEC )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+    DO iS = iS_B, iS_E
+    DO iP = iP_B, iP_E
+      opEC(iP,iS) = Zero
+    END DO
+    END DO
 
 #endif
 
@@ -836,53 +731,38 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(:)
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(in)  :: E(iE_B:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: opES(:,:,:)
+    REAL(DP), INTENT(out) :: opES(iE_B:,iX_B:,iS_B:)
 
+    REAL(DP) :: LogE_P(iE_B:iE_E)
+    REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     INTEGER  :: iX, iE, iS
-    REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( opES )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_ES] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES]   Y missing'
-      IF ( .not. QueryOnGPU( opES ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES]   opES missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -894,11 +774,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( E, LogE_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -917,11 +795,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( opES )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
@@ -936,17 +812,29 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #else
 
-    opES = Zero
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( opES )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iS = iS_B, iS_E
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+      opES(iE,iX,iS) = Zero
+    END DO
+    END DO
+    END DO
 
 #endif
 
@@ -961,53 +849,38 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iP_B, iP_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(:)
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(in)  :: E(iP_B:)
+    REAL(DP), INTENT(in)  :: D(iP_B:)
+    REAL(DP), INTENT(in)  :: T(iP_B:)
+    REAL(DP), INTENT(in)  :: Y(iP_B:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: opES(:,:)
+    REAL(DP), INTENT(out) :: opES(iP_B:,iS_B:)
 
+    REAL(DP) :: LogE_P(iP_B:iP_E)
+    REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     INTEGER  :: iP, iS
-    REAL(DP) :: LogE_P(iP_B:iP_E), LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( opES )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Vector] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Vector]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Vector]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Vector]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Vector]   Y missing'
-      IF ( .not. QueryOnGPU( opES ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_ES_Vector]   opES missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P, E, LogE_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -1029,11 +902,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( opES )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
@@ -1046,17 +917,27 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
 #endif
 
 #else
 
-    opES = Zero
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( opES )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+    DO iS = iS_B, iS_E
+    DO iP = iP_B, iP_E
+      opES(iP,iS) = Zero
+    END DO
+    END DO
 
 #endif
 
@@ -1070,36 +951,21 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: H_I (:,:,:)
-    REAL(DP), INTENT(out) :: H_II(:,:,:)
+    REAL(DP), INTENT(out) :: H_I (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: H_II(iE_B:,iE_B:,iX_B:)
 
-    INTEGER  :: iX, iE1, iE2, iH_I, iH_II
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
+    INTEGER  :: iX, iE1, iE2, iH_I, iH_II
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( D, T, Y ) &
-       .AND. QueryOnGPU( H_I, H_II )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) &
-        '[ComputeNeutrinoOpacities_NES] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   Y missing'
-      IF ( .not. QueryOnGPU( H_I ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   H_I missing'
-      IF ( .not. QueryOnGPU( H_II ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_NES]   H_II missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -1109,11 +975,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( LogT_P, LogEta_P )
 #endif
 
@@ -1123,11 +987,9 @@ CONTAINS
            ( D, T, Y, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( T, LogT_P, LogEta_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -1153,11 +1015,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( LogT_P, LogEta_P )
 
     !$ACC WAIT(1)
@@ -1166,11 +1026,9 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( H_I, H_II )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
@@ -1197,40 +1055,17 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: W2  (:)
-    REAL(DP), INTENT(in)  :: J   (:,:,:)
-    REAL(DP), INTENT(in)  :: J0  (:,:,:)
-    REAL(DP), INTENT(in)  :: H_I (:,:,:)
-    REAL(DP), INTENT(in)  :: H_II(:,:,:)
-    REAL(DP), INTENT(out) :: Eta (:,:,:)
-    REAL(DP), INTENT(out) :: Chi (:,:,:)
+    REAL(DP), INTENT(in)  :: W2  (iE_B:)
+    REAL(DP), INTENT(in)  :: J   (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J0  (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: H_I (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_II(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: Eta (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: Chi (iE_B:,iX_B:,iS_B:)
 
     REAL(DP) :: DetBal, Phi_Out, Phi_In
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iX, iE, iE1, iE2, iS
-    LOGICAL  :: do_gpu
-
-    do_gpu = QueryOnGPU( W2 ) &
-       .AND. QueryOnGPU( J, J0, Eta, Chi, H_I, H_II )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES] Data not present on device'
-      IF ( .not. QueryOnGPU( W2 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   W2 missing'
-      IF ( .not. QueryOnGPU( J ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   J missing'
-      IF ( .not. QueryOnGPU( J0 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   J0 missing'
-      IF ( .not. QueryOnGPU( Eta ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   Eta missing'
-      IF ( .not. QueryOnGPU( Chi ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   Chi missing'
-      IF ( .not. QueryOnGPU( H_I ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   H_I missing'
-      IF ( .not. QueryOnGPU( H_II ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_NES]   H_II missing'
-    END IF
-#endif
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1285,35 +1120,21 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: J_I (:,:,:)
-    REAL(DP), INTENT(out) :: J_II(:,:,:)
+    REAL(DP), INTENT(out) :: J_I (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: J_II(iE_B:,iE_B:,iX_B:)
 
-    INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
     REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
+    INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( D, T, Y ) &
-       .AND. QueryOnGPU( J_I, J_II )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_Pair] Data not present on device'
-      IF ( .not. QueryOnGPU( E ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   E missing'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   Y missing'
-      IF ( .not. QueryOnGPU( J_I ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   J_I missing'
-      IF ( .not. QueryOnGPU( J_II ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Pair]   J_II missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -1323,11 +1144,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC CREATE( LogT_P, LogEta_P )
 #endif
 
@@ -1337,11 +1156,9 @@ CONTAINS
            ( D, T, Y, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( T, LogT_P, LogEta_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -1367,11 +1184,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
     !$OMP MAP( release: LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
     !$ACC DELETE( LogT_P, LogEta_P )
 
     !$ACC WAIT(1)
@@ -1380,11 +1195,9 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( J_I, J_II)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
@@ -1411,38 +1224,17 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: W2 (:)
-    REAL(DP), INTENT(in)  :: J   (:,:,:)
-    REAL(DP), INTENT(in)  :: J0  (:,:,:)
-    REAL(DP), INTENT(in)  :: J_I (:,:,:)
-    REAL(DP), INTENT(in)  :: J_II(:,:,:)
-    REAL(DP), INTENT(out) :: Eta (:,:,:)
-    REAL(DP), INTENT(out) :: Chi (:,:,:)
+    REAL(DP), INTENT(in)  :: W2  (iE_B:)
+    REAL(DP), INTENT(in)  :: J   (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J0  (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J_I (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J_II(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: Eta (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: Chi (iE_B:,iX_B:,iS_B:)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iX, iE, iE1, iE2, iS, iS_A
-    LOGICAL  :: do_gpu
-
-    do_gpu = QueryOnGPU( W2 ) &
-       .AND. QueryOnGPU( J, J0, Eta, Chi, J_I, J_II )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair] Data not present on device'
-      IF ( .not. QueryOnGPU( W2 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair]   W2 missing'
-      IF ( .not. QueryOnGPU( J ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair]   J missing'
-      IF ( .not. QueryOnGPU( Eta ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair]   Eta missing'
-      IF ( .not. QueryOnGPU( Chi ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair]   Chi missing'
-      IF ( .not. QueryOnGPU( Phi_0_Pro ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair]   Phi_0_Pro missing'
-      IF ( .not. QueryOnGPU( Phi_0_Ann ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Pair]   Phi_0_Ann missing'
-    END IF
-#endif
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1499,44 +1291,31 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: D(:)
-    REAL(DP), INTENT(in)  :: T(:)
-    REAL(DP), INTENT(in)  :: Y(:)
-    REAL(DP), INTENT(out) :: S_Sigma(:,:,:)
+    REAL(DP), INTENT(in)  :: D(iX_B:)
+    REAL(DP), INTENT(in)  :: T(iX_B:)
+    REAL(DP), INTENT(in)  :: Y(iX_B:)
+    REAL(DP), INTENT(out) :: S_Sigma(iE_B:,iE_B:,iX_B:)
 
     INTEGER  :: iX, iE1, iE2
-    REAL(DP) :: LogT_P(iX_B:iX_E)
-    REAL(DP) :: LogD_X(3,iX_B:iX_E)
     REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions
+    REAL(DP) :: LogT_P(iX_B:iX_E)
+    REAL(DP) :: LogDX_P(3,iX_B:iX_E)
     LOGICAL  :: do_gpu
 
-    do_gpu = QueryOnGPU( D, T, Y ) &
-       .AND. QueryOnGPU( S_Sigma )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_Brem] Data not present on device'
-      IF ( .not. QueryOnGPU( D ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem]   D missing'
-      IF ( .not. QueryOnGPU( T ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem]   T missing'
-      IF ( .not. QueryOnGPU( Y ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem]   Y missing'
-      IF ( .not. QueryOnGPU( S_Sigma ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem]   S_Sigma missing'
-    END IF
+#if defined(THORNADO_GPU)
+    do_gpu = .true.
+#else
+    do_gpu = .false.
 #endif
-
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
-    !$OMP MAP( alloc: Xp, Xn, LogT_P, LogD_X )
+    !$OMP MAP( alloc: Xp, Xn, LogT_P, LogDX_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
-    !$ACC CREATE( Xp, Xn, LogT_P, LogD_X )
+    !$ACC CREATE( Xp, Xn, LogT_P, LogDX_P )
 #endif
 
     ! --- Compute proton and neutron fractions ---
@@ -1548,38 +1327,34 @@ CONTAINS
            ( D, T, Y, Xn )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
-    !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( D, T, Xp, Xn, LogT_P, LogD_X )
+    !$ACC PRESENT( D, T, Xp, Xn, LogT_P, LogDX_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
     DO iX = iX_B, iX_E
 
-      LogD_X(1,iX) = LOG10(D(iX) * Xp(iX) / UnitD)
-      LogD_X(2,iX) = LOG10(D(iX) * Xn(iX) / UnitD)
-      LogD_X(3,iX) = LOG10(D(iX) * SQRT(ABS(Xp(iX)*Xn(iX))) / UnitD)
+      LogDX_P(1,iX) = LOG10(D(iX) * Xp(iX) / UnitD)
+      LogDX_P(2,iX) = LOG10(D(iX) * Xn(iX) / UnitD)
+      LogDX_P(3,iX) = LOG10(D(iX) * SQRT(ABS(Xp(iX)*Xn(iX))) / UnitD)
 
       LogT_P(iX)   = LOG10(T(iX) / UnitT)    
 
     END DO
 
     CALL SumLogInterpolateSingleVariable_2D2D_Custom_Aligned &
-           ( LogD_X, LogT_P, LogDs_T, LogTs_T, Alpha_Brem, &
+           ( LogDX_P, LogT_P, LogDs_T, LogTs_T, Alpha_Brem, &
              OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), S_Sigma, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: Xp, Xn, LogT_P, LogD_X )
+    !$OMP MAP( release: Xp, Xn, LogT_P, LogDX_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
-    !$ACC DELETE( Xp, Xn, LogT_P, LogD_X )
+    !$ACC DELETE( Xp, Xn, LogT_P, LogDX_P )
 
     !$ACC WAIT(1)
 #endif
@@ -1587,11 +1362,9 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP IF( do_gpu )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC IF( do_gpu ) &
     !$ACC PRESENT( S_Sigma )
 #endif
     DO iX = iX_B, iX_E
@@ -1615,35 +1388,16 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: W2     (:)
-    REAL(DP), INTENT(in)  :: J      (:,:,:)
-    REAL(DP), INTENT(in)  :: J0     (:,:,:)
-    REAL(DP), INTENT(in)  :: S_Sigma(:,:,:)
-    REAL(DP), INTENT(out) :: Eta    (:,:,:)
-    REAL(DP), INTENT(out) :: Chi    (:,:,:)
+    REAL(DP), INTENT(in)  :: W2     (iE_B:)
+    REAL(DP), INTENT(in)  :: J      (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J0     (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: S_Sigma(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: Eta    (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: Chi    (iE_B:,iX_B:,iS_B:)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iX, iE, iE1, iE2, iS, iS_A
-    LOGICAL  :: do_gpu
-
-    do_gpu = QueryOnGPU( W2 ) &
-       .AND. QueryOnGPU( J, J0, Eta, Chi, S_Sigma )
-#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
-    IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacityRates_Brem] Data not present on device'
-      IF ( .not. QueryOnGPU( W2 ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Brem]   W2 missing'
-      IF ( .not. QueryOnGPU( J ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Brem]   J missing'
-      IF ( .not. QueryOnGPU( Eta ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Brem]   Eta missing'
-      IF ( .not. QueryOnGPU( Chi ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Brem]   Chi missing'
-      IF ( .not. QueryOnGPU( S_Sigma ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacityRates_Brem]   S_Sigma missing'
-    END IF
-#endif
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
