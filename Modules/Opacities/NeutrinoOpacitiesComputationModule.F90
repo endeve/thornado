@@ -1373,14 +1373,14 @@ CONTAINS
 
       DO iE1 = iE_B, iE_E
 
-        DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS,iX_A) ) &
-                 / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS,iX_A) ) )
+        DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
+                 / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
         Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
         Phi_0_Pro = Phi_0_Ann * DetBal
 
-        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS,iX) )
-        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS,iX)
+        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
+        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
       END DO
 
