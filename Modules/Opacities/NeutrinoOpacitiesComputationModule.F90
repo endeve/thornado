@@ -503,22 +503,22 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, opEC )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, opEC )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: E(iE_B:)
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(out) :: opEC(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: opEC(iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: LogE_P(iE_B:iE_E)
     REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
-    INTEGER  :: iX, iE, iS
+    INTEGER  :: iE, iS, iX
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -556,12 +556,23 @@ CONTAINS
       LogE_P(iE) = LOG10( E(iE) / UnitE )
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( LogE_P, LogD_P, LogT_P, Y_P, &
+    !$ACC          LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+    !$ACC          OS_EmAb, EmAb_T, opEC )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
     DO iX = iX_B, iX_E
     DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
 
       CALL LogInterpolateSingleVariable_4D_Custom_Point &
-             ( LogE_P(iE), LogD_P(iX), LogT_P(iX), Y_P(iX), LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             ( LogE_P(iE), LogD_P(iX), LogT_P(iX), Y_P(iX), &
+               LogEs_T   , LogDs_T   , LogTs_T   , Ys_T   , &
                OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
 
     END DO
@@ -576,10 +587,10 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
-      opEC(iE,iX,iS) = opEC(iE,iX,iS) * UnitEC
+      opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
     END DO
     END DO
     END DO
@@ -602,10 +613,10 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
-      opEC(iE,iX,iS) = Zero
+      opEC(iE,iS,iX) = Zero
     END DO
     END DO
     END DO
