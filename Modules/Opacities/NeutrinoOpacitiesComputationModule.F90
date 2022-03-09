@@ -706,23 +706,22 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, iMoment, opES )
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iMoment, opES )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    INTEGER,  INTENT(in)  :: iS_B, iS_E
     REAL(DP), INTENT(in)  :: E(iE_B:)
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: opES(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: opES(iE_B:,iX_B:)
 
     REAL(DP) :: LogE_P(iE_B:iE_E)
     REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
-    INTEGER  :: iX, iE, iS
+    INTEGER  :: iX, iE
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -760,27 +759,21 @@ CONTAINS
       LogE_P(iE) = LOG10( E(iE) / UnitE )
     END DO
 
-    DO iS = iS_B, iS_E
-
-      CALL LogInterpolateSingleVariable_1D3D_Custom &
-             ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_Iso(iS,iMoment), Iso_T(:,:,:,:,iMoment,iS), opES(:,:,iS) )
-
-    END DO
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES(:,:) )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRESENT( opES )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
-      opES(iE,iX,iS) = opES(iE,iX,iS) * UnitES
-    END DO
+      opES(iE,iX) = opES(iE,iX) * UnitES
     END DO
     END DO
 
@@ -795,18 +788,16 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRESENT( opES )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(2)
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
-      opES(iE,iX,iS) = Zero
-    END DO
+      opES(iE,iX) = Zero
     END DO
     END DO
 
