@@ -111,11 +111,13 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3
 
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J0, Chi, Sig
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J0
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
-  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_In_NES, Phi_0_Ot_NES
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
-  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_In_Pair, Phi_0_Ot_Pair
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: H_I_0, H_II_0
+  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J_I_0, J_II_0
 
   ! --- Least-squares scratch arrays ---
 
@@ -137,9 +139,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER  :: MaxIter_outer, MaxIter_inner
   REAL(DP) :: Rtol_outer, Rtol_inner
 
-  INTEGER :: iS_1 = iNuE
-  INTEGER :: iS_2 = iNuE_Bar
-
   INTEGER, PARAMETER :: iY  = 1
   INTEGER, PARAMETER :: iEf = 2
   INTEGER, PARAMETER :: iV1 = 3
@@ -148,45 +147,18 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   ! --- Temporary arrays for scatter/gather (packing)
 
-  REAL(DP), ALLOCATABLE, TARGET :: P1D(:,:)
-  REAL(DP), ALLOCATABLE, TARGET :: P2D(:,:,:)
-  REAL(DP), ALLOCATABLE, TARGET :: P3D(:,:,:,:)
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: D_T, T_T, Y_T, E_T
 
-  INTEGER, PARAMETER :: iP1D_D = 1
-  INTEGER, PARAMETER :: iP1D_T = 2
-  INTEGER, PARAMETER :: iP1D_Y = 3
-  INTEGER, PARAMETER :: iP1D_E = 4
-  INTEGER, PARAMETER :: nP1D   = 4
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_T
 
-  INTEGER, PARAMETER :: iP2D_Chi_NES_1  = 1
-  INTEGER, PARAMETER :: iP2D_Chi_NES_2  = 2
-  INTEGER, PARAMETER :: iP2D_Eta_NES_1  = 3
-  INTEGER, PARAMETER :: iP2D_Eta_NES_2  = 4
-  INTEGER, PARAMETER :: iP2D_Chi_Pair_1 = 5
-  INTEGER, PARAMETER :: iP2D_Chi_Pair_2 = 6
-  INTEGER, PARAMETER :: iP2D_Eta_Pair_1 = 7
-  INTEGER, PARAMETER :: iP2D_Eta_Pair_2 = 8
-  INTEGER, PARAMETER :: iP2D_Chi_1      = 9
-  INTEGER, PARAMETER :: iP2D_Chi_2      = 10
-  INTEGER, PARAMETER :: iP2D_J0_1       = 11
-  INTEGER, PARAMETER :: iP2D_J0_2       = 12
-  INTEGER, PARAMETER :: iP2D_J_1        = 13
-  INTEGER, PARAMETER :: iP2D_J_2        = 14
-  INTEGER, PARAMETER :: iP2D_Sig_1      = 15
-  INTEGER, PARAMETER :: iP2D_Sig_2      = 16
-  INTEGER, PARAMETER :: nP2D            = 16
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J0_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Sigma_Iso_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb_T, Eta_EmAb_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES_T, Eta_NES_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair_T, Eta_Pair_T
 
-  INTEGER, PARAMETER :: iP3D_Phi_0_In_NES_1  = 1
-  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_NES_1  = 2
-  INTEGER, PARAMETER :: iP3D_Phi_0_In_NES_2  = 3
-  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_NES_2  = 4
-  INTEGER, PARAMETER :: iP3D_Phi_0_In_Pair_1 = 5
-  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_1 = 6
-  INTEGER, PARAMETER :: iP3D_Phi_0_In_Pair_2 = 7
-  INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_2 = 8
-  INTEGER, PARAMETER :: iP3D_WORK1           = 9
-  INTEGER, PARAMETER :: iP3D_WORK2           = 10
-  INTEGER, PARAMETER :: nP3D                 = 10
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0_T, H_II_0_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0_T, J_II_0_T
 
 CONTAINS
 
@@ -216,9 +188,9 @@ CONTAINS
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
-    W2_S(:)      = W2_N(:) / ( PlanckConstant * SpeedOfLight )**3
-    W3_S(:)      = W3_N(:) / ( PlanckConstant * SpeedOfLight )**3
-    FourPiEp2(:) = FourPi * E_N(:) * E_N(:)
+    W2_S      = W2_N / ( PlanckConstant * SpeedOfLight )**3
+    W3_S      = W3_N / ( PlanckConstant * SpeedOfLight )**3
+    FourPiEp2 = FourPi * E_N * E_N
 
     ALLOCATE(     ITERATE_outer(nX_G) )
     ALLOCATE(   PackIndex_outer(nX_G) )
@@ -228,21 +200,21 @@ CONTAINS
     ALLOCATE(   PackIndex_inner(nX_G) )
     ALLOCATE( UnpackIndex_inner(nX_G) )
 
-    ITERATE_outer(:) = .TRUE.
-    ITERATE_inner(:) = .TRUE.
+    ITERATE_outer = .TRUE.
+    ITERATE_inner = .TRUE.
 
     ALLOCATE( Jnorm(nSpecies,nX_G) )
 
-    ALLOCATE( C_J  (nE_G,nX_G,nSpecies) )
+    ALLOCATE( C_J(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE( C_H_d_1    (nE_G,nX_G,nSpecies) )
-    ALLOCATE(   H_d_1    (nE_G,nX_G,nSpecies) )
+    ALLOCATE( C_H_d_1(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   H_d_1(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE( C_H_d_2    (nE_G,nX_G,nSpecies) )
-    ALLOCATE(   H_d_2    (nE_G,nX_G,nSpecies) )
+    ALLOCATE( C_H_d_2(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   H_d_2(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE( C_H_d_3    (nE_G,nX_G,nSpecies) )
-    ALLOCATE(   H_d_3    (nE_G,nX_G,nSpecies) )
+    ALLOCATE( C_H_d_3(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   H_d_3(nE_G,nX_G,nSpecies) )
 
     ALLOCATE( N_nu    (nE_G,nX_G,nSpecies) )
     ALLOCATE( E_nu    (nE_G,nX_G,nSpecies) )
@@ -250,7 +222,7 @@ CONTAINS
     ALLOCATE( F_nu_d_2(nE_G,nX_G,nSpecies) )
     ALLOCATE( F_nu_d_3(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE( Omega  (nX_G) )
+    ALLOCATE( Omega(nX_G) )
 
     ALLOCATE(   Ef_old(nX_G) )
     ALLOCATE( C_Ef    (nX_G) )
@@ -265,37 +237,58 @@ CONTAINS
     ALLOCATE( G_Y    (nX_G) )
     ALLOCATE( U_Y    (nX_G) )
 
-    ALLOCATE( C_V_d_1    (nX_G) )
-    ALLOCATE( S_V_d_1    (nX_G) )
-    ALLOCATE( G_V_d_1    (nX_G) )
-    ALLOCATE( U_V_d_1    (nX_G) )
-    ALLOCATE(   V_d_1    (nX_G) )
+    ALLOCATE( C_V_d_1(nX_G) )
+    ALLOCATE( S_V_d_1(nX_G) )
+    ALLOCATE( G_V_d_1(nX_G) )
+    ALLOCATE( U_V_d_1(nX_G) )
+    ALLOCATE(   V_d_1(nX_G) )
 
-    ALLOCATE( C_V_d_2    (nX_G) )
-    ALLOCATE( S_V_d_2    (nX_G) )
-    ALLOCATE( G_V_d_2    (nX_G) )
-    ALLOCATE( U_V_d_2    (nX_G) )
-    ALLOCATE(   V_d_2    (nX_G) )
+    ALLOCATE( C_V_d_2(nX_G) )
+    ALLOCATE( S_V_d_2(nX_G) )
+    ALLOCATE( G_V_d_2(nX_G) )
+    ALLOCATE( U_V_d_2(nX_G) )
+    ALLOCATE(   V_d_2(nX_G) )
 
-    ALLOCATE( C_V_d_3    (nX_G) )
-    ALLOCATE( S_V_d_3    (nX_G) )
-    ALLOCATE( G_V_d_3    (nX_G) )
-    ALLOCATE( U_V_d_3    (nX_G) )
-    ALLOCATE(   V_d_3    (nX_G) )
+    ALLOCATE( C_V_d_3(nX_G) )
+    ALLOCATE( S_V_d_3(nX_G) )
+    ALLOCATE( G_V_d_3(nX_G) )
+    ALLOCATE( U_V_d_3(nX_G) )
+    ALLOCATE(   V_d_3(nX_G) )
 
-    ALLOCATE(  J0(nE_G,nX_G,nSpecies) )
-    ALLOCATE( Chi(nE_G,nX_G,nSpecies) )
-    ALLOCATE( Sig(nE_G,nX_G,nSpecies) )
+    ALLOCATE(        J0(nE_G,nX_G,nSpecies) )
+    ALLOCATE( Sigma_Iso(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Chi_EmAb(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Eta_EmAb(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   Chi_NES(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   Eta_NES(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Chi_Pair(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Eta_Pair(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE(      Chi_NES(     nE_G,nX_G,nSpecies) )
-    ALLOCATE(      Eta_NES(     nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_In_NES(nE_G,nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_Ot_NES(nE_G,nE_G,nX_G,nSpecies) )
+    ALLOCATE(  H_I_0(nE_G,nE_G,nX_G) )
+    ALLOCATE( H_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(  J_I_0(nE_G,nE_G,nX_G) )
+    ALLOCATE( J_II_0(nE_G,nE_G,nX_G) )
 
-    ALLOCATE(      Chi_Pair(     nE_G,nX_G,nSpecies) )
-    ALLOCATE(      Eta_Pair(     nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_In_Pair(nE_G,nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_Ot_Pair(nE_G,nE_G,nX_G,nSpecies) )
+    ALLOCATE( D_T(nX_G) )
+    ALLOCATE( T_T(nX_G) )
+    ALLOCATE( Y_T(nX_G) )
+    ALLOCATE( E_T(nX_G) )
+
+    ALLOCATE( J_T(nE_G,nX_G,nSpecies) )
+
+    ALLOCATE(        J0_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE( Sigma_Iso_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Chi_EmAb_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Eta_EmAb_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   Chi_NES_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE(   Eta_NES_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Chi_Pair_T(nE_G,nX_G,nSpecies) )
+    ALLOCATE(  Eta_Pair_T(nE_G,nX_G,nSpecies) )
+
+    ALLOCATE(  H_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( H_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(  J_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( J_II_0_T(nE_G,nE_G,nX_G) )
 
     ALLOCATE(  AMAT_outer(n_FP_outer,M_outer,nX_G) )
     ALLOCATE(  GVEC_outer(n_FP_outer,M_outer,nX_G) )
@@ -317,29 +310,34 @@ CONTAINS
 
     ALLOCATE( INFO(nX_G) )
 
-    ALLOCATE( P1D(          nX_G,nP1D) )
-    ALLOCATE( P2D(nE_G     ,nX_G,nP2D) )
-    ALLOCATE( P3D(nE_G,nE_G,nX_G,nP3D) )
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, &
+    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
     !$OMP          ITERATE_outer, ITERATE_inner ) &
-    !$OMP MAP( alloc: INFO, P1D, P2D, P3D, &
-    !$OMP             Omega, Jnorm, &
+    !$OMP MAP( alloc: INFO, &
+    !$OMP             Jnorm, &
     !$OMP             C_J, &
     !$OMP             C_H_d_1, H_d_1, &
     !$OMP             C_H_d_2, H_d_2, &
     !$OMP             C_H_d_3, H_d_3, &
     !$OMP             N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$OMP             Omega, &
     !$OMP             Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$OMP             Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$OMP             C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$OMP             J0, Chi, Sig, &
-    !$OMP             Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$OMP             Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$OMP             J0, Sigma_Iso, &
+    !$OMP             Chi_EmAb, Eta_EmAb, &
+    !$OMP             Chi_NES, Eta_NES, &
+    !$OMP             Chi_Pair, Pair_NES, &
+    !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$OMP             D_T, T_T, Y_T, E_T, J_T, &
+    !$OMP             J0_T, Sigma_Iso_T, &
+    !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
+    !$OMP             Chi_NES_T, Eta_NES_T, &
+    !$OMP             Chi_Pair_T, Pair_NES_T, &
+    !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP             PackIndex_outer, UnpackIndex_outer, &
     !$OMP             AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP             BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -350,23 +348,32 @@ CONTAINS
     !$OMP             TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, &
+    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
     !$ACC         ITERATE_outer, ITERATE_inner ) &
-    !$ACC CREATE( INFO, P1D, P2D, P3D, &
-    !$ACC         Omega, Jnorm, &
+    !$ACC CREATE( INFO, &
+    !$ACC         Jnorm, &
     !$ACC         C_J, &
     !$ACC         C_H_d_1, H_d_1, &
     !$ACC         C_H_d_2, H_d_2, &
     !$ACC         C_H_d_3, H_d_3, &
     !$ACC         N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$ACC         Omega, &
     !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$ACC         J0, Chi, Sig, &
-    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$ACC         J0, Sigma_Iso, &
+    !$ACC         Chi_EmAb, Eta_EmAb, &
+    !$ACC         Chi_NES, Eta_NES, &
+    !$ACC         Chi_Pair, Pair_NES, &
+    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$ACC         D_T, T_T, Y_T, E_T, J_T, &
+    !$ACC         J0_T, Sigma_Iso_T, &
+    !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
+    !$ACC         Chi_NES_T, Eta_NES_T, &
+    !$ACC         Chi_Pair_T, Pair_NES_T, &
+    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -471,22 +478,31 @@ CONTAINS
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, &
-    !$OMP               INFO, P1D, P2D, P3D, &
-    !$OMP               Omega, Jnorm, &
+    !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
+    !$OMP               INFO, &
+    !$OMP               Jnorm, &
     !$OMP               C_J, &
     !$OMP               C_H_d_1, H_d_1, &
     !$OMP               C_H_d_2, H_d_2, &
     !$OMP               C_H_d_3, H_d_3, &
     !$OMP               N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$OMP               Omega, &
     !$OMP               Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$OMP               Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$OMP               C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$OMP               J0, Chi, Sig, &
-    !$OMP               Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$OMP               Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$OMP               J0, Sigma_Iso, &
+    !$OMP               Chi_EmAb, Eta_EmAb, &
+    !$OMP               Chi_NES, Eta_NES, &
+    !$OMP               Chi_Pair, Eta_Pair, &
+    !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$OMP               D_T, T_T, Y_T, E_T, J_T, &
+    !$OMP               J0_T, Sigma_Iso_T, &
+    !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
+    !$OMP               Chi_NES_T, Eta_NES_T, &
+    !$OMP               Chi_Pair_T, Eta_Pair_T, &
+    !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP               ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
     !$OMP               AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP               BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -497,22 +513,31 @@ CONTAINS
     !$OMP               WORK_inner, TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
-    !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, &
-    !$ACC         INFO, P1D, P2D, P3D, &
-    !$ACC         Omega, Jnorm, &
+    !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
+    !$ACC         INFO, &
+    !$ACC         Jnorm, &
     !$ACC         C_J, &
     !$ACC         C_H_d_1, H_d_1, &
     !$ACC         C_H_d_2, H_d_2, &
     !$ACC         C_H_d_3, H_d_3, &
     !$ACC         N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$ACC         Omega, &
     !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$ACC         J0, Chi, Sig, &
-    !$ACC         Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES, &
-    !$ACC         Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair, &
+    !$ACC         J0, Sigma_Iso, &
+    !$ACC         Chi_EmAb, Eta_EmAb, &
+    !$ACC         Chi_NES, Eta_NES, &
+    !$ACC         Chi_Pair, Eta_Pair, &
+    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$ACC         D_T, T_T, Y_T, E_T, J_T, &
+    !$ACC         J0_T, Sigma_Iso_T, &
+    !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
+    !$ACC         Chi_NES_T, Eta_NES_T, &
+    !$ACC         Chi_Pair_T, Eta_Pair_T, &
+    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -524,21 +549,30 @@ CONTAINS
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
-    DEALLOCATE( INFO, P1D, P2D, P3D )
-    DEALLOCATE( Omega, Jnorm )
+    DEALLOCATE( INFO )
+    DEALLOCATE( Jnorm )
     DEALLOCATE( C_J )
     DEALLOCATE( C_H_d_1, H_d_1 )
     DEALLOCATE( C_H_d_2, H_d_2 )
     DEALLOCATE( C_H_d_3, H_d_3 )
     DEALLOCATE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+    DEALLOCATE( Omega )
     DEALLOCATE( Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef )
     DEALLOCATE( Y_old, C_Y, S_Y, G_Y, U_Y )
     DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1 )
     DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2 )
     DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3 )
-    DEALLOCATE( J0, Chi, Sig )
-    DEALLOCATE( Chi_NES, Eta_NES, Phi_0_In_NES, Phi_0_Ot_NES )
-    DEALLOCATE( Chi_Pair, Eta_Pair, Phi_0_In_Pair, Phi_0_Ot_Pair )
+    DEALLOCATE( J0, Sigma_Iso )
+    DEALLOCATE( Chi_EmAb, Eta_EmAb )
+    DEALLOCATE( Chi_NES, Eta_NES )
+    DEALLOCATE( Chi_Pair, Eta_Pair )
+    DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
+    DEALLOCATE( D_T, T_T, Y_T, E_T, J_T )
+    DEALLOCATE( J0_T, Sigma_Iso_T )
+    DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
+    DEALLOCATE( Chi_NES_T, Eta_NES_T )
+    DEALLOCATE( Chi_Pair_T, Eta_Pair_T )
+    DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
     DEALLOCATE( ITERATE_outer, PackIndex_outer, UnpackIndex_outer )
     DEALLOCATE( AMAT_outer, GVEC_outer, FVEC_outer )
     DEALLOCATE( BVEC_outer, GVECm_outer, FVECm_outer )
