@@ -49,6 +49,7 @@ MODULE NeutrinoOpacitiesComputationModule
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_4D_Custom, &
+    LogInterpolateSingleVariable_4D_Custom_Point, &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     SumLogInterpolateSingleVariable_2D2D_Custom_Aligned
@@ -556,12 +557,16 @@ CONTAINS
       LogE_P(iE) = LOG10( E(iE) / UnitE )
     END DO
 
+    DO iX = iX_B, iX_E
     DO iS = iS_B, iS_E
+    DO iE = iE_B, iE_E
 
-      CALL LogInterpolateSingleVariable_1D3D_Custom &
-             ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(:,:,iS) )
+      CALL LogInterpolateSingleVariable_4D_Custom_Point &
+             ( LogE_P(iE), LogD_P(iX), LogT_P(iX), Y_P(iX), LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
 
+    END DO
+    END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
