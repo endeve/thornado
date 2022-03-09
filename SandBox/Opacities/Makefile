@@ -10,7 +10,8 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
-#DEFINES += $(PP)-DTHORNADO_DEBUG
+DEFINES += $(PP)THORNADO_EULER_NOGPU
+#DEFINES += $(PP)THORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
