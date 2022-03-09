@@ -1051,9 +1051,10 @@ CONTAINS
       ! --- Pack Arrays ---
 
       J_P        => J_T       (:,:,1:nX)
+      J0_P       => J0_T      (:,:,1:nX)
 
       CALL ArrayPack &
-             ( nX, UnpackIndex, J, J_P )
+             ( nX, UnpackIndex, J, J0, J_P, J0_P )
 
       Chi_NES_P  => Chi_NES_T (:,:,1:nX)
       Eta_NES_P  => Chi_NES_T (:,:,1:nX)
@@ -1089,6 +1090,7 @@ CONTAINS
     ELSE
 
       J_P        => J       (:,:,:)
+      J0_P       => J0      (:,:,:)
 
       Chi_NES_P  => Chi_NES (:,:,:)
       Eta_NES_P  => Chi_NES (:,:,:)
