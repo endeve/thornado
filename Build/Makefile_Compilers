@@ -1,6 +1,13 @@
+GIT_HASH := $(shell git --no-pager describe --tags --always --dirty)
+GIT_DATE := $(firstword $(shell git --no-pager show --date=short --format="%ad" --name-only))
+GIT_BRANCH := $(shell git branch | grep "^\*" | sed 's/^..//')
+GIT_URL :=$(shell git config --get remote.origin.url)
+
+VERSION_FLAGS := -DGIT_HASH="\"$(GIT_HASH)\"" -DGIT_DATE="\"$(GIT_DATE)\"" -DGIT_BRANCH="\"$(GIT_BRANCH)\"" -DGIT_URL="\"$(GIT_URL)\""
+
 include $(THORNADO_DIR)/Build/Machines/Makefile_$(MACHINE)
 
-FLAGS_$(OPT_LEVEL) = $($(OPT_LEVEL)) $(OPENMP) $(OPENACC)
+FLAGS_$(OPT_LEVEL) = $($(OPT_LEVEL)) $(OPENMP) $(OPENACC) $(VERSION_FLAGS)
 
 INCLUDE            = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON) $(INCLUDE_PETSC)
 LIBRARIES          = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON) $(LIBRARIES_PETSC)
