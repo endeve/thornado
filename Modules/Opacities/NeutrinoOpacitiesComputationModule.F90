@@ -118,8 +118,7 @@ MODULE NeutrinoOpacitiesComputationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_Point &
-    ( E, D, T, Y, f0, iSpecies )
+  SUBROUTINE ComputeEquilibriumDistributions_Point( E, D, T, Y, f0, iSpecies )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -395,7 +394,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributionAndDerivatives &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, f0, df0dY, df0dU )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, df0dY, df0dU )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -406,9 +405,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(out) :: f0   (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: df0dY(iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: df0dU(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: f0   (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: df0dY(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: df0dU(iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedY(iX_B:iX_E)
     REAL(DP) :: Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdY(iX_B:iX_E)
@@ -417,7 +416,7 @@ CONTAINS
     REAL(DP) :: Mnu          , dMnudT          , dMnudY
 
     REAL(DP) :: kT, df0dT_Y, df0dY_T
-    INTEGER  :: iX, iE, iS
+    INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -458,8 +457,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
 
       kT = BoltzmannConstant * T(iX)
@@ -474,12 +473,12 @@ CONTAINS
         dMnudY = ( ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX) ) * LeptonNumber(iS)
       END IF
 
-      f0(iE,iX,iS) = FermiDirac   ( E(iE), Mnu, kT )
+      f0(iE,iS,iX) = FermiDirac   ( E(iE), Mnu, kT )
       df0dT_Y      = dFermiDiracdT( E(iE), Mnu, kT, dMnudT, T(iX) ) ! Constant T
       df0dY_T      = dFermiDiracdY( E(iE), Mnu, kT, dMnudY, T(iX) ) ! Constant Y
 
-      df0dU(iE,iX,iS) = df0dT_Y / dUdT(iX)
-      df0dY(iE,iX,iS) = df0dY_T - df0dU(iE,iX,iS) * dUdY(iX)
+      df0dU(iE,iS,iX) = df0dT_Y / dUdT(iX)
+      df0dY(iE,iS,iX) = df0dY_T - df0dU(iE,iS,iX) * dUdY(iX)
 
     END DO
     END DO
