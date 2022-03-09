@@ -119,8 +119,7 @@ MODULE NeutrinoOpacitiesComputationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_Point &
-    ( E, D, T, Y, f0, iSpecies )
+  SUBROUTINE ComputeEquilibriumDistributions_Point( E, D, T, Y, f0, iSpecies )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -162,22 +161,22 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: E(iE_B:)
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(out) :: f0(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: f0(iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: Me(iX_B:iX_E), Mp(iX_B:iX_E), Mn(iX_B:iX_E)
     REAL(DP) :: Mnu, kT
-    INTEGER  :: iX, iE, iS
+    INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -209,8 +208,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( Mnu, kT )
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
 
       kT = BoltzmannConstant * T(iX)
@@ -221,7 +220,7 @@ CONTAINS
         Mnu = ( ( Me(iX) + Mp(iX) ) - Mn(iX) ) * LeptonNumber(iS)
       END IF
 
-      f0(iE,iX,iS) = FermiDirac( E(iE), Mnu, kT )
+      f0(iE,iS,iX) = FermiDirac( E(iE), Mnu, kT )
 
     END DO
     END DO
@@ -239,37 +238,37 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_DG &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: E(iE_B:)
     REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: D(iX_B:)
     REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: T(iX_B:)
     REAL(DP), INTENT(in) , TARGET, CONTIGUOUS :: Y(iX_B:)
-    REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out), TARGET, CONTIGUOUS :: f0(iE_B:,iS_B:,iX_B:)
 
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
 
-    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iX_E-iX_B+1),1:(iS_B-iS_E+1))
-    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iX_E-iX_B+1),1:(iS_B-iS_E+1))
+    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iS_B-iS_E+1),1:(iX_E-iX_B+1))
+    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iS_B-iS_E+1),1:(iX_E-iX_B+1))
     REAL(DP) :: N_K, V_K, f0_Min, Min_K, Max_K, Theta
-    INTEGER  :: iX, iE, iS, iNodeE, nE, nX, nS
+    INTEGER  :: iE, iS, iX, iNodeE, nE, nS, nX
 
     CALL ComputeEquilibriumDistributions &
-           ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, f0 )
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     nE = ( iE_E - iE_B + 1 ) / nDOFE
-    nX = ( iX_E - iX_B + 1 )
     nS = ( iS_E - iS_B + 1 )
+    nX = ( iX_E - iX_B + 1 )
 
     ! --- Permute Data ---
 
-    E_Q(1:nDOFE,1:nE) => E(:)
-    f0_Q(1:nDOFE,1:nE,1:nX,1:nS) => f0(:,:,:)
+    E_Q (1:nDOFE,1:nE)           => E (:)
+    f0_Q(1:nDOFE,1:nE,1:nS,1:nX) => f0(:,:,:)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -292,8 +291,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( V_K, N_K )
 #endif
-    DO iS = 1, nS
     DO iX = 1, nX
+    DO iS = 1, nS
     DO iE = 1, nE
 
       V_K = Zero
@@ -301,15 +300,15 @@ CONTAINS
 
       DO iNodeE = 1, nDOFE
         V_K = V_K + WeightsE(iNodeE) * E_Q(iNodeE,iE)**2
-        N_K = N_K + WeightsE(iNodeE) * E_Q(iNodeE,iE)**2 * f0_Q(iNodeE,iE,iX,iS)
+        N_K = N_K + WeightsE(iNodeE) * E_Q(iNodeE,iE)**2 * f0_Q(iNodeE,iE,iS,iX)
       END DO
 
-      f0_K(iE,iX,iS) = N_K / V_K
+      f0_K(iE,iS,iX) = N_K / V_K
 
-      IF( f0_K(iE,iX,iS) > f0_Max )THEN
-        f0_K(iE,iX,iS) = f0_Max
+      IF( f0_K(iE,iS,iX) > f0_Max )THEN
+        f0_K(iE,iS,iX) = f0_Max
         DO iNodeE = 1, nDOFE
-          f0_Q(iNodeE,iE,iX,iS) = f0_Max
+          f0_Q(iNodeE,iE,iS,iX) = f0_Max
         END DO
       END IF
 
@@ -327,16 +326,16 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
-    DO iS = 1, nS
     DO iX = 1, nX
+    DO iS = 1, nS
 
-      f0_K(nE+1,iX,iS) = f0_K(nE,iX,iS)**2 / f0_K(nE-1,iX,iS)
+      f0_K(nE+1,iS,iX) = f0_K(nE,iS,iX)**2 / f0_K(nE-1,iS,iX)
 
     END DO
     END DO
 
     CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFE+2, nX*nE*nS, nDOFE, One, InterpMat_E, nDOFE+2, &
+           ( 'N', 'N', nDOFE+2, nE*nS*nX, nDOFE, One, InterpMat_E, nDOFE+2, &
              f0_Q, nDOFE, Zero, f0_P, nDOFE+2 )
 
     ! --- Limit Equilibrium Distributions ---
@@ -352,30 +351,30 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
 #endif
-    DO iS = 1, nS
     DO iX = 1, nX
+    DO iS = 1, nS
     DO iE = 1, nE
 
-      f0_Min = f0_K(iE+1,iX,iS)
+      f0_Min = f0_K(iE+1,iS,iX)
 
       Max_K = f0_Max
       Min_K = f0_Min
       DO iNodeE = 1, nDOFE+2
-        Max_K = MAX( Max_K, f0_P(iNodeE,iE,iX,iS) )
-        Min_K = MIN( Min_K, f0_P(iNodeE,iE,iX,iS) )
+        Max_K = MAX( Max_K, f0_P(iNodeE,iE,iS,iX) )
+        Min_K = MIN( Min_K, f0_P(iNodeE,iE,iS,iX) )
       END DO
 
       IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
 
         Theta &
           = MIN( One, &
-                 ABS((f0_Min-f0_K(iE,iX,iS))/(Min_K-f0_K(iE,iX,iS)+SqrtTiny)), &
-                 ABS((f0_Max-f0_K(iE,iX,iS))/(Max_K-f0_K(iE,iX,iS)+SqrtTiny)) )
+                 ABS((f0_Min-f0_K(iE,iS,iX))/(Min_K-f0_K(iE,iS,iX)+SqrtTiny)), &
+                 ABS((f0_Max-f0_K(iE,iS,iX))/(Max_K-f0_K(iE,iS,iX)+SqrtTiny)) )
 
         DO iNodeE = 1, nDOFE
-          f0_Q(iNodeE,iE,iX,iS) &
-            = ( One - Theta ) * f0_K(iE,iX,iS) &
-              +       Theta   * f0_Q(iNodeE,iE,iX,iS)
+          f0_Q(iNodeE,iE,iS,iX) &
+            = ( One - Theta ) * f0_K(iE,iS,iX) &
+              +       Theta   * f0_Q(iNodeE,iE,iS,iX)
         END DO
 
       END IF
@@ -396,7 +395,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributionAndDerivatives &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, E, D, T, Y, f0, df0dY, df0dU )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, df0dY, df0dU )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -407,9 +406,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(out) :: f0   (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: df0dY(iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: df0dU(iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: f0   (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: df0dY(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: df0dU(iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedY(iX_B:iX_E)
     REAL(DP) :: Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdY(iX_B:iX_E)
@@ -418,7 +417,7 @@ CONTAINS
     REAL(DP) :: Mnu          , dMnudT          , dMnudY
 
     REAL(DP) :: kT, df0dT_Y, df0dY_T
-    INTEGER  :: iX, iE, iS
+    INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -459,8 +458,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
 
       kT = BoltzmannConstant * T(iX)
@@ -475,12 +474,12 @@ CONTAINS
         dMnudY = ( ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX) ) * LeptonNumber(iS)
       END IF
 
-      f0(iE,iX,iS) = FermiDirac   ( E(iE), Mnu, kT )
+      f0(iE,iS,iX) = FermiDirac   ( E(iE), Mnu, kT )
       df0dT_Y      = dFermiDiracdT( E(iE), Mnu, kT, dMnudT, T(iX) ) ! Constant T
       df0dY_T      = dFermiDiracdY( E(iE), Mnu, kT, dMnudY, T(iX) ) ! Constant Y
 
-      df0dU(iE,iX,iS) = df0dT_Y / dUdT(iX)
-      df0dY(iE,iX,iS) = df0dY_T - df0dU(iE,iX,iS) * dUdY(iX)
+      df0dU(iE,iS,iX) = df0dT_Y / dUdT(iX)
+      df0dY(iE,iS,iX) = df0dY_T - df0dU(iE,iS,iX) * dUdY(iX)
 
     END DO
     END DO
