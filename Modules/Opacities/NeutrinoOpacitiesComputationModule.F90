@@ -400,8 +400,8 @@ CONTAINS
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: E(iE_B:)
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
@@ -776,7 +776,7 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_1D3D_Custom &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES(:,:) )
+             OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -1332,19 +1332,19 @@ CONTAINS
 
   
   SUBROUTINE ComputeNeutrinoOpacityRates_Brem &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, S_Sigma, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, S_Sigma, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: W2     (iE_B:)
-    REAL(DP), INTENT(in)  :: J      (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(in)  :: J0     (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J      (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(in)  :: S_Sigma(iE_B:,iE_B:,iX_B:)
-    REAL(DP), INTENT(out) :: Eta    (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: Chi    (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: Eta    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: Chi    (iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
@@ -1361,8 +1361,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
 #endif
-    DO iS = iS_B, iS_E
     DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
     DO iE2 = iE_B, iE_E
 
       ! Get index for corresponding anti-neutrino
@@ -1373,19 +1373,19 @@ CONTAINS
 
       DO iE1 = iE_B, iE_E
 
-        DetBal =   ( J0(iE2,iX,iS) * J0(iE1,iX,iS_A) ) &
-                 / ( ( One - J0(iE2,iX,iS) ) * ( One - J0(iE1,iX,iS_A) ) )
+        DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS,iX_A) ) &
+                 / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS,iX_A) ) )
 
         Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
         Phi_0_Pro = Phi_0_Ann * DetBal
 
-        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iX,iS) )
-        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iX,iS)
+        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS,iX) )
+        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS,iX)
 
       END DO
 
-      Eta(iE2,iX,iS) = SUM1
-      Chi(iE2,iX,iS) = SUM1 + SUM2
+      Eta(iE2,iS,iX) = SUM1
+      Chi(iE2,iS,iX) = SUM1 + SUM2
 
     END DO
     END DO

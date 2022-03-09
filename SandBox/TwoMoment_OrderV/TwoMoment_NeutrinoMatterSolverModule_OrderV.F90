@@ -112,7 +112,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3
 
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J0
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
+  REAL(DP), DIMENSION(:,:)    , ALLOCATABLE, TARGET :: Sigma_Iso
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
@@ -258,7 +258,7 @@ CONTAINS
     ALLOCATE(   V_d_3(nX_G) )
 
     ALLOCATE(        J0(nE_G,nSpecies,nX_G) )
-    ALLOCATE( Sigma_Iso(nE_G,nSpecies,nX_G) )
+    ALLOCATE( Sigma_Iso(nE_G,         nX_G) )
     ALLOCATE(  Chi_EmAb(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Eta_EmAb(nE_G,nSpecies,nX_G) )
     ALLOCATE(   Chi_NES(nE_G,nSpecies,nX_G) )
@@ -279,7 +279,7 @@ CONTAINS
     ALLOCATE( J_T(nE_G,nSpecies,nX_G) )
 
     ALLOCATE(        J0_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( Sigma_Iso_T(nE_G,nX_G         ) )
+    ALLOCATE( Sigma_Iso_T(nE_G,         nX_G) )
     ALLOCATE(  Chi_EmAb_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Eta_EmAb_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(   Chi_NES_T(nE_G,nSpecies,nX_G) )
@@ -1626,7 +1626,7 @@ CONTAINS
 
         ! --- Number Flux Opacity ---
 
-        Kappa = Chi_T + Sigma_Iso(iN_E,iS,iN_X)
+        Kappa = Chi_T + Sigma_Iso(iN_E,iN_X)
 
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
