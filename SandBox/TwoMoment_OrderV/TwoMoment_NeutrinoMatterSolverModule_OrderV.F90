@@ -434,8 +434,10 @@ CONTAINS
       DO iE2 = 1, nE_G
       DO iE1 = 1, nE_G
 
-        H_I_0 (iE1,iE2,iN_X) = Zero
-        H_II_0(iE1,iE2,iN_X) = Zero
+        H_I_0   (iE1,iE2,iN_X) = Zero
+        H_II_0  (iE1,iE2,iN_X) = Zero
+        H_I_0_T (iE1,iE2,iN_X) = Zero
+        H_II_0_T(iE1,iE2,iN_X) = Zero
 
       END DO
       END DO
@@ -456,8 +458,10 @@ CONTAINS
       DO iE2 = 1, nE_G
       DO iE1 = 1, nE_G
 
-        J_I_0 (iE1,iE2,iN_X) = Zero
-        J_II_0(iE1,iE2,iN_X) = Zero
+        J_I_0   (iE1,iE2,iN_X) = Zero
+        J_II_0  (iE1,iE2,iN_X) = Zero
+        J_I_0_T (iE1,iE2,iN_X) = Zero
+        J_II_0_T(iE1,iE2,iN_X) = Zero
 
       END DO
       END DO
@@ -994,21 +998,13 @@ CONTAINS
 
       IF ( nX < nX0 ) THEN
 
-        IF ( Include_NES ) THEN
+        CALL ArrayUnpack &
+               ( nX, MASK, PackIndex, &
+                 H_I_0_P, H_II_0_P, H_I_0, H_II_0 )
 
-          CALL ArrayUnpack &
-                 ( nX, MASK, PackIndex, &
-                   H_I_0_P, H_II_0_P, H_I_0, H_II_0 )
-
-        END IF
-
-        IF ( Include_Pair ) THEN
-
-          CALL ArrayUnpack &
-                 ( nX, MASK, PackIndex, &
-                   J_I_0_P, J_II_0_P, J_I_0, J_II_0 )
-
-        END IF
+        CALL ArrayUnpack &
+               ( nX, MASK, PackIndex, &
+                 J_I_0_P, J_II_0_P, J_I_0, J_II_0 )
 
       END IF
 
@@ -1057,9 +1053,9 @@ CONTAINS
              ( nX, UnpackIndex, J, J0, J_P, J0_P )
 
       Chi_NES_P  => Chi_NES_T (:,:,1:nX)
-      Eta_NES_P  => Chi_NES_T (:,:,1:nX)
+      Eta_NES_P  => Eta_NES_T (:,:,1:nX)
       Chi_Pair_P => Chi_Pair_T(:,:,1:nX)
-      Eta_Pair_P => Chi_Pair_T(:,:,1:nX)
+      Eta_Pair_P => Eta_Pair_T(:,:,1:nX)
 
       H_I_0_P    => H_I_0_T   (:,:,1:nX)
       H_II_0_P   => H_II_0_T  (:,:,1:nX)
@@ -1069,21 +1065,13 @@ CONTAINS
 
       IF ( nX < nX0 ) THEN
 
-        IF ( Include_NES ) THEN
+        CALL ArrayPack &
+               ( nX, UnpackIndex, &
+                 H_I_0, H_II_0, H_I_0_P, H_II_0_P )
 
-          CALL ArrayPack &
-                 ( nX, UnpackIndex, &
-                   H_I_0, H_II_0, H_I_0_P, H_II_0_P )
-
-        END IF
-
-        IF ( Include_Pair ) THEN
-
-          CALL ArrayPack &
-                 ( nX, UnpackIndex, &
-                   J_I_0, J_II_0, J_I_0_P, J_II_0_P )
-
-        END IF
+        CALL ArrayPack &
+               ( nX, UnpackIndex, &
+                 J_I_0, J_II_0, J_I_0_P, J_II_0_P )
 
       END IF
 
@@ -1093,9 +1081,9 @@ CONTAINS
       J0_P       => J0      (:,:,:)
 
       Chi_NES_P  => Chi_NES (:,:,:)
-      Eta_NES_P  => Chi_NES (:,:,:)
+      Eta_NES_P  => Eta_NES (:,:,:)
       Chi_Pair_P => Chi_Pair(:,:,:)
-      Eta_Pair_P => Chi_Pair(:,:,:)
+      Eta_Pair_P => Eta_Pair(:,:,:)
 
       H_I_0_P    => H_I_0   (:,:,:)
       H_II_0_P   => H_II_0  (:,:,:)

@@ -780,10 +780,10 @@ CONTAINS
     END DO
     END DO
 
-    ALLOCATE( f0_P(nE_P,nX_P,nSpecies) )
+    ALLOCATE( f0_P(nE_P,nSpecies,nX_P) )
 
     CALL ComputeEquilibriumDistributions_DG &
-           ( 1, nE_P, 1, nX_P, 1, nSpecies, E_P, D_P, T_P, Y_P, f0_P )
+           ( 1, nE_P, 1, nSpecies, 1, nX_P, E_P, D_P, T_P, Y_P, f0_P )
 
     MaxError = Zero
 
@@ -802,7 +802,7 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        N0 = f0_P(iE_P,iX_P,iS)
+        N0 = f0_P(iE_P,iS,iX_P)
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
