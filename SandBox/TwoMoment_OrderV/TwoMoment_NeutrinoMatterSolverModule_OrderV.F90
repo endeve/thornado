@@ -332,13 +332,13 @@ CONTAINS
     !$OMP             J0, Sigma_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
-    !$OMP             Chi_Pair, Pair_NES, &
+    !$OMP             Chi_Pair, Eta_Pair, &
     !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP             D_T, T_T, Y_T, E_T, J_T, &
     !$OMP             J0_T, Sigma_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
-    !$OMP             Chi_Pair_T, Pair_NES_T, &
+    !$OMP             Chi_Pair_T, Eta_Pair_T, &
     !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP             PackIndex_outer, UnpackIndex_outer, &
     !$OMP             AMAT_outer, GVEC_outer, FVEC_outer, &
@@ -368,13 +368,13 @@ CONTAINS
     !$ACC         J0, Sigma_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
-    !$ACC         Chi_Pair, Pair_NES, &
+    !$ACC         Chi_Pair, Eta_Pair, &
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
     !$ACC         D_T, T_T, Y_T, E_T, J_T, &
     !$ACC         J0_T, Sigma_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
-    !$ACC         Chi_Pair_T, Pair_NES_T, &
+    !$ACC         Chi_Pair_T, Eta_Pair_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
