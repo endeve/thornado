@@ -15,6 +15,7 @@ MODULE PhysicalConstantsModule
     AvogadroConstantMKS      = 6.02214199e23_DP
 
   REAL(DP), PUBLIC, PARAMETER :: &
-    SpeedOfLightCGS          = 2.99792458e10_DP
+    SpeedOfLightCGS          = 2.99792458e10_DP, &
+    hbarMeVs                 = 6.582119569d-22
 
 END MODULE PhysicalConstantsModule

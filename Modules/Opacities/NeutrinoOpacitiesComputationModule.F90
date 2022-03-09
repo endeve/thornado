@@ -5,13 +5,17 @@
 MODULE NeutrinoOpacitiesComputationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, One, SqrtTiny
+    DP, Zero, One, SqrtTiny, TwoPi
   USE UnitsModule, ONLY: &
     BoltzmannConstant, &
     Centimeter, &
     Gram, &
     Kelvin, &
     MeV
+  USE PhysicalConstantsModule, ONLY: &
+    AvogadroConstantMKS, &
+    SpeedOfLightCGS, &
+    hbarMeVs 
   USE ProgramHeaderModule, ONLY: &
     nDOF, nDOFE, nDOFX
   USE DeviceModule, ONLY: &
@@ -113,11 +117,17 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
   REAL(DP), PARAMETER :: UnitES   = One / ( Centimeter * MeV**2 )
-  REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
-  REAL(DP), PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
-  REAL(DP), PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
+  REAL(DP), PUBLIC, PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
+  REAL(DP), PUBLIC, PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
+  REAL(DP), PUBLIC, PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
+  REAL(DP), PARAMETER :: C_A      = -1.26d0/2.0d0 ! C_A from HR98 
+  REAL(DP), PARAMETER :: G_F      = 1.166d-11 ! G_F from HR98 in [MeV**-2]
+  REAL(DP), PARAMETER :: nb_14    = AvogadroConstantMKS * 1d14
+  REAL(DP), PUBLIC, PARAMETER :: Brem_const = C_A**2 * G_F**2 * nb_14 &
+                                            * hbarMeVs**2 * SpeedOfLightCGS**2 &
+                                            / TwoPi**3
 
   REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2
   REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2
@@ -3693,7 +3703,7 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_Brem_Points &
     ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, &
-      iMoment, Phi_Pro, Phi_Ann, WORK1, WORK2, WORK3)
+      iMoment, Phi_0_Ann, WORK1, WORK2, WORK3)
 
     ! --- Brem Opacities (Multiple D,T) ---
 
@@ -3705,17 +3715,15 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iSpecies
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: Phi_Pro(:,:,:)
-    REAL(DP), INTENT(out) :: Phi_Ann(:,:,:)
+    REAL(DP), INTENT(out) :: Phi_0_Ann(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK1(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK2(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK3(:,:,:)
 
-    REAL(DP), POINTER :: Phi_Ann_Xp(:,:,:), Phi_Ann_Xn(:,:,:), Phi_Ann_XpXn(:,:,:)
+    REAL(DP), POINTER :: Phi_0_Ann_Xp(:,:,:), Phi_0_Ann_Xn(:,:,:), Phi_0_Ann_XpXn(:,:,:)
 
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2, nE, nX
     INTEGER  :: i, j, k
-    REAL(DP) :: kT, DetBal
     REAL(DP) :: logT_P(iX_B:iX_E)
     REAL(DP) :: logD_Xp(iX_B:iX_E), logD_Xn(iX_B:iX_E), logD_XpXn(iX_B:iX_E)
     REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions
@@ -3724,7 +3732,7 @@ CONTAINS
     REAL(dp), PARAMETER :: coef_np  = 28.d0/3.d0
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
-       .AND. QueryOnGPU( Phi_Ann, Phi_Pro )
+       .AND. QueryOnGPU( Phi_0_Ann )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
       WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points] Data not present on device'
@@ -3736,10 +3744,8 @@ CONTAINS
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   T missing'
       IF ( .not. QueryOnGPU( Y ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Y missing'
-      IF ( .not. QueryOnGPU( Phi_Pro ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Phi_Pro missing'
-      IF ( .not. QueryOnGPU( Phi_Ann ) ) &
-        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Phi_Ann missing'
+      IF ( .not. QueryOnGPU( Phi_0_Ann ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Phi_0_Ann missing'
       IF ( .not. QueryOnGPU( Xp_T ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_Brem_Points]   Proton fraction missing'
       IF ( .not. QueryOnGPU( Xn_T ) ) &
@@ -3754,31 +3760,31 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      Phi_Ann_Xp => WORK1(:,:,:)
+      Phi_0_Ann_Xp => WORK1(:,:,:)
     ELSE
-      ALLOCATE( Phi_Ann_Xp(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
+      ALLOCATE( Phi_0_Ann_Xp(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      Phi_Ann_Xn => WORK2(:,:,:)
+      Phi_0_Ann_Xn => WORK2(:,:,:)
     ELSE
-      ALLOCATE( Phi_Ann_Xn(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
+      ALLOCATE( Phi_0_Ann_Xn(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK3 ) ) THEN
-      Phi_Ann_XpXn => WORK3(:,:,:)
+      Phi_0_Ann_XpXn => WORK3(:,:,:)
     ELSE
-      ALLOCATE( Phi_Ann_XpXn(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
+      ALLOCATE( Phi_0_Ann_XpXn(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP IF( do_gpu ) &
     !$OMP MAP( alloc: Xp, Xn, LogT_P, LogD_Xp, LogD_Xn, LogD_XpXn, &
-    !$OMP      Phi_Ann_Xp, Phi_Ann_Xn, Phi_Ann_XpXn)
+    !$OMP      Phi_0_Ann_Xp, Phi_0_Ann_Xn, Phi_0_Ann_XpXn)
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC IF( do_gpu ) &
     !$ACC CREATE( Xp, Xn, LogT_P, LogD_Xp, LogD_Xn, &
-    !$ACC         Phi_Ann_Xp, Phi_Ann_Xn, Phi_Ann_XpXn )
+    !$ACC         Phi_0_Ann_Xp, Phi_0_Ann_Xn, Phi_0_Ann_XpXn )
 #endif
 
     ! --- Compute proton and neutron fractions ---
@@ -3809,41 +3815,34 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogD_Xp, LogT_P, LogDs_T, LogTs_T, &
-             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), Phi_Ann_Xp, &
+             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), Phi_0_Ann_Xp, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogD_Xn, LogT_P, LogDs_T, LogTs_T, &
-             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), Phi_Ann_Xn, &
+             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), Phi_0_Ann_Xn, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogD_XpXn, LogT_P, LogDs_T, LogTs_T, &
-             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), Phi_Ann_XpXn, &
+             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), Phi_0_Ann_XpXn, &
              GPU_Option = do_gpu, ASYNC_Option = 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP IF( do_gpu ) &
-    !$OMP PRIVATE( kT, DetBal )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) ASYNC(1) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRIVATE( kT, DetBal ) &
     !$ACC PRESENT( E, T, Phi_Ann, Phi_Pro, &
-    !$ACC          Phi_Ann_Xp, Phi_Ann_Xn, Phi_Ann_XpXn )
+    !$ACC          Phi_0_Ann_Xp, Phi_0_Ann_Xn, Phi_0_Ann_XpXn )
 #endif
     DO iX = iX_B, iX_E
       DO iE2 = iE_B, iE_E
         DO iE1 = iE_B, iE_E
 
-          kT = BoltzmannConstant * T(iX)
-          DetBal = EXP( - ABS( E(iE1) + E(iE2) ) / kT )
-
-          Phi_Ann(iE1,iE2,iX) = ( Phi_Ann_Xp(iE1,iE2,iX) + Phi_Ann_Xn(iE1,iE2,iX) &
-                                + coef_np * Phi_Ann_XpXn(iE1,iE2,iX) ) * UnitBrem
-
-          Phi_Pro(iE1,iE2,iX) = Phi_Ann(iE1,iE2,iX) * DetBal
+          Phi_0_Ann(iE1,iE2,iX) = ( Phi_0_Ann_Xp(iE1,iE2,iX) + Phi_0_Ann_Xn(iE1,iE2,iX) &
+                                + coef_np * Phi_0_Ann_XpXn(iE1,iE2,iX) )
 
         END DO
       END DO
@@ -3853,19 +3852,19 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP IF( do_gpu ) &
     !$OMP MAP( release: Xp, Xn, LogT_P, LogD_Xp, LogD_Xn, LogD_XpXn, &
-    !$OMP               Phi_Ann_Xp, Phi_Ann_Xn, Phi_Ann_XpXn )
+    !$OMP               Phi_0_Ann_Xp, Phi_0_Ann_Xn, Phi_0_Ann_XpXn )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC IF( do_gpu ) &
     !$ACC DELETE( Xp, Xn, LogT_P, LogD_Xp, LogD_Xn, LogD_XpXn, &
-    !$ACC         Phi_Ann_Xp, Phi_Ann_Xn, Phi_Ann_XpXn ) 
+    !$ACC         Phi_0_Ann_Xp, Phi_0_Ann_Xn, Phi_0_Ann_XpXn ) 
 
     !$ACC WAIT(1)
 #endif
 
-    IF ( .NOT. PRESENT( WORK1 ) ) DEALLOCATE( Phi_Ann_Xp )
-    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_Ann_Xn )
-    IF ( .NOT. PRESENT( WORK3 ) ) DEALLOCATE( Phi_Ann_XpXn )
+    IF ( .NOT. PRESENT( WORK1 ) ) DEALLOCATE( Phi_0_Ann_Xp )
+    IF ( .NOT. PRESENT( WORK2 ) ) DEALLOCATE( Phi_0_Ann_Xn )
+    IF ( .NOT. PRESENT( WORK3 ) ) DEALLOCATE( Phi_0_Ann_XpXn )
 
 #else
 
@@ -3880,7 +3879,6 @@ CONTAINS
     DO iX = iX_B, iX_E
       DO iE2 = iE_B, iE_E
         DO iE1 = iE_B, iE_E
-          Phi_Pro(iE1,iE2,iX) = Zero
           Phi_Ann(iE1,iE2,iX) = Zero
         END DO
       END DO
