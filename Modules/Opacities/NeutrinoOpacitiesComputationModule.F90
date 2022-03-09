@@ -253,8 +253,8 @@ CONTAINS
 
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
 
-    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iS_B-iS_E+1),1:(iX_E-iX_B+1))
-    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iS_B-iS_E+1),1:(iX_E-iX_B+1))
+    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iS_E-iS_B+1),1:(iX_E-iX_B+1))
+    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iS_E-iS_B+1),1:(iX_E-iX_B+1))
     REAL(DP) :: N_K, V_K, f0_Min, Min_K, Max_K, Theta
     INTEGER  :: iE, iS, iX, iNodeE, nE, nS, nX
 
