@@ -53,13 +53,13 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions_DG_Points, &
-    ComputeNeutrinoOpacities_EC_Points, &
-    ComputeNeutrinoOpacities_ES_Points, &
-    ComputeNeutrinoOpacities_NES_Points, &
-    ComputeNeutrinoOpacities_Pair_Points, &
-    ComputeNeutrinoOpacitiesRates_NES_Points, &
-    ComputeNeutrinoOpacitiesRates_Pair_Points
+    ComputeEquilibriumDistributions_DG, &
+    ComputeNeutrinoOpacities_EC, &
+    ComputeNeutrinoOpacities_ES, &
+    ComputeNeutrinoOpacities_NES, &
+    ComputeNeutrinoOpacities_Pair, &
+    ComputeNeutrinoOpacityRates_NES, &
+    ComputeNeutrinoOpacityRates_Pair
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     EddingtonTensorComponents_dd
 
@@ -83,11 +83,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER  :: n_FP_inner, n_FP_outer
   INTEGER  :: iE_B, iE_E
 
-  REAL(DP), ALLOCATABLE :: E_N(:)       ! --- Energy Grid
-  REAL(DP), ALLOCATABLE :: W2_N(:)      ! --- Ingegration Weights (E^2)
-  REAL(DP), ALLOCATABLE :: W3_N(:)      ! --- Integration Weights (E^3)
-  REAL(DP), ALLOCATABLE :: W2_S(:)      ! --- Integration Weights Scaled by (hc)^3
-  REAL(DP), ALLOCATABLE :: W3_S(:)      ! --- Integration Weights Scaled by (hc)^3
+  REAL(DP), ALLOCATABLE :: E_N(:)  ! --- Energy Grid
+  REAL(DP), ALLOCATABLE :: W2_N(:) ! --- Ingegration Weights (E^2)
+  REAL(DP), ALLOCATABLE :: W3_N(:) ! --- Integration Weights (E^3)
+  REAL(DP), ALLOCATABLE :: W2_S(:) ! --- Integration Weights Scaled by (hc)^3
+  REAL(DP), ALLOCATABLE :: W3_S(:) ! --- Integration Weights Scaled by (hc)^3
   REAL(DP), ALLOCATABLE :: FourPiEp2(:)
 
   ! --- Solver scratch arrays ---
@@ -789,6 +789,12 @@ CONTAINS
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
 
     REAL(DP), DIMENSION(:),     POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Sigma_Iso_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: J0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_EmAb_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
+    
     ! --- to be changed to handle cases when iSpecies > 2 ---
     REAL(DP), DIMENSION(:,:),   POINTER :: J0_1_P, J0_2_P
     REAL(DP), DIMENSION(:,:),   POINTER :: Chi_1_P, Chi_2_P
@@ -799,7 +805,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
     ! --- to be changed to handle cases when iSpecies > 2 ---
 
-    INTEGER :: nX, nX0, iX, iE1, iE2
+    INTEGER :: nX, nX0, iX, iE, iE1, iE2
 
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
@@ -865,24 +871,18 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_DG_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE_G, 1, nX, 1, nSpecies, E_N, D_P, T_P, Y_P, J0_P )
 
     ! --- EmAb ---
 
-    CALL ComputeNeutrinoOpacities_EC_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, Chi_1_P )
-
-    CALL ComputeNeutrinoOpacities_EC_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, Chi_2_P )
+    CALL ComputeNeutrinoOpacities_EC &
+           ( 1, nE_G, 1, nX, iNuE, iNuE_Bar, E_N, D_P, T_P, Y_P, Chi_EmAb_P )
 
     ! --- Isoenergetic scattering ---
 
-    CALL ComputeNeutrinoOpacities_ES_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, Sig_1_P )
-
-    CALL ComputeNeutrinoOpacities_ES_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, Sig_2_P )
+    CALL ComputeNeutrinoOpacities_ES &
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Sigma_Iso_P )
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -892,66 +892,19 @@ CONTAINS
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iX = 1, nX
-    DO iE1 = 1, nE_G
+    DO iE = 1, nE_G
 
-      Sig_1_P(iE1,iX) = FourPiEp2(iE1) * Sig_1_P(iE1,iX)
-      Sig_2_P(iE1,iX) = FourPiEp2(iE1) * Sig_2_P(iE1,iX)
+      Sigma_Iso_P(iE,iX) = FourPiEp2(iE) * Sigma_Iso_P(iE,iX)
 
     END DO
     END DO
 
     IF( Include_NES )THEN
 
-      ! --- NES Kernels ---
+      ! --- NES Scattering Functions ---
 
-      CALL ComputeNeutrinoOpacities_NES_Points &
-             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
-               Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-               Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
-
-      ! --- Enforce Detailed Balance (Again) Based on J0 ---
-
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-      DO iX  = 1, nX
-      DO iE2 = 1, nE_G
-      DO iE1 = 1, nE_G
-
-        IF( iE1 <= iE2 )THEN
-
-          Phi_0_In_NES_1_P(iE1,iE2,iX) &
-            = Phi_0_Ot_NES_1_P(iE1,iE2,iX) &
-              * ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) ) &
-              / ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) )
-
-          Phi_0_In_NES_2_P(iE1,iE2,iX) &
-            = Phi_0_Ot_NES_2_P(iE1,iE2,iX) &
-              * ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) ) &
-              / ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) )
-
-        ELSE
-
-          Phi_0_Ot_NES_1_P(iE1,iE2,iX) &
-            = Phi_0_In_NES_1_P(iE1,iE2,iX) &
-              * ( J0_1_P(iE1,iX) * ( One - J0_1_P(iE2,iX) ) ) &
-              / ( J0_1_P(iE2,iX) * ( One - J0_1_P(iE1,iX) ) )
-
-          Phi_0_Ot_NES_2_P(iE1,iE2,iX) &
-            = Phi_0_In_NES_2_P(iE1,iE2,iX) &
-              * ( J0_2_P(iE1,iX) * ( One - J0_2_P(iE2,iX) ) ) &
-              / ( J0_2_P(iE2,iX) * ( One - J0_2_P(iE1,iX) ) )
-
-        END IF
-
-      END DO
-      END DO
-      END DO
+      CALL ComputeNeutrinoOpacities_NES &
+             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, H_I_0_P, H_II_0_P )
 
     ELSE
 
@@ -966,10 +919,8 @@ CONTAINS
       DO iE2 = 1, nE_G
       DO iE1 = 1, nE_G
 
-        Phi_0_In_NES_1_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_NES_1_P(iE1,iE2,iX) = Zero
-        Phi_0_In_NES_2_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_NES_2_P(iE1,iE2,iX) = Zero
+        H_I_0_P (iE1,iE2,iX) = Zero
+        H_II_0_P(iE1,iE2,iX) = Zero
 
       END DO
       END DO
@@ -981,38 +932,8 @@ CONTAINS
 
       ! --- Pair Kernels ---
 
-      CALL ComputeNeutrinoOpacities_Pair_Points &
-             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
-               Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-               Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
-
-      ! --- Enforce Detailed Balance (Again) Based on J0 ---
-
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-      DO iX  = 1, nX
-      DO iE2 = 1, nE_G
-      DO iE1 = 1, nE_G
-
-        Phi_0_In_Pair_1_P(iE1,iE2,iX) &
-          = Phi_0_Ot_Pair_1_P(iE1,iE2,iX) &
-            * (         J0_1_P(iE2,iX)   *         J0_2_P(iE1,iX)   ) &
-            / ( ( One - J0_1_P(iE2,iX) ) * ( One - J0_2_P(iE1,iX) ) )
-
-        Phi_0_In_Pair_2_P(iE1,iE2,iX) &
-          = Phi_0_Ot_Pair_2_P(iE1,iE2,iX) &
-            * (         J0_2_P(iE2,iX)   *         J0_1_P(iE1,iX)   ) &
-            / ( ( One - J0_2_P(iE2,iX) ) * ( One - J0_1_P(iE1,iX) ) )
-
-      END DO
-      END DO
-      END DO
+      CALL ComputeNeutrinoOpacities_Pair &
+             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, J_I_0_P, J_II_0_P )
 
     ELSE
 
@@ -1027,10 +948,8 @@ CONTAINS
       DO iE2 = 1, nE_G
       DO iE1 = 1, nE_G
 
-        Phi_0_In_Pair_1_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_Pair_1_P(iE1,iE2,iX) = Zero
-        Phi_0_In_Pair_2_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_Pair_2_P(iE1,iE2,iX) = Zero
+        J_I_0_P (iE1,iE2,iX) = Zero
+        J_II_0_P(iE1,iE2,iX) = Zero
 
       END DO
       END DO
@@ -1078,6 +997,12 @@ CONTAINS
     INTEGER,                    INTENT(in), OPTIONAL :: nX_P
     INTEGER,  DIMENSION(:),     INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                    INTENT(in), OPTIONAL :: nX_P0
+
+    REAL(DP), DIMENSION(:,:,:), POINTER :: J_P, J0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Eta_NES_P , Chi_NES_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Eta_Pair_P, Chi_Pair_P
 
     REAL(DP), DIMENSION(:,:),   POINTER :: J_1_P, J_2_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
@@ -1173,27 +1098,15 @@ CONTAINS
 
     ! --- NES Emissivities and Opacities ---
 
-    CALL ComputeNeutrinoOpacitiesRates_NES_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
-             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-             Eta_NES_1_P, Chi_NES_1_P )
-
-    CALL ComputeNeutrinoOpacitiesRates_NES_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
-             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-             Eta_NES_2_P, Chi_NES_2_P )
+    CALL ComputeNeutrinoOpacityRates_NES &
+           ( 1, nE_G, 1, nX, 1, nSpecies, W2_N, J_P, J0_P, H_I_0_P, H_II_0_P, &
+             Eta_NES_P, Chi_NES_P )
 
     ! --- Pair Emissivities and Opacities ---
 
-    CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
-             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-             Eta_Pair_1_P, Chi_Pair_1_P )
-
-    CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
-             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-             Eta_Pair_2_P, Chi_Pair_2_P )
+    CALL ComputeNeutrinoOpacityRates_Pair &
+           ( 1, nE_G, 1, nX, 1, nSpecies, W2_N, J_P, J0_P, J_I_0_P, J_II_0_P, &
+             Eta_Pair_P, Chi_Pair_P )
 
     IF ( nX < nX_G ) THEN
 
