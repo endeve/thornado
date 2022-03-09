@@ -1013,24 +1013,24 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NES &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, H_I, H_II, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, H_I, H_II, Eta, Chi )
 
     ! --- Neutrino-Electron Scattering Rates (Multiple J) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: W2  (iE_B:)
-    REAL(DP), INTENT(in)  :: J   (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(in)  :: J0  (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J   (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J0  (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(in)  :: H_I (iE_B:,iE_B:,iX_B:)
     REAL(DP), INTENT(in)  :: H_II(iE_B:,iE_B:,iX_B:)
-    REAL(DP), INTENT(out) :: Eta (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: Chi (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: Eta (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: Chi (iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: DetBal, Phi_Out, Phi_In
     REAL(DP) :: SUM1, SUM2
-    INTEGER  :: iX, iE, iE1, iE2, iS
+    INTEGER  :: iE, iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1043,8 +1043,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out )
 #endif
-    DO iS = iS_B, iS_E
-    DO iX = iX_B, iX_E
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
     DO iE2 = iE_B, iE_E
 
       SUM1 = Zero
@@ -1052,8 +1052,8 @@ CONTAINS
 
       DO iE1 = iE_B, iE_E
 
-        DetBal =   ( J0(iE2,iX,iS) * ( One - J0(iE1,iX,iS) ) ) &
-                 / ( J0(iE1,iX,iS) * ( One - J0(iE2,iX,iS) ) )
+        DetBal =   ( J0(iE2,iS,iX) * ( One - J0(iE1,iS,iX) ) ) &
+                 / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
           Phi_Out = ( C1(iS) * H_I(iE1,iE2,iX) + C2(iS) * H_II(iE1,iE2,iX) ) * UnitNES
@@ -1063,13 +1063,13 @@ CONTAINS
           Phi_Out = Phi_In / DetBal
         END IF
 
-        SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iX,iS)
-        SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iX,iS) )
+        SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
+        SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
 
       END DO
 
-      Eta(iE2,iX,iS) = SUM1
-      Chi(iE2,iX,iS) = SUM1 + SUM2
+      Eta(iE2,iS,iX) = SUM1
+      Chi(iE2,iS,iX) = SUM1 + SUM2
 
     END DO
     END DO
@@ -1175,20 +1175,20 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_Pair &
-    ( iE_B, iE_E, iX_B, iX_E, iS_B, iS_E, W2, J, J0, J_I, J_II, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, J_I, J_II, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    INTEGER,  INTENT(in)  :: iX_B, iX_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: W2  (iE_B:)
-    REAL(DP), INTENT(in)  :: J   (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(in)  :: J0  (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(in)  :: J   (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J0  (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(in)  :: J_I (iE_B:,iE_B:,iX_B:)
     REAL(DP), INTENT(in)  :: J_II(iE_B:,iE_B:,iX_B:)
-    REAL(DP), INTENT(out) :: Eta (iE_B:,iX_B:,iS_B:)
-    REAL(DP), INTENT(out) :: Chi (iE_B:,iX_B:,iS_B:)
+    REAL(DP), INTENT(out) :: Eta (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: Chi (iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
@@ -1205,8 +1205,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann )
 #endif
-    DO iS = iS_B, iS_E
-    DO iX = iX_B, iX_E
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
     DO iE2 = iE_B, iE_E
 
       ! Get index for corresponding anti-neutrino
@@ -1217,8 +1217,8 @@ CONTAINS
 
       DO iE1 = iE_B, iE_E
 
-        DetBal =   ( J0(iE2,iX,iS) * J0(iE1,iX,iS_A) ) &
-                 / ( ( One - J0(iE2,iX,iS) ) * ( One - J0(iE1,iX,iS_A) ) )
+        DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
+                 / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
           Phi_0_Ann = ( C1(iS) * J_I (iE1,iE2,iX) + C2(iS) * J_II(iE1,iE2,iX) ) * UnitPair
@@ -1227,13 +1227,13 @@ CONTAINS
         END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
-        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iX,iS_A) )
-        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iX,iS_A)
+        SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
+        SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
       END DO
 
-      Eta(iE2,iX,iS) = SUM1
-      Chi(iE2,iX,iS) = SUM1 + SUM2
+      Eta(iE2,iS,iX) = SUM1
+      Chi(iE2,iS,iX) = SUM1 + SUM2
 
     END DO
     END DO
