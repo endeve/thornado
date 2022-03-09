@@ -280,19 +280,19 @@ CONTAINS
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
     DO iN_E = 1, nE_G
 
       CALL ComputeConserved_TwoMoment &
-             ( PR_N(iN_E,iN_X,iS,iCR_N ), &
-               PR_N(iN_E,iN_X,iS,iCR_G1), &
-               PR_N(iN_E,iN_X,iS,iCR_G2), &
-               PR_N(iN_E,iN_X,iS,iCR_G3), &
-               CR_N(iN_E,iN_X,iS,iCR_N ), &
-               CR_N(iN_E,iN_X,iS,iCR_G1), &
-               CR_N(iN_E,iN_X,iS,iCR_G2), &
-               CR_N(iN_E,iN_X,iS,iCR_G3), &
+             ( PR_N(iN_E,iS,iN_X,iCR_N ), &
+               PR_N(iN_E,iS,iN_X,iCR_G1), &
+               PR_N(iN_E,iS,iN_X,iCR_G2), &
+               PR_N(iN_E,iS,iN_X,iCR_G3), &
+               CR_N(iN_E,iS,iN_X,iCR_N ), &
+               CR_N(iN_E,iS,iN_X,iCR_G1), &
+               CR_N(iN_E,iS,iN_X,iCR_G2), &
+               CR_N(iN_E,iS,iN_X,iCR_G3), &
                PF_N(iN_X,iPF_V1), &
                PF_N(iN_X,iPF_V2), &
                PF_N(iN_X,iPF_V3), &
@@ -389,14 +389,14 @@ CONTAINS
     ALLOCATE( PF_N(nX_G,nPF) )
     ALLOCATE( AF_N(nX_G,nAF) )
 
-    ALLOCATE( CR_N(nE_G,nX_G,nSpecies,nCR) )
-    ALLOCATE( PR_N(nE_G,nX_G,nSpecies,nCR) )
+    ALLOCATE( CR_N(nE_G,nSpecies,nX_G,nCR) )
+    ALLOCATE( PR_N(nE_G,nSpecies,nX_G,nCR) )
 
     ALLOCATE( PositionIndexZ(nZ_G) )
 
     iZ = 0
-    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
     DO iN_E = 1, nE_G
 
       iZ = iZ + 1
@@ -616,7 +616,7 @@ CONTAINS
 
       iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
-      CR_N(iN_E,iN_X,iS,iCR) = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
+      CR_N(iN_E,iS,iN_X,iCR) = U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS)
 
     END DO
     END DO
@@ -732,7 +732,7 @@ CONTAINS
              + ( iE  - iE_B0    ) * nDOFE
 
       dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
-        = ( CR_N(iN_E,iN_X,iS,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
+        = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
 
     END DO
     END DO
