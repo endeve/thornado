@@ -782,26 +782,8 @@ CONTAINS
 
     ALLOCATE( f0_P(nE_P,nSpecies,nX_P) )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_P, D_P, T_P, Y_P ) &
-    !$OMP MAP( alloc: f0_P )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( E_P, D_P, T_P, Y_P ) &
-    !$ACC CREATE( f0_P )
-#endif
     CALL ComputeEquilibriumDistributions_DG &
            ( 1, nE_P, 1, nSpecies, 1, nX_P, E_P, D_P, T_P, Y_P, f0_P )
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_P, D_P, T_P, Y_P ) &
-    !$OMP MAP( from: f0_P )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( E_P, D_P, T_P, Y_P ) &
-    !$ACC COPYOUT( f0_P )
-#endif
 
     MaxError = Zero
 

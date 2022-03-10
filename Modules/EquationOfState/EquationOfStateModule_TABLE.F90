@@ -606,12 +606,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
-    !$OMP MAP( from: Error )
+    !$OMP MAP( to: D, E, Y, D_T, T_T, Y_T, E_T, Guess_Option ) &
+    !$OMP MAP( from: T, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess ) &
-    !$ACC PRESENT( D, E, Y, T, D_T, T_T, Y_T, E_T, Guess_Option ) &
-    !$ACC COPYOUT( Error )
+    !$ACC COPYIN( D, E, Y, D_T, T_T, Y_T, E_T, Guess_Option ) &
+    !$ACC COPYOUT( T, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup, T_Guess )
@@ -637,12 +638,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
-    !$OMP MAP( from: Error )
+    !$OMP MAP( to: D, E, Y, D_T, T_T, Y_T, E_T ) &
+    !$OMP MAP( from: T, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, E_P, Y_P, T_Lookup ) &
-    !$ACC PRESENT( D, E, Y, T, D_T, T_T, Y_T, E_T ) &
-    !$ACC COPYOUT( Error )
+    !$ACC COPYIN( D, E, Y, D_T, T_T, Y_T, E_T ) &
+    !$ACC COPYOUT( T, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( D_P, E_P, Y_P, T_Lookup )
@@ -929,10 +931,13 @@ CONTAINS
     nP = SIZE( D )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: D, T, Y ) &
+    !$OMP MAP( from: Em, Ev, Ne )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, T, Y, Em, Ev, Ne )
+    !$ACC COPYIN( D, T, Y ) &
+    !$ACC COPYOUT( Em, Ev, Ne )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -982,11 +987,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( from: Error )
+    !$OMP MAP( to: D, Ev, Ne ) &
+    !$OMP MAP( from: T, Em, Y, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
-    !$ACC COPYOUT( Error )
+    !$ACC COPYIN( D, Ev, Ne ) &
+    !$ACC COPYOUT( T, Em, Y, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1923,11 +1929,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( D_P, T_P, Y_P, V_P )
+      !$OMP PRIVATE( D_P, T_P, Y_P, V_P ) &
+      !$OMP MAP( to: D, T, Y, D_T, T_T, Y_T, OS_V, V_T ) &
+      !$OMP MAP( from: V )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( D_P, T_P, Y_P, V_P ) &
-      !$ACC PRESENT( D, T, Y, D_T, T_T, Y_T, V, OS_V, V_T )
+      !$ACC COPYIN( D, T, Y, D_T, T_T, Y_T, OS_V, V_T ) &
+      !$ACC COPYOUT( V )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
       !$OMP PRIVATE( D_P, T_P, Y_P, V_P )
@@ -1948,10 +1957,11 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: V )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( V )
+    !$ACC COPYOUT( V )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -2022,10 +2032,13 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP MAP( to: D, T, Y, OS_V, V_T ) &
+      !$OMP MAP( from: V, dVdD, dVdT, dVdY )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRESENT( D, T, Y, V, dVdD, dVdT, dVdY, OS_V, V_T )
+      !$ACC COPYIN( D, T, Y, OS_V, V_T ) &
+      !$ACC COPYOUT( V, dVdD, dVdT, dVdY )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO
 #endif
@@ -2040,10 +2053,11 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: V, dVdD, dVdT, dVdY )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( V, dVdD, dVdT, dVdY )
+    !$ACC COPYOUT( V, dVdD, dVdT, dVdY )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif

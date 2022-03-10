@@ -180,10 +180,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Me, Mp, Mn )
+    !$OMP MAP( alloc: Me, Mp, Mn, f0 ) &
+    !$OMP MAP( to: E, D, T, Y ) &
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Me, Mp, Mn )
+    !$ACC CREATE( Me, Mp, Mn, f0 ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
 
     ! --- Compute Chemical Potentials ---
@@ -202,8 +204,7 @@ CONTAINS
     !$OMP PRIVATE( Mnu, kT )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( Mnu, kT ) &
-    !$ACC PRESENT( Me, Mp, Mn, E, T, f0 )
+    !$ACC PRIVATE( Mnu, kT )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( Mnu, kT )
@@ -228,10 +229,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Me, Mp, Mn )
+    !$OMP MAP( release: Me, Mp, Mn, E, D, T, Y ) &
+    !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Me, Mp, Mn )
+    !$ACC DELETE( Me, Mp, Mn, E, D, T, Y ) &
+    !$ACC COPYOUT( f0 )
 #endif
 
   END SUBROUTINE ComputeEquilibriumDistributions
@@ -258,9 +261,6 @@ CONTAINS
     REAL(DP) :: N_K, V_K, f0_Min, Min_K, Max_K, Theta
     INTEGER  :: iE, iS, iX, iNodeE, nE, nS, nX
 
-    CALL ComputeEquilibriumDistributions &
-           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
-
     nE = ( iE_E - iE_B + 1 ) / nDOFE
     nS = ( iS_E - iS_B + 1 )
     nX = ( iX_E - iX_B + 1 )
@@ -272,11 +272,16 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: E_Q, f0_K, f0_Q, f0_P )
+    !$OMP MAP( alloc: f0, f0_K, f0_P ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( E_Q, f0_K, f0_Q, f0_P )
+    !$ACC CREATE( f0, f0_K, f0_P ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
+
+    CALL ComputeEquilibriumDistributions &
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     ! --- Cell Average of Equilibrium Distributions ---
 
@@ -286,7 +291,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( V_K, N_K ) &
-    !$ACC PRESENT( WeightsE, E_Q, f0_K, f0_Q )
+    !$ACC PRESENT( WeightsE )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( V_K, N_K )
@@ -321,8 +326,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( f0_K )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
@@ -345,8 +349,7 @@ CONTAINS
     !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta ) &
-    !$ACC PRESENT( f0_K, f0_Q, f0_P )
+    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
@@ -385,10 +388,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_Q, f0_K, f0_Q, f0_P )
+    !$OMP MAP( release: f0_K, f0_P, E, D, T, Y ) &
+    !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( E_Q, f0_K, f0_Q, f0_P )
+    !$ACC DELETE( f0_K, f0_P, E, D, T, Y ) &
+    !$ACC COPYOUT( f0 )
 #endif
 
   END SUBROUTINE ComputeEquilibriumDistributions_DG
@@ -424,13 +429,17 @@ CONTAINS
     !$OMP MAP( alloc: Me,  dMedT,  dMedY, &
     !$OMP             Mp,  dMpdT,  dMpdY, &
     !$OMP             Mn,  dMndT,  dMndY, &
-    !$OMP             U,   dUdT,   dUdY, dUdD )
+    !$OMP             U,   dUdT,   dUdY, dUdD, &
+    !$OMP             f0,  df0dY,  df0dU ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( Me,  dMedT,  dMedY, &
     !$ACC         Mp,  dMpdT,  dMpdY, &
     !$ACC         Mn,  dMndT,  dMndY, &
-    !$ACC         U,   dUdT,   dUdY, dUdD )
+    !$ACC         U,   dUdT,   dUdY, dUdD, &
+    !$ACC         f0,  df0dY,  df0dU ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
 
     ! --- Compute Chemical Potentials ---
@@ -452,8 +461,7 @@ CONTAINS
     !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T ) &
-    !$ACC PRESENT( f0, df0dY, df0dU, E, T, dUdT, dUdY )
+    !$ACC PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
@@ -490,13 +498,17 @@ CONTAINS
     !$OMP MAP( release: Me,  dMedT,  dMedY, &
     !$OMP               Mp,  dMpdT,  dMpdY, &
     !$OMP               Mn,  dMndT,  dMndY, &
-    !$OMP               U,   dUdT,   dUdY, dUdD )
+    !$OMP               U,   dUdT,   dUdY, dUdD, &
+    !$OMP               E, D, T, Y ) &
+    !$OMP MAP( from: f0, df0dU, df0dY )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( Me,  dMedT,  dMedY, &
     !$ACC         Mp,  dMpdT,  dMpdY, &
     !$ACC         Mn,  dMndT,  dMndY, &
-    !$ACC         U,   dUdT,   dUdY, dUdD )
+    !$ACC         U,   dUdT,   dUdY, dUdD, &
+    !$ACC         E, D, T, Y ) &
+    !$ACC COPYOUT( f0, df0dU, df0dY )
 #endif
 
   END SUBROUTINE ComputeEquilibriumDistributionAndDerivatives
@@ -524,17 +536,18 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opEC ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opEC ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -547,8 +560,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( E, LogE_P )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -559,10 +571,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( LogE_P, LogD_P, LogT_P, Y_P, &
-    !$ACC          LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-    !$ACC          OS_EmAb, EmAb_T, opEC )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -575,41 +584,30 @@ CONTAINS
                LogEs_T   , LogDs_T   , LogTs_T   , Ys_T   , &
                OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
 
-    END DO
-    END DO
-    END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( opEC )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iX = iX_B, iX_E
-    DO iS = iS_B, iS_E
-    DO iE = iE_B, iE_E
       opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
+
     END DO
     END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC COPYOUT( opEC )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( opEC )
+    !$ACC COPYOUT( opEC )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -648,17 +646,18 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opEC ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opEC ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P, E, LogE_P )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -680,8 +679,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( opEC )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
@@ -693,19 +691,22 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC COPYOUT( opEC )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP MAP( from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( opEC )
+    !$ACC COPYOUT( opEC )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
@@ -742,17 +743,18 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opES ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opES ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -765,8 +767,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( E, LogE_P )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -781,8 +782,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( opES )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
@@ -794,19 +794,22 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC COPYOUT( opES )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( opES )
+    !$ACC COPYOUT( opES )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
@@ -822,19 +825,18 @@ CONTAINS
 
   
   SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
-    ( iP_B, iP_E, iS_B, iS_E, E, D, T, Y, iMoment, opES )
+    ( iP_B, iP_E, E, D, T, Y, iMoment, opES )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
     ! --- Modified by Sherwood Richers to take in particle data ---
 
     INTEGER,  INTENT(in)  :: iP_B, iP_E
-    INTEGER,  INTENT(in)  :: iS_B, iS_E
     REAL(DP), INTENT(in)  :: E(iP_B:)
     REAL(DP), INTENT(in)  :: D(iP_B:)
     REAL(DP), INTENT(in)  :: T(iP_B:)
     REAL(DP), INTENT(in)  :: Y(iP_B:)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: opES(iP_B:,iS_B:)
+    REAL(DP), INTENT(out) :: opES(iP_B:)
 
     REAL(DP) :: LogE_P(iP_B:iP_E)
     REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
@@ -844,17 +846,18 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opES ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opES ) &
+    !$ACC COPYIN( E, D, T, Y )
 #endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P, E, LogE_P )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -865,50 +868,44 @@ CONTAINS
       LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
-    DO iS = iS_B, iS_E
-
-      CALL LogInterpolateSingleVariable_4D_Custom &
-             ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-               OS_Iso(iS,iMoment), Iso_T(:,:,:,:,iMoment,iS), opES(:,iS) )
-
-    END DO
+    CALL LogInterpolateSingleVariable_4D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( opES )
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
+    !$OMP PARALLEL DO
 #endif
-    DO iS = iS_B, iS_E
     DO iP = iP_B, iP_E
-      opES(iP,iS) = opES(iP,iS) * UnitES
-    END DO
+      opES(iP) = opES(iP) * UnitES
     END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC COPYOUT( opES )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( opES )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYOUT( opES )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
+    !$OMP PARALLEL DO
 #endif
-    DO iS = iS_B, iS_E
     DO iP = iP_B, iP_E
-      opES(iP,iS) = Zero
-    END DO
+      opES(iP) = Zero
     END DO
 
 #endif
@@ -940,10 +937,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogT_P, LogEta_P )
+    !$OMP MAP( alloc: LogT_P, LogEta_P, H_I, H_II ) &
+    !$OMP MAP( to: D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogT_P, LogEta_P )
+    !$ACC CREATE( LogT_P, LogEta_P, H_I, H_II ) &
+    !$ACC COPYIN( D, T, Y )
 #endif
 
     ! --- Compute Electron Chemical Potential ---
@@ -954,8 +953,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
-    !$ACC PRESENT( T, LogT_P, LogEta_P )
+    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -980,10 +978,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogT_P, LogEta_P )
+    !$OMP MAP( release: LogT_P, LogEta_P, D, T, Y ) &
+    !$OMP MAP( from: H_I, H_II )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogT_P, LogEta_P )
+    !$ACC DELETE( LogT_P, LogEta_P, D, T, Y ) &
+    !$ACC COPYOUT( H_I, H_II )
 
     !$ACC WAIT(1)
 #endif
@@ -991,10 +991,11 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( from: H_I, H_II )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( H_I, H_II )
+    !$ACC COPYOUT( H_I, H_II )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -1034,11 +1035,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out )
+    !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
+    !$OMP MAP( to: H_I, H_II, W2, J, J0 ) &
+    !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
-    !$ACC PRESENT( H_I, H_II, Eta, Chi, W2, J, J0, C1, C2 )
+    !$ACC COPYIN( H_I, H_II, W2, J, J0 ) &
+    !$ACC COPYOUT( Eta, Chi ) &
+    !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out )
@@ -1102,10 +1107,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogT_P, LogEta_P )
+    !$OMP MAP( alloc: LogT_P, LogEta_P, J_I, J_II ) &
+    !$OMP MAP( to: D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogT_P, LogEta_P )
+    !$ACC CREATE( LogT_P, LogEta_P, J_I, J_II ) &
+    !$ACC COPYIN( D, T, Y )
 #endif
 
     ! --- Compute Electron Chemical Potential ---
@@ -1116,8 +1123,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
-    !$ACC PRESENT( T, LogT_P, LogEta_P )
+    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1142,10 +1148,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogT_P, LogEta_P )
+    !$OMP MAP( release: LogT_P, LogEta_P, D, T, Y ) &
+    !$OMP MAP( from: J_I, J_II )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogT_P, LogEta_P )
+    !$ACC DELETE( LogT_P, LogEta_P, D, T, Y ) &
+    !$ACC COPYOUT( J_I, J_II )
 
     !$ACC WAIT(1)
 #endif
@@ -1153,10 +1161,11 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( from: J_I, J_II)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( J_I, J_II)
+    !$ACC COPYOUT( J_I, J_II)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -1196,11 +1205,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann )
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
+    !$OMP MAP( to: J_I, J_II, W2, J, J0 ) &
+    !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
-    !$ACC PRESENT( J_I, J_II, Eta, Chi, W2, J, J0, C1, C2 )
+    !$ACC COPYIN( J_I, J_II, W2, J, J0 ) &
+    !$ACC COPYOUT( Eta, Chi ) &
+    !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann )
@@ -1263,10 +1276,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Xp, Xn, LogT_P, LogDX_P )
+    !$OMP MAP( alloc: Xp, Xn, LogT_P, LogDX_P, S_Sigma ) &
+    !$OMP MAP( to: D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Xp, Xn, LogT_P, LogDX_P )
+    !$ACC CREATE( Xp, Xn, LogT_P, LogDX_P, S_Sigma ) &
+    !$ACC COPYIN( D, T, Y )
 #endif
 
     ! --- Compute proton and neutron fractions ---
@@ -1280,8 +1295,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1) &
-    !$ACC PRESENT( D, T, Xp, Xn, LogT_P, LogDX_P )
+    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1302,10 +1316,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Xp, Xn, LogT_P, LogDX_P )
+    !$OMP MAP( release: Xp, Xn, LogT_P, LogDX_P, D, T, Y ) &
+    !$OMP MAP( from: S_Sigma )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Xp, Xn, LogT_P, LogDX_P )
+    !$ACC DELETE( Xp, Xn, LogT_P, LogDX_P, D, T, Y ) &
+    !$ACC COPYOUT( S_Sigma )
 
     !$ACC WAIT(1)
 #endif
@@ -1313,10 +1329,11 @@ CONTAINS
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( from: S_Sigma )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( S_Sigma )
+    !$ACC COPYOUT( S_Sigma )
 #endif
     DO iX = iX_B, iX_E
     DO iE2 = iE_B, iE_E
@@ -1352,11 +1369,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
+    !$OMP MAP( to: S_Sigma, W2, J, J0 ) &
+    !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
-    !$ACC PRESENT( S_Sigma, Eta, Chi, W2, J )
+    !$ACC COPYIN( S_Sigma, W2, J, J0 ) &
+    !$ACC COPYOUT( Eta, Chi )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
