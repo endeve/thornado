@@ -46,7 +46,9 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
-    iPF_Ne
+    iPF_Ne, &
+    nAF, &
+    iAF_P
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
 
@@ -129,6 +131,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
+    REAL(DP) :: uAF(nDOFX,nAF)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -227,6 +230,8 @@ CONTAINS
           uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
 
+          uAF(iNX,iAF_P ) = P
+
         END IF
 
         CALL ComputeConserved_Euler &
@@ -245,7 +250,7 @@ CONTAINS
                  G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 One )
+                 uAF(iNX,iAF_P) )
 
       END DO
       END DO
@@ -253,7 +258,7 @@ CONTAINS
       END DO
 
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
