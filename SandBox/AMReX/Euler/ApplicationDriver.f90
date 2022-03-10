@@ -28,8 +28,6 @@ PROGRAM ApplicationDriver
     InitializeProgram
   USE FinalizationModule, ONLY: &
     FinalizeProgram
-  USE AverageDownModule, ONLY: &
-    AverageDown
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeTimeStep_Euler_MF, &
     ComputeFromConserved_Euler_MF
@@ -104,10 +102,6 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL UpdateFluid_SSPRK_MF( t_new, dt, MF_uGF, MF_uCF, MF_uDF )
-
-    CALL AverageDown( MF_uGF )
-    CALL AverageDown( MF_uCF )
-    CALL AverageDown( MF_uDF )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
