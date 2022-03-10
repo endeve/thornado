@@ -1,26 +1,43 @@
 !> Module for operations on MultiFabs
 MODULE MF_UtilitiesModule
 
+  ! --- AMReX Modules ---
+
+  USE amrex_box_module, ONLY: &
+    amrex_box
+  USE amrex_multifab_module, ONLY: &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy, &
+    amrex_multifab, &
+    amrex_imultifab
+  USE amrex_amrcore_module, ONLY: &
+    amrex_max_level
+
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nNodesX
+  USE MeshModule, ONLY: &
+    MeshX, &
+    NodeCoordinate
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP
+  USE MakeFineMaskModule, ONLY: &
+    MakeFineMask
+  USE InputParsingModule, ONLY: &
+    UseTiling
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer
-
-use amrex_amrcore_module,only:amrex_max_level
-use inputparsingmodule,only:usetiling
-use amrex_base_module,only:amrex_mfiter_build,amrex_mfiter,amrex_mfiter_destroy,amrex_multifab,amrex_box
-use mf_meshmodule,only:createmesh_mf,destroymesh_mf
-use meshmodule,only:meshx,nodecoordinate
 
   IMPLICIT NONE
   PRIVATE
@@ -36,24 +53,30 @@ use meshmodule,only:meshx,nodecoordinate
     MODULE PROCEDURE ShowVariableFromMultiFab_Vector
   END INTERFACE ShowVariableFromMultiFab
 
+  INTEGER, PARAMETER :: iCoarse = 0
+  INTEGER, PARAMETER :: iFine   = 0
+
 
 CONTAINS
 
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
-    ( iLevel, MF, iField, swXX_Option, WriteToFile_Option, FileName_Option )
+    ( iLevel, MF, iField, iMF_Mask, &
+      swXX_Option, WriteToFile_Option, FileName_Option )
 
-    INTEGER             , INTENT(in) :: iLevel, iField
-    TYPE(amrex_multifab), INTENT(in) :: MF
-    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
-    LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
-    CHARACTER(*)        , INTENT(in), OPTIONAL :: FileName_Option
+    INTEGER              , INTENT(in) :: iLevel, iField
+    TYPE(amrex_multifab) , INTENT(in) :: MF
+    TYPE(amrex_imultifab), INTENT(in) :: iMF_Mask
+    INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
+    CHARACTER(*)         , INTENT(in), OPTIONAL :: FileName_Option
 
     INTEGER                       :: iX1, iX2, iX3, iNX
     INTEGER                       :: lo(4), hi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: U(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
     INTEGER                       :: swXX(3)
     LOGICAL                       :: WriteToFile
     CHARACTER(128)                :: FMT
@@ -74,10 +97,10 @@ CONTAINS
 
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
       '(I2.2,3I4.3,3ES25.16E3,', &
-      nNodesX(1), 'ES25.16E3,', &
-      nNodesX(2), 'ES25.16E3,', &
-      nNodesX(3), 'ES25.16E3,', &
-      nDOFX     , 'ES25.16E3)'
+      nNodesX(1),  'ES25.16E3,', &
+      nNodesX(2),  'ES25.16E3,', &
+      nNodesX(3),  'ES25.16E3,', &
+      nDOFX     ,  'ES25.16E3)'
 
     IF( WriteToFile ) OPEN( 100, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
@@ -87,6 +110,9 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
+      IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level ) &
+        Mask => iMF_Mask % DataPtr( MFI )
+
       U => MF % DataPtr( MFI )
       BX = MFI % tilebox()
 
@@ -95,6 +121,12 @@ CONTAINS
       DO iX3 = BX % lo(3) - swXX(3), BX % hi(3) + swXX(3)
       DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
       DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
+
+        IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level )THEN
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse ) CYCLE
+
+        END IF
 
         DO iNX = 1, nNodesX(1)
           NodesX1(iNX) = NodeCoordinate( MeshX(1), iX1, iNX )
@@ -160,6 +192,8 @@ CONTAINS
     LOGICAL        :: WriteToFile
     CHARACTER(128) :: FileName
 
+    TYPE(amrex_imultifab) :: iMF_Mask
+
     swXX = 0
     IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
 
@@ -171,8 +205,13 @@ CONTAINS
 
     DO iLevel = 0, amrex_max_level
 
+      IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level ) &
+        CALL MakeFineMask &
+               ( iMF_Mask, MF(iLevel) % BA, MF(iLevel) % DM, &
+                 MF(iLevel+1) % BA, iCoarse, iFine )
+
       CALL ShowVariableFromMultiFab_Single &
-             ( iLevel, MF(iLevel), iField, &
+             ( iLevel, MF(iLevel), iField, iMF_Mask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
                FileName_Option = TRIM( FileName ) )
