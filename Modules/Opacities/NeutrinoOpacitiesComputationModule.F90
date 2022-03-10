@@ -953,7 +953,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1)
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -966,15 +966,13 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_NES(1,iH_I), NES_AT(:,:,:,:,iH_I,1), H_I, &
-             ASYNC_Option = 1 )
+             OS_NES(1,iH_I), NES_AT(:,:,:,:,iH_I,1), H_I )
 
     ! --- Interpolate HII ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_NES(1,iH_II), NES_AT(:,:,:,:,iH_II,1), H_II, &
-             ASYNC_Option = 1  )
+             OS_NES(1,iH_II), NES_AT(:,:,:,:,iH_II,1), H_II )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1123,7 +1121,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1)
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1136,15 +1134,13 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_Pair(1,iJ_I), Pair_AT(:,:,:,:,iJ_I,1), J_I, &
-             ASYNC_Option = 1 )
+             OS_Pair(1,iJ_I), Pair_AT(:,:,:,:,iJ_I,1), J_I )
 
     ! --- Interpolate JII ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-             OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II, &
-             ASYNC_Option = 1 )
+             OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1295,7 +1291,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR ASYNC(1)
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1311,8 +1307,7 @@ CONTAINS
 
     CALL SumLogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogDX_P, LogT_P, LogDs_T, LogTs_T, Alpha_Brem, &
-             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), S_Sigma, &
-             ASYNC_Option = 1 )
+             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), S_Sigma )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
