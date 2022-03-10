@@ -100,6 +100,8 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: PlotFileBaseName
   INTEGER :: iOS_CPP(3)
 
+  CHARACTER(:), ALLOCATABLE :: NodalDataFileName
+
 
 CONTAINS
 
@@ -113,6 +115,11 @@ CONTAINS
 
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
+
+    NodalDataFileName = ''
+    CALL amrex_parmparse_build( PP, 'debug' )
+      CALL PP % query( 'NodalDataFileName', NodalDataFileName )
+    CALL amrex_parmparse_destroy( PP )
 
     ! --- thornado Parameters thornado.* ---
 
