@@ -17,8 +17,6 @@ MODULE MF_TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE MeshModule, ONLY: &
-    MeshX
 
   ! --- Local Modules ---
 
@@ -34,7 +32,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
-    UseTiling, &
     swX, &
     CFL, &
     nNodes, &
@@ -42,16 +39,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     do_reflux
   USE FillPatchModule, ONLY: &
     FillPatch
-  USE MF_FieldsModule, ONLY: &
-!    MF_OffGridFlux_Euler, &
-    FluxRegister
-  USE MF_MeshModule, ONLY: &
-    CreateMesh_MF, &
-    DestroyMesh_MF
-  USE AverageDownModule, ONLY: &
-    AverageDownTo
-!  USE MF_Euler_TallyModule, ONLY: &
-!    MF_IncrementOffGridTally_Euler
+  USE RefluxModule_Euler, ONLY: &
+    Reflux_Euler_MF
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -131,8 +120,6 @@ CONTAINS
     INTEGER :: iS, jS, nComp
     INTEGER :: iLevel
 
-!    REAL(DP) :: dM_OffGrid_Euler(0:amrex_max_level,nCF)
-
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
     nComp = nDOFX * nCF
@@ -155,7 +142,11 @@ CONTAINS
 
         CALL FillPatch( iLevel, t(iLevel), MF_U(iS,:) )
 
-        DO jS = 1, iS-1
+      END DO ! iLevel
+
+      DO jS = 1, iS-1
+
+        DO iLevel = 0, amrex_max_level
 
           IF( a_SSPRK(iS,jS) .NE. Zero ) &
             CALL MF_U(iS,iLevel) &
@@ -163,27 +154,25 @@ CONTAINS
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(jS,iLevel), 1, &
                               1, nComp, 0 )
 
-        END DO ! jS
+        END DO ! iLevel
 
-        IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
-            .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
+      END DO ! jS
 
-          CALL ApplySlopeLimiter_Euler_MF &
-                 ( iLevel, t(iLevel), MF_uGF, MF_U(iS,:), MF_uDF )
+      IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
+          .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-          CALL ApplyPositivityLimiter_Euler_MF &
-                 ( MF_uGF(iLevel), MF_U(iS,iLevel), MF_uDF(iLevel) )
+        CALL ApplySlopeLimiter_Euler_MF &
+               ( t, MF_uGF, MF_U(iS,:), MF_uDF )
 
-          CALL ComputeIncrement_Euler_MF &
-                 ( iLevel, t(iLevel), MF_uGF, MF_U(iS,:), &
-                   MF_uDF, MF_D(iS,iLevel) )
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( MF_uGF, MF_U(iS,:), MF_uDF )
 
-          IF( iLevel .GT. 0 .AND. do_reflux ) &
-            CALL Reflux_Euler_MF( iLevel, MF_D(iS,:) )
+        CALL ComputeIncrement_Euler_MF &
+               ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
-        END IF
+        CALL Reflux_Euler_MF( MF_D(iS,:) )
 
-      END DO ! iLevel
+      END IF ! a(:,iS) .NE. Zero OR w(iS) .NE. Zero
 
     END DO ! iS
 
@@ -274,27 +263,5 @@ CONTAINS
 
   END SUBROUTINE AllocateButcherTables_SSPRK
 
-
-  SUBROUTINE Reflux_Euler_MF( iLevel, MF_D )
-
-    INTEGER             , INTENT(in)    :: iLevel ! Fine level
-    TYPE(amrex_multifab), INTENT(inout) :: MF_D(0:amrex_max_level)
-
-    CALL CreateMesh_MF( iLevel-1, MeshX )
-
-    ASSOCIATE( dX1 => MeshX(1) % Width, &
-               dX2 => MeshX(2) % Width, &
-               dX3 => MeshX(3) % Width )
-
-    CALL FluxRegister( iLevel ) &
-           % reflux_dg( MF_D(iLevel-1), nCF, dX1, dX2, dX3 )
-
-    END ASSOCIATE
-
-    CALL DestroyMesh_MF( MeshX )
-
-    CALL AverageDownTo( iLevel-1, MF_D )
-
-  END SUBROUTINE
 
 END MODULE MF_TimeSteppingModule_SSPRK
