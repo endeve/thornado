@@ -151,7 +151,7 @@ MODULE InitializationModule
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
   USE AverageDownModule, ONLY: &
-    AverageDown
+    AverageDownTo
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
   USE MF_Euler_TimersModule, ONLY: &
@@ -307,10 +307,6 @@ CONTAINS
 
     CALL amrex_init_from_scratch( 0.0_DP )
 
-    CALL AverageDown( MF_uGF )
-    CALL AverageDown( MF_uCF )
-    CALL AverageDown( MF_uDF )
-
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
@@ -389,6 +385,13 @@ CONTAINS
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
     CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+
+    IF( iLevel .GT. 0 )THEN
+
+      CALL AverageDownTo( iLevel-1, MF_uCF )
+      CALL AverageDownTo( iLevel-1, MF_uGF )
+
+    END IF
 
     CALL DestroyMesh_MF( MeshX )
 
