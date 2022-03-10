@@ -10,7 +10,8 @@ module CudaModule
   use, intrinsic :: iso_c_binding
 
   integer :: mystream
-  type(c_ptr) :: stream, event
+  type(c_ptr), target :: stream
+  type(c_ptr) :: event
 
   integer :: nstream, nevent
   type(c_ptr), allocatable :: streamArray(:)

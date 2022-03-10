@@ -134,12 +134,12 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, iErr )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
@@ -150,10 +150,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_RecoverPrimitives )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP REDUCTION( +:ErrorExists )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
@@ -180,12 +180,12 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_CopyOut )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
@@ -235,7 +235,7 @@ CONTAINS
 
     ITERATE = .TRUE.
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -246,7 +246,7 @@ CONTAINS
     !$OMP             za, zb, zc, &
     !$OMP             fa, fb, fc, &
     !$OMP             iErr )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -285,10 +285,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_RecoverPrimitives )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( W, eps, DhW, p )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( W, eps, DhW, p ) &
     !$ACC PRESENT( zc, q, r, &
@@ -332,10 +332,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_Permute )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP REDUCTION( +:ErrorExists )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr ) &
@@ -365,7 +365,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_CopyOut )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr, &
     !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
@@ -376,7 +376,7 @@ CONTAINS
     !$OMP               za, zb, zc, &
     !$OMP               fa, fb, fc, &
     !$OMP               ITERATE )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr, &
     !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
@@ -414,9 +414,9 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm11, GF_Gm22, GF_Gm33, iErr )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -591,11 +591,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_CopyIn )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$OMP MAP( alloc: P, A, iErr )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$ACC CREATE(     P, A, iErr )
@@ -605,9 +605,9 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B1, iX_E1, A )
 #elif defined( THORNADO_OMP    )
@@ -627,9 +627,9 @@ CONTAINS
     END DO
     END DO
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
 #elif defined( THORNADO_OMP    )
@@ -681,11 +681,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_CopyOut )
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    P, A, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      P, A, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
@@ -1970,7 +1970,8 @@ CONTAINS
 
 #endif
 
-  SUBROUTINE SolveZ_Bisection_Scalar( CF_D, CF_Ne, q, r, k, z0, iErr )
+  SUBROUTINE SolveZ_Bisection_Scalar &
+    ( CF_D, CF_Ne, q, r, k, z0, iErr, dzMin_Option )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -1982,13 +1983,19 @@ CONTAINS
     REAL(DP), INTENT(inout) :: q
     REAL(DP), INTENT(out)   :: z0
     INTEGER,  INTENT(inout) :: iErr
+    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 
-    LOGICAL             :: CONVERGED
-    INTEGER             :: ITERATION
-    REAL(DP)            :: za, zb, zc, dz
-    REAL(DP)            :: fa, fb, fc
-    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
-    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+    REAL(DP) :: za, zb, zc, dz, dzMin
+    REAL(DP) :: fa, fb, fc
+    INTEGER  :: MAX_IT
+
+    dzMin = 1.0e-08_DP
+    IF( PRESENT( dzMin_Option ) ) &
+      dzMin = dzMin_Option
+
+    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ! --- Eq. C23 ---
 
@@ -2061,7 +2068,7 @@ CONTAINS
 
       END IF
 
-      IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dz_min ) &
+      IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dzMin ) &
         CONVERGED = .TRUE.
 
 !!$      IF( ITERATION .GT. MAX_IT - 3 )THEN
@@ -2083,18 +2090,25 @@ CONTAINS
   SUBROUTINE SolveZ_Bisection_Vector &
     ( N, uD, uNe, q, r, k, &
       za, zb, fa, fb, &
-      dz, zc, fc, ITERATE )
+      dz, zc, fc, ITERATE, dzMin_Option )
 
     INTEGER,  INTENT(in)    :: N
     REAL(DP), INTENT(in)    :: uD(N), uNe(N), r(N), k(N)
     REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N), dz(N)
     REAL(DP), INTENT(out)   :: zc(N), fc(N)
     LOGICAL,  INTENT(inout) :: ITERATE(N)
+    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 
-    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
-    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
+    REAL(DP) :: dzMin
+    INTEGER  :: MAX_IT
 
     INTEGER :: ITERATION, iX
+
+    dzMin = 1.0e-08
+    IF( PRESENT( dzMin_Option ) ) &
+      dzMin = dzMin_Option
+
+    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ITERATION = 0
     DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
@@ -2103,9 +2117,9 @@ CONTAINS
 
       ! --- Compute midpoints, zc ---
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRESENT( za, zc, dz, uD, ITERATE )
 #elif defined( THORNADO_OMP    )
@@ -2126,9 +2140,9 @@ CONTAINS
 
       ! --- Change either za or zb to zc, depending on sign of fc ---
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRESENT( uD, uNe, q, r, k, &
       !$ACC          za, zb, fa, fb, &
@@ -2152,8 +2166,8 @@ CONTAINS
 
           END IF
 
-          !IF( ABS( dz(iX) ) / MAX( ABS( zc(iX) ), SqrtTiny ) .LE. dz_min ) &
-          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dz_min ) &
+          !IF( ABS( dz(iX) ) / MAX( ABS( zc(iX) ), SqrtTiny ) .LE. dzMin ) &
+          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dzMin ) &
             ITERATE(iX) = .FALSE.
 
 !!$          IF( ITERATION .GT. MAX_IT - 3 )THEN
@@ -2173,9 +2187,9 @@ CONTAINS
         END IF ! uD(iX) .GT. Min_D .AND. ITERATE(iX)
 
       END DO ! iX
-#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
       !$OMP TARGET UPDATE FROM( ITERATE )
-#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
       !$ACC UPDATE HOST       ( ITERATE )
 #endif
 
