@@ -34,7 +34,10 @@ MODULE MF_Euler_PositivityLimiterModule
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
     UsePositivityLimiter, &
+    do_reflux, &
     UseTiling
+  USE AverageDownModule, ONLY: &
+    AverageDownTo
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -66,7 +69,7 @@ CONTAINS
     DO iLevel = 0, amrex_max_level
 
       CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
-             ( MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     END DO
 
@@ -74,11 +77,12 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel &
-    ( MF_uGF, MF_uCF, MF_uDF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -97,13 +101,13 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
-      uDF => MF_uDF % DataPtr( MFI )
+      uGF => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF => MF_uDF(iLevel) % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 
@@ -155,6 +159,13 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+
+    IF( iLevel .GT. 0 .AND. do_reflux )THEN
+
+      CALL AverageDownTo( iLevel-1, MF_uCF )
+      CALL AverageDownTo( iLevel-1, MF_uDF )
+
+    END IF
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel
 

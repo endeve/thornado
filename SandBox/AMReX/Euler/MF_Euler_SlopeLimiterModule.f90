@@ -39,7 +39,8 @@ MODULE MF_Euler_SlopeLimiterModule
   USE InputParsingModule, ONLY: &
     swX, &
     UseSlopeLimiter, &
-    UseTiling
+    UseTiling, &
+    do_reflux
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -49,6 +50,8 @@ MODULE MF_Euler_SlopeLimiterModule
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
+  USE AverageDownModule, ONLY: &
+    AverageDownTo
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -198,6 +201,13 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+
+    IF( iLevel .GT. 0 .AND. do_reflux )THEN
+
+      CALL AverageDownTo( iLevel-1, MF_uCF )
+      CALL AverageDownTo( iLevel-1, MF_uDF )
+
+    END IF
 
     CALL DestroyMesh_MF( MeshX )
 
