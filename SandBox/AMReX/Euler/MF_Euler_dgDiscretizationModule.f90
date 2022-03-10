@@ -94,11 +94,43 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   PUBLIC :: ComputeIncrement_Euler_MF
 
+  INTERFACE ComputeIncrement_Euler_MF
+    MODULE PROCEDURE ComputeIncrement_Euler_MF_SingleLevel
+    MODULE PROCEDURE ComputeIncrement_Euler_MF_MultipleLevels
+  END INTERFACE ComputeIncrement_Euler_MF
 
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_Euler_MF &
+  SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
+    ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
+
+    REAL(DP),             INTENT(in)    :: Time   (0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:amrex_max_level)
+    LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
+
+    INTEGER :: iLevel
+    LOGICAL :: UseXCFC
+
+    UseXCFC = .FALSE.
+    IF( PRESENT( UseXCFC_Option ) ) &
+      UseXCFC = UseXCFC_Option
+
+    DO iLevel = 0, amrex_max_level
+
+      CALL ComputeIncrement_Euler_MF_SingleLevel &
+             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel), &
+               UseXCFC_Option = UseXCFC )
+
+    END DO
+
+  END SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels
+
+
+  SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
     ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
 
 !    DO iLevel = 0, amrex_max_level
@@ -404,7 +436,7 @@ CONTAINS
 
     CALL DestroyMesh_MF( MeshX )
 
-  END SUBROUTINE ComputeIncrement_Euler_MF
+  END SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel
 
 
 END MODULE MF_Euler_dgDiscretizationModule
