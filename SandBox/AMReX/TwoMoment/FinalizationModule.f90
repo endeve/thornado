@@ -11,7 +11,8 @@ MODULE FinalizationModule
   ! --- thornado Modules ---
   USE RadiationFieldsModule,                ONLY: &
     DestroyRadiationFields
-
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    FinalizeTimers
 
   ! --- Local Modules ---
   USE MyAmrModule,                 ONLY: &
@@ -47,6 +48,8 @@ MODULE FinalizationModule
     END DO  
  
     CALL MyAmrFinalize
+ 
+    CALL FinalizeTimers
  
     CALL amrex_amrcore_finalize
 

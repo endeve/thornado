@@ -116,6 +116,8 @@ f90EXE_sources += MF_TwoMoment_BoundaryConditionsModule.f90
 F90EXE_sources += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
 f90EXE_sources += MF_TwoMoment_PositivityLimiter.f90
 f90EXE_sources += MF_TwoMoment_SlopeLimiter.f90
+f90EXE_sources += MF_TwoMoment_TallyModule.f90
+f90EXE_sources += MF_Euler_TallyModule.f90
 CEXE_sources   += Restart.cpp
 
 
@@ -131,4 +133,5 @@ F90EXE_sources += Euler_BoundaryConditionsModule_Relativistic.F90
 F90EXE_sources += TwoMoment_PositivityLimiterModule_Relativistic.F90
 F90EXE_sources += TwoMoment_SlopeLimiterModule_Relativistic.F90
 F90EXE_sources += TwoMoment_NeutrinoMatterSolverModule_Relativistic.F90
+F90EXE_sources += TwoMoment_TimersModule_Relativistic.F90
 

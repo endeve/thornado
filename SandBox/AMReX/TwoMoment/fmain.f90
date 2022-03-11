@@ -23,6 +23,10 @@ PROGRAM main
     MF_uPF, &
     MF_uAF, &
     MF_uGF
+  USE MF_TwoMoment_TallyModule,         ONLY: &
+    MF_ComputeTally_TwoMoment
+  USE MF_Euler_TallyModule,         ONLY: &
+    MF_ComputeTally_Euler
   USE InitializationModule,             ONLY: &
     wrt,              &
     InitializeProgram
@@ -73,7 +77,6 @@ PROGRAM main
   n = 1.0_amrex_real
   CALL InitializeProgram
   
-  CALL WriteEulertoFile( MF_uCF, MF_uGF, 0 )
 num = 1
   DO WHILE( ALL( t .LT. t_end ) )
     
@@ -104,6 +107,11 @@ num = 1
            ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
             Verbose_Option = amrex_parallel_ioprocessor()  )
 
+      CALL MF_ComputeTally_Euler( GEOM, MF_uGF, MF_uCF, t(0), &
+                                Verbose_Option = .FALSE. )
+
+      CALL MF_ComputeTally_TwoMoment( GEOM, MF_uGF, MF_uCF, MF_uCR, &
+                                    t(0), Verbose_Option = .FALSE. )
     IF( ALL( t + dt .GT. t_wrt ) )THEN
       t_wrt = t_wrt + dt_wrt
       wrt   = .TRUE.
@@ -121,9 +129,6 @@ num = 1
                  num_Option = num )
 
 
-
-
-
       CALL MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
 
@@ -135,6 +140,11 @@ num = 1
                MF_uAF_Option = MF_uAF, &
                num_Option = num )
 
+!      CALL MF_ComputeTally_Euler( GEOM, MF_uGF, MF_uCF, t(0), &
+!                                Verbose_Option = .FALSE. )
+
+!      CALL MF_ComputeTally_TwoMoment( GEOM, MF_uGF, MF_uCF, MF_uCR, &
+!                                    t(0), Verbose_Option = .FALSE. )
 
       num = num + 1
       wrt = .FALSE.
@@ -145,7 +155,7 @@ num = 1
  
   IF (nDOFZ .GT. 1) THEN
 
-    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uCR, 'thornado_')
+!    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uCR, 'thornado_')
 
   END IF
 
@@ -173,6 +183,11 @@ num = 1
                MF_uAF_Option = MF_uAF, &
                num_Option = num )
 
+  CALL MF_ComputeTally_Euler( GEOM, MF_uGF, MF_uCF, t(0), &
+                                Verbose_Option = .FALSE. )
+
+  CALL MF_ComputeTally_TwoMoment( GEOM, MF_uGF, MF_uCF, MF_uCR, &
+                                    t(0), Verbose_Option = .FALSE. )
   CALL FinalizeProgram( GEOM )
   
 
