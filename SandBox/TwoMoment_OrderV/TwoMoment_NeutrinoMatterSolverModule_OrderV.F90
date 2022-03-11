@@ -102,8 +102,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_H_d_2, H_d_2
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_H_d_3, H_d_3
 
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
-
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Omega
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Y_old, C_Y, S_Y, G_Y, U_Y
@@ -116,6 +114,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
+
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: H_I_0, H_II_0
   REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J_I_0, J_II_0
 
@@ -218,12 +217,6 @@ CONTAINS
     ALLOCATE( C_H_d_3(nE_G,nSpecies,nX_G) )
     ALLOCATE(   H_d_3(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE( N_nu    (nE_G,nSpecies,nX_G) )
-    ALLOCATE( E_nu    (nE_G,nSpecies,nX_G) )
-    ALLOCATE( F_nu_d_1(nE_G,nSpecies,nX_G) )
-    ALLOCATE( F_nu_d_2(nE_G,nSpecies,nX_G) )
-    ALLOCATE( F_nu_d_3(nE_G,nSpecies,nX_G) )
-
     ALLOCATE( Omega(nX_G) )
 
     ALLOCATE(   Ef_old(nX_G) )
@@ -322,7 +315,6 @@ CONTAINS
     !$OMP             C_H_d_1, H_d_1, &
     !$OMP             C_H_d_2, H_d_2, &
     !$OMP             C_H_d_3, H_d_3, &
-    !$OMP             N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
     !$OMP             Omega, &
     !$OMP             Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$OMP             Y_old, C_Y, S_Y, G_Y, U_Y, &
@@ -358,7 +350,6 @@ CONTAINS
     !$ACC         C_H_d_1, H_d_1, &
     !$ACC         C_H_d_2, H_d_2, &
     !$ACC         C_H_d_3, H_d_3, &
-    !$ACC         N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
     !$ACC         Omega, &
     !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
@@ -535,7 +526,6 @@ CONTAINS
     !$OMP               C_H_d_1, H_d_1, &
     !$OMP               C_H_d_2, H_d_2, &
     !$OMP               C_H_d_3, H_d_3, &
-    !$OMP               N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
     !$OMP               Omega, &
     !$OMP               Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$OMP               Y_old, C_Y, S_Y, G_Y, U_Y, &
@@ -570,7 +560,6 @@ CONTAINS
     !$ACC         C_H_d_1, H_d_1, &
     !$ACC         C_H_d_2, H_d_2, &
     !$ACC         C_H_d_3, H_d_3, &
-    !$ACC         N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
     !$ACC         Omega, &
     !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
@@ -605,7 +594,6 @@ CONTAINS
     DEALLOCATE( C_H_d_1, H_d_1 )
     DEALLOCATE( C_H_d_2, H_d_2 )
     DEALLOCATE( C_H_d_3, H_d_3 )
-    DEALLOCATE( N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
     DEALLOCATE( Omega )
     DEALLOCATE( Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, Ef )
     DEALLOCATE( Y_old, C_Y, S_Y, G_Y, U_Y )
@@ -1184,17 +1172,20 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( vDotV )
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( vDotV )
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( vDotV )
+    !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$OMP          k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
 
@@ -1236,125 +1227,91 @@ CONTAINS
       U_V_d_2(iN_X) = V_d_2(iN_X) / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
 
-    END DO
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iN_E = 1, nE_G
-
-      H_d_1(iN_E,iS,iN_X) = Gm_dd_11(iN_X) * H_u_1(iN_E,iS,iN_X)
-      H_d_2(iN_E,iS,iN_X) = Gm_dd_22(iN_X) * H_u_2(iN_E,iS,iN_X)
-      H_d_3(iN_E,iS,iN_X) = Gm_dd_33(iN_X) * H_u_3(iN_E,iS,iN_X)
-
-      vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iS,iN_X) &
-              + V_u_2(iN_X) * H_d_2(iN_E,iS,iN_X) &
-              + V_u_3(iN_X) * H_d_3(iN_E,iS,iN_X)
-
-      k_dd = EddingtonTensorComponents_dd &
-               ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
-                 H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
-                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
-
-      vDotK_d_1 &
-        = ( V_u_1(iN_X) * k_dd(1,1) &
-          + V_u_2(iN_X) * k_dd(2,1) &
-          + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iS,iN_X)
-      vDotK_d_2 &                                                    
-        = ( V_u_1(iN_X) * k_dd(1,2) &
-          + V_u_2(iN_X) * k_dd(2,2) &
-          + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iS,iN_X)
-      vDotK_d_3 &                                                    
-        = ( V_u_1(iN_X) * k_dd(1,3) &
-          + V_u_2(iN_X) * k_dd(2,3) &
-          + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iS,iN_X)
-
-      ! --- Eulerian Neutrino Number Density ---
-
-      N_nu(iN_E,iS,iN_X) = J(iN_E,iS,iN_X) + vDotH
-
-      ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
-
-      E_nu(iN_E,iS,iN_X) = J(iN_E,iS,iN_X) + Two * vDotH
-
-      ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
-
-      F_nu_d_1(iN_E,iS,iN_X) &
-        = H_d_1(iN_E,iS,iN_X) + V_d_1(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_1
-
-      F_nu_d_2(iN_E,iS,iN_X) &
-        = H_d_2(iN_E,iS,iN_X) + V_d_2(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_2
-
-      F_nu_d_3(iN_E,iS,iN_X) &
-        = H_d_3(iN_E,iS,iN_X) + V_d_3(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_3
-
-      ! --- Old States for Neutrino Number Density and Flux ---
-
-      C_J    (iN_E,iS,iN_X) = J    (iN_E,iS,iN_X) + vDotH
-      C_H_d_1(iN_E,iS,iN_X) = H_d_1(iN_E,iS,iN_X) + vDotK_d_1
-      C_H_d_2(iN_E,iS,iN_X) = H_d_2(iN_E,iS,iN_X) + vDotK_d_2
-      C_H_d_3(iN_E,iS,iN_X) = H_d_3(iN_E,iS,iN_X) + vDotK_d_3
-
-    END DO
-    END DO
-    END DO
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
-#endif
-    DO iN_X = 1, nX_G
-
-      ! --- Include Old Matter State in Constant (C) Terms ---
-
       SUM_Y  = Zero
-#if   defined( THORNADO_OMP_OL )
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP REDUCTION( + : SUM_Y )
-#elif defined( THORNADO_OACC   )
-      !$ACC LOOP VECTOR COLLAPSE(2) &
-      !$ACC REDUCTION( + : SUM_Y )
-#endif
-      DO iS = iNuE, iNuE_Bar
-      DO iN_E = 1, nE_G
-        SUM_Y  = SUM_Y  + N_nu    (iN_E,iS,iN_X) * W2_S(iN_E) * LeptonNumber(iS)
-      END DO
-      END DO
-
       SUM_Ef = Zero
       SUM_V1 = Zero
       SUM_V2 = Zero
       SUM_V3 = Zero
+
 #if   defined( THORNADO_OMP_OL )
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP REDUCTION( + : SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+      !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+      !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 ) &
+      !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
       !$ACC LOOP VECTOR COLLAPSE(2) &
-      !$ACC REDUCTION( + : SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+      !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+      !$ACC          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 ) &
+      !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #endif
-      DO iS = 1, nSpecies
+      DO iS   = 1, nSpecies
       DO iN_E = 1, nE_G
-        SUM_Ef = SUM_Ef + E_nu    (iN_E,iS,iN_X) * W3_S(iN_E)
-        SUM_V1 = SUM_V1 + F_nu_d_1(iN_E,iS,iN_X) * W3_S(iN_E)
-        SUM_V2 = SUM_V2 + F_nu_d_2(iN_E,iS,iN_X) * W3_S(iN_E)
-        SUM_V3 = SUM_V3 + F_nu_d_3(iN_E,iS,iN_X) * W3_S(iN_E)
+
+        H_d_1(iN_E,iS,iN_X) = Gm_dd_11(iN_X) * H_u_1(iN_E,iS,iN_X)
+        H_d_2(iN_E,iS,iN_X) = Gm_dd_22(iN_X) * H_u_2(iN_E,iS,iN_X)
+        H_d_3(iN_E,iS,iN_X) = Gm_dd_33(iN_X) * H_u_3(iN_E,iS,iN_X)
+
+        vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iS,iN_X) &
+                + V_u_2(iN_X) * H_d_2(iN_E,iS,iN_X) &
+                + V_u_3(iN_X) * H_d_3(iN_E,iS,iN_X)
+
+        k_dd = EddingtonTensorComponents_dd &
+                 ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
+                   H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+
+        vDotK_d_1 &
+          = ( V_u_1(iN_X) * k_dd(1,1) &
+            + V_u_2(iN_X) * k_dd(2,1) &
+            + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iS,iN_X)
+        vDotK_d_2 &
+          = ( V_u_1(iN_X) * k_dd(1,2) &
+            + V_u_2(iN_X) * k_dd(2,2) &
+            + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iS,iN_X)
+        vDotK_d_3 &
+          = ( V_u_1(iN_X) * k_dd(1,3) &
+            + V_u_2(iN_X) * k_dd(2,3) &
+            + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iS,iN_X)
+
+        ! --- Eulerian Neutrino Number Density ---
+
+        N_nu = J(iN_E,iS,iN_X) + vDotH
+
+        ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
+
+        E_nu = J(iN_E,iS,iN_X) + Two * vDotH
+
+        ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
+
+        F_nu_d_1 &
+          = H_d_1(iN_E,iS,iN_X) + V_d_1(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_1
+
+        F_nu_d_2 &
+          = H_d_2(iN_E,iS,iN_X) + V_d_2(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_2
+
+        F_nu_d_3 &
+          = H_d_3(iN_E,iS,iN_X) + V_d_3(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_3
+
+        ! --- Old States for Neutrino Number Density and Flux ---
+
+        C_J    (iN_E,iS,iN_X) = J    (iN_E,iS,iN_X) + vDotH
+        C_H_d_1(iN_E,iS,iN_X) = H_d_1(iN_E,iS,iN_X) + vDotK_d_1
+        C_H_d_2(iN_E,iS,iN_X) = H_d_2(iN_E,iS,iN_X) + vDotK_d_2
+        C_H_d_3(iN_E,iS,iN_X) = H_d_3(iN_E,iS,iN_X) + vDotK_d_3
+
+        IF ( iS <= iNuE_Bar ) THEN
+        SUM_Y  = SUM_Y  + N_nu     * W2_S(iN_E) * LeptonNumber(iS)
+        END IF
+
+        SUM_Ef = SUM_Ef + E_nu     * W3_S(iN_E)
+        SUM_V1 = SUM_V1 + F_nu_d_1 * W3_S(iN_E)
+        SUM_V2 = SUM_V2 + F_nu_d_2 * W3_S(iN_E)
+        SUM_V3 = SUM_V3 + F_nu_d_3 * W3_S(iN_E)
+
       END DO
       END DO
+
+      ! --- Include Old Matter State in Constant (C) Terms ---
 
       C_Y    (iN_X) = U_Y    (iN_X) + SUM_Y  * S_Y    (iN_X)
       C_Ef   (iN_X) = U_Ef   (iN_X) + SUM_Ef * S_Ef   (iN_X)
@@ -1409,70 +1366,8 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iN_E = 1, nE_G
-
-      IF ( MASK(iN_X) ) THEN
-
-        vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iS,iN_X) &
-                + V_u_2(iN_X) * H_d_2(iN_E,iS,iN_X) &
-                + V_u_3(iN_X) * H_d_3(iN_E,iS,iN_X)
-
-        k_dd = EddingtonTensorComponents_dd &
-                 ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
-                   H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
-                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
-
-        vDotK_d_1 &
-          = ( V_u_1(iN_X) * k_dd(1,1) &
-            + V_u_2(iN_X) * k_dd(2,1) &
-            + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iS,iN_X)
-        vDotK_d_2 &                                                  
-          = ( V_u_1(iN_X) * k_dd(1,2) &
-            + V_u_2(iN_X) * k_dd(2,2) &
-            + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iS,iN_X)
-        vDotK_d_3 &                                                  
-          = ( V_u_1(iN_X) * k_dd(1,3) &
-            + V_u_2(iN_X) * k_dd(2,3) &
-            + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iS,iN_X)
-
-        ! --- Eulerian Neutrino Number Density ---
-
-        N_nu(iN_E,iS,iN_X) = J(iN_E,iS,iN_X) + vDotH
-
-        ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
-
-        E_nu(iN_E,iS,iN_X) = J(iN_E,iS,iN_X) + Two * vDotH
-
-        ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
-
-        F_nu_d_1(iN_E,iS,iN_X) &
-          = H_d_1(iN_E,iS,iN_X) + V_d_1(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_1
-
-        F_nu_d_2(iN_E,iS,iN_X) &
-          = H_d_2(iN_E,iS,iN_X) + V_d_2(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_2
-
-        F_nu_d_3(iN_E,iS,iN_X) &
-          = H_d_3(iN_E,iS,iN_X) + V_d_3(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_3
-
-      END IF
-
-    END DO
-    END DO
-    END DO
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
@@ -1482,42 +1377,83 @@ CONTAINS
     !$ACC PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+    !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
+    !$OMP          k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
 
         SUM_Y  = Zero
-#if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-        !$OMP REDUCTION( + : SUM_Y )
-#elif defined( THORNADO_OACC   )
-        !$ACC LOOP VECTOR COLLAPSE(2) &
-        !$ACC REDUCTION( + : SUM_Y )
-#endif
-        DO iS = iNuE, iNuE_Bar
-        DO iN_E = 1, nE_G
-          SUM_Y  = SUM_Y  + N_nu    (iN_E,iS,iN_X) * W2_S(iN_E) * LeptonNumber(iS)
-        END DO
-        END DO
-
         SUM_Ef = Zero
         SUM_V1 = Zero
         SUM_V2 = Zero
         SUM_V3 = Zero
+
 #if   defined( THORNADO_OMP_OL )
         !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-        !$OMP REDUCTION( + : SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+        !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+        !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 ) &
+        !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR COLLAPSE(2) &
-        !$ACC REDUCTION( + : SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+        !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+        !$ACC          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 ) &
+        !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #endif
-        DO iS = 1, nSpecies
+        DO iS   = 1, nSpecies
         DO iN_E = 1, nE_G
-          SUM_Ef = SUM_Ef + E_nu    (iN_E,iS,iN_X) * W3_S(iN_E)
-          SUM_V1 = SUM_V1 + F_nu_d_1(iN_E,iS,iN_X) * W3_S(iN_E)
-          SUM_V2 = SUM_V2 + F_nu_d_2(iN_E,iS,iN_X) * W3_S(iN_E)
-          SUM_V3 = SUM_V3 + F_nu_d_3(iN_E,iS,iN_X) * W3_S(iN_E)
+
+          vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iS,iN_X) &
+                  + V_u_2(iN_X) * H_d_2(iN_E,iS,iN_X) &
+                  + V_u_3(iN_X) * H_d_3(iN_E,iS,iN_X)
+
+          k_dd = EddingtonTensorComponents_dd &
+                   ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
+                     H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
+                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+
+          vDotK_d_1 &
+            = ( V_u_1(iN_X) * k_dd(1,1) &
+              + V_u_2(iN_X) * k_dd(2,1) &
+              + V_u_3(iN_X) * k_dd(3,1) ) * J(iN_E,iS,iN_X)
+          vDotK_d_2 &
+            = ( V_u_1(iN_X) * k_dd(1,2) &
+              + V_u_2(iN_X) * k_dd(2,2) &
+              + V_u_3(iN_X) * k_dd(3,2) ) * J(iN_E,iS,iN_X)
+          vDotK_d_3 &
+            = ( V_u_1(iN_X) * k_dd(1,3) &
+              + V_u_2(iN_X) * k_dd(2,3) &
+              + V_u_3(iN_X) * k_dd(3,3) ) * J(iN_E,iS,iN_X)
+
+          ! --- Eulerian Neutrino Number Density ---
+
+          N_nu = J(iN_E,iS,iN_X) + vDotH
+
+          ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
+
+          E_nu = J(iN_E,iS,iN_X) + Two * vDotH
+
+          ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
+
+          F_nu_d_1 &
+            = H_d_1(iN_E,iS,iN_X) + V_d_1(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_1
+
+          F_nu_d_2 &
+            = H_d_2(iN_E,iS,iN_X) + V_d_2(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_2
+
+          F_nu_d_3 &
+            = H_d_3(iN_E,iS,iN_X) + V_d_3(iN_X) * J(iN_E,iS,iN_X) + vDotK_d_3
+
+          IF ( iS <= iNuE_Bar ) THEN
+          SUM_Y  = SUM_Y  + N_nu     * W2_S(iN_E) * LeptonNumber(iS)
+          END IF
+
+          SUM_Ef = SUM_Ef + E_nu     * W3_S(iN_E)
+          SUM_V1 = SUM_V1 + F_nu_d_1 * W3_S(iN_E)
+          SUM_V2 = SUM_V2 + F_nu_d_2 * W3_S(iN_E)
+          SUM_V3 = SUM_V3 + F_nu_d_3 * W3_S(iN_E)
+
         END DO
         END DO
 
