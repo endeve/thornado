@@ -70,10 +70,14 @@ MODULE OpacityModule_TABLE
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
 
-  REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2
-  REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2
-  REAL(DP), PARAMETER :: C2_NuE     = ( cv - ca )**2
-  REAL(DP), PARAMETER :: C2_NuE_Bar = ( cv + ca )**2
+  REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2, C2_NuE     = ( cv - ca )**2
+  REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2, C2_NuE_Bar = ( cv + ca )**2
+
+  REAL(DP), PARAMETER :: C1_NuM     = ( cv + ca - 2.0d0 )**2, C2_NuM     = ( cv - ca         )**2
+  REAL(DP), PARAMETER :: C1_NuM_Bar = ( cv - ca         )**2, C2_NuM_Bar = ( cv + ca - 2.0d0 )**2
+
+  REAL(DP), PARAMETER :: C1_NuT     = ( cv + ca - 2.0d0 )**2, C2_NuT     = ( cv - ca         )**2
+  REAL(DP), PARAMETER :: C1_NuT_Bar = ( cv - ca         )**2, C2_NuT_Bar = ( cv + ca - 2.0d0 )**2
 
   PUBLIC :: InitializeOpacities_TABLE
   PUBLIC :: FinalizeOpacities_TABLE
@@ -217,8 +221,13 @@ CONTAINS
 
     nPointsE = nE * nNodesE
 
-    C1 = [ ( cv + ca )**2, ( cv - ca )**2, 0.0d0, 0.0d0, 0.0d0, 0.0d0 ]
-    C2 = [ ( cv - ca )**2, ( cv + ca )**2, 0.0d0, 0.0d0, 0.0d0, 0.0d0 ]
+    C1 = [ C1_NuE, C1_NuE_Bar, &
+           C1_NuM, C1_NuM_Bar, &
+           C1_NuT, C1_NuT_Bar ]
+
+    C2 = [ C2_NuE, C2_NuE_Bar, &
+           C2_NuM, C2_NuM_Bar, &
+           C2_NuT, C2_NuT_Bar ]
 
     ! --- Thermodynamic State Indices ---
 
