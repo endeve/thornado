@@ -10,6 +10,7 @@ MODULE TwoMoment_TimersModule_Relativistic
 
   REAL(DP), PUBLIC :: Timer_Total
   REAL(DP), PUBLIC :: Timer_ComputePrimative
+  REAL(DP), PUBLIC :: Timer_NestedSolve
 
   PUBLIC :: InitializeTimers
   PUBLIC :: FinalizeTimers
@@ -25,6 +26,8 @@ CONTAINS
     Timer_Total                          = Zero
 
     Timer_ComputePrimative               = Zero
+
+    Timer_NestedSolve                    = Zero
 
     CALL TimersStart( Timer_Total )
 
@@ -43,6 +46,8 @@ CONTAINS
       'Timer_Total                              :', Timer_Total                         , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_ComputePrimative                 :', Timer_ComputePrimative              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_NestedSolve                      :', Timer_NestedSolve                   , ' s'
     WRITE(*,*)
 
   END SUBROUTINE FinalizeTimers

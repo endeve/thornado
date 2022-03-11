@@ -39,7 +39,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment_Vector_Richardson, &
     ComputeConserved_TwoMoment
-
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    TimersStart, &
+    TimersStop,  &
+    Timer_NestedSolve
 
 
   IMPLICIT NONE
@@ -47,7 +50,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_Neutrinos
 
-  INTEGER               :: nE_G, nX_G
+  INTEGER               :: nE_G, nX_G, FileUnit
   INTEGER               :: nZ(4), nX(3), nE
   INTEGER               :: iE_B0, iE_E0, iX_B0(3), iX_E0(3)
   INTEGER               :: iE_B1, iE_E1, iX_B1(3), iX_E1(3)
@@ -264,6 +267,7 @@ CONTAINS
     ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
+    CALL TimersStart( Timer_NestedSolve )
 
     CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
            ( dt, &
@@ -288,9 +292,16 @@ CONTAINS
              nIterations_Inner, &
              nIterations_Outer )
 
-print*, nIterations_Inner
-print*, "next"
-print*, nIterations_Outer
+     OPEN( NEWUNIT = FileUnit, FILE = "Num_Iter.dat", &
+           POSITION = 'APPEND', ACTION = 'WRITE' )
+     WRITE( FileUnit, FMT = * )                  &
+         nIterations_Inner(1),                       &
+         nIterations_Outer(1)
+
+
+     CLOSE( FileUnit )
+
+    CALL TimersStop( Timer_NestedSolve )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
