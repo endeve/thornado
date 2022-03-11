@@ -181,7 +181,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: Me, Mp, Mn, f0 ) &
-    !$OMP MAP( to: E, D, T, Y ) &
+    !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( Me, Mp, Mn, f0 ) &
