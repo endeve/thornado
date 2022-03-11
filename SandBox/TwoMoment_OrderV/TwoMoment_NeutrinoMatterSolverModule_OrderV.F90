@@ -58,8 +58,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
     ComputeNeutrinoOpacities_Pair, &
+    ComputeNeutrinoOpacities_Brem, &
     ComputeNeutrinoOpacityRates_NES, &
-    ComputeNeutrinoOpacityRates_Pair
+    ComputeNeutrinoOpacityRates_Pair, &
+    ComputeNeutrinoOpacityRates_Brem
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     EddingtonTensorComponents_dd
 
@@ -73,6 +75,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   LOGICAL, PARAMETER :: Include_NES  = .TRUE.
   LOGICAL, PARAMETER :: Include_Pair = .TRUE.
+  LOGICAL, PARAMETER :: Include_Brem = .TRUE.
 
   ! --- Units Only for Displaying to Screen ---
 
@@ -109,14 +112,16 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3
 
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J0
-  REAL(DP), DIMENSION(:,:)    , ALLOCATABLE, TARGET :: Sigma_Iso
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J0
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Brem, Eta_Brem
 
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: H_I_0, H_II_0
-  REAL(DP), DIMENSION(:,:,:)  , ALLOCATABLE, TARGET :: J_I_0, J_II_0
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0, H_II_0
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0, J_II_0
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma
 
   ! --- Least-squares scratch arrays ---
 
@@ -155,9 +160,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb_T, Eta_EmAb_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES_T, Eta_NES_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair_T, Eta_Pair_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Brem_T, Eta_Brem_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0_T, H_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0_T, J_II_0_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma_T
 
 CONTAINS
 
@@ -258,11 +265,14 @@ CONTAINS
     ALLOCATE(   Eta_NES(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Chi_Pair(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Eta_Pair(nE_G,nSpecies,nX_G) )
+    ALLOCATE(  Chi_Brem(nE_G,nSpecies,nX_G) )
+    ALLOCATE(  Eta_Brem(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE(  H_I_0(nE_G,nE_G,nX_G) )
-    ALLOCATE( H_II_0(nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_I_0(nE_G,nE_G,nX_G) )
-    ALLOCATE( J_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(   H_I_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(  H_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(   J_I_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(  J_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE( S_Sigma(nE_G,nE_G,nX_G) )
 
     ALLOCATE( D_T(nX_G) )
     ALLOCATE( T_T(nX_G) )
@@ -279,11 +289,14 @@ CONTAINS
     ALLOCATE(   Eta_NES_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Chi_Pair_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Eta_Pair_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(  Chi_Brem_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(  Eta_Brem_T(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE(  H_I_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE( H_II_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_I_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE( J_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(   H_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(  H_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(   J_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(  J_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( S_Sigma_T(nE_G,nE_G,nX_G) )
 
     ALLOCATE(  AMAT_outer(n_FP_outer,M_outer,nX_G) )
     ALLOCATE(  GVEC_outer(n_FP_outer,M_outer,nX_G) )
@@ -325,13 +338,15 @@ CONTAINS
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
     !$OMP             Chi_Pair, Eta_Pair, &
-    !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$OMP             Chi_Brem, Eta_Brem, &
+    !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, J_T, &
     !$OMP             J0_T, Sigma_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
     !$OMP             Chi_Pair_T, Eta_Pair_T, &
-    !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
+    !$OMP             Chi_Brem_T, Eta_Brem_T, &
+    !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
     !$OMP             PackIndex_outer, UnpackIndex_outer, &
     !$OMP             AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP             BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -360,13 +375,15 @@ CONTAINS
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
-    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$ACC         Chi_Brem, Eta_Brem, &
+    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, J_T, &
     !$ACC         J0_T, Sigma_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
-    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
+    !$ACC         Chi_Brem_T, Eta_Brem_T, &
+    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -460,6 +477,26 @@ CONTAINS
 
     END IF
 
+    IF ( .NOT. Include_Brem ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iN_X  = 1, nX_G
+      DO iE2 = 1, nE_G
+      DO iE1 = 1, nE_G
+
+        S_Sigma  (iE1,iE2,iN_X) = Zero
+        S_Sigma_T(iE1,iE2,iN_X) = Zero
+
+      END DO
+      END DO
+      END DO
+
   END SUBROUTINE InitializeNeutrinoMatterSolver
 
 
@@ -536,13 +573,15 @@ CONTAINS
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
     !$OMP               Chi_Pair, Eta_Pair, &
-    !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$OMP               Chi_Brem, Eta_Brem, &
+    !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, J_T, &
     !$OMP               J0_T, Sigma_Iso_T, &
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP               Chi_NES_T, Eta_NES_T, &
     !$OMP               Chi_Pair_T, Eta_Pair_T, &
-    !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
+    !$OMP               Chi_Brem_T, Eta_Brem_T, &
+    !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
     !$OMP               ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
     !$OMP               AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP               BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -570,13 +609,15 @@ CONTAINS
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
-    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$ACC         Chi_Brem, Eta_Brem, &
+    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, J_T, &
     !$ACC         J0_T, Sigma_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
-    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
+    !$ACC         Chi_Brem_T, Eta_Brem_T, &
+    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
     !$ACC         ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -604,13 +645,15 @@ CONTAINS
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NES, Eta_NES )
     DEALLOCATE( Chi_Pair, Eta_Pair )
-    DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
+    DEALLOCATE( Chi_Brem, Eta_Brem )
+    DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma )
     DEALLOCATE( D_T, T_T, Y_T, E_T, J_T )
     DEALLOCATE( J0_T, Sigma_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
     DEALLOCATE( Chi_NES_T, Eta_NES_T )
     DEALLOCATE( Chi_Pair_T, Eta_Pair_T )
-    DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
+    DEALLOCATE( Chi_Brem_T, Eta_Brem_T )
+    DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T )
     DEALLOCATE( ITERATE_outer, PackIndex_outer, UnpackIndex_outer )
     DEALLOCATE( AMAT_outer, GVEC_outer, FVEC_outer )
     DEALLOCATE( BVEC_outer, GVECm_outer, FVECm_outer )
@@ -866,6 +909,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_EmAb_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
     INTEGER :: nX, nX0, iX, iE, iE1, iE2
 
@@ -902,6 +946,8 @@ CONTAINS
       J_I_0_P     => J_I_0_T    (:,:,1:nX)
       J_II_0_P    => J_II_0_T   (:,:,1:nX)
 
+      S_Sigma_P   => S_Sigma_T  (:,:,1:nX)
+
     ELSE
 
       D_P => D(:)
@@ -917,6 +963,8 @@ CONTAINS
 
       J_I_0_P     => J_I_0    (:,:,:)
       J_II_0_P    => J_II_0   (:,:,:)
+
+      S_Sigma_P   => S_Sigma  (:,:,:)
 
     END IF
 
@@ -970,6 +1018,16 @@ CONTAINS
 
     END IF
 
+    IF( Include_Brem )THEN
+
+      ! --- Brem Kernels ---
+
+      CALL ComputeNeutrinoOpacities_Brem &
+             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, S_Sigma_P )
+
+
+    END IF
+
     IF ( nX < nX_G ) THEN
 
       ! --- Unpack Results ---
@@ -994,6 +1052,10 @@ CONTAINS
                ( nX, MASK, PackIndex, &
                  J_I_0_P, J_II_0_P, J_I_0, J_II_0 )
 
+        CALL ArrayUnpack &
+               ( nX, MASK, PackIndex, &
+                 S_Sigma_P, S_Sigma )
+
       END IF
 
     END IF
@@ -1013,8 +1075,10 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_P, J0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P, Eta_NES_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Pair_P, Eta_Pair_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Brem_P, Eta_Brem_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
     INTEGER :: nX, nX0
 
@@ -1044,12 +1108,16 @@ CONTAINS
       Eta_NES_P  => Eta_NES_T (:,:,1:nX)
       Chi_Pair_P => Chi_Pair_T(:,:,1:nX)
       Eta_Pair_P => Eta_Pair_T(:,:,1:nX)
+      Chi_Brem_P => Chi_Brem_T(:,:,1:nX)
+      Eta_Brem_P => Eta_Brem_T(:,:,1:nX)
 
       H_I_0_P    => H_I_0_T   (:,:,1:nX)
       H_II_0_P   => H_II_0_T  (:,:,1:nX)
 
       J_I_0_P    => J_I_0_T   (:,:,1:nX)
       J_II_0_P   => J_II_0_T  (:,:,1:nX)
+
+      S_Sigma_P  => S_Sigma_T (:,:,1:nX)
 
       IF ( nX < nX0 ) THEN
 
@@ -1072,12 +1140,16 @@ CONTAINS
       Eta_NES_P  => Eta_NES (:,:,:)
       Chi_Pair_P => Chi_Pair(:,:,:)
       Eta_Pair_P => Eta_Pair(:,:,:)
+      Chi_Brem_P => Chi_Brem(:,:,:)
+      Eta_Brem_P => Eta_Brem(:,:,:)
 
       H_I_0_P    => H_I_0   (:,:,:)
       H_II_0_P   => H_II_0  (:,:,:)
 
       J_I_0_P    => J_I_0   (:,:,:)
       J_II_0_P   => J_II_0  (:,:,:)
+
+      S_Sigma_P  => S_Sigma (:,:,:)
 
     END IF
 
@@ -1093,14 +1165,27 @@ CONTAINS
            ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, J_P, J0_P, J_I_0_P, J_II_0_P, &
              Eta_Pair_P, Chi_Pair_P )
 
+    ! --- Brem Emissivities and Opacities ---
+
+    CALL ComputeNeutrinoOpacityRates_Brem &
+           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, J_P, J0_P, S_Sigma_P, &
+             Eta_Brem_P, Chi_Brem_P )
+
     IF ( nX < nX_G ) THEN
 
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, &
-               Chi_NES_P, Eta_NES_P, Chi_Pair_P, Eta_Pair_P, &
-               Chi_NES  , Eta_NES  , Chi_Pair  , Eta_Pair )
+               Chi_NES_P, Eta_NES_P, Chi_NES, Eta_NES )
+
+      CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, &
+               Chi_Pair_P, Eta_Pair_P, Chi_Pair, Eta_Pair )
+
+      CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, &
+               Chi_Brem_P, Eta_Brem_P, Chi_Brem, Eta_Brem )
 
     END IF
 
@@ -1542,13 +1627,15 @@ CONTAINS
 
         Eta_T =   Chi_EmAb(iN_E,iS,iN_X) * J0(iN_E,iS,iN_X) &
                 + Eta_NES (iN_E,iS,iN_X) &
-                + Eta_Pair(iN_E,iS,iN_X)
+                + Eta_Pair(iN_E,iS,iN_X) &
+                + Eta_Brem(iN_E,iS,iN_X)
 
         ! --- Number Opacity ---
 
         Chi_T =   Chi_EmAb(iN_E,iS,iN_X) &
                 + Chi_NES (iN_E,iS,iN_X) &
-                + Chi_Pair(iN_E,iS,iN_X)
+                + Chi_Pair(iN_E,iS,iN_X) &
+                + Chi_Brem(iN_E,iS,iN_X)
 
         ! --- Number Flux Opacity ---
 
