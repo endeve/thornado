@@ -17,6 +17,9 @@ MODULE MakeFineMaskModule
 
   PUBLIC :: MakeFineMask
 
+  INTEGER, PUBLIC :: iCoarse_MFM = 0
+  INTEGER, PUBLIC :: iFine_MFM   = 1
+
   INTERFACE
 
     SUBROUTINE amrex_fi_makefinemask &
@@ -40,22 +43,19 @@ MODULE MakeFineMaskModule
 CONTAINS
 
 
-  SUBROUTINE MakeFineMask &
-    ( iMF_Mask, CrseBA, CrseDM, FineBA, iCoarse, iFine )
+  SUBROUTINE MakeFineMask( iMF_Mask, CrseBA, CrseDM, FineBA )
 
     TYPE(amrex_imultifab), INTENT(inout) :: iMF_Mask
     TYPE(amrex_boxarray) , INTENT(in)    :: CrseBA
     TYPE(amrex_distromap), INTENT(in)    :: CrseDM
     TYPE(amrex_boxarray) , INTENT(in)    :: FineBA
-    INTEGER(c_int)       , INTENT(in)    :: iCoarse
-    INTEGER(c_int)       , INTENT(in)    :: iFine
 
     iMF_Mask % owner = .TRUE.
     iMF_Mask % nc    = 1
     iMF_Mask % ng    = 0
     CALL amrex_fi_makefinemask &
            ( iMF_Mask % p, CrseBA % p, CrseDM % p, FineBA % p, &
-             iCoarse, iFine )
+             iCoarse_MFM, iFine_MFM )
 
   END SUBROUTINE MakeFineMask
 

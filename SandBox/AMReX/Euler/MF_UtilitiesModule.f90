@@ -28,7 +28,8 @@ MODULE MF_UtilitiesModule
   USE MF_KindModule, ONLY: &
     DP
   USE MakeFineMaskModule, ONLY: &
-    MakeFineMask
+    MakeFineMask, &
+    iCoarse_MFM
   USE InputParsingModule, ONLY: &
     UseTiling
   USE MF_MeshModule, ONLY: &
@@ -52,9 +53,6 @@ MODULE MF_UtilitiesModule
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
     MODULE PROCEDURE ShowVariableFromMultiFab_Vector
   END INTERFACE ShowVariableFromMultiFab
-
-  INTEGER, PARAMETER :: iCoarse = 0
-  INTEGER, PARAMETER :: iFine   = 1
 
 
 CONTAINS
@@ -124,7 +122,7 @@ CONTAINS
 
         IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level )THEN
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse ) CYCLE
+          IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
 
         END IF
 
@@ -208,7 +206,7 @@ CONTAINS
       IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level ) &
         CALL MakeFineMask &
                ( iMF_Mask, MF(iLevel) % BA, MF(iLevel) % DM, &
-                 MF(iLevel+1) % BA, iCoarse, iFine )
+                 MF(iLevel+1) % BA )
 
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, iMF_Mask, &
