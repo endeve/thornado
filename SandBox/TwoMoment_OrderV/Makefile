@@ -454,10 +454,13 @@ TwoMoment_TimeSteppingModule_OrderV.o: \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  Euler_dgDiscretizationModule.o \
   RadiationFieldsModule.o \
   TwoMoment_TimersModule_OrderV.o \
-  TwoMoment_TroubledCellIndicatorModule.o \
   TwoMoment_SlopeLimiterModule_OrderV.o \
   TwoMoment_PositivityLimiterModule_OrderV.o \
   TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+  TwoMoment_TallyModule_OrderV.o \
   TwoMoment_TimeSteppingModule_OrderV.F90
