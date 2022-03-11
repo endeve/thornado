@@ -71,6 +71,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   INTEGER, ALLOCATABLE :: nIterations_Outer(:)
   INTEGER, ALLOCATABLE :: nIterations_Prim(:)
 
+  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
+
 CONTAINS
 
 
@@ -460,6 +462,22 @@ CONTAINS
     !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
     !$ACC         GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #endif
+
+    IF( ReportConvergenceData )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Convergence Data:'
+      WRITE(*,*)
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Min): ', MINVAL( nIterations_Outer(:) )
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Max): ', MAXVAL( nIterations_Outer(:) )
+      WRITE(*,'(A6,A18,ES8.2E2)') &
+        '', 'Iterations (Ave): ', DBLE( SUM( nIterations_Outer(:) ) ) / DBLE( nX_G )
+      WRITE(*,*)
+
+    END IF
 
     DEALLOCATE( GE_N, GX_N )
     DEALLOCATE( CF_N, PF_N, AF_N )
