@@ -497,6 +497,8 @@ CONTAINS
       END DO
       END DO
 
+    END IF
+
   END SUBROUTINE InitializeNeutrinoMatterSolver
 
 
