@@ -27,6 +27,7 @@ f90EXE_sources  += MakeFineMaskModule.f90
 CEXE_sources    += MakeFineMaskModule_fi.cpp
 f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
+f90EXE_sources  += MF_Euler_TallyModule.f90
 
 # thornado/Modules/Library
 
