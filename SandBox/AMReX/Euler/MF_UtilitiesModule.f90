@@ -54,7 +54,7 @@ MODULE MF_UtilitiesModule
   END INTERFACE ShowVariableFromMultiFab
 
   INTEGER, PARAMETER :: iCoarse = 0
-  INTEGER, PARAMETER :: iFine   = 0
+  INTEGER, PARAMETER :: iFine   = 1
 
 
 CONTAINS
