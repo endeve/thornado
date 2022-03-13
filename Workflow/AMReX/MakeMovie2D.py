@@ -6,7 +6,7 @@ from os.path import isfile
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-from UtilitiesModule import ChoosePlotFile, GetData, GetNorm
+from UtilitiesModule import ChoosePlotFile, GetData, GetNorm, GetFileArray
 from MakeDataFile import MakeDataFile
 
 # --- Get user's HOME directory ---
@@ -63,9 +63,8 @@ MovieName    = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 # Append "/" to DataDirectory, if not present
 if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
 
-File, FileArray \
-  = ChoosePlotFile( DataDirectory, PlotFileBaseName, \
-                    ReturnFileArray = True, Verbose = Verbose )
+FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
+File = ChoosePlotFile( FileArray, PlotFileBaseName )
 
 TimeUnit = ''
 LengthUnit = ''
@@ -74,11 +73,10 @@ if UsePhysicalUnits:
     TimeUnit   = 'ms'
     LengthUnit = 'km'
 
-Data, DataUnit, X1, X2, X3, xL, xU, nX, Time \
+Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, \
-             ReturnTime = True, ReturnMesh = True, \
-             Verbose = False )
+             ReturnTime = True, ReturnMesh = True )
 
 nDims = 1
 if nX[1] > 1: nDims += 1
@@ -101,7 +99,7 @@ assert ( nDims == 2 ), \
 #exit()
 
 MakeDataFile( Field, DataDirectory, DataFileName, \
-              PlotFileBaseName, CoordinateSystem, \
+              PlotFileBaseName, CoordinateSystem, FileArray, \
               UsePhysicalUnits = UsePhysicalUnits, \
               WriteExtras = False, Verbose = False )
 
