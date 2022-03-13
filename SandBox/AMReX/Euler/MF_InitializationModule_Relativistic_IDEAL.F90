@@ -108,6 +108,10 @@ CONTAINS
 
         CALL InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )
 
+      CASE( 'Advection3D' )
+
+        CALL InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCF )
+
       CASE DEFAULT
 
         CALL DescribeError_Euler_MF &
@@ -211,7 +215,7 @@ CONTAINS
                    1:nCF) )
 
       CALL amrex2thornado_X &
-             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -223,14 +227,14 @@ CONTAINS
 
         IF( TRIM( AdvectionProfile ) .EQ. 'SineWave' )THEN
 
+          uAF(iNX,iAF_P ) = P
+
           uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
-
-          uAF(iNX,iAF_P ) = P
 
         END IF
 
@@ -241,15 +245,15 @@ CONTAINS
                  uPF(iNX,iPF_V3), &
                  uPF(iNX,iPF_E ), &
                  uPF(iNX,iPF_Ne), &
-                 U(iNX,iX1,iX2,iX3,iCF_D ), &
-                 U(iNX,iX1,iX2,iX3,iCF_S1), &
-                 U(iNX,iX1,iX2,iX3,iCF_S2), &
-                 U(iNX,iX1,iX2,iX3,iCF_S3), &
-                 U(iNX,iX1,iX2,iX3,iCF_E ), &
-                 U(iNX,iX1,iX2,iX3,iCF_Ne), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 U  (iNX,iX1,iX2,iX3,iCF_D ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S1), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S2), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S3), &
+                 U  (iNX,iX1,iX2,iX3,iCF_E ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_Ne), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
                  uAF(iNX,iAF_P) )
 
       END DO
@@ -282,6 +286,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
+    REAL(DP) :: uAF(nDOFX,nAF)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -297,6 +302,7 @@ CONTAINS
     CHARACTER(:), ALLOCATABLE :: RiemannProblemName
 
     REAL(DP) :: uPF_L(nPF), uPF_R(nPF)
+    REAL(DP) :: uAF_L(nAF), uAF_R(nAF)
 
     RiemannProblemName = 'Sod'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -309,18 +315,22 @@ CONTAINS
 
         X_D = 0.5_DP
 
+        uAF_L(iAF_P ) = 1.0_DP
+
         uPF_L(iPF_D ) = 1.0_DP
         uPF_L(iPF_V1) = 0.0_DP
         uPF_L(iPF_V2) = 0.0_DP
         uPF_L(iPF_V3) = 0.0_DP
-        uPF_L(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        uPF_L(iPF_E ) = uAF_L(iAF_P) / ( Gamma_IDEAL - One )
         uPF_L(iPF_Ne) = 0.0_DP
+
+        uAF_R(iAF_P ) = 0.1_DP
 
         uPF_R(iPF_D ) = 0.125_DP
         uPF_R(iPF_V1) = 0.0_DP
         uPF_R(iPF_V2) = 0.0_DP
         uPF_R(iPF_V3) = 0.0_DP
-        uPF_R(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+        uPF_R(iPF_E ) = uAF_R(iAF_P) / ( Gamma_IDEAL - One )
         uPF_R(iPF_Ne) = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
@@ -377,7 +387,7 @@ CONTAINS
                    1:nCF) )
 
       CALL amrex2thornado_X &
-             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -398,6 +408,8 @@ CONTAINS
             uPF(iNX,iPF_E ) = uPF_L(iPF_E )
             uPF(iNX,iPF_Ne) = uPF_L(iPF_Ne)
 
+            uAF(iNX,iAF_P) = uAF_L(iAF_P)
+
           ELSE
 
             uPF(iNX,iPF_D ) = uPF_R(iPF_D )
@@ -406,6 +418,8 @@ CONTAINS
             uPF(iNX,iPF_V3) = uPF_R(iPF_V3)
             uPF(iNX,iPF_E ) = uPF_R(iPF_E )
             uPF(iNX,iPF_Ne) = uPF_R(iPF_Ne)
+
+            uAF(iNX,iAF_P) = uAF_R(iAF_P)
 
           END IF
 
@@ -418,16 +432,16 @@ CONTAINS
                  uPF(iNX,iPF_V3), &
                  uPF(iNX,iPF_E ), &
                  uPF(iNX,iPF_Ne), &
-                 U(iNX,iX1,iX2,iX3,iCF_D ), &
-                 U(iNX,iX1,iX2,iX3,iCF_S1), &
-                 U(iNX,iX1,iX2,iX3,iCF_S2), &
-                 U(iNX,iX1,iX2,iX3,iCF_S3), &
-                 U(iNX,iX1,iX2,iX3,iCF_E ), &
-                 U(iNX,iX1,iX2,iX3,iCF_Ne), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 One )
+                 U  (iNX,iX1,iX2,iX3,iCF_D ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S1), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S2), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S3), &
+                 U  (iNX,iX1,iX2,iX3,iCF_E ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_Ne), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(iNX,iAF_P) )
 
       END DO
       END DO
@@ -435,7 +449,7 @@ CONTAINS
       END DO
 
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
@@ -459,6 +473,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
+    REAL(DP) :: uAF(nDOFX,nAF)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -476,7 +491,7 @@ CONTAINS
     REAL(DP) :: D_0, V1, V2, V3, P
     REAL(DP) :: Amp
     REAL(DP) :: X1_0, X2_0
-    REAL(DP) :: Radius, sigma
+    REAL(DP) :: sigma
 
     AdvectionProfile = 'SineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -515,7 +530,6 @@ CONTAINS
         D_0    = 2.0_DP
         X1_0   = 0.5_DP
         X2_0   = 0.5_DP
-        Radius = 0.1_DP
         sigma  = 0.1_DP
 
         V1 = 0.5_DP
@@ -531,7 +545,6 @@ CONTAINS
           WRITE(*,'(6x,A,F5.3)') '   D_0: ', D_0
           WRITE(*,'(6x,A,F5.3)') '  X1_0: ', X1_0
           WRITE(*,'(6x,A,F5.3)') '  X2_0: ', X2_0
-          WRITE(*,'(6x,A,F5.3)') 'Radius: ', Radius
           WRITE(*,'(6x,A,F5.3)') ' sigma: ', sigma
           WRITE(*,'(6x,A,F5.3)') '    V1: ', V1
           WRITE(*,'(6x,A,F5.3)') '    V2: ', V2
@@ -572,7 +585,7 @@ CONTAINS
                    1:nCF) )
 
       CALL amrex2thornado_X &
-             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -594,24 +607,226 @@ CONTAINS
           uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
 
+          uAF(iNX,iAF_P ) = P
+
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
-          IF( ( X1 - X1_0 )**2 + ( X2 - X2_0 )**2 .LT. Radius**2 )THEN
-
-            uPF(iNX,iPF_D) &
-              = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                    * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
-
-          ELSE
-
-            uPF(iNX,iPF_D) = Half * D_0
-
-          END IF
+          uPF(iNX,iPF_D) &
+            = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                  * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
           uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Zero
+
+          uAF(iNX,iAF_P ) = P
+
+        END IF
+
+        CALL ComputeConserved_Euler &
+               ( uPF(iNX,iPF_D ), &
+                 uPF(iNX,iPF_V1), &
+                 uPF(iNX,iPF_V2), &
+                 uPF(iNX,iPF_V3), &
+                 uPF(iNX,iPF_E ), &
+                 uPF(iNX,iPF_Ne), &
+                 U  (iNX,iX1,iX2,iX3,iCF_D ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S1), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S2), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S3), &
+                 U  (iNX,iX1,iX2,iX3,iCF_E ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_Ne), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(iNX,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL thornado2amrex_X &
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+
+      DEALLOCATE( U )
+      DEALLOCATE( G )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE InitializeFields_Advection2D
+
+
+  SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCF )
+
+    INTEGER,              INTENT(in) :: iLevel
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_parmparse) :: PP
+
+    INTEGER  :: iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP) :: uPF(nDOFX,nPF)
+    REAL(DP) :: uAF(nDOFX,nAF)
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-specific parameters ---
+
+    INTEGER  :: iNX1, iNX2, iNX3
+    REAL(DP) :: X1, X2, X3
+
+    CHARACTER(:), ALLOCATABLE :: AdvectionProfile
+
+    REAL(DP) :: D_0, V1, V2, V3, P
+    REAL(DP) :: Amp
+    REAL(DP) :: X1_0, X2_0, X3_0
+    REAL(DP) :: sigma
+
+    AdvectionProfile = 'SineWaveX1'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'AdvectionProfile', AdvectionProfile )
+    CALL amrex_parmparse_destroy( PP )
+
+    SELECT CASE( TRIM( AdvectionProfile ) )
+
+      CASE( 'SineWaveX1' )
+
+        D_0 = 1.0_DP
+        Amp = 0.1_DP
+
+        V1 = 0.1_DP
+        V2 = 0.0_DP
+        V3 = 0.0_DP
+        P  = 1.0_DP
+
+        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
+          WRITE(*,'(4x,A,A)') '------------------ '
+          WRITE(*,*)
+          WRITE(*,'(6x,A,F5.3)') 'D_0: ', D_0
+          WRITE(*,'(6x,A,F5.3)') 'Amp: ', Amp
+          WRITE(*,'(6x,A,F5.3)') ' V1: ', V1
+          WRITE(*,'(6x,A,F5.3)') ' V2: ', V2
+          WRITE(*,'(6x,A,F5.3)') ' V3: ', V3
+          WRITE(*,'(6x,A,F5.3)') '  P: ', P
+          WRITE(*,*)
+
+        END IF
+
+      CASE( 'Gaussian' )
+
+        D_0    = 2.0_DP
+        X1_0   = 0.5_DP
+        X2_0   = 0.5_DP
+        X3_0   = 0.5_DP
+        sigma  = 0.1_DP
+
+        V1 = 0.5_DP
+        V2 = 0.0_DP
+        V3 = 0.0_DP
+        P  = 1.0_DP
+
+        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
+          WRITE(*,'(4x,A,A)') '------------------ '
+          WRITE(*,*)
+          WRITE(*,'(6x,A,F5.3)') '   D_0: ', D_0
+          WRITE(*,'(6x,A,F5.3)') '  X1_0: ', X1_0
+          WRITE(*,'(6x,A,F5.3)') '  X2_0: ', X2_0
+          WRITE(*,'(6x,A,F5.3)') '  X3_0: ', X3_0
+          WRITE(*,'(6x,A,F5.3)') ' sigma: ', sigma
+          WRITE(*,'(6x,A,F5.3)') '    V1: ', V1
+          WRITE(*,'(6x,A,F5.3)') '    V2: ', V2
+          WRITE(*,'(6x,A,F5.3)') '    V3: ', V3
+          WRITE(*,'(6x,A,F5.3)') '     P: ', P
+          WRITE(*,*)
+
+        END IF
+
+      CASE DEFAULT
+
+        CALL DescribeError_Euler_MF( 99 )
+
+    END SELECT
+
+    CALL amrex_mfiter_build( MFI, MF_uGF )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+
+      BX = MFI % TileBox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nGF) )
+
+      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nCF) )
+
+      CALL amrex2thornado_X &
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        iNX2 = NodeNumberTableX(2,iNX)
+        X2   = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+        iNX3 = NodeNumberTableX(3,iNX)
+        X3   = NodeCoordinate( MeshX(3), iX3, iNX3 )
+
+        IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
+
+          uAF(iNX,iAF_P ) = P
+
+          uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
+          uPF(iNX,iPF_V1) = V1
+          uPF(iNX,iPF_V2) = V2
+          uPF(iNX,iPF_V3) = V3
+          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Zero
+
+        ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
+
+          uAF(iNX,iAF_P ) = P
+
+          uPF(iNX,iPF_D) &
+            = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                  * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                  * EXP( ( X3 - X3_0 )**2 / ( 2.0_DP * sigma**2 ) )
+
+          uPF(iNX,iPF_V1) = V1
+          uPF(iNX,iPF_V2) = V2
+          uPF(iNX,iPF_V3) = V3
+          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
 
         END IF
@@ -623,16 +838,16 @@ CONTAINS
                  uPF(iNX,iPF_V3), &
                  uPF(iNX,iPF_E ), &
                  uPF(iNX,iPF_Ne), &
-                 U(iNX,iX1,iX2,iX3,iCF_D ), &
-                 U(iNX,iX1,iX2,iX3,iCF_S1), &
-                 U(iNX,iX1,iX2,iX3,iCF_S2), &
-                 U(iNX,iX1,iX2,iX3,iCF_S3), &
-                 U(iNX,iX1,iX2,iX3,iCF_E ), &
-                 U(iNX,iX1,iX2,iX3,iCF_Ne), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 One )
+                 U  (iNX,iX1,iX2,iX3,iCF_D ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S1), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S2), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S3), &
+                 U  (iNX,iX1,iX2,iX3,iCF_E ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_Ne), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(iNX,iAF_P) )
 
       END DO
       END DO
@@ -640,7 +855,7 @@ CONTAINS
       END DO
 
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
@@ -649,7 +864,7 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-  END SUBROUTINE InitializeFields_Advection2D
+  END SUBROUTINE InitializeFields_Advection3D
 
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL
