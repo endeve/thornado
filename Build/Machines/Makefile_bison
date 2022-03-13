@@ -4,7 +4,7 @@ C       = mpic++ --c++11
 FORTRAN = mpif90 -cpp
 FLINKER = mpif90
 
-DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero,underflow,overflow -ffpe-summary=invalid,zero,underflow,overflow -fbounds-check
 OPTIMIZE = -g -O2
 
 SUFFIX_f90 =
