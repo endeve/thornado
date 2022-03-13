@@ -61,6 +61,8 @@ MODULE InitializationModule
     iCM_Chi, &
     uAM,     &
     iAM_P
+  USE EquationOfStateModule, ONLY : &
+      ComputePressureFromPrimitive
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
@@ -86,7 +88,7 @@ CONTAINS
                ( AdvectionProfile_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
-    CHARACTER(LEN=64) :: AdvectionProfile = 'SineWave'
+    CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWave'
 
     uPM(:,:,:,:,iPM_Ne) = Zero
 
@@ -122,6 +124,8 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1
+    REAL(DP) :: Eta, h, P, VA, W, k, VdotB, &
+                V1_Transport, V2_Transport, V3_Transport
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
@@ -139,10 +143,52 @@ CONTAINS
 
         SELECT CASE( TRIM( AdvectionProfile ) )
 
-          ! Sine wave advection problem with comparable parameters
-          ! to the Top Hat advection problem from Evans and Hawley (1988).
+          ! Sine wave advection problem to test hydro portion of code.
 
-          CASE( 'SineWave' )
+          CASE( 'HydroSineWave' )
+
+            !PRINT*
+            !PRINT*, 'In cell: ', iX1, iX2, iX3
+            !PRINT*, 'In node: ', iNodeX
+            !PRINT*, 'X1: ', X1
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One + 0.1_DP * SIN ( TwoPi * X1 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.1_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+            CALL ComputePressureFromPrimitive &
+                   ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
+                     uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
+                     0.0_DP, P )
+              
+            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
+            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
+            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
+            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
+            !PRINT*
+
+
+          CASE( 'MagneticSineWave' )
+
+            !PRINT*
+            !PRINT*, 'In cell: ', iX1, iX2, iX3
+            !PRINT*, 'In node: ', iNodeX
+            !PRINT*, 'X1: ', X1
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP
@@ -151,36 +197,102 @@ CONTAINS
             uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = 0.0001_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
               = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0001_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0001_DP * SIN( TwoPi * X1 )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP * COS( TwoPi * X1 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-           ! Variant of Top Hat advection problem from Evans and 
-           ! Hawley (1988).
+            !CALL ComputePressureFromPrimitive &
+            !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
+            !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
+            !         0.0_DP, P )
+    
+            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
+            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
+            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
+            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
+           !PRINT*
 
-           CASE( 'TopHat' )
+          ! Variant of Top Hat advection problem from Evans and 
+          ! Hawley (1988).
 
-            IF( X1 .GT. 0.05 .AND. X1 .LT. 0.55 )THEN
+          CASE( 'TopHat' )
 
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.25_DP
+          ! Circularly polarized Alfven wave with the exact solution
+          ! from Del Zanna et al. (2007) and Mattia and Mignone (2022).
+
+          CASE( 'CPAlfven' )
+
+            !PRINT*
+            !PRINT*, 'In cell: ', iX1, iX2, iX3
+            !PRINT*, 'In node: ', iNodeX
+            !PRINT*, 'X1: ', X1
+
+            Eta = One
+            k   = One
+            h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+            VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                        * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+            !PRINT*, 'h: ', h
+
+            !PRINT*, 'VA: ', VA
+
+            !PRINT*, 'One Period: ', Two * Pi / VA
+
+            W = One / SQRT( One - VA**2 * Eta**2 )
+
+            !PRINT*, 'Lorentz Factor: ', W
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = -VA * Eta * COS( k * X1 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = -VA * Eta * SIN( k * X1 )
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+
+            VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) * Eta * COS( k * X1 ) &
+                      + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * Eta * SIN( k * X1 ) 
+          
+            !PRINT*, 'VdotB: ', VdotB
+
+            !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+            !PRINT*, 'Beta 2: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2)
+            !PRINT*, 'Beta 3: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3)
+
+            V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
  
-            ELSE
+            V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
 
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
- 
-            END IF
+            V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
 
-              uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = 1.0_DP 
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
-              uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = 1.0_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_E)  &
-                = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.25_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+            !PRINT*, 'V1_Transport: ', V1_Transport
+            !PRINT*, 'V2_Transport: ', V2_Transport
+            !PRINT*, 'V3_Transport: ', V3_Transport
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
+              = W * VdotB * V1_Transport + ( One / W )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
+              = W * VdotB * V2_Transport + Eta * COS( k * X1 ) / W 
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
+              = W * VdotB * V3_Transport + Eta * SIN( k * X1 ) / W 
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+            !PRINT*
 
           CASE DEFAULT
 
@@ -188,8 +300,10 @@ CONTAINS
             WRITE(*,'(A,A)') &
               'Invalid choice for AdvectionProfile: ', AdvectionProfile
             WRITE(*,'(A)') 'Valid choices:'
-            WRITE(*,'(A)') '  SineWave'
+            WRITE(*,'(A)') '  HydroSineWave'
+            WRITE(*,'(A)') '  MagneticSineWave'
             WRITE(*,'(A)') '  TopHat'
+            WRITE(*,'(A)') '  CPAlfven'
             WRITE(*,*)
             WRITE(*,'(A)') 'Stopping...'
             STOP
@@ -221,6 +335,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    PRINT*, 'Finished initialization.'
 
   END SUBROUTINE InitializeFields_Advection
 
