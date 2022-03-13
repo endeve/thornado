@@ -64,12 +64,12 @@ MODULE MHD_UtilitiesModule_Relativistic
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSpecificInternalEnergy
   USE EquationOfStateModule_TABLE, ONLY: &
-    MinD, &
-    MaxD, &
-    MinT, &
-    MaxT, &
-    MinY, &
-    MaxY
+    Min_D, &
+    Max_D, &
+    Min_T, &
+    Max_T, &
+    Min_Y, &
+    Max_Y
   USE UnitsModule, ONLY: &
     AtomicMassUnit
 
@@ -107,8 +107,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi, &
       GF_Gm11, GF_Gm22, GF_Gm33, &
-      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
-      iErr )
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3 )
 
     REAL(DP), INTENT(in)    :: &
       CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
@@ -119,8 +118,6 @@ CONTAINS
     REAL(DP), INTENT(out)   :: &
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi
-    INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr
 
     REAL(DP) :: B0u, B1, B2, B3
     REAL(DP) :: D, D_bar, tau, Ne, Ne_bar
@@ -134,9 +131,23 @@ CONTAINS
     REAL(DP) :: MinEps, MinP
     REAL(DP) :: x, W, eps, Vsq
 
-    B1 = CM_B1
-    B2 = CM_B2
-    B3 = CM_B3
+    REAL(DP) :: AM_P, Cs
+
+    LOGICAL :: MagnetofluidCoupling = .TRUE.
+
+    IF( MagnetofluidCoupling )THEN
+
+      B1 = CM_B1
+      B2 = CM_B2
+      B3 = CM_B3
+
+    ELSE
+
+      B1 = 0.0_DP
+      B2 = 0.0_DP
+      B3 = 0.0_DP
+
+    END IF
 
     ! --- Eqs. 18-20                                                    ---
     ! --- Note: Without magnetic fields, barred and unbarred quantities ---
@@ -144,7 +155,6 @@ CONTAINS
 
     D     = CM_D
     D_bar = D
-
 
    !PRINT*
    !PRINT*, 'Computing primitive variables.'
@@ -158,12 +168,12 @@ CONTAINS
    !PRINT*, 'CM_E: ',  CM_E
    !PRINT*, 'CM_Ne: ', CM_Ne
 
-   !*, 'D_bar: ', D
+   !PRINT*, 'D_bar: ', D
 
     Ne     = CM_Ne
     Ne_bar = Ne
 
-   !*, 'Ne_bar: ', Ne_bar
+   !PRINT*, 'Ne_bar: ', Ne_bar
 
     tau = CM_E
 
@@ -173,55 +183,63 @@ CONTAINS
     Sd2 = CM_S2
     Sd3 = CM_S3
 
-   !*, 'Sd1: ', Sd1
-   !*, 'Sd2: ', Sd2
-   !*, 'Sd3: ', Sd3
+   !PRINT*, 'Sd1: ', Sd1
+   !PRINT*, 'Sd2: ', Sd2
+   !PRINT*, 'Sd3: ', Sd3
 
     ! --- Eqs. 22-24 ---
 
     q = tau / D_bar
 
-    !*, 'q: ', q
+   !PRINT*, 'q: ', q
 
     rd1 = Sd1 / D_bar
     rd2 = Sd2 / D_bar
     rd3 = Sd3 / D_bar
 
-    !*, 'rd1: ', rd1
-    !*, 'rd2: ', rd2
-    !*, 'rd3: ', rd3
+   !PRINT*, 'rd1: ', rd1
+   !PRINT*, 'rd2: ', rd2
+   !PRINT*, 'rd3: ', rd3
 
     ru1 = rd1 / GF_Gm11 
     ru2 = rd2 / GF_Gm22
     ru3 = rd3 / GF_Gm33
 
-    !*, 'ru1: ', ru1
-    !*, 'ru2: ', ru2
-    !*, 'ru3: ', ru3
+   !PRINT*, 'ru1: ', ru1
+   !PRINT*, 'ru2: ', ru2
+   !PRINT*, 'ru3: ', ru3
 
     r = SQRT( ru1 * rd1 + ru2 * rd2 + ru3 * rd3 )
 
-    !*, 'r: ', r
+   !PRINT*, 'r: ', r
 
     bu1 = B1 / SQRT( D_bar )
     bu2 = B2 / SQRT( D_bar )
     bu3 = B3 / SQRT( D_bar )
 
+   !PRINT*, 'bu1: ', bu1
+   !PRINT*, 'bu2: ', bu2
+   !PRINT*, 'bu3: ', bu3
+
     bd1 = GF_Gm11 * bu1
     bd2 = GF_Gm22 * bu2
     bd3 = GF_Gm33 * bu3
+
+   !PRINT*, 'bd1: ', bd1
+   !PRINT*, 'bd2: ', bd2
+   !PRINT*, 'bd3: ', bd3
 
     ! --- Squared magnitude of b ---
 
     bSq = ( bu1 * bd1 + bu2 * bd2 + bu3 * bd3 )
 
-   !*, 'bSq: ', bSq
+   !PRINT*, 'bSq: ', bSq
 
     ! --- Contraction of r with b ---
 
     rb = ( bu1 * rd1 + bu2 * rd2 + bu3 * rd3 )
 
-   !*, 'rb: ', rb
+   !PRINT*, 'rb: ', rb
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -230,21 +248,21 @@ CONTAINS
     !*, 'MinY: ', MinY
 
     CALL ComputePressure &
-           ( MinD, MinT, MinY, MinP )
+           ( Min_D, Min_T, Min_Y, Min_P )
 
     !*, 'MinP: ', MinP
 
     CALL ComputeSpecificInternalEnergy &
-           ( MinD, MinT, MinY, MinEps )
+           ( Min_D, Min_T, Min_Y, MinEps )
 
     !*, 'MinEps: ', MinEps
 
     ! --- Not valid. Need better method of getting         ---
     ! --- minimum enthalpy (and deal with ideal gas case). ---
 
-    h0 = One + MinEps + MinP / MinD  
+    h0 = One + MinEps + Min_P / Min_D  
 
-    !*, 'h0: ', h0
+    !*, 'h0: ', /0
 
 #else
 
@@ -256,25 +274,27 @@ CONTAINS
 
     z0 = r / h0
 
-   !*, 'z0: ', z0
+   !PRINT*, 'z0: ', z0
 
     v0 = z0 / SQRT( One + z0**2 )
 
-   !*, 'v0: ', v0
+   !PRINT*, 'v0: ', v0
 
     CALL SolveMu_Bisection &
-           ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
-             bu1, bu2, bu3, bSq, rb, h0, v0, mu )
+           ( D_bar, Ne_bar, q, r, &
+             bSq, rb, h0, v0, mu )
 
 !    CALL SolveMu_TOM748 &
 !           ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
 !             bu1, bu2, bu3, bSq, rb, h0, v0, mu )
 
-   !*, 'mu: ', mu
+   !PRINT*, 'mu: ', mu
 
     ! --- Eq. 26 ---
 
     x = One / ( One + mu * bSq )
+
+   !PRINT*, 'x: ', x
 
     ! --- Eqs. 38 and 39                              ---
     ! --- Note: Eq. 39 rewritten using Eqs. 25 and 30 ---
@@ -291,19 +311,23 @@ CONTAINS
     PM_V2 = mu * x * ( ru2 + mu * rb * bu2 )
     PM_V3 = mu * x * ( ru3 + mu * rb * bu3 )
 
-    !PRINT*, 'PM_V1: ', PM_V1
- 
+   !PRINT*, 'PM_V1: ', PM_V1
+   !PRINT*, 'PM_V2: ', PM_V2
+   !PRINT*, 'PM_V3: ', PM_V3 
+
     VSq = PM_V1**2 * GF_Gm11 + PM_V2**2 * GF_Gm22 + PM_V3**2 * GF_Gm33
 
     ! --- Eq. 40 ---
 
     W = One / SQRT( One - VSq )
 
+   !PRINT*, 'W: ', W
+
     ! --- Eq. 41 ---
 
     PM_D = D_bar / W
 
-    !PRINT*, 'PM_D: ', PM_D
+   !PRINT*, 'PM_D: ', PM_D
 
     PM_Ne = CM_Ne / W
 
@@ -314,32 +338,64 @@ CONTAINS
 
     PM_E = PM_D * eps
 
-    !PRINT*, 'PM_E: ', PM_E
+   !PRINT*, 'PM_E: ', PM_E
+
+    CALL ComputePressureFromPrimitive &
+           ( PM_D, PM_E, PM_Ne, AM_P )
+ 
+   !PRINT*, 'mu: ', One / ( W * ( One + eps + AM_P / PM_D ) )
 
     B0u = ( W / GF_alpha ) &
             * ( GF_Gm11 * PM_V1 * CM_B1 &
                 + GF_Gm22 * PM_V2 * CM_B2 &
                 + GF_Gm33 * PM_V3 * CM_B3 )
- 
-   !PRINT*, 'PM_D: ',  PM_D
-   !PRINT*, 'PM_V1: ', PM_V1
-   !PRINT*, 'PM_V2: ', PM_V2
-   !PRINT*, 'PM_V3: ', PM_V3
-   !PRINT*, 'PM_E: ',  PM_E
-   !PRINT*, 'PM_Ne: ', PM_Ne
                       
    !PRINT* , 'B0u: ', B0u
                             
     PM_B1 = ( CM_B1 / W ) + GF_Alpha * B0u &
-                            * ( PM_V1 - ( GF_Beta1 / GF_Alpha  ) ) 
-    PM_B2 = ( CM_B2 / W ) + GF_Alpha * B0u &
-                            * ( PM_V2 - ( GF_Beta2 / GF_Alpha  ) )
-    PM_B3 = ( CM_B3 / W ) + GF_Alpha * B0u &
-                            * ( PM_V3 - ( GF_Beta3 / GF_Alpha  ) )
-
+                            * ( PM_V1 - ( GF_Beta1 / GF_Alpha ) ) 
    !PRINT*, 'PM_B1: ', PM_B1
+ 
+    PM_B2 = ( CM_B2 / W ) + GF_Alpha * B0u &
+                            * ( PM_V2 - ( GF_Beta2 / GF_Alpha ) )
+
    !PRINT*, 'PM_B2: ', PM_B2
+ 
+    PM_B3 = ( CM_B3 / W ) + GF_Alpha * B0u &
+                            * ( PM_V3 - ( GF_Beta3 / GF_Alpha ) )
+
    !PRINT*, 'PM_B3: ', PM_B3
+ 
+    PM_Chi = CM_Chi
+
+   !PRINT*
+   !PRINT*, 'Actual accuracy (abs. relative error) of PM_D in first node: ',  &
+   !         abs( PM_D - One ) / One
+
+   !PRINT*, 'Actual accuracy (abs. relative error) of PM_V1 in first node: ', &
+   !         PM_V1 - 0.1_DP
+   !PRINT*, 'Actual accuracy (abs. relative error) of PM_V2 in first node: ', &
+   !         PM_V2 - 0.0_DP
+   !PRINT*, 'Actual accuracy (abs. relative error) of PM_V3 in first node: ', &
+   !         PM_V3 - 0.0_DP
+
+   !PRINT*, 'Actual accuracy (abs. relative error) of PM_B1 in first node: ', &
+   !         abs( PM_B1 - 0.0001_DP ) /  0.0001_DP 
+   !PRINT*, 'Actual accuracy (abs. relative error) of W in first node: ', &
+   !         abs( W - ( 1.0_DP / SQRT( 1.0_DP - 0.01_DP ) ) ) / ( 1.0_DP / SQRT( 1.0_DP - 0.01_DP ) )
+
+   !PRINT*
+   !PRINT*, 'Rounding Error One: ', ( VSq / SQRT( One - VSq ) ) / eps
+
+   !PRINT*, 'Rounding Error Two: ', ( bSq * W ) / eps
+
+    CALL ComputeSoundSpeedFromPrimitive &
+           ( PM_D, PM_E, PM_Ne, Cs )
+ 
+   !PRINT*, 'Cs: ', Cs
+
+   !PRINT*, 'Master Function Derivative Bound: ', One - VSq * Cs**2
+
    !PRINT*
 
   END SUBROUTINE ComputePrimitive_Scalar
@@ -351,8 +407,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi, &
       GF_Gm11, GF_Gm22, GF_Gm33, &
-      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
-      iErr )
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3 )
 
     REAL(DP), INTENT(in)    :: &
       CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), CM_E(:), CM_Ne(:), &
@@ -363,8 +418,6 @@ CONTAINS
     REAL(DP), INTENT(out)   :: &
       PM_D(:), PM_V1(:), PM_V2(:), PM_V3(:), PM_E(:), PM_Ne(:), &
       PM_B1(:), PM_B2(:), PM_B3(:), PM_Chi(:)
-    INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr(:)
 
     INTEGER :: iNX
 
@@ -397,8 +450,7 @@ CONTAINS
                GF_Alpha(iNX), &
                GF_Beta1(iNX), &
                GF_Beta2(iNX), &
-               GF_Beta3(iNX), &
-               iErr   (iNX) )
+               GF_Beta3(iNX) )
 
     END DO
 
@@ -424,10 +476,28 @@ CONTAINS
                              CM_E, CM_Ne, CM_B1, CM_B2, &
                              CM_B3, CM_Chi
 
-    REAL(DP) :: VSq, W, B0u, B0d, BSq, hStar, pStar 
+    REAL(DP) :: VSq, W, B0u, B0d, BSq, h, hStar, p, pStar 
+
+    LOGICAL :: MagnetofluidCoupling = .TRUE.
+
+   !PRINT*
+   !PRINT*, 'Computing conserved variables.'
+
+   !PRINT*, 'PM_D : ', PM_D
+   !PRINT*, 'PM_V1: ', PM_V1
+   !PRINT*, 'PM_V2: ', PM_V2
+   !PRINT*, 'PM_V3: ', PM_V3
+   !PRINT*, 'PM_E : ', PM_E
+   !PRINT*, 'PM_Ne: ', PM_Ne
+   !PRINT*, 'PM_B1: ', PM_B1
+   !PRINT*, 'PM_B2: ', PM_B2
+   !PRINT*, 'PM_B3: ', PM_B3
 
     VSq = GF_Gm11 * PM_V1**2 + GF_Gm22 * PM_V2**2 + GF_Gm33 * PM_V3**2
     W = One / SQRT( One - VSq )
+
+   !PRINT*, 'VSq: ', VSq 
+   !PRINT*, 'W: ', W
 
     B0u = ( GF_Gm11 * PM_V1 * PM_B1 &
              + GF_Gm22 * PM_V2 * PM_B2 &
@@ -436,25 +506,15 @@ CONTAINS
              - GF_Gm22 * PM_V2 * GF_Beta2 &
              - GF_Gm33 * PM_V3 * GF_Beta3 )
 
-    B0d =  - ( GF_Alpha / W ) &
-             * ( GF_Gm11 * PM_V1 * PM_B1 &
-                 + GF_Gm22 * PM_V2 * PM_B2 &
-                 + GF_Gm33 * PM_V3 * PM_B3 )
-
-   !PRINT*
-   !PRINT*, 'Computing conserved variables.'
-
-   !PRINT*, 'PM_D: ', PM_D
-   !PRINT*, 'PM_V1: ', PM_V1
-   !PRINT*, 'PM_V2: ', PM_V2
-   !PRINT*, 'PM_V3: ', PM_V3
-   !PRINT*, 'PM_E: ', PM_E
-   !PRINT*, 'PM_Ne: ', PM_Ne
-   !PRINT*, 'PM_B1: ', PM_B1
-   !PRINT*, 'PM_B2: ', PM_B2
-   !PRINT*, 'PM_B3: ', PM_B3
- 
+    B0d = B0u * ( - GF_Alpha**2 + GF_Gm11 * GF_Beta1**2 &
+                                + GF_Gm22 * GF_Beta2**2 &
+                                + GF_Gm33 * GF_Beta3**2 ) &
+          + ( GF_Gm11 * GF_Beta1 * PM_B1 &
+              + GF_Gm22 * GF_Beta2 * PM_B2 &
+              + GF_Gm33 * GF_Beta3 * PM_B3 )
+                 
    !PRINT*, 'B0u: ', B0u
+   !PRINT*, 'B0d: ', B0d
 
     BSq = B0d * B0u &
           + B0u * ( GF_Gm11 * GF_Beta1 * PM_B1 &
@@ -464,17 +524,40 @@ CONTAINS
               + GF_Gm22 * PM_B2**2 &
               + GF_Gm33 * PM_B3**2 )
 
-    hStar = One + ( PM_E + AM_P ) / PM_D + BSq / PM_D
-    pStar = AM_P + BSq / 2.0_DP
+   !PRINT*, 'BSq: ', BSq
+
+    h = One + ( PM_E + AM_P ) / PM_D
+    p = AM_P
+    hStar = h + BSq / PM_D
+    pStar = p + BSq / 2.0_DP
+
+   !PRINT*, 'hStar: ', hStar
+   !PRINT*, 'pStar: ', pStar
 
     CM_D   = W * PM_D
-    CM_S1  = hStar * W**2 * PM_D * GF_Gm11 * PM_V1 &
-             - GF_Alpha * B0u * ( GF_Gm11 * PM_B1 )
-    CM_S2  = hStar * W**2 * PM_D * GF_Gm22 * PM_V2 &
-             - GF_Alpha * B0u * ( GF_Gm22 * PM_B2 )
-    CM_S3  = hStar * W**2 * PM_D * GF_Gm33 * PM_V3 &
-             - GF_Alpha * B0u * ( GF_Gm33 * PM_B3 ) 
-    CM_E   = hStar * W**2 * PM_D - pStar - ( GF_Alpha * B0u )**2 - W * PM_D
+
+    IF( MagnetofluidCoupling )THEN
+
+      CM_S1  = hStar * W**2 * PM_D * GF_Gm11 * PM_V1 &
+               - GF_Alpha * B0u**2 * ( GF_Gm11 * GF_Beta1 ) &
+               - GF_Alpha * B0u * ( GF_Gm11 * PM_B1 )
+      CM_S2  = hStar * W**2 * PM_D * GF_Gm22 * PM_V2 &
+               - GF_Alpha * B0u**2 * ( GF_Gm22 * GF_Beta2 ) &
+               - GF_Alpha * B0u * ( GF_Gm22 * PM_B2 )
+      CM_S3  = hStar * W**2 * PM_D * GF_Gm33 * PM_V3 &
+               - GF_Alpha * B0u**2 * ( GF_Gm33 * GF_Beta3 ) &
+               - GF_Alpha * B0u * ( GF_Gm33 * PM_B3 )
+      CM_E   = hStar * W**2 * PM_D - pStar - ( GF_Alpha * B0u )**2 - W * PM_D
+
+    ELSE
+
+      CM_S1  = h * W**2 * PM_D * GF_Gm11 * PM_V1
+      CM_S2  = h * W**2 * PM_D * GF_Gm22 * PM_V2
+      CM_S3  = h * W**2 * PM_D * GF_Gm33 * PM_V3
+      CM_E   = h * W**2 * PM_D - p - W * PM_D
+
+    END IF
+
     CM_Ne  = W * PM_Ne
     CM_B1  = -W * GF_Alpha * B0u * ( PM_V1 - ( GF_Beta1 / GF_Alpha  ) ) &
              + W * PM_B1 
@@ -484,13 +567,12 @@ CONTAINS
              + W * PM_B3
     CM_Chi = PM_Chi
 
-   !PRINT*, 'CM_D: ', CM_D
+   !PRINT*, 'CM_D : ', CM_D
    !PRINT*, 'CM_S1: ', CM_S1
    !PRINT*, 'CM_S2: ', CM_S2
    !PRINT*, 'CM_S3: ', CM_S3
-   !PRINT*, 'CM_E: ', CM_E
+   !PRINT*, 'CM_E : ', CM_E
    !PRINT*, 'CM_Ne: ', CM_Ne
-   !PRINT*, 'CM_E: ', CM_E
    !PRINT*, 'CM_B1: ', CM_B1
    !PRINT*, 'CM_B2: ', CM_B2
    !PRINT*, 'CM_B3: ', CM_B3
@@ -571,9 +653,6 @@ CONTAINS
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3, iAM
-    INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3))
 
     ! --- Update primitive variables, pressure, and sound speed ---
 
@@ -595,10 +674,6 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
-
-     !PRINT*, 'In cell: ', iX1
-
-      iErr(iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_MHD_Relativistic &
              ( U   (iNX,iX1,iX2,iX3,iCM_D ),        &
@@ -627,8 +702,7 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Alpha),     &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_1),    &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_2),    &
-               G   (iNX,iX1,iX2,iX3,iGF_Beta_3),    &
-               iErr(iNX,iX1,iX2,iX3) )
+               G   (iNX,iX1,iX2,iX3,iGF_Beta_3) )
 
       CALL ComputeAuxiliary_Fluid &
              ( P(iNX,iX1,iX2,iX3,iPM_D ), &
@@ -667,11 +741,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iNX, iDimX
     REAL(DP) :: dX(3), dt
-    REAL(DP) :: P(nPM), VSq, W, Pressure, h, Cs, &
-                B0u, B0d, BSq, Ca, aSq, EigVals(2)
-    INTEGER  :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3))
+    REAL(DP) :: P(nPM), Cs, EigVals(2)
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -685,11 +755,14 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+     !PRINT*, 'In cell: ', iX1, iX2, iX3
+     !PRINT*, 'In node: ', iNX
 
       dX(1) = dX1(iX1)
       dX(2) = dX2(iX2)
       dX(3) = dX3(iX3)
+
+     !PRINT*, 'Computing the primitive variables for the eigenvalue / timestep calculation.'
 
       CALL ComputePrimitive_MHD_Relativistic &
              ( U   (iNX,iX1,iX2,iX3,iCM_D ),  &
@@ -712,19 +785,18 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Alpha),    &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_1),   &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_2),   &
-               G   (iNX,iX1,iX2,iX3,iGF_Beta_3),   &
-               iErr(iNX,iX1,iX2,iX3) )
+               G   (iNX,iX1,iX2,iX3,iGF_Beta_3) )
 
-      !PRINT*, 'Computing sound speed.'
+     !PRINT*, 'Computing sound speed.'
 
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(iPM_D), P(iPM_E), P(iPM_Ne), Cs )
  
-      !PRINT*, 'Sound speed: ', Cs
+     !PRINT*, 'Sound speed: ', Cs
 
       DO iDimX = 1, nDimsX
 
-        !PRINT*, 'Computing the ', iDimX, ' eigenvalue.'
+       !PRINT*, 'Computing the ', iDimX, ' eigenvalue.'
 
         EigVals &
           = Eigenvalues_MHD_Relativistic &
@@ -732,7 +804,7 @@ CONTAINS
                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)), &
                 P(iPM_D), P(iPM_V1), P(iPM_V2), P(iPM_V3), &
                 P(iPM_E), P(iPM_Ne), &
-                P(iPM_B1), P(iPM_B2), P(iPM_B3), &
+                P(iPM_B1), P(iPM_B2), P(iPM_B3), P(iPM_Chi), &
                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -741,7 +813,7 @@ CONTAINS
                 G(iNX,iX1,iX2,iX3,iGF_Beta_2), &
                 G(iNX,iX1,iX2,iX3,iGF_Beta_3) )
 
-        PRINT*, 'The eigenvalues are: ', EigVals
+       !PRINT*, 'The eigenvalues are: ', EigVals
 
         dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals ) ) )
 
@@ -756,7 +828,7 @@ CONTAINS
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
-    PRINT*, 'The timestep is: ', TimeStep
+   !PRINT*, 'The timestep is: ', TimeStep
 
     END ASSOCIATE ! dX1, etc.
 
@@ -765,30 +837,59 @@ CONTAINS
 
   FUNCTION Eigenvalues_MHD_Relativistic &
     ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
-      B1, B2, B3, Gm11, Gm22, Gm33, &
+      B1, B2, B3, Chi, Gm11, Gm22, Gm33, &
       Lapse, Shift1, Shift2, Shift3 )
 
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
-                            B1, B2, B3, Gm11, Gm22, Gm33, Lapse, &
+                            B1, B2, B3, Chi, Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
 
     REAL(DP) :: VSq, W, P, h, B0u, B0d, BSq, &
                 Ca, aSq, Eigenvalues_MHD_Relativistic(2)
 
+   !PRINT*
+   !PRINT*, 'Input to Eigvenalues_MHD_Relativistic'
+   !PRINT*, '-------------------------------------'
+   !PRINT*, 'Vi: ', Vi
+   !PRINT*, 'Cs: ', Cs
+   !PRINT*, 'Gmii: ', Gmii
+   !PRINT*, 'D: ', D
+   !PRINT*, 'V1: ', V1
+   !PRINT*, 'V2: ', V2
+   !PRINT*, 'V3: ', V3
+   !PRINT*, 'E:  ', E
+   !PRINT*, 'Ne: ', Ne
+   !PRINT*, 'B1: ', B1
+   !PRINT*, 'B2: ', B2
+   !PRINT*, 'B3: ', B3
+   !PRINT*, 'Chi: ', Chi
+   !PRINT*, 'Gm11: ', Gm11
+   !PRINT*, 'Gm22: ', Gm22
+   !PRINT*, 'Gm33: ', Gm33
+   !PRINT*, 'Lapse: ', Lapse
+   !PRINT*, 'Shift1: ', Shift1
+   !PRINT*, 'Shift2: ', Shift2
+   !PRINT*, 'Shift3: ', Shift3
+   !PRINT*, '-------------------------------------' 
+   !PRINT*
+
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
 
     W   = One / SQRT( One - VSq )
 
-    !PRINT*, 'Lorentz factor: ', W
+   !PRINT*
+   !PRINT*, 'Inside Eigenvalues_MHD_Relativistic'
+   !PRINT*, '-----------------------------------'
+   !PRINT*, 'Lorentz factor: ', W
 
     CALL ComputePressureFromPrimitive &
            ( D, E, Ne, P )
  
-    !PRINT*, 'Pressure: ', Pressure
+   !PRINT*, 'Pressure: ', P
 
     h = One + E + P / D
 
-    !PRINT*, 'Non-magnetic enthalpy: ', h
+   !PRINT*, 'Non-magnetic enthalpy: ', h
 
     B0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
@@ -813,12 +914,14 @@ CONTAINS
 
     Ca = SQRT( BSq / ( D * h + BSq ) )
 
-    !PRINT*, 'The Alfven speed is: ', Ca
+   !PRINT*, 'The Alfven speed is: ', Ca
 
     aSq = Cs**2 + Ca**2 - Cs**2 * Ca**2
 
-    !PRINT*, 'aSq is: ', aSq
-
+   !PRINT*, 'aSq is: ', aSq
+   !PRINT*, '-----------------------------------'
+   !PRINT*
+ 
     ! Estimate of max/min fast magnetosonic 
     ! eigenvalues from Del Zanna et al. (2007)
 
@@ -862,6 +965,31 @@ CONTAINS
 
     REAL(DP) :: VSq, W, Pstar, h, hStar, B0u, B0d, BSq, Flux_X1_MHD_Relativistic(nCM)
 
+
+  !PRINT*
+  !PRINT*, 'Input to Flux_X1_MHD_Relativistic Routine'
+  !PRINT*, '-----------------------------------------'
+  !PRINT*, 'D: ', D
+  !PRINT*, 'V1: ', V1
+  !PRINT*, 'V2: ', V2
+  !PRINT*, 'V3: ', V3
+  !PRINT*, 'E: ', E
+  !PRINT*, 'P: ', P
+  !PRINT*, 'Ne: ', Ne
+  !PRINT*, 'B1: ', B1
+  !PRINT*, 'B2: ', B2
+  !PRINT*, 'B3: ', B3
+  !PRINT*, 'Chi: ', Chi
+  !PRINT*, 'Gm11: ', Gm11
+  !PRINT*, 'Gm22: ', Gm22
+  !PRINT*, 'Gm33: ', Gm33
+  !PRINT*, 'Lapse: ', Lapse
+  !PRINT*, 'Shift1: ', Shift1
+  !PRINT*, 'Shift2: ', Shift2
+  !PRINT*, 'Shift3: ', Shift3
+  !PRINT*, '-----------------------------------------'
+  !PRINT*
+
     VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2 
     W   = One / SQRT( One - VSq )
 
@@ -892,31 +1020,45 @@ CONTAINS
     Flux_X1_MHD_Relativistic(iCM_D)  &
       = D * W * ( V1 - Shift1 / Lapse )
 
+   !PRINT*, 'iCM_D Flux: ', Flux_X1_MHD_Relativistic(iCM_D)
+
     Flux_X1_MHD_Relativistic(iCM_S1) &
       = D * hStar * W**2 * Gm11 * V1  * ( V1 - Shift1 / Lapse ) + pStar &
         - Gm11 * ( B1**2 + B0u * B1 * Shift1 &
                    + ( Lapse * B0u )**2 * Shift1**2 )
+
+   !PRINT*, 'iCM_S1 Flux: ', Flux_X1_MHD_Relativistic(iCM_S1)
 
     Flux_X1_MHD_Relativistic(iCM_S2) &
       = D * hStar * W**2 * Gm22 * V2  * ( V1 - Shift1 / Lapse ) &
         - Gm22 * ( B1 * B2 + B0u * B1 * Shift2 &
                    + ( Lapse * B0u )**2 * Shift1 * Shift2 )
 
+   !PRINT*, 'iCM_S2 Flux: ', Flux_X1_MHD_Relativistic(iCM_S2)
+
     Flux_X1_MHD_Relativistic(iCM_S3) &
       = D * hStar * W**2 * Gm33 * V3  * ( V1 - Shift1 / Lapse ) &
         - Gm33 * ( B1 * B3 + B0u * B1 * Shift3 &
                    + ( Lapse * B0u )**2 * Shift1 * Shift3 )
+
+   !PRINT*, 'iCM_S3 Flux: ', Flux_X1_MHD_Relativistic(iCM_S3)
 
     Flux_X1_MHD_Relativistic(iCM_E)  &
       = D * W * ( hStar * W - One ) * ( V1 - Shift1 / Lapse ) &
         + Shift1 / Lapse * pStar &
         - Lapse * B0u * B1 + Two * Lapse * (B0u)**2 * Shift1
 
+   !PRINT*, 'iCM_E Flux: ', Flux_X1_MHD_Relativistic(iCM_E)
+
     Flux_X1_MHD_Relativistic(iCM_Ne) &
       = Ne * W * ( V1 - Shift1 / Lapse )
 
+   !PRINT*, 'iCM_Ne Flux: ', Flux_X1_MHD_Relativistic(iCM_Ne)
+
     Flux_X1_MHD_Relativistic(iCM_B1) &
       = 0.0_DP
+
+   !PRINT*, 'iCM_B1 Flux: ', Flux_X1_MHD_Relativistic(iCM_B1)
 
     Flux_X1_MHD_Relativistic(iCM_B2) &
       = W * ( V1 - Shift1 / Lapse ) * B2 - W * ( V2 - Shift2 / Lapse ) * B1
@@ -965,8 +1107,9 @@ CONTAINS
     REAL(DP) :: P, a, h
     REAL(DP) :: nu, nua, nub
 
+   !PRINT*, 'Inside function evaluation.'
 
-    !*, 'mu: ', mu
+   !PRINT*, 'mu: ', mu
 
     ! --- Eq. 26 ---
 
@@ -978,37 +1121,48 @@ CONTAINS
 
     r_barSq = r**2 * x**2 + mu * x * ( One + x ) * rb**2
 
-    !*, 'r_barSq: ', r_barSq
+   !PRINT*, 'r_barSq: ', r_barSq
 
-    !*, 'SQRT( r_barSq ): ', SQRT( r_barSq )
+   !PRINT*, 'SQRT( r_barSq ): ', SQRT( r_barSq )
 
     q_bar = q - Half * bSq - Half * mu**2 &
                              * ( bSq * r_barSq - rb**2 )
 
-    !*, 'q_bar: ', q_bar
+   !PRINT*, 'q_bar Old: ', q_bar
+
+    !q_bar = q - Half * bSq - Half * mu**2 &
+    !                         * x**2 * bSq * ( r**2 - Two * rb**2 / bSq + rb**2 )
+
+    !PRINT*, 'q_bar New: ', q_bar
 
     ! --- Eq. 40 ---
 
-    !*, 'v0: ', v0
+   !PRINT*, 'v0: ', v0
 
     v = MIN( mu * SQRT( r_barSq ), v0 )
 
-    !*, 'v: ', v
+   !PRINT*, 'v: ', v
 
     W = One / SQRT( One - v**2 )
 
-    !*, 'W: ', W
+   !PRINT*, 'W: ', W
 
     ! --- Eq. 41 ---
 
     rho = D_bar / W
 
+   !PRINT*, 'rho: ', rho
+
     rho_e = Ne_bar / W
+
+   !PRINT*, 'rho_e: ', rho_e
 
     ! --- Eq. 42 ---
 
     eps = W * ( q_bar - mu * r_barSq ) &
           + v**2 * ( W**2 / ( 1.0_DP + W ) )
+
+   !PRINT*, 'eps: ', eps
 
     ! --- Eq. 43 ---
 
@@ -1017,15 +1171,26 @@ CONTAINS
 
     a = P / ( rho * ( One + eps ) )
 
+   !PRINT*, 'a: ', a
+
     ! --- Eqs. 46-48 ---
 
     nua = ( One + a ) * ( ( One + eps ) / W )
 
+   !PRINT*, 'nua: ', nua
+
     nub = ( One + a ) * ( One + q_bar - mu * r_barSq )
+
+   !PRINT*, 'nub: ', nub
 
     nu = MAX( nua, nub )
 
+   !PRINT*, 'nu: ', nu
+
     ! --- Eq. 44 --- 
+
+   !PRINT*, 'mu: ', mu
+   !PRINT*, '1 / ( nu + r_barSq * mu ): ', One / ( nu + r_barSq * mu )
 
     f = mu - One / ( nu + r_barSq * mu )
 
@@ -1106,13 +1271,13 @@ CONTAINS
     REAL(DP), PARAMETER :: Tolf = 1.0e-16_DP
     INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolmu ) / LOG( Two ) )
 
-    !*, 'Solving for the upper bound with the Newton-Raphson method.'
+   !PRINT*, 'Solving for the upper bound with the Newton-Raphson method.'
 
     muO = One / h0
 
-    !*, 'Initial guess: ', One / h0
+   !PRINT*, 'Initial guess: ', One / h0
 
-    !*, 'MAX_ITER: ', MAX_ITER
+   !PRINT*, 'MAX_ITER: ', MAX_ITER
 
     CONVERGED = .FALSE.
     ITER = 0
@@ -1120,31 +1285,31 @@ CONTAINS
 
       ITER = ITER + 1
 
-      !*
-      !*, 'ITER: ', ITER
-      !*
+     !PRINT*
+     !PRINT*, 'ITER: ', ITER
+     !PRINT*
 
-      !*, 'muO: ', muO
+     !PRINT*, 'muO: ', muO
 
-      !*, 'Computing the auxiliary function for mu = : ', muO
+     !PRINT*, 'Computing the auxiliary function for mu = : ', muO
 
       CALL ComputeAuxiliaryFunMu( r, bSq, rb, h0, muO, f )
 
-      !*, 'f: ', f
+     !PRINT*, 'f: ', f
 
-      !*, 'Computing the auxiliary function derivative for mu = ', muO
+     !PRINT*, 'Computing the auxiliary function derivative for mu = ', muO
 
       CALL ComputeAuxiliaryFunDerivativeMu( r, bSq, rb, h0, muO, df )
 
-      !*, 'df: ', df
+     !PRINT*, 'df: ', df
 
       muN = muO - f / df 
 
-      !*, 'muN: ', muN
+     !PRINT*, 'muN: ', muN
 
       dmu = muN - muO
 
-      !*, 'dmu: ', dmu
+     !PRINT*, 'dmu: ', dmu
 
       IF( ABS ( dmu / muO ) .LT. Tolmu ) CONVERGED = .TRUE.
 
@@ -1158,12 +1323,10 @@ CONTAINS
 
   
   SUBROUTINE SolveMu_Bisection &
-               ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
-                 bu1, bu2, bu3, bSq, rb, h0, v0, mu )
+               ( D_bar, Ne_bar, q, r, &
+                 bSq, rb, h0, v0, mu )
 
     REAL(DP), INTENT(in) :: D_bar, Ne_bar, q
-    REAL(DP), INTENT(in) :: ru1, ru2, ru3
-    REAL(DP), INTENT(in) :: bu1, bu2, bu3
     REAL(DP), INTENT(in) :: r, bSq, rb
     REAL(DP), INTENT(in) :: h0, v0
 
@@ -1178,14 +1341,14 @@ CONTAINS
 
     IF( r < h0 ) THEN
 
-      !*, 'r < h0'
+     !PRINT*, 'r < h0'
 
       mua = Zero
       mub = One / h0
 
     ELSE
 
-      !*, 'r >= h0'
+     !PRINT*, 'r >= h0'
 
       mua = Zero
 
@@ -1193,34 +1356,34 @@ CONTAINS
 
     END IF
 
-   !*
+   !PRINT*
 
-   !*, 'Computing function for lower bound: ', mua 
+   !PRINT*, 'Computing function for lower bound: ', mua 
 
-   !*, '------------------------------------------------------------'
+   !PRINT*, '------------------------------------------------------------'
 
     CALL ComputeFunMu( D_bar, Ne_bar, q, r, bSq, rb, v0, mua, fa )
 
-   !*, 'fa: ', fa
+   !PRINT*, 'fa: ', fa
 
-   !*
+   !PRINT*
 
-   !*, 'Computing function for upper bound: ', mub
+   !PRINT*, 'Computing function for upper bound: ', mub
 
-   !*, '------------------------------------------------------------'    
+   !PRINT*, '------------------------------------------------------------'    
 
     CALL ComputeFunMu( D_bar, Ne_bar, q, r, bSq, rb, v0, mub, fb )
 
-   !*, 'fb: ', fb
+   !PRINT*, 'fb: ', fb
 
     ! --- Check that sign of FunZ changes across bounds ---
 
-    !IF( .NOT. fa * fb .LT. 0 ) &
-      !PRINT*, 'Cannot perform bisection!'
+    IF( .NOT. fa * fb .LT. 0 ) &
+      PRINT*, 'Cannot perform bisection!'
 
     dmu = mub - mua
 
-   !*, 'dmu: ', dmu
+   !PRINT*, 'dmu: ', dmu
 
     ITERATION = 0
     CONVERGED = .FALSE.
@@ -1228,11 +1391,13 @@ CONTAINS
 
       ITERATION = ITERATION + 1
 
-      !*, 'ITERATION: ', ITERATION
+     !PRINT*, 'ITERATION: ', ITERATION
 
       ! --- Compute midpoint, muc ---
 
       dmu = Half * dmu
+
+     !PRINT*, 'dmu: ', dmu
 
       ! --- Bisection ---
 
@@ -1240,11 +1405,11 @@ CONTAINS
 
       ! --- Compute f(muc) for midpoint muc ---
 
-      !*, 'Computing function for midpoint: ', muc
+     !PRINT*, 'Computing function for midpoint: ', muc
 
       CALL ComputeFunMu( D_bar, Ne_bar, q, r, bSq, rb, v0, muc, fc )
 
-      !*, 'fc: ', fc
+     !PRINT*, 'fc: ', fc
 
       ! --- Change muc to mua or mub, depending on sign of fc ---
 
@@ -1271,41 +1436,41 @@ CONTAINS
 
     mu = muc
 
-    !PRINT*, 'mu, dmu: ', mu, dmu
+   !PRINT*, 'mu, dmu: ', mu, dmu
 
   END SUBROUTINE SolveMu_Bisection 
 
   ! --- Algorithm 4.1 of Alefeld and Porta (1995) ---
 
-  SUBROUTINE SolveMu_TOM748 &
-               ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
-                 bu1, bu2, bu3, bSq, rb, h0, v0, mu )
-
-    REAL(DP), INTENT(in) :: D_bar, Ne_bar, q
-    REAL(DP), INTENT(in) :: ru1, ru2, ru3
-    REAL(DP), INTENT(in) :: bu1, bu2, bu3
-    REAL(DP), INTENT(in) :: r, bSq, rb
-    REAL(DP), INTENT(in) :: h0, v0
-
-    REAL(DP), INTENT(out) :: mu
-
-    REAL(DP) :: mua, mub
-
-    mu = Zero
-
-    IF( r < h0 ) THEN
-
-      mua = Zero
-      mub = One / h0
-
-    ELSE
-
-      mua = Zero
-
-      CALL SolveMuBound_NewtonRaphson( r, bSq, rb, h0, mub )
-
-    END IF
-
-  END SUBROUTINE SolveMu_TOM748
+!  SUBROUTINE SolveMu_TOM748 &
+!               ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
+!                 bu1, bu2, bu3, bSq, rb, h0, v0, mu )
+!
+!    REAL(DP), INTENT(in) :: D_bar, Ne_bar, q
+!    REAL(DP), INTENT(in) :: ru1, ru2, ru3
+!    REAL(DP), INTENT(in) :: bu1, bu2, bu3
+!    REAL(DP), INTENT(in) :: r, bSq, rb
+!    REAL(DP), INTENT(in) :: h0, v0
+!
+!    REAL(DP), INTENT(out) :: mu
+!
+!    REAL(DP) :: mua, mub
+!
+!    mu = Zero
+!
+!    IF( r < h0 ) THEN
+!
+!      mua = Zero
+!      mub = One / h0
+!
+!    ELSE
+!
+!      mua = Zero
+!
+!      CALL SolveMuBound_NewtonRaphson( r, bSq, rb, h0, mub )
+!
+!    END IF
+!
+!  END SUBROUTINE SolveMu_TOM748
 
 END MODULE MHD_UtilitiesModule_Relativistic
