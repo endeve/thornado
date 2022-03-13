@@ -88,7 +88,8 @@ def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
 
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
-             MaxLevel = -1, ReturnTime = False, ReturnMesh = False ):
+             MaxLevel = -1, iX3_CS = 0, \
+             ReturnTime = False, ReturnMesh = False ):
 
     import yt
     import numpy as np
@@ -581,7 +582,12 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     else:
 
-        print( 'Not ready for 3D yet. Good luck...' )
+        X2v, X1v = np.meshgrid( X2, X1 )
+
+        X1 = X1v
+        X2 = X2v
+
+        Data = Data[:,:,iX3_CS]
 
     if ReturnTime and ReturnMesh:
 

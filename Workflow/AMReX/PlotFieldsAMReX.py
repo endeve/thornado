@@ -41,17 +41,8 @@ ProblemName = 'Advection1D'
 # Specify title of figure
 FigTitle = ProblemName
 
-from sys import argv
-
-#nN = argv[1]
-#nX = argv[2]
-#Grid = argv[3]
-
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
-#DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/nN{:}_nX{:}_{:}/'.format( nN.zfill(2), nX.zfill(3), Grid )
-
-#argv = ['a']
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
 
 # Specify plot file base name
 PlotFileBaseName = 'plt'
@@ -110,19 +101,13 @@ Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
              ReturnTime = True, ReturnMesh = True )
 
 nDims = 1
-if nX[1] > 1: nDims += 1
-if nX[2] > 1: nDims += 1
-
-assert ( ( nDims >= 1 ) & ( nDims <= 2 ) ), \
-       'Invalid nDims: {:d}\nnDims must equal 1 or 2'.format( nDims )
+if nX0[1] > 1: nDims += 1
+if nX0[2] > 1: nDims += 1
 
 if nDims == 1:
 
-#    data = np.vstack( (X10, dX10, Data0, X1, dX1, Data ) )
-#    np.savetxt( '{:}.dat'.format( DataDirectory[79:-1] ), data )
     plt.plot( X10, Data0, 'r.' )
     plt.plot( X1, Data, 'k.' )
-#    plt.semilogy( X1, np.abs( ( Data - Data0 ) / Data0 ), 'k.' )
     if( UseLogScale ): plt.yscale( 'log' )
     plt.xlim( xL[0], xU[0] )
     plt.xlabel( 'X1' + ' ' + LengthUnit )
@@ -175,6 +160,77 @@ elif( nDims == 2 ):
         ax = fig.add_subplot( 111 )
 
         im = ax.pcolormesh( X1, X2, Data, \
+                            cmap = cmap, \
+                            norm = Norm, \
+                            shading = 'nearest' )
+
+        ax.set_xlim( xL[0], xU[0] )
+        ax.set_ylim( xL[1], xU[1] )
+
+        ax.set_xlabel( 'X1' + ' ' + LengthUnit )
+        ax.set_ylabel( 'X2' + ' ' + LengthUnit )
+
+        ax.text( 0.4, 0.9, 'Time = {:.2e} {:}'.format \
+                 ( Time, TimeUnit ), \
+                   transform = ax.transAxes )
+
+    cbar = fig.colorbar( im )
+    cbar.set_label( Field + DataUnit )
+
+    if SaveFig:
+
+        plt.savefig( FigName, dpi = 300 )
+
+    else:
+
+        plt.show()
+        plt.close()
+
+else:
+
+    '''
+    # To make lineout plot
+    # From: https://yt-project.org/doc/visualizing/
+    #       manual_plotting.html#line-plots
+
+    oray = ds.ortho_ray( axis = 0, coords = (0,0) )
+
+    plt.plot( X1, oray[Field] )
+
+    if( UseLogScale ): plt.yscale( 'log' )
+    plt.show()
+    exit()
+    '''
+
+    fig = plt.figure()
+    fig.suptitle( FigTitle )
+
+    if not UseCustomLimits:
+
+        vmin = Data.min()
+        vmax = Data.max()
+
+    Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
+
+    if CoordinateSystem == 'spherical':
+
+        ax = fig.add_subplot( 111, polar = True )
+
+        im = ax.pcolormesh( X2, X1, Data[:,:,0], \
+                            cmap = cmap, \
+                            norm = Norm, \
+                            shading = 'nearest' )
+
+        ax.set_thetamin( 0.0  )
+        ax.set_thetamax( 180.0)
+        ax.set_theta_direction( -1 )
+        ax.set_theta_zero_location( 'W' ) # z-axis horizontal
+
+    else:
+
+        ax = fig.add_subplot( 111 )
+
+        im = ax.pcolormesh( X1, X2, Data[:,:,0], \
                             cmap = cmap, \
                             norm = Norm, \
                             shading = 'nearest' )
