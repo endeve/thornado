@@ -414,17 +414,11 @@ CONTAINS
 
     IF( do_reflux )THEN
 
-      IF( iLevel .GT. 0 )THEN
-
+      IF( iLevel .GT. 0 ) &
         CALL FluxRegister( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
 
-      END IF
-
-      IF( iLevel .LT. amrex_get_finest_level() )THEN
-
+      IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
-
-      END IF
 
     END IF ! do_reflux
 
