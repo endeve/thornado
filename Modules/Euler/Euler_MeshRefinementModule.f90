@@ -38,8 +38,7 @@ MODULE Euler_MeshRefinementModule
     IndLX_Q, &
     L_X1, &
     L_X2, &
-    L_X3, &
-    Lagrange
+    L_X3
 
   IMPLICIT NONE
   PRIVATE
@@ -83,8 +82,11 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, iN1, iN2, iN3, iNX_X_Crse, iNX_X_Fine, kk
+    INTEGER :: i, k, iN1, iN2, iN3, kk, &
+               iNX_X_Crse, iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
+               iNX_X_Fine, iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
     REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
+
 
     nFineX      = 1
     VolumeRatio = One
@@ -202,9 +204,13 @@ CONTAINS
     END DO
 
     kk = 0
-    DO iNX_X_Crse = 1, nDOFX_X1
+    DO iNX_X1_Crse = 1, nDOFX_X1
+
+      iNX_X2_Crse = NodeNumberTableX_X1(1,iNX_X1_Crse)
+      iNX_X3_Crse = NodeNumberTableX_X1(2,iNX_X1_Crse)
 
       iFine = 0
+
       DO iFineX3 = 1, nFineX(3)
       DO iFineX2 = 1, nFineX(2)
 
@@ -222,30 +228,141 @@ CONTAINS
 
         iFine = iFine + 1
 
-        DO iNX_X_Fine = 1, nDOFX_X1
+        DO iNX_X1_Fine = 1, nDOFX_X1
 
-          iN2 = NodeNumberTableX_X1(1,iNX_X_Fine)
-          iN3 = NodeNumberTableX_X1(2,iNX_X_Fine)
+          iNX_X2_Fine = NodeNumberTableX_X1(1,iNX_X1_Fine)
+          iNX_X3_Fine = NodeNumberTableX_X1(2,iNX_X1_Fine)
 
-          LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) = One
+          LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine) = One
           IF( nDimsX .GT. 1 ) &
-            LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
-              = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
-                  * Lagrange( xiX2(iN2), NodesX2 )
+            LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine) &
+              = LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine) &
+                  * Lagrange( xiX2(iNX_X2_Fine), iNX_X2_Crse, NodesX2 )
           IF( nDimsX .GT. 2 ) &
-            LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
-              = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine) &
-                  * Lagrange( xiX3(iN3), NodesX3 )
+            LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine) &
+              = LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine) &
+                  * Lagrange( xiX3(iNX_X3_Fine), iNX_X3_Crse, NodesX3 )
 
           kk = kk + 1
-          LX_X1_Refined_C(kk) = LX_X1_Refined(iNX_X_Crse,iFine,iNX_X_Fine)
+          LX_X1_Refined_C(kk) &
+            = LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine)
 
-        END DO
+        END DO ! iNX_X1_Fine
 
-      END DO
-      END DO
+      END DO ! iFineX2
+      END DO ! iFineX3
 
-    END DO ! iNX_X_Crse
+    END DO ! iNX_X1_Crse
+
+    IF( nDimsX .GT. 1 )THEN
+
+      kk = 0
+      DO iNX_X2_Crse = 1, nDOFX_X2
+
+        iNX_X1_Crse = NodeNumberTableX_X2(1,iNX_X2_Crse)
+        iNX_X3_Crse = NodeNumberTableX_X2(2,iNX_X2_Crse)
+
+        iFine = 0
+
+        DO iFineX3 = 1, nFineX(3)
+        DO iFineX1 = 1, nFineX(1)
+
+          IF( nFineX(1) .GT. 1 )THEN
+            xiX1 = Half * ( NodesX1 + (-1)**iFineX1 * Half )
+          ELSE
+            xiX1 = Zero
+          END IF
+
+          IF( nFineX(3) .GT. 1 )THEN
+            xiX3 = Half * ( NodesX3 + (-1)**iFineX3 * Half )
+          ELSE
+            xiX3 = Zero
+          END IF
+
+          iFine = iFine + 1
+
+          DO iNX_X2_Fine = 1, nDOFX_X2
+
+            iNX_X1_Fine = NodeNumberTableX_X2(1,iNX_X2_Fine)
+            iNX_X3_Fine = NodeNumberTableX_X2(2,iNX_X2_Fine)
+
+            LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine) = One
+            IF( nDimsX .GT. 1 ) &
+              LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine) &
+                = LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine) &
+                    * Lagrange( xiX1(iNX_X1_Fine), iNX_X1_Crse, NodesX1 )
+            IF( nDimsX .GT. 2 ) &
+              LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine) &
+                = LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine) &
+                    * Lagrange( xiX3(iNX_X3_Fine), iNX_X3_Crse, NodesX3 )
+
+            kk = kk + 1
+            LX_X2_Refined_C(kk) &
+              = LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine)
+
+          END DO ! iNX_X2_Fine
+
+        END DO ! iFineX1
+        END DO ! iFineX3
+
+      END DO ! iNX_X2_Crse
+
+    END IF ! nDimsX .GT. 1
+
+    IF( nDimsX .GT. 2)THEN
+
+      kk = 0
+      DO iNX_X3_Crse = 1, nDOFX_X3
+
+        iNX_X1_Crse = NodeNumberTableX_X3(1,iNX_X3_Crse)
+        iNX_X2_Crse = NodeNumberTableX_X3(2,iNX_X3_Crse)
+
+        iFine = 0
+
+        DO iFineX2 = 1, nFineX(2)
+        DO iFineX1 = 1, nFineX(1)
+
+          IF( nFineX(1) .GT. 1 )THEN
+            xiX1 = Half * ( NodesX1 + (-1)**iFineX1 * Half )
+          ELSE
+            xiX1 = Zero
+          END IF
+
+          IF( nFineX(2) .GT. 1 )THEN
+            xiX2 = Half * ( NodesX2 + (-1)**iFineX2 * Half )
+          ELSE
+            xiX2 = Zero
+          END IF
+
+          iFine = iFine + 1
+
+          DO iNX_X3_Fine = 1, nDOFX_X3
+
+            iNX_X1_Fine = NodeNumberTableX_X3(1,iNX_X3_Fine)
+            iNX_X2_Fine = NodeNumberTableX_X3(2,iNX_X3_Fine)
+
+            LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine) = One
+            IF( nDimsX .GT. 1 ) &
+              LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine) &
+                = LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine) &
+                    * Lagrange( xiX1(iNX_X1_Fine), iNX_X1_Crse, NodesX1 )
+            IF( nDimsX .GT. 2 ) &
+              LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine) &
+                = LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine) &
+                    * Lagrange( xiX2(iNX_X2_Fine), iNX_X2_Crse, NodesX2 )
+
+            kk = kk + 1
+            LX_X3_Refined_C(kk) &
+              = LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine)
+
+          END DO ! iNX_X3_Fine
+
+        END DO ! iFineX1
+        END DO ! iFineX2
+
+      END DO ! iNX_X3_Crse
+
+    END IF ! nDimsX .GT. 2
 
     CALL amrex_InitializeMeshRefinement_DG &
            ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
@@ -340,5 +457,23 @@ CONTAINS
 
   END SUBROUTINE Coarsen_Euler
 
+
+  REAL(DP) FUNCTION Lagrange( x, i, xn ) RESULT( L )
+
+    REAL(DP), INTENT(in) :: x
+    INTEGER , INTENT(in) :: i
+    REAL(DP), INTENT(in) :: xn(:)
+
+    INTEGER :: j
+
+    L = One
+    DO j = 1, SIZE( xn )
+
+      IF( j .NE. i ) L = L * ( x - xn(j) ) / ( xn(i) - xn(j) )
+
+    END DO
+
+    RETURN
+  END FUNCTION Lagrange
 
 END MODULE Euler_MeshRefinementModule
