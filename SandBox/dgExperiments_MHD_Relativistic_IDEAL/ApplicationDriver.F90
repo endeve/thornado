@@ -71,8 +71,10 @@ PROGRAM ApplicationDriver
   LOGICAL  :: WriteGF = .TRUE., WriteMF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
   LOGICAL  :: UseMHD = .TRUE.
+  LOGICAL  :: EvolveOnlyMagnetic = .FALSE.
 
   ProgramName = 'Advection'
+  AdvectionProfile = 'MagneticSineWave'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -83,7 +85,11 @@ PROGRAM ApplicationDriver
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'SineWave'
+      SELECT CASE ( TRIM( AdvectionProfile ) )
+
+      CASE( 'HydroSineWave' )
+
+      AdvectionProfile = 'HydroSineWave'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -91,10 +97,51 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 500, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 5.0_DP, 1.0_DP, 1.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      CASE( 'MagneticSineWave' )
+
+      AdvectionProfile = 'MagneticSineWave'
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      CASE( 'CPAlfven' )
+
+      Gamma = 4.0_DP / 3.0_DP
+      t_end = 16.449592691810107_DP
+      bcX = [ 1, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
+      xR  = [ Two * Pi, 1.0_DP, 1.0_DP ]
+
+    CASE DEFAULT
+
+      WRITE(*,*)
+      WRITE(*,'(A21,A)') 'Invalid AdvectionProfile: ', AdvectionProfile
+      WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  HydroSineWave'
+      WRITE(*,'(A)')     '  MagneticSineWave'
+      WRITE(*,'(A)')     '  CPAlfven'
+      WRITE(*,'(A)')     'Stopping...'
+      STOP
+
+    END SELECT
 
     CASE DEFAULT
 
@@ -158,14 +205,13 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL InitializeMagnetofluid_SSPRK( nStages = nStagesSSPRK )
+  CALL InitializeMagnetofluid_SSPRK &
+         ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic )
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
   uCM = Zero ! Without this, crashes when copying data in TimeStepper
   uDM = Zero ! Without this, crashes in IO
-
-  !PRINT*, 'Initializing.'
 
   CALL InitializeFields_Relativistic_MHD &
          ( AdvectionProfile_Option &
@@ -188,7 +234,7 @@ PROGRAM ApplicationDriver
   END IF
 
   iCycleD = 10
-  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
+  dt_wrt = 1.0e-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -206,15 +252,11 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    !PRINT*, 'Computing timestep.'
-
     CALL ComputeTimeStep_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCM, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              dt )
-
-    !PRINT*, 'Timestep computation completed.'
 
     IF( t + dt .LT. t_end )THEN
 
@@ -236,8 +278,6 @@ PROGRAM ApplicationDriver
         TRIM( UnitsDisplay % TimeLabel )
 
     END IF
-
-    !PRINT*, 'Updating magnetofluid.'
 
     CALL UpdateMagnetoFluid_SSPRK &
            ( t, dt, uGF, uCM, uDM, &
@@ -261,14 +301,8 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      !PRINT*, 'Begin writing procedure.'
-
-      !PRINT*, 'Computing from conserved.'
-
       CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
-
-      !PRINT*, 'Writing.'
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
@@ -285,12 +319,8 @@ PROGRAM ApplicationDriver
     'Finished ', iCycle, ' cycles in ', Timer_Evolution, ' s'
   WRITE(*,*)
 
-  !PRINT*, 'Computing from conserved.'
-
   CALL ComputeFromConserved_MHD_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
-
-  !PRINT*, 'Writing.'
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
