@@ -152,6 +152,8 @@ CONTAINS
 
     REAL(DP) :: D_0, V1, V2, V3, P
     REAL(DP) :: Amp
+    REAL(DP) :: X1_0
+    REAL(DP) :: sigma
 
     AdvectionProfile = 'SineWave'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -180,6 +182,33 @@ CONTAINS
           WRITE(*,'(8x,A,F5.3)') ' V2: ', V2
           WRITE(*,'(8x,A,F5.3)') ' V3: ', V3
           WRITE(*,'(8x,A,F5.3)') '  P: ', P
+          WRITE(*,*)
+
+        END IF
+
+      CASE( 'Gaussian' )
+
+        D_0    = 1.0_DP
+        X1_0   = 0.5_DP
+        sigma  = 0.1_DP
+
+        V1 = 0.1_DP
+        V2 = 0.0_DP
+        V3 = 0.0_DP
+        P  = 1.0_DP
+
+        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
+          WRITE(*,'(4x,A,A)') '------------------ '
+          WRITE(*,*)
+          WRITE(*,'(6x,A,F5.3)') '   D_0: ', D_0
+          WRITE(*,'(6x,A,F5.3)') '  X1_0: ', X1_0
+          WRITE(*,'(6x,A,F5.3)') ' sigma: ', sigma
+          WRITE(*,'(6x,A,F5.3)') '    V1: ', V1
+          WRITE(*,'(6x,A,F5.3)') '    V2: ', V2
+          WRITE(*,'(6x,A,F5.3)') '    V3: ', V3
+          WRITE(*,'(6x,A,F5.3)') '     P: ', P
           WRITE(*,*)
 
         END IF
@@ -236,6 +265,19 @@ CONTAINS
           uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
 
+        ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
+
+          uAF(iNX,iAF_P ) = P
+
+          uPF(iNX,iPF_D) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) )
+
+          uPF(iNX,iPF_V1) = V1
+          uPF(iNX,iPF_V2) = V2
+          uPF(iNX,iPF_V3) = V3
+          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Zero
+
         END IF
 
         CALL ComputeConserved_Euler &
@@ -262,7 +304,7 @@ CONTAINS
       END DO
 
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
@@ -600,28 +642,28 @@ CONTAINS
 
         IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
+          uAF(iNX,iAF_P ) = P
+
           uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
-
-          uAF(iNX,iAF_P ) = P
 
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
+          uAF(iNX,iAF_P ) = P
+
           uPF(iNX,iPF_D) &
-            = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                  * EXP( -( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
-
-          uAF(iNX,iAF_P ) = P
 
         END IF
 
@@ -819,9 +861,9 @@ CONTAINS
           uAF(iNX,iAF_P ) = P
 
           uPF(iNX,iPF_D) &
-            = D_0 * EXP( ( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( ( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( ( X3 - X3_0 )**2 / ( 2.0_DP * sigma**2 ) )
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                  * EXP( -( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
+                  * EXP( -( X3 - X3_0 )**2 / ( 2.0_DP * sigma**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
