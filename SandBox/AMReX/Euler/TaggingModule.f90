@@ -52,6 +52,8 @@ CONTAINS
 
     REAL(DP) :: TagCriteria_this
 
+    REAL(DP) :: Radius
+
     TagCriteria_this = TagCriteria
 
     CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
@@ -62,12 +64,19 @@ CONTAINS
 
 !      IF( ANY( U(:,iX1,iX2,iX3,iCF_D) .GE. TagCriteria_this ) )THEN
 
+!      Radius = SQRT( ( MeshX(1) % Center(iX1) - 0.5_DP )**2 &
+!                   + ( MeshX(2) % Center(iX2) - 0.5_DP )**2 )
+
+!      IF( Radius .LT. TagCriteria_this )THEN
+
 !      IF( ( MeshX(1) % Center(iX1) .GT. TagCriteria_this ) &
 !           .AND. ( MeshX(2) % Center(iX2) .GT. TagCriteria_this ) )THEN
 
 !      IF( ABS( MeshX(1) % Center(iX1) - 0.5_DP ) .LT. TagCriteria_this )THEN
 
-      IF( ( MeshX(1) % Center(iX1) .GT. TagCriteria_this ) )THEN
+!      IF( ABS( MeshX(2) % Center(iX2) ) .GT. TagCriteria_this )THEN
+
+      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
