@@ -55,6 +55,8 @@ CONTAINS
         WRITE(*,'(2x,A)')   '  Advection1D'
         WRITE(*,'(2x,A)')   '  RiemannProblem1D'
         WRITE(*,'(2x,A)')   '  Advection2D'
+        WRITE(*,'(2x,A)')   '  KelvinHelmholtz2D'
+        WRITE(*,'(2x,A)')   '  Advection3D'
         WRITE(*,*)
         WRITE(*,'(A)') 'Stopping...'
 

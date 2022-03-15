@@ -67,7 +67,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     nX, &
     swX, &
     Gamma_IDEAL, &
-    ProgramName
+    ProgramName, &
+    UseTiling
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
 
@@ -107,6 +108,10 @@ CONTAINS
       CASE( 'Advection2D' )
 
         CALL InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )
+
+      CASE( 'KelvinHelmholtz2D' )
+
+        CALL InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCF )
 
       CASE( 'Advection3D' )
 
@@ -219,7 +224,7 @@ CONTAINS
 
     END SELECT
 
-    CALL amrex_mfiter_build( MFI, MF_uGF )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
@@ -404,7 +409,7 @@ CONTAINS
 
     END SELECT
 
-    CALL amrex_mfiter_build( MFI, MF_uGF )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
@@ -602,7 +607,7 @@ CONTAINS
 
     END SELECT
 
-    CALL amrex_mfiter_build( MFI, MF_uGF )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
@@ -701,6 +706,174 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE InitializeFields_Advection2D
+
+
+  ! --- Relativistic 2D Kelvin-Helmholtz instability a la
+  !     Radice & Rezzolla, (2012), AA, 547, A26 ---
+  SUBROUTINE InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCF )
+
+    INTEGER             , INTENT(in) :: iLevel
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    INTEGER  :: iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP) :: uPF(nDOFX,nPF)
+    REAL(DP) :: uAF(nDOFX,nAF)
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-dependent Parameters ---
+
+    INTEGER  :: iNX1, iNX2
+    REAL(DP) :: X1, X2
+
+    REAL(DP) :: a      = 0.01_DP
+    REAL(DP) :: Vshear = Half
+    REAL(DP) :: A0     = 0.1_DP ! --- Perturbation amplitude ---
+    REAL(DP) :: sigma  = 0.1_DP
+    REAL(DP) :: rho0   = 0.505_DP
+    REAL(DP) :: rho1   = 0.495_DP
+
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(4x,A)')   'Kelvin--Helmholtz'
+      WRITE(*,'(4x,A,A)') '-----------------'
+      WRITE(*,*)
+      WRITE(*,'(6x,A,F5.3)') '        a: ', a
+      WRITE(*,'(6x,A,F5.3)') '   Vshear: ', Vshear
+      WRITE(*,'(6x,A,F5.3)') '    sigma: ', sigma
+      WRITE(*,'(6x,A,F5.3)') '     rho0: ', rho0
+      WRITE(*,'(6x,A,F5.3)') '     rho1: ', rho1
+      WRITE(*,*)
+
+    END IF
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nGF) )
+
+      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3), &
+                   1:nCF) )
+
+      CALL amrex2thornado_X &
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        iNX2 = NodeNumberTableX(2,iNX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+        ! --- V1 ---
+        IF( X2 .GT. Zero )THEN
+
+          uPF(iNX,iPF_V1) &
+            = +Vshear * TANH( ( X2 - Half ) / a )
+
+        ELSE
+
+          ! --- Paper has a typo here, the minus sign is required ---
+          uPF(iNX,iPF_V1) &
+            = -Vshear * TANH( ( X2 + Half ) / a )
+
+        END IF
+
+        ! --- V2 ---
+        IF( X2 .GT. Zero )THEN
+
+          uPF(iNX,iPF_V2) &
+            =  A0 * Vshear * SIN( TwoPi * X1 ) &
+                * EXP( -( ( X2 - Half )**2 / sigma**2 ) )
+
+        ELSE
+
+          uPF(iNX,iPF_V2) &
+            = -A0 * Vshear * SIN( TwoPi * X1 ) &
+                * EXP( -( ( X2 + Half )**2 / sigma**2 ) )
+
+        END IF
+
+        ! --- rho ---
+        IF( X2 .GT. Zero )THEN
+
+          uPF(iNX,iPF_D) &
+            = rho0 + rho1 * TANH( ( X2 - Half ) / a )
+
+        ELSE
+
+          uPF(iNX,iPF_D) &
+            = rho0 - rho1 * TANH( ( X2 + Half ) / a )
+
+        END IF
+
+        uAF(iNX,iAF_P ) = One
+        uPF(iNX,iPF_V3) = Zero
+        uPF(iNX,iPF_E)  = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
+        uPF(iNX,iPF_Ne) = Zero
+
+        CALL ComputeConserved_Euler &
+               ( uPF(iNX,iPF_D ), &
+                 uPF(iNX,iPF_V1), &
+                 uPF(iNX,iPF_V2), &
+                 uPF(iNX,iPF_V3), &
+                 uPF(iNX,iPF_E ), &
+                 uPF(iNX,iPF_Ne), &
+                 U  (iNX,iX1,iX2,iX3,iCF_D ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S1), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S2), &
+                 U  (iNX,iX1,iX2,iX3,iCF_S3), &
+                 U  (iNX,iX1,iX2,iX3,iCF_E ), &
+                 U  (iNX,iX1,iX2,iX3,iCF_Ne), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(iNX,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL thornado2amrex_X &
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+
+      DEALLOCATE( U )
+      DEALLOCATE( G )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE InitializeFields_KelvinHelmholtz2D
 
 
   SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCF )
@@ -804,7 +977,7 @@ CONTAINS
 
     END SELECT
 
-    CALL amrex_mfiter_build( MFI, MF_uGF )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
