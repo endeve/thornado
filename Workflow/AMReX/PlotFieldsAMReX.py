@@ -60,7 +60,7 @@ UsePhysicalUnits = False
 CoordinateSystem = 'cartesian'
 
 # Specify colormap
-cmap = 'jet'
+cmap = 'viridis'
 
 MaxLevel = -1
 
