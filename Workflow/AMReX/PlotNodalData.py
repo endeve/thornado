@@ -93,7 +93,7 @@ def GetQuadrature1D( nN ):
         wq = np.array( [ 1.0 ], np.float64 )
     elif nN == 2:
         wq = np.array( [ 0.5, 0.5 ], np.float64 )
-    elif N == 3:
+    elif nN == 3:
         wq = np.array( [ 5.0 / 18.0, 8.0 / 18.0, 5.0 / 18.0 ], np.float64 )
 
     return wq
