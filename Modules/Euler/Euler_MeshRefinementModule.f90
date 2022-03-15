@@ -1,8 +1,12 @@
 MODULE Euler_MeshRefinementModule
 
+#ifdef USE_AMREX
+
   USE amrex_DGInterfaceModule, ONLY: &
     amrex_InitializeMeshRefinement_DG, &
     amrex_FinalizeMeshRefinement_DG
+
+#endif
 
   USE KindModule, ONLY: &
     DP, &
@@ -364,6 +368,8 @@ CONTAINS
 
     END IF ! nDimsX .GT. 2
 
+#ifdef USE_AMREX
+
     CALL amrex_InitializeMeshRefinement_DG &
            ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
              LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C, &
@@ -371,12 +377,18 @@ CONTAINS
              LX_X2_Up_1D, LX_X2_Dn_1D, &
              LX_X3_Up_1D, LX_X3_Dn_1D )
 
+#endif
+
   END SUBROUTINE InitializeMeshRefinement_Euler
 
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
+#ifdef USE_AMREX
+
     CALL amrex_FinalizeMeshRefinement_DG
+
+#endif
 
     DEALLOCATE( ProjectionMatrix_T )
     DEALLOCATE( ProjectionMatrix )
