@@ -82,7 +82,9 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   REAL(DP), ALLOCATABLE :: U_PP(:,:)
 
 #if   defined( THORNADO_OMP_OL )
-  !$OMP DECLARE TARGET( nPT )
+  !$OMP DECLARE TARGET( Min_D, Max_D, Min_T, Max_T, &
+  !$OMP                 Min_Y, Max_Y, Min_N, Max_N, &
+  !$OMP                 nPT, InterpMat )
 #elif defined( THORNADO_OACC   )
   !$ACC DECLARE CREATE( Min_D, Max_D, Min_T, Max_T, &
   !$ACC                 Min_Y, Max_Y, Min_N, Max_N, &

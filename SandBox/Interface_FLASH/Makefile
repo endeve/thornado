@@ -23,6 +23,8 @@ include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Defines
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
+## DEFINES   += -DTHORNADO_DEBUG
+
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).
 
@@ -67,6 +69,7 @@ OBJS = \
        ReferenceElementModuleE.o \
        ReferenceElementModuleX.o \
        ReferenceElementModule.o \
+       UtilitiesModule.o \
        PolynomialBasisModule_Lagrange.o \
        ReferenceElementModuleX_Lagrange.o \
        ReferenceElementModuleE_Lagrange.o \
@@ -86,7 +89,6 @@ OBJS = \
        TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
        TwoMoment_NeutrinoMatterSolverModule.o \
        TwoMoment_BoundaryConditionsModule.o \
-       TwoMoment_MeshRefinementModule.o \
        TwoMoment_UtilitiesModule.o \
        TwoMoment_MeshRefinementModule.o \
        NeutrinoOpacitiesModule.o \
@@ -101,7 +103,11 @@ ifeq ($(TWOMOMENT_ORDER),ORDER_V)
 OBJS += \
        EquationOfStateModule.o \
        Euler_BoundaryConditionsModule.o \
+       Euler_CharacteristicDecompositionModule.o \
+       Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
        Euler_dgDiscretizationModule.o \
+       Euler_DiscontinuityDetectionModule.o \
+       Euler_UtilitiesModule.o \
        Euler_UtilitiesModule_NonRelativistic.o \
        Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
        Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
@@ -109,7 +115,7 @@ OBJS += \
        InputOutputModuleHDF.o \
        ReferenceElementModuleZ.o \
        PolynomialBasisMappingModule.o \
-       UtilitiesModule.o \
+       PolynomialBasisModule_Legendre.o \
        TimersModule_Euler.o \
        TwoMoment_UtilitiesModule_OrderV.o \
        TwoMoment_TroubledCellIndicatorModule.o \
@@ -162,6 +168,8 @@ ifeq ($(TWOMOMENT_ORDER),ORDER_1)
 TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  UtilitiesModule.o \
   TimersModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
@@ -206,6 +214,8 @@ else
 TimeSteppingModule_Flash.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  UtilitiesModule.o \
   TimersModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \

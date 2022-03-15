@@ -24,7 +24,7 @@ MODULE EulerEquationsPositivityLimiterModule_DG_TABLE
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_T, iAF_E, iAF_Ye
   USE EquationOfStateModule_TABLE, ONLY: &
-    MinD, MinT, MinY, &
+    Min_D, Min_T, Min_Y, &
     ComputeSpecificInternalEnergy_TABLE
   USE EulerEquationsUtilitiesModule, ONLY: &
     Primitive
@@ -91,7 +91,7 @@ CONTAINS
           END DO
           uPF_P(:,iPF_D) = uCF_P(:,iCF_D)
 
-          IF( ANY( uPF_P(:,iPF_D) < MinD ) )THEN
+          IF( ANY( uPF_P(:,iPF_D) < Min_D ) )THEN
 
             ! --- Limiting Using Modal Representation ---
 
@@ -106,10 +106,10 @@ CONTAINS
             Theta = 1.0_DP
             DO iPoint = 1, nPositivePoints
 
-              IF( uCF_P(iPoint,iCF_D) < MinD ) &
+              IF( uCF_P(iPoint,iCF_D) < Min_D ) &
                 Theta &
                   = MIN( Theta, &
-                         ( MinD - uCF_K(iCF_D) ) &
+                         ( Min_D - uCF_K(iCF_D) ) &
                            / ( uCF_P(iPoint,iCF_D) - uCF_K(iCF_D) ) )
 
             END DO
@@ -153,7 +153,7 @@ CONTAINS
           uPF_P(:,iPF_D)  = uCF_P(:,iCF_D)
           uPF_P(:,iPF_Ne) = uCF_P(:,iCF_Ne)
 
-          MinNe = 1.000001_DP * MinY * uPF_P(:,iPF_D) / AtomicMassUnit
+          MinNe = 1.000001_DP * Min_Y * uPF_P(:,iPF_D) / AtomicMassUnit
 
           IF( ANY( uPF_P(:,iPF_Ne) < MinNe(:) ) )THEN
 
@@ -217,7 +217,7 @@ CONTAINS
 
           END DO
 
-          uAF_P(:,iAF_T ) = 1.000001_DP * MinT
+          uAF_P(:,iAF_T ) = 1.000001_DP * Min_T
           uAF_P(:,iAF_Ye) = AtomicMassUnit * uPF_P(:,iPF_Ne) &
                               / uPF_P(:,iPF_D)
 
@@ -332,7 +332,7 @@ CONTAINS
 
           END DO
 
-          uAF_P(:,iAF_T ) = 1.000001_DP * MinT
+          uAF_P(:,iAF_T ) = 1.000001_DP * Min_T
           uAF_P(:,iAF_Ye) = AtomicMassUnit * uPF_P(:,iPF_Ne) &
                               / uPF_P(:,iPF_D)
 
@@ -342,14 +342,14 @@ CONTAINS
 
           MinPF_E(:) = MinAF_E(:) * uPF_P(:,iPF_D)
 
-          IF( ANY( uPF_P(:,iPF_D) < MinD ) &
+          IF( ANY( uPF_P(:,iPF_D) < Min_D ) &
                 .OR. ANY( uPF_P(:,iPF_E) < MinPF_E(:) ) )THEN
 
             PRINT*
             PRINT*, "Problem with Positivity Limiter!"
             PRINT*, "  iX1, iX2, iX3 = ", iX1, iX2, iX3
             PRINT*, "  Theta = ", Theta
-            PRINT*, "  MinD  = ", MinD / (Gram/Centimeter**3)
+            PRINT*, "  Min_D  = ", Min_D / (Gram/Centimeter**3)
             PRINT*, "  MinPF_E  = ", MinPF_E(:) / (Erg/Centimeter**3)
             PRINT*
             PRINT*, "  Conserved Fields (Nodal):"

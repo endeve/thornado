@@ -4,7 +4,7 @@
 MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, FourPi, Half
+    DP, Zero, Half, One, Two, FourPi, SqrtTiny
   USE UnitsModule, ONLY: &
     PlanckConstant, &
     AtomicMassUnit, &
@@ -79,17 +79,16 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
   REAL(DP), PARAMETER :: Unit_T = MeV
 
-  REAL(DP), PARAMETER :: WFactor_FP = FourPi / PlanckConstant**3
-
   INTEGER  :: nE_G, nX_G, nZ(4)
   INTEGER  :: n_FP_inner, n_FP_outer
   INTEGER  :: iE_B, iE_E
 
-  REAL(DP), ALLOCATABLE :: E_N(:)        ! --- Energy Grid
-  REAL(DP), ALLOCATABLE :: W2_N(:)       ! --- Ingegration Weights (E^2)
-  REAL(DP), ALLOCATABLE :: W3_N(:)       ! --- Integration Weights (E^3)
-  REAL(DP), ALLOCATABLE :: W2_S(:)
-  REAL(DP), ALLOCATABLE :: W3_S(:)
+  REAL(DP), ALLOCATABLE :: E_N(:)       ! --- Energy Grid
+  REAL(DP), ALLOCATABLE :: W2_N(:)      ! --- Ingegration Weights (E^2)
+  REAL(DP), ALLOCATABLE :: W3_N(:)      ! --- Integration Weights (E^3)
+  REAL(DP), ALLOCATABLE :: W2_S(:)      ! --- Integration Weights Scaled by (hc)^3
+  REAL(DP), ALLOCATABLE :: W3_S(:)      ! --- Integration Weights Scaled by (hc)^3
+  REAL(DP), ALLOCATABLE :: FourPiEp2(:)
 
   ! --- Solver scratch arrays ---
 
@@ -213,11 +212,13 @@ CONTAINS
     ALLOCATE( W3_N(nE_G) )
     ALLOCATE( W2_S(nE_G) )
     ALLOCATE( W3_S(nE_G) )
+    ALLOCATE( FourPiEp2(nE_G) )
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
-    W2_S(:) = WFactor_FP * W2_N(:)
-    W3_S(:) = WFactor_FP * W3_N(:)
+    W2_S(:)      = W2_N(:) / ( PlanckConstant * SpeedOfLight )**3
+    W3_S(:)      = W3_N(:) / ( PlanckConstant * SpeedOfLight )**3
+    FourPiEp2(:) = FourPi * E_N(:) * E_N(:)
 
     ALLOCATE(     ITERATE_outer(nX_G) )
     ALLOCATE(   PackIndex_outer(nX_G) )
@@ -522,7 +523,7 @@ CONTAINS
     !$ACC         WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
-    DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
+    DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
     DEALLOCATE( INFO, P1D, P2D, P3D )
     DEALLOCATE( Omega, Jnorm )
     DEALLOCATE( C_J )
@@ -565,8 +566,8 @@ CONTAINS
 
       E (iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
 
-      W2(iN_E) = WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**2
-      W3(iN_E) = WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**3
+      W2(iN_E) = FourPi * WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**2
+      W3(iN_E) = FourPi * WeightsE(iNodeE) * MeshE % Width(iE) * E(iN_E)**3
 
     END DO
 
@@ -582,15 +583,13 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(inout) :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:),     INTENT(inout) :: D, T, Y, E
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner, nIterations_Outer
+    INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner
+    INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Outer
 
     ! --- Local Variables ---
 
-    INTEGER  :: iN_E, iN_X, iS
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
-
-    REAL(DP) :: vDotV
 
     ! --- Initial RHS ---
 
@@ -884,6 +883,22 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacities_ES_Points &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, Sig_2_P )
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+    DO iX = 1, nX
+    DO iE1 = 1, nE_G
+
+      Sig_1_P(iE1,iX) = FourPiEp2(iE1) * Sig_1_P(iE1,iX)
+      Sig_2_P(iE1,iX) = FourPiEp2(iE1) * Sig_2_P(iE1,iX)
+
+    END DO
+    END DO
 
     IF( Include_NES )THEN
 
@@ -1513,7 +1528,7 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
+    REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1781,8 +1796,7 @@ CONTAINS
 
 
   SUBROUTINE UpdateMatterRHS_FP &
-    ( MASK, Fm, Gm, Y, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( MASK, Fm, Gm, Y, E, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
@@ -1997,7 +2011,15 @@ CONTAINS
 
             END DO
 
-            B(1,iN_X) = AB1 / AA11
+            IF( ABS( AA11 ) < SqrtTiny )THEN
+
+              B(1,iN_X) = Zero
+
+            ELSE
+
+              B(1,iN_X) = AB1 / AA11
+
+            END IF
 
           END IF
         END DO
@@ -2043,8 +2065,17 @@ CONTAINS
 
             DET_AA = AA11 * AA22 - AA12 * AA12
 
-            B(1,iN_X) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-            B(2,iN_X) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+            IF( ABS( DET_AA ) < SqrtTiny )THEN
+
+              B(1,iN_X) = Zero
+              B(2,iN_X) = Zero
+
+            ELSE
+
+              B(1,iN_X) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+              B(2,iN_X) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+            END IF
 
           END IF
         END DO

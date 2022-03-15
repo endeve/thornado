@@ -114,6 +114,7 @@ MODULE TimersModule_Euler
   ! --- Gravity Solver ---
 
   REAL(DP), PUBLIC :: Timer_GravitySolver
+  REAL(DP), PUBLIC :: Timer_GS_ComputeSourceTerms
 
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
@@ -210,7 +211,8 @@ CONTAINS
     Timer_Euler_CFC_CopyIn           = SqrtTiny
     Timer_Euler_CFC_CopyOut          = SqrtTiny
 
-    Timer_GravitySolver = SqrtTiny
+    Timer_GravitySolver         = SqrtTiny
+    Timer_GS_ComputeSourceTerms = SqrtTiny
 
   END SUBROUTINE InitializeTimers_Euler
 
@@ -781,6 +783,11 @@ CONTAINS
         'Solve Gravity : ', &
         Timer_GravitySolver, ' s = ', &
         Timer_GravitySolver / Timer_Euler_Program
+
+      WRITE(*,TRIM(TimeL1)) &
+        'ComputeSourceTerms : ', &
+        Timer_GS_ComputeSourceTerms, ' s = ', &
+        Timer_GS_ComputeSourceTerms / Timer_Euler_Program
 
     END IF
 

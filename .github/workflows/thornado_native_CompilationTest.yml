@@ -1,0 +1,46 @@
+name: thornado_native_CompilationTest
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+
+  # Basic jobs to checkout and compile code.
+
+  CompileEuler_IDEAL:
+    runs-on: ubuntu-latest
+    env: 
+        THORNADO_MACHINE: gh-runner_ubuntu-latest
+        THORNADO_DIR: $(GITHUB_WORKSPACE)
+    steps:
+      - uses: actions/checkout@v2
+        with: 
+            ref: 'master'
+      - run: sudo apt-get update -y
+      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
+      - run: cd SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables && make && make clobber
+      - run: cd SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables && make && make clobber
+
+  CompileEuler_TABLE:
+    runs-on: ubuntu-latest
+    env: 
+        THORNADO_MACHINE: gh-runner_ubuntu-latest
+        THORNADO_DIR: $(GITHUB_WORKSPACE)
+        WEAKLIB_DIR: $(GITHUB_WORKSPACE)/weaklib
+    steps:
+      - uses: actions/checkout@v2
+        with:
+            ref: 'master'
+      - uses: actions/checkout@v2
+        with:
+            repository: starkiller-astro/weaklib
+            path: weaklib
+      - run: sudo apt-get update -y
+      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
+      - run: cd SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables && make && make clobber
+      - run: cd SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables && make && make clobber

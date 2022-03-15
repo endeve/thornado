@@ -6,7 +6,7 @@ MODULE DeviceModule
 
 #if defined(THORNADO_CUDA)
   USE CudaModule, ONLY: &
-    stream, &
+    cuda_stream=>stream, &
     cudaGetDeviceCount, &
     cudaSetDevice, &
     cudaStreamCreate, &
@@ -26,7 +26,7 @@ MODULE DeviceModule
     cusparseSetStream
 #elif defined(THORNADO_HIP)
   USE HipModule, ONLY: &
-    stream, &
+    hip_stream=>stream, &
     hipGetDeviceCount, &
     hipSetDevice, &
     hipStreamCreate, &
@@ -98,6 +98,7 @@ MODULE DeviceModule
   INCLUDE 'mpif.h'
 
   INTEGER, PUBLIC :: mydevice, ndevices
+  TYPE(C_PTR), POINTER, PUBLIC :: stream
 
   INTERFACE dev_ptr
     MODULE PROCEDURE dev_ptr_int
@@ -169,18 +170,20 @@ CONTAINS
     ierr = cublasCreate_v2( cublas_handle )
     ierr = cusparseCreate( cusparse_handle )
     ierr = cusolverDnCreate( cusolver_handle )
+    stream => cuda_stream
 #elif defined(THORNADO_HIP)
     CALL hipblasCheck( hipblasCreate( hipblas_handle ) )
     CALL hipsparseCheck( hipsparseCreate( hipsparse_handle ) )
     CALL rocblasCheck( rocblas_create_handle( rocblas_handle ) )
     rocsolver_handle = rocblas_handle
     !rocsparse_handle = rocblas_handle
+    stream => hip_stream
 #endif
 
     ! Create a stream and associate with linear algebra libraries
 #if defined(THORNADO_OACC)
-    stream = acc_get_cuda_stream( acc_async_noval )
-    CALL acc_set_cuda_stream( acc_async_sync, stream )
+    stream = acc_get_cuda_stream( INT( acc_async_noval, KIND=c_long_long ) )
+    CALL acc_set_cuda_stream( INT( acc_async_sync, KIND=c_long_long ), stream )
     !CALL acc_set_default_async( acc_async_noval )
 #elif defined(THORNADO_CUDA)
     ierr = cudaStreamCreate( stream )

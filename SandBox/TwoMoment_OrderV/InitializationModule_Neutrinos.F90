@@ -1,7 +1,7 @@
 MODULE InitializationModule_Neutrinos
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two
+    DP, Zero, Half, One, Two, SqrtTiny
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -11,6 +11,9 @@ MODULE InitializationModule_Neutrinos
     Erg, &
     SpeedOfLight, &
     BoltzmannConstant
+  USE UtilitiesModule, ONLY: &
+    Locate, &
+    Interpolate1D_Linear
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     iX_B0, iX_E0, &
@@ -18,6 +21,8 @@ MODULE InitializationModule_Neutrinos
     nDOFX, nDOFE
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
+  USE ReferenceElementModule, ONLY: &
+    NodeNumberTable
   USE MeshModule, ONLY: &
     MeshE, MeshX, &
     NodeCoordinate
@@ -42,6 +47,7 @@ MODULE InitializationModule_Neutrinos
     ComputeThermodynamicStates_Primitive_TABLE, &
     ApplyEquationOfState_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeNeutrinoOpacities_EC_Points, &
     ComputeEquilibriumDistributions_DG_Points
 
   IMPLICIT NONE
@@ -53,7 +59,9 @@ MODULE InitializationModule_Neutrinos
 CONTAINS
 
 
-  SUBROUTINE InitializeFields()
+  SUBROUTINE InitializeFields( ProfileName )
+
+    CHARACTER(LEN=*), INTENT(in) :: ProfileName
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -64,9 +72,9 @@ CONTAINS
 
          CALL InitializeFields_Relaxation
 
-       CASE( 'Deleptonization' )
+       CASE( 'DeleptonizationWave1D' )
 
-         CALL InitializeFields_Deleptonization
+         CALL InitializeFields_DeleptonizationWave1D( ProfileName )
 
        CASE( 'EquilibriumAdvection' )
 
@@ -216,22 +224,22 @@ CONTAINS
   END SUBROUTINE InitializeFields_Relaxation
 
 
-  SUBROUTINE InitializeFields_Deleptonization
+  SUBROUTINE InitializeFields_DeleptonizationWave1D( ProfileName )
 
-    REAL(DP), PARAMETER :: D_L = 1.0d13 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: V_L = 0.0d00 * SpeedOfLight
-    REAL(DP), PARAMETER :: P_L = 1.1d32 * Erg / Centimeter**3
-    REAL(DP), PARAMETER :: Y_L = 0.3d00
+    CHARACTER(LEN=*), INTENT(in) :: ProfileName
 
-    REAL(DP), PARAMETER :: D_R = 1.0d12 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: V_R = 0.0d00 * SpeedOfLight
-    REAL(DP), PARAMETER :: P_R = 1.0d32 * Erg / Centimeter**3
-    REAL(DP), PARAMETER :: Y_R = 0.4d00
+    INTEGER  :: iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeX1, iNodeZ
+    INTEGER  :: i, iR, iE, nR, nE
+    REAL(DP) :: R, Tau
+    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
+    REAL(DP), ALLOCATABLE :: E_Nu(:), R_Nu(:,:), Chi(:,:,:), fEQ(:,:,:)
+    REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
 
-    REAL(DP), PARAMETER :: L_0 = 1.0d1 * Kilometer
+    WRITE(*,*)
+    WRITE(*,'(A6,A,A)') '', &
+      'Initializing from Profile: ', TRIM( ProfileName )
 
-    INTEGER  :: iE, iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeX1, iNodeZ
-    REAL(DP) :: X1, Theta, kT, Mnu, E
+    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
 
     ! --- Fluid Fields ---
 
@@ -243,33 +251,18 @@ CONTAINS
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        Theta = Half * ( One - TANH( X1 / L_0 ) )
+        iR = MAX( Locate( R, R_P, SIZE( R_P ) ), 1 )
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-          = Theta * D_L + (One-Theta) * D_R
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), D_P(iR), D_P(iR+1) )
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-          = Theta * V_L + (One-Theta) * V_R
-
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-          = Zero
-
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
-          = Zero
-
-        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) &
-          = Theta * P_L + (One-Theta) * P_R
+        uAF(iNodeX,iX1,iX2,iX3,iAF_T ) &
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), T_P(iR), T_P(iR+1) )
 
         uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
-          = Theta * Y_L + (One-Theta) * Y_R
-
-        CALL ComputeTemperatureFromPressure_TABLE &
-               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), Y_P(iR), Y_P(iR+1) )
 
         CALL ComputeThermodynamicStates_Primitive_TABLE &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -294,6 +287,10 @@ CONTAINS
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Xa), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -320,6 +317,95 @@ CONTAINS
 
     ! --- Radiation Fields ---
 
+    nR = SIZE( R_P )
+    nE = ( iE_E0 - iE_B0 + 1 ) * nDOFE
+
+    ALLOCATE( E_Nu   (nE) )
+    ALLOCATE( R_Nu   (nE   ,nSpecies) )
+    ALLOCATE( Chi    (nE,nR,nSpecies) )
+    ALLOCATE( fEQ    (nE,nR,nSpecies) )
+    ALLOCATE( D_Nu_P (nE,nR,nSpecies) )
+    ALLOCATE( I1_Nu_P(nE,nR,nSpecies) )
+
+    ! --- Neutrino Energies ---
+
+    DO iE = iE_B0, iE_E0
+    DO iNodeE = 1, nDOFE
+
+      E_Nu((iE-1)*nDOFE+iNodeE) = NodeCoordinate( MeshE, iE, iNodeE )
+
+    END DO
+    END DO
+
+    ! --- Neutrino Absorption Opacities and Equilibrium Distributions ---
+
+    DO iS = 1, nSpecies
+
+      CALL ComputeNeutrinoOpacities_EC_Points &
+             ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, iS, Chi(:,:,iS) )
+
+      ! --- Prevent too large drop-off of the opacity -------
+      ! --- This is mainly to prevent opacity for Nue_Bar ---
+      ! --- be close to zero for low neutrino energies ------
+
+      DO iR = 1, nR
+      DO iE = 1, nE-1
+
+        IF( Chi(iE,iR,iS) < 1.d-16 * Chi(iE+1,iR,iS) )THEN
+
+          Chi(1:iE,iR,iS) = Chi(iE+1,iR,iS) * ( E_Nu(1:iE) / E_Nu(iE+1) )**2
+
+        END IF
+
+      END DO
+      END DO
+
+    END DO
+
+    CALL ComputeEquilibriumDistributions_DG_Points &
+           ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, &
+             fEQ(:,:,iNuE), fEQ(:,:,iNuE_Bar), iNuE, iNuE_Bar )
+
+    ! --- Approximate Neutrino Sphere Radii ---
+
+    DO iS = 1, nSpecies
+    DO iE = 1, nE
+
+      Tau = Zero
+      DO iR = nR-1, 1, -1
+
+        IF( Tau > 2.0_DP / 3.0_DP ) CYCLE
+
+        Tau = Tau + Half * ( R_P(iR+1) - R_P(iR) ) &
+                         * ( Chi(iE,iR+1,iS) + Chi(iE,iR,iS) )
+
+        R_Nu(iE,iS) = MAX( R_P(iR), 1.0d1 * Kilometer )
+
+      END DO
+
+    END DO
+    END DO
+
+    ! --- Homogeneous Sphere Solution ---
+
+    DO iS = 1, nSpecies
+    DO iR = 1, nR
+    DO iE = 1, nE
+
+      ! --- Use Chi and fEQ at MIN( local radius, neutrino sphere radius ) ---
+
+      i = MIN( iR, Locate( R_Nu(iE,iS), R_P, SIZE( R_P ) ) )
+
+      CALL ComputeSphereSolution &
+             ( R_Nu(iE,iS), Chi(iE,i,iS), fEQ(iE,i,iS), &
+               R_P(iR), D_Nu_P(iE,iR,iS), I1_Nu_P(iE,iR,iS) )
+
+      D_Nu_P(iE,iR,iS) = MAX( D_Nu_P(iE,iR,iS), SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+
     DO iS  = 1       , nSpecies
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -331,24 +417,24 @@ CONTAINS
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
-        kT = BoltzmannConstant * uAF(iNodeX,iX1,iX2,iX3,iAF_T)
+        iNodeX1 = NodeNumberTable(2,iNodeZ)
 
-        Mnu = uAF  (iNodeX,iX1,iX2,iX3,iAF_Me) &
-              + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
-              - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( iS == iNuE_Bar )THEN
+        iR = MAX( Locate( R, R_P, SIZE( R_P ) ), 1 )
 
-          Mnu = - Mnu
+        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) &
+          = Interpolate1D_Linear &
+              ( R, R_P(iR), R_P(iR+1), &
+                D_Nu_P ((iE-1)*nDOFE+iNodeE,iR  ,iS), &
+                D_Nu_P ((iE-1)*nDOFE+iNodeE,iR+1,iS) )
 
-        END IF
+        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) &
+          = Interpolate1D_Linear &
+              ( R, R_P(iR), R_P(iR+1), &
+                I1_Nu_P((iE-1)*nDOFE+iNodeE,iR  ,iS), &
+                I1_Nu_P((iE-1)*nDOFE+iNodeE,iR+1,iS) )
 
-        E = NodeCoordinate( MeshE, iE, iNodeE )
-
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D,iS) &
-          = One / ( EXP( ( E - Mnu ) / kT ) + One )
-
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 
@@ -377,7 +463,11 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_Deleptonization
+    DEALLOCATE( R_P, D_P, T_P, Y_P )
+    DEALLOCATE( E_Nu, R_Nu, Chi, fEQ )
+    DEALLOCATE( D_Nu_P, I1_Nu_P )
+
+  END SUBROUTINE InitializeFields_DeleptonizationWave1D
 
 
   SUBROUTINE InitializeFields_EquilibriumAdvection
@@ -517,6 +607,113 @@ CONTAINS
   END SUBROUTINE InitializeFields_EquilibriumAdvection
 
 
+  SUBROUTINE ComputeSphereSolution( R0, Chi, f0, R, D, I )
+
+    REAL(DP), INTENT(in)  :: R0, Chi, f0, R
+    REAL(DP), INTENT(out) :: D, I
+
+    INTEGER, PARAMETER :: nMu = 2048
+    INTEGER            :: iMu
+    REAL(DP)           :: Mu(nMu), Distribution(nMu)
+
+    DO iMu = 1, nMu
+
+      Mu(iMu) = - One + Two * DBLE(iMu-1)/DBLE(nMu-1)
+
+      Distribution(iMu) = f_A( R, Mu(iMu), R0, f0, Chi )
+
+    END DO
+
+    D = Half * TRAPEZ( nMu, Mu, Distribution )
+    I = Half * TRAPEZ( nMu, Mu, Distribution * Mu )
+
+  END SUBROUTINE ComputeSphereSolution
+
+
+  REAL(DP) FUNCTION f_A( R, Mu, R0, f0, Chi )
+
+    REAL(DP), INTENT(in) :: R, Mu, R0, f0, Chi
+
+    REAL(DP) :: s
+
+    IF( R < R0 )THEN
+      s = ( R * Mu + R0 * SQRT( One - ( R / R0 )**2 * ( One - Mu**2 ) ) )
+    ELSE
+      IF( Mu >= SQRT( One - ( R0 / R )**2 ) )THEN
+        s = ( Two * R0 * SQRT( One - ( R / R0 )**2 * ( One - Mu**2 ) ) )
+      ELSE
+        s = Zero
+      END IF
+    END IF
+
+    f_A = f0 * ( One - EXP( - Chi * s ) )
+
+    RETURN
+  END FUNCTION f_A
+
+
+  REAL(DP) FUNCTION TRAPEZ( n, x, y )
+
+    INTEGER,  INTENT(in) :: n
+    REAL(dp), INTENT(in) :: x(n), y(n)
+
+    INTEGER :: i
+
+    TRAPEZ = 0.0_dp
+    DO i = 1, n - 1
+      TRAPEZ = TRAPEZ + 0.5_dp * ( x(i+1) - x(i) ) * ( y(i) + y(i+1) )
+    END DO
+
+    RETURN
+  END FUNCTION TRAPEZ
+
+
+  SUBROUTINE ReadFluidProfile( FileName, R, D, T, Y )
+
+    CHARACTER(*),          INTENT(in)    :: FileName
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: R(:), D(:), T(:), Y(:)
+
+    CHARACTER(LEN=9)      :: Format1 = '(4ES12.3)'
+    INTEGER               :: nPoints, iPoint
+    INTEGER               :: Status
+    REAL(DP)              :: Buffer(4)
+    REAL(DP), ALLOCATABLE :: Data(:,:)
+
+    ! --- Count Lines ---
+
+    nPoints = 0
+    OPEN( 1, FILE = TRIM( FileName ), FORM = "formatted", ACTION = 'read' )
+    READ( 1, * )
+    DO
+      READ( 1, Format1, IOSTAT=Status ) Buffer
+      IF( Status .NE. 0 ) EXIT
+      nPoints = nPoints + 1
+    END DO
+    CLOSE( 1, STATUS = 'keep' )
+
+    ! --- Read Data ---
+
+    ALLOCATE( Data(nPoints,4) )
+
+    OPEN( 1, FILE = TRIM( FileName ), FORM = "formatted", ACTION = 'read' )
+    READ( 1, * )
+    DO iPoint = 1, nPoints
+      READ( 1, Format1, IOSTAT=Status ) Data(iPoint,:)
+    END DO
+    CLOSE( 1, STATUS = 'keep' )
+
+    ALLOCATE( R(nPoints), D(nPoints), T(nPoints), Y(nPoints) )
+
+    R = Data(:,1) * Kilometer
+    D = Data(:,2) * Gram / Centimeter**3
+    T = Data(:,3) * MeV
+    Y = Data(:,4)
+
+    DEALLOCATE( Data )
+
+  END SUBROUTINE ReadFluidProfile
+
+
   SUBROUTINE ComputeError( t )
 
     REAL(DP), INTENT(in) :: t
@@ -527,9 +724,9 @@ CONTAINS
 
          CALL ComputeError_Relaxation
 
-       CASE( 'Deleptonization' )
+       CASE( 'DeleptonizationWave1D' )
 
-         CALL ComputeError_Deleptonization
+         CALL ComputeError_DeleptonizationWave1D
 
        CASE( 'EquilibriumAdvection' )
 
@@ -546,7 +743,7 @@ CONTAINS
     INTEGER  :: iNodeE, iNodeX, iNodeZ
     INTEGER  :: nE, nX(3), nE_P, nX_P, iE_P, iX_P
     REAL(DP), ALLOCATABLE :: E_P(:), D_P(:), T_P(:), Y_P(:), f0_P(:,:,:)
-    REAL(DP) :: MaxError(nSpecies), N0, kT, Mnu, E
+    REAL(DP) :: MaxError(nSpecies), N0
 
     nE = iE_E0 - iE_B0 + 1
     nX = iX_E0 - iX_B0 + 1
@@ -634,7 +831,7 @@ CONTAINS
   END SUBROUTINE ComputeError_Relaxation
 
 
-  SUBROUTINE ComputeError_Deleptonization
+  SUBROUTINE ComputeError_DeleptonizationWave1D
 
     INTEGER  :: iS
     REAL(DP) :: MaxError(nSpecies)
@@ -650,7 +847,7 @@ CONTAINS
     END DO
     WRITE(*,*)
 
-  END SUBROUTINE ComputeError_Deleptonization
+  END SUBROUTINE ComputeError_DeleptonizationWave1D
 
 
   SUBROUTINE ComputeError_EquilibriumAdvection

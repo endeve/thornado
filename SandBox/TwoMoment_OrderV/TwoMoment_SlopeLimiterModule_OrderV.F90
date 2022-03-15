@@ -251,24 +251,17 @@ CONTAINS
 
     END IF
 
-    SELECT CASE ( TRIM( SlopeLimiterMethod ) )
+    IF ( TRIM( SlopeLimiterMethod ) == 'WENO' ) THEN
 
-      CASE( 'TVD' )
+      CALL ApplySlopeLimiter_WENO &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
-        CALL ApplySlopeLimiter_TVD &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    ELSE
 
-      CASE( 'WENO' )
+      CALL ApplySlopeLimiter_TVD &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
 
-        CALL ApplySlopeLimiter_WENO &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
-
-      CASE DEFAULT
-
-        CALL ApplySlopeLimiter_TVD &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
-
-    END SELECT
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &

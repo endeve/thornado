@@ -160,11 +160,6 @@ CONTAINS
         CALL InitializeFields_StandingAccretionShock_Units_ConstantEntropy &
                ( MF_uGF, MF_uCF )
 
-      CASE( 'StandingAccretionShock_NonRelativistic' )
-
-        CALL InitializeFields_StandingAccretionShock_NonRelativistic &
-               ( MF_uGF, MF_uCF )
-
       CASE DEFAULT
 
         IF( amrex_parallel_ioprocessor() )THEN
@@ -180,7 +175,6 @@ CONTAINS
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
           WRITE(*,'(6x,A)')     'StandingAccretionShock_Units'
           WRITE(*,'(6x,A)')     'StandingAccretionShock_Units_ConstantEntropy'
-          WRITE(*,'(6x,A)')     'StandingAccretionShock_NonRelativistic'
 
         END IF
 
@@ -1394,6 +1388,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_StandingAccretionShock_Units_ConstantEntropy
 
 
+<<<<<<< HEAD:SandBox/AMReX/old.Euler/MF_InitializationModule_NonRelativistic_IDEAL.f90
   SUBROUTINE InitializeFields_StandingAccretionShock_NonRelativistic &
     ( MF_uGF, MF_uCF )
 
@@ -1826,6 +1821,8 @@ CONTAINS
   END SUBROUTINE InitializeFields_StandingAccretionShock_NonRelativistic
 
 
+=======
+>>>>>>> master:SandBox/AMReX/Euler/MF_InitializationModule_NonRelativistic_IDEAL.f90
   SUBROUTINE ComputeSettlingSpeed_Bisection( r, Alpha, Mass, rShock, V1 )
 
     REAL(DP), INTENT(in) :: r, Alpha, Mass, rShock
@@ -2220,6 +2217,7 @@ CONTAINS
   END SUBROUTINE ComputeFJAC_LeftState
 
 
+<<<<<<< HEAD:SandBox/AMReX/old.Euler/MF_InitializationModule_NonRelativistic_IDEAL.f90
   ! --- Auxiliary utilities for StandingAccretionShock_NonRelativistic ---
 
 
@@ -2430,4 +2428,6 @@ CONTAINS
 
 
 
+=======
+>>>>>>> master:SandBox/AMReX/Euler/MF_InitializationModule_NonRelativistic_IDEAL.f90
 END MODULE MF_InitializationModule_NonRelativistic_IDEAL

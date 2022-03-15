@@ -139,29 +139,10 @@ CONTAINS
       SuppressBC_Option
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS, i
+    INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
     LOGICAL :: Verbose
     LOGICAL  :: SuppressBC
-    REAL(DP):: PD, V1, V2, V3, PE, PNe, W
 
-    REAL(DP) :: &
-      dWV_u_dX1 &
-        (nDOFX,3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dWV_d_dX1 &
-        (nDOFX,3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dW_dX1 &
-        (nDOFX, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) )THEN
@@ -191,7 +172,6 @@ CONTAINS
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
 
-    !CALL CheckRealizability(U_R, U_F, GX, iZ_B1, iZ_E1, iZ_B0, iZ_E0)
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -298,7 +278,7 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: nZ(4), nZ_X1(4), nV_X1, nV, nX_X1
     INTEGER  :: nIterations
     REAL(DP) :: uPF_L(nPF), uPF_R(nPF)
@@ -898,19 +878,12 @@ CONTAINS
     LOGICAL, INTENT(in), OPTIONAL :: &
       Verbose_Option
 
-    INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, INFO, iNodeX1
+    INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, iNodeX1
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
-    INTEGER  :: nK(4), nK_Z1(4), nV, nV_Z1, i, j
+    INTEGER  :: nK(4), nK_Z1(4), nV, nV_Z1
     REAL(DP) :: EdgeEnergyCubed
-    REAL(DP) :: Alpha, AlphaL, AlphaR
-    REAL(DP) ::        AlphaM, AlphaP
-    REAL(DP) :: A(4,4), Lambda(4), WORK(11)
-    REAL(DP) :: k_ud_11_L, k_ud_12_L, k_ud_13_L
-    REAL(DP) ::            k_ud_22_L, k_ud_23_L
-    REAL(DP) ::                       k_ud_33_L
-    REAL(DP) :: k_ud_11_R, k_ud_12_R, k_ud_13_R
-    REAL(DP) ::            k_ud_22_R, k_ud_23_R
-    REAL(DP) ::                       k_ud_33_R
+    REAL(DP) :: Alpha
+    REAL(DP) :: AlphaM, AlphaP
     REAL(DP) :: uPR_K(nPR), Flux_K(nCR), E, X1
     REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
     REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
@@ -985,30 +958,6 @@ CONTAINS
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
-      dU_u_dX0 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_u_dX1 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_u_dX2 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_u_dX3 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
       uCR_K(nDOFZ,nCR, &
             iZ_B0(2):iZ_E0(2), &
             iZ_B0(3):iZ_E0(3), &
@@ -1055,14 +1004,9 @@ CONTAINS
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP):: W, E2, C, l_uud_munurho(0:3,0:3,0:3), k_ud_munu(0:3,0:3)
+    REAL(DP):: W, C
 
     LOGICAL :: Verbose
-    CHARACTER(len=40) :: name1, name2
-    CHARACTER(len=1):: nds
-    CHARACTER(len=2)::nxn1
-    CHARACTER(len=3)::nxn2
-
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) )THEN
@@ -1674,7 +1618,7 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
-    INTEGER  :: i, iZ2, iZ3, iZ4, iCF, iGF
+    INTEGER  :: iZ2, iZ3, iZ4
     REAL(DP) :: W, V_0, V1, V2, V3
 
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1908,10 +1852,10 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: nK(4), nK_X1(4), nX, nX_X1
-    INTEGER  :: iNodeX, iNodeX1
-    INTEGER  :: i, iZ2, iZ3, iZ4, iCF, iGF, mu
+    INTEGER  :: iNodeX
+    INTEGER  :: iZ2, iZ3, iZ4, iCF, iGF, mu
     REAL(DP) :: &
-      uPF_K(nPF), uPF_L(nPF), uPF_R(nPF), X1, V0, pi3, pi23, sine, cose
+      uPF_K(nPF), uPF_L(nPF), uPF_R(nPF)
     REAL(DP) :: &
       GX_K(nDOFX   ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
            iZ_B1(2):iZ_E1(2)), &
@@ -1938,15 +1882,9 @@ CONTAINS
       dU_d_dX1_Temp &
          (1:nDOFX,4, &
           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)) 
-    CHARACTER(len=40) :: name1, name2
-    CHARACTER(len=1):: nds
-    CHARACTER(len=2)::nxn1
-    CHARACTER(len=3)::nxn2
     LOGICAL :: Verbose
-    REAL(DP) :: e, f, R, diff
 
-    e = GravitationalConstant * Mass  / ( 2.0_DP * ( R0 )**3 )
-    f = GravitationalConstant * Mass 
+
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
       dU_d_dX1 = Zero
       dU_d_dX1_COV = Zero
@@ -1966,36 +1904,6 @@ CONTAINS
     nX    = PRODUCT( nK   (2:4) ) ! Number of Elements in Position Space
     nX_X1 = PRODUCT( nK_X1(2:4) ) ! Number of X1 Faces in Position Space
     
-!    IF ( nDOFX == 1) THEN
-!      nds="1"
-!    ELSE IF( nDOFX == 2) THEN
-!      nds="2"
-!    ELSE
-!      nds="3"
-!    END IF 
-!
-!    IF ( nX == 32) THEN
-!      nxn1="32"
-!    ELSE IF( nX == 64) THEN
-!      nxn1="64"
-!    ELSE IF (nX == 128) THEN
-!      nxn2="128"
-!    ELSE
-!      nxn2="256"
-!    END IF 
-!    
-!    IF (nX==32 .OR. nX==64) THEN
-!      name1="dWdX"//nds//nxn1//".txt"
-!      name2="dWvdX"//nds//nxn1//".txt"
-!    ELSE 
-!      name1='dWdX'//nds//nxn2//'.txt'
-!      name2="dWvdX"//nds//nxn2//".txt"
-!    END IF
-!
-!    print*, name1
-!    print*, name2
-!    name1=trim(name1)
-!    name2=trim(name2)
     ! --- Permute Geometry Fields ---
 
     DO iGF = 1, nGF
@@ -2457,7 +2365,7 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
-    INTEGER  :: i, iZ2, iZ3, iZ4, iGF, iCF, mu
+    INTEGER  :: iZ2, iZ3, iZ4, iGF, iCF, mu
     INTEGER  :: nK(4), nK_X2(4), nX, nX_X2
     REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
     REAL(DP) :: &
@@ -2983,7 +2891,7 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
-    INTEGER  :: i, iZ2, iZ3, iZ4, iGF, iCF, mu
+    INTEGER  :: iZ2, iZ3, iZ4, iGF, iCF, mu
     INTEGER  :: nK(4), nK_X3(4), nX, nX_X3
     REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
     REAL(DP) :: &
@@ -3518,9 +3426,9 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: nK(4), nK_X1(4), nX, nX_X1
-    INTEGER  :: iNodeX, iNodeX1
-    INTEGER  :: i, j, iZ2, iZ3, iZ4, iCF, iGF
-    REAL(DP) :: B_u_X1(3), B_d_X1(3), A_X1, B_u_K(3), B_d_K(3), A_K
+    INTEGER  :: iNodeX
+    INTEGER  :: iZ2, iZ3, iZ4
+    REAL(DP) :: B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
       G_munu_K(nDOFX   ,7,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
            iZ_B1(2):iZ_E1(2)), &
@@ -3534,10 +3442,6 @@ CONTAINS
       dG_dd_dX1_Temp &
          (1:nDOFX,7, &
           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)) 
-    CHARACTER(len=40) :: name1, name2
-    CHARACTER(len=1):: nds
-    CHARACTER(len=2)::nxn1
-    CHARACTER(len=3)::nxn2
     LOGICAL :: Verbose
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
@@ -3814,14 +3718,9 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
-    INTEGER  :: i, iZ2, iZ3, iZ4, iGF, iCF
+    INTEGER  :: iZ2, iZ3, iZ4
     INTEGER  :: nK(4), nK_X2(4), nX, nX_X2
-    REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
     REAL(DP) :: &
-      GX_K(nDOFX,nGF, &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(4):iZ_E0(4), &
-           iZ_B1(3):iZ_E1(3)), &
       G_munu_K(nDOFX   ,7,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
            iZ_B1(3):iZ_E1(3)), &
       G_munu_F(nDOFX_X2,7,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
@@ -3830,12 +3729,7 @@ CONTAINS
            iZ_B0(3):iZ_E0(3)), &
       H_munu_F(nDOFX_X2,7,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4), &
            iZ_B0(3):iZ_E0(3)+1)
-    REAL(DP) :: &
-      GX_F(nDOFX_X2,nGF, &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(4):iZ_E0(4), &
-           iZ_B0(3):iZ_E1(3))
-    REAL(DP) :: B_u_X2(3), B_d_X2(3), A_X2, B_u_K(3), B_d_K(3), A_K
+    REAL(DP) ::  B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: & 
       dG_dd_dX2_Temp &
          (1:nDOFX,7, &
@@ -4179,10 +4073,9 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
-    INTEGER  :: i, iZ2, iZ3, iZ4, iGF, iCF
+    INTEGER  :: iZ2, iZ3, iZ4
     INTEGER  :: nK(4), nK_X3(4), nX, nX_X3
-    REAL(DP) :: uPF_L(nPF), uPF_R(nPF), uPF_K(nPF)
-    REAL(DP) :: B_u_X3(3), B_d_X3(3), A_X3, B_u_K(3), B_d_K(3), A_K
+    REAL(DP) :: B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
       G_munu_K(nDOFX   ,7,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
            iZ_B1(4):iZ_E1(4)), &
@@ -4512,8 +4405,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Alpha
 
 
-    REAL(DP) :: dU_d_dX(4,4), G_uu_munu(4,4),  W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11), l_mu(4)
-    INTEGER  :: mu, nu, rho, INFO, B  
+    REAL(DP) :: dU_d_dX(4,4), G_uu_munu(4,4),  W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11)
+    INTEGER  :: mu, nu, rho, INFO  
  
     Vsq =  V_u_1**2 * Gm_dd_11 + V_u_2**2 * Gm_dd_22 + V_u_3**2 * Gm_dd_33 
  
@@ -4641,7 +4534,7 @@ CONTAINS
          (1:nDOFX,0:3,0:3,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
      INTEGER :: iZ2, iZ3, iZ4, iNodeX, mu, nu, rho, sig, iNodeX1
-     REAL(DP) :: G_dd_11, G_dd_22, G_dd_33, B(3), A, X1, diff, e, f
+     REAL(DP) :: G_dd_11, G_dd_22, G_dd_33, B(3), A, X1, e, f
 
     e = GravitationalConstant * Mass  / ( 2.0_DP * ( R0 )**3 )
     f = GravitationalConstant * Mass 
@@ -4724,187 +4617,7 @@ CONTAINS
     END DO
     END DO
 
-!    DO iZ4 = iZ_B0(4), iZ_E0(4)
-!    DO iZ3 = iZ_B0(3), iZ_E0(3)
-!    DO iZ2 = iZ_B0(2), iZ_E0(2)
-!
-!      DO iNodeX = 1, nDOFX
-!
-!       A = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)
-!       X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
-!
-!       IF (X1 .LT. 25000.0_DP) THEN
-!       diff = 2.0_DP *  e * X1 / A
-!       print*, diff,  Gamma_udd(iNodeX,0,1,0,iZ2,iZ3,iZ4) , abs(diff - Gamma_udd(iNodeX,0,1,0,iZ2,iZ3,iZ4))/diff
-!       ELSE
-!       diff = (f / X1**2) / A
-!       print*, diff,  Gamma_udd(iNodeX,0,1,0,iZ2,iZ3,iZ4) , abs(diff - Gamma_udd(iNodeX,0,1,0,iZ2,iZ3,iZ4))/diff
-!       END IF
-!
-!
-!
-!
-!
-!       IF (X1 .LT. 25000.0_DP) THEN
-!       diff = -  2.0 * e * X1 / A
-!       print*, diff,  Gamma_udd(iNodeX,1,1,1,iZ2,iZ3,iZ4) , abs(diff - Gamma_udd(iNodeX,1,1,1,iZ2,iZ3,iZ4))/diff
-!       ELSE
-!       diff = (-f / (X1**2)) / A
-!       print*, diff,  Gamma_udd(iNodeX,1,1,1,iZ2,iZ3,iZ4) , abs(diff - Gamma_udd(iNodeX,1,1,1,iZ2,iZ3,iZ4))/diff
-!       END IF
-!
-!
-!
-!      END DO
-!
-!    END DO
-!    END DO
-!    END DO
-!STOP
   END SUBROUTINE ComputeChristoffel
-
-  SUBROUTINE CheckRealizability(uCR_K, uCF_K, GX_K, iZ_B1, iZ_E1, iZ_B0, iZ_E0)
-
-    INTEGER,  INTENT(in)    :: &
-       iZ_B1(4), iZ_E1(4), iZ_B0(4), iZ_E0(4)
-    REAL(DP), INTENT(in)  :: &
-      uCF_K(nDOFX, &
-            iZ_B1(2):iZ_E1(2), &
-            iZ_B1(3):iZ_E1(3), &
-            iZ_B1(4):iZ_E1(4), &
-            1: nCF)
-
-    REAL(DP), INTENT(in)  :: &
-      GX_K(nDOFX, &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4), &
-           1:nGF)
-    REAL(DP), INTENT(inout) :: &
-      uCR_K (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-    REAL(DP):: D, I1, I2, I3
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iNodeX, iNodeZ
-    REAL(DP) :: &
-      uPF_K(nDOFX,nPF, &
-            iZ_B1(2):iZ_E1(2), &
-            iZ_B1(3):iZ_E1(3), &
-            iZ_B1(4):iZ_E1(4))
-
-    REAL(DP) :: uPR_K(nPR), W, X1
-    INTEGER:: n, iNodeX1
-    n=0
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-
-      DO iNodeX = 1, nDOFX
-
-        CALL ComputePrimitive_Euler_Relativistic &
-               ( uCF_K(iNodeX       ,iZ2,iZ3,iZ4, iCF_D), &
-                 uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_S1), &
-                 uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_S2), &
-                 uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_S3), &
-                 uCF_K(iNodeX       ,iZ2,iZ3,iZ4,iCF_E), &
-                 uCF_K(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
-                 uPF_K(iNodeX,iPF_D       ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V1      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V2      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V3      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_E       ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_Ne      ,iZ2,iZ3,iZ4), &
-                 GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
-                 GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
-                 GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iNodeZ = 1, nDOFZ
-        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
-
-        W = 1.0_DP / SQRT( 1.0_DP - uPF_K(iNodeX,iPF_V1,iZ2,iZ3,iZ4)**2)
-!        IF( iZ1 .EQ. 0 .AND. iZ2 .EQ. 0 ) THEN
- !         CYCLE
-  !      END IF
-
-   !     IF (iZ1 .EQ. iZ_E1(1) .AND. iZ2 .EQ. iZ_E1(2)) THEN
-    !      CYCLE
-     !   END IF
-
-      !  IF (iZ1 .EQ. iZ_E1(1) .AND. iZ2 .EQ. 0) THEN
-       !   CYCLE
-       ! END IF
-
-       ! IF (iZ1 .EQ. 0 .AND. iZ2 .EQ. iZ_E1(2)) THEN
-       !   CYCLE
-       ! END IF
-      IF (uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) <= 0.0_DP) THEN
-        ! uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) = 1.d-8
-      END IF 
-      IF((W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) )) .LT. 0.0_DP) THEN
-         print*, iZ1, iZ2, X1
-         print*, "N ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) 
-         print*, "G1 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS)  
-         print*, "G2 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G2, iS) 
-         print*, "G3 ", uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS) 
-         print*, "WN-ABS(G1) ", W *uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS) -ABS(uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS)) 
-         n = n+1
-      !   uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS) &
-       !    = SIGN( W * uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
-        !               uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) )
-      END IF
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS), &
-                 uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS), &
-                 uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G2, iS), &
-                 uCR_K(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS), &
-                 uPR_K(iPR_D ), uPR_K(iPR_I1), &
-                 uPR_K(iPR_I2), uPR_K(iPR_I3), &
-                 uPF_K(iNodeX,iPF_V1      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V2      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V3      ,iZ2,iZ3,iZ4), &
-                 GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
-                 GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
-                 GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
-                 0.0_DP, 0.0_DP, 0.0_DP,                &
-                 GX_K(iNodeX ,iZ2,iZ3,iZ4,iGF_Alpha  ), &
-                 GX_K(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_1  ), &
-                 GX_K(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_2  ), &
-                 GX_K(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_3  ) )
-      IF((W * uPR_K(iPR_D)-ABS(uPR_K(iPR_I1))) .LT. 0.0_DP) THEN
-         print*, iZ1, iZ2, X1
-         print*, "D ", uPR_K(iPR_D)
-         print*, "I1 ", uPR_K(iPR_I1) 
-         print*, "I2 ", uPR_K(iPR_I2) 
-         print*, "I3 ", uPR_K(iPR_I3) 
-         print*, "WD-ABS(I) ", W*uPR_K(iPR_D) - ABS(uPR_K(iPR_I1))
-         n = n+1
-      END IF
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-
-
-
-  END SUBROUTINE CheckRealizability
 
 
 

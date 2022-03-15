@@ -37,9 +37,12 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     FinalizeNeutrinoMatterSolver, &
     InitializeNeutrinoMatterSolverParameters
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
-    ComputePrimitive_TwoMoment, &
+    ComputePrimitive_TwoMoment_Vector_Richardson, &
     ComputeConserved_TwoMoment
-
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    TimersStart, &
+    TimersStop,  &
+    Timer_NestedSolve
 
 
   IMPLICIT NONE
@@ -47,7 +50,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_Neutrinos
 
-  INTEGER               :: nE_G, nX_G
+  INTEGER               :: nE_G, nX_G, FileUnit
   INTEGER               :: nZ(4), nX(3), nE
   INTEGER               :: iE_B0, iE_E0, iX_B0(3), iX_E0(3)
   INTEGER               :: iE_B1, iE_E1, iX_B1(3), iX_E1(3)
@@ -60,8 +63,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
   REAL(DP), ALLOCATABLE, TARGET :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE, TARGET :: PR_N(:,:,:,:)
 
-  REAL(DP), DIMENSION(:,:,:), CONTIGUOUS, POINTER :: N_P, G1_P, G2_P, G3_P
-  REAL(DP), DIMENSION(:,:,:), CONTIGUOUS, POINTER :: J_P, H1_P, H2_P, H3_P
+
+  REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: N_P, G1_P, G2_P, G3_P
+  REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: J_P, H1_P, H2_P, H3_P
 
   INTEGER,  DIMENSION(:), ALLOCATABLE :: PositionIndexZ
 
@@ -126,6 +130,9 @@ CONTAINS
 
     INTEGER :: iN_X, iN_E, iS
     LOGICAL :: Verbose
+    REAL(DP), DIMENSION(1) :: Zeros
+
+    Zeros = 0.0_DP
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -194,6 +201,7 @@ CONTAINS
     END DO
 
 
+
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
     ! PRINT*, "G22 = ", GX_N(:,iGF_Gm_dd_22)
@@ -211,30 +219,25 @@ CONTAINS
 
     ! PRINT*, "--- Computing primitive moments ---"
 
-    DO iS   = 1, nSpecies
-    DO iN_X = 1, nX_G
-    DO iN_E = 1, nE_G
 
-    CALL ComputePrimitive_TwoMoment &
-           ( N_P(iN_E,iN_X,iS), G1_P(iN_E,iN_X,iS), &
-             G2_P(iN_E,iN_X,iS), G3_P(iN_E,iN_X,iS), &
-             J_P(iN_E,iN_X,iS), H1_P(iN_E,iN_X,iS), &
-             H2_P(iN_E,iN_X,iS), H3_P(iN_E,iN_X,iS), &
-             PF_N(iN_X,iPF_V1), &
-             PF_N(iN_X,iPF_V2), &
-             PF_N(iN_X,iPF_V3), &
-             GX_N(iN_X,iGF_Gm_dd_11), &
-             GX_N(iN_X,iGF_Gm_dd_22), &
-             GX_N(iN_X,iGF_Gm_dd_33), &
-             0.0_DP, 0.0_DP, 0.0_DP,  &
-             GX_N(iN_X,iGF_Alpha), & 
-             GX_N(iN_X,iGF_Beta_1),& 
-             GX_N(iN_X,iGF_Beta_2),& 
-             GX_N(iN_X,iGF_Beta_3) ) 
-
-    END DO
-    END DO
-    END DO
+       CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+           ( N_P, G1_P, G2_P, G3_P, &
+             J_P, H1_P, H2_P, H3_P, &
+             PF_N(:,iPF_V1), &
+             PF_N(:,iPF_V2), &
+             PF_N(:,iPF_V3), &
+             GX_N(:,iGF_Gm_dd_11), &
+             GX_N(:,iGF_Gm_dd_22), &
+             GX_N(:,iGF_Gm_dd_33), &
+             Zeros, &
+             Zeros, &
+             Zeros, & 
+             GX_N(:,iGF_Alpha), & 
+             GX_N(:,iGF_Beta_1),& 
+             GX_N(:,iGF_Beta_2),& 
+             GX_N(:,iGF_Beta_3),& 
+             PositionIndexZ, &
+             nIterations_Prim )     
 
             ! PRINT*, "N_P = ", N_P(:)
             ! PRINT*, "G1_P = ", G1_P(:)
@@ -253,9 +256,6 @@ CONTAINS
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
 
-    CALL ComputePressureFromPrimitive_TABLE &
-           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
-             AF_N(:,iAF_P) )
 
 
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
@@ -267,6 +267,7 @@ CONTAINS
     ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
 
+    CALL TimersStart( Timer_NestedSolve )
 
     CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
            ( dt, &
@@ -281,7 +282,6 @@ CONTAINS
              AF_N(:,iAF_T ), &
              AF_N(:,iAF_Ye), &
              AF_N(:,iAF_E ), &
-             AF_N(:,iAF_P ), &
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
@@ -292,6 +292,16 @@ CONTAINS
              nIterations_Inner, &
              nIterations_Outer )
 
+     OPEN( NEWUNIT = FileUnit, FILE = "Num_Iter.dat", &
+           POSITION = 'APPEND', ACTION = 'WRITE' )
+     WRITE( FileUnit, FMT = * )                  &
+         nIterations_Inner(1),                       &
+         nIterations_Outer(1)
+
+
+     CLOSE( FileUnit )
+
+    CALL TimersStop( Timer_NestedSolve )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -446,15 +456,18 @@ CONTAINS
     nIterations_Outer(:) = 0
     nIterations_Prim (:) = 0
 
-    N_P (1:,1:,1:) => CR_N(:,:,:,iCR_N )
-    G1_P(1:,1:,1:) => CR_N(:,:,:,iCR_G1)
-    G2_P(1:,1:,1:) => CR_N(:,:,:,iCR_G2)
-    G3_P(1:,1:,1:) => CR_N(:,:,:,iCR_G3)
 
-    J_P (1:,1:,1:) => PR_N(:,:,:,iCR_N )
-    H1_P(1:,1:,1:) => PR_N(:,:,:,iCR_G1)
-    H2_P(1:,1:,1:) => PR_N(:,:,:,iCR_G2)
-    H3_P(1:,1:,1:) => PR_N(:,:,:,iCR_G3)
+
+
+    N_P (1:nZ_G) => CR_N(:,:,:,iCR_N )
+    G1_P(1:nZ_G) => CR_N(:,:,:,iCR_G1)
+    G2_P(1:nZ_G) => CR_N(:,:,:,iCR_G2)
+    G3_P(1:nZ_G) => CR_N(:,:,:,iCR_G3)
+
+    J_P (1:nZ_G) => PR_N(:,:,:,iCR_N )
+    H1_P(1:nZ_G) => PR_N(:,:,:,iCR_G1)
+    H2_P(1:nZ_G) => PR_N(:,:,:,iCR_G2)
+    H3_P(1:nZ_G) => PR_N(:,:,:,iCR_G3)
 
     ! --- Neutrino-Matter Solver Parameter Initialization ---
     ! --- ( can be moved to the program init ) --------------

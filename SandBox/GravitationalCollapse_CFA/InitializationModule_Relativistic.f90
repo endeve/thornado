@@ -21,7 +21,7 @@ MODULE InitializationModule_Relativistic
     Interpolate1D_Linear
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
-    ComputeLapseAndShift_Poseidon
+    ComputeGeometry_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &
     MultiplyByPsi6, &
     DivideByPsi6, &
@@ -286,7 +286,7 @@ CONTAINS
       CALL ComputePressureTensorTrace_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
 
-      CALL ComputeLapseAndShift_Poseidon &
+      CALL ComputeGeometry_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
@@ -347,7 +347,7 @@ CONTAINS
     CALL ComputePressureTensorTrace_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
 
-    CALL ComputeLapseAndShift_Poseidon &
+    CALL ComputeGeometry_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
     CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
