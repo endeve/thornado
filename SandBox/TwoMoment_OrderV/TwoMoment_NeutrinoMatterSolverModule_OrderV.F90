@@ -1131,6 +1131,10 @@ CONTAINS
                ( nX, UnpackIndex, &
                  J_I_0, J_II_0, J_I_0_P, J_II_0_P )
 
+        CALL ArrayPack &
+               ( nX, UnpackIndex, &
+                 S_Sigma, S_Sigma_P )
+
       END IF
 
     ELSE
