@@ -2,8 +2,6 @@ MODULE MF_Euler_PositivityLimiterModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
@@ -33,6 +31,7 @@ MODULE MF_Euler_PositivityLimiterModule
     amrex2thornado_X, &
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
+    nLevels, &
     UsePositivityLimiter, &
     do_reflux, &
     UseTiling
@@ -60,13 +59,13 @@ CONTAINS
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
     ( MF_uGF, MF_uCF, MF_uDF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
     INTEGER :: iLevel
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
              ( iLevel, MF_uGF, MF_uCF, MF_uDF )
@@ -80,9 +79,9 @@ CONTAINS
     ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX

@@ -3,7 +3,6 @@ MODULE  MF_Euler_dgDiscretizationModule
   ! --- AMReX Modules ---
 
   USE amrex_amrcore_module, ONLY: &
-    amrex_max_level, &
     amrex_get_finest_level
   USE amrex_box_module, ONLY: &
     amrex_box
@@ -71,6 +70,7 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_FieldsModule, ONLY: &
     FluxRegister
   USE InputParsingModule, ONLY: &
+    nLevels, &
     UseTiling, &
     swX, &
     do_reflux
@@ -105,11 +105,11 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
     ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
 
-    REAL(DP),             INTENT(in)    :: Time   (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:amrex_max_level)
+    REAL(DP),             INTENT(in)    :: Time   (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
     LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 
     INTEGER :: iLevel
@@ -119,7 +119,7 @@ CONTAINS
     IF( PRESENT( UseXCFC_Option ) ) &
       UseXCFC = UseXCFC_Option
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL ComputeIncrement_Euler_MF_SingleLevel &
              ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel), &
@@ -133,7 +133,7 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
     ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
 
-!    DO iLevel = 0, amrex_max_level
+!    DO iLevel = 0, nLevels-1
 !
 !      ! --- Apply boundary conditions to interior domains ---
 !
@@ -213,9 +213,9 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
     LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 

@@ -4,8 +4,6 @@ MODULE RefluxModule_Euler
 
   USE amrex_multifab_module, ONLY: &
     amrex_multifab
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
 
   ! --- thornado Modules ---
 
@@ -24,6 +22,7 @@ MODULE RefluxModule_Euler
   USE AverageDownModule, ONLY: &
     AverageDownTo
   USE InputParsingModule, ONLY: &
+    nLevels, &
     do_reflux
 
   IMPLICIT NONE
@@ -42,13 +41,13 @@ CONTAINS
 
   SUBROUTINE Reflux_Euler_MF_MultipleLevels( MF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:nLevels-1)
 
     INTEGER :: iLevel
 
     IF( .NOT. do_reflux ) RETURN
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       IF( iLevel .GT. 0 ) &
         CALL Reflux_Euler_MF_SingleLevel( iLevel, MF )
@@ -61,7 +60,7 @@ CONTAINS
   SUBROUTINE Reflux_Euler_MF_SingleLevel( FineLevel, MF )
 
     INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:nLevels-1)
 
     CALL CreateMesh_MF( FineLevel-1, MeshX )
 

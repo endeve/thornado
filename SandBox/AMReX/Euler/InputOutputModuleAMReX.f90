@@ -26,7 +26,6 @@ MODULE InputOutputModuleAMReX
     amrex_geometry_destroy
   USE amrex_amrcore_module, ONLY: &
     amrex_get_amrcore, &
-    amrex_max_level, &
     amrex_ref_ratio
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
@@ -67,6 +66,7 @@ MODULE InputOutputModuleAMReX
     CreateMesh_MF, &
     DestroyMesh_MF
   USE InputParsingModule, ONLY: &
+    nLevels, &
     MaxGridSizeX, &
     dt, &
     StepNo, &
@@ -91,18 +91,18 @@ CONTAINS
       MF_uAF_Option, MF_uDF_Option )
 
     REAL(DP),             INTENT(in) :: Time
-    INTEGER,              INTENT(in) :: StepNo(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:amrex_max_level)
+    INTEGER,              INTENT(in) :: StepNo(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uGF_Option(0:amrex_max_level)
+      MF_uGF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uCF_Option(0:amrex_max_level)
+      MF_uCF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uPF_Option(0:amrex_max_level)
+      MF_uPF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uAF_Option(0:amrex_max_level)
+      MF_uAF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uDF_Option(0:amrex_max_level)
+      MF_uDF_Option(0:nLevels-1)
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
@@ -112,7 +112,7 @@ CONTAINS
     LOGICAL                         :: WriteFF_A
     LOGICAL                         :: WriteFF_D
     INTEGER                         :: iComp, iOS, iLevel, nF
-    TYPE(amrex_multifab)            :: MF_plt(0:amrex_max_level)
+    TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
     nF = 7 ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3
@@ -246,7 +246,7 @@ CONTAINS
 
     END IF
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
              ( MF_plt(iLevel), MF_uGF(iLevel) % BA, &
@@ -313,11 +313,11 @@ CONTAINS
     END DO ! End of loop over levels
 
     CALL amrex_write_plotfile &
-           ( PlotFileName, amrex_max_level+1, MF_plt, VarNames, &
+           ( PlotFileName, nLevels, MF_plt, VarNames, &
              amrex_geom, Time / UnitsDisplay % TimeUnit, StepNo, &
              amrex_ref_ratio )
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy ( MF_plt(iLevel) )
 

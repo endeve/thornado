@@ -11,8 +11,6 @@ MODULE MF_UtilitiesModule
     amrex_mfiter_destroy, &
     amrex_multifab, &
     amrex_imultifab
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
 
   ! --- thornado Modules ---
 
@@ -31,6 +29,7 @@ MODULE MF_UtilitiesModule
     MakeFineMask, &
     iCoarse_MFM
   USE InputParsingModule, ONLY: &
+    nLevels, &
     UseTiling
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -108,7 +107,7 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level ) &
+      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
         Mask => iMF_Mask % DataPtr( MFI )
 
       U => MF % DataPtr( MFI )
@@ -120,7 +119,7 @@ CONTAINS
       DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
       DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
 
-        IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level )THEN
+        IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
           IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
 
@@ -179,7 +178,7 @@ CONTAINS
     ( MF, iField, swXX_Option, WriteToFile_Option, FileName_Option )
 
     INTEGER             , INTENT(in) :: iField
-    TYPE(amrex_multifab), INTENT(in) :: MF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels-1)
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)        , INTENT(in), OPTIONAL :: FileName_Option
@@ -201,9 +200,9 @@ CONTAINS
     FileName = ''
     IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
-      IF( amrex_max_level .GT. 0 .AND. iLevel .LT. amrex_max_level ) &
+      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
         CALL MakeFineMask &
                ( iMF_Mask, MF(iLevel) % BA, MF(iLevel) % DM, &
                  MF(iLevel+1) % BA )

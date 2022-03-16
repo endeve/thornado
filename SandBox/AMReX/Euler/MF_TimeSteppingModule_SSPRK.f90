@@ -4,8 +4,6 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   USE amrex_fort_module, ONLY: &
     amrex_spacedim
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -32,6 +30,7 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
+    nLevels, &
     swX, &
     CFL, &
     nNodes, &
@@ -108,14 +107,14 @@ CONTAINS
   SUBROUTINE UpdateFluid_SSPRK_MF &
     ( t, dt, MF_uGF, MF_uCF, MF_uDF )
 
-    REAL(DP),             INTENT(in)    :: t     (0:amrex_max_level)
-    REAL(DP),             INTENT(in)    :: dt    (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    REAL(DP),             INTENT(in)    :: t     (0:nLevels-1)
+    REAL(DP),             INTENT(in)    :: dt    (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
-    TYPE(amrex_multifab) :: MF_U(1:nStages,0:amrex_max_level)
-    TYPE(amrex_multifab) :: MF_D(1:nStages,0:amrex_max_level)
+    TYPE(amrex_multifab) :: MF_U(1:nStages,0:nLevels-1)
+    TYPE(amrex_multifab) :: MF_D(1:nStages,0:nLevels-1)
 
     INTEGER :: iS, jS, nComp
     INTEGER :: iLevel
@@ -126,7 +125,7 @@ CONTAINS
 
     DO iS = 1, nStages
 
-      DO iLevel = 0, amrex_max_level
+      DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
                ( MF_U(iS,iLevel), MF_uCF(iLevel) % BA, &
@@ -146,7 +145,7 @@ CONTAINS
 
       DO jS = 1, iS-1
 
-        DO iLevel = 0, amrex_max_level
+        DO iLevel = 0, nLevels-1
 
           IF( a_SSPRK(iS,jS) .NE. Zero ) &
             CALL MF_U(iS,iLevel) &
@@ -178,7 +177,7 @@ CONTAINS
 
     DO iS = 1, nStages
 
-      DO iLevel = 0, amrex_max_level
+      DO iLevel = 0, nLevels-1
 
         IF( w_SSPRK(iS) .NE. Zero ) &
           CALL MF_uCF(iLevel) &
@@ -190,7 +189,7 @@ CONTAINS
 
     END DO ! iS
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       DO iS = 1, nStages
 

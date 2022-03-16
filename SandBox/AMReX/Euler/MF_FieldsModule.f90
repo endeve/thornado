@@ -8,8 +8,6 @@ MODULE MF_FieldsModule
   USE amrex_fluxregister_module, ONLY: &
     amrex_fluxregister, &
     amrex_fluxregister_destroy
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
 
   ! --- thornado Modules ---
 
@@ -20,6 +18,8 @@ MODULE MF_FieldsModule
 
   USE MF_KindModule, ONLY: &
     DP
+  USE InputParsingModule, ONLY: &
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -57,15 +57,15 @@ CONTAINS
 
   SUBROUTINE CreateFields_MF
 
-    ALLOCATE( MF_uGF(0:amrex_max_level) )
-    ALLOCATE( MF_uCF(0:amrex_max_level) )
-    ALLOCATE( MF_uPF(0:amrex_max_level) )
-    ALLOCATE( MF_uAF(0:amrex_max_level) )
-    ALLOCATE( MF_uDF(0:amrex_max_level) )
+    ALLOCATE( MF_uGF(0:nLevels-1) )
+    ALLOCATE( MF_uCF(0:nLevels-1) )
+    ALLOCATE( MF_uPF(0:nLevels-1) )
+    ALLOCATE( MF_uAF(0:nLevels-1) )
+    ALLOCATE( MF_uDF(0:nLevels-1) )
 
-    ALLOCATE( FluxRegister(0:amrex_max_level) )
+    ALLOCATE( FluxRegister(0:nLevels-1) )
 
-    ALLOCATE( MF_OffGridFlux_Euler(0:amrex_max_level,1:nCF) )
+    ALLOCATE( MF_OffGridFlux_Euler(0:nLevels-1,1:nCF) )
 
   END SUBROUTINE CreateFields_MF
 
@@ -76,7 +76,7 @@ CONTAINS
 
     DEALLOCATE( MF_OffGridFlux_Euler )
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
 

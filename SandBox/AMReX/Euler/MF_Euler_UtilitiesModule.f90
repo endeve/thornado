@@ -11,8 +11,6 @@ MODULE MF_Euler_UtilitiesModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_amrcore_module, ONLY: &
-    amrex_max_level
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
@@ -43,6 +41,7 @@ MODULE MF_Euler_UtilitiesModule
     DP, &
     One
   USE InputParsingModule, ONLY: &
+    nLevels, &
     UseTiling, &
     swX, &
     nX, &
@@ -73,9 +72,9 @@ CONTAINS
   SUBROUTINE ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     TYPE(amrex_multifab), INTENT(in)    :: &
-      MF_uGF(0:amrex_max_level), MF_uCF(0:amrex_max_level)
+      MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
-      MF_uPF(0:amrex_max_level), MF_uAF(0:amrex_max_level)
+      MF_uPF(0:nLevels-1), MF_uAF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -92,7 +91,7 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -171,10 +170,10 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Euler_MF &
     ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:amrex_max_level), &
-                                         MF_uCF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1), &
+                                         MF_uCF(0:nLevels-1)
     REAL(DP),             INTENT(in)  :: CFL
-    REAL(DP),             INTENT(out) :: TimeStepMin(0:amrex_max_level)
+    REAL(DP),             INTENT(out) :: TimeStepMin(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -187,13 +186,13 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
-    REAL(DP) :: TimeStep(0:amrex_max_level)
+    REAL(DP) :: TimeStep(0:nLevels-1)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
     TimeStepMin = HUGE( One )
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -250,7 +249,7 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStepMin, amrex_max_level+1 )
+    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 

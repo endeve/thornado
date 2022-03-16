@@ -7,7 +7,6 @@ MODULE MF_Euler_SlopeLimiterModule
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_amrcore_module, ONLY: &
-    amrex_max_level, &
     amrex_geom
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
@@ -37,6 +36,7 @@ MODULE MF_Euler_SlopeLimiterModule
     amrex2thornado_X, &
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
+    nLevels, &
     swX, &
     UseSlopeLimiter, &
     UseTiling, &
@@ -75,14 +75,14 @@ CONTAINS
   SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels &
     ( Time, MF_uGF, MF_uCF, MF_uDF )
 
-    REAL(DP),             INTENT(in)    :: Time  (0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    REAL(DP),             INTENT(in)    :: Time  (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
     INTEGER :: iLevel
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels-1
 
       CALL ApplySlopeLimiter_Euler_MF_SingleLevel &
              ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF )
@@ -97,9 +97,9 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:amrex_max_level)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:amrex_max_level)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX

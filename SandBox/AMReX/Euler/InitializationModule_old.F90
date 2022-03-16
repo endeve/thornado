@@ -16,8 +16,7 @@ MODULE InitializationModule
     amrex_amrcore_init, &
     amrex_init_virtual_functions, &
     amrex_init_from_scratch, &
-    amrex_ref_ratio, &
-    amrex_max_level
+    amrex_ref_ratio
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
@@ -119,6 +118,7 @@ MODULE InitializationModule
     DestroyMesh_MF
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
+    nLevels, &
     swX, &
     StepNo, &
     dt, &
@@ -295,10 +295,10 @@ CONTAINS
              ClearLevel, &
              ErrorEstimate )
 
-    ALLOCATE( StepNo(0:amrex_max_level) )
-    ALLOCATE( dt    (0:amrex_max_level) )
-    ALLOCATE( t_old (0:amrex_max_level) )
-    ALLOCATE( t_new (0:amrex_max_level) )
+    ALLOCATE( StepNo(0:nLevels-1) )
+    ALLOCATE( dt    (0:nLevels-1) )
+    ALLOCATE( t_old (0:nLevels-1) )
+    ALLOCATE( t_new (0:nLevels-1) )
 
     StepNo = 0
     dt     = 0.0_DP
