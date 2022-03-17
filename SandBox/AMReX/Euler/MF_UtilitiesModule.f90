@@ -23,8 +23,6 @@ MODULE MF_UtilitiesModule
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_SqrtGm
-  USE FluidFieldsModule, ONLY: &
-    nCF
 
   ! --- Local Modules ---
 
@@ -223,33 +221,33 @@ CONTAINS
   END SUBROUTINE ShowVariableFromMultiFab_Vector
 
 
-  SUBROUTINE MultiplyWithMetric( MF_uGF, MF_uCF, Power )
+  SUBROUTINE MultiplyWithMetric( MF_uGF, MF, nFd, Power )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-    INTEGER             , INTENT(in)    :: Power
+    TYPE(amrex_multifab), INTENT(inout) :: MF
+    INTEGER             , INTENT(in)    :: nFd, Power
 
-    INTEGER                       :: iX1, iX2, iX3, iNX, iCF
+    INTEGER                       :: iX1, iX2, iX3, iNX, iFd
     INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_U(4), hi_U(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: U(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: F(:,:,:,:)
     REAL(DP)                      :: G_K(nDOFX,nGF)
-    REAL(DP)                      :: U_K(nDOFX,nCF)
+    REAL(DP)                      :: F_K(nDOFX,nFd)
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
       G => MF_uGF % DataPtr( MFI )
-      U => MF_uCF % DataPtr( MFI )
+      F => MF     % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
-      lo_U = LBOUND( U ); hi_U = UBOUND( U )
+      lo_F = LBOUND( F ); hi_F = UBOUND( F )
 
       DO iX3 = BX % lo(3), BX % hi(3)
       DO iX2 = BX % lo(2), BX % hi(2)
@@ -258,13 +256,13 @@ CONTAINS
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-        U_K(1:nDOFX,1:nCF) &
-          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nCF ] )
+        F_K(1:nDOFX,1:nFd) &
+          = RESHAPE( F(iX1,iX2,iX3,lo_F(4):hi_F(4)), [ nDOFX, nFd ] )
 
-        DO iCF = 1, nCF
+        DO iFd = 1, nFd
         DO iNX = 1, nDOFX
 
-          U_K(iNX,iCF) = U_K(iNX,iCF) * G_K(iNX,iGF_SqrtGm)**( Power )
+          F_K(iNX,iFd) = F_K(iNX,iFd) * G_K(iNX,iGF_SqrtGm)**( Power )
 
         END DO
         END DO
