@@ -20,6 +20,11 @@ MODULE MF_UtilitiesModule
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_SqrtGm
+  USE FluidFieldsModule, ONLY: &
+    nCF
 
   ! --- Local Modules ---
 
@@ -42,11 +47,12 @@ MODULE MF_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: ShowVariableFromMultiFab
+  PUBLIC :: MultiplyWithMetric
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
   PUBLIC :: thornado2amrex_X_F
   PUBLIC :: amrex2thornado_X_F
-  PUBLIC :: ShowVariableFromMultiFab
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -215,6 +221,63 @@ CONTAINS
     END DO
 
   END SUBROUTINE ShowVariableFromMultiFab_Vector
+
+
+  SUBROUTINE MultiplyWithMetric( MF_uGF, MF_uCF, Power )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    INTEGER             , INTENT(in)    :: Power
+
+    INTEGER                       :: iX1, iX2, iX3, iNX, iCF
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_U(4), hi_U(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U(:,:,:,:)
+    REAL(DP)                      :: G_K(nDOFX,nGF)
+    REAL(DP)                      :: U_K(nDOFX,nCF)
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      G => MF_uGF % DataPtr( MFI )
+      U => MF_uCF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      lo_G = LBOUND( G ); hi_G = UBOUND( G )
+      lo_U = LBOUND( U ); hi_U = UBOUND( U )
+
+      DO iX3 = BX % lo(3), BX % hi(3)
+      DO iX2 = BX % lo(2), BX % hi(2)
+      DO iX1 = BX % lo(1), BX % hi(1)
+
+        G_K(1:nDOFX,1:nGF) &
+          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+        U_K(1:nDOFX,1:nCF) &
+          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nCF ] )
+
+        DO iCF = 1, nCF
+        DO iNX = 1, nDOFX
+
+          U_K(iNX,iCF) = U_K(iNX,iCF) * G_K(iNX,iGF_SqrtGm)**( Power )
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE MultiplyWithMetric
 
 
   SUBROUTINE amrex2thornado_X &
