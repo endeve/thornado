@@ -77,7 +77,6 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
 
   PUBLIC :: InitializeFields_Euler_MF
 
-
 CONTAINS
 
 

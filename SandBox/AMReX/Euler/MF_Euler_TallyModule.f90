@@ -88,7 +88,6 @@ MODULE MF_Euler_TallyModule
   REAL(DP), ALLOCATABLE :: Energy_OffGrid (:)
   REAL(DP), ALLOCATABLE :: Energy_Change  (:)
 
-
 CONTAINS
 
 

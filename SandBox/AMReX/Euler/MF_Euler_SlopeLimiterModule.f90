@@ -68,7 +68,6 @@ MODULE MF_Euler_SlopeLimiterModule
     MODULE PROCEDURE ApplySlopeLimiter_Euler_MF_SingleLevel
   END INTERFACE ApplySlopeLimiter_Euler_MF
 
-
 CONTAINS
 
 

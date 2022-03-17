@@ -102,7 +102,6 @@ MODULE InputParsingModule
 
   CHARACTER(:), ALLOCATABLE :: NodalDataFileName
 
-
 CONTAINS
 
 

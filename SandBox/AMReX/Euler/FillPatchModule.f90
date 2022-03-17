@@ -61,7 +61,6 @@ MODULE FillPatchModule
     MODULE PROCEDURE FillCoarsePatch_SingleTime
   END INTERFACE FillCoarsePatch
 
-
 CONTAINS
 
 

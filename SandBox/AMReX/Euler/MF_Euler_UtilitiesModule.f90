@@ -65,7 +65,6 @@ MODULE MF_Euler_UtilitiesModule
   PUBLIC :: ComputeFromConserved_Euler_MF
   PUBLIC :: ComputeTimeStep_Euler_MF
 
-
 CONTAINS
 
 

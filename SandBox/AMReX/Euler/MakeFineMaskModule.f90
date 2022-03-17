@@ -39,7 +39,6 @@ MODULE MakeFineMaskModule
 
   END INTERFACE
 
-
 CONTAINS
 
 

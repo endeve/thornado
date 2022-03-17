@@ -53,7 +53,6 @@ MODULE MF_UtilitiesModule
     MODULE PROCEDURE ShowVariableFromMultiFab_Vector
   END INTERFACE ShowVariableFromMultiFab
 
-
 CONTAINS
 
 

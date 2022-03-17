@@ -81,7 +81,6 @@ MODULE InputOutputModuleAMReX
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
 
-
 CONTAINS
 
 

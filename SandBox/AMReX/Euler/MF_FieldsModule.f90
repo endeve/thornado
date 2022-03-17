@@ -51,7 +51,6 @@ MODULE MF_FieldsModule
   PUBLIC :: CreateFields_MF
   PUBLIC :: DestroyFields_MF
 
-
 CONTAINS
 
 

@@ -43,7 +43,6 @@ MODULE MF_Euler_BoundaryConditionsModule
     PROCEDURE :: Euler_GetBC => EdgeMap_Euler_GetBC
   END TYPE EdgeMap
 
-
 CONTAINS
 
 

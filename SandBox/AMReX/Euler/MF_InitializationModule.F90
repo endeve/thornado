@@ -38,7 +38,6 @@ MODULE MF_InitializationModule
 
   PUBLIC :: InitializeFields_MF
 
-
 CONTAINS
 
 

@@ -84,7 +84,6 @@ MODULE MF_Euler_TimersModule
 
   REAL(DP), PARAMETER :: Hundred = 100.0_DP
 
-
 CONTAINS
 
 

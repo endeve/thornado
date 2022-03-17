@@ -23,7 +23,6 @@ MODULE AverageDownModule
   PUBLIC :: AverageDown
   PUBLIC :: AverageDownTo
 
-
 CONTAINS
 
 

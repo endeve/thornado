@@ -52,7 +52,6 @@ MODULE MF_Euler_PositivityLimiterModule
     MODULE PROCEDURE ApplyPositivityLimiter_Euler_MF_SingleLevel
   END INTERFACE ApplyPositivityLimiter_Euler_MF
 
-
 CONTAINS
 
 
