@@ -110,7 +110,7 @@ CONTAINS
     LOGICAL                         :: WriteFF_P
     LOGICAL                         :: WriteFF_A
     LOGICAL                         :: WriteFF_D
-    INTEGER                         :: iComp, iOS, iLevel, nF
+    INTEGER                         :: iFd, iOS, iLevel, nF
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
@@ -182,10 +182,10 @@ CONTAINS
 
     IF( WriteGF )THEN
 
-      DO iComp = 1, nGF
+      DO iFd = 1, nGF
 
         CALL amrex_string_build &
-               ( VarNames( iComp + iOS ), TRIM( ShortNamesGF(iComp) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesGF(iFd) ) )
 
       END DO
 
@@ -195,10 +195,10 @@ CONTAINS
 
     IF( WriteFF_C )THEN
 
-      DO iComp = 1, nCF
+      DO iFd = 1, nCF
 
         CALL amrex_string_build &
-               ( VarNames( iComp + iOS ), TRIM( ShortNamesCF(iComp) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesCF(iFd) ) )
 
       END DO
 
@@ -208,10 +208,10 @@ CONTAINS
 
     IF( WriteFF_P )THEN
 
-      DO iComp = 1, nPF
+      DO iFd = 1, nPF
 
         CALL amrex_string_build &
-               ( VarNames( iComp + iOS ), TRIM( ShortNamesPF(iComp) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesPF(iFd) ) )
 
       END DO
 
@@ -221,10 +221,10 @@ CONTAINS
 
     IF( WriteFF_A )THEN
 
-      DO iComp = 1, nAF
+      DO iFd = 1, nAF
 
         CALL amrex_string_build &
-               ( VarNames( iComp + iOS ), TRIM( ShortNamesAF(iComp) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesAF(iFd) ) )
 
       END DO
 
@@ -234,10 +234,10 @@ CONTAINS
 
     IF( WriteFF_D )THEN
 
-      DO iComp = 1, nDF
+      DO iFd = 1, nDF
 
         CALL amrex_string_build &
-               ( VarNames( iComp + iOS ), TRIM( ShortNamesDF(iComp) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesDF(iFd) ) )
 
       END DO
 
@@ -328,19 +328,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverage_MF &
-    ( nFields, MF_uGF, MF, iOS, Field, MF_plt )
+    ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
-    INTEGER,              INTENT(in)    :: nFields, iOS
+    INTEGER,              INTENT(in)    :: nFd, iOS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(in)    :: MF
     CHARACTER(2),         INTENT(in)    :: Field
     TYPE(amrex_multifab), INTENT(inout) :: MF_plt
 
-    INTEGER                       :: iX1, iX2, iX3, iComp
+    INTEGER                       :: iX1, iX2, iX3, iFd
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
     REAL(DP)                      :: G_K(nDOFX,nGF)
-    REAL(DP)                      :: U_K(nDOFX,nFields)
+    REAL(DP)                      :: U_K(nDOFX,nFd)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
@@ -367,13 +367,13 @@ CONTAINS
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-        U_K(1:nDOFX,1:nFields) &
-          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nFields ] )
+        U_K(1:nDOFX,1:nFd) &
+          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nFd ] )
 
-        DO iComp = 1, nFields
+        DO iFd = 1, nFd
 
-          U_plt(iX1,iX2,iX3,iComp+iOS) &
-            = SUM( WeightsX_q * U_K(:,iComp) * G_K(:,iGF_SqrtGm) ) &
+          U_plt(iX1,iX2,iX3,iFd+iOS) &
+            = SUM( WeightsX_q * U_K(:,iFd) * G_K(:,iGF_SqrtGm) ) &
                 / SUM( WeightsX_q * G_K(:,iGF_SqrtGm) )
 
         END DO
