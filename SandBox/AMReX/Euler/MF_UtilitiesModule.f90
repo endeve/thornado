@@ -33,7 +33,8 @@ MODULE MF_UtilitiesModule
     iCoarse_MFM
   USE InputParsingModule, ONLY: &
     nLevels, &
-    UseTiling
+    UseTiling, &
+    swX
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -249,9 +250,9 @@ CONTAINS
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_F = LBOUND( F ); hi_F = UBOUND( F )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
+      DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
+      DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
