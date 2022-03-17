@@ -259,21 +259,18 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-    IF( iLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
-
-    END IF
+    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
+    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
 
     CALL FillPatch( iLevel, Time, MF_uGF )
     CALL FillPatch( iLevel, Time, MF_uCF )
     CALL FillPatch( iLevel, Time, MF_uDF )
 
+    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, -1 )
+    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, -1 )
+
     IF( iLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric( MF_uGF(iLevel  ), MF_uGF(iLevel  ), nGF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel  ), MF_uCF(iLevel  ), nCF, -1 )
       CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, -1 )
       CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, -1 )
 

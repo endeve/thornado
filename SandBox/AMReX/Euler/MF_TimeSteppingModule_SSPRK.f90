@@ -146,6 +146,13 @@ CONTAINS
 
         CALL MultiplyWithMetric( MF_uGF(iLevel), MF_U(iS,iLevel), nCF, -1 )
 
+        IF( iLevel .GT. 0 )THEN
+
+          CALL MultiplyWithMetric &
+                 ( MF_uGF(iLevel-1), MF_U(iS,iLevel-1), nCF, -1 )
+
+        END IF
+
       END DO ! iLevel
 
       DO jS = 1, iS-1
