@@ -40,6 +40,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     FillPatch
   USE RefluxModule_Euler, ONLY: &
     Reflux_Euler_MF
+  USE MF_UtilitiesModule, ONLY: &
+    MultiplyWithMetric
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -138,7 +140,11 @@ CONTAINS
 
         CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nComp, 0 )
 
+        CALL MultiplyWithMetric( MF_uGF(iLevel), MF_U(iS,iLevel), nCF, +1 )
+
         CALL FillPatch( iLevel, t(iLevel), MF_U(iS,:) )
+
+        CALL MultiplyWithMetric( MF_uGF(iLevel), MF_U(iS,iLevel), nCF, -1 )
 
       END DO ! iLevel
 
@@ -168,7 +174,7 @@ CONTAINS
         CALL ComputeIncrement_Euler_MF &
                ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
-        CALL Reflux_Euler_MF( MF_D(iS,:) )
+        CALL Reflux_Euler_MF( MF_uGF, MF_D(iS,:) )
 
       END IF ! a(:,iS) .NE. Zero OR w(iS) .NE. Zero
 

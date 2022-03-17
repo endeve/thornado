@@ -34,13 +34,13 @@ MODULE MF_Euler_SlopeLimiterModule
     DP
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X
+    thornado2amrex_X, &
+    MultiplyWithMetric
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
     UseSlopeLimiter, &
-    UseTiling, &
-    do_reflux
+    UseTiling
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -50,8 +50,6 @@ MODULE MF_Euler_SlopeLimiterModule
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
-  USE AverageDownModule, ONLY: &
-    AverageDownTo
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -123,9 +121,25 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
+    IF( iLevel .GT. 0 )THEN
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
+
+    END IF
+
     CALL FillPatch( iLevel, Time, MF_uGF )
     CALL FillPatch( iLevel, Time, MF_uCF )
     CALL FillPatch( iLevel, Time, MF_uDF )
+
+    IF( iLevel .GT. 0 )THEN
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel  ), MF_uGF(iLevel  ), nGF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel  ), MF_uCF(iLevel  ), nCF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, -1 )
+
+    END IF
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -200,13 +214,6 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
-
-    IF( iLevel .GT. 0 .AND. do_reflux )THEN
-
-      CALL AverageDownTo( iLevel-1, MF_uCF )
-      CALL AverageDownTo( iLevel-1, MF_uDF )
-
-    END IF
 
     CALL DestroyMesh_MF( MeshX )
 

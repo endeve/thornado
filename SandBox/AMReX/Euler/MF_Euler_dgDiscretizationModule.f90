@@ -66,7 +66,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex2thornado_X, &
     thornado2amrex_X, &
     thornado2amrex_X_F, &
-    amrex2thornado_X_F
+    amrex2thornado_X_F, &
+    MultiplyWithMetric
   USE MF_FieldsModule, ONLY: &
     FluxRegister
   USE InputParsingModule, ONLY: &
@@ -258,9 +259,25 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
+    IF( iLevel .GT. 0 )THEN
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
+
+    END IF
+
     CALL FillPatch( iLevel, Time, MF_uGF )
     CALL FillPatch( iLevel, Time, MF_uCF )
     CALL FillPatch( iLevel, Time, MF_uDF )
+
+    IF( iLevel .GT. 0 )THEN
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel  ), MF_uGF(iLevel  ), nGF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel  ), MF_uCF(iLevel  ), nCF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, -1 )
+
+    END IF
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 

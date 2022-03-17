@@ -33,10 +33,7 @@ MODULE MF_Euler_PositivityLimiterModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UsePositivityLimiter, &
-    do_reflux, &
     UseTiling
-  USE AverageDownModule, ONLY: &
-    AverageDownTo
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -157,13 +154,6 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
-
-    IF( iLevel .GT. 0 .AND. do_reflux )THEN
-
-      CALL AverageDownTo( iLevel-1, MF_uCF )
-      CALL AverageDownTo( iLevel-1, MF_uDF )
-
-    END IF
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel
 
