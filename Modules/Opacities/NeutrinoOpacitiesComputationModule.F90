@@ -96,7 +96,6 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: f0_Max   = One - EPSILON( One )
 
-  REAL(DP), PARAMETER :: hbarMeVs = 6.582119569d-22
   REAL(DP), PARAMETER :: C_A      = -1.26d0/2.0d0 ! C_A from HR98
   REAL(DP), PARAMETER :: G_F      = 1.166d-11 ! G_F from HR98 in [MeV**-2]
   REAL(DP), PARAMETER :: nb_14    = AvogadroConstantMKS * 1d14
@@ -1257,7 +1256,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Brem &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, S_Sigma )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, S_sigma )
 
     ! --- Brem Opacities (Multiple D,T) ---
 
@@ -1266,7 +1265,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(out) :: S_Sigma(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: S_sigma(iE_B:,iE_B:,iX_B:)
 
     INTEGER  :: iX, iE1, iE2
     REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions
@@ -1277,11 +1276,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Xp, Xn, LogT_P, LogDX_P, S_Sigma ) &
+    !$OMP MAP( alloc: Xp, Xn, LogT_P, LogDX_P, S_sigma ) &
     !$OMP MAP( to: D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Xp, Xn, LogT_P, LogDX_P, S_Sigma ) &
+    !$ACC CREATE( Xp, Xn, LogT_P, LogDX_P, S_sigma ) &
     !$ACC COPYIN( D, T, Y )
 #endif
 
@@ -1312,16 +1311,16 @@ CONTAINS
 
     CALL SumLogInterpolateSingleVariable_2D2D_Custom_Aligned &
            ( LogDX_P, LogT_P, LogDs_T, LogTs_T, Alpha_Brem, &
-             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), S_Sigma )
+             OS_Brem(1,1), Brem_AT(:,:,:,:,1,1), S_sigma )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: Xp, Xn, LogT_P, LogDX_P, D, T, Y ) &
-    !$OMP MAP( from: S_Sigma )
+    !$OMP MAP( from: S_sigma )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( Xp, Xn, LogT_P, LogDX_P, D, T, Y ) &
-    !$ACC COPYOUT( S_Sigma )
+    !$ACC COPYOUT( S_sigma )
 
     !$ACC WAIT(1)
 #endif
@@ -1330,15 +1329,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP MAP( from: S_Sigma )
+    !$OMP MAP( from: S_sigma )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC COPYOUT( S_Sigma )
+    !$ACC COPYOUT( S_sigma )
 #endif
     DO iX = iX_B, iX_E
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE_E
-      S_Sigma(iE1,iE2,iX) = Zero
+      S_sigma(iE1,iE2,iX) = Zero
     END DO
     END DO
     END DO
@@ -1349,7 +1348,7 @@ CONTAINS
 
   
   SUBROUTINE ComputeNeutrinoOpacityRates_Brem &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, S_Sigma, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, S_sigma, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -1359,7 +1358,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: W2     (iE_B:)
     REAL(DP), INTENT(in)  :: J      (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(in)  :: S_Sigma(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: S_sigma(iE_B:,iE_B:,iX_B:)
     REAL(DP), INTENT(out) :: Eta    (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(out) :: Chi    (iE_B:,iS_B:,iX_B:)
 
@@ -1370,12 +1369,12 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
-    !$OMP MAP( to: S_Sigma, W2, J, J0 ) &
+    !$OMP MAP( to: S_sigma, W2, J, J0 ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
-    !$ACC COPYIN( S_Sigma, W2, J, J0 ) &
+    !$ACC COPYIN( S_sigma, W2, J, J0 ) &
     !$ACC COPYOUT( Eta, Chi )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
@@ -1396,7 +1395,7 @@ CONTAINS
         DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
-        Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+        Phi_0_Ann = S_sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
         Phi_0_Pro = Phi_0_Ann * DetBal
 
         SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )

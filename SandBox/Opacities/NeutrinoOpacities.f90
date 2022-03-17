@@ -40,11 +40,7 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_Pair, &
     ComputeNeutrinoOpacityRates_Pair, &
     ComputeNeutrinoOpacities_Brem, &
-    ComputeNeutrinoOpacityRates_Brem, &
-    Brem_const, &
-    UnitBrem, &
-    UnitPair, &
-    UnitNES
+    ComputeNeutrinoOpacityRates_Brem
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -312,7 +308,7 @@ write(*,*) 'Y = ', Y(1)
   Timer_Compute_Brem = MPI_WTIME()
 
   CALL ComputeNeutrinoOpacities_Brem &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, S_sigma )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, S_sigma )
 
   CALL ComputeNeutrinoOpacityRates_Brem &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &

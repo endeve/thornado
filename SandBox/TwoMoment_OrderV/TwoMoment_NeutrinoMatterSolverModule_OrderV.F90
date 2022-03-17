@@ -122,7 +122,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0, H_II_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0, J_II_0
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_sigma
 
   ! --- Least-squares scratch arrays ---
 
@@ -165,7 +165,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0_T, H_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0_T, J_II_0_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_sigma_T
 
 CONTAINS
 
@@ -273,7 +273,7 @@ CONTAINS
     ALLOCATE(  H_II_0(nE_G,nE_G,nX_G) )
     ALLOCATE(   J_I_0(nE_G,nE_G,nX_G) )
     ALLOCATE(  J_II_0(nE_G,nE_G,nX_G) )
-    ALLOCATE( S_Sigma(nE_G,nE_G,nX_G) )
+    ALLOCATE( S_sigma(nE_G,nE_G,nX_G) )
 
     ALLOCATE( D_T(nX_G) )
     ALLOCATE( T_T(nX_G) )
@@ -297,7 +297,7 @@ CONTAINS
     ALLOCATE(  H_II_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(   J_I_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(  J_II_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE( S_Sigma_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( S_sigma_T(nE_G,nE_G,nX_G) )
 
     ALLOCATE(      Chi_Brem(     nE_G,nX_G,nSpecies) )
     ALLOCATE(      Eta_Brem(     nE_G,nX_G,nSpecies) )
@@ -345,14 +345,14 @@ CONTAINS
     !$OMP             Chi_NES, Eta_NES, &
     !$OMP             Chi_Pair, Eta_Pair, &
     !$OMP             Chi_Brem, Eta_Brem, &
-    !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
+    !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, S_sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, J_T, &
     !$OMP             J0_T, Sigma_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
     !$OMP             Chi_Pair_T, Eta_Pair_T, &
     !$OMP             Chi_Brem_T, Eta_Brem_T, &
-    !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
+    !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_sigma_T, &
     !$OMP             PackIndex_outer, UnpackIndex_outer, &
     !$OMP             AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP             BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -382,14 +382,14 @@ CONTAINS
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
     !$ACC         Chi_Brem, Eta_Brem, &
-    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
+    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, S_sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, J_T, &
     !$ACC         J0_T, Sigma_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
     !$ACC         Chi_Brem_T, Eta_Brem_T, &
-    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
+    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_sigma_T, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -496,8 +496,8 @@ CONTAINS
       DO iE2 = 1, nE_G
       DO iE1 = 1, nE_G
 
-        S_Sigma  (iE1,iE2,iN_X) = Zero
-        S_Sigma_T(iE1,iE2,iN_X) = Zero
+        S_sigma  (iE1,iE2,iN_X) = Zero
+        S_sigma_T(iE1,iE2,iN_X) = Zero
 
       END DO
       END DO
@@ -582,14 +582,14 @@ CONTAINS
     !$OMP               Chi_NES, Eta_NES, &
     !$OMP               Chi_Pair, Eta_Pair, &
     !$OMP               Chi_Brem, Eta_Brem, &
-    !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
+    !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, S_sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, J_T, &
     !$OMP               J0_T, Sigma_Iso_T, &
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP               Chi_NES_T, Eta_NES_T, &
     !$OMP               Chi_Pair_T, Eta_Pair_T, &
     !$OMP               Chi_Brem_T, Eta_Brem_T, &
-    !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
+    !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_sigma_T, &
     !$OMP               ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
     !$OMP               AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP               BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -618,14 +618,14 @@ CONTAINS
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
     !$ACC         Chi_Brem, Eta_Brem, &
-    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma, &
+    !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, S_sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, J_T, &
     !$ACC         J0_T, Sigma_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
     !$ACC         Chi_Brem_T, Eta_Brem_T, &
-    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T, &
+    !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_sigma_T, &
     !$ACC         ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
     !$ACC         AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC         BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -654,14 +654,14 @@ CONTAINS
     DEALLOCATE( Chi_NES, Eta_NES )
     DEALLOCATE( Chi_Pair, Eta_Pair )
     DEALLOCATE( Chi_Brem, Eta_Brem )
-    DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0, S_Sigma )
+    DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0, S_sigma )
     DEALLOCATE( D_T, T_T, Y_T, E_T, J_T )
     DEALLOCATE( J0_T, Sigma_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
     DEALLOCATE( Chi_NES_T, Eta_NES_T )
     DEALLOCATE( Chi_Pair_T, Eta_Pair_T )
     DEALLOCATE( Chi_Brem_T, Eta_Brem_T )
-    DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_Sigma_T )
+    DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, S_sigma_T )
     DEALLOCATE( ITERATE_outer, PackIndex_outer, UnpackIndex_outer )
     DEALLOCATE( AMAT_outer, GVEC_outer, FVEC_outer )
     DEALLOCATE( BVEC_outer, GVECm_outer, FVECm_outer )
@@ -917,7 +917,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_EmAb_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: S_sigma_P
 
     INTEGER :: nX, nX0, iX, iE, iE1, iE2
 
@@ -954,7 +954,7 @@ CONTAINS
       J_I_0_P     => J_I_0_T    (:,:,1:nX)
       J_II_0_P    => J_II_0_T   (:,:,1:nX)
 
-      S_Sigma_P   => S_Sigma_T  (:,:,1:nX)
+      S_sigma_P   => S_sigma_T  (:,:,1:nX)
 
     ELSE
 
@@ -972,7 +972,7 @@ CONTAINS
       J_I_0_P     => J_I_0    (:,:,:)
       J_II_0_P    => J_II_0   (:,:,:)
 
-      S_Sigma_P   => S_Sigma  (:,:,:)
+      S_sigma_P   => S_sigma  (:,:,:)
 
     END IF
 
@@ -1031,7 +1031,7 @@ CONTAINS
       ! --- Brem Kernels ---
 
       CALL ComputeNeutrinoOpacities_Brem &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, S_Sigma_P )
+             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, S_sigma_P )
 
 
     END IF
@@ -1099,7 +1099,7 @@ CONTAINS
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, &
-                 S_Sigma_P, S_Sigma )
+                 S_sigma_P, S_sigma )
 
       END IF
 
@@ -1123,7 +1123,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Brem_P, Eta_Brem_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: S_sigma_P
 
     INTEGER :: nX, nX0
 
@@ -1162,7 +1162,7 @@ CONTAINS
       J_I_0_P    => J_I_0_T   (:,:,1:nX)
       J_II_0_P   => J_II_0_T  (:,:,1:nX)
 
-      S_Sigma_P  => S_Sigma_T (:,:,1:nX)
+      S_sigma_P  => S_sigma_T (:,:,1:nX)
 
       IF ( nX < nX0 ) THEN
 
@@ -1176,7 +1176,7 @@ CONTAINS
 
         CALL ArrayPack &
                ( nX, UnpackIndex, &
-                 S_Sigma, S_Sigma_P )
+                 S_sigma, S_sigma_P )
 
       END IF
 
@@ -1198,7 +1198,7 @@ CONTAINS
       J_I_0_P    => J_I_0   (:,:,:)
       J_II_0_P   => J_II_0  (:,:,:)
 
-      S_Sigma_P  => S_Sigma (:,:,:)
+      S_sigma_P  => S_sigma (:,:,:)
 
     END IF
 
@@ -1217,7 +1217,7 @@ CONTAINS
     ! --- Brem Emissivities and Opacities ---
 
     CALL ComputeNeutrinoOpacityRates_Brem &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, J_P, J0_P, S_Sigma_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, J_P, J0_P, S_sigma_P, &
              Eta_Brem_P, Chi_Brem_P )
 
 !!$    ! --- Brem Emissivities and Opacities ---
