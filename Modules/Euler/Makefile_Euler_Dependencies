@@ -271,7 +271,7 @@ Euler_TallyModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   UnitsModule.o \
-  Euler_TallyModule_Relativistic.f90
+  Euler_TallyModule_Relativistic.F90
 
 Euler_TallyModule.o: \
   KindModule.o \

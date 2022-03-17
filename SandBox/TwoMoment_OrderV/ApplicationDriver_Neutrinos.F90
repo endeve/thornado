@@ -82,11 +82,8 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
   OpacityTableName_Iso  = ''
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
-  OpacityTableName_NES  = ''
-  !OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
-  OpacityTableName_Pair = ''
-  !OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
-  !OpacityTableName_Brem = ''
+  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
+  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
   OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
   FixedTimeStep = .FALSE.
@@ -97,7 +94,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
     CASE( 'Relaxation' )
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
       nX  = [ 1, 1, 1 ]
@@ -377,7 +374,7 @@ CONTAINS
       InitializeReferenceElement_Lagrange
     USE EquationOfStateModule_TABLE, ONLY: &
       InitializeEquationOfState_TABLE, &
-      MinD, MaxD, MinT, MaxT, MinY, MaxY
+      Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
     USE OpacityModule_TABLE, ONLY: &
       InitializeOpacities_TABLE
     USE TwoMoment_ClosureModule, ONLY: &
@@ -516,17 +513,17 @@ CONTAINS
              Verbose_Option &
                = .TRUE., &
              Min_1_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_D, &
              Min_2_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_T, &
              Min_3_Option &
-               = ( One + 1.0d3 * EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d3 * EPSILON( One ) ) * Min_Y, &
              Max_1_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_D, &
              Max_2_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_T, &
              Max_3_Option &
-               = ( One - 1.0d3 * EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d3 * EPSILON( One ) ) * Max_Y )
 
     ! --- Initialize Troubled Cell Indicator (Two-Moment) ---
 

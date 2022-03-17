@@ -51,24 +51,6 @@ MODULE ProgramInitializationModule
   USE OpacityModule, ONLY: &
     InitializeOpacities, &
     FinalizeOpacities
-  USE GravitySolutionModule, ONLY: &
-    InitializeGravitySolver, &
-    FinalizeGravitySolver
-  USE FluidEvolutionModule, ONLY: &
-    InitializeFluidEvolution, &
-    FinalizeFluidEvolution
-  USE RadiationEvolutionModule, ONLY: &
-    InitializeRadiationEvolution, &
-    FinalizeRadiationEvolution
-  USE RiemannSolverModule, ONLY: &
-    InitializeRiemannSolvers, &
-    FinalizeRiemannSolvers
-  USE FluidRadiationCouplingModule, ONLY: &
-    InitializeFluidRadiationCoupling, &
-    FinalizeFluidRadiationCoupling
-  USE TimeSteppingModule, ONLY: &
-    InitializeTimeStepping, &
-    FinalizeTimeStepping
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -94,13 +76,7 @@ CONTAINS
       nNodes_Option, ActivateUnits_Option, nSpecies_Option, &
       EquationOfState_Option, EquationOfStateTableName_Option, &
       Gamma_IDEAL_Option, Opacity_Option, OpacityTableName_Option, &
-      GravitySolver_Option, PointMass_Option, FluidSolver_Option, &
-      RadiationSolver_Option, FluidRiemannSolver_Option, &
-      RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
-      EvolveGravity_Option, EvolveFluid_Option, EvolveRadiation_Option, &
-      ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
-      ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
-      nStages_SI_RK_Option, IMEX_Scheme_Option, BasicInitialization_Option )
+      BasicInitialization_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -125,26 +101,6 @@ CONTAINS
     REAL(DP),               INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: Opacity_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: OpacityTableName_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: GravitySolver_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: PointMass_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidSolver_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: RadiationSolver_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidRiemannSolver_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
-      RadiationRiemannSolver_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
-      FluidRadiationCoupling_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: EvolveGravity_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: BetaTVB_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: BetaTVD_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: &
-      ApplyPositivityLimiter_Option
-    INTEGER,                INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
-    INTEGER,                INTENT(in), OPTIONAL :: nStages_SI_RK_Option
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: IMEX_Scheme_Option
     LOGICAL,                INTENT(in), OPTIONAL :: BasicInitialization_Option
 
     LOGICAL :: ActivateUnits
@@ -425,72 +381,6 @@ CONTAINS
              OpacityTableName_Option &
                = OpacityTableName_Option )
 
-    ! --- Gravity Solver ---
-
-    CALL InitializeGravitySolver &
-           ( GravitySolver_Option &
-               = GravitySolver_Option, &
-             PointMass_Option &
-               = PointMass_Option )
-
-    ! --- Fluid Solver ---
-
-    CALL InitializeFluidEvolution &
-           ( FluidSolver_Option &
-               = FluidSolver_Option, &
-             ApplySlopeLimiter_Option &
-               = ApplySlopeLimiter_Option, &
-             BetaTVB_Option &
-               = BetaTVB_Option, &
-             BetaTVD_Option &
-               = BetaTVD_Option, &
-             ApplyPositivityLimiter_Option &
-               = ApplyPositivityLimiter_Option )
-
-    ! --- Radiation Solver ---
-
-    CALL InitializeRadiationEvolution &
-           ( RadiationSolver_Option &
-               = RadiationSolver_Option, &
-             ApplySlopeLimiter_Option &
-               = ApplySlopeLimiter_Option, &
-             BetaTVB_Option &
-               = BetaTVB_Option, &
-             BetaTVD_Option &
-               = BetaTVD_Option, &
-             ApplyPositivityLimiter_Option &
-               = ApplyPositivityLimiter_Option )
-
-    ! --- Riemann Solvers ---
-
-    CALL InitializeRiemannSolvers &
-           ( FluidRiemannSolver_Option &
-               = FluidRiemannSolver_Option, &
-             RadiationRiemannSolver_Option &
-               = RadiationRiemannSolver_Option )
-
-    ! --- Fluid-Radiation Solver ---
-
-    CALL InitializeFluidRadiationCoupling &
-           ( FluidRadiationCoupling_Option &
-               = FluidRadiationCoupling_Option )
-
-    ! --- Time Stepping ---
-
-    CALL InitializeTimeStepping &
-           ( EvolveGravity_Option &
-               = EvolveGravity_Option, &
-             EvolveFluid_Option &
-               = EvolveFluid_Option, &
-             EvolveRadiation_Option &
-               = EvolveRadiation_Option, &
-             nStages_SSP_RK_Option &
-               = nStages_SSP_RK_Option, &
-             nStages_SI_RK_Option &
-               = nStages_SI_RK_Option, &
-             IMEX_Scheme_Option &
-               = IMEX_Scheme_Option )
-
   END SUBROUTINE InitializeProgram
 
 
@@ -541,30 +431,6 @@ CONTAINS
     ! --- Opacities ---
 
     CALL FinalizeOpacities
-
-    ! --- Gravity Solver ---
-
-    CALL FinalizeGravitySolver
-
-    ! --- Fluid Solver ---
-
-    CALL FinalizeFluidEvolution
-
-    ! --- Radiation Solver ---
-
-    CALL FinalizeRadiationEvolution
-
-    ! --- Riemann Solvers ---
-
-    CALL FinalizeRiemannSolvers
-
-    ! --- Fluid-Radiation Solver ---
-
-    CALL FinalizeFluidRadiationCoupling
-
-    ! --- Time Stepping ---
-
-    CALL FinalizeTimeStepping
 
     ! --- Device ---
 

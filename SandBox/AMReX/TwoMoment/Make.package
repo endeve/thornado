@@ -40,8 +40,8 @@ F90EXE_sources += ProgramHeaderModule.F90
 f90EXE_sources += QuadratureModule.f90
 f90EXE_sources += LagrangePolynomialsModule.f90
 F90EXE_sources += ReferenceElementModuleX.F90
-f90EXE_sources += ReferenceElementModuleE.f90
-f90EXE_sources += ReferenceElementModuleE_Lagrange.f90
+F90EXE_sources += ReferenceElementModuleE.F90
+F90EXE_sources += ReferenceElementModuleE_Lagrange.F90
 f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
 f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
 F90EXE_sources += ReferenceElementModuleX_Lagrange.F90
@@ -97,6 +97,8 @@ F90EXE_sources += TwoMoment_BoundaryConditionsModule.F90
 
 
 f90EXE_sources += InputOutput.f90
+f90EXE_sources += MF_KindModule.f90
+f90EXE_sources += InputOutputEuler.f90
 f90EXE_sources += MF_UtilitiesModule.f90
 F90EXE_sources += InitializationModule.F90
 F90EXE_sources += MF_InitializationModule.F90

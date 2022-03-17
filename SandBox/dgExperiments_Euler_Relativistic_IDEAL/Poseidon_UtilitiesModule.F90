@@ -338,10 +338,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, D, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, P, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
+    REAL(DP), INTENT(in)    :: P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1
@@ -364,7 +364,7 @@ CONTAINS
       dM &
         = dM &
             + FourPi * dX &
-                 * SUM( WeightsX_q * X1q**2 * D(:,iX1,1,1) )
+                 * SUM( WeightsX_q * X1q**2 * P(:,iX1,1,1,iPF_D) )
 
       EnclosedMass(iX1) = dM
 

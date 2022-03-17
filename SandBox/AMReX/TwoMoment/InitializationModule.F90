@@ -94,6 +94,8 @@ MODULE InitializationModule
   USE FluidFieldsModule,                ONLY: &
     nCF,                     &
     nAF,                     &
+    nDF,                     &
+    nPF,                     &
     CreateFluidFields
   USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
     CreateOpacities,         &
@@ -114,11 +116,15 @@ MODULE InitializationModule
     InitializePositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
     InitializeSlopeLimiter_TwoMoment
+  USE InputOutputEuler,           ONLY: &
+    WriteFieldsAMReX_PlotFile_Euler
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
+    MF_uPF, &
     MF_uAF, &
+    MF_uDF, &
     MF_uPR, &
     MF_uCR
   USE MyAmrModule,                      ONLY: &
@@ -145,7 +151,6 @@ MODULE InitializationModule
     ProgramName,               &
     Scheme,                    &
     CoordSys,                  &
-    StepNo,                    &
     nLevels,                   &
     iRestart,                  &
     MaxGridSizeX,              &
@@ -184,7 +189,10 @@ MODULE InitializationModule
   USE TwoMoment_ClosureModule,                       ONLY: &
     InitializeClosure_TwoMoment
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
-    MF_ComputeFromConserved
+    MF_ComputeFromConserved, &
+    MF_ComputeFromConserved_Euler
+
+
 
   IMPLICIT NONE
   PRIVATE
@@ -252,8 +260,17 @@ CONTAINS
         CALL MF_uCF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
+               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
+        CALL MF_uPF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
                ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
         CALL MF_uAF(iLevel) % SetVal( Zero )
+        
+        CALL amrex_multifab_build &
+               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
+        CALL MF_uAF(iLevel) % SetVal( Zero )
+
 
         CALL amrex_multifab_build &
                ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
@@ -397,14 +414,20 @@ CONTAINS
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
-!  IF (ProgramName == "SineWaveStreaming") THEN
-!    W = 1.0_AR - DOT_PRODUCT(V_0,V_0)
-!    W = 1.0_AR / SQRT(W)
-!    Vad = (1.0_AR + V_0(1) * W ) / ( W + V_0(1) )
-!    t_end = t_end / Vad
-!  END IF
-! 
+             MF_uPR_Option = MF_uPR, &
+             num_Option = 0 )
+
+
+    CALL MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+    CALL WriteFieldsAMReX_PlotFile_Euler &
+             ( t(0), StepNo, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF, &
+               num_Option = 0 )
+
 
   END SUBROUTINE InitializeProgram
 

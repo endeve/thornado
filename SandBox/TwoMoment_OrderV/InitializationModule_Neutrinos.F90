@@ -47,8 +47,8 @@ MODULE InitializationModule_Neutrinos
     ComputeThermodynamicStates_Primitive_TABLE, &
     ApplyEquationOfState_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeNeutrinoOpacities_EC_Points, &
-    ComputeEquilibriumDistributions_DG_Points
+    ComputeEquilibriumDistributions_DG, &
+    ComputeNeutrinoOpacities_EC
 
   IMPLICIT NONE
   PRIVATE
@@ -339,10 +339,11 @@ CONTAINS
 
     ! --- Neutrino Absorption Opacities and Equilibrium Distributions ---
 
-    DO iS = 1, nSpecies
+    CALL ComputeNeutrinoOpacities_EC &
+           ( 1, nE, 1, nR, iNuE, iNuE_Bar, E_Nu, D_P, T_P, Y_P, &
+             Chi(:,:,iNuE:iNuE_Bar) )
 
-      CALL ComputeNeutrinoOpacities_EC_Points &
-             ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, iS, Chi(:,:,iS) )
+    DO iS = 1, nSpecies
 
       ! --- Prevent too large drop-off of the opacity -------
       ! --- This is mainly to prevent opacity for Nue_Bar ---
@@ -362,9 +363,8 @@ CONTAINS
 
     END DO
 
-    CALL ComputeEquilibriumDistributions_DG_Points &
-           ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, &
-             fEQ(:,:,iNuE), fEQ(:,:,iNuE_Bar), iNuE, iNuE_Bar )
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE, 1, nR, 1, nSpecies, E_Nu, D_P, T_P, Y_P, fEQ )
 
     ! --- Approximate Neutrino Sphere Radii ---
 
@@ -780,11 +780,10 @@ CONTAINS
     END DO
     END DO
 
-    ALLOCATE( f0_P(nE_P,nX_P,nSpecies) )
+    ALLOCATE( f0_P(nE_P,nSpecies,nX_P) )
 
-    CALL ComputeEquilibriumDistributions_DG_Points &
-           ( 1, nE_P, 1, nX_P, E_P, D_P, T_P, Y_P, &
-             f0_P(:,:,iNuE), f0_P(:,:,iNuE_Bar), iNuE, iNuE_Bar )
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE_P, 1, nSpecies, 1, nX_P, E_P, D_P, T_P, Y_P, f0_P )
 
     MaxError = Zero
 
@@ -803,7 +802,7 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        N0 = f0_P(iE_P,iX_P,iS)
+        N0 = f0_P(iE_P,iS,iX_P)
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 

@@ -48,7 +48,7 @@ module ThornadoInitializationModule
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
     FinalizeEquationOfState_TABLE, &
-    MinD, MaxD, MinT, MaxT, MinY, MaxY
+    Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
   use wlEquationOfStateTableModule, only: &
     EquationOfStateTableType
 #else
@@ -333,17 +333,17 @@ contains
              Verbose_Option &
                = Verbose, &
              Min_1_Option &
-               = ( One + 1.0d-3 * EPSILON( One ) ) * MinD, &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * Min_D, &
              Min_2_Option &
-               = ( One + 1.0d-3 * EPSILON( One ) ) * MinT, &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * Min_T, &
              Min_3_Option &
-               = ( One + 1.0d-3 * EPSILON( One ) ) * MinY, &
+               = ( One + 1.0d-3 * EPSILON( One ) ) * Min_Y, &
              Max_1_Option &
-               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxD, &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * Max_D, &
              Max_2_Option &
-               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxT, &
+               = ( One - 1.0d-3 * EPSILON( One ) ) * Max_T, &
              Max_3_Option &
-               = ( One - 1.0d-3 * EPSILON( One ) ) * MaxY )
+               = ( One - 1.0d-3 * EPSILON( One ) ) * Max_Y )
 #endif
 #endif
 

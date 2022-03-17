@@ -13,10 +13,13 @@ MODULE InputOutput
 
   USE ProgramHeaderModule,     ONLY: &
     nDOFZ,                  &
+    nDOFE,                  &
     iZ_B0,                  &
     iZ_E0
   USE ReferenceElementModule, ONLY: &
     Weights_q
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
   USE RadiationFieldsModule,       ONLY: &
     nCR,    &
     uCR,    &
@@ -41,7 +44,9 @@ MODULE InputOutput
     UnitsDisplay
 
 
-
+  USE MeshModule,              ONLY: &
+    MeshE,          &
+    NodeCoordinate
 
   USE MyAmrModule,                      ONLY: &
     t_end,                     &
@@ -241,17 +246,20 @@ MODULE InputOutput
   END SUBROUTINE ReadCheckpointFile
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, StepNo, MF_uCR_Option, MF_uPR_Option )
+    ( Time, StepNo, MF_uCR_Option, MF_uPR_Option, num_Option )
 
     REAL(AR),             INTENT(in)           :: Time
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCR_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:nLevels-1)
+    INTEGER,              INTENT(in), OPTIONAL :: num_Option
+
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(32)                   :: PlotFileName
     CHARACTER(32)                   :: Names
     CHARACTER(3)                    :: iSC, iZ1C
+    CHARACTER(64)                   :: nm
     LOGICAL                         :: WriteFF_C, WriteFF_P
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3), iS, iZ1
     TYPE(amrex_box)                 :: BX
@@ -313,6 +321,14 @@ MODULE InputOutput
     END IF
 
     PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
+
+    IF( PRESENT( num_Option ) )THEN
+      
+      WRITE(nm,*) num_Option
+      nm = ADJUSTL(nm)
+      PlotFileName = TRIM( BaseFileName ) // '_' // TRIM(nm)
+
+    END IF 
 
     nF = nF * nE * nSpecies
 
@@ -408,13 +424,15 @@ MODULE InputOutput
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
     CHARACTER(2),         INTENT(in)    :: Field
 
-    INTEGER                       :: iX1, iX2, iX3, iComp, iS, iZ1
+    INTEGER                       :: iX1, iX2, iX3, iComp, iS, iZ1, iNodeZ, iNodeE
     INTEGER                       :: lo(4), hi(4)
     REAL(AR)                      :: u_K( nDOFZ, nE, nComp, nSpecies )
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: u  (:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: u_A(:,:,:,:)
+    REAL(AR)                      :: Eq(1:nDOFE), E(1:nDOFZ), V_K
+
 
     CALL amrex_mfiter_build( MFI, MF, tiling = .TRUE. )
 
@@ -436,10 +454,23 @@ MODULE InputOutput
       DO iS = 1, nSpecies
       DO iZ1 = 1, nE
         ! --- Compute cell-average ---
+
+        DO iNodeZ = 1, nDOFZ
+
+          iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+          E(iNodeZ) = NodeCoordinate( MeshE, iZ1, iNodeE )
+          
+          Eq(iNodeE)= NodeCoordinate( MeshE, iZ1, iNodeE )
+ 
+        END DO
+        
+        V_K = SUM( WeightsE * Eq(:)**2 )
+ 
         DO iComp = 1, nComp
 
           u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+( iZ1 - 1 ) * nComp + ( iS - 1 ) * nComp * nE + iOS) &
-            = DOT_PRODUCT( Weights_q(:), u_K(:,iZ1,iComp,iS) )
+            = SUM( Weights_q(:) * u_K(:,iZ1,iComp,iS) * E(:)**2 ) / V_K
 
         END DO
 

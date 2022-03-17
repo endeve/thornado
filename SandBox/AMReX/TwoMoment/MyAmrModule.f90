@@ -40,7 +40,7 @@ MODULE MyAmrModule
     InitializeDataAMReX, &
     FinalizeDataAMReX
   ! --- thornado ---
-  REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
+  REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk, dt_rel
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
   REAL(AR),          ALLOCATABLE :: V_0(:)
   REAL(AR)                       :: CFL
@@ -119,10 +119,12 @@ CONTAINS
     Chi = 0.0_AR
     Sigma = 0.0_AR
     D_0 = 0.0_AR
+    dt_rel = 0.0_AR
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
       CALL PP % get   ( 'dt_chk',           dt_chk )
+      CALL PP % query ( 'dt_rel',           dt_rel )
       CALL PP % get   ( 't_end',            t_end )
       CALL PP % get   ( 'nNodes',           nNodes )
       CALL PP % get   ( 'CFL',              CFL )
@@ -189,6 +191,7 @@ CONTAINS
       t_end  = t_end  * UnitsDisplay % TimeUnit
       dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
       dt_chk = dt_chk * UnitsDisplay % TimeUnit
+      dt_rel = dt_rel * UnitsDisplay % TimeUnit
 
       xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
       xR(1) = xR(1) * UnitsDisplay % LengthX1Unit

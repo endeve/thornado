@@ -34,7 +34,7 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE EquationOfStateModule_TABLE, ONLY: &
-    MinD, MaxD, MinT, MaxT, MinY, MaxY
+    Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, uPF, uAF, uDF, &
     ResetFluidFields_Diagnostic
@@ -444,12 +444,12 @@ PROGRAM ApplicationDriver
   CALL InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
          ( UsePositivityLimiter_Option = UsePositivityLimiter, &
            Verbose_Option = .TRUE., &
-           Min_1_Option = ( One + EPSILON(One) ) * MinD, &
-           Min_2_Option = ( One + EPSILON(One) ) * MinT, &
-           Min_3_Option = ( One + EPSILON(One) ) * MinY, &
-           Max_1_Option = ( One - EPSILON(One) ) * MaxD, &
-           Max_2_Option = ( One - EPSILON(One) ) * MaxT, &
-           Max_3_Option = ( One - EPSILON(One) ) * MaxY )
+           Min_1_Option = ( One + EPSILON(One) ) * Min_D, &
+           Min_2_Option = ( One + EPSILON(One) ) * Min_T, &
+           Min_3_Option = ( One + EPSILON(One) ) * Min_Y, &
+           Max_1_Option = ( One - EPSILON(One) ) * Max_D, &
+           Max_2_Option = ( One - EPSILON(One) ) * Max_T, &
+           Max_3_Option = ( One - EPSILON(One) ) * Max_Y )
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &

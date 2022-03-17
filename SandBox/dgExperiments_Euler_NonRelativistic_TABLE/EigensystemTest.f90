@@ -12,8 +12,8 @@ PROGRAM EigensystemTest
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightCGS
   USE EquationOfStateModule_TABLE, ONLY: &
-    MinD, MinT, MinY, &
-    MaxD, MaxT, MaxY, &
+    Min_D, Min_T, Min_Y, &
+    Max_D, Max_T, Max_Y, &
     InitializeEquationOfState_TABLE, &
     FinalizeEquationOfState_TABLE, &
     ApplyEquationOfState_TABLE, &
@@ -41,12 +41,12 @@ PROGRAM EigensystemTest
   ! --- Set custom table bounds here. ---
 
   !REAL(DP), PARAMETER :: &
-    !MinD = 0.15d14 * Gram / Centimeter**3, &
-    !MaxD = 0.35d14 * Gram / Centimeter**3, &
-    !MinT = 0.70d11 * Kelvin, &
-    !MaxT = 0.85d11 * Kelvin, &
-    !MinY = 0.15, &
-    !MaxY = 0.15
+    !Min_D = 0.15d14 * Gram / Centimeter**3, &
+    !Max_D = 0.35d14 * Gram / Centimeter**3, &
+    !Min_T = 0.70d11 * Kelvin, &
+    !Max_T = 0.85d11 * Kelvin, &
+    !Min_Y = 0.15, &
+    !Max_Y = 0.15
 
   REAL(DP), DIMENSION(nPoints) :: &
     D, T, Y, Ne, P, E,            &

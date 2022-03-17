@@ -9,6 +9,7 @@ MODULE TwoMoment_TimersModule_OrderV
   PRIVATE
 
   REAL(DP), PUBLIC :: Timer_Total
+  REAL(DP), PUBLIC :: Timer_IMEX
   REAL(DP), PUBLIC :: Timer_Streaming
   REAL(DP), PUBLIC :: Timer_Streaming_Permute
   REAL(DP), PUBLIC :: Timer_Streaming_LinearAlgebra
@@ -75,6 +76,7 @@ CONTAINS
   SUBROUTINE InitializeTimers
 
     Timer_Total                          = Zero
+    Timer_IMEX                           = Zero
 
     Timer_Streaming                      = Zero
     Timer_Streaming_Permute              = Zero
@@ -150,6 +152,8 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       'Timer_Total                              :', Timer_Total                         , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_IMEX                             :', Timer_IMEX                          , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Streaming                        :', Timer_Streaming                     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &

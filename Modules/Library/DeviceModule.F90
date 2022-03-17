@@ -6,7 +6,7 @@ MODULE DeviceModule
 
 #if defined(THORNADO_CUDA)
   USE CudaModule, ONLY: &
-    stream, &
+    cuda_stream=>stream, &
     cudaGetDeviceCount, &
     cudaSetDevice, &
     cudaStreamCreate, &
@@ -26,7 +26,7 @@ MODULE DeviceModule
     cusparseSetStream
 #elif defined(THORNADO_HIP)
   USE HipModule, ONLY: &
-    stream, &
+    hip_stream=>stream, &
     hipGetDeviceCount, &
     hipSetDevice, &
     hipStreamCreate, &
@@ -98,6 +98,7 @@ MODULE DeviceModule
   INCLUDE 'mpif.h'
 
   INTEGER, PUBLIC :: mydevice, ndevices
+  TYPE(C_PTR), POINTER, PUBLIC :: stream
 
   INTERFACE dev_ptr
     MODULE PROCEDURE dev_ptr_int
@@ -109,9 +110,12 @@ MODULE DeviceModule
     MODULE PROCEDURE QueryOnGPU_3D_DP_1
     MODULE PROCEDURE QueryOnGPU_3D_DP_2
     MODULE PROCEDURE QueryOnGPU_3D_DP_3
+    MODULE PROCEDURE QueryOnGPU_3D_DP_5
+    MODULE PROCEDURE QueryOnGPU_3D_DP_6
     MODULE PROCEDURE QueryOnGPU_2D_DP_1
     MODULE PROCEDURE QueryOnGPU_2D_DP_2
     MODULE PROCEDURE QueryOnGPU_2D_DP_3
+    MODULE PROCEDURE QueryOnGPU_2D_DP_4
     MODULE PROCEDURE QueryOnGPU_DP_1
     MODULE PROCEDURE QueryOnGPU_DP_2
     MODULE PROCEDURE QueryOnGPU_DP_3
@@ -169,18 +173,20 @@ CONTAINS
     ierr = cublasCreate_v2( cublas_handle )
     ierr = cusparseCreate( cusparse_handle )
     ierr = cusolverDnCreate( cusolver_handle )
+    stream => cuda_stream
 #elif defined(THORNADO_HIP)
     CALL hipblasCheck( hipblasCreate( hipblas_handle ) )
     CALL hipsparseCheck( hipsparseCreate( hipsparse_handle ) )
     CALL rocblasCheck( rocblas_create_handle( rocblas_handle ) )
     rocsolver_handle = rocblas_handle
     !rocsparse_handle = rocblas_handle
+    stream => hip_stream
 #endif
 
     ! Create a stream and associate with linear algebra libraries
 #if defined(THORNADO_OACC)
-    stream = acc_get_cuda_stream( acc_async_noval )
-    CALL acc_set_cuda_stream( acc_async_sync, stream )
+    stream = acc_get_cuda_stream( INT( acc_async_noval, KIND=c_long_long ) )
+    CALL acc_set_cuda_stream( INT( acc_async_sync, KIND=c_long_long ), stream )
     !CALL acc_set_default_async( acc_async_noval )
 #elif defined(THORNADO_CUDA)
     ierr = cudaStreamCreate( stream )
@@ -377,6 +383,61 @@ CONTAINS
   END FUNCTION QueryOnGPU_3D_DP_3
 
 
+  FUNCTION QueryOnGPU_3D_DP_5( X1, X2, X3, X4, X5 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET :: X1, X2, X3, X4, X5
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+    INTEGER(C_SIZE_T) :: SizeOf_X3
+    INTEGER(C_SIZE_T) :: SizeOf_X4
+    INTEGER(C_SIZE_T) :: SizeOf_X5
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+    SizeOf_X3 = SIZE(X3) * C_SIZEOF(0.0_DP)
+    SizeOf_X4 = SIZE(X4) * C_SIZEOF(0.0_DP)
+    SizeOf_X5 = SIZE(X5) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 ) &
+           .AND. device_is_present( C_LOC( X3 ), mydevice, SizeOf_X3 ) &
+           .AND. device_is_present( C_LOC( X4 ), mydevice, SizeOf_X4 ) &
+           .AND. device_is_present( C_LOC( X5 ), mydevice, SizeOf_X5 )
+
+  END FUNCTION QueryOnGPU_3D_DP_5
+
+
+  FUNCTION QueryOnGPU_3D_DP_6( X1, X2, X3, X4, X5, X6 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET :: X1, X2, X3, X4, X5, X6
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+    INTEGER(C_SIZE_T) :: SizeOf_X3
+    INTEGER(C_SIZE_T) :: SizeOf_X4
+    INTEGER(C_SIZE_T) :: SizeOf_X5
+    INTEGER(C_SIZE_T) :: SizeOf_X6
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+    SizeOf_X3 = SIZE(X3) * C_SIZEOF(0.0_DP)
+    SizeOf_X4 = SIZE(X4) * C_SIZEOF(0.0_DP)
+    SizeOf_X5 = SIZE(X5) * C_SIZEOF(0.0_DP)
+    SizeOf_X6 = SIZE(X6) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 ) &
+           .AND. device_is_present( C_LOC( X3 ), mydevice, SizeOf_X3 ) &
+           .AND. device_is_present( C_LOC( X4 ), mydevice, SizeOf_X4 ) &
+           .AND. device_is_present( C_LOC( X5 ), mydevice, SizeOf_X5 ) &
+           .AND. device_is_present( C_LOC( X6 ), mydevice, SizeOf_X6 )
+
+  END FUNCTION QueryOnGPU_3D_DP_6
+
+
   FUNCTION QueryOnGPU_2D_DP_1( X1 ) RESULT( QueryOnGPU )
 
     REAL(DP), DIMENSION(:,:), INTENT(in), TARGET :: X1
@@ -426,6 +487,29 @@ CONTAINS
            .AND. device_is_present( C_LOC( X3 ), mydevice, SizeOf_X3 )
 
   END FUNCTION QueryOnGPU_2D_DP_3
+
+
+  FUNCTION QueryOnGPU_2D_DP_4( X1, X2, X3, X4 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:), INTENT(in), TARGET :: X1, X2, X3, X4
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+    INTEGER(C_SIZE_T) :: SizeOf_X3
+    INTEGER(C_SIZE_T) :: SizeOf_X4
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+    SizeOf_X3 = SIZE(X3) * C_SIZEOF(0.0_DP)
+    SizeOf_X4 = SIZE(X4) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 ) &
+           .AND. device_is_present( C_LOC( X3 ), mydevice, SizeOf_X3 ) &
+           .AND. device_is_present( C_LOC( X4 ), mydevice, SizeOf_X4 )
+
+  END FUNCTION QueryOnGPU_2D_DP_4
 
 
   FUNCTION QueryOnGPU_DP_1( X1 ) RESULT( QueryOnGPU )
