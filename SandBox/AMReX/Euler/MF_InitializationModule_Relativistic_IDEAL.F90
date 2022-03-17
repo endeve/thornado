@@ -402,6 +402,51 @@ CONTAINS
 
         END IF
 
+      CASE( 'SphericalSod' )
+
+        X_D = 1.0_DP
+
+        uAF_L(iAF_P ) = 1.0_DP
+
+        uPF_L(iPF_D ) = 1.0_DP
+        uPF_L(iPF_V1) = 0.0_DP
+        uPF_L(iPF_V2) = 0.0_DP
+        uPF_L(iPF_V3) = 0.0_DP
+        uPF_L(iPF_E ) = uAF_L(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_L(iPF_Ne) = 0.0_DP
+
+        uAF_R(iAF_P ) = 0.1_DP
+
+        uPF_R(iPF_D ) = 0.125_DP
+        uPF_R(iPF_V1) = 0.0_DP
+        uPF_R(iPF_V2) = 0.0_DP
+        uPF_R(iPF_V3) = 0.0_DP
+        uPF_R(iPF_E ) = uAF_R(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_R(iPF_Ne) = 0.0_DP
+
+        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,'(6x,A,A)') 'RiemannProblemName: ', TRIM( RiemannProblemName )
+          WRITE(*,*)
+          WRITE(*,'(8x,A,F5.3)') 'X_D: ', X_D
+          WRITE(*,*)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_D ): ', uPF_L(iPF_D )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_V1): ', uPF_L(iPF_V2)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_V2): ', uPF_L(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_V3): ', uPF_L(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_E ): ', uPF_L(iPF_E )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_L(iPF_Ne): ', uPF_L(iPF_Ne)
+          WRITE(*,*)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_D ): ', uPF_R(iPF_D )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_V1): ', uPF_R(iPF_V2)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_V2): ', uPF_R(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_V3): ', uPF_R(iPF_V3)
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_E ): ', uPF_R(iPF_E )
+          WRITE(*,'(8x,A,F5.3)') 'uPF_R(iPF_Ne): ', uPF_R(iPF_Ne)
+          WRITE(*,*)
+
+        END IF
+
       CASE DEFAULT
 
         CALL DescribeError_Euler_MF( 99 )
@@ -444,6 +489,34 @@ CONTAINS
         X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
         IF( TRIM( RiemannProblemName ) .EQ. 'Sod' )THEN
+
+          IF( X1 .LT. X_D )THEN
+
+            uPF(iNX,iPF_D ) = uPF_L(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_L(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_L(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_L(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_L(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_L(iPF_Ne)
+
+            uAF(iNX,iAF_P) = uAF_L(iAF_P)
+
+          ELSE
+
+            uPF(iNX,iPF_D ) = uPF_R(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_R(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_R(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_R(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_R(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_R(iPF_Ne)
+
+            uAF(iNX,iAF_P) = uAF_R(iAF_P)
+
+          END IF
+
+        END IF
+
+        IF( TRIM( RiemannProblemName ) .EQ. 'SphericalSod' )THEN
 
           IF( X1 .LT. X_D )THEN
 
