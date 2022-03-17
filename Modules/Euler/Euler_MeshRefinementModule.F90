@@ -43,6 +43,8 @@ MODULE Euler_MeshRefinementModule
     L_X1, &
     L_X2, &
     L_X3
+  USE GeometryFieldsModule, ONLY: &
+    iGF_SqrtGm
 
   IMPLICIT NONE
   PRIVATE
@@ -375,7 +377,7 @@ CONTAINS
              LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C, &
              LX_X1_Up_1D, LX_X1_Dn_1D, &
              LX_X2_Up_1D, LX_X2_Dn_1D, &
-             LX_X3_Up_1D, LX_X3_Dn_1D )
+             LX_X3_Up_1D, LX_X3_Dn_1D, iGF_SqrtGm )
 
 #endif
 
