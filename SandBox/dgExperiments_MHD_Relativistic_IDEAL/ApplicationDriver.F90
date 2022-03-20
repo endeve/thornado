@@ -89,6 +89,8 @@ PROGRAM ApplicationDriver
 
       CASE( 'HydroSineWave' )
 
+      EvolveOnlyMagnetic = .FALSE.
+
       AdvectionProfile = 'HydroSineWave'
 
       Gamma = 5.0_DP / 3.0_DP
@@ -104,6 +106,8 @@ PROGRAM ApplicationDriver
 
       CASE( 'MagneticSineWave' )
 
+      EvolveOnlyMagnetic = .TRUE.
+
       AdvectionProfile = 'MagneticSineWave'
 
       Gamma = 5.0_DP / 3.0_DP
@@ -118,6 +122,10 @@ PROGRAM ApplicationDriver
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
       CASE( 'CPAlfven' )
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      AdvectionProfile = 'CPAlfven'
 
       Gamma = 4.0_DP / 3.0_DP
       t_end = 16.449592691810107_DP
@@ -143,12 +151,28 @@ PROGRAM ApplicationDriver
 
     END SELECT
 
+    CASE( 'Cleaning1D' )
+
+      EvolveOnlyMagnetic = .TRUE.
+
+      Gamma = 1.4_DP
+      t_end = 5.0_DP
+      bcX = [ 1, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ -1.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [  1.0_DP, 1.0_DP, 1.0_DP ]
+
     CASE DEFAULT
 
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  Cleaning1D'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
