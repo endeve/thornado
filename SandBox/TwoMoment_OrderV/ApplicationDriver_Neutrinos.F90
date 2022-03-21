@@ -52,7 +52,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: ProfileName
   CHARACTER(64) :: EosTableName
-  CHARACTER(64) :: OpacityTableName_AbEm
+  CHARACTER(64) :: OpacityTableName_EmAb
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
@@ -78,8 +78,8 @@ PROGRAM ApplicationDriver_Neutrinos
   CoordinateSystem = 'CARTESIAN'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
-  OpacityTableName_AbEm = ''
-  OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
+  OpacityTableName_EmAb = ''
+  OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-B85-EmAb.h5'
   OpacityTableName_Iso  = ''
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
@@ -474,7 +474,7 @@ CONTAINS
 
     CALL InitializeOpacities_TABLE &
            ( OpacityTableName_EmAb_Option &
-               = TRIM( OpacityTableName_AbEm ), &
+               = TRIM( OpacityTableName_EmAb ), &
              OpacityTableName_Iso_Option  &
                = TRIM( OpacityTableName_Iso ), &
              OpacityTableName_NES_Option &

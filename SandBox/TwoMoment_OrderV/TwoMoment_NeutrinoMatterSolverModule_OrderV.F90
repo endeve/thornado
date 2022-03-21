@@ -46,9 +46,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     NodeCoordinate
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    iNuE, iNuE_Bar, &
-    iNuM, iNuM_Bar, &
-    iNuT, iNuT_Bar, &
+    iNuE, &
+    iNuE_Bar, &
     LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -301,8 +300,6 @@ CONTAINS
 
     ALLOCATE(      Chi_Brem(     nE_G,nX_G,nSpecies) )
     ALLOCATE(      Eta_Brem(     nE_G,nX_G,nSpecies) )
-    ALLOCATE( Phi_0_In_Brem(nE_G,nE_G,nX_G) ) !! flavor identical
-    ALLOCATE( Phi_0_Ot_Brem(nE_G,nE_G,nX_G) ) !! flavor identical
 
     ALLOCATE(  AMAT_outer(n_FP_outer,M_outer,nX_G) )
     ALLOCATE(  GVEC_outer(n_FP_outer,M_outer,nX_G) )
@@ -1036,43 +1033,6 @@ CONTAINS
 
     END IF
 
-    IF( Include_Brem )THEN
-
-!!$      ! --- Brem Kernels ---
-!!$      ! NEED TO CONFIRM
-!!$      CALL ComputeNeutrinoOpacities_Brem_Points &
-!!$             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, &
-!!$               Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
-!!$               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
-!!$
-!!$      CALL ComputeNeutrinoOpacities_Brem_Points &
-!!$             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, &
-!!$               Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
-!!$               P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
-!!$
-!!$    ELSE
-!!!!!!!    DETAIL BALANCE
-
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-      DO iX  = 1, nX
-      DO iE2 = 1, nE_G
-      DO iE1 = 1, nE_G
-
-        Phi_0_In_Brem_P(iE1,iE2,iX) = Zero
-        Phi_0_Ot_Brem_P(iE1,iE2,iX) = Zero
-
-      END DO
-      END DO
-      END DO
-
-    END IF
-
     IF ( nX < nX_G ) THEN
 
       ! --- Unpack Results ---
@@ -1219,18 +1179,6 @@ CONTAINS
     CALL ComputeNeutrinoOpacityRates_Brem &
            ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, J_P, J0_P, S_sigma_P, &
              Eta_Brem_P, Chi_Brem_P )
-
-!!$    ! --- Brem Emissivities and Opacities ---
-!!$    !! NEED TO CONFIRM, what's tabulated
-!!$    CALL ComputeNeutrinoOpacitiesRates_Brem_Points &
-!!$           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
-!!$             Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
-!!$             Eta_Brem_1_P, Chi_Brem_1_P )
-!!$
-!!$    CALL ComputeNeutrinoOpacitiesRates_Brem_Points &
-!!$           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
-!!$             Phi_0_In_Brem_P, Phi_0_Ot_Brem_P, &
-!!$             Eta_Brem_2_P, Chi_Brem_2_P )
 
     IF ( nX < nX_G ) THEN
 
