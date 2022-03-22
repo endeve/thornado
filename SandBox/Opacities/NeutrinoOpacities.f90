@@ -37,7 +37,9 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_NES, &
     ComputeNeutrinoOpacityRates_NES, &
     ComputeNeutrinoOpacities_Pair, &
-    ComputeNeutrinoOpacityRates_Pair
+    ComputeNeutrinoOpacityRates_Pair, &
+    ComputeNeutrinoOpacities_Brem, &
+    ComputeNeutrinoOpacityRates_Brem
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -76,6 +78,7 @@ PROGRAM NeutrinoOpacities
     Timer_Compute_ES, &
     Timer_Compute_NES, &
     Timer_Compute_Pair, &
+    Timer_Compute_Brem, &
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
     D, T, Y
@@ -89,6 +92,7 @@ PROGRAM NeutrinoOpacities
   REAL(DP), DIMENSION(nPointsE,nSpecies,nPointsX) :: &
     f0       , & ! --- Equilibrium Distribution
     f0_DG    , & ! --- Equilibrium Distribution (DG Approximation)
+    J        , & ! --- Neutrino Number Density
     Eta_EmAb , & ! --- Electron Capture Emissivity
     Chi_EmAb , & ! --- Electron Capture Opacity
     Eta_Iso  , & ! --- Iso Emissivity
@@ -96,10 +100,13 @@ PROGRAM NeutrinoOpacities
     Eta_NES  , & ! --- NES Emissivity
     Chi_NES  , & ! --- NES Opacity
     Eta_Pair , & ! --- Pair Emissivity
-    Chi_Pair     ! --- Pair Opacity
+    Chi_Pair , & ! --- Pair Opacity
+    Eta_Brem , & ! --- Brem Emissivity
+    Chi_Brem     ! --- Brem Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
     H1, H2, &  ! --- NES  Scattering Functions
-    J1, J2     ! --- Pair Scattering Functions
+    J1, J2, &  ! --- Pair Scattering Functions
+    S_sigma    ! --- Brem Scattering Kernel
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -181,6 +188,8 @@ PROGRAM NeutrinoOpacities
              = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
            OpacityTableName_Pair_Option &
              = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+           OpacityTableName_Brem_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
            Verbose_Option = .TRUE. )
 
   Timer_ReadOpacities = MPI_WTIME() - Timer_ReadOpacities
@@ -188,17 +197,17 @@ PROGRAM NeutrinoOpacities
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y, W2 ) &
-  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, Sigma_Iso, &
-  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$OMP             f0, f0_DG, &
-  !$OMP             H1, H2, J1, J2 )
+  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$OMP             f0, f0_DG, J, &
+  !$OMP             H1, H2, J1, J2, S_sigma )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y, W2 ) &
-  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, Sigma_Iso, &
-  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$ACC         f0, f0_DG, &
-  !$ACC         H1, H2, J1, J2 )
+  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$ACC         f0, f0_DG, J, &
+  !$ACC         H1, H2, J1, J2, S_sigma )
 #endif
 
   ! --- Compute Equilibrium Distributions ---
@@ -210,6 +219,25 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeEquilibriumDistributions &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG )
+
+  ! --- Compute Neutrino Number Density ---
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+  !$ACC PRESENT( J )
+#endif
+  DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
+  DO iE = 1, nPointsE
+
+    J(iE,iS,iX) = 0.0d0
+    !J(iE,iS,iX) = f0_DG(iE,iS,iX)
+
+  END DO
+  END DO
+  END DO
   
   ! --- Compute Electron Capture Opacities ---
 
@@ -271,7 +299,7 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeNeutrinoOpacityRates_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           f0_DG, f0_DG, H1, H2, Eta_NES, Chi_NES )
+           J, f0_DG, H1, H2, Eta_NES, Chi_NES )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
@@ -284,23 +312,36 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeNeutrinoOpacityRates_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           f0_DG, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
+           J, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
 
   Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
 
+  ! --- Compute Brem Opacities ---
+
+  Timer_Compute_Brem = MPI_WTIME()
+
+  CALL ComputeNeutrinoOpacities_Brem &
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, S_sigma )
+
+  CALL ComputeNeutrinoOpacityRates_Brem &
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
+
+  Timer_Compute_Brem = MPI_WTIME() - Timer_Compute_Brem
+
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
-  !$OMP MAP( from: f0, f0_DG, &
-  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, &
-  !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$OMP            H1, H2, J1, J2 ) &
+  !$OMP MAP( from: f0, f0_DG, J, &
+  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, &
+  !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$OMP            H1, H2, J1, J2, S_sigma ) &
   !$OMP MAP( release: E, D, T, Y, W2, Sigma_Iso )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
-  !$ACC COPYOUT( f0, f0_DG, &
-  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, &
-  !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$ACC          H1, H2, J1, J2 ) &
+  !$ACC COPYOUT( f0, f0_DG, J, &
+  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, &
+  !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$ACC          H1, H2, J1, J2, S_sigma ) &
   !$ACC DELETE( E, D, T, Y, W2, Sigma_Iso )
 #endif
 
@@ -352,11 +393,23 @@ PROGRAM NeutrinoOpacities
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Eta_Pair(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Pair_NuE_Bar.dat' )
 
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Chi_Brem(:,iNuE    ,1) / Unit_Chi, 'Chi_Brem_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Eta_Brem(:,iNuE    ,1) / Unit_Chi, 'Eta_Brem_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Chi_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Chi_Brem_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Eta_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Brem_NuE_Bar.dat' )
+
   CALL WriteMatrix &
          ( nPointsE, nPointsE, H1(:,:,1), 'H1.dat'  )
 
   CALL WriteMatrix &
          ( nPointsE, nPointsE, J1(:,:,1), 'J1.dat' )
+
+  CALL WriteMatrix &
+         ( nPointsE, nPointsE, S_sigma(:,:,1), 'S_sigma.dat' )
 
   CALL FinalizeEquationOfState_TABLE
 
@@ -364,7 +417,8 @@ PROGRAM NeutrinoOpacities
 
   Timer_Total &
     = Timer_Compute_EC + Timer_Compute_ES &
-      + Timer_Compute_NES + Timer_Compute_Pair
+      + Timer_Compute_NES + Timer_Compute_Pair &
+      + Timer_Compute_Brem
 
   WRITE(*,*)
   WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadEos = ',       &
@@ -379,6 +433,8 @@ PROGRAM NeutrinoOpacities
     Timer_Compute_NES, Timer_Compute_NES / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair = ',  &
     Timer_Compute_Pair, Timer_Compute_Pair / Timer_Total
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Brem = ',  &
+    Timer_Compute_Brem, Timer_Compute_Brem / Timer_Total
   WRITE(*,*)
 
   CALL FinalizeDevice
