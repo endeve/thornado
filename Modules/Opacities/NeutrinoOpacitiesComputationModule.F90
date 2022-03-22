@@ -5,7 +5,7 @@
 MODULE NeutrinoOpacitiesComputationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, One, SqrtTiny
+    DP, Zero, One, SqrtTiny, TwoPi
   USE PhysicalConstantsModule, ONLY: &
     AvogadroConstantMKS, &
     SpeedOfLightCGS
@@ -97,7 +97,8 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: G_F      = 1.166d-11 ! G_F from HR98 in [MeV**-2]
   REAL(DP), PARAMETER :: nb_14    = AvogadroConstantMKS * 1d14
   REAL(DP), PARAMETER :: Brem_const = C_A**2 * G_F**2 * nb_14 &
-                                    * hbarMeVs**2 * SpeedOfLightCGS**2 * UnitBrem
+                                    * hbarMeVs**2 * SpeedOfLightCGS**2 &
+                                    / TwoPi**3 * UnitBrem
 
   REAL(dp), PARAMETER :: Alpha_Brem(3) = [ 1.0d0, 1.0d0, 28.d0/3.d0 ]
 
@@ -1391,7 +1392,11 @@ CONTAINS
         DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
-        Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+        IF ( iE1 <= iE2 ) THEN
+          Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+        ELSE
+          Phi_0_Ann = S_Sigma(iE2,iE1,iX) * 3.0d0 * Brem_const
+        END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
         SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
