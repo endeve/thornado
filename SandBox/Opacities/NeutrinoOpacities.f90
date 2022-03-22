@@ -7,7 +7,10 @@ PROGRAM NeutrinoOpacities
     Centimeter, &
     Kelvin, &
     MeV, &
-    BoltzmannConstant
+    BoltzmannConstant, &
+    PlanckConstant, &
+    AtomicMassUnit, &
+    Second
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -64,6 +67,8 @@ PROGRAM NeutrinoOpacities
     Unit_Sigma = 1.0_DP / Centimeter, &
     UnitNES    = 1.0_DP / ( Centimeter * MeV**3 ), &
     UnitPair   = 1.0_DP / ( Centimeter * MeV**3 ), &
+    BaryonMass = AtomicMassUnit, &
+    Unit_Qdot  = 1.0_DP / ( BaryonMass * Second ), &
     eL         = 0.0e0_DP * Unit_E, &
     eR         = 3.0e2_DP * Unit_E, &
     ZoomE      = 1.183081754893913_DP
@@ -85,8 +90,7 @@ PROGRAM NeutrinoOpacities
   REAL(DP), DIMENSION(nE) :: &
     dE
   REAL(DP), DIMENSION(nPointsE) :: &
-    E, W2, &
-    Phi_0_Pro, Phi_0_Ann
+    E, W2
   REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
     Sigma_Iso    ! --- Iso-energertic Kernel
   REAL(DP), DIMENSION(nPointsE,nSpecies,nPointsX) :: &
@@ -101,8 +105,10 @@ PROGRAM NeutrinoOpacities
     Chi_NES  , & ! --- NES Opacity
     Eta_Pair , & ! --- Pair Emissivity
     Chi_Pair , & ! --- Pair Opacity
+    Qdot_Pair, & ! --- Pair Heating Rate
     Eta_Brem , & ! --- Brem Emissivity
-    Chi_Brem     ! --- Brem Opacity
+    Chi_Brem , & ! --- Brem Opacity
+    Qdot_Brem    ! --- Brem Heating Rate
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
     H1, H2, &  ! --- NES  Scattering Functions
     J1, J2, &  ! --- Pair Scattering Functions
@@ -151,6 +157,9 @@ PROGRAM NeutrinoOpacities
   D = 5.6d13 * Unit_D
   T = 3.0d11 * Unit_T
   Y = 2.9d-1 * Unit_Y
+!  D = 1.050d10 * Unit_D
+!  T = 3.481d10 * Unit_T
+!  Y = 2.530d-1 * Unit_Y
 
   ! --- Energy Grid ---
 
@@ -345,6 +354,17 @@ PROGRAM NeutrinoOpacities
   !$ACC DELETE( E, D, T, Y, W2, Sigma_Iso )
 #endif
 
+  DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
+  DO iE = 1, nPointsE
+
+    Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX) * E(iE)**3
+    Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX) * E(iE)**3
+
+  END DO
+  END DO
+  END DO
+
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
 
@@ -401,6 +421,16 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Chi_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Chi_Brem_NuE_Bar.dat' )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Eta_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Brem_NuE_Bar.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Qdot_Pair(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Pair_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Qdot_Pair(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Pair_NuE_Bar.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Qdot_Brem(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Brem_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Qdot_Brem(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Brem_NuE_Bar.dat' )
 
   CALL WriteMatrix &
          ( nPointsE, nPointsE, H1(:,:,1), 'H1.dat'  )
