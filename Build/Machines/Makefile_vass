@@ -1,7 +1,7 @@
 ## Makefile definitions for Mac with GNU compiler
 
 C       = mpic++ --c++11
-FORTRAN = mpif90 -cpp -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+FORTRAN = mpif90 -cpp -g -fbacktrace -ffpe-trap=invalid,zero,overflow -ffpe-summary=invalid,zero,overflow -fbounds-check -Wuninitialized -funsafe-math-optimizations -fcheck=all,no-array-temps
 FLINKER = mpif90
 
 DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check

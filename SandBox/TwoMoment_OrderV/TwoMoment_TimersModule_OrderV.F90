@@ -8,6 +8,8 @@ MODULE TwoMoment_TimersModule_OrderV
   IMPLICIT NONE
   PRIVATE
 
+  INCLUDE 'mpif.h'
+
   REAL(DP), PUBLIC :: Timer_Total
   REAL(DP), PUBLIC :: Timer_IMEX
   REAL(DP), PUBLIC :: Timer_Streaming
@@ -298,8 +300,11 @@ CONTAINS
     INTEGER(I8) :: clock_rate
     INTEGER(I8) :: clock_max
 
-    CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
-    TimersWtime = REAL( clock_read, DP ) / REAL( clock_rate, DP )
+    !CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
+    !write(*,*) "Hello",  clock_read, clock_rate, clock_max
+    !TimersWtime = REAL( clock_read, DP ) / REAL( clock_rate, DP )
+
+    TimersWtime = MPI_Wtime()
 
     RETURN
   END FUNCTION TimersWtime

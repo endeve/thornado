@@ -186,6 +186,7 @@ CONTAINS
     INTEGER(I8) :: clock_max
 
     CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
+    write(*,*) clock_read, clock_rate, clock_max
     TimersWtime = REAL( clock_read, DP ) / REAL( clock_rate, DP )
 
     RETURN

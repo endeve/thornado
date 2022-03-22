@@ -1265,7 +1265,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(out) :: S_sigma(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(inout) :: S_sigma(iE_B:,iE_B:,iX_B:)
 
     INTEGER  :: iX, iE1, iE2
     REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions
@@ -1395,7 +1395,12 @@ CONTAINS
         DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
-        Phi_0_Ann = S_sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+        !Phi_0_Ann = S_sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+        IF ( iE1 <= iE2 ) THEN
+          Phi_0_Ann = S_sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+        ELSE
+          Phi_0_Ann = S_sigma(iE2,iE1,iX) * 3.0d0 * Brem_const
+        END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
         SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )

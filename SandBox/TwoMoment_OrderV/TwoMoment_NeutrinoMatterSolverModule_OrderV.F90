@@ -298,9 +298,6 @@ CONTAINS
     ALLOCATE(  J_II_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE( S_sigma_T(nE_G,nE_G,nX_G) )
 
-    ALLOCATE(      Chi_Brem(     nE_G,nX_G,nSpecies) )
-    ALLOCATE(      Eta_Brem(     nE_G,nX_G,nSpecies) )
-
     ALLOCATE(  AMAT_outer(n_FP_outer,M_outer,nX_G) )
     ALLOCATE(  GVEC_outer(n_FP_outer,M_outer,nX_G) )
     ALLOCATE(  FVEC_outer(n_FP_outer,M_outer,nX_G) )
@@ -727,7 +724,6 @@ CONTAINS
 
     CALL ComputeOpacities_Packed &
            ( D, T, Y )
-
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
     ! --- Start Outer Loop ---

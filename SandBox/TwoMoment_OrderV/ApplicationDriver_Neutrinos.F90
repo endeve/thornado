@@ -73,14 +73,12 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
 
-  ProgramName = 'DeleptonizationWave1D'
+  ProgramName = 'Relaxation'
 
   CoordinateSystem = 'CARTESIAN'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
-  OpacityTableName_EmAb = ''
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-B85-EmAb.h5'
-  OpacityTableName_Iso  = ''
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
@@ -149,8 +147,8 @@ PROGRAM ApplicationDriver_Neutrinos
       t_end = 1.0d1 * Millisecond
 
       iCycleD = 1
-      iCycleW = 10 !333
-      maxCycles = 20 !1000000
+      iCycleW = 333
+      maxCycles = 1000000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
