@@ -1265,7 +1265,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(iX_B:)
     REAL(DP), INTENT(in)  :: T(iX_B:)
     REAL(DP), INTENT(in)  :: Y(iX_B:)
-    REAL(DP), INTENT(inout) :: S_sigma(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: S_sigma(iE_B:,iE_B:,iX_B:)
 
     INTEGER  :: iX, iE1, iE2
     REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions

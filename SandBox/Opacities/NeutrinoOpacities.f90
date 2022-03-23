@@ -9,6 +9,9 @@ PROGRAM NeutrinoOpacities
     Kelvin, &
     MeV, &
     BoltzmannConstant
+  USE PhysicalConstantsModule, ONLY: &
+    AvogadroConstantMKS, &
+    SpeedOfLightCGS
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -108,6 +111,8 @@ PROGRAM NeutrinoOpacities
     J1, J2, &  ! --- Pair Scattering Functions
     S_sigma    ! --- Brem Scattering Function
 
+  REAL(DP), DIMENSION(nPointsE) :: Qdot_Brem
+
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'NeutrinoOpacities', &
@@ -147,10 +152,12 @@ PROGRAM NeutrinoOpacities
 
   ! --- Thermodynamic State ---
 
-!  D = 1.3d14 * Unit_D
   D = 5.6d13 * Unit_D
   T = 3.0d11 * Unit_T
   Y = 2.9d-1 * Unit_Y
+  !D = 1.050d+10 * Unit_D
+  !T = 3.0d0 * MeV
+  !Y = 2.530d-01 * Unit_Y
 
 write(*,*) 'D = ', D(1)
 write(*,*) 'T = ', T(1)
@@ -183,17 +190,29 @@ write(*,*) 'Y = ', Y(1)
 
   Timer_ReadOpacities = MPI_WTIME()
 
+!  CALL InitializeOpacities_TABLE &
+!         ( OpacityTableName_EmAb_Option &
+!             = 'wl-Op-SFHo-15-25-50-E40-B85-EmAb.h5', &
+!           OpacityTableName_Iso_Option  &
+!             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+!           OpacityTableName_NES_Option &
+!             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+!           OpacityTableName_Pair_Option &
+!             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+!           OpacityTableName_Brem_Option &
+!             = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
+!           Verbose_Option = .TRUE. )
   CALL InitializeOpacities_TABLE &
          ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-EmAb.h5', &
+             = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
            OpacityTableName_Iso_Option  &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+             = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
            OpacityTableName_NES_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+             = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
            OpacityTableName_Pair_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+             = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
            OpacityTableName_Brem_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
+             = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
            Verbose_Option = .TRUE. )
 
   Timer_ReadOpacities = MPI_WTIME() - Timer_ReadOpacities
@@ -314,6 +333,12 @@ write(*,*) 'Y = ', Y(1)
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
            f0_DG, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
 
+  DO iN_E = 1, nPointsE
+    Qdot_Brem(iN_E) = FourPi / (4.13567d-21)**3 / SpeedOfLightCGS**2 &
+                    * (E(iN_E) / Unit_E)**3 * (Unit_D / D(1)) / AvogadroConstantMKS & 
+                    * Eta_Brem(iN_E,1,1) / Unit_Chi
+  END DO
+
   Timer_Compute_Brem = MPI_WTIME() - Timer_Compute_Brem
 
 #if defined(THORNADO_OMP_OL)
@@ -336,6 +361,8 @@ write(*,*) 'Y = ', Y(1)
 
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
+  CALL WriteVector &
+         ( nPointsE, Qdot_Brem, 'Qdot_Brem.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, f0   (:,iNuE    ,1), 'f0_NuE.dat'        )
