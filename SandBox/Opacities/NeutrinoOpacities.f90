@@ -8,10 +8,10 @@ PROGRAM NeutrinoOpacities
     Centimeter, &
     Kelvin, &
     MeV, &
-    BoltzmannConstant
-  USE PhysicalConstantsModule, ONLY: &
-    AvogadroConstantMKS, &
-    SpeedOfLightCGS
+    BoltzmannConstant, &
+    PlanckConstant, &
+    AtomicMassUnit, &
+    Second
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -68,6 +68,8 @@ PROGRAM NeutrinoOpacities
     Unit_Sigma = 1.0_DP / Centimeter, &
     UnitNES    = 1.0_DP / ( Centimeter * MeV**3 ), &
     UnitPair   = 1.0_DP / ( Centimeter * MeV**3 ), &
+    BaryonMass = AtomicMassUnit, &
+    Unit_Qdot  = 1.0_DP / ( BaryonMass * Second ), &
     eL         = 0.0e0_DP * Unit_E, &
     eR         = 3.0e2_DP * Unit_E, &
     ZoomE      = 1.183081754893913_DP
@@ -89,13 +91,13 @@ PROGRAM NeutrinoOpacities
   REAL(DP), DIMENSION(nE) :: &
     dE
   REAL(DP), DIMENSION(nPointsE) :: &
-    E, W2, &
-    Phi_0_Pro, Phi_0_Ann
+    E, W2
   REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
     Sigma_Iso    ! --- Iso-energertic Kernel
   REAL(DP), DIMENSION(nPointsE,nSpecies,nPointsX) :: &
     f0       , & ! --- Equilibrium Distribution
     f0_DG    , & ! --- Equilibrium Distribution (DG Approximation)
+    J        , & ! --- Neutrino Number Density
     Eta_EmAb , & ! --- Electron Capture Emissivity
     Chi_EmAb , & ! --- Electron Capture Opacity
     Eta_Iso  , & ! --- Iso Emissivity
@@ -104,14 +106,14 @@ PROGRAM NeutrinoOpacities
     Chi_NES  , & ! --- NES Opacity
     Eta_Pair , & ! --- Pair Emissivity
     Chi_Pair , & ! --- Pair Opacity
+    Qdot_Pair, & ! --- Pair Heating Rate
     Eta_Brem , & ! --- Brem Emissivity
-    Chi_Brem     ! --- Brem Opacity
+    Chi_Brem , & ! --- Brem Opacity
+    Qdot_Brem    ! --- Brem Heating Rate
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX) :: &
     H1, H2, &  ! --- NES  Scattering Functions
     J1, J2, &  ! --- Pair Scattering Functions
-    S_sigma    ! --- Brem Scattering Function
-
-  REAL(DP), DIMENSION(nPointsE) :: Qdot_Brem
+    S_sigma    ! --- Brem Scattering Kernel
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -155,13 +157,9 @@ PROGRAM NeutrinoOpacities
   D = 5.6d13 * Unit_D
   T = 3.0d11 * Unit_T
   Y = 2.9d-1 * Unit_Y
-  !D = 1.050d+10 * Unit_D
-  !T = 3.0d0 * MeV
-  !Y = 2.530d-01 * Unit_Y
-
-write(*,*) 'D = ', D(1)
-write(*,*) 'T = ', T(1)
-write(*,*) 'Y = ', Y(1)
+!  D = 1.050d10 * Unit_D
+!  T = 3.481d10 * Unit_T
+!  Y = 2.530d-1 * Unit_Y
 
   ! --- Energy Grid ---
 
@@ -220,19 +218,17 @@ write(*,*) 'Y = ', Y(1)
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y, W2 ) &
-  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, Sigma_Iso, &
-  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$OMP             Chi_Brem, Eta_Brem, $     
-  !$OMP             f0, f0_DG, &
+  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$OMP             f0, f0_DG, J, &
   !$OMP             H1, H2, J1, J2, S_sigma )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y, W2 ) &
-  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, Sigma_Iso, &
-  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$ACC         Chi_Brem, Eta_Brem
-  !$ACC         f0, f0_DG, &
-  !$ACC         H1, H2, J1, J2 S_sigma )
+  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$ACC         f0, f0_DG, J, &
+  !$ACC         H1, H2, J1, J2, S_sigma )
 #endif
 
   ! --- Compute Equilibrium Distributions ---
@@ -244,6 +240,25 @@ write(*,*) 'Y = ', Y(1)
 
   CALL ComputeEquilibriumDistributions &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG )
+
+  ! --- Compute Neutrino Number Density ---
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+  !$ACC PRESENT( J )
+#endif
+  DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
+  DO iE = 1, nPointsE
+
+    J(iE,iS,iX) = 0.0d0
+    !J(iE,iS,iX) = f0_DG(iE,iS,iX)
+
+  END DO
+  END DO
+  END DO
   
   ! --- Compute Electron Capture Opacities ---
 
@@ -305,7 +320,7 @@ write(*,*) 'Y = ', Y(1)
 
   CALL ComputeNeutrinoOpacityRates_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           f0_DG, f0_DG, H1, H2, Eta_NES, Chi_NES )
+           J, f0_DG, H1, H2, Eta_NES, Chi_NES )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
@@ -318,7 +333,7 @@ write(*,*) 'Y = ', Y(1)
 
   CALL ComputeNeutrinoOpacityRates_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           f0_DG, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
+           J, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
 
   Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
 
@@ -331,38 +346,39 @@ write(*,*) 'Y = ', Y(1)
 
   CALL ComputeNeutrinoOpacityRates_Brem &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           f0_DG, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
-
-  DO iN_E = 1, nPointsE
-    Qdot_Brem(iN_E) = FourPi / (4.13567d-21)**3 / SpeedOfLightCGS**2 &
-                    * (E(iN_E) / Unit_E)**3 * (Unit_D / D(1)) / AvogadroConstantMKS & 
-                    * Eta_Brem(iN_E,1,1) / Unit_Chi
-  END DO
+           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
 
   Timer_Compute_Brem = MPI_WTIME() - Timer_Compute_Brem
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
-  !$OMP MAP( from: f0, f0_DG, &
-  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, &
-  !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$OMP            Chi_Brem, Eta_Brem, &
+  !$OMP MAP( from: f0, f0_DG, J, &
+  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, &
+  !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
   !$OMP            H1, H2, J1, J2, S_sigma ) &
   !$OMP MAP( release: E, D, T, Y, W2, Sigma_Iso )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
-  !$ACC COPYOUT( f0, f0_DG, &
-  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_Iso, &
-  !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_Iso, &
-  !$ACC          Chi_Brem, Eta_Brem, &
+  !$ACC COPYOUT( f0, f0_DG, J, &
+  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, &
+  !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
   !$ACC          H1, H2, J1, J2, S_sigma ) &
   !$ACC DELETE( E, D, T, Y, W2, Sigma_Iso )
 #endif
 
+  DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
+  DO iE = 1, nPointsE
+
+    Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX) * E(iE)**3
+    Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX) * E(iE)**3
+
+  END DO
+  END DO
+  END DO
+
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
-  CALL WriteVector &
-         ( nPointsE, Qdot_Brem, 'Qdot_Brem.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, f0   (:,iNuE    ,1), 'f0_NuE.dat'        )
@@ -418,11 +434,22 @@ write(*,*) 'Y = ', Y(1)
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Eta_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Brem_NuE_Bar.dat' )
 
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Qdot_Pair(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Pair_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Qdot_Pair(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Pair_NuE_Bar.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Qdot_Brem(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Brem_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Qdot_Brem(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Brem_NuE_Bar.dat' )
+
   CALL WriteMatrix &
          ( nPointsE, nPointsE, H1(:,:,1), 'H1.dat'  )
 
   CALL WriteMatrix &
          ( nPointsE, nPointsE, J1(:,:,1), 'J1.dat' )
+
   CALL WriteMatrix &
          ( nPointsE, nPointsE, S_sigma(:,:,1), 'S_sigma.dat' )
 
@@ -432,7 +459,8 @@ write(*,*) 'Y = ', Y(1)
 
   Timer_Total &
     = Timer_Compute_EC + Timer_Compute_ES &
-      + Timer_Compute_NES + Timer_Compute_Pair
+      + Timer_Compute_NES + Timer_Compute_Pair &
+      + Timer_Compute_Brem
 
   WRITE(*,*)
   WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadEos = ',       &

@@ -1395,11 +1395,10 @@ CONTAINS
         DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
-        !Phi_0_Ann = S_sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
         IF ( iE1 <= iE2 ) THEN
-          Phi_0_Ann = S_sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+          Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
         ELSE
-          Phi_0_Ann = S_sigma(iE2,iE1,iX) * 3.0d0 * Brem_const
+          Phi_0_Ann = S_Sigma(iE2,iE1,iX) * 3.0d0 * Brem_const
         END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
