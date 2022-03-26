@@ -177,8 +177,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimeStep_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
+      UseDivergenceCleaning )
 
+    LOGICAL,  INTENT(in)  :: &
+      UseDivergenceCleaning
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
@@ -190,7 +193,8 @@ CONTAINS
       TimeStep
 
     CALL ComputeTimeStep_MHD_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
+             UseDivergenceCleaning )
 
   END SUBROUTINE ComputeTimeStep_MHD
 
@@ -199,8 +203,10 @@ CONTAINS
     ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
       B1, B2, B3, Chi, &
       Gm11, Gm22, Gm33, &
-      Lapse, Shift_X1, Shift_X2, Shift_X3 )
+      Lapse, Shift_X1, Shift_X2, Shift_X3, &
+      UseDivergenceCleaning )
 
+    LOGICAL,  INTENT(in) :: UseDivergenceCleaning
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii
 
     ! --- Only needed for relativistic code ---
@@ -215,7 +221,8 @@ CONTAINS
                           ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, &
                             Gm11, Gm22, Gm33, &
-                            Lapse, Shift_X1, Shift_X2, Shift_X3 )
+                            Lapse, Shift_X1, Shift_X2, Shift_X3, &
+                            UseDivergenceCleaning )
 
     RETURN
   END FUNCTION Eigenvalues_MHD
@@ -223,11 +230,15 @@ CONTAINS
 
   FUNCTION Flux_X1_MHD &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, Lapse, & 
-      Shift_X1, Shift_X2, Shift_X3 )
+      Shift_X1, Shift_X2, Shift_X3, &
+      UseDivergenceCleaning )
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X1_MHD(nCM)
+
+    LOGICAL,  INTENT(in) :: UseDivergenceCleaning
+
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
@@ -237,7 +248,7 @@ CONTAINS
 
     Flux_X1_MHD = Flux_X1_MHD_Relativistic &
                       ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift_X1, Shift_X2, Shift_X3 )
+                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning )
 
     RETURN
   END FUNCTION Flux_X1_MHD

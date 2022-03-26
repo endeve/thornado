@@ -96,7 +96,8 @@ MODULE MHD_DiscretizationModule_Relativistic
 
   PUBLIC :: ComputeIncrement_MHD_DG_Explicit
 
-  REAL(DP), PUBLIC :: Time
+  LOGICAL  :: UseDivergenceCleaning
+  REAL(DP) :: Time, DampingParameter
 
   REAL(DP), POINTER, CONTIGUOUS :: &
     Gm_dd_11_K(:), Gm_dd_22_K(:), Gm_dd_33_K(:), SqrtGm_K(:), &
@@ -133,20 +134,25 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_MHD_DG_Explicit &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-      SuppressBC_Option )
-
+      SuppressBC_Option, UseDivergenceCleaning_Option, &
+      DampingParameter_Option )
+    
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)            :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL,  INTENT(in),  OPTIONAL :: &
+      SuppressBC_Option
+    LOGICAL,  INTENT(in),  OPTIONAL :: &
+      UseDivergenceCleaning_Option
+    REAL(DP), INTENT(in),  OPTIONAL :: &
+      DampingParameter_Option
     REAL(DP), INTENT(inout)         :: &
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)         :: &
       D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)           :: &
       dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in),  OPTIONAL :: &
-      SuppressBC_Option
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCM
     LOGICAL  :: SuppressBC
@@ -161,6 +167,15 @@ CONTAINS
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
+
+    UseDivergenceCleaning = .FALSE.
+    IF( PRESENT( UseDivergenceCleaning_Option ) ) &
+      UseDivergenceCleaning = UseDivergenceCleaning_Option
+
+    DampingParameter = 0.0_DP
+    IF( UseDivergenceCleaning .AND. PRESENT( DampingParameter_Option ) )THEN
+      DampingParameter = DampingParameter_Option
+    END IF
 
     IF( .NOT. SuppressBC )THEN
 
@@ -595,7 +610,8 @@ CONTAINS
               Alpha_F   (iNX_X), &
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
-              Beta_3_F  (iNX_X) )
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
 
       Flux_L &
         = Flux_X1_MHD &
@@ -616,7 +632,8 @@ CONTAINS
               Alpha_F   (iNX_X), &
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
-              Beta_3_F  (iNX_X) )
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
 
       IF( .FALSE. )THEN
 
@@ -667,7 +684,8 @@ CONTAINS
               Alpha_F   (iNX_X), &
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
-              Beta_3_F  (iNX_X) )
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
 
       Flux_R &
         = Flux_X1_MHD &
@@ -688,7 +706,8 @@ CONTAINS
               Alpha_F   (iNX_X), &
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
-              Beta_3_F  (iNX_X) )
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
 
       IF( .FALSE. )THEN
      
@@ -737,7 +756,7 @@ CONTAINS
               Flux_L              , &
               Flux_R              , &
               AlphaPls            , &
-              AlphaMns )
+              AlphaMns            )
 
       DO iCM = 1, nCM
 
@@ -804,7 +823,8 @@ CONTAINS
               Alpha_K   (iNX_K), &
               Beta_1_K  (iNX_K), &
               Beta_2_K  (iNX_K), &
-              Beta_3_K  (iNX_K) )
+              Beta_3_K  (iNX_K), &
+              UseDivergenceCleaning )
 
       iNX = IndexTableX_V(1,iNX_K)
       iX2 = IndexTableX_V(2,iNX_K)
@@ -873,14 +893,14 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in)           :: &
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in)           :: &
       tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)        :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
 
     INTEGER :: iX1, iX2, iX3, iNX, iCM, iGF, i, k, iDim
@@ -1331,6 +1351,49 @@ CONTAINS
         = dU(iNX,iX1,iX2,iX3,iCM_E) &
             + tau(iNX,iX1,iX2,iX3) * EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3)
 
+      IF( UseDivergenceCleaning )THEN
+
+        ! --- Eulerian Magnetic Field increment ---
+  
+        dU(iNX,iX1,iX2,iX3,iCM_B1) &
+          = dU(iNX,iX1,iX2,iX3,iCM_B1) &
+              - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B1) &
+                    * dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) ) &
+              + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                  * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                  * ( dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1) &
+                        / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11 ) ) &
+              + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                  * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                  * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                            / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)**2 ) &
+                        * dGdX1(iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+                      + ( dGdX1(iNX,iGF_SqrtGm,iX2,iX3,iX1) & 
+                            / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) ) )
+
+        dU(iNX,iX1,iX2,iX3,iCM_B2) &
+          = dU(iNX,iX1,iX2,iX3,iCM_B2) &
+              - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B1) &
+                    * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) )
+ 
+        dU(iNX,iX1,iX2,iX3,iCM_B3) &
+          = dU(iNX,iX1,iX2,iX3,iCM_B3) &
+              - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B1) &
+                    * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) )
+         
+        ! --- Divergence violation field increment ---
+  
+        dU(iNX,iX1,iX2,iX3,iCM_Chi) &
+          = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
+              - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              + ( U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+                * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
+  
+      END IF
+
     END DO
     END DO
     END DO
@@ -1371,9 +1434,10 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_Gravity_Relativistic
 
 
-  SUBROUTINE InitializeIncrement_MHD( iX_B0, iX_E0, iX_B1, iX_E1 )
+  SUBROUTINE InitializeIncrement_MHD & 
+               ( iX_B0, iX_E0, iX_B1, iX_E1 )
 
-    INTEGER, INTENT(in) :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER,  INTENT(in)           :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     nX        = iX_E0 - iX_B0 + 1 ! Number of Elements per Dimension
     nX_K      = PRODUCT( nX )     ! Number of Elements in Position Space

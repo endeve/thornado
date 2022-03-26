@@ -133,7 +133,7 @@ CONTAINS
 
     REAL(DP) :: AM_P, Cs
 
-    LOGICAL :: MagnetofluidCoupling = .TRUE.
+    LOGICAL :: MagnetofluidCoupling = .FALSE.
 
     IF( MagnetofluidCoupling )THEN
 
@@ -478,7 +478,7 @@ CONTAINS
 
     REAL(DP) :: VSq, W, B0u, B0d, BSq, h, hStar, p, pStar 
 
-    LOGICAL :: MagnetofluidCoupling = .TRUE.
+    LOGICAL :: MagnetofluidCoupling = .FALSE.
 
    !PRINT*
    !PRINT*, 'Computing conserved variables.'
@@ -727,8 +727,11 @@ CONTAINS
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_MHD_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, &
+      UseDivergenceCleaning )
 
+    LOGICAL,  INTENT(in)  :: &
+      UseDivergenceCleaning
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
@@ -811,7 +814,8 @@ CONTAINS
                 G(iNX,iX1,iX2,iX3,iGF_Alpha), &
                 G(iNX,iX1,iX2,iX3,iGF_Beta_1), &
                 G(iNX,iX1,iX2,iX3,iGF_Beta_2), &
-                G(iNX,iX1,iX2,iX3,iGF_Beta_3) )
+                G(iNX,iX1,iX2,iX3,iGF_Beta_3), &
+                UseDivergenceCleaning )
 
        !PRINT*, 'The eigenvalues are: ', EigVals
 
@@ -838,8 +842,10 @@ CONTAINS
   FUNCTION Eigenvalues_MHD_Relativistic &
     ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
       B1, B2, B3, Chi, Gm11, Gm22, Gm33, &
-      Lapse, Shift1, Shift2, Shift3 )
+      Lapse, Shift1, Shift2, Shift3, &
+      UseDivergenceCleaning )
 
+    LOGICAL,  INTENT(in) :: UseDivergenceCleaning
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
@@ -921,29 +927,38 @@ CONTAINS
    !PRINT*, 'aSq is: ', aSq
    !PRINT*, '-----------------------------------'
    !PRINT*
+
+    IF( UseDivergenceCleaning )THEN
+
+      Eigenvalues_MHD_Relativistic(1) = One
+      Eigenvalues_MHD_Relativistic(2) = -One
+
+    ELSE
  
-    ! Estimate of max/min fast magnetosonic 
-    ! eigenvalues from Del Zanna et al. (2007)
+      ! Estimate of max/min fast magnetosonic
+      ! eigenvalues from Del Zanna et al. (2007)
 
-    Eigenvalues_MHD_Relativistic(1) &
-      = ( ( One - aSq ) * V1 &
-          + SQRT( aSq * ( One - VSq ) &
-                  * ( ( One - VSq * aSq ) * ( One / Gm11 ) &
-                  - ( One - aSq ) * V1**2 ) ) ) &
-        / ( One - VSq * aSq )
+      Eigenvalues_MHD_Relativistic(1) &
+        = ( ( One - aSq ) * V1 &
+            + SQRT( aSq * ( One - VSq ) &
+                    * ( ( One - VSq * aSq ) * ( One / Gm11 ) &
+                    - ( One - aSq ) * V1**2 ) ) ) &
+          / ( One - VSq * aSq )
 
-    !Eigenvalues_MHD_Relativistic(1) = 0.90_DP + 0.005_DP
-    !  = Lapse * Eigenvalues_MHD_Relativistic(1) - Shift1
+      !Eigenvalues_MHD_Relativistic(1) = 0.90_DP + 0.005_DP
+      !  = Lapse * Eigenvalues_MHD_Relativistic(1) - Shift1
 
-    Eigenvalues_MHD_Relativistic(2) &
-       = ( ( One - aSq ) * V1 &
-          - SQRT( aSq * ( One - VSq ) & 
-                  * ( ( One - VSq * aSq ) * ( One / Gm11 ) &
-                  - ( One - aSq ) * V1**2 ) ) ) &
-        / ( One - VSq * aSq )
+      Eigenvalues_MHD_Relativistic(2) &
+         = ( ( One - aSq ) * V1 &
+            - SQRT( aSq * ( One - VSq ) &
+                    * ( ( One - VSq * aSq ) * ( One / Gm11 ) &
+                    - ( One - aSq ) * V1**2 ) ) ) &
+          / ( One - VSq * aSq )
 
-    !Eigenvalues_MHD_Relativistic(2) = 0.90_DP - 0.005_DP
-    !  = Lapse * Eigenvalues_MHD_Relativistic(2) - Shift1
+      !Eigenvalues_MHD_Relativistic(2) = 0.90_DP - 0.005_DP
+      !  = Lapse * Eigenvalues_MHD_Relativistic(2) - Shift1
+
+    END IF
 
     RETURN
   END FUNCTION Eigenvalues_MHD_Relativistic
@@ -956,8 +971,10 @@ CONTAINS
   FUNCTION Flux_X1_MHD_Relativistic &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, &
       P, Gm11, Gm22, Gm33, Lapse, & 
-      Shift1, Shift2, Shift3 )
+      Shift1, Shift2, Shift3, &
+      UseDivergenceCleaning )
 
+    LOGICAL,  INTENT(in) :: UseDivergenceCleaning
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, P, &
                             Gm11, Gm22, Gm33, Lapse, &
@@ -1055,19 +1072,43 @@ CONTAINS
 
    !PRINT*, 'iCM_Ne Flux: ', Flux_X1_MHD_Relativistic(iCM_Ne)
 
-    Flux_X1_MHD_Relativistic(iCM_B1) &
-      = 0.0_DP
+    IF( UseDivergenceCleaning )THEN
 
-   !PRINT*, 'iCM_B1 Flux: ', Flux_X1_MHD_Relativistic(iCM_B1)
+      Flux_X1_MHD_Relativistic(iCM_B1) &
+        = Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift1 / Lapse ) &
+          - W * ( Shift1 / Lapse ) * B1 &
+          + Gm11 * Chi
 
-    Flux_X1_MHD_Relativistic(iCM_B2) &
-      = W * ( V1 - Shift1 / Lapse ) * B2 - W * ( V2 - Shift2 / Lapse ) * B1
+      Flux_X1_MHD_Relativistic(iCM_B2) &
+        = Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift2 / Lapse ) &
+          + W * V1 * B2 - W * V2 * B1 &
+          - W * ( Shift1 / Lapse ) * B2
 
-    Flux_X1_MHD_Relativistic(iCM_B3) &
-      = W * ( V1 - Shift1 / Lapse ) * B3 - W * ( V3 - Shift3 / Lapse ) * B1
+      Flux_X1_MHD_Relativistic(iCM_B3) &
+        = Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift3 / Lapse ) &
+          + W * V1 * B3 - W * V3 * B1 &
+          - W * ( Shift1 / Lapse ) * B3
 
-    Flux_X1_MHD_Relativistic(iCM_Chi) &
-      = 0.0_DP
+      Flux_X1_MHD_Relativistic(iCM_Chi) &
+        = - Lapse * W * B0u + W * B1 - Chi * ( Shift1 / Lapse )
+
+    ELSE
+
+      Flux_X1_MHD_Relativistic(iCM_B1) &
+        = 0.0_DP
+
+     !PRINT*, 'iCM_B1 Flux: ', Flux_X1_MHD_Relativistic(iCM_B1)
+
+      Flux_X1_MHD_Relativistic(iCM_B2) &
+        = W * ( V1 - Shift1 / Lapse ) * B2 - W * ( V2 - Shift2 / Lapse ) * B1
+
+      Flux_X1_MHD_Relativistic(iCM_B3) &
+        = W * ( V1 - Shift1 / Lapse ) * B3 - W * ( V3 - Shift3 / Lapse ) * B1
+
+      Flux_X1_MHD_Relativistic(iCM_Chi) &
+        = 0.0_DP
+
+    END IF
 
     RETURN
   END FUNCTION Flux_X1_MHD_Relativistic

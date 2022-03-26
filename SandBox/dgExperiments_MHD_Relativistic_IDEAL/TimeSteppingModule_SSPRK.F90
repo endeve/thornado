@@ -16,8 +16,11 @@ MODULE TimeSteppingModule_SSPRK
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL :: EvolveOnlyMagnetic
-  INTEGER :: nStages_SSPRK
+  LOGICAL  :: EvolveOnlyMagnetic
+  LOGICAL  :: UseDivergenceCleaning
+  INTEGER  :: nStages_SSPRK
+  REAL(DP) :: DampingParameter
+
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
@@ -32,7 +35,8 @@ MODULE TimeSteppingModule_SSPRK
   INTERFACE
     SUBROUTINE MagnetofluidIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-        SuppressBC_Option )
+        SuppressBC_Option, UseDivergenceCleaning_Option, &
+        DampingParameter_Option )
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -44,19 +48,27 @@ MODULE TimeSteppingModule_SSPRK
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      LOGICAL, INTENT(in), OPTIONAL :: &
+      LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
+      LOGICAL,  INTENT(in), OPTIONAL :: &
+        UseDivergenceCleaning_Option
+      REAL(DP), INTENT(in), OPTIONAL :: &
+        DampingParameter_Option
     END SUBROUTINE MagnetofluidIncrement
   END INTERFACE
 
 CONTAINS
 
 
-  SUBROUTINE InitializeMagnetofluid_SSPRK( nStages, EvolveOnlyMagnetic_Option )
+  SUBROUTINE InitializeMagnetofluid_SSPRK &
+               ( nStages, EvolveOnlyMagnetic_Option, &
+                 UseDivergenceCleaning_Option, DampingParameter_Option )
 
     INTEGER, INTENT(in) :: nStages
 
-    LOGICAL, INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: UseDivergenceCleaning_Option
+    REAL(DP), INTENT(in), OPTIONAL :: DampingParameter_Option
 
     INTEGER :: i
 
@@ -64,6 +76,16 @@ CONTAINS
       EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
     ELSE
       EvolveOnlyMagnetic = .FALSE.
+    END IF
+
+    DampingParameter = 0.0_DP
+    IF( PRESENT( DampingParameter_Option ) )THEN
+      DampingParameter = DampingParameter_Option
+    END IF
+
+    UseDivergenceCleaning = .FALSE.
+    IF( PRESENT( UseDivergenceCleaning_Option ) ) THEN
+      UseDivergenceCleaning = UseDivergenceCleaning_Option
     END IF
 
     nStages_SSPRK = nStages
@@ -165,7 +187,8 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE UpdateMagnetofluid_SSPRK( t, dt, G, U, D, ComputeIncrement_Magnetofluid )
+  SUBROUTINE UpdateMagnetofluid_SSPRK &
+               ( t, dt, G, U, D, ComputeIncrement_Magnetofluid )
 
     REAL(DP), INTENT(in) :: &
       t, dt
@@ -214,7 +237,9 @@ CONTAINS
 
         CALL ComputeIncrement_Magnetofluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
+                 UseDivergenceCleaning_Option = UseDivergenceCleaning, &
+                 DampingParameter_Option = DampingParameter )
 
       END IF
 
