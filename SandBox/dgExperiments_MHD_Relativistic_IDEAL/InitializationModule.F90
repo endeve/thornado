@@ -85,15 +85,21 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_Relativistic_MHD &
-               ( AdvectionProfile_Option )
+               ( AdvectionProfile_Option, SmoothProfile_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
+
     CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWave'
+    LOGICAL           :: SmoothProfile
 
     uPM(:,:,:,:,iPM_Ne) = Zero
 
     IF( PRESENT( AdvectionProfile_Option ) ) &
       AdvectionProfile = TRIM( AdvectionProfile_Option )
+
+    IF( PRESENT( SmoothProfile_Option ) ) &
+      SmoothProfile = SmoothProfile_Option
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -104,6 +110,11 @@ CONTAINS
 
         CALL InitializeFields_Advection &
                ( TRIM( AdvectionProfile ) )
+
+      CASE( 'Cleaning1D' )
+
+        CALL InitializeFields_Cleaning1D &
+               ( SmoothProfile )
 
       CASE DEFAULT
 
@@ -340,5 +351,93 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_Advection
 
+
+  SUBROUTINE InitializeFields_Cleaning1D( SmoothProfile )
+
+    LOGICAL, INTENT(in) :: SmoothProfile
+
+    ! 1D divergence cleaning test from Derigs et al. (2018)
+    ! using only the smooth part of the initial condition in 
+    ! Section 5.1.
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
+        uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = One
+        uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+          = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+
+        IF( SmoothProfile )THEN
+
+          IF( ( X1 >= -1.0_DP ) .AND. ( X1 <= -0.6_DP ) )THEN
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+          ELSE IF( ( X1 >= 0.6_DP ) .AND. ( X1 <= 1.0_DP ) )THEN
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+          ELSE
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = EXP( -( X1 / 0.11_DP )**2 / Two )
+          END IF
+
+        ELSE
+
+          IF( ( X1 > -0.8_DP ) .AND. ( X1 <= -0.6_DP ) )THEN
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = -Two * ( X1 + 0.8_DP )
+          ELSE IF( ( X1 > -0.6_DP ) .AND. ( X1 <= 0.6_DP ) )THEN
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = EXP( -( X1 / 0.11_DP )**2 / Two )
+          ELSE IF( ( X1 > 0.6_DP ) .AND. ( X1 <= 1.0_DP ) )THEN
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.5_DP
+          ELSE
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+          END IF
+
+        END IF
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP         
+        uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+      END DO
+ 
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &           
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P) )
+
+    END DO
+    END DO
+    END DO
+
+    PRINT*, 'Finished initialization.'
+
+  END SUBROUTINE InitializeFields_Cleaning1D
 
 END MODULE InitializationModule

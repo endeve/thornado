@@ -58,6 +58,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
   CHARACTER(32) :: CoordinateSystem
+  LOGICAL       :: SmoothProfile
   LOGICAL       :: wrt
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
@@ -72,8 +73,11 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ActivateUnits = .FALSE.
   LOGICAL  :: UseMHD = .TRUE.
   LOGICAL  :: EvolveOnlyMagnetic = .FALSE.
+  LOGICAL  :: UseDivergenceCleaning = .FALSE.
 
-  ProgramName = 'Advection'
+  REAL(DP) :: DampingParameter = 0.0_DP
+
+  ProgramName = 'Cleaning1D'
   AdvectionProfile = 'MagneticSineWave'
 
   swX               = [ 0, 0, 0 ]
@@ -90,6 +94,7 @@ PROGRAM ApplicationDriver
       CASE( 'HydroSineWave' )
 
       EvolveOnlyMagnetic = .FALSE.
+      UseDivergenceCleaning = .FALSE.
 
       AdvectionProfile = 'HydroSineWave'
 
@@ -107,6 +112,7 @@ PROGRAM ApplicationDriver
       CASE( 'MagneticSineWave' )
 
       EvolveOnlyMagnetic = .TRUE.
+      UseDivergenceCleaning = .FALSE.
 
       AdvectionProfile = 'MagneticSineWave'
 
@@ -124,6 +130,7 @@ PROGRAM ApplicationDriver
       CASE( 'CPAlfven' )
 
       EvolveOnlyMagnetic = .FALSE.
+      UseDivergenceCleaning = .FALSE.
 
       AdvectionProfile = 'CPAlfven'
 
@@ -154,9 +161,14 @@ PROGRAM ApplicationDriver
     CASE( 'Cleaning1D' )
 
       EvolveOnlyMagnetic = .TRUE.
+      
+      UseDivergenceCleaning = .TRUE.
+      DampingParameter = 0.0_DP
+
+      SmoothProfile = .FALSE.
 
       Gamma = 1.4_DP
-      t_end = 5.0_DP
+      t_end = 10.0_DP
       bcX = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
@@ -180,13 +192,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -230,7 +242,9 @@ PROGRAM ApplicationDriver
            Gamma_IDEAL_Option = Gamma )
 
   CALL InitializeMagnetofluid_SSPRK &
-         ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic )
+         ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
+           UseDivergenceCleaning_Option = UseDivergenceCleaning, &
+           DampingParameter_Option = DampingParameter )
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
@@ -239,7 +253,9 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields_Relativistic_MHD &
          ( AdvectionProfile_Option &
-             = TRIM( AdvectionProfile ) )
+             = TRIM( AdvectionProfile ), &
+           SmoothProfile_Option &
+             = SmoothProfile )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -280,7 +296,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCM, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt )
+             dt, UseDivergenceCleaning )
 
     IF( t + dt .LT. t_end )THEN
 
