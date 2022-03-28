@@ -97,7 +97,7 @@ MODULE MHD_DiscretizationModule_Relativistic
   PUBLIC :: ComputeIncrement_MHD_DG_Explicit
 
   LOGICAL  :: UseDivergenceCleaning
-  REAL(DP) :: Time, DampingParameter
+  REAL(DP) :: DampingParameter
 
   REAL(DP), POINTER, CONTIGUOUS :: &
     Gm_dd_11_K(:), Gm_dd_22_K(:), Gm_dd_33_K(:), SqrtGm_K(:), &
@@ -148,8 +148,7 @@ CONTAINS
     REAL(DP), INTENT(in),  OPTIONAL :: &
       DampingParameter_Option
     REAL(DP), INTENT(inout)         :: &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)         :: &
+      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)           :: &
       dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -877,10 +876,9 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    REAL(DP), INTENT(in)    :: &
-      tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+      G  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      tau(:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
@@ -904,8 +902,9 @@ CONTAINS
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
 
     INTEGER :: iX1, iX2, iX3, iNX, iCM, iGF, i, k, iDim
-    INTEGER :: nGF_K
+    INTEGER :: nK(3), nGF_K
 
+    REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPM)
     REAL(DP) :: Pressure
     REAL(DP) :: W, B0u, bSq
@@ -916,51 +915,44 @@ CONTAINS
                                           iX_B0(2):iX_E0(2), &
                                           iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: G_K_X1 (nDOFX,   nGF+1,iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: G_Dn_X1(nDOFX_X1,nGF+1,iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(1)  :iX_E0(1))
-    REAL(DP) :: G_Up_X1(nDOFX_X1,nGF+1,iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(1)  :iX_E0(1))
-    REAL(DP) :: dGdX1  (nDOFX,   nGF+1,iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(1)  :iX_E0(1))
+    REAL(DP) :: G_K_X1 (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: G_Dn_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
+    REAL(DP) :: G_Up_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
+    REAL(DP) :: dGdX1  (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
 
-    REAL(DP) :: G_K_X2 (nDOFX,   nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: G_Dn_X2(nDOFX_X2,nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(2)  :iX_E0(2))
-    REAL(DP) :: G_Up_X2(nDOFX_X2,nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(2)  :iX_E0(2))
-    REAL(DP) :: dGdX2  (nDOFX,   nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(3)  :iX_E0(3), &
-                                       iX_B0(2)  :iX_E0(2))
+    REAL(DP) :: G_K_X2 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)-1:iX_E0(2)+1)
+    REAL(DP) :: G_Dn_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
+    REAL(DP) :: G_Up_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
+    REAL(DP) :: dGdX2  (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
 
-    REAL(DP) :: G_K_X3 (nDOFX,   nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: G_Dn_X3(nDOFX_X3,nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3))
-    REAL(DP) :: G_Up_X3(nDOFX_X3,nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3))
-    REAL(DP) :: dGdX3  (nDOFX,   nGF+1,iX_B0(1)  :iX_E0(1), &
-                                       iX_B0(2)  :iX_E0(2), &
-                                       iX_B0(3)  :iX_E0(3))
-
-    REAL(DP) :: EnergyDensitySourceTerms(7,nDOFX,iX_B0(1):iX_E0(1), &
-                                                 iX_B0(2):iX_E0(2), &
-                                                 iX_B0(3):iX_E0(3))
-
-    REAL(DP) :: PressureTensor_ud(3,3)
-    REAL(DP) :: DivGridVolume
+    REAL(DP) :: G_K_X3 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)-1:iX_E0(3)+1)
+    REAL(DP) :: G_Dn_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
+    REAL(DP) :: G_Up_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
+    REAL(DP) :: dGdX3  (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
 
     REAL(DP) :: GradPsiF(nDOFX)
 
@@ -968,7 +960,8 @@ CONTAINS
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-    nGF_K = ( nGF + 1 ) * PRODUCT( nX )
+    nK = iX_E0 - iX_B0 + 1
+    nGF_K = nGF * PRODUCT( nK )
 
     ! --- Permute data ---
 
@@ -981,20 +974,6 @@ CONTAINS
       G_K_X1(iNX,iGF,iX2,iX3,iX1) = G(iNX,iX1,iX2,iX3,iGF)
 
     END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
-    DO iX3 = iX_B0(3)    , iX_E0(3)
-    DO iX2 = iX_B0(2)    , iX_E0(2)
-    DO iNX = 1           , nDOFX
-
-      G_K_X1(iNX,nGF+1,iX2,iX3,iX1) &
-        =   G_K_X1(iNX,iGF_SqrtGm,iX2,iX3,iX1) &
-          * G_K_X1(iNX,iGF_Beta_1,iX2,iX3,iX1)
-
     END DO
     END DO
     END DO
@@ -1037,13 +1016,9 @@ CONTAINS
         = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 
       G_Up_X1        (iNX,iGF_SqrtGm   ,iX2,iX3,iX1) &
-        = G_Up_X1    (iNX,iGF_h_1      ,iX2,iX3,iX1) &
-            * G_Up_X1(iNX,iGF_h_2      ,iX2,iX3,iX1) &
-            * G_Up_X1(iNX,iGF_h_3      ,iX2,iX3,iX1)
-
-      G_Up_X1        (iNX,nGF+1        ,iX2,iX3,iX1) &
-        = G_Up_X1    (iNX,iGF_SqrtGm   ,iX2,iX3,iX1) &
-            * G_Up_X1(iNX,iGF_Beta_1   ,iX2,iX3,iX1)
+        = MAX( G_Up_X1    (iNX,iGF_h_1      ,iX2,iX3,iX1) &
+                 * G_Up_X1(iNX,iGF_h_2      ,iX2,iX3,iX1) &
+                 * G_Up_X1(iNX,iGF_h_3      ,iX2,iX3,iX1), SqrtTiny )
 
       G_Dn_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
         = MAX( G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
@@ -1053,13 +1028,9 @@ CONTAINS
         = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 
       G_Dn_X1        (iNX,iGF_SqrtGm   ,iX2,iX3,iX1) &
-        = G_Dn_X1    (iNX,iGF_h_1      ,iX2,iX3,iX1) &
-            * G_Dn_X1(iNX,iGF_h_2      ,iX2,iX3,iX1) &
-            * G_Dn_X1(iNX,iGF_h_3      ,iX2,iX3,iX1)
-
-      G_Dn_X1        (iNX,nGF+1        ,iX2,iX3,iX1) &
-        = G_Dn_X1    (iNX,iGF_SqrtGm   ,iX2,iX3,iX1) &
-            * G_Dn_X1(iNX,iGF_Beta_1   ,iX2,iX3,iX1)
+        = MAX( G_Dn_X1    (iNX,iGF_h_1      ,iX2,iX3,iX1) &
+                 * G_Dn_X1(iNX,iGF_h_2      ,iX2,iX3,iX1) &
+                 * G_Dn_X1(iNX,iGF_h_3      ,iX2,iX3,iX1), SqrtTiny )
 
     END DO
     END DO
@@ -1071,7 +1042,7 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF + 1
+    DO iGF = 1       , nGF
     DO iNX = 1       , nDOFX_X1
 
       G_Dn_X1(iNX,iGF,iX2,iX3,iX1) &
@@ -1089,7 +1060,7 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF + 1
+    DO iGF = 1       , nGF
     DO iNX = 1       , nDOFX
 
       G_K_X1(iNX,iGF,iX2,iX3,iX1) &
@@ -1119,7 +1090,7 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF + 1
+    DO iGF = 1       , nGF
     DO iNX = 1       , nDOFX
 
       dGdX1(iNX,iGF,iX2,iX3,iX1) &
@@ -1134,7 +1105,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iGF = 1       , nGF + 1
+    DO iGF = 1       , nGF
     DO iNX = 1       , nDOFX
 
       dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
@@ -1148,7 +1119,7 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iGF = 1       , nGF + 1
+    DO iGF = 1       , nGF
     DO iNX = 1       , nDOFX
 
       dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
@@ -1293,27 +1264,6 @@ CONTAINS
               + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
                 * G(iNX,iX1,iX2,iX3,iGF_Beta_3)**2 )
 
-      PressureTensorTrace(iNX,iX1,iX2,iX3) &
-        =   U(iNX,iX1,iX2,iX3,iCM_S1) * P(iPM_V1) &
-          + U(iNX,iX1,iX2,iX3,iCM_S2) * P(iPM_V2) &
-          + U(iNX,iX1,iX2,iX3,iCM_S3) * P(iPM_V3) &
-          - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-            * ( P(iPM_B1)**2 & 
-                + Two * B0u * P(iPM_B1) * G(iNX,iX1,iX2,iX3,iGF_Beta_1)  &
-                + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
-                  * G(iNX,iX1,iX2,iX3,iGF_Beta_1)**2 ) &
-          - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-            * ( P(iPM_B2)**2 & 
-                + Two * B0u * P(iPM_B2) * G(iNX,iX1,iX2,iX3,iGF_Beta_2)  &
-                + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
-                  * G(iNX,iX1,iX2,iX3,iGF_Beta_2)**2 ) &
-          - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-            * ( P(iPM_B3)**2 & 
-                + Two * B0u * P(iPM_B3) * G(iNX,iX1,iX2,iX3,iGF_Beta_3)  &
-                + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
-                  * G(iNX,iX1,iX2,iX3,iGF_Beta_3)**2 ) &
-          + Three * Pressure
-
       ! --- X1 increments ---
 
       ! --- Momentum increment ---
@@ -1342,16 +1292,15 @@ CONTAINS
 
       ! --- Energy increment ---
 
-      EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
-        = -U(iNX,iX1,iX2,iX3,iCM_S1) &
-             / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-             * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
-
       dU(iNX,iX1,iX2,iX3,iCM_E) &
         = dU(iNX,iX1,iX2,iX3,iCM_E) &
-            + tau(iNX,iX1,iX2,iX3) * EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3)
+            - tau(iNX,iX1,iX2,iX3) &
+                * U(iNX,iX1,iX2,iX3,iCM_S1) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+                * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
       IF( UseDivergenceCleaning )THEN
+
+        PRINT*, 'Using divergence cleaning for source terms.'
 
         ! --- Eulerian Magnetic Field increment ---
   
