@@ -59,6 +59,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Zero, &
     Half, &
     One, &
+    Two, &
     TwoPi
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X, &
@@ -157,7 +158,7 @@ CONTAINS
     REAL(DP) :: D_0, V1, V2, V3, P
     REAL(DP) :: Amp
     REAL(DP) :: X1_0
-    REAL(DP) :: sigma
+    REAL(DP) :: sigmaX1
 
     AdvectionProfile = 'SineWave'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -192,9 +193,9 @@ CONTAINS
 
       CASE( 'Gaussian' )
 
-        D_0    = 1.0_DP
-        X1_0   = 0.5_DP
-        sigma  = 0.1_DP
+        D_0     = 1.0_DP
+        X1_0    = 0.5_DP
+        sigmaX1 = 0.1_DP
 
         V1 = 0.1_DP
         V2 = 0.0_DP
@@ -206,13 +207,13 @@ CONTAINS
           WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
           WRITE(*,'(4x,A,A)') '------------------ '
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') '   D_0: ', D_0
-          WRITE(*,'(6x,A,F5.3)') '  X1_0: ', X1_0
-          WRITE(*,'(6x,A,F5.3)') ' sigma: ', sigma
-          WRITE(*,'(6x,A,F5.3)') '    V1: ', V1
-          WRITE(*,'(6x,A,F5.3)') '    V2: ', V2
-          WRITE(*,'(6x,A,F5.3)') '    V3: ', V3
-          WRITE(*,'(6x,A,F5.3)') '     P: ', P
+          WRITE(*,'(6x,A,F5.3)') '     D_0: ', D_0
+          WRITE(*,'(6x,A,F5.3)') '    X1_0: ', X1_0
+          WRITE(*,'(6x,A,F5.3)') ' sigmaX1: ', sigmaX1
+          WRITE(*,'(6x,A,F5.3)') '      V1: ', V1
+          WRITE(*,'(6x,A,F5.3)') '      V2: ', V2
+          WRITE(*,'(6x,A,F5.3)') '      V3: ', V3
+          WRITE(*,'(6x,A,F5.3)') '       P: ', P
           WRITE(*,*)
 
         END IF
@@ -274,7 +275,7 @@ CONTAINS
           uAF(iNX,iAF_P ) = P
 
           uPF(iNX,iPF_D) &
-            = D_0 * EXP( -( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) )
+            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
@@ -610,7 +611,7 @@ CONTAINS
     REAL(DP) :: D_0, V1, V2, V3, P
     REAL(DP) :: Amp
     REAL(DP) :: X1_0, X2_0
-    REAL(DP) :: sigma
+    REAL(DP) :: sigmaX1, sigmaX2
 
     AdvectionProfile = 'SineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -646,12 +647,13 @@ CONTAINS
 
       CASE( 'Gaussian' )
 
-        D_0    = 2.0_DP
-        X1_0   = 0.5_DP
-        X2_0   = 0.5_DP
-        sigma  = 0.1_DP
+        D_0     = 1.0_DP
+        X1_0    = 0.5_DP
+        X2_0    = 0.5_DP
+        sigmaX1 = 0.1_DP
+        sigmaX2 = 0.1_DP
 
-        V1 = 0.5_DP
+        V1 = 0.1_DP
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
@@ -661,14 +663,15 @@ CONTAINS
           WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
           WRITE(*,'(4x,A,A)') '------------------ '
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') '   D_0: ', D_0
-          WRITE(*,'(6x,A,F5.3)') '  X1_0: ', X1_0
-          WRITE(*,'(6x,A,F5.3)') '  X2_0: ', X2_0
-          WRITE(*,'(6x,A,F5.3)') ' sigma: ', sigma
-          WRITE(*,'(6x,A,F5.3)') '    V1: ', V1
-          WRITE(*,'(6x,A,F5.3)') '    V2: ', V2
-          WRITE(*,'(6x,A,F5.3)') '    V3: ', V3
-          WRITE(*,'(6x,A,F5.3)') '     P: ', P
+          WRITE(*,'(6x,A,F5.3)') '     D_0: ', D_0
+          WRITE(*,'(6x,A,F5.3)') '    X1_0: ', X1_0
+          WRITE(*,'(6x,A,F5.3)') '    X2_0: ', X2_0
+          WRITE(*,'(6x,A,F5.3)') ' sigmaX1: ', sigmaX1
+          WRITE(*,'(6x,A,F5.3)') ' sigmaX2: ', sigmaX2
+          WRITE(*,'(6x,A,F5.3)') '      V1: ', V1
+          WRITE(*,'(6x,A,F5.3)') '      V2: ', V2
+          WRITE(*,'(6x,A,F5.3)') '      V3: ', V3
+          WRITE(*,'(6x,A,F5.3)') '       P: ', P
           WRITE(*,*)
 
         END IF
@@ -733,8 +736,8 @@ CONTAINS
           uAF(iNX,iAF_P ) = P
 
           uPF(iNX,iPF_D) &
-            = D_0 * EXP( -( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( -( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) )
+            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+                  * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
@@ -978,7 +981,7 @@ CONTAINS
     REAL(DP) :: D_0, V1, V2, V3, P
     REAL(DP) :: Amp
     REAL(DP) :: X1_0, X2_0, X3_0
-    REAL(DP) :: sigma
+    REAL(DP) :: sigmaX1, sigmaX2, sigmaX3
 
     AdvectionProfile = 'SineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -1014,13 +1017,15 @@ CONTAINS
 
       CASE( 'Gaussian' )
 
-        D_0    = 2.0_DP
-        X1_0   = 0.5_DP
-        X2_0   = 0.5_DP
-        X3_0   = 0.5_DP
-        sigma  = 0.1_DP
+        D_0     = 1.0_DP
+        X1_0    = 0.5_DP
+        X2_0    = 0.5_DP
+        X3_0    = 0.5_DP
+        sigmaX1 = 0.1_DP
+        sigmaX2 = 0.1_DP
+        sigmaX3 = 0.1_DP
 
-        V1 = 0.5_DP
+        V1 = 0.1_DP
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
@@ -1030,15 +1035,17 @@ CONTAINS
           WRITE(*,'(4x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
           WRITE(*,'(4x,A,A)') '------------------ '
           WRITE(*,*)
-          WRITE(*,'(6x,A,F5.3)') '   D_0: ', D_0
-          WRITE(*,'(6x,A,F5.3)') '  X1_0: ', X1_0
-          WRITE(*,'(6x,A,F5.3)') '  X2_0: ', X2_0
-          WRITE(*,'(6x,A,F5.3)') '  X3_0: ', X3_0
-          WRITE(*,'(6x,A,F5.3)') ' sigma: ', sigma
-          WRITE(*,'(6x,A,F5.3)') '    V1: ', V1
-          WRITE(*,'(6x,A,F5.3)') '    V2: ', V2
-          WRITE(*,'(6x,A,F5.3)') '    V3: ', V3
-          WRITE(*,'(6x,A,F5.3)') '     P: ', P
+          WRITE(*,'(6x,A,F5.3)') '     D_0: ', D_0
+          WRITE(*,'(6x,A,F5.3)') '    X1_0: ', X1_0
+          WRITE(*,'(6x,A,F5.3)') '    X2_0: ', X2_0
+          WRITE(*,'(6x,A,F5.3)') '    X3_0: ', X3_0
+          WRITE(*,'(6x,A,F5.3)') ' sigmaX1: ', sigmaX1
+          WRITE(*,'(6x,A,F5.3)') ' sigmaX2: ', sigmaX2
+          WRITE(*,'(6x,A,F5.3)') ' sigmaX3: ', sigmaX3
+          WRITE(*,'(6x,A,F5.3)') '      V1: ', V1
+          WRITE(*,'(6x,A,F5.3)') '      V2: ', V2
+          WRITE(*,'(6x,A,F5.3)') '      V3: ', V3
+          WRITE(*,'(6x,A,F5.3)') '       P: ', P
           WRITE(*,*)
 
         END IF
@@ -1106,9 +1113,9 @@ CONTAINS
           uAF(iNX,iAF_P ) = P
 
           uPF(iNX,iPF_D) &
-            = D_0 * EXP( -( X1 - X1_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( -( X2 - X2_0 )**2 / ( 2.0_DP * sigma**2 ) ) &
-                  * EXP( -( X3 - X3_0 )**2 / ( 2.0_DP * sigma**2 ) )
+            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+                  * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) ) &
+                  * EXP( -( X3 - X3_0 )**2 / ( Two * sigmaX3**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
