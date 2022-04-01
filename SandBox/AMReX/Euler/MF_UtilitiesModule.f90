@@ -76,7 +76,7 @@ CONTAINS
     INTEGER                       :: lo(4), hi(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: U(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: F(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
     INTEGER                       :: swXX(3)
     LOGICAL                       :: WriteToFile
@@ -114,10 +114,10 @@ CONTAINS
       IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
         Mask => iMF_Mask % DataPtr( MFI )
 
-      U => MF % DataPtr( MFI )
+      F => MF % DataPtr( MFI )
       BX = MFI % tilebox()
 
-      lo = LBOUND( U ); hi = UBOUND( U )
+      lo = LBOUND( F ); hi = UBOUND( F )
 
       DO iX3 = BX % lo(3) - swXX(3), BX % hi(3) + swXX(3)
       DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
@@ -147,7 +147,7 @@ CONTAINS
             MeshX(2) % Width(iX2), &
             MeshX(3) % Width(iX3), &
             NodesX1, NodesX2, NodesX3, &
-            U(iX1,iX2,iX3,1+nDOFX*(iField-1):nDOFX*iField)
+            F(iX1,iX2,iX3,1+nDOFX*(iField-1):nDOFX*iField)
 
         ELSE
 
@@ -157,7 +157,7 @@ CONTAINS
             MeshX(2) % Width(iX2), &
             MeshX(3) % Width(iX3), &
             NodesX1, NodesX2, NodesX3, &
-            U(iX1,iX2,iX3,1+nDOFX*(iField-1):nDOFX*iField)
+            F(iX1,iX2,iX3,1+nDOFX*(iField-1):nDOFX*iField)
 
         END IF
 
