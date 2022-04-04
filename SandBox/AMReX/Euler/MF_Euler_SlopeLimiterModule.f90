@@ -121,20 +121,35 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
-    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
+    IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
 
-    CALL FillPatch( iLevel, Time, MF_uGF )
-    CALL FillPatch( iLevel, Time, MF_uCF )
+      ! --- nGF must be LAST ---
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uDF(iLevel), nDF, +1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uDF(iLevel-1), nDF, +1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, +1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, +1 )
+
+    END IF
+
     CALL FillPatch( iLevel, Time, MF_uDF )
+    CALL FillPatch( iLevel, Time, MF_uCF )
+    CALL FillPatch( iLevel, Time, MF_uGF )
 
-    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, -1 )
-    CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, -1 )
+    IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
 
-    IF( iLevel .GT. 0 )THEN
+      ! --- nGF must be FIRST ---
+
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uDF(iLevel), nDF, -1 )
 
       CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, -1 )
       CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, -1 )
+      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uDF(iLevel-1), nDF, -1 )
 
     END IF
 
