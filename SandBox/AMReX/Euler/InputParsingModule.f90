@@ -218,6 +218,8 @@ CONTAINS
     BlockingFactorX1 = 1
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
+    UseTiling        = 0
+    do_reflux        = 0
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell'           , nX               )
       CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
@@ -227,8 +229,8 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
       CALL PP % get   ( 'max_level'        , MaxLevel         )
-      CALL PP % get   ( 'UseTiling'        , UseTiling        )
-      CALL PP % get   ( 'do_reflux'        , do_reflux        )
+      CALL PP % query ( 'UseTiling'        , UseTiling        )
+      CALL PP % query ( 'do_reflux'        , do_reflux        )
       CALL PP % getarr( 'ref_ratio'        , RefinementRatio  )
     CALL amrex_parmparse_destroy( PP )
 
