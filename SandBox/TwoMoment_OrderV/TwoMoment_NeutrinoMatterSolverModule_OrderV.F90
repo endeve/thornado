@@ -988,7 +988,7 @@ CONTAINS
     ! --- EmAb ---
 
     CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE_G, iNuE, iNuE_Bar, 1, nX, E_N, D_P, T_P, Y_P, Chi_EmAb_P )
+           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Chi_EmAb_P )
 
     ! --- Isoenergetic scattering ---
 

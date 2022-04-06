@@ -342,8 +342,7 @@ CONTAINS
     ! --- Neutrino Absorption Opacities and Equilibrium Distributions ---
 
     CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE, iNuE, iNuE_Bar, 1, nR, E_Nu, D_P, T_P, Y_P, &
-             Chi(:,iNuE:iNuE_Bar,:) )
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, Chi )
 
     DO iR = 1, nR
 
