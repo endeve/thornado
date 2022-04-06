@@ -142,6 +142,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER  :: M_FP, M_outer, M_inner
   INTEGER  :: MaxIter_outer, MaxIter_inner
   REAL(DP) :: Rtol_outer, Rtol_inner
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: wMatterRHS
 
   INTEGER, PARAMETER :: iY  = 1
   INTEGER, PARAMETER :: iEf = 2
@@ -186,6 +187,14 @@ CONTAINS
 
     n_FP_outer = 5
     n_FP_inner = nE_G * nCR * nSpecies
+
+    ALLOCATE( wMatterRHS(n_FP_outer) )
+
+    wMatterRHS(iY ) = One  ! --- One = On, Zero = Off
+    wMatterRHS(iEf) = One
+    wMatterRHS(iV1) = One
+    wMatterRHS(iV2) = One
+    wMatterRHS(iV3) = One
 
     ALLOCATE( E_N (nE_G) )
     ALLOCATE( W2_N(nE_G) )
@@ -630,6 +639,7 @@ CONTAINS
     !$ACC         WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
+    DEALLOCATE( wMatterRHS )
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
     DEALLOCATE( INFO )
     DEALLOCATE( Jnorm )
@@ -913,7 +923,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
-    INTEGER :: nX, nX0, iX, iE, iE1, iE2
+    INTEGER :: nX, nX0, iX, iE
 
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
@@ -1404,11 +1414,11 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_Y    (iN_X) = U_Y    (iN_X) + SUM_Y  * S_Y    (iN_X)
-      C_Ef   (iN_X) = U_Ef   (iN_X) + SUM_Ef * S_Ef   (iN_X)
-      C_V_d_1(iN_X) = U_V_d_1(iN_X) + SUM_V1 * S_V_d_1(iN_X)
-      C_V_d_2(iN_X) = U_V_d_2(iN_X) + SUM_V2 * S_V_d_2(iN_X)
-      C_V_d_3(iN_X) = U_V_d_3(iN_X) + SUM_V3 * S_V_d_3(iN_X)
+      C_Y    (iN_X) = U_Y    (iN_X) + wMatterRHS(iY ) * SUM_Y  * S_Y    (iN_X)
+      C_Ef   (iN_X) = U_Ef   (iN_X) + wMatterRHS(iEf) * SUM_Ef * S_Ef   (iN_X)
+      C_V_d_1(iN_X) = U_V_d_1(iN_X) + wMatterRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
+      C_V_d_2(iN_X) = U_V_d_2(iN_X) + wMatterRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
+      C_V_d_3(iN_X) = U_V_d_3(iN_X) + wMatterRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
 
     END DO
 
@@ -1548,11 +1558,11 @@ CONTAINS
         END DO
         END DO
 
-        G_Y    (iN_X)  = C_Y    (iN_X) - SUM_Y  * S_Y    (iN_X)
-        G_Ef   (iN_X)  = C_Ef   (iN_X) - SUM_Ef * S_Ef   (iN_X)
-        G_V_d_1(iN_X)  = C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X)
-        G_V_d_2(iN_X)  = C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X)
-        G_V_d_3(iN_X)  = C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X)
+        G_Y    (iN_X) = C_Y    (iN_X) - wMatterRHS(iY ) * SUM_Y  * S_Y    (iN_X)
+        G_Ef   (iN_X) = C_Ef   (iN_X) - wMatterRHS(iEf) * SUM_Ef * S_Ef   (iN_X)
+        G_V_d_1(iN_X) = C_V_d_1(iN_X) - wMatterRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
+        G_V_d_2(iN_X) = C_V_d_2(iN_X) - wMatterRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
+        G_V_d_3(iN_X) = C_V_d_3(iN_X) - wMatterRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
 
         Gm(iY ,iN_X) = G_Y    (iN_X)
         Gm(iEf,iN_X) = G_Ef   (iN_X)
