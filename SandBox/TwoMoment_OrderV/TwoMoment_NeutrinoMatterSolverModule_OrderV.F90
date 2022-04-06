@@ -329,7 +329,7 @@ CONTAINS
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
+    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatterRHS, &
     !$OMP          ITERATE_outer, ITERATE_inner ) &
     !$OMP MAP( alloc: INFO, &
     !$OMP             Jnorm, &
@@ -366,7 +366,7 @@ CONTAINS
     !$OMP             TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
+    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatterRHS, &
     !$ACC         ITERATE_outer, ITERATE_inner ) &
     !$ACC CREATE( INFO, &
     !$ACC         Jnorm, &
@@ -567,7 +567,7 @@ CONTAINS
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
+    !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatterRHS, &
     !$OMP               INFO, &
     !$OMP               Jnorm, &
     !$OMP               C_J, &
@@ -603,7 +603,7 @@ CONTAINS
     !$OMP               WORK_inner, TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
-    !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, &
+    !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatterRHS, &
     !$ACC         INFO, &
     !$ACC         Jnorm, &
     !$ACC         C_J, &
