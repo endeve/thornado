@@ -580,12 +580,20 @@ CONTAINS
     DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
 
-      CALL LogInterpolateSingleVariable_4D_Custom_Point &
-             ( LogE_P(iE), LogD_P(iX), LogT_P(iX), Y_P(iX), &
-               LogEs_T   , LogDs_T   , LogTs_T   , Ys_T   , &
-               OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
+      IF ( iS > iNuE_Bar ) THEN
 
-      opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
+        opEC(iE,iS,iX) = Zero
+
+      ELSE
+
+        CALL LogInterpolateSingleVariable_4D_Custom_Point &
+               ( LogE_P(iE), LogD_P(iX), LogT_P(iX), Y_P(iX), &
+                 LogEs_T   , LogDs_T   , LogTs_T   , Ys_T   , &
+                 OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
+
+        opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
+
+      END IF
 
     END DO
     END DO
