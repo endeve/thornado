@@ -127,7 +127,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       CoordinateSystem = 'SPHERICAL'
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
       nX    = [ 128, 1, 1 ]
