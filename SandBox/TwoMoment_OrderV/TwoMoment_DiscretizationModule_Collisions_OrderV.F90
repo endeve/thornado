@@ -22,8 +22,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     TimersStart, &
     TimersStop, &
     Timer_Collisions, &
-    Timer_Collisions_Zero, &
-    Timer_Collisions_Permute, &
     Timer_Collisions_PrimitiveFluid, &
     Timer_Collisions_Solve
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
@@ -137,8 +135,6 @@ CONTAINS
     !$ACC CREATE( dU_F, dU_R )
 #endif
 
-    CALL TimersStart( Timer_Collisions_Zero )
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
@@ -194,8 +190,6 @@ CONTAINS
     END DO
 
 
-    CALL TimersStop( Timer_Collisions_Zero )
-
 
 
 #if defined(THORNADO_OMP_OL)
@@ -219,8 +213,6 @@ CONTAINS
     !$ACC CREATE( GX_N, CF_N, CR_N, OP_N )
 #endif
 
-
-    CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Arrange Geometry Fields ---
 
@@ -343,8 +335,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Collisions_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -496,8 +486,6 @@ CONTAINS
 #endif
 
 
-    CALL TimersStart( Timer_Collisions_Permute )
-
     ! --- Revert Radiation Increment ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -541,8 +529,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Collisions_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &

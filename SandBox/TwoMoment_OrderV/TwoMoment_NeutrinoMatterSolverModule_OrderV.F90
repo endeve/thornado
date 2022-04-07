@@ -18,6 +18,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
+    Timer_Collisions_OuterLoop, &
     Timer_Collisions_InnerLoop, &
     Timer_Collisions_ComputeOpacity, &
     Timer_Collisions_ComputeRates, &
@@ -739,6 +740,8 @@ CONTAINS
 
     ! --- Start Outer Loop ---
 
+    CALL TimersStart( Timer_Collisions_OuterLoop )
+
     k_outer = 0
     DO WHILE( ANY( ITERATE_outer(:) ) .AND. k_outer < MaxIter_outer )
 
@@ -899,6 +902,8 @@ CONTAINS
       CALL TimersStop( Timer_Collisions_UpdateFP )
 
     END DO ! --- Outer Loop ---
+
+    CALL TimersStop( Timer_Collisions_OuterLoop )
 
     nIterations_Inner &
       = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
