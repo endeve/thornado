@@ -8,7 +8,7 @@ HDF5_HOME     ?= $(HDF5_DIR)
 HDF5_INC       = $(HDF5_HOME)/serial/include
 HDF5_LIB       = $(HDF5_HOME)/serial/lib
 
-DEBUG     = TRUE
+DEBUG     = FALSE
 
 USE_MPI   = TRUE
 USE_OMP   = FALSE

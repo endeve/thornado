@@ -118,6 +118,8 @@ MODULE InitializationModule
     InitializeSlopeLimiter_TwoMoment
   USE InputOutputEuler,           ONLY: &
     WriteFieldsAMReX_PlotFile_Euler
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    InitializeTimers
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
@@ -127,6 +129,12 @@ MODULE InitializationModule
     MF_uDF, &
     MF_uPR, &
     MF_uCR
+  USE MF_TwoMoment_TallyModule,         ONLY: &
+    MF_InitializeTally_TwoMoment, &
+    MF_ComputeTally_TwoMoment
+  USE MF_Euler_TallyModule,         ONLY: &
+    MF_InitializeTally_Euler, &
+    MF_ComputeTally_Euler
   USE MyAmrModule,                      ONLY: &
     t_end,                     &
     t,                         &
@@ -210,7 +218,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    INTEGER               :: iLevel, iDim
+    INTEGER               :: iLevel, iDim, FileUnit
     TYPE(amrex_box)       :: BX
 
     ! --- Initialize AMReX --
@@ -220,6 +228,10 @@ CONTAINS
 
     ! --- Parse parameter file ---
     CALL MyAmrInit
+    
+
+    CALL InitializeTimers
+
     IF( iRestart .LT. 0 )THEN
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
@@ -409,6 +421,15 @@ CONTAINS
              Verbose_Option &
                = amrex_parallel_ioprocessor()  )
 
+    CALL MF_InitializeTally_Euler
+
+    CALL MF_ComputeTally_Euler( GEOM, MF_uGF, MF_uCF, t(0), &
+                                Verbose_Option = .FALSE. )
+
+    CALL MF_InitializeTally_TwoMoment
+
+    CALL MF_ComputeTally_TwoMoment( GEOM, MF_uGF, MF_uCF, MF_uCR, &
+                                    t(0), Verbose_Option = .FALSE. )
     CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
     CALL WriteFieldsAMReX_PlotFile &
@@ -428,6 +449,12 @@ CONTAINS
                MF_uAF_Option = MF_uAF, &
                num_Option = 0 )
 
+    OPEN( NEWUNIT = FileUnit, FILE = "Num_Iter.dat" )
+    
+    WRITE(FileUnit,'(5(A25,x))') & 
+    "nIter_Inner ", "nIter_Outer"
+
+    CLOSE ( FileUnit )
 
   END SUBROUTINE InitializeProgram
 

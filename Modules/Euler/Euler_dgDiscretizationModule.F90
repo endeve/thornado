@@ -1301,9 +1301,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      uDF_L(iX1,iX3,iX2,1) = D(1,iX1,iX2-1,iX3,iDF_Sh_X2)
+      uDF_L(iX1,iX3,iX2,1) = D(1,iX1,iX2-1,iX3,iDF_Sh_X1)
       uDF_L(iX1,iX3,iX2,2) = D(1,iX1,iX2-1,iX3,iDF_Sh_X3)
-      uDF_R(iX1,iX3,iX2,1) = D(1,iX1,iX2  ,iX3,iDF_Sh_X2)
+      uDF_R(iX1,iX3,iX2,1) = D(1,iX1,iX2  ,iX3,iDF_Sh_X1)
       uDF_R(iX1,iX3,iX2,2) = D(1,iX1,iX2  ,iX3,iDF_Sh_X3)
 
     END DO
@@ -2018,10 +2018,10 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      uDF_L(iX1,iX2,iX3,1) = D(1,iX1,iX2,iX3-1,iDF_Sh_X2)
-      uDF_L(iX1,iX2,iX3,2) = D(1,iX1,iX2,iX3-1,iDF_Sh_X3)
-      uDF_R(iX1,iX2,iX3,1) = D(1,iX1,iX2,iX3  ,iDF_Sh_X2)
-      uDF_R(iX1,iX2,iX3,2) = D(1,iX1,iX2,iX3  ,iDF_Sh_X3)
+      uDF_L(iX1,iX2,iX3,1) = D(1,iX1,iX2,iX3-1,iDF_Sh_X1)
+      uDF_L(iX1,iX2,iX3,2) = D(1,iX1,iX2,iX3-1,iDF_Sh_X2)
+      uDF_R(iX1,iX2,iX3,1) = D(1,iX1,iX2,iX3  ,iDF_Sh_X1)
+      uDF_R(iX1,iX2,iX3,2) = D(1,iX1,iX2,iX3  ,iDF_Sh_X2)
 
     END DO
     END DO
