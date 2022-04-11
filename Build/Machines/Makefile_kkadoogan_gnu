@@ -4,7 +4,10 @@ C       = mpic++ --c++11
 FORTRAN = mpif90 -cpp
 FLINKER = mpif90
 
-DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fallow-argument-mismatch
+DEBUG    = -g -O0 -ggdb -fcheck=bounds -fbacktrace -Wuninitialized -Wunused \
+              -ffpe-trap=invalid,zero,overflow,underflow  \
+           -ffpe-summary=invalid,zero,overflow,underflow \
+           -fallow-argument-mismatch -finit-real=snan -ftrapv
 OPTIMIZE = -g -O2 -fallow-argument-mismatch
 
 SUFFIX_f90 =
@@ -24,10 +27,10 @@ endif
 
 INCLUDE_CUDA     =
 INCLUDE_HDF5     = -I$(HDF5_DIR)/include
-INCLUDE_LAPACK   =
+INCLUDE_LAPACK   = -I$(LAPACK_DIR)/include
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON =
+INCLUDE_POSEIDON = -I$(POSEIDON_DIR)/Obj
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
@@ -35,5 +38,5 @@ LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -L$(LAPACK_DIR)/lib -llapack -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON =
+LIBRARIES_POSEIDON = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_ROCM     =
