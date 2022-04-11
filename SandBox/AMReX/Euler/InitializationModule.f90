@@ -145,7 +145,8 @@ MODULE InitializationModule
     lo_bc, &
     hi_bc, &
     lo_bc_uCF, &
-    hi_bc_uCF
+    hi_bc_uCF, &
+    ProgramName
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_ErrorModule, ONLY: &
@@ -441,7 +442,13 @@ stop 'InitializationModule.f90'
 
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
 
-    USE TaggingModule, ONLY: TagElements_uCF
+    USE TaggingModule, ONLY: &
+      TagElements_Advection1D, &
+      TagElements_RiemannProblem1D, &
+      TagElements_Advection2D, &
+      TagElements_KelvinHelmholtz2D, &
+      TagElements_Advection3D, &
+      TagElements_uCF
 
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp
@@ -475,17 +482,71 @@ stop 'InitializationModule.f90'
 
     DO WHILE( MFI % next() )
 
-       BX = MFI % TileBox()
+      BX = MFI % TileBox()
 
-       uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
-       TagArr => Tag              % DataPtr( MFI )
+      uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
+      TagArr => Tag              % DataPtr( MFI )
 
-       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
-       ! TagCriteria starts with 1
-       CALL TagElements_uCF &
-              ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                TagCriteria(iLevel+1), &
-                SetTag, ClearTag, LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+      ! TagCriteria(iLevel+1) because iLevel starts at 0 but
+      ! TagCriteria starts with 1
+
+      SELECT CASE( TRIM( ProgramName ) )
+
+        CASE( 'Advection1D' )
+
+          CALL TagElements_Advection1D &
+                 ( iLevel, BX % lo, BX % hi, &
+                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
+                   TagCriteria(iLevel+1), &
+                   SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'RiemannProblem1D' )
+
+          CALL TagElements_RiemannProblem1D &
+                 ( iLevel, BX % lo, BX % hi, &
+                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
+                   TagCriteria(iLevel+1), &
+                   SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'Advection2D' )
+
+          CALL TagElements_Advection2D &
+                 ( iLevel, BX % lo, BX % hi, &
+                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
+                   TagCriteria(iLevel+1), &
+                   SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'KelvinHelmholtz2D' )
+
+          CALL TagElements_KelvinHelmholtz2D &
+                 ( iLevel, BX % lo, BX % hi, &
+                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
+                   TagCriteria(iLevel+1), &
+                   SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'Advection3D' )
+
+          CALL TagElements_Advection3D &
+                 ( iLevel, BX % lo, BX % hi, &
+                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
+                   TagCriteria(iLevel+1), &
+                   SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE DEFAULT
+
+          CALL TagElements_uCF &
+                 ( iLevel, BX % lo, BX % hi, &
+                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
+                   TagCriteria(iLevel+1), &
+                   SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      END SELECT
 
     END DO
 
