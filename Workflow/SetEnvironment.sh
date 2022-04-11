@@ -95,6 +95,11 @@ elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == kkadoogan* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == jrober* ]]; then
 
   echo
@@ -275,6 +280,14 @@ elif [[ $THORNADO_MACHINE == kristopher ]]; then
   export POSEIDON_DIR=~/Desktop/Work/ORNL/poseidon
 
 elif [[ $THORNADO_MACHINE == sjdunham ]]; then
+
+  echo
+
+elif [[ $THORNADO_MACHINE == kkadoogan_gnu ]]; then
+
+  module load mpi
+  module load hdf5
+  module load lapack
 
   echo
 
