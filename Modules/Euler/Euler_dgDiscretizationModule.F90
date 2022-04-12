@@ -1859,8 +1859,8 @@ CONTAINS
     REAL(DP) :: &
       G_F(nDOFX_X3, &
           iX_B0(1)  :iX_E0(1),   &
-          iX_B0(2)  :iX_E0(3),   &
-          iX_B0(3)  :iX_E0(2)+1, &
+          iX_B0(2)  :iX_E0(2),   &
+          iX_B0(3)  :iX_E0(3)+1, &
           nGF)
 
     ! --- Conserved Fluid Fields ---
