@@ -143,7 +143,7 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
-#ifndef USE_AMREX
+#ifndef THORNADO_USE_AMREX
 
       ! --- Inner Boundary ---
 
@@ -322,7 +322,7 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
-#ifndef USE_AMREX
+#ifndef THORNADO_USE_AMREX
 
       ! --- Inner Boundary ---
 
@@ -504,7 +504,7 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
-#ifndef USE_AMREX
+#ifndef THORNADO_USE_AMREX
 
       ! --- Inner Boundary ---
 

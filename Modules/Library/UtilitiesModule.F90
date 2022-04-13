@@ -5,7 +5,7 @@ MODULE UtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nNodesE, nDimsX
 
-#ifdef USE_AMREX
+#ifdef THORNADO_USE_AMREX
 
     USE amrex_error_module, ONLY: &
       amrex_abort
@@ -601,7 +601,7 @@ CONTAINS
 
   SUBROUTINE thornado_abort
 
-#ifdef USE_AMREX
+#ifdef THORNADO_USE_AMREX
 
     CALL amrex_abort('')
 
