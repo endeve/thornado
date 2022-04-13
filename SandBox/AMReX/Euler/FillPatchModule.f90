@@ -34,8 +34,6 @@ MODULE FillPatchModule
 
   USE MF_KindModule, ONLY: &
     DP
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &

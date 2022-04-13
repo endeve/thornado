@@ -97,44 +97,6 @@ CONTAINS
 
         CALL thornado_abort
 
-      CASE( 04 )
-
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A)') &
-          'MODULE: FillPatchModule'
-        WRITE(*,'(2x,A,A)') &
-          'SUBROUTINE: FillPatch_', TRIM( Message )
-        WRITE(*,*)
-        WRITE(*,'(2x,A,I3.2)') &
-          'amrex_fillpatch not implemented for nNodes = ', Int_Option(1)
-        WRITE(*,'(2x,A)') 'Valid choices'
-        WRITE(*,'(2x,A)') '-------------'
-        WRITE(*,'(2x,A)') '  1'
-        WRITE(*,'(2x,A)') '  2'
-        WRITE(*,'(2x,A)') '  3'
-        WRITE(*,'(2x,A)')
-
-        CALL thornado_abort
-
-      CASE( 05 )
-
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A)') &
-          'MODULE: FillPatchModule'
-        WRITE(*,'(2x,A,A)') &
-          'SUBROUTINE: FillCoarsePatch_', TRIM( Message )
-        WRITE(*,*)
-        WRITE(*,'(2x,A,I3.2)') &
-          'amrex_fillcoarsepatch not implemented for nNodes = ', Int_Option(1)
-        WRITE(*,'(2x,A)') 'Valid choices'
-        WRITE(*,'(2x,A)') '-------------'
-        WRITE(*,'(2x,A)') '  1'
-        WRITE(*,'(2x,A)') '  2'
-        WRITE(*,'(2x,A)') '  3'
-        WRITE(*,'(2x,A)')
-
-        CALL thornado_abort
-
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
