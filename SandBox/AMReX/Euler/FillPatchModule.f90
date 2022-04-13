@@ -4,8 +4,6 @@ MODULE FillPatchModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
@@ -19,174 +17,97 @@ MODULE FillPatchModule
     amrex_fillpatch, &
     amrex_fillcoarsepatch
   USE amrex_geometry_module, ONLY: &
-    amrex_geometry, &
-    amrex_is_all_periodic
-  USE amrex_filcc_module, ONLY: &
-    amrex_filcc
-
-
-  ! --- thornado Modules ---
-
-  USE ProgramHeaderModule, ONLY: &
-    nNodes
+    amrex_geometry
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP
   USE InputParsingModule, ONLY: &
-    nLevels, &
-    UseTiling, &
-    t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc, &
-    lo_bc_uCF, &
-    hi_bc_uCF
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: FillPatch, FillCoarsePatch
-
-  INTERFACE FillPatch
-    MODULE PROCEDURE FillPatch_MultiTime
-    MODULE PROCEDURE FillPatch_SingleTime
-  END INTERFACE FillPatch
-
-  INTERFACE FillCoarsePatch
-    MODULE PROCEDURE FillCoarsePatch_MultiTime
-    MODULE PROCEDURE FillCoarsePatch_SingleTime
-  END INTERFACE FillCoarsePatch
+  PUBLIC :: FillPatch
+  PUBLIC :: FillCoarsePatch
 
 CONTAINS
 
 
-  SUBROUTINE FillPatch_MultiTime( iLevel, t_old, t_new, t, MF_old, MF_new, MF )
+  SUBROUTINE FillPatch( iLevel, Time, MF )
+
+    USE MF_FieldsModule, ONLY: &
+      MF_uCF_old, &
+      MF_uCF_new
+    USE InputParsingModule, ONLY: &
+      t_old, &
+      t_new
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
 
     INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: t_old(0:nLevels-1), &
-                                           t_new(0:nLevels-1), &
-                                           t
-    TYPE(amrex_multifab), INTENT(in)    :: MF_old(0:nLevels-1), &
-                                           MF_new(0:nLevels-1)
+    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
+    INTEGER :: nComp
+
+    nComp = MF_uCF_old(iLevel) % nComp()
 
     IF( iLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch( MF, &
-                            t_old(iLevel), MF_old(iLevel), &
-                            t_new(iLevel), MF_new(iLevel), &
-                            amrex_geom(iLevel), FillPhysicalBC_Dummy, &
-                            t, sComp, dComp, MF % nComp() )
+      CALL amrex_fillpatch( MF, t_old (iLevel), MF_uCF_old(iLevel), &
+                                t_new (iLevel), MF_uCF_new(iLevel), &
+                            amrex_geom(iLevel), FillPhysicalBC, &
+                            Time, sComp, dComp, nComp )
 
     ELSE
 
-      CALL amrex_fillpatch( MF, &
-                            t_old(iLevel-1), MF_old(iLevel-1), &
-                            t_new(iLevel-1), MF_new(iLevel-1), &
-                            amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-                            t_old(iLevel  ), MF_old(iLevel  ), &
-                            t_new(iLevel  ), MF_new(iLevel  ), &
-                            amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-                            t, sComp, dComp, MF % nComp(), &
-                            amrex_ref_ratio(iLevel-1), &
-                            amrex_interp_dg, &
+      CALL amrex_fillpatch( MF, t_old (iLevel-1), MF_uCF_old(iLevel-1), &
+                                t_new (iLevel-1), MF_uCF_new(iLevel-1), &
+                            amrex_geom(iLevel-1), FillPhysicalBC, &
+                                t_old (iLevel  ), MF_uCF_old(iLevel  ), &
+                                t_new (iLevel  ), MF_uCF_new(iLevel  ), &
+                            amrex_geom(iLevel  ), FillPhysicalBC, &
+                            Time, sComp, dComp, nComp, &
+                            amrex_ref_ratio(iLevel-1), amrex_interp_dg, &
                             lo_bc, hi_bc )
 
     END IF
 
-  END SUBROUTINE FillPatch_MultiTime
+  END SUBROUTINE FillPatch
 
 
-  SUBROUTINE FillPatch_SingleTime( iLevel, Time, MF )
+  SUBROUTINE FillCoarsePatch( iLevel, Time, MF )
+
+    USE MF_FieldsModule, ONLY: &
+      MF_uCF_old, &
+      MF_uCF_new
+    USE InputParsingModule, ONLY: &
+      t_old, &
+      t_new
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF(0:nLevels-1)
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    ! Assume MF_old = MF_new = MF and t_old = t_new = t
-
-    IF( iLevel .EQ. 0 )THEN
-
-      CALL amrex_fillpatch( MF(iLevel), &
-                            Time, MF(iLevel), &
-                            Time, MF(iLevel), &
-                            amrex_geom(iLevel), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF(iLevel) % nComp() )
-
-    ELSE
-
-      CALL amrex_fillpatch( MF(iLevel), &
-                            Time, MF(iLevel-1), &
-                            Time, MF(iLevel-1), &
-                            amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-                            Time, MF(iLevel  ), &
-                            Time, MF(iLevel  ), &
-                            amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF(iLevel) % nComp(), &
-                            amrex_ref_ratio(iLevel-1), &
-                            amrex_interp_dg, &
-                            lo_bc, hi_bc )
-
-    END IF
-
-  END SUBROUTINE FillPatch_SingleTime
-
-
-  SUBROUTINE FillCoarsePatch_MultiTime &
-    ( iLevel, t_old, t_new, t, MF_old, MF_new, MF )
-
-    INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: t_old(0:nLevels-1), &
-                                           t_new(0:nLevels-1), &
-                                           t
-    TYPE(amrex_multifab), INTENT(in)    :: MF_old(0:nLevels-1), &
-                                           MF_new(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF
 
-    CALL amrex_fillcoarsepatch &
-           ( MF, t_old(iLevel-1), MF_old(iLevel-1), &
-                 t_new(iLevel-1), MF_new(iLevel-1), &
-             amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-             amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-             t, 1, 1, MF % nComp(), amrex_ref_ratio(iLevel-1), &
-             amrex_interp_dg, lo_bc, hi_bc )
-
-  END SUBROUTINE FillCoarsePatch_MultiTime
+  END SUBROUTINE FillCoarsePatch
 
 
-  SUBROUTINE FillCoarsePatch_SingleTime( iLevel, Time, MF )
+  SUBROUTINE FillPhysicalBC( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
 
-    INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF(0:nLevels-1)
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    ! Assume t_old = t_new = t and MF_old = MF_new = MF
-
-    CALL amrex_fillcoarsepatch &
-           ( MF(iLevel), &
-             Time, MF(iLevel-1), &
-             Time, MF(iLevel-1), &
-             amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
-             amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
-             Time, sComp, dComp, MF(iLevel) % nComp(), &
-             amrex_ref_ratio(iLevel-1), &
-             amrex_interp_dg, lo_bc, hi_bc )
-
-  END SUBROUTINE FillCoarsePatch_SingleTime
-
-
-  ! --- PRIVATE SUBROUTINES ---
-
-
-  SUBROUTINE FillPhysicalBC_uCF( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
+    USE amrex_geometry_module, ONLY: &
+      amrex_is_all_periodic
+    USE amrex_filcc_module, ONLY: &
+      amrex_filcc
+    USE AMReX_BoundaryConditionsModule, ONLY: &
+      lo_bc, &
+      hi_bc
 
     ! --- No INTENT here because amrex source code doesn't have it ---
 
@@ -212,19 +133,20 @@ CONTAINS
 
         p => MF % DataPtr( MFI )
 
-        ! Check if part of this box is outside the domain
-        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN
+        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN ! part of this box is outside the domain
 
           pLo = LBOUND( p )
           pHi = UBOUND( p )
 
           CALL amrex_filcc &
-                 ( p, pLo, pHi, &
-                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, &
-                   GEOM % dX, &
-                   GEOM % get_physical_location( pLo ), &
-                   lo_bc_uCF, hi_bc_uCF)
+                 ( p, pLo, pHi, & ! fortran array and bounds
+                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, & ! index extent of whole problem domain
+                   GEOM % dX, & ! cell size in real
+                   GEOM % get_physical_location( pLo ), & ! physical location of lower left corner
+                   lo_bc, hi_bc) ! bc types for each component
 
+             ! amrex_filcc doesn't fill EXT_DIR (see amrex_bc_types_module for a list of bc types
+             ! In that case, the user needs to fill it.
         END IF
 
       END DO
@@ -234,58 +156,6 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FillPhysicalBC_uCF
-
-
-  SUBROUTINE FillPhysicalBC_Dummy( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
-
-    ! --- No INTENT here because amrex source code doesn't have it ---
-
-    TYPE(c_ptr),    VALUE :: pMF, pGEOM
-    INTEGER(c_int), VALUE :: sComp, nComp
-    REAL(DP),       VALUE :: Time
-
-    TYPE(amrex_geometry) :: GEOM
-    TYPE(amrex_multifab) :: MF
-    TYPE(amrex_mfiter)   :: MFI
-    INTEGER              :: pLo(4), pHi(4)
-    REAL(DP), CONTIGUOUS, POINTER :: p(:,:,:,:)
-
-    IF( .NOT. amrex_is_all_periodic() )THEN
-
-      GEOM = pGEOM
-      MF   = pMF
-
-      !$OMP PARALLEL PRIVATE(MFI,p,pLo,pHi)
-      CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        p => MF % DataPtr( MFI )
-
-        ! Check if part of this box is outside the domain
-        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN
-
-          pLo = LBOUND( p )
-          pHi = UBOUND( p )
-
-          CALL amrex_filcc &
-                 ( p, pLo, pHi, &
-                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, &
-                   GEOM % dX, &
-                   GEOM % get_physical_location( pLo ), &
-                   lo_bc, hi_bc )
-
-        END IF
-
-      END DO
-      !$OMP END PARALLEL
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END IF
-
-  END SUBROUTINE FillPhysicalBC_Dummy
-
+  END SUBROUTINE FillPhysicalBC
 
 END MODULE FillPatchModule

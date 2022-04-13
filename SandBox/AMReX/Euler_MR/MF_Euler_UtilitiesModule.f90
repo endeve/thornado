@@ -2,63 +2,73 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_box_module,         ONLY: &
+  USE amrex_fort_module, ONLY: &
+    amrex_spacedim
+  USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_multifab_module,    ONLY: &
-    amrex_multifab,     &
-    amrex_mfiter,       &
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module,    ONLY: &
+  USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,      ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    swX
-  USE GeometryFieldsModule,     ONLY: &
+    nNodesX
+  USE MeshModule, ONLY: &
+    MeshX
+  USE GeometryFieldsModule, ONLY: &
     nGF
-  USE FluidFieldsModule,        ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF
-  USE Euler_UtilitiesModule,    ONLY: &
+  USE Euler_UtilitiesModule, ONLY: &
     ComputeTimeStep_Euler, &
     ComputeFromConserved_Euler
-  USE EquationOfStateModule,    ONLY: &
+  USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
 
   ! --- Local Modules ---
 
-  USE MF_KindModule,            ONLY: &
+  USE MF_KindModule, ONLY: &
     DP, &
     One
-  USE InputParsingModule,       ONLY: &
+  USE InputParsingModule, ONLY: &
     nLevels, &
-    UseTiling
-  USE MF_UtilitiesModule,       ONLY: &
+    UseTiling, &
+    swX, &
+    nX, &
+    xL, &
+    xR
+  USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
-  USE TimersModule_AMReX_Euler, ONLY: &
-    TimersStart_AMReX_Euler,        &
-    TimersStop_AMReX_Euler,         &
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MF_Euler_TimersModule, ONLY: &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_Allocate, &
     Timer_AMReX_ComputeTimeStep_Euler
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_ComputeFromConserved
-  PUBLIC :: MF_ComputeTimeStep
-
+  PUBLIC :: ComputeFromConserved_Euler_MF
+  PUBLIC :: ComputeTimeStep_Euler_MF
 
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+  SUBROUTINE ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     TYPE(amrex_multifab), INTENT(in)    :: &
       MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
@@ -153,10 +163,11 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_ComputeFromConserved
+  END SUBROUTINE ComputeFromConserved_Euler_MF
 
 
-  SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStepMin )
+  SUBROUTINE ComputeTimeStep_Euler_MF &
+    ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
     TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1), &
                                          MF_uCF(0:nLevels-1)
@@ -181,6 +192,8 @@ CONTAINS
     TimeStepMin = HUGE( One )
 
     DO iLevel = 0, nLevels-1
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -231,13 +244,15 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+      CALL DestroyMesh_MF( MeshX )
+
     END DO ! --- Loop over levels ---
 
     CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
-  END SUBROUTINE MF_ComputeTimeStep
+  END SUBROUTINE ComputeTimeStep_Euler_MF
 
 
 END MODULE MF_Euler_UtilitiesModule

@@ -2,108 +2,100 @@ MODULE FinalizationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_init_module, ONLY: &
+  USE amrex_init_module,                ONLY: &
     amrex_finalize
-  USE amrex_amrcore_module, ONLY: &
+  USE amrex_geometry_module,            ONLY: &
+    amrex_geometry, &
+    amrex_geometry_destroy
+  USE amrex_amrcore_module,             ONLY: &
     amrex_amrcore_finalize
+  USE amrex_parallel_module,            ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
-  USE ReferenceElementModuleX, ONLY: &
+  USE ReferenceElementModuleX,          ONLY: &
     FinalizeReferenceElementX
-  USE Euler_SlopeLimiterModule, ONLY: &
-    FinalizeSlopeLimiter_Euler
-  USE Euler_PositivityLimiterModule, ONLY: &
-    FinalizePositivityLimiter_Euler
-  USE EquationOfStateModule, ONLY: &
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    FinalizeReferenceElementX_Lagrange
+  USE MeshModule,                       ONLY: &
+    MeshX,    &
+    DestroyMesh
+  USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
+  USE Euler_SlopeLimiterModule,         ONLY: &
+    FinalizeSlopeLimiter_Euler
+  USE Euler_PositivityLimiterModule,    ONLY: &
+    FinalizePositivityLimiter_Euler
 
   ! --- Local Modules ---
 
-  USE MF_FieldsModule, ONLY: &
-    MF_uGF, &
-    MF_uCF, &
-    MF_uPF, &
-    MF_uAF, &
-    MF_uDF, &
-    DestroyFields_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    FinalizeFluid_SSPRK_MF
-  USE MF_Euler_UtilitiesModule, ONLY: &
-    ComputeFromConserved_Euler_MF
-  USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
-  USE InputParsingModule, ONLY: &
-    StepNo, &
-    dt, &
-    t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc, &
-    lo_bc_uCF, &
-    hi_bc_uCF
-  USE MF_Euler_TimersModule, ONLY: &
+  USE InputParsingModule,               ONLY: &
+    nLevels, &
+    FinalizeParameters
+  USE MF_TimeSteppingModule_SSPRK,      ONLY: &
+    MF_FinalizeFluid_SSPRK
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_FinalizeTally_Euler
+  USE TimersModule_AMReX_Euler,         ONLY: &
+    FinalizeTimers_AMReX_Euler,    &
     TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Finalize, &
-    Timer_AMReX_Euler_InputOutput, &
-    FinalizeTimers_AMReX_Euler
+    TimersStop_AMReX_Euler,  &
+    Timer_AMReX_Euler_Finalize
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: FinalizeProgram
 
+
 CONTAINS
 
 
-  SUBROUTINE FinalizeProgram
+  SUBROUTINE FinalizeProgram( GEOM )
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
 
-    CALL ComputeFromConserved_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-    CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF, &
-             MF_uGF_Option = MF_uGF, &
-             MF_uCF_Option = MF_uCF, &
-             MF_uPF_Option = MF_uPF, &
-             MF_uAF_Option = MF_uAF, &
-             MF_uDF_Option = MF_uDF )
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    INTEGER :: iLevel, iDim
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
-    CALL FinalizeSlopeLimiter_Euler
+    CALL MF_FinalizeTally_Euler
+
+    CALL MF_FinalizeFluid_SSPRK
 
     CALL FinalizePositivityLimiter_Euler
 
+    CALL FinalizeSlopeLimiter_Euler
+
     CALL FinalizeEquationOfState
 
+    CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
 
-    DEALLOCATE( hi_bc_uCF )
-    DEALLOCATE( lo_bc_uCF )
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
+    DO iDim = 1, 3
 
-    DEALLOCATE( t_new )
-    DEALLOCATE( t_old )
-    DEALLOCATE( dt )
-    DEALLOCATE( StepNo )
+      CALL DestroyMesh( MeshX(iDim) )
 
-    CALL DestroyFields_MF
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_geometry_destroy( GEOM(iLevel) )
+
+    END DO
+
+    CALL FinalizeParameters
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL FinalizeTimers_AMReX_Euler
 
-    CALL amrex_amrcore_finalize()
+    CALL amrex_amrcore_finalize
 
-    CALL amrex_finalize()
+    CALL amrex_finalize
 
-  END SUBROUTINE FinalizeProgram
+ END SUBROUTINE FinalizeProgram
+
 
 END MODULE FinalizationModule

@@ -8,15 +8,12 @@ MODULE MF_Euler_TallyModule
     amrex_geometry
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
-    amrex_imultifab, &
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_amr_module, ONLY: &
-    amrex_geom
 
   ! --- thornado Modules ---
 
@@ -45,7 +42,8 @@ MODULE MF_Euler_TallyModule
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    FourPi
   USE InputParsingModule, ONLY: &
     nX, &
     nLevels, &
@@ -53,26 +51,20 @@ MODULE MF_Euler_TallyModule
     UseTiling, &
     xL, &
     xR
-  USE MF_MeshModule, ONLY: &
-    CreateMesh_MF, &
-    DestroyMesh_MF
-!  USE TimersModule_AMReX_Euler, ONLY: &
-!    TimersStart_AMReX_Euler, &
-!    TimersStop_AMReX_Euler, &
-!    Timer_AMReX_Euler_Allocate
-  USE MakeFineMaskModule, ONLY: &
-    MakeFineMask, &
-    iCoarse_MFM
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_Allocate
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeTally_Euler_MF
-  PUBLIC :: ComputeTally_Euler_MF
-  PUBLIC :: IncrementOffGridTally_Euler_MF
-  PUBLIC :: FinalizeTally_Euler_MF
+  PUBLIC :: MF_InitializeTally_Euler
+  PUBLIC :: MF_ComputeTally_Euler
+  PUBLIC :: MF_IncrementOffGridTally_Euler
+  PUBLIC :: MF_FinalizeTally_Euler
 
   LOGICAL :: SuppressTally
 
@@ -88,10 +80,11 @@ MODULE MF_Euler_TallyModule
   REAL(DP), ALLOCATABLE :: Energy_OffGrid (:)
   REAL(DP), ALLOCATABLE :: Energy_Change  (:)
 
+
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_MF &
+  SUBROUTINE MF_InitializeTally_Euler &
     ( SuppressTally_Option, BaseFileName_Option )
 
     LOGICAL,  INTENT(in),         OPTIONAL :: &
@@ -110,19 +103,6 @@ CONTAINS
       SuppressTally = SuppressTally_Option
 
     IF( SuppressTally ) RETURN
-
-    IF( nLevels .GT. 1 )THEN
-
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(*,*)
-        WRITE(*,*) &
-          'WARNING: Euler_TallyModule not accurate for multi-level mesh'
-        WRITE(*,*)
-
-      END IF
-
-    END IF
 
     ALLOCATE( BaryonicMass_Interior(0:nLevels-1) )
     ALLOCATE( BaryonicMass_Initial (0:nLevels-1) )
@@ -202,15 +182,16 @@ CONTAINS
     Energy_OffGrid  = Zero
     Energy_Change   = Zero
 
-  END SUBROUTINE InitializeTally_Euler_MF
+  END SUBROUTINE MF_InitializeTally_Euler
 
 
-  SUBROUTINE ComputeTally_Euler_MF &
-    ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, Verbose_Option )
+  SUBROUTINE MF_ComputeTally_Euler &
+    ( GEOM, MF_uGF, MF_uCF, Time, SetInitialValues_Option, Verbose_Option )
 
-    REAL(DP),             INTENT(in) :: Time  (0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    REAL(DP),             INTENT(in) :: Time
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
@@ -223,11 +204,8 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
     REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE         :: U(:,:,:,:,:)
-
-    TYPE(amrex_imultifab) :: iMF_Mask
 
     IF( SuppressTally ) RETURN
 
@@ -241,20 +219,12 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        CALL MakeFineMask &
-               ( iMF_Mask, MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
-                 MF_uCF(iLevel+1) % BA )
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       BaryonicMass_Interior(iLevel) = Zero
       Energy_Interior      (iLevel) = Zero
 
       DO WHILE( MFI % next() )
-
-        IF( nLevels-1 .GT. 0 .AND. iLevel .LT. nLevels-1 ) &
-          Mask => iMF_Mask % DataPtr( MFI )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
@@ -266,7 +236,7 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-!        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
@@ -276,19 +246,19 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF) )
 
-!        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-        CALL ComputeTally_Euler( iX_B0, iX_E0, G, U, Mask, iLevel )
+        CALL ComputeTally_Euler( iX_B0, iX_E0, G, U, iLevel )
 
-!        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         DEALLOCATE( U )
         DEALLOCATE( G )
 
-!        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 
@@ -313,9 +283,6 @@ CONTAINS
     CALL amrex_parallel_reduce_sum( BaryonicMass_Interior, nLevels )
     CALL amrex_parallel_reduce_sum( Energy_Interior      , nLevels )
 
-    CALL amrex_parallel_reduce_sum( BaryonicMass_OffGrid, nLevels )
-    CALL amrex_parallel_reduce_sum( Energy_OffGrid      , nLevels )
-
     DO iLevel = 0, nLevels-1
 
       BaryonicMass_Change(iLevel) &
@@ -328,18 +295,18 @@ CONTAINS
 
     END DO
 
-    CALL WriteTally_Euler( Time(0) )
+    CALL WriteTally_Euler( Time )
 
     IF( Verbose )THEN
 
-      CALL DisplayTally( Time(0) )
+      CALL DisplayTally( Time )
 
     END IF
 
-  END SUBROUTINE ComputeTally_Euler_MF
+  END SUBROUTINE MF_ComputeTally_Euler
 
 
-  SUBROUTINE IncrementOffGridTally_Euler_MF( dM )
+  SUBROUTINE MF_IncrementOffGridTally_Euler( dM )
 
     REAL(DP), INTENT(in) :: dM(0:nLevels-1,nCF)
 
@@ -357,10 +324,10 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE IncrementOffGridTally_Euler_MF
+  END SUBROUTINE MF_IncrementOffGridTally_Euler
 
 
-  SUBROUTINE FinalizeTally_Euler_MF
+  SUBROUTINE MF_FinalizeTally_Euler
 
     IF( SuppressTally ) RETURN
 
@@ -374,13 +341,13 @@ CONTAINS
     DEALLOCATE( BaryonicMass_Initial )
     DEALLOCATE( BaryonicMass_Interior )
 
-  END SUBROUTINE FinalizeTally_Euler_MF
+  END SUBROUTINE MF_FinalizeTally_Euler
 
 
   ! --- PRIVATE Subroutines ---
 
 
-  SUBROUTINE ComputeTally_Euler( iX_B0, iX_E0, G, U, Mask, iLevel )
+  SUBROUTINE ComputeTally_Euler( iX_B0, iX_E0, G, U, iLevel )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iLevel
@@ -388,29 +355,35 @@ CONTAINS
       G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in) :: &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    INTEGER , INTENT(in) :: &
-      Mask(iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     TYPE(MeshType) :: MeshX(3)
-    INTEGER        :: iNX, iX1, iX2, iX3
+    INTEGER        :: iNX, iX1, iX2, iX3, iDim
     REAL(DP)       :: d3X
 
-    CALL CreateMesh_MF( iLevel, MeshX )
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
+      IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' .AND. nDimsX .EQ. 1 )THEN
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
+        d3X = FourPi * MeshX(1) % Width(iX1)
+
+      ELSE
+
+        d3X = MeshX(1) % Width(iX1) &
+                * MeshX(2) % Width(iX2) &
+                * MeshX(3) % Width(iX3)
 
       END IF
-
-      d3X = MeshX(1) % Width(iX1) &
-              * MeshX(2) % Width(iX2) &
-              * MeshX(3) % Width(iX3)
 
       BaryonicMass_Interior(iLevel) &
         = BaryonicMass_Interior(iLevel) &
@@ -431,7 +404,11 @@ CONTAINS
     END DO
     END DO
 
-    CALL DestroyMesh_MF( MeshX )
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
 
   END SUBROUTINE ComputeTally_Euler
 
@@ -451,10 +428,10 @@ CONTAINS
 
       WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
         Time / UnitsDisplay % TimeUnit, &
-        SUM( BaryonicMass_Interior ) / UnitsDisplay % MassUnit, &
-        SUM( BaryonicMass_OffGrid  ) / UnitsDisplay % MassUnit, &
-        SUM( BaryonicMass_Initial  ) / UnitsDisplay % MassUnit, &
-        SUM( BaryonicMass_Change   ) / UnitsDisplay % MassUnit
+        BaryonicMass_Interior(0) / UnitsDisplay % MassUnit, &
+        BaryonicMass_OffGrid (0) / UnitsDisplay % MassUnit, &
+        BaryonicMass_Initial (0) / UnitsDisplay % MassUnit, &
+        BaryonicMass_Change  (0) / UnitsDisplay % MassUnit
 
       CLOSE( FileUnit )
 
@@ -465,10 +442,10 @@ CONTAINS
 
       WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
         Time / UnitsDisplay % TimeUnit, &
-        SUM( Energy_Interior ) / UnitsDisplay % EnergyGlobalUnit, &
-        SUM( Energy_OffGrid  ) / UnitsDisplay % EnergyGlobalUnit, &
-        SUM( Energy_Initial  ) / UnitsDisplay % EnergyGlobalUnit, &
-        SUM( Energy_Change   ) / UnitsDisplay % EnergyGlobalUnit
+        Energy_Interior(0) / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_OffGrid (0) / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_Initial (0) / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_Change  (0) / UnitsDisplay % EnergyGlobalUnit
 
       CLOSE( FileUnit )
 
@@ -491,37 +468,37 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Baryonic Mass Interior.: ', &
-        SUM( BaryonicMass_Interior ) / UnitsDisplay % MassUnit, &
+        BaryonicMass_Interior(0) / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Baryonic Mass Initial..: ', &
-        SUM( BaryonicMass_Initial )  / UnitsDisplay % MassUnit, &
+        BaryonicMass_Initial(0)  / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Baryonic Mass Off Grid.: ', &
-        SUM( BaryonicMass_OffGrid )  / UnitsDisplay % MassUnit, &
+        BaryonicMass_OffGrid(0)  / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Baryonic Mass Change...: ', &
-        SUM( BaryonicMass_Change )   / UnitsDisplay % MassUnit, &
+        BaryonicMass_Change(0)   / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
 
       WRITE(*,*)
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Energy Interior.: ', &
-        SUM( Energy_Interior ) / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_Interior(0) / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Energy Initial..: ', &
-        SUM( Energy_Initial )  / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_Initial(0)  / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Energy Off Grid.: ', &
-        SUM( Energy_OffGrid )  / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_OffGrid(0)  / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Energy Change...: ', &
-        SUM( Energy_Change )   / UnitsDisplay % EnergyGlobalUnit, &
+        Energy_Change(0)   / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
 
       WRITE(*,*)

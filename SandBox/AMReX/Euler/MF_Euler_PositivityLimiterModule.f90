@@ -2,80 +2,57 @@ MODULE MF_Euler_PositivityLimiterModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_box_module, ONLY: &
+  USE amrex_box_module,              ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
-    amrex_multifab, &
-    amrex_mfiter, &
+  USE amrex_multifab_module,         ONLY: &
+    amrex_multifab,     &
+    amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,           ONLY: &
     swX, &
     nDOFX
-  USE FluidFieldsModule, ONLY: &
+  USE FluidFieldsModule,             ONLY: &
     nCF, &
     nDF
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,          ONLY: &
     nGF
   USE Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler
 
   ! --- Local Modules ---
 
-  USE MF_KindModule, ONLY: &
+  USE MF_KindModule,                 ONLY: &
     DP
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule,            ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
-  USE InputParsingModule, ONLY: &
-    nLevels, &
+  USE InputParsingModule,            ONLY: &
+    nLevels,              &
     UsePositivityLimiter, &
-    UseTiling
-  USE MF_Euler_TimersModule, ONLY: &
+    UseTiling,            &
+    DEBUG
+  USE TimersModule_AMReX_Euler,      ONLY: &
     TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
+    TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ApplyPositivityLimiter_Euler_MF
+  PUBLIC :: MF_ApplyPositivityLimiter_Euler
 
-  INTERFACE ApplyPositivityLimiter_Euler_MF
-    MODULE PROCEDURE ApplyPositivityLimiter_Euler_MF_MultipleLevels
-    MODULE PROCEDURE ApplyPositivityLimiter_Euler_MF_SingleLevel
-  END INTERFACE ApplyPositivityLimiter_Euler_MF
 
 CONTAINS
 
 
-  SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
-    ( MF_uGF, MF_uCF, MF_uDF )
+  SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, mF_uDF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
-    INTEGER :: iLevel
-
-    DO iLevel = 0, nLevels-1
-
-      CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
-             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-
-    END DO
-
-  END SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels
-
-
-  SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel &
-    ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-
-    INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
@@ -90,72 +67,78 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
-    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+    DO iLevel = 0, nLevels-1
 
-    DO WHILE( MFI % next() )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
-      uGF => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF => MF_uDF(iLevel) % DataPtr( MFI )
+      DO WHILE( MFI % next() )
 
-      iLo_MF = LBOUND( uGF )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uDF => MF_uDF(iLevel) % DataPtr( MFI )
 
-      BX = MFI % tilebox()
+        iLo_MF = LBOUND( uGF )
 
-      iX_B0 = BX % lo
-      iX_E0 = BX % hi
-      iX_B1 = BX % lo - swX
-      iX_E1 = BX % hi + swX
+        BX = MFI % tilebox()
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
 
-      ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nGF) )
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-      ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nCF) )
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
 
-      ALLOCATE( D(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nDF) )
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
 
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        ALLOCATE( D(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nDF) )
 
-      CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-      CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
-      CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-      CALL ApplyPositivityLimiter_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
 
-      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPositivityLimiter_Euler'
 
-      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
+        CALL ApplyPositivityLimiter_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-      DEALLOCATE( D )
+        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
 
-      DEALLOCATE( U )
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-      DEALLOCATE( G )
+        DEALLOCATE( D )
 
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        DEALLOCATE( U )
+
+        DEALLOCATE( G )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
 
-    CALL amrex_mfiter_destroy( MFI )
-
-  END SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel
+  END SUBROUTINE MF_ApplyPositivityLimiter_Euler
 
 
 END MODULE MF_Euler_PositivityLimiterModule

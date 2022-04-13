@@ -1,63 +1,75 @@
 MODULE InputParsingModule
 
-  ! --- AMReX modules ---
+  ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,      ONLY: &
     amrex_spacedim
-  USE amrex_parmparse_module, ONLY: &
-    amrex_parmparse, &
-    amrex_parmparse_build, &
-    amrex_parmparse_destroy
-  USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
-  USE amrex_init_module, ONLY: &
+  USE amrex_init_module,      ONLY: &
     amrex_init, &
     amrex_initialized
-  USE amrex_amr_module, ONLY: &
+  USE amrex_parallel_module,  ONLY: &
+    amrex_parallel_ioprocessor
+  USE amrex_amr_module,       ONLY: &
     amrex_amrcore_init, &
     amrex_amrcore_initialized
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse,       &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
+  USE amrex_boxarray_module,  ONLY: &
+    amrex_boxarray
+  USE amrex_distromap_module, ONLY: &
+    amrex_distromap
+  USE amrex_geometry_module,  ONLY: &
+    amrex_geometry
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,    ONLY: &
+    nDOFX,  &
+    nDimsX, &
     InitializeProgramHeader
-  USE UtilitiesModule, ONLY: &
-    thornado_abort
+  USE FluidFieldsModule,      ONLY: &
+    nCF, &
+    nPF, &
+    nAF
+  USE GeometryFieldsModule,   ONLY: &
+    nGF
+  USE UnitsModule,            ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay
 
-  ! --- Local modules ---
+  ! --- Local Modules ---
 
-  USE MF_KindModule, ONLY: &
+  USE MF_KindModule,          ONLY: &
     DP, &
     Zero, &
     One, &
     Two
+  USE MF_FieldsModule,        ONLY: &
+    CreateFields_MF, &
+    DestroyFields_MF
 
   IMPLICIT NONE
 
-  ! -- thornado ---
+  ! --- thornado ---
+  REAL(DP)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
+  REAL(DP)         , ALLOCATABLE :: t(:), dt(:), t_old(:), t_new(:)
+  REAL(DP)                       :: CFL
+  INTEGER                        :: nNodes, nStages
+  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
+  INTEGER          , ALLOCATABLE :: nX(:), swX(:), bcX(:)
+  REAL(DP)         , ALLOCATABLE :: xL(:), xR(:)
+  CHARACTER(LEN=:) , ALLOCATABLE :: ProgramName
+  CHARACTER(LEN=:) , ALLOCATABLE :: PlotFileBaseName
+  CHARACTER(LEN=:) , ALLOCATABLE :: NodalDataFileNameBase
+  CHARACTER(LEN=32), SAVE        :: CoordSys
+  LOGICAL          , SAVE        :: UsePhysicalUnits
+  LOGICAL          , SAVE        :: WriteNodalData
+  LOGICAL          , SAVE        :: DEBUG
 
-  CHARACTER(:), ALLOCATABLE :: ProgramName
-  INTEGER, ALLOCATABLE  :: swX(:)
-  INTEGER, ALLOCATABLE  :: bcX(:)
-  INTEGER               :: nNodes
-  INTEGER               :: nStages
-  REAL(DP)              :: dt_wrt, dt_chk
-  INTEGER               :: iCycleW, iCycleChk, iCycleD
-  REAL(DP)              :: t_end
-  REAL(DP)              :: Gamma_IDEAL
-  REAL(DP)              :: CFL
-  CHARACTER(:), ALLOCATABLE :: EquationOfState
-  CHARACTER(:), ALLOCATABLE :: EosTableName
-
-  ! --- Boundary Conditions ---
-
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc(:,:)
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc(:,:)
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc_uCF(:,:)
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc_uCF(:,:)
-
-  ! --- Slope Limiter ---
-
+  ! --- Slope limiter ---
   LOGICAL                       :: UseSlopeLimiter
   CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
   REAL(DP)                      :: BetaTVD, BetaTVB, SlopeTolerance
@@ -66,41 +78,31 @@ MODULE InputParsingModule
   REAL(DP)                      :: LimiterThresholdParameter
   LOGICAL                       :: UseConservativeCorrection
 
-  ! --- Positivity Limiter ---
-
+  ! --- Positivity limiter ---
   LOGICAL  :: UsePositivityLimiter
   REAL(DP) :: Min_1, Min_2
   REAL(DP) :: Max_1, Max_2
 
-  ! --- geometry ---
+  ! --- Equation Of State ---
+  REAL(DP)                      :: Gamma_IDEAL
+  CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
+  CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
-  INTEGER               :: CoordSys
-  REAL(DP), ALLOCATABLE :: xL(:), xR(:)
+  ! --- AMReX  ---
+  INTEGER                                    :: MaxLevel, nLevels, coord_sys
+  INTEGER                                    :: MaxGridSizeX1
+  INTEGER                                    :: MaxGridSizeX2
+  INTEGER                                    :: MaxGridSizeX3
+  INTEGER                                    :: BlockingFactorX1
+  INTEGER                                    :: BlockingFactorX2
+  INTEGER                                    :: BlockingFactorX3
+  INTEGER                                    :: MaxGridSizeX(3)
+  INTEGER              , ALLOCATABLE, SAVE   :: StepNo(:)
+  TYPE(amrex_boxarray) , ALLOCATABLE, PUBLIC :: BA(:)
+  TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
+  TYPE(amrex_geometry) , ALLOCATABLE, PUBLIC :: GEOM(:)
+  LOGICAL                                    :: UseTiling
 
-  ! --- amr ---
-
-  INTEGER, ALLOCATABLE :: nX(:)
-  INTEGER :: MaxGridSizeX1
-  INTEGER :: MaxGridSizeX2
-  INTEGER :: MaxGridSizeX3
-  INTEGER :: BlockingFactorX1
-  INTEGER :: BlockingFactorX2
-  INTEGER :: BlockingFactorX3
-  INTEGER :: MaxGridSizeX(3)
-  INTEGER :: MaxLevel
-  INTEGER :: nLevels
-  LOGICAL :: UseTiling
-  LOGICAL :: do_reflux
-  INTEGER, ALLOCATABLE :: RefinementRatio(:)
-  INTEGER, ALLOCATABLE :: StepNo(:)
-
-  REAL(DP), ALLOCATABLE :: dt   (:)
-  REAL(DP), ALLOCATABLE :: t_old(:)
-  REAL(DP), ALLOCATABLE :: t_new(:)
-  CHARACTER(:), ALLOCATABLE :: PlotFileBaseName
-  INTEGER :: iOS_CPP(3)
-
-  CHARACTER(:), ALLOCATABLE :: NodalDataFileName
 
 CONTAINS
 
@@ -115,61 +117,118 @@ CONTAINS
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
 
-    NodalDataFileName = ''
-    CALL amrex_parmparse_build( PP, 'debug' )
-      CALL PP % query( 'NodalDataFileName', NodalDataFileName )
+    DEBUG = .FALSE.
+    CALL amrex_parmparse_build( PP )
+      CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- thornado Parameters thornado.* ---
-
-    EquationOfState  = 'IDEAL'
-    Gamma_IDEAL      = 4.0_DP / 3.0_DP
-    EosTableName     = ''
-    PlotFileBaseName = 'plt'
-    iCycleD          = 10
-    iCycleW          = -1
-    iCycleChk        = -1
-    dt_wrt           = -1.0_DP
-    dt_chk           = -1.0_DP
+    UsePhysicalUnits      = .FALSE.
+    PlotFileBaseName      = 'thornado'
+    NodalDataFileNameBase = 'NodalData'
+    ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get   ( 'ProgramName', ProgramName )
-      CALL PP % get   ( 'nNodes', nNodes )
-      CALL PP % get   ( 'nStages', nStages )
-      CALL PP % getarr( 'swX', swX )
-      CALL PP % getarr( 'bcX', bcX )
-      CALL PP % get   ( 't_end', t_end )
-      CALL PP % get   ( 'CFL', CFL )
-      CALL PP % query ( 'EquationOfState', EquationOfState )
-      CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
-      CALL PP % query ( 'iCycleD', iCycleD )
-      CALL PP % query ( 'EosTableName', EosTableName )
-      CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
-      CALL PP % query ( 'iCycleW', iCycleW )
-      CALL PP % query ( 'iCycleChk', iCycleChk )
-      CALL PP % query ( 'dt_wrt', dt_wrt )
-      CALL PP % query ( 'dt_chk', dt_chk )
+      CALL PP % get   ( 'dt_wrt'               , dt_wrt                )
+      CALL PP % get   ( 'dt_chk'               , dt_chk                )
+      CALL PP % get   ( 't_end'                , t_end                 )
+      CALL PP % get   ( 'nNodes'               , nNodes                )
+      CALL PP % get   ( 'nStages'              , nStages               )
+      CALL PP % get   ( 'CFL'                  , CFL                   )
+      CALL PP % get   ( 'ProgramName'          , ProgramName           )
+      CALL PP % getarr( 'bcX'                  , bcX                   )
+      CALL PP % getarr( 'swX'                  , swX                   )
+      CALL PP % get   ( 'iCycleD'              , iCycleD               )
+      CALL PP % get   ( 'iCycleW'              , iCycleW               )
+      CALL PP % get   ( 'iCycleChk'            , iCycleChk             )
+      CALL PP % get   ( 'iRestart'             , iRestart              )
+      CALL PP % query ( 'UsePhysicalUnits'     , UsePhysicalUnits      )
+      CALL PP % query ( 'PlotFileBaseName'     , PlotFileBaseName      )
+      CALL PP % query ( 'NodalDataFileNameBase', NodalDataFileNameBase )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( iCycleW * dt_wrt .GT. Zero )THEN
+    IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
 
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
-      CALL thornado_abort
+      STOP
 
     END IF
 
-    IF( iCycleChk * dt_chk .GT. Zero )THEN
+    IF( iCycleChk .GT. 0 .AND. dt_chk .GT. Zero )THEN
 
       WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
-      CALL thornado_abort
+      STOP
 
     END IF
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
-    ! --- Slope Limiter Parameters SL.* ---
+    ! --- Parameters geometry.* ---
+    CALL amrex_parmparse_build( PP, 'geometry' )
+      CALL PP % get   ( 'coord_sys', coord_sys )
+      CALL PP % getarr( 'prob_lo'  , xL        )
+      CALL PP % getarr( 'prob_hi'  , xR        )
+    CALL amrex_parmparse_destroy( PP )
 
+    IF     ( coord_sys .EQ. 0 )THEN
+
+      CoordSys = 'CARTESIAN'
+
+    ELSE IF( coord_sys .EQ. 1 )THEN
+
+      CoordSys = 'CYLINDRICAL'
+
+    ELSE IF( coord_sys .EQ. 2 )THEN
+
+      CoordSys = 'SPHERICAL'
+
+    ELSE
+
+      STOP 'Invalid choice for coord_sys'
+
+    END IF
+
+    IF( UsePhysicalUnits )THEN
+
+      CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
+
+      t_end  = t_end  * UnitsDisplay % TimeUnit
+      dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
+      dt_chk = dt_chk * UnitsDisplay % TimeUnit
+
+      xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
+      xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
+      xL(2) = xL(2) * UnitsDisplay % LengthX2Unit
+      xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
+      xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
+      xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
+
+    END IF
+
+    ! --- Parameters amr.* ---
+    MaxGridSizeX1    = 1
+    MaxGridSizeX2    = 1
+    MaxGridSizeX3    = 1
+    BlockingFactorX1 = 1
+    BlockingFactorX2 = 1
+    BlockingFactorX3 = 1
+    UseTiling        = .TRUE.
+    CALL amrex_parmparse_build( PP, 'amr' )
+      CALL PP % getarr( 'n_cell'           , nX               )
+      CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
+      CALL PP % query ( 'max_grid_size_y'  , MaxGridSizeX2    )
+      CALL PP % query ( 'max_grid_size_z'  , MaxGridSizeX3    )
+      CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
+      CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
+      CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
+      CALL PP % get   ( 'max_level'        , MaxLevel         )
+      CALL PP % query ( 'UseTiling'        , UseTiling        )
+    CALL amrex_parmparse_destroy( PP )
+
+    MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
+    nLevels = MaxLevel + 1
+
+    ! --- Slope limiter parameters SL.* ---
     UseSlopeLimiter           = .TRUE.
     SlopeLimiterMethod        = 'TVD'
     BetaTVD                   = 1.75_DP
@@ -191,8 +250,7 @@ CONTAINS
       CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- Positivity Limiter Parameters PL.* ---
-
+    ! --- Positivitiy limiter parameters PL.* ---
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_DP
     Min_2                = 1.0e-12_DP
@@ -202,40 +260,15 @@ CONTAINS
       CALL PP % query( 'Min_2'               , Min_2                )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- Parameters geometry.* ---
-
-    CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys', CoordSys )
-      CALL PP % getarr( 'prob_lo'  , xL       )
-      CALL PP % getarr( 'prob_hi'  , xR       )
+    ! --- Equation of state parameters EoS.* ---
+    Gamma_IDEAL     = 5.0_DP / 3.0_DP
+    EquationOfState = 'IDEAL'
+    EosTableName    = ''
+    CALL amrex_parmparse_build( PP, 'EoS' )
+      CALL PP % query( 'Gamma'          , Gamma_IDEAL     )
+      CALL PP % query( 'EquationOfState', EquationOfState )
+      CALL PP % query( 'EosTableName'   , EosTableName    )
     CALL amrex_parmparse_destroy( PP )
-
-    ! --- Parameters amr.* ---
-
-    MaxGridSizeX1    = 1
-    MaxGridSizeX2    = 1
-    MaxGridSizeX3    = 1
-    BlockingFactorX1 = 1
-    BlockingFactorX2 = 1
-    BlockingFactorX3 = 1
-    UseTiling        = 0
-    do_reflux        = 0
-    CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr( 'n_cell'           , nX               )
-      CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
-      CALL PP % query ( 'max_grid_size_y'  , MaxGridSizeX2    )
-      CALL PP % query ( 'max_grid_size_z'  , MaxGridSizeX3    )
-      CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
-      CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
-      CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
-      CALL PP % get   ( 'max_level'        , MaxLevel         )
-      CALL PP % query ( 'UseTiling'        , UseTiling        )
-      CALL PP % query ( 'do_reflux'        , do_reflux        )
-      CALL PP % getarr( 'ref_ratio'        , RefinementRatio  )
-    CALL amrex_parmparse_destroy( PP )
-
-    MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
-    nLevels = MaxLevel + 1
 
     CALL InitializeProgramHeader &
            ( ProgramName_Option = TRIM( ProgramName ), &
@@ -247,13 +280,54 @@ CONTAINS
              bcX_Option         = bcX,                 &
              Verbose_Option     = amrex_parallel_ioprocessor() )
 
-    iOS_CPP = 0
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
 
-    iOS_CPP(1) = 1
+    IF( nDimsX .NE. amrex_spacedim )THEN
 
-    IF( amrex_spacedim .GT. 1 ) iOS_CPP(2) = 1
-    IF( amrex_spacedim .GT. 2 ) iOS_CPP(3) = 1
+      WRITE(*,'(A)') 'ERROR'
+      WRITE(*,'(A)') '-----'
+      WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
+      WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
+      STOP
+
+    END IF
+
+    ALLOCATE( StepNo(0:nLevels-1) )
+    StepNo = 0
+
+    ALLOCATE( dt(0:nLevels-1) )
+    dt = -100.0e0_DP
+
+    ALLOCATE( t(0:nLevels-1) )
+    t = 0.0e0_DP
+
+    ALLOCATE( t_old(0:nLevels-1) )
+    t_old = 0.0e0_DP
+
+    ALLOCATE( t_new(0:nLevels-1) )
+    t_new = 0.0e0_DP
+
+    CALL CreateFields_MF( nLevels )
 
   END SUBROUTINE InitializeParameters
+
+
+  SUBROUTINE FinalizeParameters
+
+    CALL DestroyFields_MF( nLevels )
+
+    DEALLOCATE( GEOM )
+    DEALLOCATE( DM   )
+    DEALLOCATE( BA   )
+
+    DEALLOCATE( t_new  )
+    DEALLOCATE( t_old  )
+    DEALLOCATE( t      )
+    DEALLOCATE( dt     )
+    DEALLOCATE( StepNo )
+
+  END SUBROUTINE FinalizeParameters
+
 
 END MODULE InputParsingModule

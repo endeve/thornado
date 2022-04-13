@@ -2,14 +2,12 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,              ONLY: &
     amrex_spacedim
-  USE amrex_box_module, ONLY: &
+  USE amrex_box_module,               ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,          ONLY: &
     amrex_geometry
-  USE amrex_amrcore_module, ONLY: &
-    amrex_geom
 
   ! --- thornado Modules ---
 
@@ -22,18 +20,20 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- Local Modules ---
 
-  USE MF_KindModule, ONLY: &
+  USE MF_KindModule,                  ONLY: &
     DP
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
+  USE InputParsingModule,             ONLY: &
+    DEBUG
+  USE TimersModule_AMReX_Euler,       ONLY: &
+    TimersStart_AMReX_Euler,            &
+    TimersStop_AMReX_Euler,             &
     Timer_AMReX_Euler_ConstructEdgeMap, &
     Timer_AMReX_Euler_GetBC
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ApplyBoundaryConditions_Euler_MF
+  PUBLIC :: MF_ApplyBoundaryConditions_Euler
   PUBLIC :: ConstructEdgeMap
 
   TYPE, PUBLIC :: EdgeMap
@@ -43,10 +43,11 @@ MODULE MF_Euler_BoundaryConditionsModule
     PROCEDURE :: Euler_GetBC => EdgeMap_Euler_GetBC
   END TYPE EdgeMap
 
+
 CONTAINS
 
 
-  SUBROUTINE ApplyBoundaryConditions_Euler_MF &
+  SUBROUTINE MF_ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
     INTEGER,       INTENT(in)    :: &
@@ -60,17 +61,19 @@ CONTAINS
 
     CALL Edge_Map % Euler_GetBC( iApplyBC )
 
+    IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_Euler'
+
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
-  END SUBROUTINE ApplyBoundaryConditions_Euler_MF
+  END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 
 
-  SUBROUTINE ConstructEdgeMap( iLevel, BX, Edge_Map )
+  SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
 
-    INTEGER,         INTENT(in)    :: iLevel
-    TYPE(amrex_box), INTENT(in)    :: BX
-    TYPE(EdgeMap),   INTENT(inout) :: Edge_Map
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM
+    TYPE(amrex_box),      INTENT(in)    :: BX
+    TYPE(EdgeMap),        INTENT(inout) :: Edge_Map
 
     INTEGER :: iDim
 
@@ -83,10 +86,10 @@ CONTAINS
 
       IF( iDim .LE. amrex_spacedim )THEN
 
-        IF( BX % lo( iDim ) .LE. amrex_geom(iLevel) % DOMAIN % lo( iDim ) ) &
+        IF( BX % lo( iDim ) .LE. GEOM % DOMAIN % lo( iDim ) ) &
           Edge_Map % IsLowerBoundary( iDim ) = .TRUE.
 
-        IF( BX % hi( iDim ) .GE. amrex_geom(iLevel) % DOMAIN % hi( iDim ) ) &
+        IF( BX % hi( iDim ) .GE. GEOM % DOMAIN % hi( iDim ) ) &
           Edge_Map % IsUpperBoundary( iDim ) = .TRUE.
 
       END IF

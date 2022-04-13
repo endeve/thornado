@@ -2,106 +2,107 @@ PROGRAM ApplicationDriver
 
   ! --- AMReX Modules ---
 
-  USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+  USE amrex_parallel_module,            ONLY: &
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
-  USE UnitsModule, ONLY: &
+  USE InputOutputModuleAMReX,           ONLY: &
+    WriteFieldsAMReX_Checkpoint, &
+    WriteFieldsAMReX_PlotFile
+  USE UnitsModule,                      ONLY: &
     UnitsDisplay
-  USE TimersModule_Euler, ONLY: &
+  USE TimersModule_Euler,               ONLY: &
     TimeIt_Euler, &
     FinalizeTimers_Euler
 
   ! --- Local Modules ---
 
-  USE MF_KindModule, ONLY: &
-    DP, &
-    Two
-  USE MF_FieldsModule, ONLY: &
+  USE MF_KindModule,                    ONLY: &
+    DP
+  USE MF_Euler_UtilitiesModule,         ONLY: &
+    MF_ComputeFromConserved, &
+    MF_ComputeTimeStep
+  USE MF_Euler_dgDiscretizationModule,  ONLY: &
+    MF_ComputeIncrement_Euler
+  USE MF_TimeSteppingModule_SSPRK,      ONLY: &
+    MF_UpdateFluid_SSPRK
+  USE FinalizationModule,               ONLY: &
+    FinalizeProgram
+  USE MF_FieldsModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
     MF_uDF
-  USE InitializationModule, ONLY: &
-    InitializeProgram
-  USE FinalizationModule, ONLY: &
-    FinalizeProgram
-  USE MF_Euler_UtilitiesModule, ONLY: &
-    ComputeTimeStep_Euler_MF, &
-    ComputeFromConserved_Euler_MF
-  USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    UpdateFluid_SSPRK_MF
-  USE InputParsingModule, ONLY: &
-    StepNo, &
-    t_end, &
-    t_new, &
-    t_old, &
-    dt, &
-    CFL, &
-    iCycleD, &
-    iCycleW, &
+  USE InitializationModule,             ONLY: &
+    InitializeProgram, &
+    chk,               &
+    wrt
+  USE InputParsingModule,               ONLY: &
+    nLevels,   &
+    StepNo,    &
+    t,         &
+    dt,        &
+    t_end,     &
+    CFL,       &
+    t_wrt,     &
+    dt_wrt,    &
+    t_chk,     &
+    dt_chk,    &
+    iCycleD,   &
+    iCycleW,   &
     iCycleChk, &
-    dt_wrt, &
-    dt_chk
-  USE MF_Euler_TimersModule, ONLY: &
-    TimeIt_AMReX_Euler, &
-    FinalizeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_InputOutput
+    GEOM
+  USE MF_Euler_TallyModule,             ONLY: &
+    MF_ComputeTally_Euler
+  USE TimersModule_AMReX_Euler,         ONLY: &
+    TimeIt_AMReX_Euler,            &
+    FinalizeTimers_AMReX_Euler,    &
+    TimersStart_AMReX_Euler,       &
+    TimersStop_AMReX_Euler,        &
+    Timer_AMReX_Euler_InputOutput, &
+    Timer_AMReX_Euler_MPI_Barrier
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
-  LOGICAL  :: wrt, chk
-  REAL(DP) :: t_wrt, t_chk
+  INTEGER  :: iErr
   REAL(DP) :: Timer_Evolution
 
   TimeIt_AMReX_Euler = .TRUE.
 
   TimeIt_Euler = .TRUE.
 
-  wrt = .FALSE.
-  chk = .FALSE.
-
-  t_wrt = dt_wrt
-  t_chk = dt_chk
-
   CALL InitializeProgram
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
 
-  ! --- Begin evolution ---
+  CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_MPI_Barrier )
 
-  DO WHILE( MAXVAL( t_new ) .LT. t_end )
+  CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+  CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_MPI_Barrier )
+
+  DO WHILE( ALL( t .LT. t_end ) )
 
     StepNo = StepNo + 1
 
-    t_old = t_new
+    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
-    CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
+    IF( ALL( t + dt .LE. t_end ) )THEN
 
-    dt = MINVAL( dt )
-
-    IF( MAXVAL( t_old + dt ) .LT. t_end )THEN
-
-      t_new = t_old + dt
+      t = t + dt
 
     ELSE
 
-      dt = t_end - t_old
-
-      t_new = t_end
+      dt = t_end - [t]
+      t  = [t_end]
 
     END IF
-
-    CALL UpdateFluid_SSPRK_MF( t_new, dt, MF_uGF, MF_uCF, MF_uDF )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -110,7 +111,7 @@ PROGRAM ApplicationDriver
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
 
         WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-          'StepNo: ', StepNo(0), ' t = ', t_new(0) / UnitsDisplay % TimeUnit, &
+          'StepNo: ', StepNo(0), ' t = ', t / UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel ), &
           ' dt = ', dt(0) /  UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel )
@@ -119,6 +120,13 @@ PROGRAM ApplicationDriver
 
     END IF
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+    CALL MF_UpdateFluid_SSPRK &
+           ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
     IF( iCycleChk .GT. 0 )THEN
 
       IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 ) &
@@ -126,7 +134,7 @@ PROGRAM ApplicationDriver
 
     ELSE
 
-      IF( ALL( t_new + dt .GT. t_chk ) )THEN
+      IF( ALL( t + dt .GT. t_chk ) )THEN
 
         t_chk = t_chk + dt_chk
         chk   = .TRUE.
@@ -135,36 +143,31 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    IF( chk )THEN
 
-!!$    IF( chk )THEN
-!!$
-!!$      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-!!$
-!!$      CALL ComputeFromConserved_Euler_MF &
-!!$             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-!!$
-!!$      CALL WriteFieldsAMReX_Checkpoint &
-!!$             ( StepNo, nLevels, dt, t, &
-!!$               MF_uGF % BA % P, &
-!!$               MF_uGF % P, &
-!!$               MF_uCF % P )
-!!$
-!!$      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-!!$
-!!$      CALL FinalizeTimers_Euler &
-!!$             ( Verbose_Option = amrex_parallel_ioprocessor(), &
-!!$               SuppressApplicationDriver_Option = .TRUE., &
-!!$               WriteAtIntermediateTime_Option = .TRUE. )
-!!$
-!!$      CALL FinalizeTimers_AMReX_Euler &
-!!$             ( WriteAtIntermediateTime_Option = .TRUE. )
-!!$
-!!$      chk = .FALSE.
-!!$
-!!$    END IF
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+      CALL WriteFieldsAMReX_Checkpoint &
+             ( StepNo, nLevels, dt, t, &
+               MF_uGF % BA % P, &
+               MF_uGF % P, &
+               MF_uCF % P )
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+      CALL FinalizeTimers_Euler &
+             ( Verbose_Option = amrex_parallel_ioprocessor(), &
+               SuppressApplicationDriver_Option = .TRUE., &
+               WriteAtIntermediateTime_Option = .TRUE. )
+
+      CALL FinalizeTimers_AMReX_Euler &
+             ( WriteAtIntermediateTime_Option = .TRUE. )
+
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+      chk = .FALSE.
+
+    END IF
 
     IF( iCycleW .GT. 0 )THEN
 
@@ -173,7 +176,7 @@ PROGRAM ApplicationDriver
 
     ELSE
 
-      IF( ALL( t_new + dt .GT. t_wrt ) )THEN
+      IF( ALL( t + dt .GT. t_wrt ) )THEN
 
         t_wrt = t_wrt + dt_wrt
         wrt   = .TRUE.
@@ -184,16 +187,18 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t_new(0), StepNo, MF_uGF, &
+             ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF )
+
+      CALL MF_ComputeTally_Euler &
+             ( GEOM, MF_uGF, MF_uCF, t(0), Verbose_Option = .FALSE. )
 
       wrt = .FALSE.
 
@@ -215,6 +220,52 @@ PROGRAM ApplicationDriver
 
   StepNo = StepNo + 1
 
-  CALL FinalizeProgram
+  CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+  CALL WriteFieldsAMReX_Checkpoint &
+         ( StepNo, nLevels, dt, t, &
+           MF_uGF % BA % P, &
+           MF_uGF % P, &
+           MF_uCF % P )
+
+  CALL WriteFieldsAMReX_PlotFile &
+         ( t(0), StepNo,           &
+           MF_uGF_Option = MF_uGF, &
+           MF_uCF_Option = MF_uCF, &
+           MF_uPF_Option = MF_uPF, &
+           MF_uAF_Option = MF_uAF, &
+           MF_uDF_Option = MF_uDF )
+
+  CALL MF_ComputeTally_Euler &
+         ( GEOM, MF_uGF, MF_uCF, t(0), Verbose_Option = .FALSE. )
+
+  CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+  ! --- Finalize everything ---
+
+  IF( amrex_parallel_ioprocessor() )THEN
+
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git info'
+    WRITE(*,'(2x,A)') '--------'
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git branch:'
+    CALL EXECUTE_COMMAND_LINE( 'git branch' )
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git describe --tags:'
+    CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+    CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+    WRITE(*,*)
+    WRITE(*,'(2x,A)') 'date:'
+    CALL EXECUTE_COMMAND_LINE( 'date' )
+    WRITE(*,*)
+
+  END IF
+
+  CALL FinalizeProgram( GEOM )
 
 END PROGRAM ApplicationDriver
