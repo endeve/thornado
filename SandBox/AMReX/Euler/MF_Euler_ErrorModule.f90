@@ -79,24 +79,6 @@ CONTAINS
 
         CALL thornado_abort
 
-      CASE( 03 )
-
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A)') &
-          'MODULE: AverageDownModule'
-        WRITE(*,'(A)') TRIM( Message )
-        WRITE(*,*)
-        WRITE(*,'(2x,A,I3.2)') &
-          'amrex_average_down not implemented for nNodes = ', Int_Option(1)
-        WRITE(*,'(2x,A)') 'Valid choices'
-        WRITE(*,'(2x,A)') '-------------'
-        WRITE(*,'(2x,A)') '  1'
-        WRITE(*,'(2x,A)') '  2'
-        WRITE(*,'(2x,A)') '  3'
-        WRITE(*,'(2x,A)')
-
-        CALL thornado_abort
-
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
