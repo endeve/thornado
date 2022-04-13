@@ -26,8 +26,6 @@ MODULE MF_FieldsModule
   ! --- Conserved Fluid Fields ---
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF(:)
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF_new(:)
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF_old(:)
 
   ! --- Primitive Fluid Fields ---
 
@@ -56,8 +54,6 @@ CONTAINS
 
     ALLOCATE( MF_uGF(0:nLevels-1) )
     ALLOCATE( MF_uCF(0:nLevels-1) )
-    ALLOCATE( MF_uCF_old(0:nLevels-1) )
-    ALLOCATE( MF_uCF_new(0:nLevels-1) )
     ALLOCATE( MF_uPF(0:nLevels-1) )
     ALLOCATE( MF_uAF(0:nLevels-1) )
     ALLOCATE( MF_uDF(0:nLevels-1) )
@@ -80,8 +76,6 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_uDF(iLevel) )
       CALL amrex_multifab_destroy( MF_uAF(iLevel) )
       CALL amrex_multifab_destroy( MF_uPF(iLevel) )
-      CALL amrex_multifab_destroy( MF_uCF_new(iLevel) )
-      CALL amrex_multifab_destroy( MF_uCF_old(iLevel) )
       CALL amrex_multifab_destroy( MF_uCF(iLevel) )
       CALL amrex_multifab_destroy( MF_uGF(iLevel) )
 
@@ -90,8 +84,6 @@ CONTAINS
     DEALLOCATE( MF_uDF )
     DEALLOCATE( MF_uAF )
     DEALLOCATE( MF_uPF )
-    DEALLOCATE( MF_uCF_new )
-    DEALLOCATE( MF_uCF_old )
     DEALLOCATE( MF_uCF )
     DEALLOCATE( MF_uGF )
 

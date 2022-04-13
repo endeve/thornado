@@ -25,10 +25,6 @@ CEXE_sources    += Restart.cpp
 f90EXE_sources  += MF_AccretionShockUtilitiesModule.f90
 f90EXE_sources  += MF_Euler_PerturbationModule.f90
 f90EXE_sources  += MF_KindModule.f90
-f90EXE_sources  += AMReX_BoundaryConditionsModule.f90
-f90EXE_sources  += FillPatchModule.f90
-f90EXE_sources  += ProbModule.f90
-f90EXE_sources  += TaggingModule.f90
 #F90EXE_sources  += dgemv.F90 lsame.F90
 
 # thornado/Modules/Library
@@ -78,7 +74,7 @@ f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 F90EXE_sources  += Euler_SlopeLimiterModule.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
-f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.f90
+F90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_UtilitiesModule.F90
