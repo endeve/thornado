@@ -1,4 +1,4 @@
-MODULE GeometryComputationModule_CFC
+MODULE GeometryComputationModule_XCFC
 
   USE KindModule, ONLY: &
     DP, Zero, Half, Two, Three
@@ -16,13 +16,12 @@ MODULE GeometryComputationModule_CFC
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputeChristoffelSymbols_3D_CFC
-
+  PUBLIC :: ComputeChristoffelSymbols_3D_XCFC
 
 CONTAINS
 
 
-  SUBROUTINE ComputeChristoffelSymbols_3D_CFC &
+  SUBROUTINE ComputeChristoffelSymbols_3D_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
       Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 
@@ -155,10 +154,10 @@ CONTAINS
       END DO
       END DO
 
-  END SUBROUTINE ComputeChristoffelSymbols_3D_CFC
+  END SUBROUTINE ComputeChristoffelSymbols_3D_XCFC
 
 
-  SUBROUTINE ComputeExtrinsicCurvature_CFC &
+  SUBROUTINE ComputeExtrinsicCurvature_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, dGdX1, dGdX2, dGdX3, &
       Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, G )
 
@@ -323,7 +322,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE ComputeExtrinsicCurvature_CFC
+  END SUBROUTINE ComputeExtrinsicCurvature_XCFC
 
 
-END MODULE GeometryComputationModule_CFC
+END MODULE GeometryComputationModule_XCFC
