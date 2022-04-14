@@ -29,6 +29,11 @@ f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
 
+# AdiabaticCollapse_XCFC
+f90EXE_sources += MF_InitializationModule_AdiabaticCollapse_XCFC.f90
+f90EXE_sources += ProgenitorModule.f90
+F90EXE_sources += MF_GravitySolutionModule_XCFC_Poseidon.F90
+
 # thornado/Modules/Library
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
@@ -85,6 +90,8 @@ F90EXE_sources  += EquationOfStateModule_TABLE.F90
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 F90EXE_sources  += GeometryFieldsModule.F90
 F90EXE_sources  += GeometryComputationModule.F90
+f90EXE_sources  += GeometryComputationModule_XCFC.f90
+F90EXE_sources  += GravitySolutionModule_CFA_Poseidon.F90
 
 # thornado/Modules/Euler
 
@@ -103,9 +110,11 @@ F90EXE_sources  += Euler_CharacteristicDecompositionModule.F90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
+F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_TABLE.F90
 F90EXE_sources  += Euler_SlopeLimiterModule.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
 F90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
+f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.f90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90

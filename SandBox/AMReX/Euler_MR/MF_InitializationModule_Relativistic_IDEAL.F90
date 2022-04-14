@@ -76,12 +76,13 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeFields_Euler_MF
+  PUBLIC :: InitializeFields_Euler_Relativistic_IDEAL_MF
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFields_Euler_MF( iLevel, MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields_Euler_Relativistic_IDEAL_MF &
+    ( iLevel, MF_uGF, MF_uCF )
 
     INTEGER,              INTENT(in) :: iLevel
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
@@ -125,8 +126,10 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE InitializeFields_Euler_MF
+  END SUBROUTINE InitializeFields_Euler_Relativistic_IDEAL_MF
 
+
+  ! --- PRIVATE SUBROUTINES ---
 
   SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 

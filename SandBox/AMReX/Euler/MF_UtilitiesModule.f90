@@ -91,15 +91,11 @@ MODULE MF_UtilitiesModule
   PUBLIC :: WriteNodalDataToFile
   PUBLIC :: CombineGridData
 
-  INTERFACE amrex2thornado_X
-    MODULE PROCEDURE amrex2thornado_X_Many
-    MODULE PROCEDURE amrex2thornado_X_Single
-  END INTERFACE amrex2thornado_X
 
 CONTAINS
 
 
-  SUBROUTINE amrex2thornado_X_Many &
+  SUBROUTINE amrex2thornado_X &
     ( nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,  INTENT(in)  :: nFields
@@ -128,38 +124,7 @@ CONTAINS
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-  END SUBROUTINE amrex2thornado_X_Many
-
-
-  SUBROUTINE amrex2thornado_X_Single &
-    ( iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
-
-    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iLo_MF(4), iX_B(3), iX_E(3)
-    REAL(DP), INTENT(in)  :: &
-      Data_amrex   (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
-    REAL(DP), INTENT(out) :: &
-      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
-
-    INTEGER :: iNX, iX1, iX2, iX3
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
-
-    DO iX3 = iX_B(3), iX_E(3)
-    DO iX2 = iX_B(2), iX_E(2)
-    DO iX1 = iX_B(1), iX_E(1)
-    DO iNX = 1, nDOFX
-
-      Data_thornado(iNX,iX1,iX2,iX3) &
-        = Data_amrex(iX1,iX2,iX3,iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
-
-  END SUBROUTINE amrex2thornado_X_Single
+  END SUBROUTINE amrex2thornado_X
 
 
   SUBROUTINE thornado2amrex_X &

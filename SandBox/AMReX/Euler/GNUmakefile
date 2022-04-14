@@ -2,7 +2,6 @@
 # If you set AMREX_HOME as an environment variable, this line will be ignored
 AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
-POSEIDON_HOME ?= $(POSEIDON_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
 LAPACK_HOME   ?= $(LAPACK_DIR)
@@ -13,8 +12,7 @@ HDF5_LIB       = $(HDF5_HOME)/lib
 LAPACK_INC     = $(LAPACK_HOME)/include
 LAPACK_LIB     = $(LAPACK_HOME)/lib
 
-EOS            ?= TABLE
-EVOLVE_GRAVITY ?= TRUE
+EOS ?= IDEAL
 
 DEBUG     = TRUE
 
@@ -48,7 +46,6 @@ include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
 # Include basic AMReX framework
 include $(AMREX_HOME)/Src/Base/Make.package
-#include $(AMREX_HOME)/Src/DG/Make.package
 
 # Include directories and source files needed for amrex_parallel_module
 include $(AMREX_HOME)/Src/Boundary/Make.package
@@ -58,10 +55,6 @@ include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
 include $(THORNADO_HOME)/SandBox/AMReX/Euler/Make.thornado
-
-ifeq ($(EVOLVE_GRAVITY),TRUE)
-  include $(POSEIDON_HOME)/Build/Make.Poseidon
-endif
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

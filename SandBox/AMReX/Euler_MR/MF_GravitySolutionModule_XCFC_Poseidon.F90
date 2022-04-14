@@ -30,10 +30,10 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
-  USE TimersModule_AMReX_Euler, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler,  &
-    Timer_AMReX_Euler_Allocate
+!!$  USE TimersModule_AMReX_Euler, ONLY: &
+!!$    TimersStart_AMReX_Euler, &
+!!$    TimersStop_AMReX_Euler,  &
+!!$    Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
@@ -43,20 +43,23 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 CONTAINS
 
 
-  SUBROUTINE UpdateConformalFactorAndMetric_MF( MF_Psi, MF_uGF )
+  SUBROUTINE UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_Psi(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
+    ! 1: psi, 2: alpha, 3-5: beta, 6-11: K_ij
+    INTEGER, PARAMETER :: nMF = 11
+
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iLo_G(4), iLo_Psi(4)
+    INTEGER :: iLo_G(4), iLo_M(4)
 
-    REAL(DP), CONTIGUOUS, POINTER :: uPsi(:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: Psi (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: M   (:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), ALLOCATABLE         :: G   (:,:,:,:,:)
 
@@ -66,11 +69,11 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        uPsi => MF_Psi(iLevel) % DataPtr( MFI )
-        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+        uMF => MF_uMF(iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
-        iLo_Psi = LBOUND( uPsi )
-        iLo_G   = LBOUND( uGF  )
+        iLo_M = LBOUND( uMF )
+        iLo_G = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -79,36 +82,36 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        ALLOCATE( Psi(1:nDOFX,iX_B0(1):iX_E0(1), &
-                              iX_B0(2):iX_E0(2), &
-                              iX_B0(3):iX_E0(3)) )
+        ALLOCATE( M(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nMF) )
 
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
         CALL amrex2thornado_X &
-               ( iX_B0, iX_E0, iLo_Psi, iX_B0, iX_E0, uPsi, Psi )
+               ( nMF, iX_B0, iX_E0, iLo_M, iX_B0, iX_E0, uMF, M )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_G, iX_B1, iX_E1, uGF, G )
 
         CALL UpdateConformalFactorAndMetric &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, Psi, G )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, M(:,:,:,:,1), G )
 
         CALL thornado2amrex_X &
                ( nGF, iX_B1, iX_E1, iLo_G, iX_B1, iX_E1, uGF, G )
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        DEALLOCATE( G   )
-        DEALLOCATE( Psi )
+        DEALLOCATE( G )
+        DEALLOCATE( M )
 
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 

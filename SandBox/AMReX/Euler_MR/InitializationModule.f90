@@ -342,7 +342,7 @@ CONTAINS
       ComputeGeometryX_MF
 
     USE MF_InitializationModule, ONLY: &
-      InitializeFields_MF
+      InitializeFields_Euler_MF
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -384,7 +384,7 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL InitializeFields_Euler_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
     IF( iLevel .GT. 0 )THEN
 

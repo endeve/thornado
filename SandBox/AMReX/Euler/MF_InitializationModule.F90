@@ -19,8 +19,6 @@ MODULE MF_InitializationModule
     MF_InitializeFields_Relativistic_IDEAL
   USE MF_InitializationModule_NonRelativistic_IDEAL, ONLY: &
     MF_InitializeFields_NonRelativistic_IDEAL
-  USE MF_InitializationModule_AdiabaticCollapse_CFC, ONLY: &
-    MF_InitializeFields_AdiabaticCollapse_CFC
 
   IMPLICIT NONE
   PRIVATE
@@ -43,19 +41,10 @@ CONTAINS
     CALL MF_InitializeFields_NonRelativistic_TABLE &
            ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
-#elif defined HYDRO_RELATIVISTIC && defined GRAVITY_SOLVER_POSEIDON_CFA
-
-    IF( TRIM( ProgramName ) .EQ. 'AdiabaticCollapse_CFC' )THEN
-
-      CALL MF_InitializeFields_AdiabaticCollapse_CFC &
-             ( ProgramName, MF_uGF, MF_uCF, GEOM )
-
-    END IF
-
 #elif defined HYDRO_RELATIVISTIC
 
-      CALL MF_InitializeFields_Relativistic_IDEAL &
-             ( ProgramName, MF_uGF, MF_uCF, GEOM )
+    CALL MF_InitializeFields_Relativistic_IDEAL &
+           ( ProgramName, MF_uGF, MF_uCF, GEOM )
 
 #else
 
