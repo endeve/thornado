@@ -7,6 +7,7 @@ Euler_MeshRefinementModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   PolynomialBasisModule_Lagrange.o \
+  GeometryFieldsModule.o \
   Euler_MeshRefinementModule.F90
 
 Euler_UtilitiesModule_NonRelativistic.o: \
