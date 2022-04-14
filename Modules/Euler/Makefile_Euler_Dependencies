@@ -245,6 +245,7 @@ Euler_dgDiscretizationModule.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  GeometryComputationModule_XCFC.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
   Euler_DiscontinuityDetectionModule.o \
