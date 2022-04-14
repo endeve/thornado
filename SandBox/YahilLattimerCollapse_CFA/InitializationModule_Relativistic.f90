@@ -25,7 +25,7 @@ MODULE InitializationModule_Relativistic
 !!$    SolveGravity_CFA_Poseidon
   USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
-    ComputeLapseAndShift_Poseidon
+    ComputeGeometry_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &
     MultiplyByPsi6, &
     DivideByPsi6, &
@@ -72,8 +72,6 @@ MODULE InitializationModule_Relativistic
   USE UtilitiesModule, ONLY: &
     Locate, &
     Interpolate1D_Linear
-!!$  USE Poseidon_UtilitiesModule, ONLY: &
-!!$    ComputeSourceTerms_Poseidon
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
@@ -83,7 +81,6 @@ MODULE InitializationModule_Relativistic
   PRIVATE
 
   PUBLIC :: InitializeFields_Relativistic
-
 
 CONTAINS
 
@@ -163,11 +160,8 @@ CONTAINS
     REAL(DP),          INTENT(in) :: CoreRadius
     REAL(DP),          INTENT(in) :: CollapseTime
 
-    LOGICAL  :: CONVERGED
-    INTEGER  :: iX1, iX2, iX3, ITER
+    INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: PolytropicConstant, dXdr, drhodD, dvdV, dmdM, TotalEnclosedMass
-    REAL(DP) :: dAlpha, dPsi
-!!$    REAL(DP), ALLOCATABLE :: SourceTerms_Poseidon(:,:,:,:,:)
 
     REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
@@ -181,6 +175,10 @@ CONTAINS
     REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3))
+
+    INTEGER  :: ITER
+    REAL(DP) :: dAlpha, dPsi
+    LOGICAL  :: CONVERGED
 
     REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
@@ -225,30 +223,12 @@ CONTAINS
 
     ! --- Iterate to incorporate gravity in initial conditions ---
 
-!!$    ALLOCATE( SourceTerms_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
-!!$                                           iX_B0(2):iX_E0(2), &
-!!$                                           iX_B0(3):iX_E0(3),6) )
-
     CONVERGED = .FALSE.
     ITER      = 0
 
     DO WHILE( .NOT. CONVERGED )
 
       ITER = ITER + 1
-
-!!$      CALL ComputeSourceTerms_Poseidon &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-!!$
-!!$      dAlpha = MINVAL( uGF(:,:,:,:,iGF_Alpha) )
-!!$      dPsi   = MAXVAL( uGF(:,:,:,:,iGF_Psi  ) )
-!!$
-!!$      CALL SolveGravity_CFA_Poseidon &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
-!!$
-!!$      dAlpha = ABS( dAlpha - MINVAL( uGF(:,:,:,:,iGF_Alpha) ) ) &
-!!$                 / MINVAL( uGF(:,:,:,:,iGF_Alpha) )
-!!$      dPsi   = ABS( dPsi   - MAXVAL( uGF(:,:,:,:,iGF_Psi)   ) ) &
-!!$                 / MAXVAL( uGF(:,:,:,:,iGF_Psi)   )
 
       dAl1 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
@@ -268,7 +248,7 @@ CONTAINS
       CALL ComputePressureTensorTrace_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
 
-      CALL ComputeLapseAndShift_Poseidon &
+      CALL ComputeGeometry_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
@@ -329,12 +309,10 @@ CONTAINS
     CALL ComputePressureTensorTrace_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
 
-    CALL ComputeLapseAndShift_Poseidon &
+    CALL ComputeGeometry_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
     CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
-
-!!$    DEALLOCATE( SourceTerms_Poseidon )
 
     WRITE(*,*)
     WRITE(*,'(6x,A,L)') &
