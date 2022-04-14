@@ -5,7 +5,7 @@ MODULE UtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nNodesE, nDimsX
 
-#if defined USE_AMREX_TRUE
+#ifdef THORNADO_USE_AMREX
 
     USE amrex_error_module, ONLY: &
       amrex_abort
@@ -599,23 +599,15 @@ CONTAINS
   END FUNCTION IsCornerCell
 
 
-  SUBROUTINE thornado_abort( Message_Option )
+  SUBROUTINE thornado_abort
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Message_Option
+#ifdef THORNADO_USE_AMREX
 
-    CHARACTER(LEN=128) :: Message
-
-    Message = ''
-    IF( PRESENT( Message_Option ) ) &
-      Message = Message_Option
-
-#if defined USE_AMREX_TRUE
-
-    CALL amrex_abort( TRIM( Message ) )
+    CALL amrex_abort('')
 
 #else
 
-    STOP TRIM( Message )
+    STOP ''
 
 #endif
 

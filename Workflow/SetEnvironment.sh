@@ -285,10 +285,6 @@ elif [[ $THORNADO_MACHINE == sjdunham ]]; then
 
 elif [[ $THORNADO_MACHINE == kkadoogan_gnu ]]; then
 
-  module load mpi
-  module load hdf5
-  module load lapack
-
   echo
 
 elif [[ $THORNADO_MACHINE == jrober ]]; then
