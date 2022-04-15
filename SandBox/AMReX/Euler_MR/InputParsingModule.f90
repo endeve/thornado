@@ -24,6 +24,12 @@ MODULE InputParsingModule
     nDimsX
   USE UtilitiesModule, ONLY: &
     thornado_abort
+  USE UnitsModule, ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay
+  USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem
 
   ! --- Local modules ---
 
@@ -32,23 +38,23 @@ MODULE InputParsingModule
     Zero, &
     One, &
     Two
+  USE MF_Euler_ErrorModule, ONLY: &
+    DescribeError_Euler_MF
 
   IMPLICIT NONE
 
   ! -- thornado ---
 
   CHARACTER(:), ALLOCATABLE :: ProgramName
-  INTEGER, ALLOCATABLE  :: swX(:)
-  INTEGER, ALLOCATABLE  :: bcX(:)
-  INTEGER               :: nNodes
-  INTEGER               :: nStages
-  REAL(DP)              :: dt_wrt, dt_chk
-  INTEGER               :: iCycleW, iCycleChk, iCycleD
-  REAL(DP)              :: t_end
-  REAL(DP)              :: Gamma_IDEAL
-  REAL(DP)              :: CFL
-  CHARACTER(:), ALLOCATABLE :: EquationOfState
-  CHARACTER(:), ALLOCATABLE :: EosTableName
+  INTEGER     , ALLOCATABLE :: swX(:)
+  INTEGER     , ALLOCATABLE :: bcX(:)
+  INTEGER                   :: nNodes
+  INTEGER                   :: nStages
+  REAL(DP)                  :: dt_wrt, dt_chk
+  INTEGER                   :: iCycleW, iCycleChk, iCycleD
+  REAL(DP)                  :: t_end
+  REAL(DP)                  :: CFL
+  LOGICAL     , SAVE        :: UsePhysicalUnits
 
   ! --- Boundary Conditions ---
 
@@ -73,9 +79,15 @@ MODULE InputParsingModule
   REAL(DP) :: Min_1, Min_2
   REAL(DP) :: Max_1, Max_2
 
+  ! --- Equation of State ---
+
+  CHARACTER(:), ALLOCATABLE :: EquationOfState
+  CHARACTER(:), ALLOCATABLE :: EosTableName
+  REAL(DP)                  :: Gamma_IDEAL
+
   ! --- geometry ---
 
-  INTEGER               :: CoordSys
+  INTEGER               :: coord_sys
   REAL(DP), ALLOCATABLE :: xL(:), xR(:)
 
   ! --- amr ---
@@ -126,6 +138,7 @@ CONTAINS
 
     ! --- thornado Parameters thornado.* ---
 
+    UsePhysicalUnits = .FALSE.
     PlotFileBaseName = 'plt'
     iCycleD          = 10
     iCycleW          = -1
@@ -146,6 +159,7 @@ CONTAINS
       CALL PP % query ( 'iCycleChk', iCycleChk )
       CALL PP % query ( 'dt_wrt', dt_wrt )
       CALL PP % query ( 'dt_chk', dt_chk )
+      CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits      )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW * dt_wrt .GT. Zero )THEN
@@ -205,7 +219,7 @@ CONTAINS
     EquationOfState = 'IDEAL'
     Gamma_IDEAL     = 4.0_DP / 3.0_DP
     EosTableName    = ''
-    CALL amrex_parmparse_build( PP, 'PL' )
+    CALL amrex_parmparse_build( PP, 'EoS' )
       CALL PP % query ( 'EquationOfState', EquationOfState )
       CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
       CALL PP % query ( 'EosTableName', EosTableName )
@@ -214,10 +228,48 @@ CONTAINS
     ! --- Parameters geometry.* ---
 
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys', CoordSys )
+      CALL PP % get   ( 'coord_sys', coord_sys )
       CALL PP % getarr( 'prob_lo'  , xL       )
       CALL PP % getarr( 'prob_hi'  , xR       )
     CALL amrex_parmparse_destroy( PP )
+
+    IF     ( coord_sys .EQ. 0 )THEN
+
+      CoordinateSystem = 'CARTESIAN'
+
+    ELSE IF( coord_sys .EQ. 1 )THEN
+
+      CoordinateSystem = 'CYLINDRICAL'
+
+    ELSE IF( coord_sys .EQ. 2 )THEN
+
+      CoordinateSystem = 'SPHERICAL'
+
+    ELSE
+
+      CALL DescribeError_Euler_MF &
+             ( 02, Message_Option = 'Invalid CoordSys:', &
+                   Int_Option = [ coord_sys ] )
+
+    END IF
+
+    IF( UsePhysicalUnits )THEN
+
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = TRIM( CoordinateSystem ) )
+
+      t_end  = t_end  * UnitsDisplay % TimeUnit
+      dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
+      dt_chk = dt_chk * UnitsDisplay % TimeUnit
+
+      xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
+      xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
+      xL(2) = xL(2) * UnitsDisplay % LengthX2Unit
+      xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
+      xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
+      xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
+
+    END IF
 
     ! --- Parameters amr.* ---
 
@@ -255,6 +307,9 @@ CONTAINS
              xR_Option          = xR,                  &
              bcX_Option         = bcX,                 &
              Verbose_Option     = amrex_parallel_ioprocessor() )
+
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
 
     IF( nDimsX .NE. amrex_spacedim )THEN
 

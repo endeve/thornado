@@ -67,12 +67,19 @@ MODULE InitializationModule
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    CoordinateSystem
+    CoordinateSystem, &
+    DescribeGeometryFields, &
+    SetUnitsGeometryFields
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
-    nDF
+    nDF, &
+    DescribeFluidFields_Primitive, &
+    DescribeFluidFields_Conserved, &
+    DescribeFluidFields_Auxiliary, &
+    DescribeFluidFields_Diagnostic, &
+    SetUnitsFluidFields
   USE Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule, ONLY: &
@@ -126,7 +133,6 @@ MODULE InitializationModule
     MaxGridSizeX, &
     xL, &
     xR, &
-    CoordSys, &
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
@@ -182,26 +188,6 @@ CONTAINS
 
     CALL InitializeParameters
 
-    IF     ( CoordSys .EQ. 0 )THEN
-
-      CoordinateSystem = 'CARTESIAN'
-
-    ELSE IF( CoordSys .EQ. 1 )THEN
-
-      CoordinateSystem = 'CYLINDRICAL'
-
-    ELSE IF( CoordSys .EQ. 2 )THEN
-
-      CoordinateSystem = 'SPHERICAL'
-
-    ELSE
-
-      CALL DescribeError_Euler_MF &
-             ( 02, Message_Option = 'Invalid CoordSys:', &
-                   Int_Option = [ CoordSys ] )
-
-    END IF
-
     IF( amrex_parallel_ioprocessor() ) CALL DescribeProgramHeaderX
 
     CALL CreateFields_MF
@@ -233,6 +219,19 @@ CONTAINS
     CALL InitializeReferenceElementX_Lagrange
 
     CALL InitializeMeshRefinement_Euler
+
+    CALL SetUnitsGeometryFields
+
+    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
+
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( EquationOfState .EQ. 'TABLE' )THEN
 

@@ -41,6 +41,7 @@ thornado.swX          = 01  00 00
 amr.max_grid_size_x   = 64
 amr.blocking_factor_x = 8
 amr.max_level         = 0
+amr.ref_ratio         = 2
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 0
@@ -59,5 +60,5 @@ PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
 # Equation of state parameters
-EoS.EosTableName = "wl-EOS-SFHo-25-50-100.h5"
 EoS.EquationOfState = "TABLE"
+EoS.EosTableName = "wl-EOS-SFHo-25-50-100.h5"

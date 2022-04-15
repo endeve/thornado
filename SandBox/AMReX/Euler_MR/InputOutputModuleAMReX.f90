@@ -43,16 +43,21 @@ MODULE InputOutputModuleAMReX
     MeshX
   USE GeometryFieldsModule, ONLY: &
     ShortNamesGF, &
+    unitsGF, &
     nGF, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     ShortNamesCF, &
+    unitsCF, &
     nCF, &
     ShortNamesPF, &
+    unitsPF, &
     nPF, &
     ShortNamesAF, &
+    unitsAF, &
     nAF, &
     ShortNamesDF, &
+    unitsDF, &
     nDF
   USE UnitsModule, ONLY: &
     UnitsDisplay
@@ -382,11 +387,72 @@ CONTAINS
       END DO
       END DO
 
+      CALL ConvertUnits( Field, nFd, iOS, U_plt )
+
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE ComputeCellAverage_MF
+
+
+  SUBROUTINE ConvertUnits( Field, nFd, iOS, U_plt )
+
+    CHARACTER(2), INTENT(in)    :: Field
+    INTEGER,      INTENT(in)    :: nFd, iOS
+    REAL(DP),     INTENT(inout) :: U_plt(:,:,:,:)
+
+    INTEGER :: iFd
+
+    SELECT CASE( Field )
+
+      CASE( 'GF' )
+
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsGF(iFd)
+
+        END DO
+
+      CASE( 'CF' )
+
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsCF(iFd)
+
+        END DO
+
+      CASE( 'PF' )
+
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsPF(iFd)
+
+        END DO
+
+      CASE( 'AF' )
+
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsAF(iFd)
+
+        END DO
+
+      CASE( 'DF' )
+
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsDF(iFd)
+
+        END DO
+
+      CASE DEFAULT
+
+        RETURN
+
+    END SELECT
+
+  END SUBROUTINE ConvertUnits
 
 
   SUBROUTINE WriteMPI( MF_uGF, MF_plt )
