@@ -248,14 +248,13 @@ CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, PositionIndexZ, nIterations_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
     REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_12, Gm_dd_13, Gm_dd_23
     REAL(DP), DIMENSION(:), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
     INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
