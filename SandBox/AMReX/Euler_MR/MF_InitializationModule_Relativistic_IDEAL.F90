@@ -121,8 +121,8 @@ CONTAINS
       CASE DEFAULT
 
         CALL DescribeError_Euler_MF &
-               ( 01, Message_Option &
-                       = 'Invalid ProgramName: ' // TRIM( ProgramName ) )
+               ( 201, Message_Option &
+                        = 'Invalid ProgramName: ' // TRIM( ProgramName ) )
 
     END SELECT
 
@@ -223,7 +223,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 202, Message_Option &
+                        = 'Invalid AdvectionProfile: ' &
+                            // TRIM( AdvectionProfile ) )
 
     END SELECT
 
@@ -453,7 +456,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 203, Message_Option &
+                        = 'Invalid RiemannProblemName: ' &
+                            // TRIM( RiemannProblemName ) )
 
     END SELECT
 
@@ -681,7 +687,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 204, Message_Option &
+                        = 'Invalid AdvectionProfile: ' &
+                            // TRIM( AdvectionProfile ) )
 
     END SELECT
 
@@ -1055,7 +1064,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 205, Message_Option &
+                        = 'Invalid AdvectionProfile: ' &
+                            // TRIM( AdvectionProfile ) )
 
     END SELECT
 

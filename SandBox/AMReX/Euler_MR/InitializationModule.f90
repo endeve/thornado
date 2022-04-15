@@ -155,8 +155,6 @@ MODULE InitializationModule
     ProgramName
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
   USE AverageDownModule, ONLY: &
     AverageDownTo
   USE Euler_MeshRefinementModule, ONLY: &

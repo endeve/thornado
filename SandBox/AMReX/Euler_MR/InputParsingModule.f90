@@ -22,8 +22,6 @@ MODULE InputParsingModule
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader, &
     nDimsX
-  USE UtilitiesModule, ONLY: &
-    thornado_abort
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
     DescribeUnitsDisplay, &
@@ -164,17 +162,13 @@ CONTAINS
 
     IF( iCycleW * dt_wrt .GT. Zero )THEN
 
-      WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
-      WRITE(*,'(A)') 'Stopping...'
-      CALL thornado_abort
+      CALL DescribeError_Euler_MF( 101 )
 
     END IF
 
     IF( iCycleChk * dt_chk .GT. Zero )THEN
 
-      WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
-      WRITE(*,'(A)') 'Stopping...'
-      CALL thornado_abort
+      CALL DescribeError_Euler_MF( 102 )
 
     END IF
 
@@ -248,8 +242,8 @@ CONTAINS
     ELSE
 
       CALL DescribeError_Euler_MF &
-             ( 02, Message_Option = 'Invalid CoordSys:', &
-                   Int_Option = [ coord_sys ] )
+             ( 103, Message_Option = 'Invalid CoordSys:', &
+                      Int_Option = [ coord_sys ] )
 
     END IF
 
@@ -313,11 +307,8 @@ CONTAINS
 
     IF( nDimsX .NE. amrex_spacedim )THEN
 
-      WRITE(*,'(A)') 'ERROR'
-      WRITE(*,'(A)') '-----'
-      WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
-      WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
-      STOP
+      CALL DescribeError_Euler_MF( 104, &
+                                   Int_Option = [ nDimsX, amrex_spacedim ] )
 
     END IF
 
