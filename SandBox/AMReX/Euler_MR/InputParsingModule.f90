@@ -20,7 +20,8 @@ MODULE InputParsingModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    InitializeProgramHeader
+    InitializeProgramHeader, &
+    nDimsX
   USE UtilitiesModule, ONLY: &
     thornado_abort
 
@@ -100,6 +101,7 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: PlotFileBaseName
   INTEGER :: iOS_CPP(3)
 
+  LOGICAL                   :: WriteNodalData
   CHARACTER(:), ALLOCATABLE :: NodalDataFileName
 
 CONTAINS
@@ -115,16 +117,15 @@ CONTAINS
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
 
+    WriteNodalData    = .FALSE.
     NodalDataFileName = ''
     CALL amrex_parmparse_build( PP, 'debug' )
+      CALL PP % query( 'WriteNodalData', WriteNodalData )
       CALL PP % query( 'NodalDataFileName', NodalDataFileName )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- thornado Parameters thornado.* ---
 
-    EquationOfState  = 'IDEAL'
-    Gamma_IDEAL      = 4.0_DP / 3.0_DP
-    EosTableName     = ''
     PlotFileBaseName = 'plt'
     iCycleD          = 10
     iCycleW          = -1
@@ -139,10 +140,7 @@ CONTAINS
       CALL PP % getarr( 'bcX', bcX )
       CALL PP % get   ( 't_end', t_end )
       CALL PP % get   ( 'CFL', CFL )
-      CALL PP % query ( 'EquationOfState', EquationOfState )
-      CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
       CALL PP % query ( 'iCycleD', iCycleD )
-      CALL PP % query ( 'EosTableName', EosTableName )
       CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
       CALL PP % query ( 'iCycleW', iCycleW )
       CALL PP % query ( 'iCycleChk', iCycleChk )
@@ -202,6 +200,17 @@ CONTAINS
       CALL PP % query( 'Min_2'               , Min_2                )
     CALL amrex_parmparse_destroy( PP )
 
+    ! --- Equation of State Parameters EoS.* ---
+
+    EquationOfState = 'IDEAL'
+    Gamma_IDEAL     = 4.0_DP / 3.0_DP
+    EosTableName    = ''
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % query ( 'EquationOfState', EquationOfState )
+      CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
+      CALL PP % query ( 'EosTableName', EosTableName )
+    CALL amrex_parmparse_destroy( PP )
+
     ! --- Parameters geometry.* ---
 
     CALL amrex_parmparse_build( PP, 'geometry' )
@@ -246,6 +255,16 @@ CONTAINS
              xR_Option          = xR,                  &
              bcX_Option         = bcX,                 &
              Verbose_Option     = amrex_parallel_ioprocessor() )
+
+    IF( nDimsX .NE. amrex_spacedim )THEN
+
+      WRITE(*,'(A)') 'ERROR'
+      WRITE(*,'(A)') '-----'
+      WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
+      WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
+      STOP
+
+    END IF
 
     iOS_CPP = 0
 

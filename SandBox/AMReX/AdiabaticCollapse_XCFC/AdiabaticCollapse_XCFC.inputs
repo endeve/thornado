@@ -1,11 +1,11 @@
-##### AdiabaticCollapse_CFC #####
+##### AdiabaticCollapse_XCFC #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 DEBUG = 0
 
-thornado.ProgramName = "AdiabaticCollapse_CFC"
+thornado.ProgramName = "AdiabaticCollapse_XCFC"
 
 AC.ProgenitorFileName = "../Progenitors/WH07_15M_Sun.h5"
 
@@ -13,14 +13,14 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.PlotFileBaseName = "AdiabaticCollapse_CFC.plt"
+thornado.PlotFileBaseName = "AdiabaticCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 10
 
 thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "AdiabaticCollapse_CFC.chk"
+thornado.CheckpointFileBaseName = "AdiabaticCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+2
 thornado.iCycleChk = -1
 
