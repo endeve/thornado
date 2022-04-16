@@ -32,8 +32,10 @@ MODULE FinalizationModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
+    WriteFieldsAMReX_PlotFile, &
+    WriteFieldsAMReX_Checkpoint
   USE InputParsingModule, ONLY: &
+    nLevels, &
     StepNo, &
     dt, &
     t_old, &
@@ -71,6 +73,12 @@ CONTAINS
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF )
+
+    CALL WriteFieldsAMReX_Checkpoint &
+           ( StepNo, nLevels, dt, t_new, &
+             MF_uGF % BA % P, &
+             MF_uGF % P, &
+             MF_uCF % P )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 

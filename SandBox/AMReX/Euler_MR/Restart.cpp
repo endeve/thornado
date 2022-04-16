@@ -223,7 +223,7 @@ extern "C"
   } // End of readheaderandboxarraydata function
 
   void readmultifabdata
-    ( int FinestLevel, int iLevel, MultiFab** MF, int iMF, int iChkFile )
+    ( int FinestLevel, MultiFab** MF, int iMF, int iChkFile )
   {
 
     ParmParse pp("thornado");
@@ -261,12 +261,12 @@ extern "C"
         std::cout << "Invalid." << std::endl;
     }
 
-//    for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
-//    {
+    for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
+    {
       VisMF::Read( *MF[iLevel],
         amrex::MultiFabFileFullPrefix
                  ( iLevel, restart_chkfile, "Level_", MF_Name ) );
-//    }
+    }
 
   } // End of readmultifabdata function
 

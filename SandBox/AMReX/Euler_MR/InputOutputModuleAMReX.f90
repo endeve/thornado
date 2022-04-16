@@ -87,6 +87,7 @@ MODULE InputOutputModuleAMReX
     t_new, &
     PlotFileBaseName, &
     nX, &
+    iRestart, &
     UseTiling
 
   IMPLICIT NONE
@@ -412,17 +413,13 @@ CONTAINS
 
   SUBROUTINE ReadCheckpointFile
 
-    USE InputParsingModule, ONLY: &
-      nLevels, &
-      nX, &
-      MaxGridSizeX, &
-      StepNo, &
-      t_new, &
-      dt, &
-      iRestart, &
-      swX
+    USE MF_FieldsModule, ONLY: &
+      MF_uGF, &
+      MF_uCF, &
+      MF_uPF, &
+      MF_uAF, &
+      MF_uDF
 
-use mf_fieldsmodule
     IMPLICIT NONE
 
     INTEGER     :: iLevel, FinestLevel
