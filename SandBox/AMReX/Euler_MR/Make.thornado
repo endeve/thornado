@@ -28,6 +28,7 @@ CEXE_sources    += MakeFineMaskModule_fi.cpp
 f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
+CEXE_sources    += Restart.cpp
 
 # AdiabaticCollapse_XCFC
 f90EXE_sources += MF_InitializationModule_AdiabaticCollapse_XCFC.f90

@@ -45,6 +45,8 @@ PROGRAM ApplicationDriver
     iCycleD, &
     iCycleW, &
     iCycleChk, &
+    t_wrt, &
+    t_chk, &
     dt_wrt, &
     dt_chk
   USE MF_Euler_TimersModule, ONLY: &
@@ -59,7 +61,6 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   LOGICAL  :: wrt, chk
-  REAL(DP) :: t_wrt, t_chk
   REAL(DP) :: Timer_Evolution
 
   TimeIt_AMReX_Euler = .TRUE.

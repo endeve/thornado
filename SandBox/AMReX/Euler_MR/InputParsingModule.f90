@@ -48,8 +48,8 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
   INTEGER                   :: nStages
-  REAL(DP)                  :: dt_wrt, dt_chk
-  INTEGER                   :: iCycleW, iCycleChk, iCycleD
+  REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk
+  INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
   REAL(DP)                  :: t_end
   REAL(DP)                  :: CFL
   LOGICAL     , SAVE        :: UsePhysicalUnits
@@ -141,6 +141,7 @@ CONTAINS
     iCycleD          = 10
     iCycleW          = -1
     iCycleChk        = -1
+    iRestart         = -1
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -155,6 +156,7 @@ CONTAINS
       CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
       CALL PP % query ( 'iCycleW', iCycleW )
       CALL PP % query ( 'iCycleChk', iCycleChk )
+      CALL PP % query ( 'iRestart', iRestart )
       CALL PP % query ( 'dt_wrt', dt_wrt )
       CALL PP % query ( 'dt_chk', dt_chk )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits      )

@@ -124,9 +124,14 @@ MODULE InitializationModule
     nLevels, &
     swX, &
     StepNo, &
+    iRestart, &
     dt, &
     t_old, &
     t_new, &
+    t_wrt, &
+    t_chk, &
+    dt_wrt, &
+    dt_chk, &
     xL, &
     UseTiling, &
     do_reflux, &
@@ -154,7 +159,8 @@ MODULE InitializationModule
     hi_bc_uCF, &
     ProgramName
   USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
+    WriteFieldsAMReX_PlotFile, &
+    ReadCheckpointFile
   USE AverageDownModule, ONLY: &
     AverageDownTo
   USE Euler_MeshRefinementModule, ONLY: &
@@ -299,10 +305,21 @@ CONTAINS
 
     StepNo = 0
     dt     = 0.0_DP
-    t_old  = 0.0_DP
     t_new  = 0.0_DP
 
-    CALL amrex_init_from_scratch( 0.0_DP )
+    IF( iRestart .LT. 0 )THEN
+
+      CALL amrex_init_from_scratch( 0.0_DP )
+
+    ELSE
+
+      CALL ReadCheckpointFile
+
+    END IF
+
+    t_old = t_new
+    t_chk = t_new(0) + dt_chk
+    t_wrt = t_new(0) + dt_wrt
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
