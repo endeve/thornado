@@ -267,12 +267,34 @@ CONTAINS
 
     ! --- Parameters amr.* ---
 
-    MaxGridSizeX1    = 1
-    MaxGridSizeX2    = 1
-    MaxGridSizeX3    = 1
-    BlockingFactorX1 = 1
-    BlockingFactorX2 = 1
-    BlockingFactorX3 = 1
+    IF( amrex_spacedim .EQ. 1 )THEN
+
+      MaxGridSizeX1 = 128
+      MaxGridSizeX2 = 1
+      MaxGridSizeX3 = 1
+      BlockingFactorX1 = 8
+      BlockingFactorX2 = 1
+      BlockingFactorX3 = 1
+
+    ELSE IF( amrex_spacedim .EQ. 2 )THEN
+
+      MaxGridSizeX1 = 128
+      MaxGridSizeX2 = 128
+      MaxGridSizeX3 = 1
+      BlockingFactorX1 = 8
+      BlockingFactorX2 = 8
+      BlockingFactorX3 = 1
+
+    ELSE
+
+      MaxGridSizeX1 = 32
+      MaxGridSizeX2 = 32
+      MaxGridSizeX3 = 32
+      BlockingFactorX1 = 8
+      BlockingFactorX2 = 8
+      BlockingFactorX3 = 8
+
+    END IF
     UseTiling        = 0
     do_reflux        = 0
     CALL amrex_parmparse_build( PP, 'amr' )
