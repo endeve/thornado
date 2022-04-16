@@ -64,6 +64,10 @@ CONTAINS
 
         CALL InitializeFields_SineWaveDiffusion( V_0 )
 
+      CASE( 'SphericalDiffusion' )
+
+        CALL InitializeFields_SphericalDiffusion
+
       CASE( 'IsotropicRadiation' )
 
         CALL InitializeFields_IsotropicRadiation( V_0 )
@@ -363,6 +367,105 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_SineWaveDiffusion
+
+
+  SUBROUTINE InitializeFields_SphericalDiffusion
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: R, Sigma, t_0 = 1.0d0
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+
+      END DO
+
+      CALL ComputeConserved_Euler_NonRelativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
+               uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), &
+               uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), &
+               uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), &
+               uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), &
+               uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+
+        R = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+
+        Sigma = uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS)
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = ( Sigma / t_0 )**( 1.5_DP ) &
+              * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) * R / ( 2.0_DP * t_0 )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = 0.0_DP
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_SphericalDiffusion
 
 
   SUBROUTINE InitializeFields_IsotropicRadiation( V_0 )

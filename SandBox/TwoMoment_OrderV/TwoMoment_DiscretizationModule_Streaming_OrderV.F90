@@ -3060,7 +3060,6 @@ CONTAINS
 
     END DO
     END DO
-
     END DO
 
     ! --- Left State Primitive ---
