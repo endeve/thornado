@@ -45,7 +45,7 @@ FigTitle = ProblemName
 DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
 
 # Specify plot file base name
-PlotFileBaseName = 'plt'
+PlotFileBaseName = ProblemName + '.plt'
 
 # Specify field to plot
 Field = 'PF_D'
@@ -88,17 +88,17 @@ if( UsePhysicalUnits ):
     TimeUnit = 'ms'
     LengthUnit = 'km'
 
-Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
-  = GetData( DataDirectory, PlotFileBaseName, Field, \
-             CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
-             MaxLevel = MaxLevel, \
-             ReturnTime = True, ReturnMesh = True )
+#Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
+#  = GetData( DataDirectory, PlotFileBaseName, Field, \
+#             CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
+#             MaxLevel = MaxLevel, \
+#             ReturnTime = True, ReturnMesh = True, Verbose = True )
 
 Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
   = GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = argv, \
              MaxLevel = MaxLevel, \
-             ReturnTime = True, ReturnMesh = True )
+             ReturnTime = True, ReturnMesh = True, Verbose = True )
 
 nDims = 1
 if nX0[1] > 1: nDims += 1

@@ -50,7 +50,8 @@ def GetFileArray( DataDirectory, PlotFileBaseName ):
     return FileArray
 
 
-def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
+def ChoosePlotFile \
+      ( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ], Verbose = False ):
 
     if len( argv ) == 1:
 
@@ -83,13 +84,15 @@ def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
     # Remove "/" at end of filename, if present
     if ( File[-1] == '/' ): File = File[:-1]
 
+    if Verbose: print( File )
+
     return File
 
 
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
              MaxLevel = -1, iX3_CS = 0, \
-             ReturnTime = False, ReturnMesh = False ):
+             ReturnTime = False, ReturnMesh = False, Verbose = False ):
 
     import yt
     import numpy as np
@@ -110,7 +113,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
 
-    File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv )
+    File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv, \
+                           Verbose = Verbose )
 
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
