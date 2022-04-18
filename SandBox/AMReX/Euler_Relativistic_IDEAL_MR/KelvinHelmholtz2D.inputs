@@ -7,13 +7,13 @@ thornado.ProgramName = "KelvinHelmholtz2D"
 
 thornado.nNodes    = 02
 thornado.nStages   = 02
-thornado.t_end     = 2.0e0
+thornado.t_end     = 3.0e0
 thornado.iCycleD   = 10
 thornado.CFL       = 0.5
 thornado.iCycleW   = 100
 thornado.iCycleChk = 100000
 
-thornado.iRestart = 173
+thornado.iRestart = -1
 thornado.PlotFileBaseName = "KelvinHelmholtz2D.plt"
 thornado.CheckpointFileBaseName = "KelvinHelmholtz2D.chk"
 
