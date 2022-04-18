@@ -80,6 +80,10 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
+      WRITE(*,'(A)') &
+        '    INFO: Timestepper'
+      WRITE(*,'(A)') &
+        '    -----------------'
       WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
       WRITE(*,'(A5,A,ES10.3E3)') '', 'CFL:           ', &
         CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
