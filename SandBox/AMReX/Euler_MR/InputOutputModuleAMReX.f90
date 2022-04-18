@@ -38,6 +38,8 @@ MODULE InputOutputModuleAMReX
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_myproc
+  USE amrex_fluxregister_module, ONLY: &
+    amrex_fluxregister_build
   USE amrex_amr_module, ONLY: &
     amrex_geom
 
@@ -46,7 +48,8 @@ MODULE InputOutputModuleAMReX
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
+    WeightsX_q, &
+    nDOFX_X1
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
@@ -88,7 +91,8 @@ MODULE InputOutputModuleAMReX
     PlotFileBaseName, &
     nX, &
     iRestart, &
-    UseTiling
+    UseTiling, &
+    do_reflux
 
   IMPLICIT NONE
   PRIVATE
@@ -418,7 +422,8 @@ CONTAINS
       MF_uCF, &
       MF_uPF, &
       MF_uAF, &
-      MF_uDF
+      MF_uDF, &
+      FluxRegister
 
     IMPLICIT NONE
 
@@ -491,6 +496,12 @@ CONTAINS
       CALL amrex_multifab_build &
              ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
       CALL MF_uDF(iLevel) % SetVal( Zero )
+
+      ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
+      IF( iLevel .GT. 0 .AND. do_reflux ) &
+        CALL amrex_fluxregister_build &
+               ( FluxRegister(iLevel), BA(iLevel), DM(iLevel), &
+                 amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
 
     END DO
 

@@ -149,7 +149,8 @@ extern "C"
     sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
 
-    amrex::Print() << "  Restart from checkpoint " << restart_chkfile << "\n";
+    amrex::Print() << "\n      Restart from checkpoint " << restart_chkfile
+                   << "\n";
 
     // Header
     std::string File( restart_chkfile + "/Header" );
