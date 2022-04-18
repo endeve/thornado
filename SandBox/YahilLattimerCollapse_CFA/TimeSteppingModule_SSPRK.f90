@@ -31,7 +31,12 @@ MODULE TimeSteppingModule_SSPRK
     TimersStop_Euler,  &
     Timer_Euler_UpdateFluid
   USE Euler_dgDiscretizationModule, ONLY: &
-    OffGridFlux_Euler
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE Euler_TallyModule_Relativistic, ONLY: &
     IncrementOffGridTally_Euler_Relativistic
 
@@ -284,7 +289,13 @@ CONTAINS
 
         dM_OffGrid_Euler &
           = dM_OffGrid_Euler &
-              + dt * w_SSPRK(iS) * OffGridFlux_Euler
+              + dt * w_SSPRK(iS) &
+                  * (   OffGridFlux_Euler_X1_Outer &
+                      - OffGridFlux_Euler_X1_Inner &
+                      + OffGridFlux_Euler_X2_Outer &
+                      - OffGridFlux_Euler_X2_Inner &
+                      + OffGridFlux_Euler_X3_Outer &
+                      - OffGridFlux_Euler_X3_Inner )
 
       END IF
 

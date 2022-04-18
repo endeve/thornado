@@ -19,7 +19,12 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
-    OffGridFlux_Euler
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
   USE TwoMoment_TimersModule_OrderV, ONLY: &
@@ -316,7 +321,13 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                    Ui, uDF, StageData(iS) % dU_EX )
 
-          StageData(iS) % OffGridFlux_U = OffGridFlux_Euler
+          StageData(iS) % OffGridFlux_U &
+                  =   OffGridFlux_Euler_X1_Outer &
+                    - OffGridFlux_Euler_X1_Inner &
+                    + OffGridFlux_Euler_X2_Outer &
+                    - OffGridFlux_Euler_X2_Inner &
+                    + OffGridFlux_Euler_X3_Outer &
+                    - OffGridFlux_Euler_X3_Inner
 
         END IF
 
