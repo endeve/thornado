@@ -81,6 +81,8 @@ MODULE InputOutputModuleAMReX
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE FillPatchModule, ONLY: &
+    FillPatch
   USE InputParsingModule, ONLY: &
     nLevels, &
     MaxGridSizeX, &
@@ -513,9 +515,8 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-! replace with fillpatch
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL FillPatch( iLevel, t_new(0), MF_uGF )
+      CALL FillPatch( iLevel, t_new(0), MF_uCF )
 
     END DO
 
