@@ -58,7 +58,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
   CHARACTER(32) :: CoordinateSystem
-  LOGICAL       :: SmoothProfile
+  LOGICAL       :: SmoothProfile, ConstantDensity
   LOGICAL       :: wrt
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
@@ -77,8 +77,8 @@ PROGRAM ApplicationDriver
 
   REAL(DP) :: DampingParameter = 0.0_DP
 
-  ProgramName = 'Cleaning1D'
-  AdvectionProfile = 'MagneticSineWave'
+  ProgramName = 'Cleaning2D'
+  AdvectionProfile = 'MagneticSineWaveX2'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -91,72 +91,181 @@ PROGRAM ApplicationDriver
 
       SELECT CASE ( TRIM( AdvectionProfile ) )
 
-      CASE( 'HydroSineWave' )
+        CASE( 'HydroSineWaveX1' )
 
-      EvolveOnlyMagnetic = .FALSE.
-      UseDivergenceCleaning = .FALSE.
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
 
-      AdvectionProfile = 'HydroSineWave'
+          AdvectionProfile = 'HydroSineWaveX1'
 
-      Gamma = 5.0_DP / 3.0_DP
-      t_end = 10.0_DP
-      bcX = [ 1, 0, 0 ]
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 0, 0 ]
 
-      CoordinateSystem = 'CARTESIAN'
+          CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 128, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+          nX  = [ 128, 1, 1 ]
+          swX = [ 1, 0, 0 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      CASE( 'MagneticSineWave' )
+        CASE( 'MagneticSineWaveX1' )
 
-      EvolveOnlyMagnetic = .TRUE.
-      UseDivergenceCleaning = .FALSE.
+          EvolveOnlyMagnetic = .TRUE.
+          UseDivergenceCleaning = .FALSE.
 
-      AdvectionProfile = 'MagneticSineWave'
+          AdvectionProfile = 'MagneticSineWaveX1'
 
-      Gamma = 5.0_DP / 3.0_DP
-      t_end = 10.0_DP
-      bcX = [ 1, 0, 0 ]
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 0, 0 ]
 
-      CoordinateSystem = 'CARTESIAN'
+          CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 128, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+          nX  = [ 128, 1, 1 ]
+          swX = [ 1, 0, 0 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      CASE( 'CPAlfven' )
+        CASE( 'CPAlfven' )
 
-      EvolveOnlyMagnetic = .FALSE.
-      UseDivergenceCleaning = .FALSE.
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
 
-      AdvectionProfile = 'CPAlfven'
+          AdvectionProfile = 'CPAlfven'
 
-      Gamma = 4.0_DP / 3.0_DP
-      t_end = 16.449592691810107_DP
-      bcX = [ 1, 0, 0 ]
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 10.0_DP * 16.449592691810107_DP
+          bcX = [ 1, 0, 0 ]
 
-      CoordinateSystem = 'CARTESIAN'
+          CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 128, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
-      xR  = [ Two * Pi, 1.0_DP, 1.0_DP ]
+          nX  = [ 128, 1, 1 ]
+          swX = [ 1, 0, 0 ]
+          xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
+          xR  = [ Two * Pi, 1.0_DP, 1.0_DP ]
 
-    CASE DEFAULT
+        CASE DEFAULT
 
-      WRITE(*,*)
-      WRITE(*,'(A21,A)') 'Invalid AdvectionProfile: ', AdvectionProfile
-      WRITE(*,'(A)')     'Valid choices:'
-      WRITE(*,'(A)')     '  HydroSineWave'
-      WRITE(*,'(A)')     '  MagneticSineWave'
-      WRITE(*,'(A)')     '  CPAlfven'
-      WRITE(*,'(A)')     'Stopping...'
-      STOP
+          WRITE(*,*)
+          WRITE(*,'(A21,A)') 'Invalid AdvectionProfile: ', AdvectionProfile
+          WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  HydroSineWaveX1'
+          WRITE(*,'(A)')     '  MagneticSineWaveX1'
+          WRITE(*,'(A)')     '  CPAlfven'
+          WRITE(*,'(A)')     'Stopping...'
+          STOP
 
-    END SELECT
+      END SELECT
+
+    CASE( 'Advection2D' )
+
+      SELECT CASE( TRIM( AdvectionProfile ) )
+
+        CASE( 'HydroSineWaveX2' )
+
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'HydroSineWaveX2'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 2, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+        CASE( 'HydroSineWaveX1X2' )
+
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'HydroSineWaveX1X2'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 128, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP / SQRT( Two ), 1.0_DP / SQRT( Two ), 1.0_DP ]
+
+        CASE( 'MagneticSineWaveX2' )
+
+          EvolveOnlyMagnetic = .TRUE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'MagneticSineWaveX2'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10000.0_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 2, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+        CASE( 'MagneticSineWaveX1X2' )
+
+          EvolveOnlyMagnetic = .TRUE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'MagneticSineWaveX1X2'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 128, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP / SQRT( Two ), 1.0_DP / SQRT( Two ), 1.0_DP ]
+
+        CASE( 'LoopAdvection' )
+
+          EvolveOnlyMagnetic = .TRUE.
+          UseDivergenceCleaning = .TRUE.
+          DampingParameter = 1.0
+
+          AdvectionProfile = 'LoopAdvection'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 24.0_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 128, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ -0.5_DP, -0.5_DP, 0.0_DP ]
+          xR  = [  0.5_DP,  0.5_DP, 1.0_DP ]
+
+        CASE DEFAULT
+
+          WRITE(*,*)
+          WRITE(*,'(A21,A)') 'Invalid AdvectionProfile: ', AdvectionProfile
+          WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  HydroSineWaveX2'
+          WRITE(*,'(A)')     '  HydroSineWaveX1X2'
+          WRITE(*,'(A)')     '  MagneticSineWaveX1X2'
+          WRITE(*,'(A)')     '  CPAlfven'
+          WRITE(*,'(A)')     'Stopping...'
+          STOP
+
+      END SELECT
 
     CASE( 'Cleaning1D' )
 
@@ -178,13 +287,35 @@ PROGRAM ApplicationDriver
       xL  = [ -1.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [  1.0_DP, 1.0_DP, 1.0_DP ]
 
+    CASE( 'Cleaning2D' )
+
+      EvolveOnlyMagnetic = .TRUE.
+
+      UseDivergenceCleaning = .TRUE.
+      DampingParameter = 0.0_DP
+
+      ConstantDensity = .TRUE.
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 1.0_DP
+      bcX = [ 1, 1, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 128, 128, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ -0.5_DP, -0.5_DP, 0.0_DP ]
+      xR  = [  1.5_DP,  1.5_DP, 1.0_DP ]
+
     CASE DEFAULT
 
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  Advection2D'
       WRITE(*,'(A)')     '  Cleaning1D'
+      WRITE(*,'(A)')     '  Cleaning2D'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -192,13 +323,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -255,7 +386,9 @@ PROGRAM ApplicationDriver
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ), &
            SmoothProfile_Option &
-             = SmoothProfile )
+             = SmoothProfile, &
+           ConstantDensity_Option &
+             = ConstantDensity )
 
   IF( RestartFileNumber .LT. 0 )THEN
 

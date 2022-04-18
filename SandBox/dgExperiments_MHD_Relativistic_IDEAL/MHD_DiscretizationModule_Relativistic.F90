@@ -84,7 +84,9 @@ MODULE MHD_DiscretizationModule_Relativistic
     ComputePrimitive_MHD, &
     Eigenvalues_MHD, &
     Flux_X1_MHD, &
-    NumericalFlux_MHD_X1
+    Flux_X2_MHD, &
+    NumericalFlux_MHD_X1, &
+    NumericalFlux_MHD_X2
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -215,10 +217,22 @@ CONTAINS
     CALL ComputeIncrement_MHD_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
-    !PRINT*
-    !PRINT*, 'Increments after divergence.'
+   !PRINT*
+   !PRINT*, 'Increments after X1 divergence.'
+   !PRINT*, 'S1: ', dU(:,:,:,:,iCM_S1)
+   !PRINT*, 'S2: ', dU(:,:,:,:,iCM_S2)
+   !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
+ 
+    CALL ComputeIncrement_MHD_Divergence_X2 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+
+   !PRINT*
+   !PRINT*, 'Increments after X2 divergence.'
+   !PRINT*, 'S1: ', dU(:,:,:,:,iCM_S1)
+   !PRINT*, 'S2: ', dU(:,:,:,:,iCM_S2)
+   !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
     !PRINT*, 'B1: ', dU(:,:,:,:,iCM_B1)
-    !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
+    !PRINT*, 'B2: ', dU(:,:,:,:,iCM_B2)
     !PRINT*, 'B3: ', dU(:,:,:,:,iCM_B3)
 
     ! --- Multiply Inverse Mass Matrix ---
@@ -228,6 +242,15 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
+
+      !PRINT*, 'In cell: ', iX1, iX2, iX3
+      !PRINT*, 'In node: ', iNX
+
+      !PRINT*, 'tau: ', tau(iNX,iX1,iX2,iX3)
+      !PRINT*, 'SqrtGm: ', G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
+
+      !PRINT*, 'dU for field: ', iCM, ': ', dU(iNX,iX1,iX2,iX3,iCM)
+      !PRINT*
 
       dU(iNX,iX1,iX2,iX3,iCM) &
         = dU(iNX,iX1,iX2,iX3,iCM) &
@@ -241,25 +264,37 @@ CONTAINS
     END DO
     END DO
 
-    !PRINT*, 'Increments after mass matrix multiplication.'
+   !PRINT*
+   !PRINT*, 'Increments after mass matrix multiplication.'
+   !PRINT*, 'S1: ', dU(:,:,:,:,iCM_S1)
+   !PRINT*, 'S2: ', dU(:,:,:,:,iCM_S2)
+   !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
     !PRINT*, 'B1: ', dU(:,:,:,:,iCM_B1)
-    !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
+    !PRINT*, 'B2: ', dU(:,:,:,:,iCM_B2)
     !PRINT*, 'B3: ', dU(:,:,:,:,iCM_B3)
 
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
-    !PRINT*, 'Increments after geometry.'
+   !PRINT*
+   !PRINT*, 'Increments after geometry.'
+   !PRINT*, 'S1: ', dU(:,:,:,:,iCM_S1)
+   !PRINT*, 'S2: ', dU(:,:,:,:,iCM_S2)
+   !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
     !PRINT*, 'B1: ', dU(:,:,:,:,iCM_B1)
-    !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
+    !PRINT*, 'B2: ', dU(:,:,:,:,iCM_B2)
     !PRINT*, 'B3: ', dU(:,:,:,:,iCM_B3)
 
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    !PRINT*, 'Increments after gravity.'
+   !PRINT*
+   !PRINT*, 'Increments after gravity.'
+   !PRINT*, 'S1: ', dU(:,:,:,:,iCM_S1)
+   !PRINT*, 'S2: ', dU(:,:,:,:,iCM_S2)
+   !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
     !PRINT*, 'B1: ', dU(:,:,:,:,iCM_B1)
-    !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
+    !PRINT*, 'B2: ', dU(:,:,:,:,iCM_B2)
     !PRINT*, 'B3: ', dU(:,:,:,:,iCM_B3)
 
     CALL FinalizeIncrement_MHD
@@ -870,6 +905,607 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_MHD_Divergence_X1
 
 
+  SUBROUTINE ComputeIncrement_MHD_Divergence_X2 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
+      U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM), &
+      D (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
+
+    INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
+    INTEGER  :: iXP_B0(3), iXP_E0(3)
+
+    REAL(DP) :: AlphaMns, AlphaPls
+    REAL(DP) :: P_L, P_R, Cs_L, Cs_R, P_K
+
+    REAL(DP) :: EigVals_L(2), EigVals_R(2)
+    REAL(DP) :: Flux_L   (nCM), Flux_R   (nCM)
+    REAL(DP) :: Flux_F   (nCM), Flux_K   (nCM)
+    REAL(DP) :: uCM_L_nCM(nCM), uCM_R_nCM(nCM)
+
+    ! --- Geometry Fields ---
+
+    REAL(DP) :: &
+      G_K(nDOFX, &
+          iX_B0(1)  :iX_E0(1),   &
+          iX_B0(3)  :iX_E0(3),   &
+          iX_B0(2)-1:iX_E0(2)+1, &
+          nGF)
+    REAL(DP) :: &
+      G_F(nDOFX_X2, &
+          iX_B0(1)  :iX_E0(1),   &
+          iX_B0(3)  :iX_E0(3),   &
+          iX_B0(2)  :iX_E0(2)+1, &
+          nGF)
+
+    ! --- Conserved Fluid Fields ---
+
+    REAL(DP) :: &
+      uCM_K(nDOFX, &
+            iX_B0(1)  :iX_E0(1),   &
+            iX_B0(3)  :iX_E0(3),   &
+            iX_B0(2)-1:iX_E0(2)+1, &
+            nCM)
+    REAL(DP) :: &
+      uCM_L(nDOFX_X2, &
+            iX_B0(1)  :iX_E0(1),   &
+            iX_B0(3)  :iX_E0(3),   &
+            iX_B0(2)  :iX_E0(2)+1, &
+            nCM)
+    REAL(DP) :: &
+      uCM_R(nDOFX_X2, &
+            iX_B0(1)  :iX_E0(1),   &
+            iX_B0(3)  :iX_E0(3),   &
+            iX_B0(2)  :iX_E0(2)+1, &
+            nCM)
+
+    ! --- Diagnostic Fields ---
+
+    REAL(DP) :: &
+      uDM_L(iX_B0(1):iX_E0(1), &
+            iX_B0(3):iX_E0(3), &
+            iX_B0(2):iX_E0(2)+1,2)
+    REAL(DP) :: &
+      uDM_R(iX_B0(1):iX_E0(1), &
+            iX_B0(3):iX_E0(3), &
+            iX_B0(2):iX_E0(2)+1,2)
+
+    ! --- Fluxes ---
+
+    REAL(DP) :: &
+      NumericalFlux(nDOFX_X2,nCM, &
+                    iX_B0(1):iX_E0(1), &
+                    iX_B0(3):iX_E0(3), &
+                    iX_B0(2):iX_E0(2)+1)
+    REAL(DP) :: &
+      Flux_q(nDOFX,nCM, &
+             iX_B0(1):iX_E0(1), &
+             iX_B0(3):iX_E0(3), &
+             iX_B0(2):iX_E0(2))
+
+    ! --- X2 Increment ---
+
+    REAL(DP) :: &
+      dU_X2(nDOFX,nCM, &
+            iX_B0(1):iX_E0(1), &
+            iX_B0(3):iX_E0(3), &
+            iX_B0(2):iX_E0(2))
+
+    IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
+
+    ! --- Permuted Limits ---
+
+    iXP_B0(1) = iX_B0(1) ; iXP_E0(1) = iX_E0(1)
+    iXP_B0(2) = iX_B0(3) ; iXP_E0(2) = iX_E0(3)
+    iXP_B0(3) = iX_B0(2) ; iXP_E0(3) = iX_E0(2)
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, dX3 => MeshX(3) % Width )
+
+    CALL InitializeIncrement_Divergence &
+           ( iXP_B0, iXP_E0, nDOFX_X2, &
+             G_K, G_F, uCM_K, uCM_L, uCM_R )
+
+    ! --- Permute data ---
+
+    DO iGF = 1           , nGF
+    DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+    DO iX3 = iX_B0(3)    , iX_E0(3)
+    DO iX1 = iX_B0(1)    , iX_E0(1)
+    DO iNX = 1           , nDOFX
+
+      G_K(iNX,iX1,iX3,iX2,iGF) = G(iNX,iX1,iX2,iX3,iGF)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iCM = 1           , nCM
+    DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+    DO iX3 = iX_B0(3)    , iX_E0(3)
+    DO iX1 = iX_B0(1)    , iX_E0(1)
+    DO iNX = 1           , nDOFX
+
+      uCM_K(iNX,iX1,iX3,iX2,iCM) = U(iNX,iX1,iX2,iX3,iCM)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iX2 = iX_B0(2), iX_E0(2) + 1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      uDM_L(iX1,iX3,iX2,1) = D(1,iX1,iX2-1,iX3,iDM_Sh_X1)
+      uDM_L(iX1,iX3,iX2,2) = D(1,iX1,iX2-1,iX3,iDM_Sh_X3)
+      uDM_R(iX1,iX3,iX2,1) = D(1,iX1,iX2,  iX3,iDM_Sh_X1)
+      uDM_R(iX1,iX3,iX2,2) = D(1,iX1,iX2,  iX3,iDM_Sh_X3)
+
+    END DO
+    END DO
+    END DO
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    ! --- Scale factor (X1) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_h_1), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_1), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_1), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_1), nDOFX_X2 )
+
+    ! --- Scale factor (X2) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_h_2), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_2), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_2), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_2), nDOFX_X2 )
+
+    ! --- Scale factor (X3) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_h_3), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_3), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_3), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_3), nDOFX_X2 )
+
+    ! --- Lapse function ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_Alpha), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Alpha), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Alpha), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Alpha), nDOFX_X2 )
+
+    ! --- Shift vector (X1) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_Beta_1), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_1), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_1), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_1), nDOFX_X2 )
+
+    ! --- Shift vector (X2) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_Beta_2), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_2), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_2), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_2), nDOFX_X2 )
+
+    ! --- Shift vector (X3) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_Beta_3), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_3), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_3), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_Beta_3), nDOFX_X2 )
+
+    ! --- Compute metric and metric determinant on faces ---
+
+    DO iX2   = iX_B0(2), iX_E0(2) + 1
+    DO iX3   = iX_B0(3), iX_E0(3)
+    DO iX1   = iX_B0(1), iX_E0(1)
+    DO iNX_X = 1       , nDOFX_X2
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_h_1) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1), SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_h_2) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_2), SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_h_3) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_3), SqrtTiny )
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Gm_dd_11) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1     )**2, SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Gm_dd_22) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_2     )**2, SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Gm_dd_33) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_3     )**2, SqrtTiny )
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_SqrtGm) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1   ) &
+                 * G_F(iNX_X,iX1,iX3,iX2,iGF_h_2   ) &
+                 * G_F(iNX_X,iX1,iX3,iX2,iGF_h_3   ), SqrtTiny )
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Alpha) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_Alpha), SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Interpolate Fluid Fields ---
+
+    DO iCM = 1, nCM
+
+      ! --- Interpolate Left State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One, LX_X2_Up, nDOFX_X2, &
+               uCM_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iCM), nDOFX, Zero, &
+               uCM_L(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iCM), nDOFX_X2 )
+
+      ! --- Interpolate Right State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
+               uCM_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iCM), nDOFX, Zero, &
+               uCM_R(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iCM), nDOFX_X2 )
+
+    END DO
+
+    ! --- Numerical Flux ---
+
+    !PRINT*, 'Computing the primitive variables for the left state.'
+
+    CALL ComputePrimitive_MHD &
+           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
+             uB1_L, uB2_L, uB3_L, uChi_L, &
+             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
+             pB1_L, pB2_L, pB3_L, pChi_L, &
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F )
+
+    !PRINT*, 'Computing the primitive variables for the right state.'
+
+    CALL ComputePrimitive_MHD &
+           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
+             uB1_R, uB2_R, uB3_R, uChi_R, &
+             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
+             pB1_R, pB2_R, pB3_R, pChi_R, &
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F )
+
+    DO iNX_X = 1, nNodesX_X2
+
+      ! --- Left state ---
+
+      CALL ComputePressureFromPrimitive &
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), P_L  )
+
+      CALL ComputeSoundSpeedFromPrimitive &
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), Cs_L )
+
+      EigVals_L &
+        = Eigenvalues_MHD &
+            ( pV2_L     (iNX_X), &
+              Cs_L             , &
+              Gm_dd_22_F(iNX_X), &
+              pD_L      (iNX_X), &
+              pV1_L     (iNX_X), &
+              pV2_L     (iNX_X), &
+              pV3_L     (iNX_X), &
+              pE_L      (iNX_X), &
+              pNe_L     (iNX_X), &
+              pB1_L     (iNX_X), &
+              pB2_L     (iNX_X), &
+              pB3_L     (iNX_X), & 
+              pChi_L    (iNX_X), &
+              Gm_dd_11_F(iNX_X), &
+              Gm_dd_22_F(iNX_X), &
+              Gm_dd_33_F(iNX_X), &
+              Alpha_F   (iNX_X), &
+              Beta_1_F  (iNX_X), &
+              Beta_2_F  (iNX_X), &
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
+
+      Flux_L &
+        = Flux_X2_MHD &
+            ( pD_L      (iNX_X), &
+              pV1_L     (iNX_X), &
+              pV2_L     (iNX_X), &
+              pV3_L     (iNX_X), &
+              pE_L      (iNX_X), &
+              pNe_L     (iNX_X), &
+              pB1_L     (iNX_X), &
+              pB2_L     (iNX_X), &
+              pB3_L     (iNX_X), &
+              pChi_L    (iNX_X), &
+              P_L              , &
+              Gm_dd_11_F(iNX_X), &
+              Gm_dd_22_F(iNX_X), &
+              Gm_dd_33_F(iNX_X), &
+              Alpha_F   (iNX_X), &
+              Beta_1_F  (iNX_X), &
+              Beta_2_F  (iNX_X), &
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
+
+      IF( .FALSE. )THEN
+
+    !PRINT*
+    !PRINT*, 'Left states and flux for iNX_X = ', iNX_X
+    !PRINT*, 'D_L:      ', pD_L(iNX_X)
+    !PRINT*, 'V1_L:     ', pV1_L(iNX_X)
+    !PRINT*, 'V2_L:     ', pV2_L(iNX_X)
+    !PRINT*, 'V3_L:     ', pV3_L(iNX_X)
+    !PRINT*, 'E_L:      ', pE_L(iNX_X)
+    !PRINT*, 'Ne_L:     ', pNe_L(iNX_X)
+    !PRINT*, 'B1_L:     ', pB1_L(iNX_X)
+    !PRINT*, 'B2_L:     ', pB2_L(iNX_X)
+    !PRINT*, 'B3_L:     ', pB3_L(iNX_X)
+    !PRINT*, 'Chi_L:    ', pChi_L(iNX_X)
+    !PRINT*, 'P_L:      ', P_L
+    !PRINT*, 'Gm_dd_11: ', Gm_dd_11_F(iNX_X)
+    !PRINT*, 'Flux_L:   ', Flux_L
+
+      END IF
+
+      ! --- Right state ---
+
+      CALL ComputePressureFromPrimitive &
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), P_R  )
+
+      CALL ComputeSoundSpeedFromPrimitive &
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), Cs_R )
+
+      EigVals_R &
+        = Eigenvalues_MHD &
+            ( pV2_R     (iNX_X), &
+              Cs_R             , &
+              Gm_dd_22_F(iNX_X), &
+              pD_R      (iNX_X), &
+              pV1_R     (iNX_X), &
+              pV2_R     (iNX_X), &
+              pV3_R     (iNX_X), &
+              pE_R      (iNX_X), &
+              pNe_R     (iNX_X), &
+              pB1_R     (iNX_X), &
+              pB2_R     (iNX_X), &
+              pB3_R     (iNX_X), & 
+              pChi_R    (iNX_X), &
+              Gm_dd_11_F(iNX_X), &
+              Gm_dd_22_F(iNX_X), &
+              Gm_dd_33_F(iNX_X), &
+              Alpha_F   (iNX_X), &
+              Beta_1_F  (iNX_X), &
+              Beta_2_F  (iNX_X), &
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
+
+      Flux_R &
+        = Flux_X2_MHD &
+            ( pD_R      (iNX_X), &
+              pV1_R     (iNX_X), &
+              pV2_R     (iNX_X), &
+              pV3_R     (iNX_X), &
+              pE_R      (iNX_X), &
+              pNe_R     (iNX_X), &
+              pB1_R     (iNX_X), &
+              pB2_R     (iNX_X), &
+              pB3_R     (iNX_X), &
+              pChi_R    (iNX_X), &
+              P_R              , &
+              Gm_dd_11_F(iNX_X), &
+              Gm_dd_22_F(iNX_X), &
+              Gm_dd_33_F(iNX_X), &
+              Alpha_F   (iNX_X), &
+              Beta_1_F  (iNX_X), &
+              Beta_2_F  (iNX_X), &
+              Beta_3_F  (iNX_X), &
+              UseDivergenceCleaning )
+
+      IF( .FALSE. )THEN
+     
+     !PRINT*
+     !PRINT*, 'Right states and flux for iNX_X = ', iNX_X
+     !PRINT*, 'D_R:      ', pD_R(iNX_X)
+     !PRINT*, 'V1_R:     ', pV1_R(iNX_X)
+     !PRINT*, 'V2_R:     ', pV2_R(iNX_X)
+     !PRINT*, 'V3_R:     ', pV3_R(iNX_X)
+     !PRINT*, 'E_R:      ', pE_R(iNX_X)
+     !PRINT*, 'Ne_R:     ', pNe_R(iNX_X)
+     !PRINT*, 'B1_R:     ', pB1_R(iNX_X)
+     !PRINT*, 'B2_R:     ', pB2_R(iNX_X)
+     !PRINT*, 'B3_R:     ', pB3_R(iNX_X)
+     !PRINT*, 'Chi_R:    ', pChi_R(iNX_X)
+     !PRINT*, 'P_R:      ', P_R
+     !PRINT*, 'Gm_dd_11: ', Gm_dd_11_F(iNX_X)
+     !PRINT*, 'Flux_R:   ', Flux_R
+
+      END IF
+
+      ! --- Numerical flux ---
+
+      AlphaMns &
+        = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
+
+      AlphaPls &
+        = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
+
+      iNX = IndexTableX_F(1,iNX_X)
+      iX1 = IndexTableX_F(2,iNX_X)
+      iX3 = IndexTableX_F(3,iNX_X)
+      iX2 = IndexTableX_F(4,iNX_X)
+
+      DO iCM = 1, nCM
+
+        uCM_L_nCM(iCM) = uCM_L(iNX,iX1,iX3,iX2,iCM)
+        uCM_R_nCM(iCM) = uCM_R(iNX,iX1,iX3,iX2,iCM)
+
+      END DO
+
+      Flux_F &
+        = NumericalFlux_MHD_X2 &
+            ( uCM_L_nCM           , &
+              uCM_R_nCM           , &
+              Flux_L              , &
+              Flux_R              , &
+              AlphaPls            , &
+              AlphaMns            )
+
+      DO iCM = 1, nCM
+
+        NumericalFlux(iNX,iCM,iX1,iX3,iX2) &
+          = Flux_F(iCM) &
+              * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX1(iX1) * dX3(iX3) &
+              * WeightsX_X2(iNX)
+
+      END DO ! iCM
+
+    END DO ! iNX_X
+
+    ! --- Surface Contribution ---
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K*nCM, nDOFX_X2, + One, LX_X2_Dn, nDOFX_X2, &
+             NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, &
+             Zero, dU_X2, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K*nCM, nDOFX_X2, - One, LX_X2_Up, nDOFX_X2, &
+             NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, &
+             One,  dU_X2, nDOFX )
+
+    !--------------------
+    ! --- Volume Term ---
+    !--------------------
+
+    !PRINT*, 'Computing the primitive variables for the volume term.'
+
+    CALL ComputePrimitive_MHD &
+           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
+             uB1_K, uB2_K, uB3_K, uChi_K, &
+             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+             pB1_K, pB2_K, pB3_K, pChi_K, &
+             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+             Alpha_K, Beta_1_K, Beta_2_K, Beta_3_K )
+
+    DO iNX_K = 1, nNodesX_K
+
+      CALL ComputePressureFromPrimitive &
+             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
+
+      Flux_K &
+        = Flux_X2_MHD &
+            ( pD_K      (iNX_K), &
+              pV1_K     (iNX_K), &
+              pV2_K     (iNX_K), &
+              pV3_K     (iNX_K), &
+              pE_K      (iNX_K), &
+              pNe_K     (iNX_K), &
+              pB1_K     (iNX_K), &
+              pB2_K     (iNX_K), &
+              pB3_K     (iNX_K), &
+              pChi_K    (iNX_K), &
+              P_K              , &
+              Gm_dd_11_K(iNX_K), &
+              Gm_dd_22_K(iNX_K), &
+              Gm_dd_33_K(iNX_K), &
+              Alpha_K   (iNX_K), &
+              Beta_1_K  (iNX_K), &
+              Beta_2_K  (iNX_K), &
+              Beta_3_K  (iNX_K), &
+              UseDivergenceCleaning )
+
+      iNX = IndexTableX_V(1,iNX_K)
+      iX1 = IndexTableX_V(2,iNX_K)
+      iX3 = IndexTableX_V(3,iNX_K)
+      iX2 = IndexTableX_V(4,iNX_K)
+
+      DO iCM = 1, nCM
+
+        Flux_q(iNX,iCM,iX1,iX3,iX2) &
+          = Flux_K(iCM) &
+              * Alpha_K(iNX_K) * SqrtGm_K(iNX_K) &
+              * dX1(iX1) * dX3(iX3) * WeightsX_q(iNX)
+
+      END DO
+
+    END DO
+
+    ! --- Contribution from Volume ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K*nCM, nDOFX, One, dLXdX2_q, nDOFX, &
+             Flux_q, nDOFX, One, dU_X2, nDOFX )
+
+    DO iCM = 1       , nCM
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1       , nDOFX
+
+      dU    (iNX,iX1,iX2,iX3,iCM) &
+        = dU(iNX,iX1,iX2,iX3,iCM) &
+            + dU_X2(iNX,iCM,iX1,iX3,iX2)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL FinalizeIncrement_Divergence
+
+    END ASSOCIATE
+
+  END SUBROUTINE ComputeIncrement_MHD_Divergence_X2
+
+
   SUBROUTINE ComputeIncrement_Geometry &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
@@ -901,7 +1537,7 @@ CONTAINS
     REAL(DP), INTENT(inout)        :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
 
-    INTEGER :: iX1, iX2, iX3, iNX, iCM, iGF, i, k, iDim
+    INTEGER :: iX1, iX2, iX3, iNX, iCM, iGF
     INTEGER :: nK(3), nGF_K
 
     REAL(DP) :: DivGridVolume
@@ -909,9 +1545,6 @@ CONTAINS
     REAL(DP) :: Pressure
     REAL(DP) :: W, B0u, bSq
     REAL(DP) :: PressureTensor(3,3, nDOFX,iX_B0(1):iX_E0(1), &
-                                          iX_B0(2):iX_E0(2), &
-                                          iX_B0(3):iX_E0(3))
-    REAL(DP) :: PressureTensorTrace(nDOFX,iX_B0(1):iX_E0(1), &
                                           iX_B0(2):iX_E0(2), &
                                           iX_B0(3):iX_E0(3))
 
@@ -960,6 +1593,11 @@ CONTAINS
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
+   !PRINT*, 'iX_B0: ', iX_B0
+   !PRINT*, 'iX_E0: ', iX_E0
+   !PRINT*, 'iX_B1: ', iX_B1
+   !PRINT*, 'iX_E1: ', iX_E1
+
     nK = iX_E0 - iX_B0 + 1
     nGF_K = nGF * PRODUCT( nK )
 
@@ -978,6 +1616,24 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+      DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+      DO iX3 = iX_B0(3)    , iX_E0(3)
+      DO iX1 = iX_B0(1)    , iX_E0(1)
+      DO iGF = 1           , nGF
+      DO iNX = 1           , nDOFX
+
+        G_K_X2(iNX,iGF,iX1,iX3,iX2) = G(iNX,iX1,iX2,iX3,iGF)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     ! --- Interpolate to faces ---
 
@@ -1036,6 +1692,62 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
+               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
+               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX, Half, &
+               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
+               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
+               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1       , nDOFX_X2
+
+        G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+
+        G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+                   * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+                   * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+
+        G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+        G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+
+        G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+                   * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+                   * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     ! --- Compute derivatives (X1) ---
 
@@ -1102,19 +1814,90 @@ CONTAINS
     END DO
     END DO
 
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX
+    IF( nDimsX .GT. 1 )THEN
 
-      dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
+      ! --- Compute derivatives (X2)
 
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX_X2
+
+        G_Dn_X2(iNX,iGF,iX1,iX3,iX2) &
+          = G_Dn_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
+
+        G_Up_X2(iNX,iGF,iX1,iX3,iX2) &
+          = G_Up_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+      DO iX3 = iX_B0(3)    , iX_E0(3)
+      DO iX1 = iX_B0(1)    , iX_E0(1)
+      DO iGF = 1           , nGF
+      DO iNX = 1           , nDOFX
+
+        G_K_X2(iNX,iGF,iX1,iX3,iX2) &
+          = G_K_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_q(iNX)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, +One, LX_X2_Up, nDOFX_X2, &
+               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, Zero, &
+               dGdX2, nDOFX )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, -One, LX_X2_Dn, nDOFX_X2, &
+               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, One,  &
+               dGdX2, nDOFX )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX2_q, nDOFX   , &
+               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX   , One , &
+               dGdX2, nDOFX )
+
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX2(iNX,iGF,iX1,iX3,iX2) &
+          = dGdX2(iNX,iGF,iX1,iX3,iX2) / ( WeightsX_q(iNX) * dX2(iX2) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    ELSE
+
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1300,7 +2083,7 @@ CONTAINS
 
       IF( UseDivergenceCleaning )THEN
 
-        PRINT*, 'Using divergence cleaning for source terms.'
+        !PRINT*, 'Using divergence cleaning for source terms.'
 
         ! --- Eulerian Magnetic Field increment ---
   
@@ -1341,6 +2124,85 @@ CONTAINS
               + ( U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
   
+      END IF
+
+      ! -- X2 increments ---
+
+      IF( nDimsX .GT. 1 )THEN
+
+        dU(iNX,iX1,iX2,iX3,iCM_S2) &
+          = dU(iNX,iX1,iX2,iX3,iCM_S2) &
+              + tau(iNX,iX1,iX2,iX3) &
+                  * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                        * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_1) &
+                                  * dGdX2(iNX,iGF_h_1,iX1,iX3,iX2) &
+                            + PressureTensor(2,2,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_2) &
+                                  * dGdX2(iNX,iGF_h_2,iX1,iX3,iX2) &
+                            + PressureTensor(3,3,iNX,iX1,iX2,iX3) &
+                                * G(iNX,iX1,iX2,iX3,iGF_h_3) &
+                                  * dGdX2(iNX,iGF_h_3,iX1,iX3,iX2) ) &
+                    + U(iNX,iX1,iX2,iX3,iCM_S1) &
+                        * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) &
+                    + U(iNX,iX1,iX2,iX3,iCM_S2) &
+                        * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
+                    + U(iNX,iX1,iX2,iX3,iCM_S3) &
+                        * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) &
+                    - ( U(iNX,iX1,iX2,iX3,iCM_D) + U(iNX,iX1,iX2,iX3,iCM_E) ) &
+                        * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) )
+
+        dU(iNX,iX1,iX2,iX3,iCM_E) &
+          = dU(iNX,iX1,iX2,iX3,iCM_E) &
+              -tau(iNX,iX1,iX2,iX3) &
+                 * U(iNX,iX1,iX2,iX3,iCM_S2) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
+
+        IF( UseDivergenceCleaning )THEN
+
+          !PRINT*, 'Using divergence cleaning for source terms.'
+  
+          ! --- Eulerian Magnetic Field increment ---
+    
+          dU(iNX,iX1,iX2,iX3,iCM_B2) &
+            = dU(iNX,iX1,iX2,iX3,iCM_B2) &
+                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                      * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                      * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) ) &
+                + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * ( dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) &
+                          / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22 ) ) &
+                + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                    * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                    * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)**2 ) &
+                          * dGdX2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+                        + ( dGdX2(iNX,iGF_SqrtGm,iX1,iX3,iX2) & 
+                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) ) )
+  
+          dU(iNX,iX1,iX2,iX3,iCM_B1) &
+            = dU(iNX,iX1,iX2,iX3,iCM_B1) &
+                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                      * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                      * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) )
+   
+          dU(iNX,iX1,iX2,iX3,iCM_B3) &
+            = dU(iNX,iX1,iX2,iX3,iCM_B3) &
+                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                      * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                      * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) )
+           
+          ! --- Divergence violation field increment ---
+    
+          dU(iNX,iX1,iX2,iX3,iCM_Chi) &
+            = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
+                - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+                  * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
+    
+        END IF
+
       END IF
 
     END DO
