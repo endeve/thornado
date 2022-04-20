@@ -447,7 +447,6 @@ stop 'InitializationModule.f90'
 
     CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
 
-
   END SUBROUTINE ClearLevel
 
 
