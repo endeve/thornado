@@ -17,8 +17,8 @@ MODULE MakeFineMaskModule
 
   PUBLIC :: MakeFineMask
 
-  INTEGER, PUBLIC :: iCoarse_MFM = 0
-  INTEGER, PUBLIC :: iFine_MFM   = 1
+  INTEGER, PUBLIC :: iLeaf_MFM  = 0
+  INTEGER         :: iTrunk_MFM = 1
 
   INTERFACE
 
@@ -54,7 +54,7 @@ CONTAINS
     iMF_Mask % ng    = 0
     CALL amrex_fi_makefinemask &
            ( iMF_Mask % p, CrseBA % p, CrseDM % p, FineBA % p, &
-             iCoarse_MFM, iFine_MFM )
+             iLeaf_MFM, iTrunk_MFM )
 
   END SUBROUTINE MakeFineMask
 

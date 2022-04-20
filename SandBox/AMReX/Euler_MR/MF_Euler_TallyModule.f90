@@ -62,7 +62,7 @@ MODULE MF_Euler_TallyModule
 !    Timer_AMReX_Euler_Allocate
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
-    iCoarse_MFM
+    iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X
 
@@ -379,7 +379,7 @@ CONTAINS
 
       IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
+        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
       END IF
 

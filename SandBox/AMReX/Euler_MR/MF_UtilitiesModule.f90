@@ -30,7 +30,7 @@ MODULE MF_UtilitiesModule
     DP
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
-    iCoarse_MFM
+    iLeaf_MFM
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -125,7 +125,7 @@ CONTAINS
 
         IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         END IF
 
