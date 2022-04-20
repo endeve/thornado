@@ -34,6 +34,8 @@ PROGRAM ApplicationDriver
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
+  USE MF_Euler_TallyModule, ONLY: &
+    ComputeTally_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     UpdateFluid_SSPRK_MF
   USE InputParsingModule, ONLY: &
@@ -212,13 +214,17 @@ CONTAINS
                MF_uGF % P, &
                MF_uCF % P )
 
+      CALL ComputeTally_Euler_MF &
+             ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )
+
       CALL FinalizeTimers_Euler &
-             ( Verbose_Option = amrex_parallel_ioprocessor(), &
+             !( Verbose_Option = amrex_parallel_ioprocessor(), &
+             ( Verbose_Option = .FALSE., &
                SuppressApplicationDriver_Option = .TRUE., &
-               WriteAtIntermediateTime_Option = .TRUE. )
+               WriteAtIntermediateTime_Option = .FALSE. )
 
       CALL FinalizeTimers_AMReX_Euler &
-             ( WriteAtIntermediateTime_Option = .TRUE. )
+             ( WriteAtIntermediateTime_Option = .FALSE. )
 
       chk = .FALSE.
 

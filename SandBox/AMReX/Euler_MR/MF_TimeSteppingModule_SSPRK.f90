@@ -25,10 +25,14 @@ MODULE MF_TimeSteppingModule_SSPRK
     Two
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
+  USE MF_Euler_TallyModule, ONLY: &
+    IncrementOffGridTally_Euler_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
+  USE MF_FieldsModule, ONLY: &
+    MF_OffGridFlux_Euler
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
@@ -124,7 +128,11 @@ CONTAINS
     INTEGER :: iS, jS, nComp
     INTEGER :: iLevel
 
+    REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nLevels-1)
+
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+
+    dM_OffGrid_Euler = Zero
 
     nComp = nDOFX * nCF
 
@@ -185,6 +193,14 @@ CONTAINS
         CALL ComputeIncrement_Euler_MF &
                ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
+        DO iLevel = 0, nLevels-1
+
+          dM_OffGrid_Euler(:,iLevel) &
+            = dM_OffGrid_Euler(:,iLevel) &
+                + dt(iLevel) * w_SSPRK(iS) * MF_OffGridFlux_Euler(:,iLevel)
+
+        END DO
+
         CALL Reflux_Euler_MF( MF_uGF, MF_D(iS,:) )
 
       END IF ! a(:,iS) .NE. Zero OR w(iS) .NE. Zero
@@ -218,6 +234,8 @@ CONTAINS
 
     CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
     CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
+
+    CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

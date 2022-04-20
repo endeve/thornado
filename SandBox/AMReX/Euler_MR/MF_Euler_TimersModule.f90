@@ -176,7 +176,7 @@ CONTAINS
 
     END DO
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( amrex_parallel_ioprocessor() .AND. WriteAtIntermediateTime )THEN
 
       WRITE(*,*)
       WRITE(*,'(6x,A28)') 'Timers (AMReX-Euler) Summary'

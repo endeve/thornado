@@ -4,6 +4,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE amrex_amrcore_module, ONLY: &
     amrex_get_finest_level
+  USE amrex_amr_module, ONLY: &
+    amrex_geom
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
@@ -46,7 +48,13 @@ MODULE  MF_Euler_dgDiscretizationModule
     iGF_Psi, &
     iGF_SqrtGm
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
   USE LinearAlgebraModule, ONLY: &
@@ -69,7 +77,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex2thornado_X_F, &
     MultiplyWithMetric
   USE MF_FieldsModule, ONLY: &
-    FluxRegister
+    FluxRegister, &
+    MF_OffGridFlux_Euler
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -119,6 +128,8 @@ CONTAINS
     UseXCFC = .FALSE.
     IF( PRESENT( UseXCFC_Option ) ) &
       UseXCFC = UseXCFC_Option
+
+    MF_OffGridFlux_Euler = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -392,6 +403,8 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
 
+      CALL IncrementOffGridTally_Euler( iLevel, iX_B0, iX_E0 )
+
       iLo_MF = LBOUND( uSurfaceFlux_X1 )
 
       CALL thornado2amrex_X_F &
@@ -460,6 +473,38 @@ CONTAINS
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel
+
+
+  ! --- PRIVATE SUBROUTINES ---
+
+
+  SUBROUTINE IncrementOffGridTally_Euler( iLevel, iX_B0, iX_E0 )
+
+    INTEGER , INTENT(in) :: iLevel
+    INTEGER , INTENT(in) :: iX_B0(3), iX_E0(3)
+
+    IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) - OffGridFlux_Euler_X1_Inner
+    IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) + OffGridFlux_Euler_X1_Outer
+
+    IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) - OffGridFlux_Euler_X2_Inner
+    IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) + OffGridFlux_Euler_X2_Outer
+
+    IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) - OffGridFlux_Euler_X3_Inner
+    IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) + OffGridFlux_Euler_X3_Outer
+
+  END SUBROUTINE IncrementOffGridTally_Euler
 
 
 END MODULE MF_Euler_dgDiscretizationModule

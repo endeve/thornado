@@ -119,6 +119,9 @@ MODULE InitializationModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_Euler_TallyModule, ONLY: &
+    InitializeTally_Euler_MF, &
+    ComputeTally_Euler_MF
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -307,6 +310,8 @@ CONTAINS
     dt     = 0.0_DP
     t_new  = 0.0_DP
 
+    CALL InitializeTally_Euler_MF
+
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( 0.0_DP )
@@ -344,6 +349,10 @@ CONTAINS
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF )
+
+    CALL ComputeTally_Euler_MF &
+           ( t_new, MF_uGF, MF_uCF, &
+             SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 

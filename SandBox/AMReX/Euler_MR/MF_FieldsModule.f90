@@ -64,7 +64,7 @@ CONTAINS
 
     ALLOCATE( FluxRegister(0:nLevels-1) )
 
-    ALLOCATE( MF_OffGridFlux_Euler(0:nLevels-1,1:nCF) )
+    ALLOCATE( MF_OffGridFlux_Euler(1:nCF,0:nLevels-1) )
 
   END SUBROUTINE CreateFields_MF
 
