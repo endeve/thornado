@@ -366,10 +366,11 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    d3X = MeshX(1) % Width(iX_B0(1))
+    d3X =   MeshX(1) % Width(iX_B0(1)) &
+          * MeshX(2) % Width(iX_B0(2)) &
+          * MeshX(3) % Width(iX_B0(3))
 
-    IF( nDimsX .GT. 1 ) d3X = d3X * MeshX(2) % Width(iX_B0(2))
-    IF( nDimsX .GT. 2 ) d3X = d3X * MeshX(3) % Width(iX_B0(3))
+    CALL DestroyMesh_MF( MeshX )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -400,8 +401,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ComputeTally_Euler
 
