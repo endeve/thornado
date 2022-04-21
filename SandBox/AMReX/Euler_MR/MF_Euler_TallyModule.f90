@@ -235,8 +235,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask &
-             ( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 

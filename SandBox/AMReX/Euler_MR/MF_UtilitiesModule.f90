@@ -208,8 +208,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask &
-             ( iLevel, iMF_Mask, MF % BA, MF % DM )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF % BA, MF % DM )
 
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, iMF_Mask, &

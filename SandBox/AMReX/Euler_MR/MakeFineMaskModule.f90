@@ -70,7 +70,7 @@ CONTAINS
 
     ELSE
 
-      CALL amrex_imultifab_build( iMF_Mask, BA(0), DM(0), 1, 0 )
+      CALL amrex_imultifab_build( iMF_Mask, BA(iLevel), DM(iLevel), 1, 0 )
       CALL iMF_Mask % SetVal( iLeaf_MFM )
 
     END IF
@@ -83,7 +83,7 @@ CONTAINS
     INTEGER              , INTENT(in)    :: iLevel
     TYPE(amrex_imultifab), INTENT(inout) :: iMF_Mask
 
-    IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
+    IF( .NOT. ( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) )THEN
 
       CALL amrex_imultifab_destroy( iMF_Mask )
 
