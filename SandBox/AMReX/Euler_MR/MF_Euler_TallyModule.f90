@@ -62,6 +62,7 @@ MODULE MF_Euler_TallyModule
 !    Timer_AMReX_Euler_Allocate
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
+    DestroyFineMask, &
     iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X
@@ -234,20 +235,16 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        CALL MakeFineMask &
-               ( iMF_Mask, MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
-                 MF_uCF(iLevel+1) % BA )
+      CALL MakeFineMask &
+             ( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-          Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        Mask => iMF_Mask % DataPtr( MFI )
+        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -283,6 +280,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
