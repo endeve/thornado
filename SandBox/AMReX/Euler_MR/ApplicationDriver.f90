@@ -174,6 +174,9 @@ CONTAINS
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF )
 
+      CALL ComputeTally_Euler_MF &
+             ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )
+
       wrt = .FALSE.
 
     END IF
@@ -213,9 +216,6 @@ CONTAINS
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P )
-
-      CALL ComputeTally_Euler_MF &
-             ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )
 
       CALL FinalizeTimers_Euler &
              !( Verbose_Option = amrex_parallel_ioprocessor(), &
