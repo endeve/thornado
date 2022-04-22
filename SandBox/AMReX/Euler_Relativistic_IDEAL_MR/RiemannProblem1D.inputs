@@ -39,4 +39,4 @@ amr.ref_ratio         = 2
 
 SL.UseSlopeLimiter = 0
 SL.UseTroubledCellIndicator = 0
-PL.UsePositivityLimiter = 0
+PL.UsePositivityLimiter = 1
