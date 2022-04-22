@@ -98,6 +98,7 @@ MODULE InputParsingModule
   INTEGER :: BlockingFactorX2
   INTEGER :: BlockingFactorX3
   INTEGER :: MaxGridSizeX(3)
+  INTEGER :: BlockingFactor(3)
   INTEGER :: MaxLevel
   INTEGER :: nLevels
   LOGICAL :: UseTiling
@@ -313,7 +314,9 @@ CONTAINS
       CALL PP % getarr( 'ref_ratio'        , RefinementRatio  )
     CALL amrex_parmparse_destroy( PP )
 
-    MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
+    MaxGridSizeX   = [ MaxGridSizeX1   , MaxGridSizeX2   , MaxGridSizeX3    ]
+    BlockingFactor = [ BlockingFactorX1, BlockingFactorX2, BlockingFactorX3 ]
+
     nLevels = MaxLevel + 1
 
     CALL InitializeProgramHeader &

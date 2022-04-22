@@ -139,6 +139,7 @@ MODULE InitializationModule
     UseTiling, &
     do_reflux, &
     MaxGridSizeX, &
+    BlockingFactor, &
     xL, &
     xR, &
     EquationOfState, &
@@ -328,6 +329,8 @@ CONTAINS
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL DescribeProgramHeader_AMReX
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -578,6 +581,23 @@ stop 'InitializationModule.f90'
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
+
+
+  SUBROUTINE DescribeProgramHeader_AMReX
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(4x,A)')       'INFO: AMReX'
+      WRITE(*,'(4x,A)')       '-----------'
+      WRITE(*,'(4x,A,I2.2)')  '         nLevels: ', nLevels
+      WRITE(*,'(4x,A,3I4.3)') '     MaxGridSize: ', MaxGridSizeX
+      WRITE(*,'(4x,A,3I4.3)') '  BlockingFactor: ', BlockingFactor
+      WRITE(*,'(4x,A,L)')     '       UseTiling: ', UseTiling
+      WRITE(*,'(4x,A,L)')     '       do_reflux: ', do_reflux
+
+    END IF
+
+  END SUBROUTINE DescribeProgramHeader_AMReX
 
 
 END MODULE InitializationModule
