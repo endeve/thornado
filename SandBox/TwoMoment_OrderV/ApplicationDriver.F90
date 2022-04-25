@@ -138,6 +138,37 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .FALSE.
       UseEnergyLimiter     = .FALSE.
 
+    CASE( 'SphericalDiffusion' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 50, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP,     Pi,  TwoPi ]
+      bcX = [ 31, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 5.0d+0
+      iCycleD = 50
+      iCycleW = 50
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 1.0d+2
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+
     CASE( 'IsotropicRadiation' )
 
       nX  = [ 16, 1, 1 ]

@@ -13,6 +13,12 @@ GeometryComputationModule.o: \
   GeometryFieldsModule.o \
   GeometryComputationModule.F90
 
+GeometryComputationModule_XCFC.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule_XCFC.f90
+
 GeometryFieldsModuleE.o: \
   KindModule.o \
   ProgramHeaderModule.o \

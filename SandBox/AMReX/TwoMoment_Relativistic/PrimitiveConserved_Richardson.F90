@@ -75,14 +75,14 @@ PROGRAM PrimitiveConserved
 gg(1,1) = 1.0_DP
 gg(2,2) = 1.0_DP
 gg(3,3) = 1.0_DP
-  nSpecies = 1
+  nSpecies = 6
   nNodesZ = [2,2,2,2]
-  nX = [ 8, 8, 8 ]
+  nX = [ 16, 16, 16 ]
   xL = [ Zero, Zero, Zero ]
   xR = [ One,  One,  One  ]
 
 
-  nE = 8
+  nE = 16
   eL = Zero
   eR = One
 
@@ -100,7 +100,7 @@ gg(3,3) = 1.0_DP
     ALLOCATE( B2(nX_G) )
     ALLOCATE( B3(nX_G) )
 
-  absV=0.5_DP
+  absV=0.2_DP
   CALL RANDOM_NUMBER(Vvec)
   Vvec = 2.0_DP * ( Vvec - 0.5_DP )
   Vvec = Vvec / SQRT( DOT_PRODUCT( Vvec, Vvec ) )
@@ -180,30 +180,6 @@ gg(3,3) = 1.0_DP
              + ( ( W - 1.0_DP ) / Vsq ) * V1(PositionIndexZ(iZ)) * V3(PositionIndexZ(iZ)) * I1T &
              + ( ( W - 1.0_DP ) / Vsq ) * V2(PositionIndexZ(iZ)) * V3(PositionIndexZ(iZ)) * I2T  
   
-!      Ii(1) = I1(iZ) 
-!      Ii(2) = I2(iZ) 
-!      Ii(3) = I3(iZ) 
-!      
-!      Vi(1) = V1(PositionIndexZ(iZ))
-!      Vi(2) = V2(PositionIndexZ(iZ))
-!      Vi(3) = V3(PositionIndexZ(iZ))
-!
-
-!      DO i = 1,3
-!      DO j = 1,3
-!
-!        absIi = absIi + gg(i,j) * Ii(i) * Ii(j) - Vi(i) * Vi(j) * Ii(i) * Ii(j)
-!
-!      END DO
-!      END DO
-!
-!      absIi = SQRT(absIi) 
-!
-!      IF (absIi .GT. D(iZ) )THEN 
-!        print*,"D,I: ", absIi, D(iZ), Ii(1), Ii(2), Ii(3)
-!      END IF
-!
-!absIi= 0.0_DP 
       CALL ComputeConserved_TwoMoment &
                ( D(iZ), I1(iZ), I2(iZ), I3(iZ), &
                  N(iZ), G1(iZ), G2(iZ), G3(iZ), &
@@ -213,26 +189,6 @@ gg(3,3) = 1.0_DP
                  alp(PositionIndexZ(iZ)), B1(PositionIndexZ(iZ)), &
                  B2(PositionIndexZ(iZ)),B3(PositionIndexZ(iZ)) )
 
-
-!      Ii(1) = G1(iZ) 
-!      Ii(2) = G2(iZ) 
-!      Ii(3) = G3(iZ) 
-!
-!      DO i = 1,3
-!      DO j = 1,3
-!
-!        absIi = absIi + gg(i,j) * Ii(i) * Ii(j) - Vi(i) * Vi(j) * Ii(i) * Ii(j)
-!
-!      END DO
-!      END DO
-!
-!      absIi = SQRT(absIi) 
-!
-!      IF (absIi .GT. N(iZ) ) THEN
-!        print*,"N,G: ", absIi, N(iZ), Ii(1), Ii(2), Ii(3)
-!      END IF
-!
-!      absIi = 0.0_DP
 
     END DO
 

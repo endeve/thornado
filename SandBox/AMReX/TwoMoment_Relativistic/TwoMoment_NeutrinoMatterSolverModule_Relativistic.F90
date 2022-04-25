@@ -63,8 +63,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
 
-  LOGICAL, PARAMETER :: Include_NES  = .FALSE.
-  LOGICAL, PARAMETER :: Include_Pair = .FALSE.
+  LOGICAL, PARAMETER :: Include_NES  = .TRUE.
+  LOGICAL, PARAMETER :: Include_Pair = .TRUE.
 
   ! --- Units Only for Displaying to Screen ---
 
@@ -428,7 +428,7 @@ CONTAINS
     IF( PRESENT( M_outer_Option ) )THEN
       M_outer = M_outer_Option
     ELSE
-      M_outer = 3
+      M_outer = 2
     END IF
 
     IF( PRESENT( M_inner_Option ) )THEN
@@ -593,10 +593,10 @@ CONTAINS
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
     REAL(DP) :: P(SIZE(D))
 
-
     ! --- Initial RHS ---
     CALL ComputePressure_TABLE & 
            ( D, T, Y, P )
+    
     CALL InitializeRHS_FP &
            ( J, H_u_1, H_u_2, H_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
@@ -652,7 +652,6 @@ CONTAINS
         CALL ComputeRates_Packed &
                ( J, ITERATE_inner, nX_P_inner, PackIndex_inner, &
                  UnpackIndex_inner, nX_P_outer )
-
 
         ! --- Right-Hand Side Vectors and Residuals (inner) ---
 
@@ -1218,8 +1217,6 @@ CONTAINS
 
     END IF
 
-    CALL ComputeSpecificInternalEnergy_TABLE(D_P, T_P, Y_P, E_P)
-
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
            ( D_P, E_P, Y_P, T_P )
@@ -1293,7 +1290,6 @@ CONTAINS
       S_V_d_1(iN_X) = One / ( SpeedOfLight )
       S_V_d_2(iN_X) = One / ( SpeedOfLight )
       S_V_d_3(iN_X) = One / ( SpeedOfLight )
-
       ! --- Initial Guess for Matter State ---
 
       U_rho  (iN_X) = One
@@ -1341,18 +1337,20 @@ CONTAINS
 
       DT = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) )
 
-      H_d_1 = DT * ( B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) ) & 
-            * Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS) &
-            - DT * ( B_d_1 * V_u_2(iN_X) *Gm_dd_22(iN_X) ) * H_u_2(iN_E,iN_X,iS)   &
-            - DT * ( B_d_1 * V_u_3(iN_X) * Gm_dd_33(iN_X) ) * H_u_3(iN_E,iN_X,iS) 
-      H_d_2 = DT * ( B_d_1 * V_u_1(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) ) &
-            * Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS) &
-            - DT * ( B_d_2 * V_u_1(iN_X) * Gm_dd_11(iN_X) ) * H_u_1(iN_E,iN_X,iS) &
-            - DT * ( Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS) * B_d_2 * V_u_3(iN_X) ) 
-      H_d_3 = DT * ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) - alp(iN_X) ) &
-            * Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS) &
-            - DT * ( Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS) * B_d_3 * V_u_1(iN_X) ) &
-            - DT * ( Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS) * B_d_3 * V_u_2(iN_X) )
+      H_d_1(iN_E,iN_X,iS) = DT * ( B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) ) & 
+                          * Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS) &
+                          - DT * ( B_d_1 * V_u_2(iN_X) *Gm_dd_22(iN_X) ) * H_u_2(iN_E,iN_X,iS)   &
+                          - DT * ( B_d_1 * V_u_3(iN_X) * Gm_dd_33(iN_X) ) * H_u_3(iN_E,iN_X,iS) 
+
+      H_d_2(iN_E,iN_X,iS) = DT * ( B_d_1 * V_u_1(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) ) &
+                          * Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS) &
+                          - DT * ( B_d_2 * V_u_1(iN_X) * Gm_dd_11(iN_X) ) * H_u_1(iN_E,iN_X,iS) &
+                          - DT * ( Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS) * B_d_2 * V_u_3(iN_X) ) 
+
+      H_d_3(iN_E,iN_X,iS) = DT * ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) - alp(iN_X) ) &
+                          * Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS) &
+                          - DT * ( Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS) * B_d_3 * V_u_1(iN_X) ) &
+                          - DT * ( Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS) * B_d_3 * V_u_2(iN_X) )
 
       vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iN_X,iS) &
               + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
@@ -1456,8 +1454,6 @@ CONTAINS
               + V_u_3(iN_X) * V_d_3(iN_X)
 
       W = 1.0_DP / SQRT(1.0_DP - vDotV)
-
-
  
       C_Y(iN_X) = ( AtomicMassUnit / cD_old(iN_X) ) * C_Y(iN_X)
 
@@ -1466,7 +1462,6 @@ CONTAINS
       SJ(3) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_3(iN_X)
 
 
-      SJ = SJ / ( cD_old(iN_X) * SpeedOfLight)
 
 
       Ef = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 - P(iN_X)
@@ -1534,6 +1529,7 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, W, h
+    REAL(DP) :: DT, B_d_1, B_d_2, B_d_3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1551,9 +1547,39 @@ CONTAINS
 
       IF ( MASK(iN_X) ) THEN
 
-        vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iN_X,iS) &
-                + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
-                + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
+        vDotV =   V_u_1(iN_X) * V_d_1(iN_X) &
+                + V_u_2(iN_X) * V_d_2(iN_X) &
+                + V_u_3(iN_X) * V_d_3(iN_X)
+
+        W = 1.0_DP / SQRT(1.0_DP - vDotV)
+
+
+        B_d_1 = Gm_dd_11(iN_X) * B_u_1(iN_X)
+        B_d_2 = Gm_dd_22(iN_X) * B_u_2(iN_X)
+        B_d_3 = Gm_dd_33(iN_X) * B_u_3(iN_X)
+
+        DT = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) )
+
+        H_d_1(iN_E,iN_X,iS) = DT * ( B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) ) & 
+                            * Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS) &
+                            - DT * ( B_d_1 * V_u_2(iN_X) *Gm_dd_22(iN_X) ) * H_u_2(iN_E,iN_X,iS)   &
+                            - DT * ( B_d_1 * V_u_3(iN_X) * Gm_dd_33(iN_X) ) * H_u_3(iN_E,iN_X,iS) 
+
+        H_d_2(iN_E,iN_X,iS) = DT * ( B_d_1 * V_u_1(iN_X) + B_d_3 * V_u_3(iN_X) - alp(iN_X) ) &
+                            * Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS) &
+                            - DT * ( B_d_2 * V_u_1(iN_X) * Gm_dd_11(iN_X) ) * H_u_1(iN_E,iN_X,iS) &
+                            - DT * ( Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS) * B_d_2 * V_u_3(iN_X) ) 
+
+        H_d_3(iN_E,iN_X,iS) = DT * ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) - alp(iN_X) ) &
+                            * Gm_dd_33(iN_X) * H_u_3(iN_E,iN_X,iS) &
+                            - DT * ( Gm_dd_11(iN_X) * H_u_1(iN_E,iN_X,iS) * B_d_3 * V_u_1(iN_X) ) &
+                            - DT * ( Gm_dd_22(iN_X) * H_u_2(iN_E,iN_X,iS) * B_d_3 * V_u_2(iN_X) )
+
+
+   
+       vDotH =   V_u_1(iN_X) * H_d_1(iN_E,iN_X,iS) &
+               + V_u_2(iN_X) * H_d_2(iN_E,iN_X,iS) &
+               + V_u_3(iN_X) * H_d_3(iN_E,iN_X,iS)
 
        CALL ComputeEddingtonTensorComponents_dd &
                ( J(iN_E,iN_X,iS), H_u_1(iN_E,iN_X,iS), &
@@ -1580,11 +1606,6 @@ CONTAINS
               + V_u_2(iN_X) * vDotK_d_2 & 
               + V_u_3(iN_X) * vDotK_d_3 
 
-        vDotV =   V_u_1(iN_X) * V_u_1(iN_X) * Gm_dd_11(iN_X) &
-                + V_u_2(iN_X) * V_u_2(iN_X) * Gm_dd_22(iN_X)&
-                + V_u_3(iN_X) * V_u_3(iN_X) * Gm_dd_33(iN_X)
-
-        W = 1.0_DP / SQRT(1.0_DP - vDotV)
 
       ! --- Eulerian Neutrino Number Density ---
 
@@ -1701,7 +1722,6 @@ CONTAINS
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
-
       END IF
     END DO
   END SUBROUTINE ComputeMatterRHS_FP
@@ -1871,7 +1891,7 @@ CONTAINS
         Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
-
+        
         U_rho  (iN_X) = Gm(iD ,iN_X)
         U_Y    (iN_X) = Gm(iY ,iN_X)
         U_Eps  (iN_X) = Gm(iEps ,iN_X)
@@ -1897,7 +1917,6 @@ CONTAINS
         vDotV =   V_u_1(iN_X) * V_d_1(iN_X) &
                 + V_u_2(iN_X) * V_d_2(iN_X) &
                 + V_u_3(iN_X) * V_d_3(iN_X)
- 
         W = 1.0_DP / SQRT( 1.0_DP - vDotV)
 
         ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
@@ -2339,7 +2358,7 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: iN_X
-    REAL(DP) :: Fnorm_Y, Fnorm_E, Fnorm_V
+    REAL(DP) :: Fnorm_Y, Fnorm_E, Fnorm_V, Fnorm_D
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2355,6 +2374,7 @@ CONTAINS
       IF( MASK_OUTER(iN_X) )THEN
 
 
+        Fnorm_D  =      ABS( Fm(iD ,iN_X) )
         Fnorm_Y  =      ABS( Fm(iY ,iN_X) )
         Fnorm_E  =      ABS( Fm(iEps ,iN_X) )
         Fnorm_V  = MAX( ABS( Fm(iV1,iN_X) ), &
@@ -2363,6 +2383,7 @@ CONTAINS
 
         CONVERGED = Fnorm_Y  <= Rtol_outer .AND. &
                     Fnorm_E  <= Rtol_outer .AND. &
+                    Fnorm_D  <= Rtol_outer .AND. &
                     Fnorm_V  <= Rtol_outer
 
         IF( CONVERGED )THEN
