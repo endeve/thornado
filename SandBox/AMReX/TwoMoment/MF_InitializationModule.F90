@@ -1419,13 +1419,29 @@ END IF
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(AR)                      :: kT, f_E, E, Mu, E12
 
+
+
+!    REAL(AR), PARAMETER :: D_0   = 1.032d11 * Gram / Centimeter**3
+!    REAL(AR), PARAMETER :: T_0   = 4.484d0 * MeV
+!    REAL(AR), PARAMETER :: Y_0   = 0.1689_AR
+
+!------
+
     REAL(AR), PARAMETER :: D_0   = 1.032d12 * Gram / Centimeter**3
     REAL(AR), PARAMETER :: T_0   = 7.588d0 * MeV
     REAL(AR), PARAMETER :: Y_0   = 0.1347_AR
-    REAL(AR), PARAMETER :: V_u_1 = 0.0_AR * SpeedOfLight
+
+!------
+
+!    REAL(AR), PARAMETER :: D_0   = 1.022d13 * Gram / Centimeter**3
+!    REAL(AR), PARAMETER :: T_0   = 1.617d1 * MeV
+!    REAL(AR), PARAMETER :: Y_0   = 0.1421_AR
+
+
+    REAL(AR), PARAMETER :: V_u_1 = 0.1_AR * SpeedOfLight
     REAL(AR), PARAMETER :: V_u_2 = 0.0_AR * SpeedOfLight
     REAL(AR), PARAMETER :: V_u_3 = 0.0_AR * SpeedOfLight
-    REAL(AR), PARAMETER :: Mu_0  = - 1.0_AR ! \in [-1,1]
+    REAL(AR), PARAMETER :: Mu_0  = 0.0_AR ! \in [-1,1]
      
 
     uCR_K = Zero
@@ -1561,15 +1577,6 @@ END IF
               END IF
 
 
-      !        IF( iS .EQ. 1 ) THEN
-
-      !          f_E = 1.0_AR / ( EXP(( E - Mu ) / kT ) + 1.0_AR )
-
-      !        ELSE
-
-      !          f_E = 1.0_AR / ( EXP(( E + Mu ) / kT ) + 1.0_AR )
-
-      !        ENDIF
               f_E = MAX( 0.99_AR * EXP( - ( E - Two*kT )**2 &
                                     / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &

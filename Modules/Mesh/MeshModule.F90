@@ -31,15 +31,21 @@ MODULE MeshModule
 CONTAINS
 
 
-  SUBROUTINE CreateMesh( Mesh, N, nN, SW, xL, xR, ZoomOption )
+  SUBROUTINE CreateMesh( Mesh, N, nN, SW, xL, xR, ZoomOption, iOS_Option )
 
     TYPE(MeshType)                 :: Mesh
-    INTEGER, INTENT(in)            :: N, nN, SW
+    INTEGER,  INTENT(in)           :: N, nN, SW
     REAL(DP), INTENT(in)           :: xL, xR
     REAL(DP), INTENT(in), OPTIONAL :: ZoomOption
+    INTEGER,  INTENT(in), OPTIONAL :: iOS_Option
 
     REAL(DP) :: Zoom
     REAL(DP) :: xQ(nN), wQ(nN)
+    INTEGER  :: iOS
+
+    iOS = 0
+    IF( PRESENT( iOS_Option ) ) &
+      iOS = iOS_Option
 
     IF( PRESENT( ZoomOption ) )THEN
       Zoom = ZoomOption
@@ -49,8 +55,8 @@ CONTAINS
 
     Mesh % Length = xR - xL
 
-    ALLOCATE( Mesh % Center(1-SW:N+SW) )
-    ALLOCATE( Mesh % Width (1-SW:N+SW) )
+    ALLOCATE( Mesh % Center(1-SW-iOS:N+SW-iOS) )
+    ALLOCATE( Mesh % Width (1-SW-iOS:N+SW-iOS) )
 
     IF( Zoom > 1.0_DP )THEN
 
@@ -60,7 +66,7 @@ CONTAINS
     ELSE
 
       CALL CreateMesh_Equidistant &
-             ( N, SW, xL, xR, Mesh % Center, Mesh % Width )
+             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, iOS )
 
     END IF
 
@@ -81,26 +87,26 @@ CONTAINS
   END SUBROUTINE CreateMesh
 
 
-  SUBROUTINE CreateMesh_Equidistant( N, SW, xL, xR, Center, Width )
+  SUBROUTINE CreateMesh_Equidistant( N, SW, xL, xR, Center, Width, iOS )
 
-    INTEGER,                        INTENT(in)    :: N, SW
-    REAL(DP),                       INTENT(in)    :: xL, xR
-    REAL(DP), DIMENSION(1-SW:N+SW), INTENT(inout) :: Center, Width
+    INTEGER,                                INTENT(in)    :: N, SW, iOS
+    REAL(DP),                               INTENT(in)    :: xL, xR
+    REAL(DP), DIMENSION(1-SW-iOS:N+SW-iOS), INTENT(inout) :: Center, Width
 
     INTEGER :: i
 
     Width(:) = ( xR - xL ) / REAL( N )
 
-    Center(1) = xL + 0.5_DP * Width(1)
-    DO i = 2, N
+    Center(1-iOS) = xL + 0.5_DP * Width(1-iOS)
+    DO i = 2 - iOS, N - iOS
       Center(i) = Center(i-1) + Width(i-1)
     END DO
 
-    DO i = 0, 1 - SW, - 1
+    DO i = 0 - iOS, 1 - SW - iOS, - 1
       Center(i) = Center(i+1) - Width(i+1)
     END DO
 
-    DO i = N + 1, N + SW
+    DO i = N + 1 - iOS, N + SW - iOS
       Center(i) = Center(i-1) + Width(i-1)
     END DO
 

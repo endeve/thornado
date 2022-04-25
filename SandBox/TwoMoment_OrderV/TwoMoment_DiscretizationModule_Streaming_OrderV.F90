@@ -3008,7 +3008,6 @@ CONTAINS
 
     END DO
     END DO
-
     END DO
 
     CALL TimersStop( Timer_Streaming_Eigenvalues )

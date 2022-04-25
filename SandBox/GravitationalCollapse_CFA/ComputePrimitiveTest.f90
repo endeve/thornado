@@ -35,7 +35,7 @@ PROGRAM ComputePrimitiveTest
     FinalizeEquationOfState, &
     ComputeSpecificInternalEnergy
   USE EquationOfStateModule_TABLE, ONLY: &
-    MinT
+    Min_T
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
 
@@ -98,7 +98,7 @@ PROGRAM ComputePrimitiveTest
 
  rhot =    7.0375498702540617d-011
  Ye =   0.44187368273397742_DP
-  CALL ComputeSpecificInternalEnergy( rhot, MinT, Ye, MinE )
+  CALL ComputeSpecificInternalEnergy( rhot, Min_T, Ye, MinE )
 print*
 print*,'From Table: ', MinE
 print*,'From Code:  ', 5.9387860185921022d-002
