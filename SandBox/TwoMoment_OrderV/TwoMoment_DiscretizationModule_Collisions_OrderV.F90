@@ -475,7 +475,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_Solve )
 
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dCR_N ) &
@@ -760,6 +759,7 @@ CONTAINS
 
   END SUBROUTINE ComputeIncrement_FixedPoint
 
+
   SUBROUTINE ComputeIncrement_FixedPoint_Richardson &
     ( dt, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, D_0, Chi, Sigma, &
@@ -780,7 +780,7 @@ CONTAINS
 
     ! --- Parameters ---
 
-    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: M = 1
     INTEGER,  PARAMETER :: LWORK = 2 * M
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
@@ -837,11 +837,11 @@ CONTAINS
                ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 
-      vMag = SQRT(V_u_1 * Gm_dd_11 * V_u_1 &
-                + V_u_2 * Gm_dd_22 * V_u_2 &
-                + V_u_3 * Gm_dd_33 * V_u_3)
+      vMag = SQRT(    V_u_1 * Gm_dd_11 * V_u_1 &
+                    + V_u_2 * Gm_dd_22 * V_u_2 &
+                    + V_u_3 * Gm_dd_33 * V_u_3 )
 
-      Omega = One / (One + vMag)
+      Omega = One / ( One + vMag )
 
       vI = V_u_1 * UVEC(2) + V_u_2 *  UVEC(3) + V_u_3 *  UVEC(4)
       GVEC(1,mk) = (One - Omega) * UVEC(1) + &
