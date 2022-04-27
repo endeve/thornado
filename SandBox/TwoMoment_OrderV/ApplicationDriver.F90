@@ -47,6 +47,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
   INTEGER       :: nNodes
+  INTEGER       :: nSpecies
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
@@ -58,6 +59,8 @@ PROGRAM ApplicationDriver
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'SineWaveStreaming'
+
+  nSpecies = 1
 
   C_TCI = 1.0_DP
   UseTroubledCellIndicator = .FALSE.
@@ -81,6 +84,7 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 1
 
+      nSpecies = 6
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
@@ -827,6 +831,8 @@ CONTAINS
                = nNodes, &
              CoordinateSystem_Option &
                = TRIM( CoordinateSystem ), &
+             nSpecies_Option &
+               = nSpecies, &
              BasicInitialization_Option &
                = .TRUE. )
 

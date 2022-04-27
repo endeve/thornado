@@ -56,6 +56,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
+  CHARACTER(64) :: OpacityTableName_Brem
   LOGICAL       :: EvolveEuler
   LOGICAL       :: UseSlopeLimiter_Euler
   LOGICAL       :: UseSlopeLimiter_TwoMoment
@@ -81,6 +82,7 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
+  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
   FixedTimeStep = .FALSE.
 
@@ -90,7 +92,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
     CASE( 'Relaxation' )
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
       nX  = [ 1, 1, 1 ]
@@ -125,7 +127,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       CoordinateSystem = 'SPHERICAL'
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
       nX    = [ 128, 1, 1 ]
@@ -477,6 +479,8 @@ CONTAINS
                = TRIM( OpacityTableName_NES ), &
              OpacityTableName_Pair_Option &
                = TRIM( OpacityTableName_Pair ), &
+             OpacityTableName_Brem_Option &
+               = TRIM( OpacityTableName_Brem ), &
              EquationOfStateTableName_Option &
                = TRIM( EosTableName ), &
              Verbose_Option = .TRUE. )

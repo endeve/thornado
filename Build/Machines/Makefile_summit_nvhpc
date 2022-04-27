@@ -13,13 +13,13 @@ MDEFS =
 PP    = -D
 
 ifeq ($(USE_OMP),TRUE)
-  OPENMP = -mp
+  OPENMP = -mp=multicore
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -mp
+  OPENMP = -mp=gpu -gpu=cc70,ptxinfo -Minfo=accel
 endif
 
 ifeq ($(USE_OACC),TRUE)
-  OPENACC = -acc -gpu=cc70,cuda11.0,ptxinfo -Minfo=accel
+  OPENACC = -acc -gpu=cc70,ptxinfo -Minfo=accel
 endif
 
 INCLUDE_CUDA     = -I$(OLCF_CUDA_ROOT)/include

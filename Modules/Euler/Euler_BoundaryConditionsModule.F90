@@ -623,22 +623,18 @@ CONTAINS
                    dX1   => MeshX(1) % Width,  &
                    eta_q => MeshX(1) % Nodes )
 
-        R_0 = X1_C(1) + dX1(1) * eta_q(1)
-
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6), &
-        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
-        !$OMP FIRSTPRIVATE( R_0 )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP MAP( to: X1_C, dX1, eta_q ) &
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_0, R_q )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
         !$ACC COPYIN( X1_C, dX1, eta_q ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX ) &
-        !$ACC PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
-        !$ACC FIRSTPRIVATE( R_0 )
+        !$ACC PRIVATE( iNX, iNX_0, D_0, E_0, R_0, R_q )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO COLLAPSE(6) &
-        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
-        !$OMP FIRSTPRIVATE( R_0 )
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_0, R_q )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -653,6 +649,8 @@ CONTAINS
 
             D_0 = U(iNX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNX_0,1,iX2,iX3,iCF_E)
+
+            R_0 = X1_C(1) + dX1(1) * eta_q(1)
 
             R_q = NodeCoordinate &
                     ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &
@@ -686,22 +684,18 @@ CONTAINS
                    dX1   => MeshX(1) % Width,  &
                    eta_q => MeshX(1) % Nodes )
 
-        R_0 = X1_C(1) + dX1(1) * eta_q(1)
-
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6), &
-        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
-        !$OMP FIRSTPRIVATE( R_0 )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP MAP( to: X1_C, dX1, eta_q ) &
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_0, R_q )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
         !$ACC COPYIN( X1_C, dX1, eta_q ) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX, ExpD, ExpE ) &
-        !$ACC PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
-        !$ACC FIRSTPRIVATE( R_0 )
+        !$ACC PRIVATE( iNX, iNX_0, D_0, E_0, R_0, R_q )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO COLLAPSE(6) &
-        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_q ) &
-        !$OMP FIRSTPRIVATE( R_0 )
+        !$OMP PRIVATE( iNX, iNX_0, D_0, E_0, R_0, R_q )
 #endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -716,6 +710,8 @@ CONTAINS
 
             D_0 = U(iNX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNX_0,1,iX2,iX3,iCF_E)
+
+            R_0 = X1_C(1) + dX1(1) * eta_q(1)
 
             R_q = NodeCoordinate &
                     ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &
