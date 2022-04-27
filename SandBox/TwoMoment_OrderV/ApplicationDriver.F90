@@ -504,6 +504,39 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
 
+    CASE( 'ExpandingAtmosphere' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 200, 1, 1 ]
+      xL  = [  0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 15.0_DP,     Pi,  TwoPi ]
+      bcX = [ 31, 1, 1 ]
+
+      nE  = 50
+      eL  = 00.0_DP
+      eR  = 12.0_DP
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.5d+1
+      iCycleD = 100
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+
     CASE( 'HomogeneousSphere1D' )
 
       CoordinateSystem = 'SPHERICAL'
