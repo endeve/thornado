@@ -26,8 +26,7 @@ MODULE RefluxModule_Euler
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithMetric
   USE InputParsingModule, ONLY: &
-    nLevels, &
-    do_reflux
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -48,8 +47,6 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:nLevels-1)
 
     INTEGER :: iLevel
-
-    IF( .NOT. do_reflux ) RETURN
 
     DO iLevel = 0, nLevels-1
 
@@ -81,12 +78,14 @@ CONTAINS
 
     CALL DestroyMesh_MF( MeshX )
 
+    ! --- MF_uGF must be LAST ---
     CALL MultiplyWithMetric( MF_uGF(FineLevel), MF    (FineLevel), nCF, +1 )
     CALL MultiplyWithMetric( MF_uGF(FineLevel), MF_uGF(FineLevel), nGF, +1 )
 
     CALL AverageDownTo( FineLevel-1, MF_uGF )
     CALL AverageDownTo( FineLevel-1, MF     )
 
+    ! --- MF_uGF must be FIRST ---
     CALL MultiplyWithMetric( MF_uGF(FineLevel  ), MF_uGF(FineLevel  ), nGF, -1 )
     CALL MultiplyWithMetric( MF_uGF(FineLevel  ), MF    (FineLevel  ), nCF, -1 )
     CALL MultiplyWithMetric( MF_uGF(FineLevel-1), MF_uGF(FineLevel-1), nGF, -1 )

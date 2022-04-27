@@ -40,12 +40,12 @@ MODULE MF_TimeSteppingModule_SSPRK
     nNodes, &
     nStages, &
     do_reflux
-  USE FillPatchModule, ONLY: &
-    FillPatch
+!!$  USE FillPatchModule, ONLY: &
+!!$    FillPatch
   USE RefluxModule_Euler, ONLY: &
     Reflux_Euler_MF
-  USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
+!!$  USE MF_UtilitiesModule, ONLY: &
+!!$    MultiplyWithMetric
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -144,26 +144,31 @@ CONTAINS
                ( MF_U(iS,iLevel), MF_uCF(iLevel) % BA, &
                  MF_uCF(iLevel) % DM, nComp, swX )
 
-        CALL MF_U(iS,iLevel) % SetVal( Zero )
-
         CALL amrex_multifab_build &
                ( MF_D(iS,iLevel), MF_uCF(iLevel) % BA, &
                  MF_uCF(iLevel) % DM, nComp, swX )
 
-        CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nComp, 0 )
+        CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nComp, swX )
 
-        CALL MultiplyWithMetric( MF_uGF(iLevel), MF_U(iS,iLevel), nCF, +1 )
-
-        CALL FillPatch( iLevel, t(iLevel), MF_U(iS,:) )
-
-        CALL MultiplyWithMetric( MF_uGF(iLevel), MF_U(iS,iLevel), nCF, -1 )
-
-        IF( iLevel .GT. 0 )THEN
-
-          CALL MultiplyWithMetric &
-                 ( MF_uGF(iLevel-1), MF_U(iS,iLevel-1), nCF, -1 )
-
-        END IF
+!!$        IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
+!!$
+!!$          CALL MultiplyWithMetric &
+!!$                 ( MF_uGF(iLevel  ), MF_U(iS,iLevel  ), nCF, +1 )
+!!$          CALL MultiplyWithMetric &
+!!$                 ( MF_uGF(iLevel-1), MF_U(iS,iLevel-1), nCF, +1 )
+!!$
+!!$        END IF
+!!$
+!!$        CALL FillPatch( iLevel, t(iLevel), MF_U(iS,:) )
+!!$
+!!$        IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
+!!$
+!!$          CALL MultiplyWithMetric &
+!!$                 ( MF_uGF(iLevel  ), MF_U(iS,iLevel  ), nCF, -1 )
+!!$          CALL MultiplyWithMetric &
+!!$                 ( MF_uGF(iLevel-1), MF_U(iS,iLevel-1), nCF, -1 )
+!!$
+!!$        END IF
 
       END DO ! iLevel
 
@@ -201,7 +206,7 @@ CONTAINS
 
         END DO
 
-        CALL Reflux_Euler_MF( MF_uGF, MF_D(iS,:) )
+        IF( do_reflux ) CALL Reflux_Euler_MF( MF_uGF, MF_D(iS,:) )
 
       END IF ! a(:,iS) .NE. Zero OR w(iS) .NE. Zero
 
