@@ -20,8 +20,7 @@ MODULE InitializationModule
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
-    amrex_distromap, &
-    amrex_distromap_build
+    amrex_distromap
   USE amrex_multifab_module, ONLY: &
     amrex_mfiter, &
     amrex_mfiter_build, &
@@ -589,11 +588,11 @@ stop 'InitializationModule.f90'
 
       WRITE(*,'(4x,A)')       'INFO: AMReX'
       WRITE(*,'(4x,A)')       '-----------'
-      WRITE(*,'(4x,A,I2.2)')  '         nLevels: ', nLevels
       WRITE(*,'(4x,A,3I4.3)') '     MaxGridSize: ', MaxGridSizeX
       WRITE(*,'(4x,A,3I4.3)') '  BlockingFactor: ', BlockingFactor
-      WRITE(*,'(4x,A,L)')     '       UseTiling: ', UseTiling
+      WRITE(*,'(4x,A,I2.2)')  '         nLevels: ', nLevels
       WRITE(*,'(4x,A,L)')     '       do_reflux: ', do_reflux
+      WRITE(*,'(4x,A,L)')     '       UseTiling: ', UseTiling
 
     END IF
 
