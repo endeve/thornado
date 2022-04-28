@@ -367,6 +367,7 @@ TwoMoment_PositivityLimiterModule_OrderV.o: \
 TwoMoment_OpacityModule_OrderV.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModuleZ.o \
   MeshModule.o \
   RadiationFieldsModule.o \
   TwoMoment_OpacityModule_OrderV.F90
