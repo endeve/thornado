@@ -254,7 +254,6 @@ CONTAINS
 
       WRITE(*,*)
       WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
-      WRITE(*,*)
 
     END IF
 
