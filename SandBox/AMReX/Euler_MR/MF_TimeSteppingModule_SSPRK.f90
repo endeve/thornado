@@ -8,6 +8,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     amrex_multifab, &
     amrex_multifab_build, &
     amrex_multifab_destroy
+  USE amrex_amrcore_module, ONLY: &
+    amrex_regrid
 
   ! --- thornado Modules ---
 
@@ -131,6 +133,13 @@ CONTAINS
     REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nLevels-1)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+
+    DO iLevel = 0, nLevels-1
+
+      IF( iLevel .LT. nLevels-1 ) &
+        CALL amrex_regrid( iLevel, t(iLevel) )
+
+    END DO
 
     dM_OffGrid_Euler = Zero
 

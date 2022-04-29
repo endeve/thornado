@@ -52,6 +52,7 @@ MODULE FillPatchModule
   INTERFACE FillPatch
     MODULE PROCEDURE FillPatch_MultiTime
     MODULE PROCEDURE FillPatch_SingleTime
+    MODULE PROCEDURE FillPatch_SingleTime_Copy
   END INTERFACE FillPatch
 
   INTERFACE FillCoarsePatch
@@ -136,6 +137,42 @@ CONTAINS
     END IF
 
   END SUBROUTINE FillPatch_SingleTime
+
+
+  SUBROUTINE FillPatch_SingleTime_Copy( iLevel, Time, MF_src, MF_dst )
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(DP),             INTENT(in)    :: Time
+    TYPE(amrex_multifab), INTENT(in)    :: MF_src(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_dst
+
+    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+
+    IF( iLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch( MF_dst, &
+                            Time, MF_src(iLevel), &
+                            Time, MF_src(iLevel), &
+                            amrex_geom(iLevel), FillPhysicalBC_Dummy, &
+                            Time, sComp, dComp, MF_dst % nComp() )
+
+    ELSE
+
+      CALL amrex_fillpatch( MF_dst, &
+                            Time, MF_src(iLevel-1), &
+                            Time, MF_src(iLevel-1), &
+                            amrex_geom(iLevel-1), FillPhysicalBC_Dummy, &
+                            Time, MF_src(iLevel  ), &
+                            Time, MF_src(iLevel  ), &
+                            amrex_geom(iLevel  ), FillPhysicalBC_Dummy, &
+                            Time, sComp, dComp, MF_dst % nComp(), &
+                            amrex_ref_ratio(iLevel-1), &
+                            amrex_interp_dg, &
+                            lo_bc, hi_bc )
+
+    END IF
+
+  END SUBROUTINE FillPatch_SingleTime_Copy
 
 
   SUBROUTINE FillCoarsePatch_MultiTime &
