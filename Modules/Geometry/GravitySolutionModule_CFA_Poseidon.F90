@@ -85,8 +85,6 @@ MODULE GravitySolutionModule_CFA_Poseidon
   PUBLIC :: ComputeConformalFactor_Poseidon
   PUBLIC :: ComputeGeometry_Poseidon
 
-  PUBLIC :: UpdateConformalFactorAndMetric
-
   REAL(DP) :: GravitationalMass
 
 
