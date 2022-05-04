@@ -13,7 +13,7 @@ HDF5_LIB       = $(HDF5_HOME)/lib
 LAPACK_INC     = $(LAPACK_HOME)/include
 LAPACK_LIB     = $(LAPACK_HOME)/lib
 
-EOS            ?= IDEAL
+EOS            ?= TABLE
 EVOLVE_GRAVITY ?= TRUE
 REFINE_MESH    ?= FALSE
 
@@ -31,11 +31,11 @@ DIM       = 1
 
 EBASE     = ApplicationDriver
 
+INCLUDE_LOCATIONS += $(HDF5_INC)
+LIBRARY_LOCATIONS += $(HDF5_LIB)
+LIBRARIES += -lhdf5_fortran -lhdf5
+
 ifeq ($(EOS),TABLE)
-#  USE_HDF5 = TRUE
-  INCLUDE_LOCATIONS += $(HDF5_INC)
-  LIBRARY_LOCATIONS += $(HDF5_LIB)
-  LIBRARIES += -lhdf5_fortran -lhdf5
   include $(THORNADO_HOME)/SandBox/AMReX/Euler_MR/Make.weaklib
 endif
 
