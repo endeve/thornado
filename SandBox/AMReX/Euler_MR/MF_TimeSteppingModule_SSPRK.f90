@@ -134,12 +134,12 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
-    DO iLevel = 0, nLevels-1
-
-      IF( iLevel .LT. nLevels-1 ) &
-        CALL amrex_regrid( iLevel, t(iLevel) )
-
-    END DO
+!!$    DO iLevel = 0, nLevels-1
+!!$
+!!$      IF( iLevel .LT. nLevels-1 ) &
+!!$        CALL amrex_regrid( iLevel, t(iLevel) )
+!!$
+!!$    END DO
 
     dM_OffGrid_Euler = Zero
 
