@@ -25,10 +25,10 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 ID = 'Advection1D'
 
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
 # Specify plot file base name
-PlotFileBaseName = 'plt'
+PlotFileBaseName = ID + '.plt'
 
 # Specify field to plot
 Field = 'PF_D'

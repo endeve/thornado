@@ -198,7 +198,12 @@ CONTAINS
 
       DO iNX = 1, N
 
-        CALL DescribeError_Euler( iErr(iNX) )
+        CALL DescribeError_Euler &
+          ( iErr(iNX), &
+            Int_Option = [ iNX ], &
+            Real_Option = [ uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
+                            uE(iNX), uNe(iNX), &
+                            Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ] )
 
       END DO
 
@@ -393,7 +398,12 @@ CONTAINS
 
       DO iX = 1, N
 
-        CALL DescribeError_Euler( iErr(iX) )
+        CALL DescribeError_Euler &
+          ( iErr(iX), &
+            Int_Option = [ iX ], &
+            Real_Option = [ uD(iX), uS1(iX), uS2(iX), uS3(iX), &
+                            uE(iX), uNe(iX), &
+                            Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) ] )
 
       END DO
 
@@ -706,9 +716,20 @@ CONTAINS
 
           WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          WRITE(*,*) 'iX1, iX2, iX3 = ', iX1, iX2, iX3
 
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+          CALL DescribeError_Euler &
+            ( iErr(iNX,iX1,iX2,iX3), &
+              Int_Option = [ iNX ], &
+              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+                              U(iNX,iX1,iX2,iX3,iCF_S1), &
+                              U(iNX,iX1,iX2,iX3,iCF_S2), &
+                              U(iNX,iX1,iX2,iX3,iCF_S3), &
+                              U(iNX,iX1,iX2,iX3,iCF_E ), &
+                              U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
 
         END IF
 
@@ -870,9 +891,20 @@ CONTAINS
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          WRITE(*,*) 'iX1, iX2, iX3 = ', iX1, iX2, iX3
 
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+          CALL DescribeError_Euler &
+            ( iErr(iNX,iX1,iX2,iX3), &
+              Int_Option = [ iNX ], &
+              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+                              U(iNX,iX1,iX2,iX3,iCF_S1), &
+                              U(iNX,iX1,iX2,iX3,iCF_S2), &
+                              U(iNX,iX1,iX2,iX3,iCF_S3), &
+                              U(iNX,iX1,iX2,iX3,iCF_E ), &
+                              U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
 
         END IF
 

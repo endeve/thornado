@@ -30,7 +30,8 @@ MODULE MF_UtilitiesModule
     DP
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
-    iCoarse_MFM
+    DestroyFineMask, &
+    iLeaf_MFM
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -67,7 +68,7 @@ CONTAINS
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
-    TYPE(amrex_imultifab), INTENT(in) :: iMF_Mask
+    TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_Mask
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileName_Option
@@ -111,10 +112,9 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        Mask => iMF_Mask % DataPtr( MFI )
-
+      IF( PRESENT( iMF_Mask ) ) Mask => iMF_Mask % DataPtr( MFI )
       F => MF % DataPtr( MFI )
+
       BX = MFI % tilebox()
 
       lo = LBOUND( F ); hi = UBOUND( F )
@@ -123,9 +123,9 @@ CONTAINS
       DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
       DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
 
-        IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
+        IF( PRESENT( iMF_Mask ) )THEN
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         END IF
 
@@ -171,9 +171,15 @@ CONTAINS
 
     CALL DestroyMesh_MF( MeshX )
 
-    IF( WriteToFile) CLOSE(100)
+    IF( WriteToFile )THEN
 
-    WRITE(*,*)
+      CLOSE(100)
+
+    ELSE
+
+      WRITE(*,*)
+
+    END IF
 
   END SUBROUTINE ShowVariableFromMultiFab_Single
 
@@ -206,16 +212,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        CALL MakeFineMask &
-               ( iMF_Mask, MF(iLevel) % BA, MF(iLevel) % DM, &
-                 MF(iLevel+1) % BA )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF % BA, MF % DM )
 
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, iMF_Mask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
                FileName_Option = TRIM( FileName ) )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 

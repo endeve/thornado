@@ -109,7 +109,7 @@ def MakeDataFile( Field, DataDirectory, DataFileName, \
         if   nDimsX == 1: DataShape \
                             = (FileArray.shape[0],X1.shape[0])
         elif nDimsX == 2: DataShape \
-                            = (FileArray.shape[0],X1.shape[0],X2.shape[0])
+                            = (FileArray.shape[0],X1.shape[0],X2.shape[1])
 
         # Save multi-D array with np.savetxt. Taken from:
         # https://stackoverflow.com/questions/3685265/

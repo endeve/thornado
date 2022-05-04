@@ -62,7 +62,8 @@ MODULE MF_Euler_TallyModule
 !    Timer_AMReX_Euler_Allocate
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
-    iCoarse_MFM
+    DestroyFineMask, &
+    iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X
 
@@ -234,20 +235,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        CALL MakeFineMask &
-               ( iMF_Mask, MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
-                 MF_uCF(iLevel+1) % BA )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-          Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        Mask => iMF_Mask % DataPtr( MFI )
+        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -283,6 +279,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
@@ -366,10 +364,11 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    d3X = MeshX(1) % Width(iX_B0(1))
+    d3X =   MeshX(1) % Width(iX_B0(1)) &
+          * MeshX(2) % Width(iX_B0(2)) &
+          * MeshX(3) % Width(iX_B0(3))
 
-    IF( nDimsX .GT. 1 ) d3X = d3X * MeshX(2) % Width(iX_B0(2))
-    IF( nDimsX .GT. 2 ) d3X = d3X * MeshX(3) % Width(iX_B0(3))
+    CALL DestroyMesh_MF( MeshX )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -378,7 +377,7 @@ CONTAINS
 
       IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
+        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
       END IF
 
@@ -400,8 +399,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ComputeTally_Euler
 

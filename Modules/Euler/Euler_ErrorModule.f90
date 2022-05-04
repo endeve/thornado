@@ -1,5 +1,7 @@
 MODULE Euler_ErrorModule
 
+  USE KindModule, ONLY: &
+    DP
   USE UtilitiesModule, ONLY: &
     thornado_abort
 
@@ -12,10 +14,13 @@ MODULE Euler_ErrorModule
 CONTAINS
 
 
-  SUBROUTINE DescribeError_Euler( iErr, Message_Option )
+  SUBROUTINE DescribeError_Euler &
+    ( iErr, Message_Option, Int_Option, Real_Option )
 
     INTEGER,          INTENT(in)           :: iErr
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Message_Option
+    INTEGER         , INTENT(in), OPTIONAL :: Int_Option(:)
+    REAL(DP)        , INTENT(in), OPTIONAL :: Real_Option(:)
 
     CHARACTER(LEN=128) :: Message
 
@@ -133,6 +138,17 @@ CONTAINS
             'SUBROUTINE: SolveZ_Bisection'
            WRITE(*,'(2x,A)') &
             'No Root in Interval'
+          WRITE(*,*)
+          WRITE(*,'(2x,A,I8.8)')      'iNX:       ', Int_Option(1)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uD  (iNX): ', Real_Option(1)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS1 (iNX): ', Real_Option(2)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS2 (iNX): ', Real_Option(3)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS3 (iNX): ', Real_Option(4)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uE  (iNX): ', Real_Option(5)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uNe (iNX): ', Real_Option(6)
+          WRITE(*,'(2x,A,ES24.16E3)') 'Gm11(iNX): ', Real_Option(7)
+          WRITE(*,'(2x,A,ES24.16E3)') 'Gm22(iNX): ', Real_Option(8)
+          WRITE(*,'(2x,A,ES24.16E3)') 'Gm33(iNX): ', Real_Option(9)
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort

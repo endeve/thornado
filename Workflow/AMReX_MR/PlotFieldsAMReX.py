@@ -101,12 +101,12 @@ Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
              ReturnTime = True, ReturnMesh = True, Verbose = True )
 
 nDims = 1
-if nX0[1] > 1: nDims += 1
-if nX0[2] > 1: nDims += 1
+if nX[1] > 1: nDims += 1
+if nX[2] > 1: nDims += 1
 
 if nDims == 1:
 
-    plt.plot( X10, Data0, 'r.' )
+#    plt.plot( X10, Data0, 'r.' )
     plt.plot( X1, Data, 'k.' )
     if( UseLogScale ): plt.yscale( 'log' )
     plt.xlim( xL[0], xU[0] )

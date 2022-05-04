@@ -98,12 +98,15 @@ MODULE InputParsingModule
   INTEGER :: BlockingFactorX2
   INTEGER :: BlockingFactorX3
   INTEGER :: MaxGridSizeX(3)
+  INTEGER :: BlockingFactor(3)
   INTEGER :: MaxLevel
   INTEGER :: nLevels
   LOGICAL :: UseTiling
   LOGICAL :: do_reflux
-  INTEGER, ALLOCATABLE :: RefinementRatio(:)
-  INTEGER, ALLOCATABLE :: StepNo(:)
+  INTEGER , ALLOCATABLE :: RefinementRatio(:)
+  INTEGER , ALLOCATABLE :: StepNo(:)
+  INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
+  REAL(DP), ALLOCATABLE :: TagCriteria(:)
 
   REAL(DP), ALLOCATABLE :: dt   (:)
   REAL(DP), ALLOCATABLE :: t_old(:)
@@ -297,23 +300,29 @@ CONTAINS
       BlockingFactorX3 = 8
 
     END IF
-    UseTiling        = 0
-    do_reflux        = 0
+    UseTiling = 0
+    do_reflux = 0
     CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr( 'n_cell'           , nX               )
-      CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
-      CALL PP % query ( 'max_grid_size_y'  , MaxGridSizeX2    )
-      CALL PP % query ( 'max_grid_size_z'  , MaxGridSizeX3    )
-      CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
-      CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
-      CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
-      CALL PP % get   ( 'max_level'        , MaxLevel         )
-      CALL PP % query ( 'UseTiling'        , UseTiling        )
-      CALL PP % query ( 'do_reflux'        , do_reflux        )
-      CALL PP % getarr( 'ref_ratio'        , RefinementRatio  )
+      CALL PP % getarr  ( 'n_cell'           , nX                )
+      CALL PP % query   ( 'max_grid_size_x'  , MaxGridSizeX1     )
+      CALL PP % query   ( 'max_grid_size_y'  , MaxGridSizeX2     )
+      CALL PP % query   ( 'max_grid_size_z'  , MaxGridSizeX3     )
+      CALL PP % query   ( 'blocking_factor_x', BlockingFactorX1  )
+      CALL PP % query   ( 'blocking_factor_y', BlockingFactorX2  )
+      CALL PP % query   ( 'blocking_factor_z', BlockingFactorX3  )
+      CALL PP % get     ( 'max_level'        , MaxLevel          )
+      CALL PP % query   ( 'UseTiling'        , UseTiling         )
+      CALL PP % query   ( 'do_reflux'        , do_reflux         )
+      CALL PP % getarr  ( 'ref_ratio'        , RefinementRatio   )
+      IF( MaxLevel .GT. 0 )THEN
+        CALL PP % getarr( 'TagCriteria'      , TagCriteria       )
+        CALL PP % getarr( 'n_error_buf'      , nRefinementBuffer )
+      END IF
     CALL amrex_parmparse_destroy( PP )
 
-    MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
+    MaxGridSizeX   = [ MaxGridSizeX1   , MaxGridSizeX2   , MaxGridSizeX3    ]
+    BlockingFactor = [ BlockingFactorX1, BlockingFactorX2, BlockingFactorX3 ]
+
     nLevels = MaxLevel + 1
 
     CALL InitializeProgramHeader &

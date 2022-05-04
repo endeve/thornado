@@ -1,4 +1,5 @@
 Euler_ErrorModule.o: \
+  KindModule.o \
   UtilitiesModule.o \
   Euler_ErrorModule.f90
 

@@ -246,17 +246,16 @@ CONTAINS
 
     END IF
 
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(6x,A,I8.8)') 'Writing PlotFile: ', StepNo(0)
-      WRITE(*,*)
-
-    END IF
-
     WRITE(NumberString,'(I8.8)') StepNo(0)
 
     PlotFileName = TRIM( PlotFileBaseName ) // '_' // NumberString
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
+
+    END IF
 
     ALLOCATE( VarNames(nF) )
 

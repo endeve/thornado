@@ -20,8 +20,7 @@ MODULE InitializationModule
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
-    amrex_distromap, &
-    amrex_distromap_build
+    amrex_distromap
   USE amrex_multifab_module, ONLY: &
     amrex_mfiter, &
     amrex_mfiter_build, &
@@ -122,6 +121,9 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule, ONLY: &
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
+  USE FillPatchModule, ONLY: &
+    FillPatch, &
+    FillCoarsePatch
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -139,6 +141,7 @@ MODULE InitializationModule
     UseTiling, &
     do_reflux, &
     MaxGridSizeX, &
+    BlockingFactor, &
     xL, &
     xR, &
     EquationOfState, &
@@ -160,7 +163,9 @@ MODULE InitializationModule
     hi_bc, &
     lo_bc_uCF, &
     hi_bc_uCF, &
-    ProgramName
+    ProgramName, &
+    TagCriteria, &
+    nRefinementBuffer
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
@@ -310,7 +315,7 @@ CONTAINS
     dt     = 0.0_DP
     t_new  = 0.0_DP
 
-    CALL InitializeTally_Euler_MF
+    CALL InitializeTally_Euler_MF( SuppressTally_Option = .TRUE. )
 
     IF( iRestart .LT. 0 )THEN
 
@@ -328,6 +333,8 @@ CONTAINS
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL DescribeProgramHeader_AMReX
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -423,8 +430,6 @@ CONTAINS
 
   SUBROUTINE MakeNewLevelFromCoarse( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillCoarsePatch
-
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
@@ -445,8 +450,8 @@ stop 'InitializationModule.f90'
     CALL amrex_multifab_destroy( MF_uCF(iLevel) )
     CALL amrex_multifab_destroy( MF_uGF(iLevel) )
 
-    CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
-
+    IF( iLevel .GT. 0 .AND. do_reflux ) &
+      CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
 
   END SUBROUTINE ClearLevel
 
@@ -457,8 +462,48 @@ stop 'InitializationModule.f90'
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
-print*,'Hello and goodbye from RemakeLevel'
-stop 'InitializationModule.f90'
+    TYPE(amrex_boxarray)  :: BA
+    TYPE(amrex_distromap) :: DM
+    TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uPF_tmp, &
+                             MF_uAF_tmp, MF_uDF_tmp
+
+    BA = pBA
+    DM = pDM
+
+    CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
+    CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uPF_tmp, BA, DM, nDOFX * nPF, swX )
+    CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
+    CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
+
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uPF, MF_uPF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uAF, MF_uAF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uDF, MF_uDF_tmp )
+
+    CALL ClearLevel( iLevel )
+
+    CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
+    CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
+    CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
+
+    IF( iLevel .GT. 0 .AND. do_reflux ) &
+      CALL amrex_fluxregister_build &
+             ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
+               iLevel, nDOFX_X1 * nCF )
+
+    CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
+    CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
+    CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
+
+    CALL amrex_multifab_destroy( MF_uDF_tmp )
+    CALL amrex_multifab_destroy( MF_uAF_tmp )
+    CALL amrex_multifab_destroy( MF_uPF_tmp )
+    CALL amrex_multifab_destroy( MF_uCF_tmp )
+    CALL amrex_multifab_destroy( MF_uGF_tmp )
 
   END SUBROUTINE RemakeLevel
 
@@ -478,7 +523,6 @@ stop 'InitializationModule.f90'
     REAL(DP),               INTENT(in), VALUE :: Time
     CHARACTER(KIND=c_char), INTENT(in), VALUE :: SetTag, ClearTag
 
-    REAL(DP), ALLOCATABLE, SAVE :: TagCriteria(:)
     TYPE(amrex_parmparse)   :: PP
     TYPE(amrex_tagboxarray) :: Tag
     TYPE(amrex_mfiter)      :: MFI
@@ -579,6 +623,40 @@ stop 'InitializationModule.f90'
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
+
+
+  SUBROUTINE DescribeProgramHeader_AMReX
+
+    CHARACTER(32) :: RFMT, IFMT
+
+    WRITE(RFMT,'(A,I2.2,A)') '(4x,A,', nLevels, 'ES11.3E3)'
+    WRITE(IFMT,'(A,I2.2,A)') '(4x,A,', nLevels, 'I3.2)'
+
+    IF( .NOT. ALLOCATED( TagCriteria ) )THEN
+      ALLOCATE( TagCriteria(nLevels) )
+      TagCriteria = 0.0_DP
+    END IF
+
+    IF( .NOT. ALLOCATED( nRefinementBuffer ) )THEN
+      ALLOCATE( nRefinementBuffer(nLevels) )
+      nRefinementBuffer = 1
+    END IF
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(4x,A)')       'INFO: AMReX'
+      WRITE(*,'(4x,A)')       '-----------'
+      WRITE(*,'(4x,A,3I4.3)') '        MaxGridSize: ', MaxGridSizeX
+      WRITE(*,'(4x,A,3I4.3)') '     BlockingFactor: ', BlockingFactor
+      WRITE(*,'(4x,A,I2.2)')  '            nLevels: ', nLevels
+      WRITE(*,'(4x,A,L)')     '          do_reflux: ', do_reflux
+      WRITE(*,'(4x,A,L)')     '          UseTiling: ', UseTiling
+      WRITE(*,TRIM(RFMT))     '        TagCriteria: ', TagCriteria
+      WRITE(*,TRIM(IFMT))     '  nRefinementBuffer: ', nRefinementBuffer
+
+    END IF
+
+  END SUBROUTINE DescribeProgramHeader_AMReX
 
 
 END MODULE InitializationModule

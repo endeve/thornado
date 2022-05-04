@@ -14,26 +14,32 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
+  USE MeshModule, ONLY: &
+    MeshX, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    nGF
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
-    UpdateConformalFactorAndMetric
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm, &
+    iGF_Psi
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    SqrtTiny
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
-    UseTiling, &
-    swX
-  USE MF_UtilitiesModule, ONLY: &
-    amrex2thornado_X, &
-    thornado2amrex_X
-!!$  USE TimersModule_AMReX_Euler, ONLY: &
-!!$    TimersStart_AMReX_Euler, &
-!!$    TimersStop_AMReX_Euler,  &
-!!$    Timer_AMReX_Euler_Allocate
+    UseTiling
 
 
 
@@ -269,27 +275,25 @@ CONTAINS
 
   SUBROUTINE UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1) ! Metric Fields
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    ! 1: psi, 2: alpha, 3-5: beta, 6-11: K_ij
-    INTEGER, PARAMETER :: nMF = 11
-
-    INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iLo_G(4), iLo_M(4)
-
     REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: M   (:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: G   (:,:,:,:,:)
+
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
+    INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iLo_G(4), iLo_M(4)
+    REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       DO WHILE( MFI % next() )
 
@@ -303,41 +307,44 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
 
-!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
 
-        ALLOCATE( M(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nMF) )
+          DO iNX = 1, nDOFX
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
 
-!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-        CALL amrex2thornado_X &
-               ( nMF, iX_B0, iX_E0, iLo_M, iX_B0, iX_E0, uMF, M )
+            Psi = uMF(iX1,iX2,iX3,nDOFX*(1-1)+iNX) ! 1st component of uMF is Psi
+            h1 = Psi**2
+            h2 = Psi**2 * X1
+            h3 = Psi**2 * X1 * SIN( X2 )
 
-        CALL amrex2thornado_X &
-               ( nGF, iX_B1, iX_E1, iLo_G, iX_B1, iX_E1, uGF, G )
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3
 
-        CALL UpdateConformalFactorAndMetric &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, M(:,:,:,:,1), G )
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) = MAX( h1**2, SqrtTiny )
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
 
-        CALL thornado2amrex_X &
-               ( nGF, iX_B1, iX_E1, iLo_G, iX_B1, iX_E1, uGF, G )
+            uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) = h1 * h2 * h3
 
-!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+          END DO
 
-        DEALLOCATE( G )
-        DEALLOCATE( M )
-
-!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        END DO
+        END DO
+        END DO
 
       END DO
+
+      CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
 
