@@ -68,7 +68,7 @@ CONTAINS
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
-    TYPE(amrex_imultifab), INTENT(in) :: iMF_Mask
+    TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_Mask
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileName_Option
@@ -112,8 +112,8 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      Mask => iMF_Mask % DataPtr( MFI )
-      F    => MF       % DataPtr( MFI )
+      IF( PRESENT( iMF_Mask ) ) Mask => iMF_Mask % DataPtr( MFI )
+      F => MF % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -123,7 +123,11 @@ CONTAINS
       DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
       DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+        IF( PRESENT( iMF_Mask ) )THEN
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+
+        END IF
 
         DO iNX = 1, nNodesX(1)
           NodesX1(iNX) = NodeCoordinate( MeshX(1), iX1, iNX )
