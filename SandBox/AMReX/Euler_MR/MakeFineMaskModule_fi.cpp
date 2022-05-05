@@ -7,7 +7,7 @@ using namespace amrex;
 
 extern "C"
 {
-    void amrex_fi_makefinemask
+    void amrex_fi_makefinemask_thornado
       ( iMultiFab*& Mask,
         const BoxArray& CrseBA,
         const DistributionMapping& CrseDM,

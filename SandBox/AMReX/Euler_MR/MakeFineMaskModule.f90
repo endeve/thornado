@@ -32,7 +32,7 @@ MODULE MakeFineMaskModule
 
   INTERFACE
 
-    SUBROUTINE amrex_fi_makefinemask &
+    SUBROUTINE amrex_fi_makefinemask_thornado &
       ( iMF_Mask, CrseBA, CrseDM, FineBA, iCoarse, iFine ) BIND(c)
 
         IMPORT
@@ -45,7 +45,7 @@ MODULE MakeFineMaskModule
         INTEGER(c_int), VALUE :: iCoarse
         INTEGER(c_int), VALUE :: iFine
 
-    END SUBROUTINE amrex_fi_makefinemask
+    END SUBROUTINE amrex_fi_makefinemask_thornado
 
   END INTERFACE
 
@@ -64,7 +64,7 @@ CONTAINS
       iMF_Mask % owner = .TRUE.
       iMF_Mask % nc    = 1
       iMF_Mask % ng    = 0
-      CALL amrex_fi_makefinemask &
+      CALL amrex_fi_makefinemask_thornado &
              ( iMF_Mask % p, BA(iLevel) % p, DM(iLevel) % p, BA(iLevel+1) % p, &
                iLeaf_MFM, iTrunk_MFM )
 
