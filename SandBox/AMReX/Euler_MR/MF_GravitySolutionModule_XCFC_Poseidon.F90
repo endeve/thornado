@@ -28,7 +28,17 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm, &
-    iGF_Psi
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
+    iGF_Psi, &
+    iGF_K_dd_11, &
+    iGF_K_dd_12, &
+    iGF_K_dd_13, &
+    iGF_K_dd_22, &
+    iGF_K_dd_23, &
+    iGF_K_dd_33
 
   ! --- Local Modules ---
 
@@ -82,9 +92,9 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   INTEGER, PARAMETER :: iMF_Psi      = 1
   INTEGER, PARAMETER :: iMF_Alpha    = 2
-  INTEGER, PARAMETER :: iMF_Beta_u_1 = 3
-  INTEGER, PARAMETER :: iMF_Beta_u_2 = 4
-  INTEGER, PARAMETER :: iMF_Beta_u_3 = 5
+  INTEGER, PARAMETER :: iMF_Beta_1   = 3
+  INTEGER, PARAMETER :: iMF_Beta_2   = 4
+  INTEGER, PARAMETER :: iMF_Beta_3   = 5
   INTEGER, PARAMETER :: iMF_K_dd_11  = 6
   INTEGER, PARAMETER :: iMF_K_dd_12  = 7
   INTEGER, PARAMETER :: iMF_K_dd_13  = 8
@@ -303,7 +313,6 @@ CONTAINS
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
     INTEGER  :: iX_B0(3), iX_E0(3)
-    INTEGER  :: iLo_G(4), iLo_M(4)
     REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
     DO iLevel = 0, nLevels-1
@@ -316,9 +325,6 @@ CONTAINS
 
         uMF => MF_uMF(iLevel) % DataPtr( MFI )
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
-
-        iLo_M = LBOUND( uMF )
-        iLo_G = LBOUND( uGF )
 
         BX = MFI % tilebox()
 
@@ -369,8 +375,72 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
+
     TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3)
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uMF => MF_uMF(iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX)
+
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Beta_1-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Beta_2-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Beta_3-1)+iNX)
+
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_11-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_11-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_12-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_12-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_13-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_13-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_22-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_22-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_23-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_23-1)+iNX)
+          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_33-1)+iNX) &
+            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_33-1)+iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
   END SUBROUTINE ComputeGeometryFromPoseidon_MF
 
 
