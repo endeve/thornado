@@ -53,8 +53,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     Poseidon_Close, &
     Poseidon_CFA_Set_Uniform_Boundary_Conditions
   USE Source_Input_AMReX, ONLY: &
-    Poseidon_XCFC_Input_Sources1_AMReX, &
-    Poseidon_XCFC_Input_Sources_AMReX
+    Poseidon_Input_Sources1_AMReX, &
+    Poseidon_Input_Sources_AMReX
   USE Poseidon_XCFC_Interface_Module, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2
@@ -174,8 +174,9 @@ CONTAINS
     CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
 
     ! --- Set matter sources with current conformal factor ---
-    CALL Poseidon_XCFC_Input_Sources1_AMReX &
+    CALL Poseidon_Input_Sources1_AMREX &
            ( MF_Src_Input = MF_Source,            & ! ***
+             MF_Src_nComps = ?,                   & ! ***
              Input_NQ     = nNodesX,              &
              Input_R_Quad = MeshX(1) % Nodes,     &
              Input_T_Quad = MeshX(2) % Nodes,     &
@@ -229,8 +230,9 @@ CONTAINS
 
     ! --- Set matter sources with updated conformal factor ---
 
-    CALL Poseidon_XCFC_Input_Sources_AMReX &
+    CALL Poseidon_Input_Sources2_AMREX &
            ( MF_Src_Input = MF_Source,            & ! ***
+             MF_Src_nComps = ?,                   & ! ***
              Input_NQ     = nNodesX,              &
              Input_R_Quad = MeshX(1) % Nodes,     &
              Input_T_Quad = MeshX(2) % Nodes,     &
