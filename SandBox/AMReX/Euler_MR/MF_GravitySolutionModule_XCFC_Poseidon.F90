@@ -93,7 +93,13 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   INTEGER, PARAMETER :: iMF_K_dd_33  = 11
   INTEGER, PARAMETER :: nMF          = 11
 
-  REAL(DP) :: GravitationalMass
+  INTEGER, PARAMETER :: iGS_E  = 1
+  INTEGER, PARAMETER :: iGS_S1 = 2
+  INTEGER, PARAMETER :: iGS_S2 = 3
+  INTEGER, PARAMETER :: iGS_S3 = 4
+  INTEGER, PARAMETER :: iGS_S  = 5
+  INTEGER, PARAMETER :: iGS_Mg = 6
+  INTEGER, PARAMETER :: nGS    = 6
 
 CONTAINS
 
@@ -148,12 +154,14 @@ CONTAINS
 
   SUBROUTINE ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     REAL(DP)         :: Psi_BC, AlphaPsi_BC
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
+
+    REAL(DP) :: GravitationalMass
 
     TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
 
@@ -163,8 +171,8 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
-!    CALL ComputeGravitationalMass &
-!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mg )
+    ! May not need this with improved boundary conditions
+    CALL ComputeGravitationalMass( MF_uGF, MF_uGS, GravitationalMass )
 
 !    Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
 !    AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
@@ -188,7 +196,7 @@ CONTAINS
 !!$    ! --- Set matter sources with current conformal factor ---
 !!$    CALL Poseidon_Input_Sources1_AMReX &
 !!$           ( MF_Src_Input  = MF_uGS,           &
-!!$             MF_Src_nComps = 5,                &
+!!$             MF_Src_nComps = nGS,              &
 !!$             num_levels    = nLevels,          &
 !!$             Input_NQ      = nNodesX,          &
 !!$             Input_R_Quad  = MeshX(1) % Nodes, &
@@ -241,7 +249,7 @@ CONTAINS
 
 !!$    CALL Poseidon_Input_Sources2_AMReX &
 !!$           ( MF_Src_Input  = MF_uGS,           &
-!!$             MF_Src_nComps = 5,                &
+!!$             MF_Src_nComps = nGS,              &
 !!$             num_levels    = nLevels,          &
 !!$             Input_NQ      = nNodesX,          &
 !!$             Input_R_Quad  = MeshX(1) % Nodes, &
@@ -268,9 +276,9 @@ CONTAINS
 
     ! --- Copy data from Poseidon to thornado ---
 
-!!$    CALL ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
+    CALL ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
 
-!!$    CALL SetBoundaryConditions( MF_uGF )
+    CALL SetBoundaryConditions( MF_uGF )
 
 #endif
 
@@ -358,6 +366,24 @@ CONTAINS
     END DO
 
   END SUBROUTINE UpdateConformalFactorAndMetric_MF
+
+
+  SUBROUTINE ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+  END SUBROUTINE ComputeGeometryFromPoseidon_MF
+
+
+  SUBROUTINE SetBoundaryConditions( MF_uGF )
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+  END SUBROUTINE SetBoundaryConditions
+
+
+  SUBROUTINE ComputeGravitationalMass( MF_uGF, MF_uGS, GravitationalMass )
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:nLevels-1)
+    REAL(DP)            , INTENT(out) :: GravitationalMass
+  END SUBROUTINE ComputeGravitationalMass
 
 
 END MODULE MF_GravitySolutionModule_XCFC_Poseidon
