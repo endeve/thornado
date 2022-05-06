@@ -9,12 +9,16 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nNodesX
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
@@ -445,8 +449,182 @@ CONTAINS
 
 
   SUBROUTINE SetBoundaryConditions( MF_uGF )
+
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+
+    CALL SetBoundaryConditions_X1( MF_uGF )
+
   END SUBROUTINE SetBoundaryConditions
+
+
+  SUBROUTINE SetBoundaryConditions_X1( MF_uGF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+
+    INTEGER :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER :: iX_B0(3), iX_E0(3)
+    INTEGER :: iNX1, iNX2, iNX3, iNX
+    INTEGER :: jNX1, jNX
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        IF( iX_B0(1) .EQ. amrex_geom % domain % lo( 1 ) )THEN
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+
+            DO iNX3 = 1, nNodesX(3)
+            DO iNX2 = 1, nNodesX(2)
+            DO iNX1 = 1, nNodesX(1)
+
+              ! --- Inner Boundary: Reflecting ---
+
+              jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+              iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+              jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Alpha-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Psi-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
+                = -uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_1-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_2-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_3-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_h_1-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_h_2-1)+jNX)
+
+              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) &
+                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_h_3-1)+jNX)
+
+              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
+                = MAX( uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX)**2, &
+                       SqrtTiny )
+
+              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
+                = MAX( uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX)**2, &
+                       SqrtTiny )
+
+              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
+                = MAX( uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)**2, &
+                       SqrtTiny )
+
+              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
+                =   uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
+                  * uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
+                  * uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)
+
+            END DO
+            END DO
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+        IF( iX_E0(1) .EQ. amrex_geom % domain % hi( 1 ) )THEN
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+
+            DO iNX3 = 1, nNodesX(3)
+            DO iNX2 = 1, nNodesX(2)
+            DO iNX1 = 1, nNodesX(1)
+
+              ! --- Outer Boundary: Dirichlet ---
+
+              jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+              iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+              jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Alpha-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Psi-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
+                = -uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_1-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_2-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_3-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_h_1-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_h_2-1)+jNX)
+
+              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) &
+                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_h_3-1)+jNX)
+
+              uGF         (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
+                = MAX( uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX)**2, &
+                       SqrtTiny )
+
+              uGF         (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
+                = MAX( uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX)**2, &
+                       SqrtTiny )
+
+              uGF         (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
+                = MAX( uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)**2, &
+                       SqrtTiny )
+
+              uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
+                =   uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
+                  * uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
+                  * uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)
+
+            END DO
+            END DO
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+  END SUBROUTINE SetBoundaryConditions_X1
 
 
   SUBROUTINE ComputeGravitationalMass( MF_uGF, MF_uGS, GravitationalMass )
