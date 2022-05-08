@@ -45,12 +45,12 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions_Points, &
-    ComputeEquilibriumDistributionAndDerivatives_Points, &
-    ComputeNeutrinoOpacities_NES_Points, &
-    ComputeNeutrinoOpacities_Pair_Points, &
-    ComputeNeutrinoOpacitiesRates_NES_Points, &
-    ComputeNeutrinoOpacitiesRates_Pair_Points
+    ComputeEquilibriumDistributions, &
+    ComputeEquilibriumDistributionAndDerivatives, &
+    ComputeNeutrinoOpacities_NES, &
+    ComputeNeutrinoOpacities_Pair, &
+    ComputeNeutrinoOpacityRates_NES, &
+    ComputeNeutrinoOpacityRates_Pair
 
   IMPLICIT NONE
   PRIVATE
@@ -1618,8 +1618,8 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributionAndDerivatives_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_P, dJ0dY_P, dJ0dE_P, iSpecies )
+    !CALL ComputeEquilibriumDistributionAndDerivatives_Points &
+    !       ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_P, dJ0dY_P, dJ0dE_P, iSpecies )
 
     IF ( nX < nX_G ) THEN
 
@@ -1685,8 +1685,8 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
+    !CALL ComputeEquilibriumDistributions_Points &
+    !       ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     IF ( nX < nX_G ) THEN
 
@@ -1786,24 +1786,24 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
+    !CALL ComputeEquilibriumDistributions_Points &
+    !       ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     ! --- NES Kernels ---
 
-    CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
-             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-             P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
+    !CALL ComputeNeutrinoOpacities_NES_Points &
+    !       ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
+    !         Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
+    !         Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
+    !         P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
     ! --- Pair Kernels ---
 
-    CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
-             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-             P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
+    !CALL ComputeNeutrinoOpacities_Pair_Points &
+    !       ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
+    !         Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+    !         Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+    !         P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
     IF ( nX < nX_G ) THEN
 
@@ -1942,27 +1942,27 @@ CONTAINS
 
     ! --- NES Emissivities and Opacities ---
 
-    CALL ComputeNeutrinoOpacitiesRates_NES_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
-             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-             Eta_NES_1_P, Chi_NES_1_P )
+    !CALL ComputeNeutrinoOpacitiesRates_NES_Points &
+    !       ( 1, nE_G, 1, nX, W2_N, J_1_P, &
+    !         Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
+    !         Eta_NES_1_P, Chi_NES_1_P )
 
-    CALL ComputeNeutrinoOpacitiesRates_NES_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
-             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-             Eta_NES_2_P, Chi_NES_2_P )
+    !CALL ComputeNeutrinoOpacitiesRates_NES_Points &
+    !       ( 1, nE_G, 1, nX, W2_N, J_2_P, &
+    !         Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
+    !         Eta_NES_2_P, Chi_NES_2_P )
 
     ! --- Pair Emissivities and Opacities ---
 
-    CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
-             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-             Eta_Pair_1_P, Chi_Pair_1_P )
+    !CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
+    !       ( 1, nE_G, 1, nX, W2_N, J_2_P, &
+    !         Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+    !         Eta_Pair_1_P, Chi_Pair_1_P )
 
-    CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
-           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
-             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-             Eta_Pair_2_P, Chi_Pair_2_P )
+    !CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
+    !       ( 1, nE_G, 1, nX, W2_N, J_1_P, &
+    !         Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+    !         Eta_Pair_2_P, Chi_Pair_2_P )
 
     IF ( nX < nX_G ) THEN
 

@@ -46,8 +46,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeNeutrinoOpacities_EC_Points, &
-    ComputeNeutrinoOpacities_ES_Points
+    ComputeNeutrinoOpacities_EC, &
+    ComputeNeutrinoOpacities_ES
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
@@ -339,38 +339,38 @@ CONTAINS
 
     CALL TimersStart( Timer_Im_ComputeOpacity )
 
-    DO iS = 1, nSpecies
+    !DO iS = 1, nSpecies
 
-      CALL ComputeNeutrinoOpacities_EC_Points &
-             ( 1, nE_G, 1, nX_G, &
-               E_N (:), &
-               PF_N(:,iPF_D ), &
-               AF_N(:,iAF_T ), &
-               AF_N(:,iAF_Ye), &
-               iS, Chi(:,:,iS) )
+    !  CALL ComputeNeutrinoOpacities_EC_Points &
+    !         ( 1, nE_G, 1, nX_G, &
+    !           E_N (:), &
+    !           PF_N(:,iPF_D ), &
+    !           AF_N(:,iAF_T ), &
+    !           AF_N(:,iAF_Ye), &
+    !           iS, Chi(:,:,iS) )
 
-    END DO
+    !END DO
 
-    DO iS = 1, nSpecies
+    !DO iS = 1, nSpecies
 
-      ! iMoment = 1
-      CALL ComputeNeutrinoOpacities_ES_Points &
-             ( 1, nE_G, 1, nX_G, &
-               E_N (:), &
-               PF_N(:,iPF_D ), &
-               AF_N(:,iAF_T ), &
-               AF_N(:,iAF_Ye), &
-               iS, 1, Sig_0(:,:,iS) )
-      ! iMoment = 2
-      CALL ComputeNeutrinoOpacities_ES_Points &
-             ( 1, nE_G, 1, nX_G, &
-               E_N (:), &
-               PF_N(:,iPF_D ), &
-               AF_N(:,iAF_T ), &
-               AF_N(:,iAF_Ye), &
-               iS, 2, Sig_1(:,:,iS) )
+    !  ! iMoment = 1
+    !  CALL ComputeNeutrinoOpacities_ES_Points &
+    !         ( 1, nE_G, 1, nX_G, &
+    !           E_N (:), &
+    !           PF_N(:,iPF_D ), &
+    !           AF_N(:,iAF_T ), &
+    !           AF_N(:,iAF_Ye), &
+    !           iS, 1, Sig_0(:,:,iS) )
+    !  ! iMoment = 2
+    !  CALL ComputeNeutrinoOpacities_ES_Points &
+    !         ( 1, nE_G, 1, nX_G, &
+    !           E_N (:), &
+    !           PF_N(:,iPF_D ), &
+    !           AF_N(:,iAF_T ), &
+    !           AF_N(:,iAF_Ye), &
+    !           iS, 2, Sig_1(:,:,iS) )
 
-    END DO
+    !END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)

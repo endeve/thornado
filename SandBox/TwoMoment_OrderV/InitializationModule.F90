@@ -100,6 +100,10 @@ CONTAINS
 
         CALL InitializeFields_GaussianDiffusion( V_0 )
 
+      CASE( 'ExpandingAtmosphere' )
+
+        CALL InitializeFields_ExpandingAtmosphere( V_0 )
+
       CASE( 'HomogeneousSphere1D' )
 
         CALL InitializeFields_HomogeneousSphere1D
@@ -2028,6 +2032,123 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_GaussianDiffusion
+
+
+  SUBROUTINE InitializeFields_ExpandingAtmosphere( V_0 )
+
+    REAL(DP), INTENT(in) :: V_0(3)
+
+    REAL(DP), PARAMETER :: Rmin = 01.0_DP
+    REAL(DP), PARAMETER :: Rmax = 11.0_DP
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNodeX1, iNodeE
+    REAL(DP) :: R
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
+
+        IF( R .LT. Rmin )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+
+        ELSEIF( R .GE. Rmin .AND. R .LE. Rmax )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1) * ( R - Rmin ) / ( Rmax - Rmin )
+
+        ELSE
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+
+        END IF
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    
+    ! --- Radiation Fields ---
+    
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = 1.0d-10
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = Zero
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = Zero
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = Zero
+        
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+      
+         END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_ExpandingAtmosphere
 
 
   SUBROUTINE InitializeFields_HomogeneousSphere1D

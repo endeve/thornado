@@ -47,8 +47,8 @@ MODULE InitializationModule_Neutrinos
     ComputeThermodynamicStates_Primitive_TABLE, &
     ApplyEquationOfState_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeNeutrinoOpacities_EC_Points, &
-    ComputeEquilibriumDistributions_DG_Points
+    ComputeEquilibriumDistributions_DG, &
+    ComputeNeutrinoOpacities_EC
 
   IMPLICIT NONE
   PRIVATE
@@ -321,11 +321,13 @@ CONTAINS
     nE = ( iE_E0 - iE_B0 + 1 ) * nDOFE
 
     ALLOCATE( E_Nu   (nE) )
-    ALLOCATE( R_Nu   (nE   ,nSpecies) )
-    ALLOCATE( Chi    (nE,nR,nSpecies) )
-    ALLOCATE( fEQ    (nE,nR,nSpecies) )
-    ALLOCATE( D_Nu_P (nE,nR,nSpecies) )
-    ALLOCATE( I1_Nu_P(nE,nR,nSpecies) )
+    ALLOCATE( R_Nu   (nE,nSpecies) )
+    ALLOCATE( Chi    (nE,nSpecies,nR) )
+    ALLOCATE( fEQ    (nE,nSpecies,nR) )
+    ALLOCATE( D_Nu_P (nE,nSpecies,nR) )
+    ALLOCATE( I1_Nu_P(nE,nSpecies,nR) )
+
+    Chi = Zero
 
     ! --- Neutrino Energies ---
 
@@ -339,21 +341,21 @@ CONTAINS
 
     ! --- Neutrino Absorption Opacities and Equilibrium Distributions ---
 
-    DO iS = 1, nSpecies
+    CALL ComputeNeutrinoOpacities_EC &
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, Chi )
 
-      CALL ComputeNeutrinoOpacities_EC_Points &
-             ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, iS, Chi(:,:,iS) )
+    DO iR = 1, nR
 
       ! --- Prevent too large drop-off of the opacity -------
       ! --- This is mainly to prevent opacity for Nue_Bar ---
       ! --- be close to zero for low neutrino energies ------
 
-      DO iR = 1, nR
+      DO iS = 1, nSpecies
       DO iE = 1, nE-1
 
-        IF( Chi(iE,iR,iS) < 1.d-16 * Chi(iE+1,iR,iS) )THEN
+        IF( Chi(iE,iS,iR) < 1.d-16 * Chi(iE+1,iS,iR) )THEN
 
-          Chi(1:iE,iR,iS) = Chi(iE+1,iR,iS) * ( E_Nu(1:iE) / E_Nu(iE+1) )**2
+          Chi(1:iE,iS,iR) = Chi(iE+1,iS,iR) * ( E_Nu(1:iE) / E_Nu(iE+1) )**2
 
         END IF
 
@@ -362,9 +364,8 @@ CONTAINS
 
     END DO
 
-    CALL ComputeEquilibriumDistributions_DG_Points &
-           ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, &
-             fEQ(:,:,iNuE), fEQ(:,:,iNuE_Bar), iNuE, iNuE_Bar )
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ )
 
     ! --- Approximate Neutrino Sphere Radii ---
 
@@ -377,7 +378,7 @@ CONTAINS
         IF( Tau > 2.0_DP / 3.0_DP ) CYCLE
 
         Tau = Tau + Half * ( R_P(iR+1) - R_P(iR) ) &
-                         * ( Chi(iE,iR+1,iS) + Chi(iE,iR,iS) )
+                         * ( Chi(iE,iS,iR+1) + Chi(iE,iS,iR) )
 
         R_Nu(iE,iS) = MAX( R_P(iR), 1.0d1 * Kilometer )
 
@@ -388,8 +389,8 @@ CONTAINS
 
     ! --- Homogeneous Sphere Solution ---
 
-    DO iS = 1, nSpecies
     DO iR = 1, nR
+    DO iS = 1, nSpecies
     DO iE = 1, nE
 
       ! --- Use Chi and fEQ at MIN( local radius, neutrino sphere radius ) ---
@@ -397,10 +398,10 @@ CONTAINS
       i = MIN( iR, Locate( R_Nu(iE,iS), R_P, SIZE( R_P ) ) )
 
       CALL ComputeSphereSolution &
-             ( R_Nu(iE,iS), Chi(iE,i,iS), fEQ(iE,i,iS), &
-               R_P(iR), D_Nu_P(iE,iR,iS), I1_Nu_P(iE,iR,iS) )
+             ( R_Nu(iE,iS), Chi(iE,iS,i), fEQ(iE,iS,i), &
+               R_P(iR), D_Nu_P(iE,iS,iR), I1_Nu_P(iE,iS,iR) )
 
-      D_Nu_P(iE,iR,iS) = MAX( D_Nu_P(iE,iR,iS), SqrtTiny )
+      D_Nu_P(iE,iS,iR) = MAX( D_Nu_P(iE,iS,iR), SqrtTiny )
 
     END DO
     END DO
@@ -426,14 +427,14 @@ CONTAINS
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) &
           = Interpolate1D_Linear &
               ( R, R_P(iR), R_P(iR+1), &
-                D_Nu_P ((iE-1)*nDOFE+iNodeE,iR  ,iS), &
-                D_Nu_P ((iE-1)*nDOFE+iNodeE,iR+1,iS) )
+                D_Nu_P ((iE-1)*nDOFE+iNodeE,iS,iR  ), &
+                D_Nu_P ((iE-1)*nDOFE+iNodeE,iS,iR+1) )
 
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) &
           = Interpolate1D_Linear &
               ( R, R_P(iR), R_P(iR+1), &
-                I1_Nu_P((iE-1)*nDOFE+iNodeE,iR  ,iS), &
-                I1_Nu_P((iE-1)*nDOFE+iNodeE,iR+1,iS) )
+                I1_Nu_P((iE-1)*nDOFE+iNodeE,iS,iR  ), &
+                I1_Nu_P((iE-1)*nDOFE+iNodeE,iS,iR+1) )
 
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
@@ -780,11 +781,10 @@ CONTAINS
     END DO
     END DO
 
-    ALLOCATE( f0_P(nE_P,nX_P,nSpecies) )
+    ALLOCATE( f0_P(nE_P,nSpecies,nX_P) )
 
-    CALL ComputeEquilibriumDistributions_DG_Points &
-           ( 1, nE_P, 1, nX_P, E_P, D_P, T_P, Y_P, &
-             f0_P(:,:,iNuE), f0_P(:,:,iNuE_Bar), iNuE, iNuE_Bar )
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE_P, 1, nSpecies, 1, nX_P, E_P, D_P, T_P, Y_P, f0_P )
 
     MaxError = Zero
 
@@ -803,7 +803,7 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        N0 = f0_P(iE_P,iX_P,iS)
+        N0 = f0_P(iE_P,iS,iX_P)
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 

@@ -25,6 +25,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
+    Timer_IMEX, &
     Timer_TimeStepper
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
@@ -205,6 +206,8 @@ CONTAINS
     REAL(DP) :: dU_OffGrid(nCF)
     REAL(DP) :: dM_OffGrid(2*nCR)
     REAL(DP) :: dM_PL(nCR)
+
+    CALL TimersStart( Timer_IMEX )
 
     dM_PL = Zero
 
@@ -433,6 +436,8 @@ CONTAINS
     !$ACC COPYOUT( U, M ) &
     !$ACC DELETE( GE, GX )
 #endif
+
+    CALL TimersStop( Timer_IMEX )
 
   END SUBROUTINE Update_IMEX_RK
 

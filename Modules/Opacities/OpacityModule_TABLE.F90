@@ -64,6 +64,21 @@ MODULE OpacityModule_TABLE
     OPACITIES
 #endif
 
+  REAL(DP), DIMENSION(6), PUBLIC :: &
+    C1, C2
+
+  REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
+  REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
+
+  REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2, C2_NuE     = ( cv - ca )**2
+  REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2, C2_NuE_Bar = ( cv + ca )**2
+
+  REAL(DP), PARAMETER :: C1_NuM     = ( cv + ca - 2.0d0 )**2, C2_NuM     = ( cv - ca         )**2
+  REAL(DP), PARAMETER :: C1_NuM_Bar = ( cv - ca         )**2, C2_NuM_Bar = ( cv + ca - 2.0d0 )**2
+
+  REAL(DP), PARAMETER :: C1_NuT     = ( cv + ca - 2.0d0 )**2, C2_NuT     = ( cv - ca         )**2
+  REAL(DP), PARAMETER :: C1_NuT_Bar = ( cv - ca         )**2, C2_NuT_Bar = ( cv + ca - 2.0d0 )**2
+
   PUBLIC :: InitializeOpacities_TABLE
   PUBLIC :: FinalizeOpacities_TABLE
   PUBLIC :: ComputeAbsorptionOpacity_TABLE
@@ -75,13 +90,13 @@ MODULE OpacityModule_TABLE
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, &
-  !$OMP   Brem_T, Brem_AT )
+  !$OMP   Brem_T, Brem_AT, C1, C2 )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, & 
-  !$ACC   Brem_T, Brem_AT )
+  !$ACC   Brem_T, Brem_AT, C1, C2 )
 #endif
 
 CONTAINS
@@ -205,6 +220,14 @@ CONTAINS
     CALL FinalizeHDF( )
 
     nPointsE = nE * nNodesE
+
+    C1 = [ C1_NuE, C1_NuE_Bar, &
+           C1_NuM, C1_NuM_Bar, &
+           C1_NuT, C1_NuT_Bar ]
+
+    C2 = [ C2_NuE, C2_NuE_Bar, &
+           C2_NuM, C2_NuM_Bar, &
+           C2_NuT, C2_NuT_Bar ]
 
     ! --- Thermodynamic State Indices ---
 
@@ -356,13 +379,13 @@ CONTAINS
     !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP   NES_AT, Pair_AT, Brem_AT )
+    !$OMP   NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$ACC   NES_AT, Pair_AT, Brem_AT )
+    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #endif
 
     ASSOCIATE ( CenterE => MeshE % Center, &

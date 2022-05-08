@@ -7,14 +7,12 @@ ifneq ($(MICROPHYSICS),WEAKLIB)
 EquationOfStateModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
-  DeviceModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
 else ifdef LIBNAME
 EquationOfStateModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
-  DeviceModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
 else
