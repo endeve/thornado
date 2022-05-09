@@ -339,11 +339,11 @@ CONTAINS
     INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
 
-    REAL(DP), PARAMETER :: R_0_A = 2.0d+00 ! --- Radius of Absorbing Region
-    REAL(DP), PARAMETER :: R_0_S = 1.5d+00 ! --- Radius of Radiating Region
+    REAL(DP), PARAMETER :: R_A = 2.0d+00 ! --- Radius of Absorbing Region
+    REAL(DP), PARAMETER :: R_S = 1.5d+00 ! --- Radius of Radiating Region
 
     INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: X1, X2, Distance_A, Distance_S, D0_loc, Chi_loc
+    REAL(DP) :: X1, X2, Radius, Distance_A, WindowFunction, D0, Chi
 
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -359,28 +359,32 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
         X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
 
-        ! Distance to Center of Absorbing Region (r,z) = ( 8, 0 )
-        Distance_A = SQRT( (X1 - 8.d0 )**2 + X2**2 )
-        Chi_loc = Zero
-        D0_loc  = Zero
+        Radius = SQRT( X1**2 + X2**2 )
 
-        IF( Distance_A <= R_0_A )THEN ! Inside Absorbing Region
-           Chi_loc = 10.d0
+        ! --- Distance to Center of Absorbing Region (R,Z) = ( 8, 0 )
+
+        Distance_A = SQRT( ( X1 - 8.0d0 )**2 + X2**2 )
+
+        D0  = Zero
+        Chi = Zero
+
+        IF( Distance_A <= R_A )THEN ! --- Inside Absorbing Region
+
+           Chi = 10.d0
+
         ELSE
-          ! Distance to Center of Radiation Region (r,z) = ( 0, 0 )
-           Distance_S = SQRT( X1**2 + X2**2 )
-           IF( Distance_S <= R_0_S )THEN ! Inside Radiating Region
-             Chi_loc = 10.d0 * EXP( - 2.0d0 * ( Distance_S / R_0_S )**2 )
-             D0_loc  = 1.0d-1
-           END IF
+
+          WindowFunction & ! --- Smoothing
+            = MAX( 1.0d-16, Half * ( One - TANH((Radius-R_S)/0.05_DP) ) )
+
+          Chi = 10.d0 * EXP( - 2.0d0 * ( Radius / R_S )**2 ) * WindowFunction
+          D0  = 1.0d-1 * WindowFunction
+
         END IF
 
-        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) &
-          = D0_loc
-        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) &
-          = Chi_loc
-        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
-          = Zero
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = D0
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) = Chi
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
 
       END DO
 
