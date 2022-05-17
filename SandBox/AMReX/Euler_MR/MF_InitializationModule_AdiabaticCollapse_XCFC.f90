@@ -1,6 +1,5 @@
 MODULE MF_InitializationModule_AdiabaticCollapse_XCFC
 
-use amrex_amrcore_module,only:amrex_geom
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
@@ -10,6 +9,8 @@ use amrex_amrcore_module,only:amrex_geom
     amrex_mfiter
   USE amrex_geometry_module, ONLY: &
     amrex_geometry
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
@@ -170,10 +171,11 @@ CONTAINS
       iX_B = BX % lo
       iX_E = BX % hi
 
-      IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B(1) - swX(1)
-      IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E(1) + swX(1)
+      IF( BX % lo(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) ) &
+        iX_B(1) = iX_B(1) - swX(1)
 
-      print*,amrex_geom % DOMAIN % hi( 1 )
+      IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) ) &
+        iX_E(1) = iX_E(1) + swX(1)
 
       DO iX3 = iX_B(3), iX_E(3)
       DO iX2 = iX_B(2), iX_E(2)
