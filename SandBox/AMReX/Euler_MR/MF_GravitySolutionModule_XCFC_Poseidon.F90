@@ -54,7 +54,21 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E
+    iCF_E, &
+    iCF_Ne, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne, &
+    nPF
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   ! --- Local Modules ---
 
@@ -63,6 +77,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     Zero, &
     Half, &
     One, &
+    Three, &
     SqrtTiny
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -107,6 +122,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: ComputeConformalFactor_Poseidon_MF
   PUBLIC :: ComputeGeometry_Poseidon_MF
   PUBLIC :: ComputeConformalFactorSources_XCFC_MF
+  PUBLIC :: ComputePressureTensorTrace_XCFC_MF
 
   INTEGER, PARAMETER :: iMF_Psi      = 1
   INTEGER, PARAMETER :: iMF_Alpha    = 2
@@ -380,6 +396,147 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeConformalFactorSources_XCFC_MF
+
+
+  SUBROUTINE ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! This is U^{*}
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+
+    INTEGER :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER :: iX_B0(3), iX_E0(3)
+    INTEGER :: jErr
+    INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+
+    REAL(DP) :: uPF(nPF), Pressure, Psi6
+
+!    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
+                               iX_B0(2):iX_E0(2), &
+                               iX_B0(3):iX_E0(3)) )
+
+        jErr = 0
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          iErr(iNX,iX1,iX2,iX3) = 0
+
+          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+
+          ! --- Compute trace of stress tensor ---
+
+          CALL ComputePrimitive_Euler_Relativistic &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                   uPF(iPF_D ), &
+                   uPF(iPF_V1), &
+                   uPF(iPF_V2), &
+                   uPF(iPF_V3), &
+                   uPF(iPF_E ), &
+                   uPF(iPF_Ne), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                   iErr(iNX,iX1,iX2,iX3) )
+
+          jErr = jErr + iErr(iNX,iX1,iX2,iX3)
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+
+          uGF(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
+            =   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
+              + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
+              + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
+              + Psi6 * Three * Pressure
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        IF( jErr .NE. 0 )THEN
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+          DO iNX = 1, nDOFX
+
+            IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+              WRITE(*,*) 'ERROR'
+              WRITE(*,*) '-----'
+              WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
+              WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Poseidon'
+              WRITE(*,*) 'iX_B0: ', iX_B0
+              WRITE(*,*) 'iX_E0: ', iX_E0
+              WRITE(*,*) 'iX1, iX2, iX3: ', iX1, iX2, iX3
+
+              CALL DescribeError_Euler &
+                ( iErr(iNX,iX1,iX2,iX3), &
+                  Int_Option = [ iNX ], &
+                  Real_Option &
+                    = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX), &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX), &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX), &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX), &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX), &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX), &
+                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
+
+            END IF
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+        DEALLOCATE( iErr )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+!    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
+
+  END SUBROUTINE ComputePressureTensorTrace_XCFC_MF
 
 
   ! --- PRIVATE SUBROUTINES ---
