@@ -49,6 +49,12 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iGF_K_dd_23, &
     iGF_K_dd_33, &
     nGF
+  USE FluidFieldsModule, ONLY: &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E
 
   ! --- Local Modules ---
 
@@ -100,6 +106,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: FinalizeGravitySolver_XCFC_Poseidon_MF
   PUBLIC :: ComputeConformalFactor_Poseidon_MF
   PUBLIC :: ComputeGeometry_Poseidon_MF
+  PUBLIC :: ComputeConformalFactorSources_XCFC_MF
 
   INTEGER, PARAMETER :: iMF_Psi      = 1
   INTEGER, PARAMETER :: iMF_Alpha    = 2
@@ -308,6 +315,73 @@ CONTAINS
   END SUBROUTINE ComputeGeometry_Poseidon_MF
 
 
+  SUBROUTINE ComputeConformalFactorSources_XCFC_MF &
+    ( MF_uGF, MF_uCF, MF_uGS )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! This is U^{*}
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3)
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          uGS      (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
+            =   uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
+              + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX)
+
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S1      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) &
+                / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
+
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S2      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) &
+                / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
+
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S3      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) &
+                / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+  END SUBROUTINE ComputeConformalFactorSources_XCFC_MF
+
+
   ! --- PRIVATE SUBROUTINES ---
 
 
@@ -319,8 +393,8 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
     INTEGER  :: iX_B0(3), iX_E0(3)
@@ -393,8 +467,8 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3)
@@ -471,11 +545,11 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
 
-    INTEGER :: iLevel, iX1, iX2, iX3, iGF, nX1_X
+    INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: iNX1, iNX2, iNX3, iNX
     INTEGER :: jNX1, jNX
