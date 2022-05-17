@@ -19,8 +19,13 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     nNodesX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX
+    NodeNumberTableX, &
+    nDOFX_X1
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    LX_X1_Up
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -42,7 +47,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iGF_K_dd_13, &
     iGF_K_dd_22, &
     iGF_K_dd_23, &
-    iGF_K_dd_33
+    iGF_K_dd_33, &
+    nGF
 
   ! --- Local Modules ---
 
@@ -50,6 +56,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     DP, &
     Zero, &
     Half, &
+    One, &
     SqrtTiny
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -465,8 +472,10 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
 
-    INTEGER :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER :: iLevel, iX1, iX2, iX3, iGF, nX1_X
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: iNX1, iNX2, iNX3, iNX
     INTEGER :: jNX1, jNX
@@ -484,7 +493,9 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        IF( iX_B0(1) .EQ. amrex_geom % domain % lo( 1 ) )THEN
+        ! --- Inner Boundary: Reflecting ---
+
+        IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
@@ -492,8 +503,6 @@ CONTAINS
             DO iNX3 = 1, nNodesX(3)
             DO iNX2 = 1, nNodesX(2)
             DO iNX1 = 1, nNodesX(1)
-
-              ! --- Inner Boundary: Reflecting ---
 
               jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
@@ -543,78 +552,58 @@ CONTAINS
 
             END DO
             END DO
+            END DO
 
-          END DO
-          END DO
           END DO
           END DO
 
         END IF
 
-        IF( iX_E0(1) .EQ. amrex_geom % domain % hi( 1 ) )THEN
+        ! --- Upper Boundary ---
 
+        IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
+
+          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+
+          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+
+          DO iGF = 1       , nGF
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX = 1       , nDOFX
 
-            DO iNX3 = 1, nNodesX(3)
-            DO iNX2 = 1, nNodesX(2)
-            DO iNX1 = 1, nNodesX(1)
-
-              ! --- Outer Boundary: Dirichlet ---
-
-              jNX1 = ( nNodesX(1) - iNX1 ) + 1
-
-              iNX = NodeNumberX( iNX1, iNX2, iNX3 )
-              jNX = NodeNumberX( jNX1, iNX2, iNX3 )
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Alpha-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Psi-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
-                = -uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_1-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_2-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_3-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_h_1-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_h_2-1)+jNX)
-
-              uGF     (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) &
-                = +uGF(iX_E0(1)  ,iX2,iX3,nDOFX*(iGF_h_3-1)+jNX)
-
-              uGF         (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
-                = MAX( uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX)**2, &
-                       SqrtTiny )
-
-              uGF         (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
-                = MAX( uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX)**2, &
-                       SqrtTiny )
-
-              uGF         (iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
-                = MAX( uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)**2, &
-                       SqrtTiny )
-
-              uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
-                =   uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
-                  * uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
-                  * uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)
-
-            END DO
-            END DO
+            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
 
           END DO
           END DO
           END DO
           END DO
+
+          DO iGF = 1, nGF
+
+            CALL MatrixMatrixMultiply &
+                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
+                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
+                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
+                     nDOFX_X1 )
+
+          END DO
+
+          DO iGF = 1       , nGF
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX = 1       , nDOFX
+
+            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+          DEALLOCATE( G_F )
+          DEALLOCATE( G_K )
 
         END IF
 
