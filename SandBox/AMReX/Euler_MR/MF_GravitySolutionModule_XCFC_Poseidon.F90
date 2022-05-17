@@ -56,6 +56,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
@@ -123,6 +124,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: ComputeGeometry_Poseidon_MF
   PUBLIC :: ComputeConformalFactorSources_XCFC_MF
   PUBLIC :: ComputePressureTensorTrace_XCFC_MF
+  PUBLIC :: MultiplyWithPsi6_MF
 
   INTEGER, PARAMETER :: iMF_Psi      = 1
   INTEGER, PARAMETER :: iMF_Alpha    = 2
@@ -537,6 +539,65 @@ CONTAINS
 !    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
   END SUBROUTINE ComputePressureTensorTrace_XCFC_MF
+
+
+  SUBROUTINE MultiplyWithPsi6_MF( MF_uGF, Power, MF_uCF )
+
+    INTEGER             , INTENT(in)    :: Power
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iCF
+    INTEGER  :: iX_B0(3), iX_E0(3)
+
+    REAL(DP) :: Psi6
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+
+          DO iCF = 1, nCF
+
+            uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) &
+              = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) * Psi6**( Power )
+
+          END DO
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+  END SUBROUTINE MultiplyWithPsi6_MF
 
 
   ! --- PRIVATE SUBROUTINES ---
