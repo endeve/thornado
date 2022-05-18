@@ -102,7 +102,8 @@ MODULE MF_UtilitiesModule
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, &
-    nSpecies
+    nSpecies, &
+    UseTiling
 
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
@@ -332,7 +333,7 @@ MODULE MF_UtilitiesModule
 
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -694,7 +695,7 @@ MODULE MF_UtilitiesModule
     WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

@@ -35,6 +35,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nSpecies, &
+    UseTiling, &
     nE
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
@@ -97,7 +98,7 @@ CONTAINS
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

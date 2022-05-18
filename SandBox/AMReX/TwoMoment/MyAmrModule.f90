@@ -52,6 +52,7 @@ MODULE MyAmrModule
   REAL(AR)                       :: eL, eR, zoomE
   REAL(AR)                       :: D_0, Chi, Sigma
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
+  CHARACTER(LEN=:),  ALLOCATABLE :: Direction
   CHARACTER(LEN=:),  ALLOCATABLE :: Scheme
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL,           SAVE        :: UsePhysicalUnits
@@ -72,6 +73,7 @@ MODULE MyAmrModule
   TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
+  LOGICAL                                    :: UseTiling
 
   ! --- Equation Of State ---
   REAL(AR)                      :: Gamma_IDEAL
@@ -120,6 +122,9 @@ CONTAINS
     Sigma = 0.0_AR
     D_0 = 0.0_AR
     dt_rel = 0.0_AR
+
+    Direction = ' '
+
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
@@ -148,6 +153,8 @@ CONTAINS
       CALL PP % get   ( 'iCycleChk',        iCycleChk )
       CALL PP % get   ( 'iRestart',         iRestart )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
+      CALL PP % query ( 'Direction', Direction )
+
     CALL amrex_parmparse_destroy( PP )
           
 
@@ -221,6 +228,7 @@ CONTAINS
     BlockingFactorX1 = 1
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
+    UseTiling        = .TRUE.
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell',            nX )
       CALL PP % query ( 'max_grid_size_x',   MaxGridSizeX1 )
@@ -230,6 +238,7 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
       CALL PP % get   ( 'max_level',         MaxLevel )
+      CALL PP % query ( 'UseTiling'        , UseTiling        )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
@@ -253,7 +262,7 @@ CONTAINS
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
     ! --- Positivitiy limiter parameters PL.* ---
-    UsePositivityLimiter = .TRUE.
+    UsePositivityLimiter = .FALSE.
     Min_1                = 1.0e-12_AR
     Min_2                = 1.0e-12_AR
     CALL amrex_parmparse_build( PP, 'PL' )
@@ -263,7 +272,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.* ---
-    UseSlopeLimiter = .TRUE.
+    UseSlopeLimiter = .FALSE.
     BetaTVD = 1.0_AR
     CALL amrex_parmparse_build( PP, 'SL' )
       CALL PP % query( 'UseSlopeLimiter', UseSlopeLimiter )

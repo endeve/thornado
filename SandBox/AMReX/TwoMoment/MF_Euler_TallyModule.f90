@@ -53,7 +53,8 @@ MODULE MF_Euler_TallyModule
     nLevels, &
     ProgramName, &
     xL, &
-    xR
+    xR, &
+    UseTiling
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X
 
@@ -287,7 +288,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       BaryonicMass_Interior(iLevel) = Zero
       Energy_Interior      (iLevel) = Zero

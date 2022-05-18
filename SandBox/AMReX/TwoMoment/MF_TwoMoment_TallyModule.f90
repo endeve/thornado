@@ -77,6 +77,7 @@ MODULE MF_TwoMoment_TallyModule
     eL, &
     eR, &
     nE, &
+    UseTiling, &
     zoomE
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
@@ -270,7 +271,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       Neutrino_LeptonNumber(iLevel) = Zero
       Neutrino_Energy(iLevel)       = Zero
