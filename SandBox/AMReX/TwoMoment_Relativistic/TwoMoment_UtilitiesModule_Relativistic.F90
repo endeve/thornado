@@ -999,7 +999,7 @@ CONTAINS
 
     u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
     u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
-    u_u_3 = W * ( V_u_2 - B_u_2 / alp ) 
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
 
 
     h_u_1 = I_u_1 / ( FF * D )
@@ -2138,8 +2138,7 @@ CONTAINS
           - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-
-
+    
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
@@ -2334,7 +2333,7 @@ CONTAINS
   FUNCTION Source_E( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                       alp, B_u_1, B_u_2, B_u_3, U_u, U_d, dU_dX0, dU_dX1, dU_dX2, dU_dX3, &
                       dU_dX0_COV, dU_dX1_COV, dU_dX2_COV, dU_dX3_COV, &
-                      dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, E, R  )
+                      dG_dd_dX1, dG_dd_dX2, dG_dd_dX3  )
 
 ! negative sign has been incorperated into Flux_E
 
@@ -2346,8 +2345,8 @@ CONTAINS
     REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3) 
     REAL(DP), INTENT(in) :: dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
     REAL(DP), INTENT(in) :: dU_dX0_COV(0:3), dU_dX1_COV(0:3), dU_dX2_COV(0:3), dU_dX3_COV(0:3)
-    REAL(DP), INTENT(in) :: dG_dd_dX1(0:3,0:3), dG_dd_dX2(0:3,0:3), dG_dd_dX3(0:3,0:3), R
-    REAL(DP) :: dG_dd_dX(1:3,0:3,0:3), E
+    REAL(DP), INTENT(in) :: dG_dd_dX1(0:3,0:3), dG_dd_dX2(0:3,0:3), dG_dd_dX3(0:3,0:3)
+    REAL(DP) :: dG_dd_dX(1:3,0:3,0:3)
     REAL(DP) :: V_0, B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: I(0:3), k_uu_munu(0:3,0:3), k_ud_munu(0:3,0:3), l_uud_munurho(0:3,0:3,0:3), dU_dX(0:3,0:3), dU_dX_COV(0:3,0:3)
     INTEGER :: mu, nu, j
