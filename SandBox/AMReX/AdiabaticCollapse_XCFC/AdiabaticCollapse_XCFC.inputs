@@ -43,6 +43,13 @@ amr.blocking_factor_x = 8
 amr.max_level         = 0
 amr.ref_ratio         = 2
 
+# Poseidon parameters
+poseidon.fem_degree        = 1
+poseidon.l_limit           = 0
+poseidon.max_fp_iters      = 10
+poseidon.anderson_m        = 3
+poseidon.converge_criteria = 1.0e-10
+
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 0
 SL.SlopeLimiterMethod        = "TVD"
