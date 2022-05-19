@@ -1,7 +1,7 @@
 MODULE TwoMoment_OpacityModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Three
+    DP, Zero, Half, One, Three, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFE
@@ -31,7 +31,7 @@ MODULE TwoMoment_OpacityModule_OrderV
 CONTAINS
 
 
-  SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma )
+  SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -39,15 +39,31 @@ CONTAINS
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in) :: &
       D0, Chi, Sigma
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A)') '', 'Setting Opacities:'
-    WRITE(*,*)
-    WRITE(*,'(A7,A8,ES10.4E2)') '',    'D0 = ', D0
-    WRITE(*,'(A7,A8,ES10.4E2)') '',   'Chi = ', Chi
-    WRITE(*,'(A7,A8,ES10.4E2)') '', 'Sigma = ', Sigma
+    LOGICAL :: Verbose
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Setting Opacities:'
+      WRITE(*,*)
+      WRITE(*,'(A7,A8,ES10.4E2)') '',    'D0 = ', D0
+      WRITE(*,'(A7,A8,ES10.4E2)') '',   'Chi = ', Chi
+      WRITE(*,'(A7,A8,ES10.4E2)') '', 'Sigma = ', Sigma
+    END IF
 
     SELECT CASE( TRIM( ProgramName ) )
+
+      CASE( 'ExpandingAtmosphere' )
+
+        CALL SetOpacities_ExpandingAtmosphere &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
       CASE( 'HomogeneousSphere1D' )
 
@@ -59,6 +75,16 @@ CONTAINS
         CALL SetOpacities_HomogeneousSphere2D &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
 
+      CASE( 'ShadowCasting2D_Cartesian' )
+
+        CALL SetOpacities_ShadowCasting2D_Cartesian &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+      CASE( 'ShadowCasting2D_Cylindrical' )
+
+        CALL SetOpacities_ShadowCasting2D_Cylindrical &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
       CASE DEFAULT
 
         uOP(:,:,:,:,:,iOP_D0   ,:) = D0
@@ -68,6 +94,71 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE SetOpacities
+
+
+  SUBROUTINE SetOpacities_ExpandingAtmosphere &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+
+    REAL(DP), PARAMETER :: Rmax  = 11.0_DP
+    REAL(DP), PARAMETER :: E_0   = 3.0_DP
+    REAL(DP), PARAMETER :: Delta = 0.2_DP
+    REAL(DP), PARAMETER :: Alpha = 10.9989_DP
+
+    INTEGER  :: iNodeZ, iNodeZ1, iNodeZ2
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: E, R
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeZ1 = NodeNumberTableZ(1,iNodeZ)
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+
+        E = NodeCoordinate( MeshE   , iZ1, iNodeZ1 )
+        R = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+
+        IF( R < Rmax )THEN
+
+          IF( E > E_0 )THEN
+
+            uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi,iS) = 1.0d1 * Alpha / R**2
+
+          ELSE
+
+            uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi,iS) &
+              = Alpha * ( 1.0d1 * EXP( - (E-E_0)**2/Delta**2 ) &
+                           + (One-EXP( - (E-E_0)**2/Delta**2 )) ) / R**2 
+
+          END IF
+
+        ELSE
+
+          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi,iS) = Zero
+
+        END IF
+
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = One / ( EXP(E) - One )
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetOpacities_ExpandingAtmosphere
 
 
   SUBROUTINE SetOpacities_HomogeneousSphere1D &
@@ -176,6 +267,134 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetOpacities_HomogeneousSphere2D
+
+
+  SUBROUTINE SetOpacities_ShadowCasting2D_Cartesian &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+
+    REAL(DP), PARAMETER :: R_0_A = 2.0d+00 ! --- Radius of Absorbing Region
+    REAL(DP), PARAMETER :: R_0_S = 1.5d+00 ! --- Radius of Radiating Region
+
+    INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: X1, X2, Distance_A, Distance_S, D0_loc, Chi_loc
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+        iNodeZ3 = NodeNumberTableZ(3,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+        X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
+
+        ! Distance to Center of Absorbing Region (x,y) = ( 11, 0 )
+        Distance_A = SQRT( (X1 - 1.1d1 )**2 + X2**2 )
+        Chi_loc = Zero
+        D0_loc  = Zero
+
+        IF( Distance_A <= R_0_A )THEN ! Inside Absorbing Region
+           Chi_loc = 10.d0
+        ELSE
+          ! Distance to Center of Radiation Region (x,y) = ( 3, 0 )
+           Distance_S = SQRT( (X1 - 3.0d0 )**2 + X2**2 )
+           IF( Distance_S <= R_0_S )THEN ! Inside Radiating Region
+             Chi_loc = 10.d0 * EXP( - 2.0d0 * ( Distance_S / R_0_S )**2 )
+             D0_loc  = 1.0d-1
+           END IF
+        END IF
+
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) &
+          = D0_loc
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) &
+          = Chi_loc
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
+          = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetOpacities_ShadowCasting2D_Cartesian
+
+
+  SUBROUTINE SetOpacities_ShadowCasting2D_Cylindrical &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+
+    REAL(DP), PARAMETER :: R_A = 2.0d+00 ! --- Radius of Absorbing Region
+    REAL(DP), PARAMETER :: R_S = 1.5d+00 ! --- Radius of Radiating Region
+
+    INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: X1, X2, Radius, Distance_A, WindowFunction, D0, Chi
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+        iNodeZ3 = NodeNumberTableZ(3,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+        X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
+
+        Radius = SQRT( X1**2 + X2**2 )
+
+        ! --- Distance to Center of Absorbing Region (R,Z) = ( 8, 0 )
+
+        Distance_A = SQRT( ( X1 - 8.0d0 )**2 + X2**2 )
+
+        D0  = Zero
+        Chi = Zero
+
+        IF( Distance_A <= R_A )THEN ! --- Inside Absorbing Region
+
+           Chi = 10.d0
+
+        ELSE
+
+          WindowFunction & ! --- Smoothing
+            = MAX( 1.0d-16, Half * ( One - TANH((Radius-R_S)/0.05_DP) ) )
+
+          Chi = 10.d0 * EXP( - 2.0d0 * ( Radius / R_S )**2 ) * WindowFunction
+          D0  = 1.0d-1 * WindowFunction
+
+        END IF
+
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = D0
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) = Chi
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetOpacities_ShadowCasting2D_Cylindrical
 
 
   SUBROUTINE CreateOpacities( nX, swX, nE, swE, Verbose_Option )

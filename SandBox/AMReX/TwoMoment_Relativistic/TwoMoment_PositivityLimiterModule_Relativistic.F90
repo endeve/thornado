@@ -5,7 +5,7 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
     SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nNodesZ, &
-    nDOFE, nDOFX, nNodesX
+    nDOFE, nDOFX, nNodesX, nNodesE
   USE ReferenceElementModule, ONLY: &
     nDOF_E, &
     nDOF_X1, &
@@ -55,12 +55,13 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
   INTEGER               :: N_R
-  INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
-  INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
+  INTEGER,    PARAMETER :: nPS_Z = 9  ! Number of Positive Point Sets
+  INTEGER               :: nPP_Z(nPS_Z) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total Number of Positive Points
   REAL(DP)              :: Min_1, Max_1, Min_2
   REAL(DP),   PARAMETER :: One_EPS = One - 1.0d1 * EPSILON( One )
   REAL(DP), ALLOCATABLE :: InterpMat(:,:)
+  INTEGER,  ALLOCATABLE :: PointZ2X(:)
 
   INTEGER, PARAMETER    :: nPS_X = 7  ! Number of Positive Point Sets Euler
   INTEGER               :: nPP_X(nPS_X) ! Number of Positive Points Per Set Euler
@@ -82,7 +83,7 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i, iNodeZ, iNodeX, iOS, iOS_X, iDim
-
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeE, iP_X, iP_Z
     IF( PRESENT( Min_1_Option ) )THEN
       Min_1 = Min_1_Option
     ELSE
@@ -128,19 +129,19 @@ CONTAINS
 
     END IF
 
-    nPP    = 0
-    nPP(1) = PRODUCT( nNodesZ )
+    nPP_Z    = 0
+    nPP_Z(1) = PRODUCT( nNodesZ )
 
     DO i = 1, 4
 
       IF( nNodesZ(i) > 1 )THEN
 
-        nPP(2*i:2*i+1) = PRODUCT( nNodesZ, MASK = [1,2,3,4] .NE. i )
+        nPP_Z(2*i:2*i+1) = PRODUCT( nNodesZ, MASK = [1,2,3,4] .NE. i )
 
       END IF
 
     END DO
-    nPT = SUM( nPP )
+    nPT = SUM( nPP_Z )
 
 
 
@@ -155,46 +156,46 @@ CONTAINS
       InterpMat(iNodeZ,iNodeZ) = One
 
 
-      IF( SUM( nPP(2:3) ) > 0 )THEN
+      IF( SUM( nPP_Z(2:3) ) > 0 )THEN
 
-        iOS = nPP(1)
+        iOS = nPP_Z(1)
 
         InterpMat(iOS+1:iOS+nDOF_E,iNodeZ) = L_E_Dn(1:nDOF_E,iNodeZ)
 
 
-        iOS = iOS + nPP(2)
+        iOS = iOS + nPP_Z(2)
 
         InterpMat(iOS+1:iOS+nDOF_E,iNodeZ) = L_E_Up(1:nDOF_E,iNodeZ)
 
 
       END IF
 
-      IF( SUM( nPP(4:5) ) > 0 )THEN
+      IF( SUM( nPP_Z(4:5) ) > 0 )THEN
 
-        iOS = SUM( nPP(1:3) )
+        iOS = SUM( nPP_Z(1:3) )
         InterpMat(iOS+1:iOS+nDOF_X1,iNodeZ) = L_X1_Dn(1:nDOF_X1,iNodeZ)
 
-        iOS = iOS + nPP(4)
+        iOS = iOS + nPP_Z(4)
         InterpMat(iOS+1:iOS+nDOF_X1,iNodeZ) = L_X1_Up(1:nDOF_X1,iNodeZ)
 
       END IF
 
-      IF( SUM( nPP(6:7) ) > 0 )THEN
+      IF( SUM( nPP_Z(6:7) ) > 0 )THEN
 
-        iOS = SUM( nPP(1:5) )
+        iOS = SUM( nPP_Z(1:5) )
         InterpMat(iOS+1:iOS+nDOF_X2,iNodeZ) = L_X2_Dn(1:nDOF_X2,iNodeZ)
 
-        iOS = iOS + nPP(6)
+        iOS = iOS + nPP_Z(6)
         InterpMat(iOS+1:iOS+nDOF_X2,iNodeZ) = L_X2_Up(1:nDOF_X2,iNodeZ)
 
       END IF
 
-      IF( SUM( nPP(8:9) ) > 0 )THEN
+      IF( SUM( nPP_Z(8:9) ) > 0 )THEN
 
-        iOS = SUM( nPP(1:7) )
+        iOS = SUM( nPP_Z(1:7) )
         InterpMat(iOS+1:iOS+nDOF_X3,iNodeZ) = L_X3_Dn(1:nDOF_X3,iNodeZ)
 
-        iOS = iOS + nPP(8)
+        iOS = iOS + nPP_Z(8)
         InterpMat(iOS+1:iOS+nDOF_X3,iNodeZ) = L_X3_Up(1:nDOF_X3,iNodeZ)
 
       END IF
@@ -262,7 +263,206 @@ CONTAINS
 
 
     END DO
+    ! --- Index Map from Energy-Position to Position ---
 
+    ALLOCATE( PointZ2X(nPT) )
+
+    iP_Z = 0
+    iP_X = 0
+    DO iNodeX3 = 1, nNodesX(3)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
+
+      iP_X = iP_X + 1
+
+      DO iNodeE  = 1, nNodesE
+
+        iP_Z = iP_Z + 1
+
+        PointZ2X(iP_Z) = iP_X
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    IF( nPP_Z(2) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:1) )
+      iP_X = 0
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_Z = iP_Z + 1
+        iP_X = iP_X + 1
+
+        PointZ2X(iP_Z) = iP_X
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(3) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:2) )
+      iP_X = 0
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_Z = iP_Z + 1
+        iP_X = iP_X + 1
+
+        PointZ2X(iP_Z) = iP_X
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(4) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:3) )
+      iP_X = SUM( nPP_X(1:1) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(5) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:4) )
+      iP_X = SUM( nPP_X(1:2) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(6) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:5) )
+      iP_X = SUM( nPP_X(1:3) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(7) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:6) )
+      iP_X = SUM( nPP_X(1:4) )
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(8) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:7) )
+      iP_X = SUM( nPP_X(1:5) )
+
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
+
+    IF( nPP_Z(9) > 0 )THEN
+
+      iP_Z = SUM( nPP_Z(1:8) )
+      iP_X = SUM( nPP_X(1:6) )
+
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iP_X = iP_X + 1
+
+        DO iNodeE = 1, nNodesE
+
+          iP_Z = iP_Z + 1
+
+          PointZ2X(iP_Z) = iP_X
+
+        END DO
+
+      END DO
+      END DO
+
+    END IF
 
 
 
@@ -744,7 +944,9 @@ m=0
 
         DO iP = 1, nPT
 
-          CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
+          !CALL PointsZtoPointsX( nNodesX(1), iP, iP_X )
+
+          iP_X = PointZ2X(iP)
 
           Gamma &
             = GammaFun &
@@ -1058,42 +1260,42 @@ print*, n, m
 
   END SUBROUTINE SolveTheta_Bisection
 
-  SUBROUTINE PointsZtoPointsX( nNodes, iPT_Z, iPT_X )
-
-
-    INTEGER, INTENT(in)  :: nNodes, iPT_Z
-    INTEGER, INTENT(out) :: iPT_X
-
-    IF (nNodes .EQ. 2) THEN
-      
-      IF(iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 10) THEN
-        iPT_X = 1
-      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 7) THEN
-        iPT_X = 2      
-      ELSE IF(iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 8) THEN
-        iPT_X = 3
-      ELSE IF(iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 12) THEN
-        iPT_X = 4
-      END IF
-
-    ELSE IF(nNodes .EQ. 3) THEN
-
-      IF(iPT_Z .EQ. 16 .OR. iPT_Z .EQ. 17 .OR. iPT_Z .EQ. 18) THEN
-        iPT_X = 1
-      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 10 .OR. iPT_Z .EQ. 13) THEN
-        iPT_X = 2      
-      ELSE IF(iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 14) THEN
-        iPT_X = 3
-      ELSE IF(iPT_Z .EQ. 7 .OR. iPT_Z .EQ. 8 .OR. iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 12 .OR. iPT_Z .EQ. 15) THEN
-        iPT_X = 4
-      ELSE IF(iPT_Z .EQ. 19 .OR. iPT_Z .EQ. 20 .OR. iPT_Z .EQ. 21) THEN
-        iPT_X = 5
-      END IF
-
-    END IF
-
-  END SUBROUTINE
-
+!  SUBROUTINE PointsZtoPointsX( nNodes, iPT_Z, iPT_X )
+!
+!
+!    INTEGER, INTENT(in)  :: nNodes, iPT_Z
+!    INTEGER, INTENT(out) :: iPT_X
+!
+!    IF (nNodes .EQ. 2) THEN
+!      
+!      IF(iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 10) THEN
+!        iPT_X = 1
+!      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 7) THEN
+!        iPT_X = 2      
+!      ELSE IF(iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 8) THEN
+!        iPT_X = 3
+!      ELSE IF(iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 12) THEN
+!        iPT_X = 4
+!      END IF
+!
+!    ELSE IF(nNodes .EQ. 3) THEN
+!
+!      IF(iPT_Z .EQ. 16 .OR. iPT_Z .EQ. 17 .OR. iPT_Z .EQ. 18) THEN
+!        iPT_X = 1
+!      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 10 .OR. iPT_Z .EQ. 13) THEN
+!        iPT_X = 2      
+!      ELSE IF(iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 14) THEN
+!        iPT_X = 3
+!      ELSE IF(iPT_Z .EQ. 7 .OR. iPT_Z .EQ. 8 .OR. iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 12 .OR. iPT_Z .EQ. 15) THEN
+!        iPT_X = 4
+!      ELSE IF(iPT_Z .EQ. 19 .OR. iPT_Z .EQ. 20 .OR. iPT_Z .EQ. 21) THEN
+!        iPT_X = 5
+!      END IF
+!
+!    END IF
+!
+!  END SUBROUTINE
+!
   SUBROUTINE CheckCellAverageRealizability(iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
               V_1_P, V_2_P, V_3_P, G_11_P, G_22_P, G_33_P, &
               A_P, B1_P, B2_P, B3_P, RealizableCellAverage)

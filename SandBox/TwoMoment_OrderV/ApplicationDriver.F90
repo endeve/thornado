@@ -47,6 +47,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
   INTEGER       :: nNodes
+  INTEGER       :: nSpecies
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
@@ -58,6 +59,8 @@ PROGRAM ApplicationDriver
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'SineWaveStreaming'
+
+  nSpecies = 1
 
   C_TCI = 1.0_DP
   UseTroubledCellIndicator = .FALSE.
@@ -81,6 +84,7 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 1
 
+      nSpecies = 6
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
@@ -132,6 +136,37 @@ PROGRAM ApplicationDriver
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .FALSE.
+      UseEnergyLimiter     = .FALSE.
+
+    CASE( 'SphericalDiffusion' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 50, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP,     Pi,  TwoPi ]
+      bcX = [ 31, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 5.0d+0
+      iCycleD = 50
+      iCycleW = 50
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 1.0d+2
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
 
     CASE( 'IsotropicRadiation' )
@@ -473,6 +508,39 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
 
+    CASE( 'ExpandingAtmosphere' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 200, 1, 1 ]
+      xL  = [  0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 15.0_DP,     Pi,  TwoPi ]
+      bcX = [ 31, 1, 1 ]
+
+      nE  = 50
+      eL  = 00.0_DP
+      eR  = 12.0_DP
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.5d+1
+      iCycleD = 100
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+
     CASE( 'HomogeneousSphere1D' )
 
       CoordinateSystem = 'SPHERICAL'
@@ -535,6 +603,39 @@ PROGRAM ApplicationDriver
 
       D_0   = 0.8_DP
       Chi   = 4.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+
+    CASE( 'ShadowCasting2D_Cylindrical' )
+
+      CoordinateSystem = 'CYLINDRICAL'
+
+      nX  = [ 240, 200, 1 ]
+      xL  = [ 00.0_DP, - 5.0_DP, 0.0_DP ]
+      xR  = [ 12.0_DP, + 5.0_DP,  TwoPi ]
+      bcX = [ 30, 2, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.5d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
       Sigma = 0.0_DP
 
       UseSlopeLimiter      = .FALSE.
@@ -763,6 +864,8 @@ CONTAINS
                = nNodes, &
              CoordinateSystem_Option &
                = TRIM( CoordinateSystem ), &
+             nSpecies_Option &
+               = nSpecies, &
              BasicInitialization_Option &
                = .TRUE. )
 

@@ -18,8 +18,7 @@ MODULE RadiationFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iNuT     = 5 ! Tau Neutrino
   INTEGER, PUBLIC, PARAMETER :: iNuT_Bar = 6 ! Tau Antineutrino
 
-  REAL(DP), DIMENSION(6), PUBLIC, PARAMETER :: &
-    LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
+  REAL(DP), DIMENSION(6), PUBLIC :: LeptonNumber
 
   ! --- Eulerian (Conserved) Radiation Fields ---
 
@@ -91,6 +90,12 @@ MODULE RadiationFieldsModule
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET( LeptonNumber )
+#elif defined(THORNADO_OACC)
+    !$ACC DECLARE CREATE( LeptonNumber )
+#endif
+
 CONTAINS
 
 
@@ -131,6 +136,14 @@ CONTAINS
     Discontinuity = 0.0_DP
 
     CALL SetUnitsRadiationFields
+
+    LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( LeptonNumber )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( LeptonNumber )
+#endif
 
   END SUBROUTINE CreateRadiationFields
 

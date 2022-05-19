@@ -34,6 +34,7 @@ MODULE MF_TwoMoment_PositivityLimiter
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nSpecies, &
+    UseTiling, &
     nE
 
   IMPLICIT NONE
@@ -83,7 +84,7 @@ CONTAINS
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -152,6 +153,9 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
 
+        DEALLOCATE( G )
+        DEALLOCATE( C )
+        DEALLOCATE( U )
       END DO
 
       CALL amrex_mfiter_destroy( MFI )

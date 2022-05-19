@@ -45,7 +45,7 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ApplySlopeLimiter
   ! --- Local Modules ---
   USE MyAmrModule,                      ONLY: &
-    nLevels, DEBUG
+    nLevels, DEBUG, UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -144,7 +144,7 @@ CONTAINS
 
         ! --- Copy ghost data from physical boundaries ---
 
-        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
         DO WHILE( MFI % next() )
 

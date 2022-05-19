@@ -22,8 +22,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     TimersStart, &
     TimersStop, &
     Timer_Collisions, &
-    Timer_Collisions_Zero, &
-    Timer_Collisions_Permute, &
     Timer_Collisions_PrimitiveFluid, &
     Timer_Collisions_Solve
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
@@ -137,8 +135,6 @@ CONTAINS
     !$ACC CREATE( dU_F, dU_R )
 #endif
 
-    CALL TimersStart( Timer_Collisions_Zero )
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
@@ -194,8 +190,6 @@ CONTAINS
     END DO
 
 
-    CALL TimersStop( Timer_Collisions_Zero )
-
 
 
 #if defined(THORNADO_OMP_OL)
@@ -219,8 +213,6 @@ CONTAINS
     !$ACC CREATE( GX_N, CF_N, CR_N, OP_N )
 #endif
 
-
-    CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Arrange Geometry Fields ---
 
@@ -343,8 +335,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Collisions_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -475,7 +465,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_Solve )
 
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dCR_N ) &
@@ -495,8 +484,6 @@ CONTAINS
     !$ACC COPYIN( dCR_N, dU_R, nX, iX_B0, iX_E0)
 #endif
 
-
-    CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Revert Radiation Increment ---
 
@@ -541,8 +528,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Collisions_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -760,6 +745,7 @@ CONTAINS
 
   END SUBROUTINE ComputeIncrement_FixedPoint
 
+
   SUBROUTINE ComputeIncrement_FixedPoint_Richardson &
     ( dt, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, D_0, Chi, Sigma, &
@@ -780,7 +766,7 @@ CONTAINS
 
     ! --- Parameters ---
 
-    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: M = 1
     INTEGER,  PARAMETER :: LWORK = 2 * M
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
@@ -837,11 +823,11 @@ CONTAINS
                ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 
-      vMag = SQRT(V_u_1 * Gm_dd_11 * V_u_1 &
-                + V_u_2 * Gm_dd_22 * V_u_2 &
-                + V_u_3 * Gm_dd_33 * V_u_3)
+      vMag = SQRT(    V_u_1 * Gm_dd_11 * V_u_1 &
+                    + V_u_2 * Gm_dd_22 * V_u_2 &
+                    + V_u_3 * Gm_dd_33 * V_u_3 )
 
-      Omega = One / (One + vMag)
+      Omega = One / ( One + vMag )
 
       vI = V_u_1 * UVEC(2) + V_u_2 *  UVEC(3) + V_u_3 *  UVEC(4)
       GVEC(1,mk) = (One - Omega) * UVEC(1) + &

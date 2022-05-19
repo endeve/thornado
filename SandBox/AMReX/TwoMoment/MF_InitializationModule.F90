@@ -138,6 +138,7 @@ MODULE MF_InitializationModule
     nE,      &
     nSpecies, &
     Mass,     &
+    UseTiling, &
     R0
 
 
@@ -158,15 +159,15 @@ MODULE MF_InitializationModule
 CONTAINS
 
   SUBROUTINE MF_InitializeFields &
-    ( ProgramName, MF_uGF, MF_uCR, MF_uCF, V_0, Verbose_Option )
+    ( ProgramName, MF_uGF, MF_uCR, MF_uCF, V_0, Verbose_Option, Direction_Option )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
     TYPE(amrex_multifab), INTENT(inout   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1) 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    REAL(AR)                            :: V_0(3)    
+    REAL(AR),             INTENT(in)    :: V_0(3)    
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
-
+    CHARACTER(1), INTENT(in), OPTIONAL :: Direction_Option
 
     LOGICAL :: Verbose
 
@@ -179,7 +180,7 @@ CONTAINS
       
       CASE ( 'SineWaveStreaming' )
 
-        CALL InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF, V_0 ) 
+        CALL InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF, V_0, Direction_Option ) 
 
       CASE ( 'SineWaveDiffusion' )
 
@@ -187,7 +188,7 @@ CONTAINS
 
       CASE( 'StreamingDopplerShift' )
 
-        CALL InitializeFields_StreamingDopplerShift ( MF_uGF, MF_uCR, MF_uCF, V_0 )
+        CALL InitializeFields_StreamingDopplerShift ( MF_uGF, MF_uCR, MF_uCF, V_0, Direction_Option )
 
       CASE( 'HomogeneousSphere1D' )
 
@@ -223,18 +224,19 @@ CONTAINS
 
   END SUBROUTINE MF_InitializeFields
 
-  SUBROUTINE InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF, V_0 )
+  SUBROUTINE InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF, V_0, Direction )
 
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    
+    REAL(AR),             INTENT(in)    :: V_0(3)
+    CHARACTER(1),         INTENT(in)    :: Direction
 
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3, iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iSpecies
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeZ2, iNodeE
-    REAL(AR)       :: X1, X2, X3, V_0(3)
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeZ2, iNodeZ3, iNodeZ4, iNodeE
+    REAL(AR)       :: X1, X2, X3
     REAL(AR)       :: uCR_K( nDOFZ, nE, nCR, nSpecies )
     REAL(AR)       :: uPR_K( nDOFZ, nE, nPR, nSpecies )
     REAL(AR)       :: uGF_K( nDOFX, nGF )
@@ -276,7 +278,7 @@ CONTAINS
     
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
         
@@ -309,7 +311,6 @@ CONTAINS
             uPF_K(iNodeX,iPF_V3) = V_0(3)
             uPF_K(iNodeX,iPF_E ) = 0.1_AR
             uPF_K(iNodeX,iPF_Ne) = 0.0_AR
-
           END DO
         CALL ComputePressureFromPrimitive &
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
@@ -344,21 +345,72 @@ CONTAINS
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
+              iNodeZ3 = NodeNumberTable(3,iNodeZ)
+              iNodeZ4 = NodeNumberTable(4,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-              uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
-            
-              uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+              X2 = NodeCoordinate( MeshX(2), iX2, iNodeZ3 )
+              X3 = NodeCoordinate( MeshX(3), iX3, iNodeZ4 )
+print*, X1
+
+              SELECT CASE( TRIM( Direction ) )
+           
+              CASE( 'X' )
+
+
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 ) 
+ 
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
          
-              uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
-                = 0.0_AR
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = 0.0_AR
 
-              uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
-                = 0.0_AR
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = 0.0_AR
 
-              
+              CASE( 'Y' )
+
+
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  = 0.50_AR + 0.49_AR * SIN( TwoPi * X2 )  
+            
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = 0.0_AR
+         
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = 0.0_AR
+
+              CASE( 'Z' )
+
+
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  = 0.50_AR + 0.49_AR * SIN( TwoPi * X3 )  
+            
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = 0.0_AR
+         
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = 0.0_AR
+
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+             
+          CASE DEFAULT
+
+            WRITE(*,*)
+            WRITE(*,'(A8,A)')    '', 'InitializeFields_SineWaveStreaming'
+            WRITE(*,'(A8,A,A2)') '', 'Invalid Direction: ', TRIM( Direction )
+            WRITE(*,*)
+            STOP
+
+          END SELECT
+
+ 
             CALL ComputeConserved_TwoMoment &
                    ( uPR_K(iNodeZ,iZ1,iPR_D,iS), &
                      uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
@@ -383,7 +435,6 @@ CONTAINS
               
             END DO
             END DO
-!Reshape here instead of up top look at Hydro example
           END DO 
            
             uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
@@ -458,7 +509,7 @@ CONTAINS
     
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
         
@@ -584,7 +635,7 @@ CONTAINS
   
   END SUBROUTINE InitializeFields_SineWaveDiffusion
 
-  SUBROUTINE InitializeFields_StreamingDopplerShift( MF_uGF, MF_uCR, MF_uCF, V_0 )
+  SUBROUTINE InitializeFields_StreamingDopplerShift( MF_uGF, MF_uCR, MF_uCF, V_0, Direction )
 
 
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
@@ -592,6 +643,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     REAL(AR), INTENT(in) :: V_0(3)
+    CHARACTER(1),         INTENT(in)    :: Direction
 
     REAL(AR), PARAMETER :: X_0 = 2.0_AR
     REAL(AR), PARAMETER :: X_1 = 3.5_AR
@@ -629,34 +681,6 @@ CONTAINS
     CHARACTER(len=1):: nds
     CHARACTER(len=2)::nxn1
     CHARACTER(len=3)::nxn2
-!    IF ( nDOFX == 1) THEN
-!      nds="1"
-!    ELSE IF( nDOFX == 2) THEN
-!      nds="2"
-!    ELSE
-!      nds="3"
-!    END IF 
-!
-!    IF ( nX(1) == 32) THEN
-!      nxn1="32"
-!    ELSE IF( nX(1) == 64) THEN
-!      nxn1="64"
-!    ELSE IF (nX(1) == 128) THEN
-!      nxn2="128"
-!    ELSE
-!      nxn2="256"
-!    END IF 
-!
-!    
-!
-!    print*, name1
-!    IF (nX(1)==32 .OR. nX(1)==64) THEN
-!      name1='X'//nds//nxn1//'.txt'
-!    ELSE
-!      name1='X'//nds//nxn2//'.txt'
-!    END IF
-!    name1=trim(name1)
-!
 
     uCR_K = Zero
     uPF_K = Zero
@@ -684,7 +708,7 @@ CONTAINS
     
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
         
@@ -702,7 +726,7 @@ CONTAINS
 
         lo_F = LBOUND( uCF )
         hi_F = UBOUND( uCF )
-   !open(1, file = name1, status = 'new') 
+
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = BX % lo(1), BX % hi(1)         
@@ -712,32 +736,96 @@ CONTAINS
 
           DO iNodeX = 1, nDOFX
 
+
+
             iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNodeX3 = NodeNumberTableX(3,iNodeX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-!print*, X1    
-            uPF_K(iNodeX,iPF_D ) = 1.0_AR
-            
-            IF( X1 .LT. X_0 )THEN
-              uPF_K(iNodeX,iPF_V1) &
-                = 0.0_AR
-            ELSEIF( X1 .GE. X_0 .AND. X1 .LT. X_1 )THEN
-              uPF_K(iNodeX,iPF_V1) &
-                = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
-            ELSEIF( X1 .GE. X_1 .AND. X1 .LT. X_2 )THEN
-             uPF_K(iNodeX,iPF_V1) &
-                = V_0(1)
-            ELSEIF( X1 .GE. X_2 .AND. X1 .LT. X_3 )THEN
-              uPF_K(iNodeX,iPF_V1) &
-                = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
-            ELSE
-              uPF_K(iNodeX,iPF_V1) &
-               = 0.0_AR 
-            END IF
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
-      !write(1,*) X1
-            uPF_K(iNodeX,iPF_V2) = V_0(2)
-            uPF_K(iNodeX,iPF_V3) = V_0(3)
+            uPF_K(iNodeX,iPF_D ) = 1.0_AR 
+
+            SELECT CASE( TRIM( Direction ) )
+
+            CASE( 'X' ) 
+
+              IF( X1 .LT. X_0 )THEN
+                uPF_K(iNodeX,iPF_V1) &
+                  = 0.0_AR
+              ELSEIF( X1 .GE. X_0 .AND. X1 .LT. X_1 )THEN
+                uPF_K(iNodeX,iPF_V1) &
+                  = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+              ELSEIF( X1 .GE. X_1 .AND. X1 .LT. X_2 )THEN
+               uPF_K(iNodeX,iPF_V1) &
+                  = V_0(1)
+              ELSEIF( X1 .GE. X_2 .AND. X1 .LT. X_3 )THEN
+                uPF_K(iNodeX,iPF_V1) &
+                  = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+              ELSE
+                uPF_K(iNodeX,iPF_V1) &
+                 = 0.0_AR 
+              END IF
+
+              uPF_K(iNodeX,iPF_V2) = V_0(2)
+              uPF_K(iNodeX,iPF_V3) = V_0(3)
+
+
+            CASE( 'Y' )
+
+              uPF_K(iNodeX,iPF_V1) = V_0(1)
+              IF( X2 .LT. X_0 )THEN
+                uPF_K(iNodeX,iPF_V2) &
+                  = 0.0_AR
+              ELSEIF( X2 .GE. X_0 .AND. X2 .LT. X_1 )THEN
+                uPF_K(iNodeX,iPF_V2) &
+                  = V_0(2) * SIN( TwoPi * ( X2 - X_0 ) / L_X )**2
+              ELSEIF( X2 .GE. X_1 .AND. X2 .LT. X_2 )THEN
+                uPF_K(iNodeX,iPF_V2) &
+                  = V_0(2)
+              ELSEIF( X2 .GE. X_2 .AND. X2 .LT. X_3 )THEN
+                uPF_K(iNodeX,iPF_V2) &
+                  = V_0(2) * SIN( TwoPi * ( X2 - X_0 ) / L_X )**2
+              ELSE
+                uPF_K(iNodeX,iPF_V2) &
+                  = 0.0_AR
+              END IF
+              uPF_K(iNodeX,iPF_V3) = V_0(3)
+
+            CASE( 'Z' )
+
+              uPF_K(iNodeX,iPF_V1) = V_0(1)
+              uPF_K(iNodeX,iPF_V2) = V_0(2)
+              IF( X3 .LT. X_0 )THEN
+                uPF_K(iNodeX,iPF_V3) &
+                  = 0.0_AR
+              ELSEIF( X3 .GE. X_0 .AND. X3 .LT. X_1 )THEN
+                uPF_K(iNodeX,iPF_V3) &
+                  = V_0(3) * SIN( TwoPi * ( X3 - X_0 ) / L_X )**2
+              ELSEIF( X3 .GE. X_1 .AND. X3 .LT. X_2 )THEN
+                uPF_K(iNodeX,iPF_V3) &
+                  = V_0(3)
+              ELSEIF( X3 .GE. X_2 .AND. X3 .LT. X_3 )THEN
+                uPF_K(iNodeX,iPF_V3) &
+                  = V_0(3) * SIN( TwoPi * ( X3 - X_0 ) / L_X )**2
+              ELSE
+                uPF_K(iNodeX,iPF_V3) &
+                  = 0.0_AR
+              END IF
+
+            CASE DEFAULT
+
+              WRITE(*,*)
+              WRITE(*,'(A8,A)')    '', 'InitializeFields_StreamingDopplerShift'
+              WRITE(*,'(A8,A,A2)') '', 'Invalid Direction: ', TRIM( Direction )
+              WRITE(*,*)
+              STOP
+
+            END SELECT
+
+
             uPF_K(iNodeX,iPF_E ) = 0.1_AR
             uPF_K(iNodeX,iPF_Ne) = 0.0_AR
 
@@ -777,32 +865,51 @@ CONTAINS
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
-            
-              W = 1.0_AR / SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1)**2) 
+           
+ 
+
+              W = 1.0_AR - (uPF_K(iNodeX,iPF_V1)**2 +  uPF_K(iNodeX,iPF_V2)**2 + uPF_K(iNodeX,iPF_V3)**2 )
+ 
+              W = 1.0_AR / SQRT( W )
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
  
               E = NodeCoordinate( MeshE, iZ1, iNodeE )
-              S = SQRT(1.0_AR+ uPF_K(iNodeX,iPF_V1))/SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1))
-              uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                 !=1d-8
-                 = 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
-                 != 1.0_AR / ( EXP( E ) - 1.0_AR )
-                 ! = S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
-                 ! = 0.5_AR
-                  ! = 0.5_AR * ( 1.0_AR - Mu_0 ) / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
-              uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                 = 0.99_AR * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
-                 !=0.0_AR 
-                 != W * 0.5_AR
-                 ! = 0.5_AR * ( 1.0_AR + Mu_0 ) * uPR_K(iNodeZ,iZ1,iPR_D,iS)
-              uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
-                = 0.0_AR
-              uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
-                = 0.0_AR
 
+              IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  = 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = 0.99_AR * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = 0.0_AR
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = 0.0_AR
+              ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  = 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = 0.0_AR
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = 0.99_AR * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = 0.0_AR
+              ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
               
-            CALL ComputeConserved_TwoMoment &
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  = 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = 0.0_AR
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = 0.0_AR
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = 0.99_AR * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+
+              END IF
+
+              CALL ComputeConserved_TwoMoment &
                    ( uPR_K(iNodeZ,iZ1,iPR_D,iS), &
                      uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
                      uPR_K(iNodeZ,iZ1,iPR_I2,iS), &
@@ -821,7 +928,6 @@ CONTAINS
                      1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
             END DO
             END DO
-!Reshape here instead of up top look at Hydro example
           END DO 
            
             uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
@@ -837,187 +943,8 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
   END SUBROUTINE InitializeFields_StreamingDopplerShift
 
-  SUBROUTINE SetInnerBoundary_StreamingDopplerShift( MF_uGF, MF_uCR, MF_uCF )
-
-
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    
-
-    ! --- thornado ---
-    INTEGER        :: iDim
-    INTEGER        :: iX1, iX2, iX3, iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iSpecies
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeZ2, iNodeE
-    REAL(AR)       :: X1, X2, X3, V_0(3)
-    REAL(AR)       :: uCR_K( nDOFZ, nE, nCR, nSpecies )
-    REAL(AR)       :: uPR_K( nDOFZ, nE, nPR, nSpecies )
-    REAL(AR)       :: uGF_K( nDOFX, nGF )
-    REAL(AR)       :: uPF_K( nDOFX, nPF )
-    REAL(AR)       :: uCF_K( nDOFX, nCF )
-    REAL(AR)       :: uAF_K( nDOFX, nAF )
-    TYPE(MeshType) :: MeshX(3)
-
-    ! --- AMReX ---
-    INTEGER                       :: iLevel
-    INTEGER                       :: lo_C(4), hi_C(4)
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR)                      :: Ones(nDOFE)
-    REAL(AR)                      :: E
-
-    uCR_K = Zero
-    uPF_K = Zero
-    uCF_K = Zero
-    uGF_K = Zero
-    uAF_K = Zero
-    uPR_K = Zero    
-
-    Ones=1.0_AR
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-    
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
-
-      DO WHILE( MFI % next() )
-        
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCR => MF_uCR(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        lo_G = LBOUND( uGF )
-        hi_G = UBOUND( uGF )
-
-        lo_C = LBOUND( uCR )
-        hi_C = UBOUND( uCR )
-
-        lo_F = LBOUND( uCF )
-        hi_F = UBOUND( uCF )
-
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = iX_B1(1), iX_B1(1)         
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-
-            uPF_K(iNodeX,iPF_D ) = 1.0_AR
-            uPF_K(iNodeX,iPF_V1) = 0.0_AR
-            uPF_K(iNodeX,iPF_V2) = 0.0_AR
-            uPF_K(iNodeX,iPF_V3) = 0.0_AR
-            uPF_K(iNodeX,iPF_E ) = 0.1_AR
-            uPF_K(iNodeX,iPF_Ne) = 0.0_AR
-
-          END DO
-
-        CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF_K(:,iPF_D ), &
-                 uPF_K(:,iPF_V1), &
-                 uPF_K(:,iPF_V2), &
-                 uPF_K(:,iPF_V3), &
-                 uPF_K(:,iPF_E ), &
-                 uPF_K(:,iPF_Ne), &
-                 uCF_K(:,iCF_D ), &
-                 uCF_K(:,iCF_S1), &
-                 uCF_K(:,iCF_S2), &
-                 uCF_K(:,iCF_S3), &
-                 uCF_K(:,iCF_E ), &
-                 uCF_K(:,iCF_Ne), &
-                 uGF_K(:,iGF_Gm_dd_11), &
-                 uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33), &
-                 uAF_K(:,iAF_P)      )
-
-          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )   
-      
-          DO iNodeZ = 1, nDOFZ
-                        
-            DO iS = 1, nSpecies
-            DO iZ1 = 1, nE          
-
-              iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
-
-              iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
-
-              E = NodeCoordinate( MeshE, iZ1, iNodeE )
-    
-              uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                =  1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
-            
-              uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = 0.999_AR * uPR_K(iNodeZ,iZ1,iPR_D ,iS)
-              uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
-                = 0.0_AR
-              uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
-                = 0.0_AR
-
-              
-            CALL ComputeConserved_TwoMoment &
-                   ( uPR_K(iNodeZ,iZ1,iPR_D,iS), &
-                     uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
-                     uPR_K(iNodeZ,iZ1,iPR_I2,iS), &
-                     uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_N,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_G1,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_G2,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_G3,iS), &
-                     uPF_K(iNodeX,iPF_V1),        &
-                     uPF_K(iNodeX,iPF_V2),        &
-                     uPF_K(iNodeX,iPF_V3),        &                         
-                     uGF_K(iNodeX,iGF_Gm_dd_11), &
-                     uGF_K(iNodeX,iGF_Gm_dd_22), &
-                     uGF_K(iNodeX,iGF_Gm_dd_33), &
-                     0.0_AR, 0.0_AR, 0.0_AR,     &                     
-                     1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
-
-              
-            END DO
-            END DO
-!Reshape here instead of up top look at Hydro example
-          END DO 
-           
-            uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
-              = RESHAPE( uCR_K, [ hi_C(4) - lo_C(4) + 1 ] )
-
- 
-        END DO
-        END DO
-        END DO
-
-      END DO
-      
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-  END SUBROUTINE SetInnerBoundary_StreamingDopplerShift
 
 
   SUBROUTINE InitializeFields_HomogeneousSphere1D( MF_uGF, MF_uCR, MF_uCF )
@@ -1071,7 +998,7 @@ CONTAINS
     
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
         
@@ -1248,7 +1175,7 @@ CONTAINS
     
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
         
@@ -1462,7 +1389,7 @@ END IF
     
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
         

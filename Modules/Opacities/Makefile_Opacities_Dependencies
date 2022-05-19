@@ -42,14 +42,13 @@ NeutrinoOpacitiesModule.o: \
 
 NeutrinoOpacitiesComputationModule.o: \
   KindModule.o \
+  PhysicalConstantsModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
-  DeviceModule.o \
   LinearAlgebraModule.o \
-  ReferenceElementModuleX.o \
-  MeshModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
   RadiationFieldsModule.o \
-  NeutrinoOpacitiesModule.o \
   NeutrinoOpacitiesComputationModule.F90
