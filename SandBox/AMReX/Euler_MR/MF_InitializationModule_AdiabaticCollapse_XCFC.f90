@@ -93,8 +93,9 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_Euler_AdiabaticCollapse_XCFC_MF &
-    ( MF_uGF, MF_uCF )
+    ( iLevel, MF_uGF, MF_uCF )
 
+    INTEGER             , INTENT(in) :: iLevel
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
 
     ! --- thornado ---

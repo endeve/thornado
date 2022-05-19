@@ -32,7 +32,7 @@ CONTAINS
     IF( TRIM( ProgramName ) .EQ. 'AdiabaticCollapse_XCFC' )THEN
 
       CALL InitializeFields_Euler_AdiabaticCollapse_XCFC_MF &
-             ( MF_uGF, MF_uCF )
+             ( iLevel, MF_uGF, MF_uCF )
 
     ELSE
 
