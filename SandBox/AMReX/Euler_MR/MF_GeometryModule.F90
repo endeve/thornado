@@ -44,7 +44,6 @@ MODULE MF_GeometryModule
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
     nLevels, &
-    nMaxLevels, &
     swX, &
     UseTiling
   USE MF_Euler_TimersModule, ONLY: &
@@ -140,7 +139,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nMaxLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     IF( .NOT. amrex_is_all_periodic() )THEN
 
@@ -153,7 +152,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nMaxLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI

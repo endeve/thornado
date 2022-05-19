@@ -15,7 +15,7 @@ LAPACK_LIB     = $(LAPACK_HOME)/lib
 
 EOS            ?= TABLE
 EVOLVE_GRAVITY ?= TRUE
-REFINE_MESH    ?= FALSE
+REFINE_MESH    ?= TRUE
 
 DEBUG     = TRUE
 
