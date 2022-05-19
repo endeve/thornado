@@ -179,6 +179,9 @@ MODULE InitializationModule
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_Initialize, &
     Timer_AMReX_Euler_InputOutput
+  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    InitializeGravitySolver_XCFC_Poseidon_MF, &
+    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -320,6 +323,21 @@ CONTAINS
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( 0.0_DP )
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      CALL CreateMesh_MF( 0, MeshX )
+
+      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+
+      CALL DestroyMesh_MF( MeshX )
+
+      CALL ComputeFromConserved_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+#endif
 
     ELSE
 

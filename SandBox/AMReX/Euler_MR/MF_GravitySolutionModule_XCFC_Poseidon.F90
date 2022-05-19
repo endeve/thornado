@@ -6,11 +6,16 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     amrex_box
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
+    amrex_multifab_build, &
+    amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_min
 
   ! --- thornado Modules ---
 
@@ -83,6 +88,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_Euler_UtilitiesModule, ONLY: &
+    ComputeConserved_Euler_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -101,15 +108,15 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE Poseidon_Main_Module, ONLY: &
     Poseidon_Close, &
     Poseidon_CFA_Set_Uniform_Boundary_Conditions
-  USE Source_Input_AMReX, ONLY: &
-    Poseidon_Input_Sources1_AMReX, &
-    Poseidon_Input_Sources2_AMReX
+  USE Poseidon_Source_Input_Module, ONLY: &
+    Poseidon_Input_Sources_Part1, &
+    Poseidon_Input_Sources_Part2
   USE Poseidon_XCFC_Interface_Module, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2
-  USE Return_Functions_AMReX, ONLY: &
-    Poseidon_Return_ConFactor_AMReX, &
-    Poseidon_Return_ALL_AMReX
+  USE Poseidon_Return_Routines_Module, ONLY: &
+    Poseidon_Return_Conformal_Factor, &
+    Poseidon_Return_ALL
   USE Initial_Guess_Module, ONLY: &
     Poseidon_Init_FlatGuess
 
@@ -125,6 +132,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: ComputeConformalFactorSources_XCFC_MF
   PUBLIC :: ComputePressureTensorTrace_XCFC_MF
   PUBLIC :: MultiplyWithPsi6_MF
+  PUBLIC :: InitializeMetric_MF
 
   INTEGER, PARAMETER :: iMF_Psi      = 1
   INTEGER, PARAMETER :: iMF_Alpha    = 2
@@ -150,37 +158,32 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver_XCFC_Poseidon_MF &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-!!$    CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  SUBROUTINE InitializeGravitySolver_XCFC_Poseidon_MF
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-    WRITE(*,*)
-    WRITE(*,'(4x,A)') &
-      'INFO: Gravity Solver (Poseidon, XCFC)'
-    WRITE(*,'(4x,A)') &
-      '-------------------------------------'
-    WRITE(*,*)
-    WRITE(*,'(6x,A)') 'Only implemented for 1D spherical symmetry.'
-    WRITE(*,*)
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(4x,A)') &
+        'INFO: Gravity Solver (Poseidon, XCFC)'
+      WRITE(*,'(4x,A)') &
+        '-------------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Only implemented for 1D spherical symmetry.'
+      WRITE(*,*)
+
+    END IF
 
     CALL Initialize_Poseidon_with_AMReX &
-        (   FEM_Degree_Option           = MAX( 1, nNodes - 1 ), &
-            L_Limit_Option              = 0,                    &
-            Units_Option                = 'G',                  &
-            Domain_Edge_Option          = [ xL(1), xR(1) ],     &
-            Coarse_NE_Option            = nX,                   &
-            NQ_Option                   = [ nNodes, 1, 1 ],     &
-            Convergence_Criteria_Option = 1.0e-08_DP,           &
-            AMReX_Max_Levels_Option     = nLevels-1,            &
-            AMReX_Max_Grid_Size_Option  = MaxGridSizeX,         &
-            Verbose_Option              = .FALSE.,              &
-            Print_Setup_Option          = .TRUE. )
+           ( Source_NQ          = nNodesX, &
+             Source_xL          = [ -Half, +Half ], &
+             Source_RQ_xlocs    = MeshX(1) % Nodes, &
+             Source_TQ_xlocs    = MeshX(2) % Nodes, &
+             Source_PQ_xlocs    = MeshX(3) % Nodes, &
+             Units_Option       = 'G', &
+             Verbose_Option     = .TRUE., &
+             Print_Setup_Option = .TRUE. )
 
 #endif
 
@@ -234,39 +237,18 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
+    ! --- Set matter sources with current conformal factor ---
+    CALL Poseidon_Input_Sources_Part1 &
+           ( MF_Src_Input  = MF_uGS, &
+             MF_Src_nComps = nGS )
+
     CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
-
-! --- Waiting for update to Poseidon that removes reference element info
-!     from argument list ---
-
-!!$    ! --- Set matter sources with current conformal factor ---
-!!$    CALL Poseidon_Input_Sources1_AMReX &
-!!$           ( MF_Src_Input  = MF_uGS,           &
-!!$             MF_Src_nComps = nGS,              &
-!!$             num_levels    = nLevels,          &
-!!$             Input_NQ      = nNodesX,          &
-!!$             Input_R_Quad  = MeshX(1) % Nodes, &
-!!$             Input_T_Quad  = MeshX(2) % Nodes, &
-!!$             Input_P_Quad  = MeshX(3) % Nodes, &
-!!$             Input_xL      = [ -Half, +Half ] )
 
     ! --- Compute conformal factor ---
 
     CALL Poseidon_XCFC_Run_Part1()
 
-! --- Waiting for update to Poseidon that removes reference element info
-!     from argument list ---
-
-!!$    CALL Poseidon_Return_ConFactor_AMReX &
-!!$         ( NQ          = nNodesX,          &
-!!$           RQ_Input    = MeshX(1) % Nodes, &
-!!$           TQ_Input    = MeshX(2) % Nodes, &
-!!$           PQ_Input    = MeshX(3) % Nodes, &
-!!$           Left_Limit  = -Half,            &
-!!$           Right_Limit = +Half,            &
-!!$           nLevels     = nLevels,          &
-!!$           MF_Results  = MF_uMF )
-
+    CALL Poseidon_Return_Conformal_Factor( MF_Results = MF_uMF )
 
     CALL UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
@@ -290,35 +272,15 @@ CONTAINS
 
     ! --- Set gravity sources with updated conformal factor ---
 
-! --- Waiting for update to Poseidon that removes reference element info
-!     from argument list ---
-
-!!$    CALL Poseidon_Input_Sources2_AMReX &
-!!$           ( MF_Src_Input  = MF_uGS,           &
-!!$             MF_Src_nComps = nGS,              &
-!!$             num_levels    = nLevels,          &
-!!$             Input_NQ      = nNodesX,          &
-!!$             Input_R_Quad  = MeshX(1) % Nodes, &
-!!$             Input_T_Quad  = MeshX(2) % Nodes, &
-!!$             Input_P_Quad  = MeshX(3) % Nodes, &
-!!$             Input_xL      = [ -Half, +Half ] )
+    CALL Poseidon_Input_Sources_Part2 &
+           ( MF_Src_Input  = MF_uGS, &
+             MF_Src_nComps = nGS )
 
     ! --- Compute lapse and shift ---
 
     CALL Poseidon_XCFC_Run_Part2()
 
-! --- Waiting for update to Poseidon that removes reference element info
-!     from argument list ---
-
-!!$    CALL Poseidon_Return_ALL_AMReX &
-!!$         ( NQ               = nNodesX,          &
-!!$           RQ_Input         = MeshX(1) % Nodes, &
-!!$           TQ_Input         = MeshX(2) % Nodes, &
-!!$           PQ_Input         = MeshX(3) % Nodes, &
-!!$           Left_Limit       = -Half,            &
-!!$           Right_Limit      = +Half,            &
-!!$           nLevels          = nLevels,          &
-!!$           MF_Results       = MF_uMF )
+    CALL Poseidon_Return_ALL( MF_Results = MF_uMF )
 
     ! --- Copy data from Poseidon to thornado ---
 
@@ -598,6 +560,165 @@ CONTAINS
     END DO
 
   END SUBROUTINE MultiplyWithPsi6_MF
+
+
+  SUBROUTINE InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
+
+    TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab) :: Al1   (0:nLevels-1)
+    TYPE(amrex_multifab) :: Al2   (0:nLevels-1)
+    TYPE(amrex_multifab) :: dAl   (0:nLevels-1)
+    TYPE(amrex_multifab) :: CF1   (0:nLevels-1)
+    TYPE(amrex_multifab) :: CF2   (0:nLevels-1)
+    TYPE(amrex_multifab) :: dCF   (0:nLevels-1)
+
+    LOGICAL  :: CONVERGED
+    INTEGER  :: iLevel, ITER
+    REAL(DP) :: MinAl, MinCF
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nGS, 0 )
+
+      CALL amrex_multifab_build &
+             ( Al1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+
+      CALL amrex_multifab_build &
+             ( Al2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+
+      CALL amrex_multifab_build &
+             ( dAl(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+
+      CALL amrex_multifab_build &
+             ( CF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+
+      CALL amrex_multifab_build &
+             ( CF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+
+      CALL amrex_multifab_build &
+             ( dCF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+
+    END DO
+
+    ! --- Iterate to incorporate gravity in initial conditions ---
+
+    CONVERGED = .FALSE.
+    ITER = 0
+
+    DO WHILE( .NOT. CONVERGED )
+
+      ITER = ITER + 1
+
+      DO iLevel = 0, nLevels - 1
+
+        CALL Al1(iLevel) % COPY &
+              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
+
+        CALL CF1(iLevel) % COPY &
+              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
+
+      END DO
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+
+      CALL ComputeConformalFactorSources_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+
+      CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+      CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+
+      CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+      DO iLevel = 0, nLevels - 1
+
+        CALL Al2(iLevel) % COPY &
+              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
+
+        CALL CF2(iLevel) % COPY &
+              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
+
+        CALL dAl(iLevel) &
+               % LinComb( +One, Al2(iLevel), 1, &
+                          -One, Al1(iLevel), 1, 1, &
+                          nDOFX, 0 )
+
+        CALL dCF(iLevel) &
+               % LinComb( +One, CF2(iLevel), 1, &
+                          -One, CF1(iLevel), 1, 1, &
+                          nDOFX, 0 )
+
+       MinAl = dAl(iLevel) % Norm0( nDOFX )
+       MinCF = dCF(iLevel) % Norm0( nDOFX )
+
+      END DO
+
+      CALL amrex_parallel_reduce_min( MinAl )
+      CALL amrex_parallel_reduce_min( MinCF )
+
+      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+
+      IF( MAX( MinAl, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. 10 )THEN
+
+        WRITE(*,*) 'Could not initialize fields. Exiting...'
+        STOP
+
+      END IF
+
+    END DO ! WHILE( .NOT. CONVERGED )
+
+print*,'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 687'
+stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
+
+!!$    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+!!$
+!!$    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+!!$
+!!$    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+!!$
+!!$    CALL ComputeMatterSources_Poseidon &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+!!$
+!!$    CALL ComputeConformalFactor_Poseidon &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+!!$
+!!$    CALL ComputePressureTensorTrace_Poseidon &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
+!!$
+!!$    CALL ComputeGeometry_Poseidon &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
+!!$
+!!$    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_destroy( dCF   (iLevel) )
+      CALL amrex_multifab_destroy( CF2   (iLevel) )
+      CALL amrex_multifab_destroy( CF1   (iLevel) )
+      CALL amrex_multifab_destroy( dAl   (iLevel) )
+      CALL amrex_multifab_destroy( Al2   (iLevel) )
+      CALL amrex_multifab_destroy( Al1   (iLevel) )
+      CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+
+    END DO
+
+  END SUBROUTINE InitializeMetric_MF
 
 
   ! --- PRIVATE SUBROUTINES ---
