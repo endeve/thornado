@@ -23,14 +23,31 @@ MODULE MF_Euler_UtilitiesModule
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
     nGF
   USE FluidFieldsModule, ONLY: &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
     nCF, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne, &
     nPF, &
+    iAF_P, &
     nAF
   USE Euler_UtilitiesModule, ONLY: &
     ComputeTimeStep_Euler, &
-    ComputeFromConserved_Euler
+    ComputeFromConserved_Euler, &
+    ComputeConserved_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -64,6 +81,7 @@ MODULE MF_Euler_UtilitiesModule
 
   PUBLIC :: ComputeFromConserved_Euler_MF
   PUBLIC :: ComputeTimeStep_Euler_MF
+  PUBLIC :: ComputeConserved_Euler_MF
 
 CONTAINS
 
@@ -253,6 +271,126 @@ CONTAINS
     CALL TimersStop_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
   END SUBROUTINE ComputeTimeStep_Euler_MF
+
+
+  SUBROUTINE ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: P(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iNX, iX1, iX2, iX3
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uPF => MF_uPF(iLevel) % DataPtr( MFI )
+        uAF => MF_uAF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
+
+        ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nPF) )
+
+        ALLOCATE( A(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nAF) )
+
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+
+        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, P )
+
+        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAF, A )
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          CALL ComputeConserved_Euler &
+                 ( P(iNX,iX2,iX2,iX3,iPF_D ), &
+                   P(iNX,iX2,iX2,iX3,iPF_V1), &
+                   P(iNX,iX2,iX2,iX3,iPF_V3), &
+                   P(iNX,iX2,iX2,iX3,iPF_V3), &
+                   P(iNX,iX2,iX2,iX3,iPF_E ), &
+                   P(iNX,iX2,iX2,iX3,iPF_Ne), &
+                   U(iNX,iX2,iX2,iX3,iCF_D ), &
+                   U(iNX,iX2,iX2,iX3,iCF_S1), &
+                   U(iNX,iX2,iX2,iX3,iCF_S3), &
+                   U(iNX,iX2,iX2,iX3,iCF_S3), &
+                   U(iNX,iX2,iX2,iX3,iCF_E ), &
+                   U(iNX,iX2,iX2,iX3,iCF_Ne), &
+                   G(iNX,iX2,iX2,iX3,iGF_Gm_dd_11), &
+                   G(iNX,iX2,iX2,iX3,iGF_Gm_dd_22), &
+                   G(iNX,iX2,iX2,iX3,iGF_Gm_dd_33), &
+                   A(iNX,iX2,iX2,iX3,iAF_P) )
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+        DEALLOCATE( A )
+
+        DEALLOCATE( P )
+
+        DEALLOCATE( U )
+
+        DEALLOCATE( G )
+
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+  END SUBROUTINE ComputeConserved_Euler_MF
 
 
 END MODULE MF_Euler_UtilitiesModule
