@@ -618,7 +618,18 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( iErr(iX1,iX2,iX3) .NE. 0 ) &
-        CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
+        CALL DescribeError_Euler &
+          ( iErr(iX1,iX2,iX3), &
+            Int_Option  = [ iX1, iX2, iX3 ], &
+            Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+                            U(iNX,iX1,iX2,iX3,iCF_S1), &
+                            U(iNX,iX1,iX2,iX3,iCF_S2), &
+                            U(iNX,iX1,iX2,iX3,iCF_S3), &
+                            U(iNX,iX1,iX2,iX3,iCF_E ), &
+                            G(iNX,iX1,iX2,iX3,iGF_h_1), &
+                            G(iNX,iX1,iX2,iX3,iGF_h_2), &
+                            G(iNX,iX1,iX2,iX3,iGF_h_3) ] )
+
 
     END DO
     END DO

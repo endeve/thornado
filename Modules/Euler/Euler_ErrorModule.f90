@@ -43,7 +43,20 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'U_K(iCF_E) < 0'
+          WRITE(*,*)
+          WRITE(*,'(2x,A,I8.8)')      'iX1:       ', Int_Option(1)
+          WRITE(*,'(2x,A,I8.8)')      'iX2:       ', Int_Option(2)
+          WRITE(*,'(2x,A,I8.8)')      'iX3:       ', Int_Option(3)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uD  (iNX): ', Real_Option(1)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS1 (iNX): ', Real_Option(2)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS2 (iNX): ', Real_Option(3)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS3 (iNX): ', Real_Option(4)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uE  (iNX): ', Real_Option(5)
+          WRITE(*,'(2x,A,ES24.16E3)') 'h1  (iNX): ', Real_Option(6)
+          WRITE(*,'(2x,A,ES24.16E3)') 'h2  (iNX): ', Real_Option(7)
+          WRITE(*,'(2x,A,ES24.16E3)') 'h3  (iNX): ', Real_Option(8)
           WRITE(*,'(2x,A)') TRIM( Message )
+
 
           CALL thornado_abort
 
@@ -56,6 +69,17 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: No root in interval'
+          WRITE(*,'(2x,A,I8.8)')      'iX1:       ', Int_Option(1)
+          WRITE(*,'(2x,A,I8.8)')      'iX2:       ', Int_Option(2)
+          WRITE(*,'(2x,A,I8.8)')      'iX3:       ', Int_Option(3)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uD  (iNX): ', Real_Option(1)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS1 (iNX): ', Real_Option(2)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS2 (iNX): ', Real_Option(3)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uS3 (iNX): ', Real_Option(4)
+          WRITE(*,'(2x,A,ES24.16E3)') 'uE  (iNX): ', Real_Option(5)
+          WRITE(*,'(2x,A,ES24.16E3)') 'h1  (iNX): ', Real_Option(6)
+          WRITE(*,'(2x,A,ES24.16E3)') 'h2  (iNX): ', Real_Option(7)
+          WRITE(*,'(2x,A,ES24.16E3)') 'h3  (iNX): ', Real_Option(8)
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
