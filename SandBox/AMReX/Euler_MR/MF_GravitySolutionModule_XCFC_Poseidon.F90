@@ -215,9 +215,19 @@ CONTAINS
 
     TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
 
+    INTEGER :: iLevel
+
 !!$    CALL TimersStart_Euler( Timer_GravitySolver )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nMF, 0 )
+
+    END DO
 
     ! --- Set Boundary Values ---
 
@@ -250,6 +260,12 @@ CONTAINS
 
 #endif
 
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
+
+    END DO
+
 !!$    CALL TimersStop_Euler( Timer_GravitySolver )
 
   END SUBROUTINE ComputeConformalFactor_Poseidon_MF
@@ -262,7 +278,17 @@ CONTAINS
 
     TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
 
+    INTEGER :: iLevel
+
 !!$    CALL TimersStart_Euler( Timer_GravitySolver )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nMF, 0 )
+
+    END DO
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -284,6 +310,12 @@ CONTAINS
     CALL SetBoundaryConditions_Outer( MF_uGF )
 
 #endif
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
+
+    END DO
 
 !!$    CALL TimersStop_Euler( Timer_GravitySolver )
 
