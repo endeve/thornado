@@ -210,8 +210,6 @@ CONTAINS
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
-    REAL(DP) :: GravitationalMass
-
     TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
 
 !!$    CALL TimersStart_Euler( Timer_GravitySolver )
@@ -1009,8 +1007,7 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
 
     INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
     INTEGER :: iX_B0(3), iX_E0(3)
-    INTEGER :: iNX1, iNX2, iNX3, iNX
-    INTEGER :: jNX1, jNX
+    INTEGER :: iNX
 
     Psi_xR      = -HUGE( One )
     AlphaPsi_xR = -HUGE( One )
@@ -1086,13 +1083,6 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
     END DO
 
   END SUBROUTINE SetBoundaryConditions_X1_Outer
-
-
-  SUBROUTINE ComputeGravitationalMass( MF_uGF, MF_uGS, GravitationalMass )
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:nLevels-1)
-    REAL(DP)            , INTENT(out) :: GravitationalMass
-  END SUBROUTINE ComputeGravitationalMass
 
 
 END MODULE MF_GravitySolutionModule_XCFC_Poseidon
