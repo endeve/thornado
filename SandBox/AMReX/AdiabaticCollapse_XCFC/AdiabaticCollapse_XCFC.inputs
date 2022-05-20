@@ -38,8 +38,8 @@ geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
 
 amr.n_cell            = 512 01 01
 thornado.swX          = 01  00 00
-amr.max_grid_size_x   = 64
-amr.blocking_factor_x = 8
+amr.max_grid_size_x   = 512
+amr.blocking_factor_x = 512
 amr.max_level         = 0
 amr.ref_ratio         = 2
 
