@@ -348,22 +348,22 @@ CONTAINS
         DO iNX = 1       , nDOFX
 
           CALL ComputeConserved_Euler &
-                 ( P(iNX,iX2,iX2,iX3,iPF_D ), &
-                   P(iNX,iX2,iX2,iX3,iPF_V1), &
-                   P(iNX,iX2,iX2,iX3,iPF_V3), &
-                   P(iNX,iX2,iX2,iX3,iPF_V3), &
-                   P(iNX,iX2,iX2,iX3,iPF_E ), &
-                   P(iNX,iX2,iX2,iX3,iPF_Ne), &
-                   U(iNX,iX2,iX2,iX3,iCF_D ), &
-                   U(iNX,iX2,iX2,iX3,iCF_S1), &
-                   U(iNX,iX2,iX2,iX3,iCF_S3), &
-                   U(iNX,iX2,iX2,iX3,iCF_S3), &
-                   U(iNX,iX2,iX2,iX3,iCF_E ), &
-                   U(iNX,iX2,iX2,iX3,iCF_Ne), &
-                   G(iNX,iX2,iX2,iX3,iGF_Gm_dd_11), &
-                   G(iNX,iX2,iX2,iX3,iGF_Gm_dd_22), &
-                   G(iNX,iX2,iX2,iX3,iGF_Gm_dd_33), &
-                   A(iNX,iX2,iX2,iX3,iAF_P) )
+                 ( P(iNX,iX1,iX2,iX3,iPF_D ), &
+                   P(iNX,iX1,iX2,iX3,iPF_V1), &
+                   P(iNX,iX1,iX2,iX3,iPF_V3), &
+                   P(iNX,iX1,iX2,iX3,iPF_V3), &
+                   P(iNX,iX1,iX2,iX3,iPF_E ), &
+                   P(iNX,iX1,iX2,iX3,iPF_Ne), &
+                   U(iNX,iX1,iX2,iX3,iCF_D ), &
+                   U(iNX,iX1,iX2,iX3,iCF_S1), &
+                   U(iNX,iX1,iX2,iX3,iCF_S3), &
+                   U(iNX,iX1,iX2,iX3,iCF_S3), &
+                   U(iNX,iX1,iX2,iX3,iCF_E ), &
+                   U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                   A(iNX,iX1,iX2,iX3,iAF_P) )
 
         END DO
         END DO
