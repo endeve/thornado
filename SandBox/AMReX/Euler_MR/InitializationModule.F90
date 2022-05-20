@@ -165,7 +165,8 @@ MODULE InitializationModule
     hi_bc_uCF, &
     ProgramName, &
     TagCriteria, &
-    nRefinementBuffer
+    nRefinementBuffer, &
+    UseAMR
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
@@ -669,6 +670,7 @@ stop 'InitializationModule.f90'
       WRITE(*,'(4x,A,I2.2)')  '            nLevels: ', nLevels
       WRITE(*,'(4x,A,L)')     '          do_reflux: ', do_reflux
       WRITE(*,'(4x,A,L)')     '          UseTiling: ', UseTiling
+      WRITE(*,'(4x,A,L)')     '             UseAMR: ', UseAMR
       WRITE(*,TRIM(RFMT))     '        TagCriteria: ', TagCriteria
       WRITE(*,TRIM(IFMT))     '  nRefinementBuffer: ', nRefinementBuffer
 

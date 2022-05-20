@@ -107,6 +107,7 @@ MODULE InputParsingModule
   INTEGER , ALLOCATABLE :: StepNo(:)
   INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
   REAL(DP), ALLOCATABLE :: TagCriteria(:)
+  LOGICAL :: UseAMR
 
   REAL(DP), ALLOCATABLE :: dt   (:)
   REAL(DP), ALLOCATABLE :: t_old(:)
@@ -302,6 +303,7 @@ CONTAINS
     END IF
     UseTiling = 0
     do_reflux = 0
+    UseAMR    = 0
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr  ( 'n_cell'           , nX                )
       CALL PP % query   ( 'max_grid_size_x'  , MaxGridSizeX1     )
@@ -314,6 +316,7 @@ CONTAINS
       CALL PP % query   ( 'UseTiling'        , UseTiling         )
       CALL PP % query   ( 'do_reflux'        , do_reflux         )
       CALL PP % getarr  ( 'ref_ratio'        , RefinementRatio   )
+      CALL PP % query   ( 'UseAMR'           , UseAMR            )
       IF( MaxLevel .GT. 0 )THEN
         CALL PP % getarr( 'TagCriteria'      , TagCriteria       )
         CALL PP % getarr( 'n_error_buf'      , nRefinementBuffer )
