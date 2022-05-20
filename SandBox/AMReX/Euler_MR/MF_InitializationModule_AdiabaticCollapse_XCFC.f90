@@ -100,7 +100,6 @@ CONTAINS
 
     ! --- thornado ---
 
-    INTEGER  :: iDimX
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNX, iNX1
     REAL(DP) :: X1
