@@ -206,7 +206,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-    REAL(DP)         :: Psi_BC, AlphaPsi_BC
+    REAL(DP)         :: Psi_xR, AlphaPsi_xR
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
@@ -220,17 +220,14 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
-    ! May not need this with improved boundary conditions
-    CALL ComputeGravitationalMass( MF_uGF, MF_uGS, GravitationalMass )
-
-!    Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
-!    AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
+    CALL SetBoundaryConditions_Outer &
+           ( MF_uGF, Psi_xR_Option = Psi_xR, AlphaPsi_xR_Option = AlphaPsi_xR )
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
-    OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
+    OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, Zero, Zero, Zero ]
 
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
@@ -286,7 +283,8 @@ CONTAINS
 
     CALL ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
 
-    CALL SetBoundaryConditions( MF_uGF )
+    CALL SetBoundaryConditions_Inner( MF_uGF )
+    CALL SetBoundaryConditions_Outer( MF_uGF )
 
 #endif
 
@@ -868,16 +866,34 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
   END SUBROUTINE ComputeGeometryFromPoseidon_MF
 
 
-  SUBROUTINE SetBoundaryConditions( MF_uGF )
+  SUBROUTINE SetBoundaryConditions_Inner( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-    CALL SetBoundaryConditions_X1( MF_uGF )
+    CALL SetBoundaryConditions_X1_Inner( MF_uGF )
 
-  END SUBROUTINE SetBoundaryConditions
+  END SUBROUTINE SetBoundaryConditions_Inner
 
 
-  SUBROUTINE SetBoundaryConditions_X1( MF_uGF )
+  SUBROUTINE SetBoundaryConditions_Outer &
+    ( MF_uGF, Psi_xR_Option, AlphaPsi_xR_Option )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    REAL(DP)            , INTENT(out), OPTIONAL :: &
+      Psi_xR_Option, AlphaPsi_xR_Option
+
+    REAL(DP) :: Psi_xR
+    REAL(DP) :: AlphaPsi_xR
+
+    CALL SetBoundaryConditions_X1_Outer( MF_uGF, Psi_xR, AlphaPsi_xR )
+
+    IF( PRESENT( Psi_xR_Option      ) ) Psi_xR_Option      = Psi_xR
+    IF( PRESENT( AlphaPsi_xR_Option ) ) AlphaPsi_xR_Option = AlphaPsi_xR
+
+  END SUBROUTINE SetBoundaryConditions_Outer
+
+
+  SUBROUTINE SetBoundaryConditions_X1_Inner( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
@@ -885,10 +901,8 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
-    REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
 
-    INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
+    INTEGER :: iLevel, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: iNX1, iNX2, iNX3, iNX
     INTEGER :: jNX1, jNX
@@ -972,7 +986,49 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
 
         END IF
 
-        ! --- Upper Boundary ---
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+  END SUBROUTINE SetBoundaryConditions_X1_Inner
+
+
+  SUBROUTINE SetBoundaryConditions_X1_Outer( MF_uGF, Psi_xR, AlphaPsi_xR )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    REAL(DP)            , INTENT(out)   :: Psi_xR, AlphaPsi_xR
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
+
+    INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
+    INTEGER :: iX_B0(3), iX_E0(3)
+    INTEGER :: iNX1, iNX2, iNX3, iNX
+    INTEGER :: jNX1, jNX
+
+    Psi_xR      = -HUGE( One )
+    AlphaPsi_xR = -HUGE( One )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        ! --- Outer Boundary ---
 
         IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
@@ -1015,6 +1071,9 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
           END DO
           END DO
 
+          Psi_xR      = G_F(1,1,1,iGF_Psi)
+          AlphaPsi_xR = G_F(1,1,1,iGF_Alpha) * G_F(1,1,1,iGF_Psi)
+
           DEALLOCATE( G_F )
           DEALLOCATE( G_K )
 
@@ -1026,7 +1085,7 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
 
     END DO
 
-  END SUBROUTINE SetBoundaryConditions_X1
+  END SUBROUTINE SetBoundaryConditions_X1_Outer
 
 
   SUBROUTINE ComputeGravitationalMass( MF_uGF, MF_uGS, GravitationalMass )
