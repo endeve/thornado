@@ -209,7 +209,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-    REAL(DP)         :: Psi_xR, AlphaPsi_xR
+    REAL(DP)         :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
@@ -232,13 +232,16 @@ CONTAINS
     ! --- Set Boundary Values ---
 
     CALL SetBoundaryConditions_Outer &
-           ( MF_uGF, Psi_xR_Option = Psi_xR, AlphaPsi_xR_Option = AlphaPsi_xR )
+           ( MF_uGF, Psi_xR_Option      = Psi_xR, &
+                     AlphaPsi_xR_Option = AlphaPsi_xR, &
+                     Beta_u_xR_Option   = Beta_u_xR )
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
-    OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, Zero, Zero, Zero ]
+    OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, &
+                        Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
@@ -910,19 +913,22 @@ CONTAINS
 
 
   SUBROUTINE SetBoundaryConditions_Outer &
-    ( MF_uGF, Psi_xR_Option, AlphaPsi_xR_Option )
+    ( MF_uGF, Psi_xR_Option, AlphaPsi_xR_Option, Beta_u_xR_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     REAL(DP)            , INTENT(out), OPTIONAL :: &
-      Psi_xR_Option, AlphaPsi_xR_Option
+      Psi_xR_Option, AlphaPsi_xR_Option, Beta_u_xR_Option(3)
 
     REAL(DP) :: Psi_xR
     REAL(DP) :: AlphaPsi_xR
+    REAL(DP) :: Beta_u_xR(3)
 
-    CALL SetBoundaryConditions_X1_Outer( MF_uGF, Psi_xR, AlphaPsi_xR )
+    CALL SetBoundaryConditions_X1_Outer &
+           ( MF_uGF, Psi_xR, AlphaPsi_xR, Beta_u_xR )
 
     IF( PRESENT( Psi_xR_Option      ) ) Psi_xR_Option      = Psi_xR
     IF( PRESENT( AlphaPsi_xR_Option ) ) AlphaPsi_xR_Option = AlphaPsi_xR
+    IF( PRESENT( Beta_u_xR_Option   ) ) Beta_u_xR_Option   = Beta_u_xR
 
   END SUBROUTINE SetBoundaryConditions_Outer
 
@@ -1029,10 +1035,12 @@ CONTAINS
   END SUBROUTINE SetBoundaryConditions_X1_Inner
 
 
-  SUBROUTINE SetBoundaryConditions_X1_Outer( MF_uGF, Psi_xR, AlphaPsi_xR )
+  SUBROUTINE SetBoundaryConditions_X1_Outer &
+    ( MF_uGF, Psi_xR, AlphaPsi_xR, Beta_u_xR )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(DP)            , INTENT(out)   :: Psi_xR, AlphaPsi_xR
+    REAL(DP)            , INTENT(out)   :: Psi_xR, AlphaPsi_xR, &
+                                           Beta_u_xR(3)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -1047,6 +1055,7 @@ CONTAINS
 
     Psi_xR      = -HUGE( One )
     AlphaPsi_xR = -HUGE( One )
+    Beta_u_xR   = -HUGE( One )
 
     DO iLevel = 0, nLevels-1
 
@@ -1104,8 +1113,11 @@ CONTAINS
           END DO
           END DO
 
-          Psi_xR      = G_F(1,1,1,iGF_Psi)
-          AlphaPsi_xR = G_F(1,1,1,iGF_Alpha) * G_F(1,1,1,iGF_Psi)
+          Psi_xR       = G_F(1,1,1,iGF_Psi)
+          AlphaPsi_xR  = G_F(1,1,1,iGF_Alpha) * G_F(1,1,1,iGF_Psi)
+          Beta_u_xR(1) = G_F(1,1,1,iGF_Beta_1)
+          Beta_u_xR(2) = G_F(1,1,1,iGF_Beta_2)
+          Beta_u_xR(3) = G_F(1,1,1,iGF_Beta_3)
 
           DEALLOCATE( G_F )
           DEALLOCATE( G_K )
