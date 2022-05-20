@@ -258,13 +258,13 @@ CONTAINS
 
     CALL UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
-#endif
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy( MF_uMF(iLevel) )
 
     END DO
+
+#endif
 
 !!$    CALL TimersStop_Euler( Timer_GravitySolver )
 
@@ -282,6 +282,8 @@ CONTAINS
 
 !!$    CALL TimersStart_Euler( Timer_GravitySolver )
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -289,8 +291,6 @@ CONTAINS
                nDOFX * nMF, 0 )
 
     END DO
-
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     ! --- Set gravity sources with updated conformal factor ---
 
@@ -309,13 +309,13 @@ CONTAINS
     CALL SetBoundaryConditions_Inner( MF_uGF )
     CALL SetBoundaryConditions_Outer( MF_uGF )
 
-#endif
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy( MF_uMF(iLevel) )
 
     END DO
+
+#endif
 
 !!$    CALL TimersStop_Euler( Timer_GravitySolver )
 
@@ -597,16 +597,16 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
 
     TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
-    TYPE(amrex_multifab) :: Al1   (0:nLevels-1)
-    TYPE(amrex_multifab) :: Al2   (0:nLevels-1)
-    TYPE(amrex_multifab) :: dAl   (0:nLevels-1)
+    TYPE(amrex_multifab) :: LF1   (0:nLevels-1)
+    TYPE(amrex_multifab) :: LF2   (0:nLevels-1)
+    TYPE(amrex_multifab) :: dLF   (0:nLevels-1)
     TYPE(amrex_multifab) :: CF1   (0:nLevels-1)
     TYPE(amrex_multifab) :: CF2   (0:nLevels-1)
     TYPE(amrex_multifab) :: dCF   (0:nLevels-1)
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: iLevel, ITER
-    REAL(DP) :: MinAl, MinCF
+    INTEGER  :: iLevel, ITER, iNX
+    REAL(DP) :: MinLF, MinCF
 
     DO iLevel = 0, nLevels-1
 
@@ -615,15 +615,15 @@ CONTAINS
                nDOFX * nGS, 0 )
 
       CALL amrex_multifab_build &
-             ( Al1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+             ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
 
       CALL amrex_multifab_build &
-             ( Al2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+             ( LF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
 
       CALL amrex_multifab_build &
-             ( dAl(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+             ( dLF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
 
       CALL amrex_multifab_build &
@@ -645,13 +645,16 @@ CONTAINS
     CONVERGED = .FALSE.
     ITER = 0
 
+    MinLF = HUGE( One )
+    MinCF = HUGE( One )
+
     DO WHILE( .NOT. CONVERGED )
 
       ITER = ITER + 1
 
       DO iLevel = 0, nLevels - 1
 
-        CALL Al1(iLevel) % COPY &
+        CALL LF1(iLevel) % COPY &
               ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
 
         CALL CF1(iLevel) % COPY &
@@ -669,17 +672,19 @@ CONTAINS
 
       CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
+      CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+
       DO iLevel = 0, nLevels - 1
 
-        CALL Al2(iLevel) % COPY &
+        CALL LF2(iLevel) % COPY &
               ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
 
         CALL CF2(iLevel) % COPY &
               ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
 
-        CALL dAl(iLevel) &
-               % LinComb( +One, Al2(iLevel), 1, &
-                          -One, Al1(iLevel), 1, 1, &
+        CALL dLF(iLevel) &
+               % LinComb( +One, LF2(iLevel), 1, &
+                          -One, LF1(iLevel), 1, 1, &
                           nDOFX, 0 )
 
         CALL dCF(iLevel) &
@@ -687,17 +692,21 @@ CONTAINS
                           -One, CF1(iLevel), 1, 1, &
                           nDOFX, 0 )
 
-       MinAl = dAl(iLevel) % Norm0( nDOFX )
-       MinCF = dCF(iLevel) % Norm0( nDOFX )
+        DO iNX = 1, nDOFX
+
+          MinLF = MIN( MinLF, dLF(iLevel) % Norm0( iNX ) )
+          MinCF = MIN( MinCF, dCF(iLevel) % Norm0( iNX ) )
+
+        END DO
 
       END DO
 
-      CALL amrex_parallel_reduce_min( MinAl )
+      CALL amrex_parallel_reduce_min( MinLF )
       CALL amrex_parallel_reduce_min( MinCF )
 
       CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
-      IF( MAX( MinAl, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+      IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. 10 )THEN
 
@@ -708,8 +717,7 @@ CONTAINS
 
     END DO ! WHILE( .NOT. CONVERGED )
 
-print*,'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 687'
-stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
+stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
 
 !!$    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
@@ -738,9 +746,9 @@ stop 'MF_GravitySolutionModule_XCFC_Poseidon (line 688)'
       CALL amrex_multifab_destroy( dCF   (iLevel) )
       CALL amrex_multifab_destroy( CF2   (iLevel) )
       CALL amrex_multifab_destroy( CF1   (iLevel) )
-      CALL amrex_multifab_destroy( dAl   (iLevel) )
-      CALL amrex_multifab_destroy( Al2   (iLevel) )
-      CALL amrex_multifab_destroy( Al1   (iLevel) )
+      CALL amrex_multifab_destroy( dLF   (iLevel) )
+      CALL amrex_multifab_destroy( LF2   (iLevel) )
+      CALL amrex_multifab_destroy( LF1   (iLevel) )
       CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
     END DO
