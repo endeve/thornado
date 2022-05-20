@@ -112,19 +112,6 @@ CONTAINS
 
     IF( SuppressTally ) RETURN
 
-    IF( nLevels .GT. 1 )THEN
-
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(*,*)
-        WRITE(*,*) &
-          'WARNING: Euler_TallyModule not accurate for multi-level mesh'
-        WRITE(*,*)
-
-      END IF
-
-    END IF
-
     IF( amrex_parallel_ioprocessor() )THEN
 
       BaseFileName = ''
@@ -315,7 +302,7 @@ CONTAINS
 
   SUBROUTINE IncrementOffGridTally_Euler_MF( dM )
 
-    REAL(DP), INTENT(in) :: dM(nCF,0:nLevels-1)
+    REAL(DP), INTENT(in) :: dM(1:nCF,0:nLevels-1)
 
     INTEGER :: iLevel
 
@@ -330,9 +317,6 @@ CONTAINS
         = Energy_OffGrid + dM(iCF_E,iLevel)
 
     END DO
-
-    CALL amrex_parallel_reduce_sum( BaryonicMass_OffGrid )
-    CALL amrex_parallel_reduce_sum( Energy_OffGrid       )
 
   END SUBROUTINE IncrementOffGridTally_Euler_MF
 
@@ -448,6 +432,10 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: Time
 
+    CHARACTER(32) :: FMT
+
+    FMT = '(6x,A40,ES15.7E3,x,A)'
+
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -456,38 +444,38 @@ CONTAINS
         Time / UnitsDisplay % TimeUnit, &
         UnitsDisplay % TimeLabel
       WRITE(*,*)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Baryonic Mass Interior.: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Baryonic Mass Interior.: ', &
         BaryonicMass_Interior / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Baryonic Mass Initial..: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Baryonic Mass Initial..: ', &
         BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Baryonic Mass Off Grid.: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Baryonic Mass Off Grid.: ', &
         BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Baryonic Mass Change...: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Baryonic Mass Change...: ', &
         BaryonicMass_Change   / UnitsDisplay % MassUnit, &
         UnitsDisplay % MassLabel
 
       WRITE(*,*)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Energy Interior.: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Energy Interior.: ', &
         Energy_Interior / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Energy Initial..: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Energy Initial..: ', &
         Energy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Energy Off Grid.: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Energy Off Grid.: ', &
         Energy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Energy Change...: ', &
+      WRITE(*,TRIM(FMT)) &
+        'Energy Change...: ', &
         Energy_Change   / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
 
