@@ -24,8 +24,8 @@ thornado.CheckpointFileBaseName = "AdiabaticCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+2
 thornado.iCycleChk = -1
 
-thornado.nNodes  = 3
-thornado.nStages = 3
+thornado.nNodes  = 2
+thornado.nStages = 2
 
 thornado.CFL = 0.5
 
