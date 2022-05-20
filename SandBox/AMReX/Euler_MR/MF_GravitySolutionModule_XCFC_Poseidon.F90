@@ -185,7 +185,7 @@ CONTAINS
              Source_TQ_xlocs    = MeshX(2) % Nodes, &
              Source_PQ_xlocs    = MeshX(3) % Nodes, &
              Units_Option       = 'G', &
-             Verbose_Option     = .TRUE., &
+             Verbose_Option     = .FALSE., &
              Print_Setup_Option = .TRUE. )
 
 #endif
@@ -326,7 +326,7 @@ CONTAINS
     ( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! This is U^{*}
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -338,6 +338,7 @@ CONTAINS
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3)
+    REAL(DP) :: Psi6
 
     DO iLevel = 0, nLevels-1
 
@@ -359,20 +360,22 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          uGS      (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
-            =   uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
-              + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX)
+          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+
+          uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
+            =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
+               + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX) ) * Psi6
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_1   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_2   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_3   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
 
         END DO
@@ -392,7 +395,7 @@ CONTAINS
   SUBROUTINE ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! This is U^{*}
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -444,12 +447,12 @@ CONTAINS
           ! --- Compute trace of stress tensor ---
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
                    uPF(iPF_D ), &
                    uPF(iPF_V1), &
                    uPF(iPF_V2), &
@@ -467,10 +470,10 @@ CONTAINS
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
 
           uGF(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
-            =   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
-              + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
-              + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
-              + Psi6 * Three * Pressure
+            =   (  uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
+                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
+                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
+                 + Three * Pressure ) * Psi6
 
         END DO
         END DO
@@ -655,14 +658,12 @@ CONTAINS
       DO iLevel = 0, nLevels - 1
 
         CALL LF1(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
 
         CALL CF1(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Psi  -1)+1, 1, nDOFX, 0 )
 
       END DO
-
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
 
       CALL ComputeConformalFactorSources_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
@@ -672,15 +673,13 @@ CONTAINS
 
       CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
-
       DO iLevel = 0, nLevels - 1
 
         CALL LF2(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
 
         CALL CF2(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Psi  -1)+1, 1, nDOFX, 0 )
 
         CALL dLF(iLevel) &
                % LinComb( +One, LF2(iLevel), 1, &
@@ -716,8 +715,6 @@ CONTAINS
       END IF
 
     END DO ! WHILE( .NOT. CONVERGED )
-
-stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
 
 !!$    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
