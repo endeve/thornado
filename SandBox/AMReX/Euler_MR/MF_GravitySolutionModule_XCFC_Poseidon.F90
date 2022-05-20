@@ -134,6 +134,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: MultiplyWithPsi6_MF
   PUBLIC :: InitializeMetric_MF
 
+  ! --- MF: Metric Fields ---
+
   INTEGER, PARAMETER :: iMF_Psi      = 1
   INTEGER, PARAMETER :: iMF_Alpha    = 2
   INTEGER, PARAMETER :: iMF_Beta_1   = 3
@@ -147,13 +149,14 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   INTEGER, PARAMETER :: iMF_K_dd_33  = 11
   INTEGER, PARAMETER :: nMF          = 11
 
-  INTEGER, PARAMETER :: iGS_E  = 1
-  INTEGER, PARAMETER :: iGS_S1 = 2
-  INTEGER, PARAMETER :: iGS_S2 = 3
-  INTEGER, PARAMETER :: iGS_S3 = 4
-  INTEGER, PARAMETER :: iGS_S  = 5
-  INTEGER, PARAMETER :: iGS_Mg = 6
-  INTEGER, PARAMETER :: nGS    = 6
+  ! --- GS: Gravity/Geometry Sources ---
+
+  INTEGER, PARAMETER :: iGS_E     = 1
+  INTEGER, PARAMETER :: iGS_S_u_1 = 2
+  INTEGER, PARAMETER :: iGS_S_u_2 = 3
+  INTEGER, PARAMETER :: iGS_S_u_3 = 4
+  INTEGER, PARAMETER :: iGS_S     = 5
+  INTEGER, PARAMETER :: nGS       = 5
 
 CONTAINS
 
@@ -233,9 +236,7 @@ CONTAINS
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
     ! --- Set matter sources with current conformal factor ---
-    CALL Poseidon_Input_Sources_Part1 &
-           ( MF_Src_Input  = MF_uGS, &
-             MF_Src_nComps = nGS )
+    CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
     CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
 
@@ -267,9 +268,7 @@ CONTAINS
 
     ! --- Set gravity sources with updated conformal factor ---
 
-    CALL Poseidon_Input_Sources_Part2 &
-           ( MF_Src_Input  = MF_uGS, &
-             MF_Src_nComps = nGS )
+    CALL Poseidon_Input_Sources_Part2( MF_uGS, nGS )
 
     ! --- Compute lapse and shift ---
 
@@ -332,15 +331,15 @@ CONTAINS
             =   uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
               + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S1      -1)+iNX) &
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_1   -1)+iNX) &
             = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S2      -1)+iNX) &
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_2   -1)+iNX) &
             = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S3      -1)+iNX) &
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_3   -1)+iNX) &
             = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
 
