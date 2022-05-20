@@ -1,4 +1,5 @@
 MODULE MF_GravitySolutionModule_XCFC_Poseidon
+use mf_utilitiesmodule
 
   ! --- AMReX Modules ---
 
@@ -15,7 +16,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_min
+    amrex_parallel_reduce_max
 
   ! --- thornado Modules ---
 
@@ -248,7 +249,7 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    ! --- Set matter sources with current conformal factor ---
+    ! --- Set XCFC sources with current conformal factor ---
     CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
     CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
@@ -676,6 +677,8 @@ CONTAINS
 
       CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
+      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+
       DO iLevel = 0, nLevels - 1
 
         CALL LF2(iLevel) % COPY &
@@ -703,14 +706,23 @@ CONTAINS
 
       END DO
 
-      CALL amrex_parallel_reduce_min( MinLF )
-      CALL amrex_parallel_reduce_min( MinCF )
-
-      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+      CALL amrex_parallel_reduce_max( MinLF )
+      CALL amrex_parallel_reduce_max( MinCF )
 
       IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. 10 )THEN
+
+call showvariablefrommultifab &
+(mf_ucf,1,writetofile_option=.true.,filename_option='CF_D.dat' )
+call showvariablefrommultifab &
+(mf_ucf,2,writetofile_option=.true.,filename_option='CF_S1.dat' )
+call showvariablefrommultifab &
+(mf_ucf,6,writetofile_option=.true.,filename_option='CF_E.dat' )
+call showvariablefrommultifab &
+(mf_ugf,9,writetofile_option=.true.,filename_option='GF_LF.dat' )
+call showvariablefrommultifab &
+(mf_ugf,13,writetofile_option=.true.,filename_option='GF_CF.dat' )
 
         WRITE(*,*) 'Could not initialize fields. Exiting...'
         STOP
@@ -725,8 +737,6 @@ CONTAINS
 !!$    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 !!$
-!!$    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
-!!$
 !!$    CALL ComputeMatterSources_Poseidon &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
 !!$
@@ -738,8 +748,6 @@ CONTAINS
 !!$
 !!$    CALL ComputeGeometry_Poseidon &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
-!!$
-!!$    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
 
     DO iLevel = 0, nLevels-1
 
