@@ -33,6 +33,8 @@ ifeq ($(USE_GPU),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_MAGMA
    else ifeq ($(USE_ROCM),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_ROCM
+   else ifeq ($(USE_ONEMKL),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_ONEMKL
    else ifeq ($(USE_CUBLAS),TRUE)
       DEFINES   += $(MDEFS)$(PP)THORNADO_LA_CUBLAS
    endif

@@ -13,6 +13,10 @@ ifeq ($(USE_GPU),TRUE)
         INCLUDE   += $(INCLUDE_ROCM)
         LIBRARIES += $(LIBRARIES_ROCM)
     endif
+    ifeq ($(USE_ONEMKL),TRUE)
+        INCLUDE   += $(INCLUDE_ONEMKL)
+        LIBRARIES += $(LIBRARIES_ONEMKL)
+    endif
     ifeq ($(USE_MAGMA),TRUE)
         INCLUDE   += $(INCLUDE_MAGMA)
         LIBRARIES += $(LIBRARIES_MAGMA)
