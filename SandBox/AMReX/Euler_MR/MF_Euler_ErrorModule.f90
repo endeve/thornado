@@ -198,6 +198,22 @@ CONTAINS
 
         CALL thornado_abort
 
+      CASE( 901 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_GravitySolutionModule_XCFC_Poseidon'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeMetric_MF'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'Could not initialize fields'
+        WRITE(*,*)
+        WRITE(*,'(2x,A,ES14.6E3)') 'MAX( MinLF, MinCF ): ', Real_Option(1)
+        WRITE(*,*)
+
+        CALL thornado_abort
+
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
