@@ -1,5 +1,4 @@
 MODULE MF_GravitySolutionModule_XCFC_Poseidon
-use mf_utilitiesmodule
 
   ! --- AMReX Modules ---
 
@@ -16,7 +15,8 @@ use mf_utilitiesmodule
     amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_max
+    amrex_parallel_reduce_max, &
+    amrex_parallel_reduce_sum
 
   ! --- thornado Modules ---
 
@@ -29,7 +29,8 @@ use mf_utilitiesmodule
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX, &
-    nDOFX_X1
+    nDOFX_X1, &
+    WeightsX_q
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Up
   USE MeshModule, ONLY: &
@@ -84,13 +85,17 @@ use mf_utilitiesmodule
     Zero, &
     Half, &
     One, &
+    Two, &
     Three, &
+    Pi, &
     SqrtTiny
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler_MF
+  USE MF_Euler_ErrorModule, ONLY: &
+    DescribeError_Euler_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -157,7 +162,8 @@ use mf_utilitiesmodule
   INTEGER, PARAMETER :: iGS_S_u_2 = 3
   INTEGER, PARAMETER :: iGS_S_u_3 = 4
   INTEGER, PARAMETER :: iGS_S     = 5
-  INTEGER, PARAMETER :: nGS       = 5
+  INTEGER, PARAMETER :: iGS_Mg    = 6
+  INTEGER, PARAMETER :: nGS       = 6
 
 CONTAINS
 
@@ -232,10 +238,8 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
-    CALL SetBoundaryConditions_Outer &
-           ( MF_uGF, Psi_xR_Option      = Psi_xR, &
-                     AlphaPsi_xR_Option = AlphaPsi_xR, &
-                     Beta_u_xR_Option   = Beta_u_xR )
+    CALL SetPoseidonBoundaryConditions_Outer &
+           ( MF_uGS, Psi_xR, AlphaPsi_xR, Beta_u_xR )
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
@@ -310,8 +314,7 @@ CONTAINS
 
     CALL ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
 
-    CALL SetBoundaryConditions_Inner( MF_uGF )
-    CALL SetBoundaryConditions_Outer( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry( MF_uGF )
 
     DO iLevel = 0, nLevels-1
 
@@ -340,9 +343,12 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
+    REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
+
+    INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
@@ -358,6 +364,12 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+
+        jErr = 0
+
+        ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
+                               iX_B0(2):iX_E0(2), &
+                               iX_B0(3):iX_E0(3)) )
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -382,10 +394,94 @@ CONTAINS
             = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
 
+          iErr(iNX,iX1,iX2,iX3) = 0
+
+          CALL ComputePrimitive_Euler_Relativistic &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                   uPF (iPF_D ), &
+                   uPF (iPF_V1), &
+                   uPF (iPF_V2), &
+                   uPF (iPF_V3), &
+                   uPF (iPF_E ), &
+                   uPF (iPF_Ne), &
+                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                   iErr(iNX,iX1,iX2,iX3) )
+
+          jErr = jErr + iErr(iNX,iX1,iX2,iX3)
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+
+          LorentzFactor &
+            = One / SQRT( One                              &
+                - ( uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
+                      * uPF(iPF_V1)**2 &
+                  + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
+                      * uPF(iPF_V2)**2 &
+                  + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
+                      * uPF(iPF_V3)**2 ) )
+
+          BetaDotV =   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
+                         * uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
+                         * uPF(iPF_V1) &
+                     + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
+                         * uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
+                         * uPF(iPF_V2) &
+                     + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
+                         * uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
+                         * uPF(iPF_V3)
+
+          Enthalpy = uPF(iPF_D) + uPF(iPF_E) + Pressure
+
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_Mg-1)+iNX) &
+            = ( Enthalpy * ( Two * LorentzFactor**2 &
+                  * ( One - BetaDotV &
+                              / uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) ) &
+                      - One ) &
+                + Two * Pressure ) &
+               * uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha -1)+iNX) &
+               * uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX)
+
         END DO
         END DO
         END DO
         END DO
+
+        IF( jErr .GT. 0 )THEN
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+          DO iNX = 1       , nDOFX
+
+            CALL DescribeError_Euler &
+              ( iErr(iNX,iX1,iX2,iX3), &
+                Int_Option = [ iNX ], &
+                Real_Option = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+        DEALLOCATE( iErr )
 
       END DO
 
@@ -615,6 +711,8 @@ CONTAINS
     INTEGER  :: iLevel, ITER, iNX
     REAL(DP) :: MinLF, MinCF
 
+    INTEGER, PARAMETER :: MAX_ITER = 10
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -711,43 +809,11 @@ CONTAINS
 
       IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
 
-      IF( ITER .EQ. 10 )THEN
-
-call showvariablefrommultifab &
-(mf_ucf,1,writetofile_option=.true.,filename_option='CF_D.dat' )
-call showvariablefrommultifab &
-(mf_ucf,2,writetofile_option=.true.,filename_option='CF_S1.dat' )
-call showvariablefrommultifab &
-(mf_ucf,6,writetofile_option=.true.,filename_option='CF_E.dat' )
-call showvariablefrommultifab &
-(mf_ugf,9,writetofile_option=.true.,filename_option='GF_LF.dat' )
-call showvariablefrommultifab &
-(mf_ugf,13,writetofile_option=.true.,filename_option='GF_CF.dat' )
-
-        WRITE(*,*) 'Could not initialize fields. Exiting...'
-        STOP
-
-      END IF
+      IF( ITER .EQ. MAX_ITER ) &
+        CALL DescribeError_Euler_MF &
+               ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
-
-!!$    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-!!$
-!!$    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-!!$
-!!$    CALL ComputeMatterSources_Poseidon &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
-!!$
-!!$    CALL ComputeConformalFactor_Poseidon &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
-!!$
-!!$    CALL ComputePressureTensorTrace_Poseidon &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
-!!$
-!!$    CALL ComputeGeometry_Poseidon &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
     DO iLevel = 0, nLevels-1
 
@@ -911,37 +977,101 @@ call showvariablefrommultifab &
   END SUBROUTINE ComputeGeometryFromPoseidon_MF
 
 
-  SUBROUTINE SetBoundaryConditions_Inner( MF_uGF )
+  SUBROUTINE SetPoseidonBoundaryConditions_Outer &
+    ( MF_uGS, Psi_xR, AlphaPsi_xR, Beta_u_xR )
+
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:nLevels-1)
+    REAL(DP)            , INTENT(out) :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
+
+    REAL(DP) :: GravitationalMass
+    REAL(DP) :: Alpha_xR
+
+    CALL ComputeGravitationalMass( MF_uGS, GravitationalMass )
+
+    ! --- Approximate outer boundary with isotropic expressions ---
+
+    Psi_xR   = One + Half * Gravitationalmass / xR(1)
+    Alpha_xR =   ( One - Half * GravitationalMass / xR(1) ) &
+               / ( One + Half * GravitationalMass / xR(1) )
+
+    AlphaPsi_xR = Alpha_xR * Psi_xR
+    Beta_u_xR   = Zero
+
+  END SUBROUTINE SetPoseidonBoundaryConditions_Outer
+
+
+  SUBROUTINE ComputeGravitationalMass( MF_uGS, GravitationalMass )
+
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:nLevels-1)
+    REAL(DP)            , INTENT(out) :: GravitationalMass
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+
+    INTEGER  :: iNX, iX1, iX2, iX3, iX_B0(3), iX_E0(3), iLevel
+    REAL(DP) :: d3X
+
+    ! --- Assuming 1D spherical symmetry ---
+
+    GravitationalMass = Zero
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      DO WHILE( MFI % next() )
+
+        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          d3X = Two / Pi * MeshX(1) % Width(iX1) &
+                         * MeshX(2) % Width(iX2) &
+                         * MeshX(3) % Width(iX3)
+
+          GravitationalMass &
+            = GravitationalMass + d3X &
+                * WeightsX_q(iNX) * uGS(iX1,iX2,iX3,nDOFX*(iGS_Mg-1)+iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    CALL amrex_parallel_reduce_sum( GravitationalMass )
+
+  END SUBROUTINE ComputeGravitationalMass
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-    CALL SetBoundaryConditions_X1_Inner( MF_uGF )
+    CALL ApplyBoundaryConditions_X1_Inner( MF_uGF )
+    CALL ApplyBoundaryConditions_X1_Outer( MF_uGF )
 
-  END SUBROUTINE SetBoundaryConditions_Inner
-
-
-  SUBROUTINE SetBoundaryConditions_Outer &
-    ( MF_uGF, Psi_xR_Option, AlphaPsi_xR_Option, Beta_u_xR_Option )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(DP)            , INTENT(out), OPTIONAL :: &
-      Psi_xR_Option, AlphaPsi_xR_Option, Beta_u_xR_Option(3)
-
-    REAL(DP) :: Psi_xR
-    REAL(DP) :: AlphaPsi_xR
-    REAL(DP) :: Beta_u_xR(3)
-
-    CALL SetBoundaryConditions_X1_Outer &
-           ( MF_uGF, Psi_xR, AlphaPsi_xR, Beta_u_xR )
-
-    IF( PRESENT( Psi_xR_Option      ) ) Psi_xR_Option      = Psi_xR
-    IF( PRESENT( AlphaPsi_xR_Option ) ) AlphaPsi_xR_Option = AlphaPsi_xR
-    IF( PRESENT( Beta_u_xR_Option   ) ) Beta_u_xR_Option   = Beta_u_xR
-
-  END SUBROUTINE SetBoundaryConditions_Outer
+  END SUBROUTINE ApplyBoundaryConditions_Geometry
 
 
-  SUBROUTINE SetBoundaryConditions_X1_Inner( MF_uGF )
+  SUBROUTINE ApplyBoundaryConditions_X1_Inner( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
@@ -1040,15 +1170,12 @@ call showvariablefrommultifab &
 
     END DO
 
-  END SUBROUTINE SetBoundaryConditions_X1_Inner
+  END SUBROUTINE ApplyBoundaryConditions_X1_Inner
 
 
-  SUBROUTINE SetBoundaryConditions_X1_Outer &
-    ( MF_uGF, Psi_xR, AlphaPsi_xR, Beta_u_xR )
+  SUBROUTINE ApplyBoundaryConditions_X1_Outer( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(DP)            , INTENT(out)   :: Psi_xR, AlphaPsi_xR, &
-                                           Beta_u_xR(3)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -1060,10 +1187,6 @@ call showvariablefrommultifab &
     INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: iNX
-
-    Psi_xR      = -HUGE( One )
-    AlphaPsi_xR = -HUGE( One )
-    Beta_u_xR   = -HUGE( One )
 
     DO iLevel = 0, nLevels-1
 
@@ -1121,12 +1244,6 @@ call showvariablefrommultifab &
           END DO
           END DO
 
-          Psi_xR       = G_F(1,1,1,iGF_Psi)
-          AlphaPsi_xR  = G_F(1,1,1,iGF_Alpha) * G_F(1,1,1,iGF_Psi)
-          Beta_u_xR(1) = G_F(1,1,1,iGF_Beta_1)
-          Beta_u_xR(2) = G_F(1,1,1,iGF_Beta_2)
-          Beta_u_xR(3) = G_F(1,1,1,iGF_Beta_3)
-
           DEALLOCATE( G_F )
           DEALLOCATE( G_K )
 
@@ -1138,7 +1255,7 @@ call showvariablefrommultifab &
 
     END DO
 
-  END SUBROUTINE SetBoundaryConditions_X1_Outer
+  END SUBROUTINE ApplyBoundaryConditions_X1_Outer
 
 
 END MODULE MF_GravitySolutionModule_XCFC_Poseidon
