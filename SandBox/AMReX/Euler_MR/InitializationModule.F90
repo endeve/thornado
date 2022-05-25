@@ -376,6 +376,8 @@ CONTAINS
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF )
 
+stop 'InitializationModule.F90 (line 379)'
+
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )

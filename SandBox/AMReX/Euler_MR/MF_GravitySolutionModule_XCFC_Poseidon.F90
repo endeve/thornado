@@ -1,4 +1,5 @@
 MODULE MF_GravitySolutionModule_XCFC_Poseidon
+use mf_utilitiesmodule
 
   ! --- AMReX Modules ---
 
@@ -15,7 +16,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_min
+    amrex_parallel_reduce_max
 
   ! --- thornado Modules ---
 
@@ -185,7 +186,7 @@ CONTAINS
              Source_TQ_xlocs    = MeshX(2) % Nodes, &
              Source_PQ_xlocs    = MeshX(3) % Nodes, &
              Units_Option       = 'G', &
-             Verbose_Option     = .TRUE., &
+             Verbose_Option     = .FALSE., &
              Print_Setup_Option = .TRUE. )
 
 #endif
@@ -209,7 +210,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-    REAL(DP)         :: Psi_xR, AlphaPsi_xR
+    REAL(DP)         :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
@@ -232,20 +233,23 @@ CONTAINS
     ! --- Set Boundary Values ---
 
     CALL SetBoundaryConditions_Outer &
-           ( MF_uGF, Psi_xR_Option = Psi_xR, AlphaPsi_xR_Option = AlphaPsi_xR )
+           ( MF_uGF, Psi_xR_Option      = Psi_xR, &
+                     AlphaPsi_xR_Option = AlphaPsi_xR, &
+                     Beta_u_xR_Option   = Beta_u_xR )
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
-    OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, Zero, Zero, Zero ]
+    OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, &
+                        Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    ! --- Set matter sources with current conformal factor ---
+    ! --- Set XCFC sources with current conformal factor ---
     CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
     CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
@@ -326,7 +330,7 @@ CONTAINS
     ( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! This is U^{*}
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -338,6 +342,7 @@ CONTAINS
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3)
+    REAL(DP) :: Psi6
 
     DO iLevel = 0, nLevels-1
 
@@ -359,20 +364,22 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          uGS      (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
-            =   uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
-              + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX)
+          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+
+          uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
+            =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
+               + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX) ) * Psi6
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_1   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_2   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_3   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) * Psi6 &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
 
         END DO
@@ -392,7 +399,7 @@ CONTAINS
   SUBROUTINE ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! This is U^{*}
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -444,12 +451,12 @@ CONTAINS
           ! --- Compute trace of stress tensor ---
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
                    uPF(iPF_D ), &
                    uPF(iPF_V1), &
                    uPF(iPF_V2), &
@@ -467,10 +474,10 @@ CONTAINS
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
 
           uGF(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
-            =   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
-              + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
-              + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
-              + Psi6 * Three * Pressure
+            =   (  uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
+                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
+                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
+                 + Three * Pressure ) * Psi6
 
         END DO
         END DO
@@ -655,14 +662,12 @@ CONTAINS
       DO iLevel = 0, nLevels - 1
 
         CALL LF1(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
 
         CALL CF1(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Psi  -1)+1, 1, nDOFX, 0 )
 
       END DO
-
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
 
       CALL ComputeConformalFactorSources_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
@@ -672,15 +677,15 @@ CONTAINS
 
       CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
       DO iLevel = 0, nLevels - 1
 
         CALL LF2(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Alpha-1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
 
         CALL CF2(iLevel) % COPY &
-              ( MF_uGF(iLevel), 1+nDOFX*(iGF_Psi  -1), 1, nDOFX, 0 )
+              ( MF_uGF(iLevel), nDOFX*(iGF_Psi  -1)+1, 1, nDOFX, 0 )
 
         CALL dLF(iLevel) &
                % LinComb( +One, LF2(iLevel), 1, &
@@ -701,14 +706,23 @@ CONTAINS
 
       END DO
 
-      CALL amrex_parallel_reduce_min( MinLF )
-      CALL amrex_parallel_reduce_min( MinCF )
-
-      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+      CALL amrex_parallel_reduce_max( MinLF )
+      CALL amrex_parallel_reduce_max( MinCF )
 
       IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. 10 )THEN
+
+call showvariablefrommultifab &
+(mf_ucf,1,writetofile_option=.true.,filename_option='CF_D.dat' )
+call showvariablefrommultifab &
+(mf_ucf,2,writetofile_option=.true.,filename_option='CF_S1.dat' )
+call showvariablefrommultifab &
+(mf_ucf,6,writetofile_option=.true.,filename_option='CF_E.dat' )
+call showvariablefrommultifab &
+(mf_ugf,9,writetofile_option=.true.,filename_option='GF_LF.dat' )
+call showvariablefrommultifab &
+(mf_ugf,13,writetofile_option=.true.,filename_option='GF_CF.dat' )
 
         WRITE(*,*) 'Could not initialize fields. Exiting...'
         STOP
@@ -717,15 +731,11 @@ CONTAINS
 
     END DO ! WHILE( .NOT. CONVERGED )
 
-stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
-
 !!$    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 !!$
 !!$    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-!!$
-!!$    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
 !!$
 !!$    CALL ComputeMatterSources_Poseidon &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
@@ -738,8 +748,6 @@ stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
 !!$
 !!$    CALL ComputeGeometry_Poseidon &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
-!!$
-!!$    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
 
     DO iLevel = 0, nLevels-1
 
@@ -913,19 +921,22 @@ stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
 
 
   SUBROUTINE SetBoundaryConditions_Outer &
-    ( MF_uGF, Psi_xR_Option, AlphaPsi_xR_Option )
+    ( MF_uGF, Psi_xR_Option, AlphaPsi_xR_Option, Beta_u_xR_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     REAL(DP)            , INTENT(out), OPTIONAL :: &
-      Psi_xR_Option, AlphaPsi_xR_Option
+      Psi_xR_Option, AlphaPsi_xR_Option, Beta_u_xR_Option(3)
 
     REAL(DP) :: Psi_xR
     REAL(DP) :: AlphaPsi_xR
+    REAL(DP) :: Beta_u_xR(3)
 
-    CALL SetBoundaryConditions_X1_Outer( MF_uGF, Psi_xR, AlphaPsi_xR )
+    CALL SetBoundaryConditions_X1_Outer &
+           ( MF_uGF, Psi_xR, AlphaPsi_xR, Beta_u_xR )
 
     IF( PRESENT( Psi_xR_Option      ) ) Psi_xR_Option      = Psi_xR
     IF( PRESENT( AlphaPsi_xR_Option ) ) AlphaPsi_xR_Option = AlphaPsi_xR
+    IF( PRESENT( Beta_u_xR_Option   ) ) Beta_u_xR_Option   = Beta_u_xR
 
   END SUBROUTINE SetBoundaryConditions_Outer
 
@@ -1032,10 +1043,12 @@ stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
   END SUBROUTINE SetBoundaryConditions_X1_Inner
 
 
-  SUBROUTINE SetBoundaryConditions_X1_Outer( MF_uGF, Psi_xR, AlphaPsi_xR )
+  SUBROUTINE SetBoundaryConditions_X1_Outer &
+    ( MF_uGF, Psi_xR, AlphaPsi_xR, Beta_u_xR )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(DP)            , INTENT(out)   :: Psi_xR, AlphaPsi_xR
+    REAL(DP)            , INTENT(out)   :: Psi_xR, AlphaPsi_xR, &
+                                           Beta_u_xR(3)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -1050,6 +1063,7 @@ stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
 
     Psi_xR      = -HUGE( One )
     AlphaPsi_xR = -HUGE( One )
+    Beta_u_xR   = -HUGE( One )
 
     DO iLevel = 0, nLevels-1
 
@@ -1107,8 +1121,11 @@ stop 'yay! got to MF_GravitySolutionModule_XCFC_Poseidon.F90, line 711'
           END DO
           END DO
 
-          Psi_xR      = G_F(1,1,1,iGF_Psi)
-          AlphaPsi_xR = G_F(1,1,1,iGF_Alpha) * G_F(1,1,1,iGF_Psi)
+          Psi_xR       = G_F(1,1,1,iGF_Psi)
+          AlphaPsi_xR  = G_F(1,1,1,iGF_Alpha) * G_F(1,1,1,iGF_Psi)
+          Beta_u_xR(1) = G_F(1,1,1,iGF_Beta_1)
+          Beta_u_xR(2) = G_F(1,1,1,iGF_Beta_2)
+          Beta_u_xR(3) = G_F(1,1,1,iGF_Beta_3)
 
           DEALLOCATE( G_F )
           DEALLOCATE( G_K )
