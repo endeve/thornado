@@ -35,6 +35,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nSpecies, &
+    UseTiling, &
     nE
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
@@ -94,7 +95,7 @@ CONTAINS
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -151,7 +152,6 @@ CONTAINS
                              iZ_B1(3):iZ_E1(3), &
                              iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
-
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
@@ -172,6 +172,14 @@ CONTAINS
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
+
+        DEALLOCATE( G )
+
+        DEALLOCATE( C )
+
+        DEALLOCATE( U )
+
+        DEALLOCATE( dU )
 
       END DO
 

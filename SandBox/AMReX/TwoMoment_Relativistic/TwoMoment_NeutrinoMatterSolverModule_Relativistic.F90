@@ -42,8 +42,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_Relativistic
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
-    ComputePressure_TABLE, &
-    MinT
+    ComputePressure_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions_DG_Points, &
     ComputeNeutrinoOpacities_EC_Points, &

@@ -187,6 +187,7 @@ MODULE InitializationModule
     UsePositivityLimiter,      &
     UseSlopeLimiter,      &
     BetaTVD,      &
+    Direction,    &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -393,7 +394,7 @@ CONTAINS
 #endif
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
+                              Verbose_Option = amrex_parallel_ioprocessor(), Direction_Option = Direction )
     DO iLevel = 0, nLevels-1
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )

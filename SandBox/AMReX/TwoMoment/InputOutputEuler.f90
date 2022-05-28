@@ -80,6 +80,7 @@ MODULE InputOutputEuler
   USE MyAmrModule,      ONLY: &
     nLevels,          &
     MaxGridSizeX,     &
+    UseTiling,        &
     nX
   USE MyAmrDataModule,         ONLY: &
     MF_uGF, &
@@ -565,7 +566,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
 
-    CALL amrex_mfiter_build( MFI, MF, tiling = .TRUE. )
+    CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 

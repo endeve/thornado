@@ -36,7 +36,7 @@ MODULE MF_TwoMoment_UtilitiesModule
     MeshX
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
-    nLevels, nSpecies, nE
+    nLevels, nSpecies, nE, UseTiling
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
@@ -80,7 +80,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -167,7 +167,6 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: CR(:,:,:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: PR(:,:,:,:,:,:,:)
 
-    INTEGER, ALLOCATABLE :: nIterations(:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLo_MF(4), nPoints, iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -178,7 +177,7 @@ CONTAINS
 
       ! --- Apply boundary conditions to interior domains ---
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -221,9 +220,7 @@ CONTAINS
         nPoints = nSpecies * PRODUCT( iX_E0 - iX_B0 + 1 ) &
               * ( iE_E0 - iE_B0 + 1 ) * nDOFZ
 
-        ALLOCATE( nIterations(nPoints) )
 
-        iPoint = 0
 
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
@@ -302,7 +299,6 @@ CONTAINS
 
           DO iNodeZ = 1, nDOFZ
 
-            iPoint = iPoint + 1
 
             iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
@@ -326,9 +322,7 @@ CONTAINS
                    G(iNodeX,iX1,iX2,iX3,iGF_Alpha), &
                    G(iNodeX,iX1,iX2,iX3,iGF_Beta_1), &
                    G(iNodeX,iX1,iX2,iX3,iGF_Beta_2), &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_3), &
-                   nIterations(iPoint) )
-
+                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
 
 
           END DO
@@ -345,6 +339,16 @@ CONTAINS
         CALL thornado2amrex_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
+
+        DEALLOCATE( G )
+
+        DEALLOCATE( CF )
+
+        DEALLOCATE( PF )
+
+        DEALLOCATE( CR )
+
+        DEALLOCATE( PR )
 
       END DO
 
@@ -384,7 +388,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 

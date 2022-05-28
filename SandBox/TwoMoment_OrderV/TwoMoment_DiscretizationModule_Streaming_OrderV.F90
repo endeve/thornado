@@ -2386,7 +2386,7 @@ CONTAINS
 
       NumericalFlux2(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
         = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ4,iS,iZ4) &
+            * ( NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
                 + uV1_F(iX_F) &
                     * NumericalFlux(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
                 + uV2_F(iX_F) &

@@ -609,6 +609,39 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
 
+    CASE( 'ShadowCasting2D_Cylindrical' )
+
+      CoordinateSystem = 'CYLINDRICAL'
+
+      nX  = [ 240, 200, 1 ]
+      xL  = [ 00.0_DP, - 5.0_DP, 0.0_DP ]
+      xR  = [ 12.0_DP, + 5.0_DP,  TwoPi ]
+      bcX = [ 30, 2, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.5d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+
     CASE DEFAULT
 
       WRITE(*,*)

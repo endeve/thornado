@@ -58,7 +58,6 @@ CONTAINS
     !$ACC ENTER DATA ASYNC &
     !$ACC COPYIN( U, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
-
     CALL ApplyBC_TwoMoment_E &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
@@ -117,7 +116,10 @@ CONTAINS
     REAL(DP) :: L_N( nE_LeastSquares, nDOFE, nDOFX)
     REAL(DP) :: N(nE_LeastSquares, nDOFE), lnN(nE_LeastSquares, nDOFE)
     REAL(DP) :: E(nE_LeastSquares, nDOFE), A_T(nDOFX), B_T(nDOFX)
-    
+    CHARACTER(1) :: Direction
+   
+    Direction = 'X'
+ 
     SELECT CASE ( bcZ(1) )
 
     CASE ( 0 ) ! No Boundary Condition
@@ -377,7 +379,6 @@ CONTAINS
     CASE ( 22 ) ! Custom
       i = 1
 
-
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -403,7 +404,7 @@ CONTAINS
 
             ELSE
 
-              L_lnN( i, iNodeE, iNodeX ) = LOG( U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) )
+              L_lnN( i, iNodeE, iNodeX ) = LOG( ABS(U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)) )
 
             END IF
 
@@ -415,6 +416,7 @@ CONTAINS
         END IF
 
       END DO 
+
 
       i = 1
 
@@ -462,8 +464,43 @@ CONTAINS
 
           E_R = MeshE % Center(iZ_E0(1)+iZ1) - 0.5_DP * MeshE % Width(iZ_E0(1)+iZ1)
 
-          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = A_T(iNodeX) * EXP( B_T(iNodeX) * E_R )
+          IF (Direction .EQ. 'X') THEN
 
+
+            IF(iCR .EQ. iCR_G1 .OR. iCR .EQ. iCR_N) THEN
+
+              U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = A_T(iNodeX) * EXP( B_T(iNodeX) * E_R )
+
+            ELSE
+              
+              U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = 0.0_DP
+
+            END IF
+          
+
+          ELSE IF(Direction .EQ. 'Y' ) THEN
+            IF(iCR .EQ. iCR_G2 .OR. iCR .EQ. iCR_N) THEN
+
+              U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = A_T(iNodeX) * EXP( B_T(iNodeX) * E_R )
+
+            ELSE
+              
+              U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = 0.0_DP
+
+            END IF
+          ELSE IF(Direction .EQ. 'Z' ) THEN
+
+            IF(iCR .EQ. iCR_G3 .OR. iCR .EQ. iCR_N) THEN
+
+              U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = A_T(iNodeX) * EXP( B_T(iNodeX) * E_R )
+
+            ELSE
+              
+              U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) = 0.0_DP
+
+            END IF
+
+          END IF
         END DO
 
       END DO
@@ -480,7 +517,6 @@ CONTAINS
         '', 'Invalid Boundary Condition for TwoMoment E: ', bcZ(1)
       STOP
     END SELECT
-
   END SUBROUTINE ApplyBC_TwoMoment_E
 
 
@@ -759,7 +795,6 @@ CONTAINS
       END DO
 
     CASE ( 22 ) ! Custom Boundary Conditions for radiating inner and outflow outer
-      Mu_0 = 0.9_DP
       DO iS = 1, nSpecies
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -773,20 +808,14 @@ CONTAINS
                    E = NodeCoordinate( MeshE, iZ1, iNodeE )
                     ! --- Inner Boundary ---
                     U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)  &
-                      != 0.5_DP * ( 1.0_DP - Mu_0 ) / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
-                      =   1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
-                      ! =   1.0_DP / ( EXP( E )- 1.0_DP )
+                      = 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G1,iS)  &
-                      != 0.5_DP * ( 1.0_DP + Mu_0 ) * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS) 
                       = 0.99_DP * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G2,iS) &
                       = 0.0_DP
 
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G3,iS) &
                       = 0.0_DP
-
-                    !print*,iNode, iZ1, iZ_B0(2)-iZ2, U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
-
 
                     ! --- Outer Boundary ---
 
@@ -834,7 +863,8 @@ CONTAINS
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
-    INTEGER :: jNodeZ3, iNodeZ, jNodeZ
+    INTEGER :: jNodeZ3, iNodeZ, jNodeZ, iNodeE
+    REAL(DP) :: E
 
     SELECT CASE ( bcZ(3) )
 
@@ -1092,6 +1122,49 @@ CONTAINS
         END DO
       END DO
 
+    CASE ( 22 ) ! Custom Boundary Conditions for radiating inner and outflow outer
+      DO iS = 1, nSpecies
+          DO iZ4 = iZ_B0(4), iZ_E0(4)
+            DO iZ3 = 1, swZ(3)
+              DO iZ2 = iZ_B0(2),  iZ_E0(2)
+                DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
+
+                    iNodeE = MOD( (iNode-1)        , nDOFE ) + 1
+
+
+                   E = NodeCoordinate( MeshE, iZ1, iNodeE )
+                    ! --- Inner Boundary ---
+                    U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR_N,iS)  &
+                      = 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                    U( iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR_G1,iS)  &
+                      = 0.0_DP
+                    U( iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR_G2,iS) &
+                      = 0.99_DP * U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR_N,iS)
+
+                    U( iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR_G3,iS) &
+                      = 0.0_DP
+
+                    ! --- Outer Boundary ---
+
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR_N,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR_N,iS)
+
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR_G1,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR_G1,iS)
+
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR_G2,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR_G2,iS)
+
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR_G3,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR_G3,iS)
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+      END DO
     CASE DEFAULT
 
       WRITE(*,*)
@@ -1118,7 +1191,8 @@ CONTAINS
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
-    INTEGER :: jNodeZ4, iNodeZ, jNodeZ
+    INTEGER :: jNodeZ4, iNodeZ, jNodeZ, iNodeE
+    REAL(DP) :: E
 
     SELECT CASE ( bcZ(4) )
 
@@ -1377,6 +1451,49 @@ CONTAINS
         END DO
       END DO
 
+    CASE ( 22 ) ! Custom Boundary Conditions for radiating inner and outflow outer
+      DO iS = 1, nSpecies
+          DO iZ4 = 1, swZ(4)
+            DO iZ3 = iZ_B0(3), iZ_E0(3)
+              DO iZ2 = iZ_B0(2), iZ_E0(2)
+                DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
+
+                    iNodeE = MOD( (iNode-1)        , nDOFE ) + 1
+
+
+                   E = NodeCoordinate( MeshE, iZ1, iNodeE )
+                    ! --- Inner Boundary ---
+                    U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR_N,iS)  &
+                      = 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                    U( iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR_G1,iS)  &
+                      = 0.0_DP
+                    U( iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR_G2,iS) &
+                      = 0.0_DP
+
+                    U( iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR_G3,iS) &
+                      = 0.99_DP * U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR_N,iS)
+
+                    ! --- Outer Boundary ---
+
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR_N,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR_N,iS)
+
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR_G1,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR_G1,iS)
+
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR_G2,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR_G2,iS)
+
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR_G3,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR_G3,iS)
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+      END DO
     CASE DEFAULT
 
       WRITE(*,*)

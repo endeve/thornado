@@ -76,6 +76,7 @@ MODULE InputOutput
     DM,                        &
     GEOM,                      &
     StepNo,                    &
+    UseTiling,                 &
     MyAmrInit
   USE MyAmrDataModule,    ONLY: &
     MF_uCR, &
@@ -434,7 +435,7 @@ MODULE InputOutput
     REAL(AR)                      :: Eq(1:nDOFE), E(1:nDOFZ), V_K
 
 
-    CALL amrex_mfiter_build( MFI, MF, tiling = .TRUE. )
+    CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
