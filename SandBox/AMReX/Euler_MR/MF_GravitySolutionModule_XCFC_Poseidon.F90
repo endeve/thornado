@@ -569,7 +569,7 @@ CONTAINS
           CALL ComputePressureFromPrimitive &
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
 
-          uGF(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
             =   (  uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
                  + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
                  + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
