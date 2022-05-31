@@ -38,7 +38,7 @@ NeutrinoOpacities_Profile: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.s
 
 clobber: clean
 	rm -f NeutrinoOpacities_$(MACHINE)
@@ -54,4 +54,4 @@ NeutrinoOpacities.o: \
   RadiationFieldsModule.o \
   NeutrinoOpacitiesComputationModule.o \
   DeviceModule.o \
-  NeutrinoOpacities.f90
+  NeutrinoOpacities.F90
