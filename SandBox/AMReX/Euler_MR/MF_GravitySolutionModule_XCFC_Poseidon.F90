@@ -163,7 +163,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   INTEGER, PARAMETER :: iGS_S_u_3 = 4
   INTEGER, PARAMETER :: iGS_S     = 5
   INTEGER, PARAMETER :: iGS_Mg    = 6
-  INTEGER, PARAMETER :: nGS       = 6
+  INTEGER, PARAMETER, PUBLIC :: nGS = 6
 
 CONTAINS
 

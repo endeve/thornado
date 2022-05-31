@@ -43,12 +43,15 @@ MODULE MF_TimeSteppingModule_SSPRK
     nNodes, &
     nStages, &
     do_reflux
-!!$  USE FillPatchModule, ONLY: &
-!!$    FillPatch
   USE RefluxModule_Euler, ONLY: &
     Reflux_Euler_MF
-!!$  USE MF_UtilitiesModule, ONLY: &
-!!$    MultiplyWithMetric
+  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    nGS, &
+    MultiplyWithPsi6_MF, &
+    ComputeConformalFactorSourcesAndMg_XCFC_MF, &
+    ComputeConformalFactor_Poseidon_MF, &
+    ComputePressureTensorTrace_XCFC_MF, &
+    ComputeGeometry_Poseidon_MF
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -127,6 +130,7 @@ CONTAINS
 
     TYPE(amrex_multifab) :: MF_U(1:nStages,0:nLevels-1)
     TYPE(amrex_multifab) :: MF_D(1:nStages,0:nLevels-1)
+    TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
 
     INTEGER :: iS, jS, nComp
     INTEGER :: iLevel
@@ -164,7 +168,13 @@ CONTAINS
 
         CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nComp, swX )
 
+        CALL amrex_multifab_build &
+               ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+                 nDOFX * nGS, 0 )
+
       END DO ! iLevel
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_U(iS,:) )
 
       DO jS = 1, iS-1
 
@@ -183,11 +193,35 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_Euler_MF &
-               ( t, MF_uGF, MF_U(iS,:), MF_uDF )
+        IF( iS .NE. 1 )THEN
 
-        CALL ApplyPositivityLimiter_Euler_MF &
-               ( MF_uGF, MF_U(iS,:), MF_uDF )
+          CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+                 ( MF_uGF, MF_U(iS,:), MF_uGS )
+
+          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+          CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
+
+          CALL ApplySlopeLimiter_Euler_MF &
+                 ( t, MF_uGF, MF_U(iS,:), MF_uDF )
+
+          CALL ApplyPositivityLimiter_Euler_MF &
+                 ( MF_uGF, MF_U(iS,:), MF_uDF )
+
+          CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_U(iS,:) )
+
+          CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+                 ( MF_uGF, MF_U(iS,:), MF_uGS )
+
+          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+          CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_U(iS,:), MF_uGS )
+
+          CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+        END IF
+
+        CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
                ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
@@ -233,6 +267,30 @@ CONTAINS
 
     CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
     CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+           ( MF_uGF, MF_uCF, MF_uGS )
+
+    CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+
+    CALL ApplySlopeLimiter_Euler_MF &
+           ( t, MF_uGF, MF_uCF, MF_uDF )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+           ( MF_uGF, MF_uCF, MF_uGS )
+
+    CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+    CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+
+    CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 
