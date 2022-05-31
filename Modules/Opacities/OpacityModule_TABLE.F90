@@ -291,7 +291,7 @@ CONTAINS
 
     ALLOCATE( OS_Brem(1:OPACITIES % Scat_Brem % nOpacities, &
                       1:OPACITIES % Scat_Brem % nMoments) )
-    OS_Brem(:,:) = OPACITIES % Scat_Brem % Offsets(:,:)
+    OS_Brem = OPACITIES % Scat_Brem % Offsets
 
     ALLOCATE( EmAb_T(1:OPACITIES % EmAb % nPoints(1), &
                      1:OPACITIES % EmAb % nPoints(2), &
