@@ -135,7 +135,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: FinalizeGravitySolver_XCFC_Poseidon_MF
   PUBLIC :: ComputeConformalFactor_Poseidon_MF
   PUBLIC :: ComputeGeometry_Poseidon_MF
-  PUBLIC :: ComputeConformalFactorSources_XCFC_MF
+  PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_MF
   PUBLIC :: ComputePressureTensorTrace_XCFC_MF
   PUBLIC :: MultiplyWithPsi6_MF
   PUBLIC :: InitializeMetric_MF
@@ -262,7 +262,7 @@ CONTAINS
 
     CALL Poseidon_XCFC_Run_Part1()
 
-    CALL Poseidon_Return_Conformal_Factor( MF_Results = MF_uMF )
+    CALL Poseidon_Return_Conformal_Factor( MF_uMF )
 
     CALL UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
@@ -308,7 +308,7 @@ CONTAINS
 
     CALL Poseidon_XCFC_Run_Part2()
 
-    CALL Poseidon_Return_ALL( MF_Results = MF_uMF )
+    CALL Poseidon_Return_ALL( MF_uMF )
 
     ! --- Copy data from Poseidon to thornado ---
 
@@ -329,11 +329,11 @@ CONTAINS
   END SUBROUTINE ComputeGeometry_Poseidon_MF
 
 
-  SUBROUTINE ComputeConformalFactorSources_XCFC_MF &
+  SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF &
     ( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -376,33 +376,35 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
-
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
-               + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX) ) * Psi6
+               + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX) )
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_1   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) * Psi6 &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_2   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) * Psi6 &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
 
           uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_3   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) * Psi6 &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) &
                 / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
+
+          ! Assume Psi^(iStage) ~ Psi^(iStage+1) for Poseidon BCs
+
+          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
                    uPF (iPF_D ), &
                    uPF (iPF_V1), &
                    uPF (iPF_V2), &
@@ -461,15 +463,17 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
 
+            Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+
             CALL DescribeError_Euler &
               ( iErr(iNX,iX1,iX2,iX3), &
                 Int_Option = [ iNX ], &
-                Real_Option = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                Real_Option = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                                uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
                                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
@@ -489,13 +493,13 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE ComputeConformalFactorSources_XCFC_MF
+  END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF
 
 
   SUBROUTINE ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -547,12 +551,12 @@ CONTAINS
           ! --- Compute trace of stress tensor ---
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
                    uPF(iPF_D ), &
                    uPF(iPF_V1), &
                    uPF(iPF_V2), &
@@ -570,9 +574,9 @@ CONTAINS
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
 
           uGS(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
-            =   (  uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * uPF(iPF_V1) &
-                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * uPF(iPF_V2) &
-                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * uPF(iPF_V3) &
+            =   (  uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6 * uPF(iPF_V1) &
+                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6 * uPF(iPF_V2) &
+                 + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6 * uPF(iPF_V3) &
                  + Three * Pressure ) * Psi6
 
         END DO
@@ -597,16 +601,18 @@ CONTAINS
               WRITE(*,*) 'iX_E0: ', iX_E0
               WRITE(*,*) 'iX1, iX2, iX3: ', iX1, iX2, iX3
 
+              Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+
               CALL DescribeError_Euler &
                 ( iErr(iNX,iX1,iX2,iX3), &
                   Int_Option = [ iNX ], &
                   Real_Option &
-                    = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX), &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX), &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX), &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX), &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX), &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX), &
+                    = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX) / Psi6, &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) / Psi6, &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) / Psi6, &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) / Psi6, &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX) / Psi6, &
+                        uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX) / Psi6, &
                         uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                         uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                         uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
@@ -767,11 +773,15 @@ CONTAINS
 
       END DO
 
-      CALL ComputeConformalFactorSources_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
       CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
       CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
 
       CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
