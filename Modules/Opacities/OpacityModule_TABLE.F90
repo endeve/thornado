@@ -375,6 +375,12 @@ CONTAINS
     Brem_AT = 0.0d0
 
 #if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP          NES_AT, Pair_AT, Brem_AT, C1, C2 )
+
     !$OMP TARGET UPDATE TO &
     !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
@@ -554,6 +560,12 @@ CONTAINS
   SUBROUTINE FinalizeOpacities_TABLE
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
