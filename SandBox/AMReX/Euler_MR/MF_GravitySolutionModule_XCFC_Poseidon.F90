@@ -399,12 +399,12 @@ CONTAINS
           iErr(iNX,iX1,iX2,iX3) = 0
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                 ( uCF (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                   uCF (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                   uCF (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
                    uPF (iPF_D ), &
                    uPF (iPF_V1), &
                    uPF (iPF_V2), &
