@@ -8,6 +8,8 @@ MODULE TaggingModule
     nDOFX
   USE MeshModule, ONLY: &
     MeshX
+  USE UnitsModule, ONLY: &
+    Kilometer
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D
@@ -331,7 +333,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      IF( MeshX(1) % Center(iX1) / Kilometer .LT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
