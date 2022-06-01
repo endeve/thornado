@@ -10,7 +10,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
   USE amrex_parallel_module, ONLY: &
@@ -96,6 +97,9 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     ComputeConserved_Euler_MF
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
+  USE MakeFineMaskModule, ONLY: &
+    MakeFineMask, &
+    iLeaf_MFM
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -233,6 +237,7 @@ CONTAINS
       CALL amrex_multifab_build &
              ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX * nMF, 0 )
+      CALL MF_uMF(iLevel) % SetVal( Zero )
 
     END DO
 
@@ -249,9 +254,9 @@ CONTAINS
                         Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
-           ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
+           ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
-           ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
+           ( 'O', OUTER_BC_TYPES, OUTER_BC_VALUES)
 
     ! --- Set XCFC sources with current conformal factor ---
     CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
@@ -297,6 +302,7 @@ CONTAINS
       CALL amrex_multifab_build &
              ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX * nMF, 0 )
+      CALL MF_uMF(iLevel) % SetVal( Zero )
 
     END DO
 
@@ -342,19 +348,26 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
 
+    TYPE(amrex_imultifab) :: iMF_Mask
+
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
@@ -375,6 +388,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
@@ -463,6 +478,8 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
 
+            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
             CALL DescribeError_Euler &
@@ -508,11 +525,14 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: jErr
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+
+    TYPE(amrex_imultifab) :: iMF_Mask
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -520,9 +540,13 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
@@ -543,6 +567,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
@@ -590,6 +616,8 @@ CONTAINS
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
+
+            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -654,13 +682,20 @@ CONTAINS
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iCF
     INTEGER  :: iX_B0(3), iX_E0(3)
 
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    TYPE(amrex_imultifab) :: iMF_Mask
+
     REAL(DP) :: Psi6
 
     DO iLevel = 0, nLevels-1
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
@@ -674,6 +709,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -724,30 +761,37 @@ CONTAINS
       CALL amrex_multifab_build &
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX * nGS, 0 )
+      CALL MF_uGS(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
+      CALL LF1(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
+      CALL LF2(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( dLF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
+      CALL dLF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( CF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
+      CALL CF1(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( CF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
+      CALL CF2(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( dCF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX, 0 )
+      CALL dCF(iLevel) % SetVal( Zero )
 
     END DO
 
@@ -853,18 +897,25 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
+    TYPE(amrex_imultifab) :: iMF_Mask
+
     DO iLevel = 0, nLevels-1
+
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uMF => MF_uMF(iLevel) % DataPtr( MFI )
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
@@ -878,6 +929,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
           iNX1 = NodeNumberTableX(1,iNX)
           iNX2 = NodeNumberTableX(2,iNX)
@@ -927,15 +980,22 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+
+    TYPE(amrex_imultifab) :: iMF_Mask
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3)
 
     DO iLevel = 0, nLevels-1
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uMF => MF_uMF(iLevel) % DataPtr( MFI )
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
@@ -949,6 +1009,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
           uGF    (iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
             = uMF(iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX)
@@ -1019,6 +1081,9 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+
+    TYPE(amrex_imultifab) :: iMF_Mask
 
     INTEGER  :: iNX, iX1, iX2, iX3, iX_B0(3), iX_E0(3), iLevel
     REAL(DP) :: d3X
@@ -1029,11 +1094,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGS % BA, MF_uGS % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uGS => MF_uGS(iLevel) % DataPtr( MFI )
 
@@ -1046,6 +1115,8 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
+
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
           d3X = Two / Pi * MeshX(1) % Width(iX1) &
                          * MeshX(2) % Width(iX2) &
@@ -1061,6 +1132,8 @@ CONTAINS
         END DO
 
       END DO
+
+      CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
 
@@ -1089,6 +1162,9 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+
+    TYPE(amrex_imultifab) :: iMF_Mask
 
     INTEGER :: iLevel, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
@@ -1097,9 +1173,13 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
@@ -1114,6 +1194,8 @@ CONTAINS
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
+
+            IF( Mask(iX_B0(1),iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
             DO iNX3 = 1, nNodesX(3)
             DO iNX2 = 1, nNodesX(2)
@@ -1190,9 +1272,9 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
     INTEGER :: iX_B0(3), iX_E0(3)
