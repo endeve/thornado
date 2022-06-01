@@ -123,12 +123,16 @@ CONTAINS
 
     CHARACTER(LEN=:), ALLOCATABLE :: ProgenitorFileName
     TYPE(ProgenitorType1D)        :: P1D
+    LOGICAL                       :: Verbose
 
     CALL amrex_parmparse_build( PP, 'AC' )
       CALL PP % get( 'ProgenitorFileName', ProgenitorFileName )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    Verbose = .FALSE.
+    IF( amrex_parallel_ioprocessor() .AND. iLevel .EQ. 0 ) Verbose = .TRUE.
+
+    IF( Verbose )THEN
 
       WRITE(*,*)
       WRITE(*,'(4x,A,A)') 'Initializing: ', TRIM( ProgramName )
@@ -139,7 +143,7 @@ CONTAINS
 
     CALL ReadProgenitor1D &
            ( TRIM( ProgenitorFileName ), P1D, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+             Verbose_Option = Verbose )
 
     ASSOCIATE &
       ( R1D => P1D % Radius, &
