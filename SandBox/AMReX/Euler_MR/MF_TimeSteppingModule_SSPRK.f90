@@ -171,6 +171,7 @@ CONTAINS
         CALL amrex_multifab_build &
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                  nDOFX * nGS, 0 )
+        CALL MF_uGS(iLevel) % SetVal( Zero )
 
       END DO ! iLevel
 
@@ -238,6 +239,12 @@ CONTAINS
 
       END IF ! a(:,iS) .NE. Zero OR w(iS) .NE. Zero
 
+      DO iLevel = 0, nLevels-1
+
+        CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+
+      END DO
+
     END DO ! iS
 
     DO iS = 1, nStages
@@ -264,6 +271,15 @@ CONTAINS
       END DO ! iS
 
     END DO ! iLevel
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nGS, 0 )
+      CALL MF_uGS(iLevel) % SetVal( Zero )
+
+    END DO
 
     CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
     CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
@@ -293,6 +309,12 @@ CONTAINS
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+
+    END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
