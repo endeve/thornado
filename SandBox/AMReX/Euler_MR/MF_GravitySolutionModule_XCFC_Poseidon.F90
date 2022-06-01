@@ -127,8 +127,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE Poseidon_Return_Routines_Module, ONLY: &
     Poseidon_Return_Conformal_Factor, &
     Poseidon_Return_ALL
-  USE Initial_Guess_Module, ONLY: &
-    Poseidon_Init_FlatGuess
+  USE Poseidon_Initial_Guess_Module, ONLY: &
+    Poseidon_Initialize_Flat_Guess
 
 #endif
 
@@ -190,14 +190,15 @@ CONTAINS
     END IF
 
     CALL Initialize_Poseidon_with_AMReX &
-           ( Source_NQ          = nNodesX, &
-             Source_xL          = [ -Half, +Half ], &
-             Source_RQ_xlocs    = MeshX(1) % Nodes, &
-             Source_TQ_xlocs    = MeshX(2) % Nodes, &
-             Source_PQ_xlocs    = MeshX(3) % Nodes, &
-             Units_Option       = 'G', &
-             Verbose_Option     = .FALSE., &
-             Print_Setup_Option = .TRUE. )
+           ( Source_NQ                    = nNodesX, &
+             Source_xL                    = [ -Half, +Half ], &
+             Source_RQ_xlocs              = MeshX(1) % Nodes, &
+             Source_TQ_xlocs              = MeshX(2) % Nodes, &
+             Source_PQ_xlocs              = MeshX(3) % Nodes, &
+             Units_Option                 = 'G', &
+             Radial_Boundary_Units_Option = 'km', &
+             Verbose_Option               = .FALSE., &
+             Print_Setup_Option           = .TRUE. )
 
 #endif
 
@@ -261,7 +262,7 @@ CONTAINS
     ! --- Set XCFC sources with current conformal factor ---
     CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
-    CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
+    CALL Poseidon_Initialize_Flat_Guess() ! Possibly move this to init call
 
     ! --- Compute conformal factor ---
 
