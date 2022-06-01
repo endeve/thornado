@@ -356,7 +356,7 @@ CONTAINS
                    P(iNX,iX1,iX2,iX3,iPF_Ne), &
                    U(iNX,iX1,iX2,iX3,iCF_D ), &
                    U(iNX,iX1,iX2,iX3,iCF_S1), &
-                   U(iNX,iX1,iX2,iX3,iCF_S3), &
+                   U(iNX,iX1,iX2,iX3,iCF_S2), &
                    U(iNX,iX1,iX2,iX3,iCF_S3), &
                    U(iNX,iX1,iX2,iX3,iCF_E ), &
                    U(iNX,iX1,iX2,iX3,iCF_Ne), &
