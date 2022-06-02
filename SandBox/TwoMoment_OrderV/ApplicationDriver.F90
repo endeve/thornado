@@ -106,6 +106,7 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator = .FALSE.
       UseSlopeLimiter          = .FALSE.
       UsePositivityLimiter     = .FALSE.
+      UseEnergyLimiter         = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
