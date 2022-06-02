@@ -349,6 +349,10 @@ CONTAINS
     EddingtonFactor &
       = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
 
+#else
+
+    EddingtonFactor = 0.0_DP
+
 #endif
 
     RETURN
@@ -402,6 +406,10 @@ CONTAINS
 
     EddingtonFactor &
       = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
+
+#else
+
+    EddingtonFactor = 0.0_DP
 
 #endif
 
@@ -458,6 +466,10 @@ CONTAINS
 
     HeatFluxFactor = 0.0_DP
 
+#else
+
+    HeatFluxFactor = 0.0_DP
+
 #endif
 
     RETURN
@@ -502,6 +514,10 @@ CONTAINS
         HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
     END DO
 #elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#else
 
     HeatFluxFactor = 0.0_DP
 
