@@ -62,7 +62,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     ComputeNeutrinoOpacities_Brem, &
     ComputeNeutrinoOpacityRates_NES, &
     ComputeNeutrinoOpacityRates_Pair, &
-    ComputeNeutrinoOpacityRates_Brem
+    ComputeNeutrinoOpacityRates_Brem, &
+    ComputeNeutrinoOpacityRatesLinearCorections_NES, &
+    ComputeNeutrinoOpacityRatesLinearCorections_Pair
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     EddingtonTensorComponents_dd
 
@@ -1383,6 +1385,12 @@ CONTAINS
 
       ! --- Insert Computation of Linear Rate Corrections Here
 
+      CALL ComputeNeutrinoOpacityRatesLinearCorections_NES &
+             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+               H_u_1_P, H_u_2_P, H_u_3_P, J0_P, H_I_1_P, H_II_1_P, &
+               A_In__u_1_P, A_In__u_2_P, A_In__u_3_P, &
+               A_Out_u_1_P, A_Out_u_2_P, A_Out_u_3_P )
+
     END IF
 
     ! --- Pair Emissivities and Opacities ---
@@ -1394,6 +1402,12 @@ CONTAINS
     IF( Include_LinearCorrections )THEN
 
       ! --- Insert Computation of Linear Rate Corrections Here
+
+      CALL ComputeNeutrinoOpacityRatesLinearCorections_Pair &
+             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+               H_u_1_P, H_u_2_P, H_u_3_P, J0_P, J_I_1_P, J_II_1_P, &
+               A_Pro_u_1_P, A_Pro_u_2_P, A_Pro_u_3_P, &
+               A_Ann_u_1_P, A_Ann_u_2_P, A_Ann_u_3_P )
 
     END IF
 

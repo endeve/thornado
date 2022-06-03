@@ -67,8 +67,10 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacities_ES_Vector
   PUBLIC :: ComputeNeutrinoOpacities_NES
   PUBLIC :: ComputeNeutrinoOpacityRates_NES
+  PUBLIC :: ComputeNeutrinoOpacityRatesLinearCorections_NES
   PUBLIC :: ComputeNeutrinoOpacities_Pair
   PUBLIC :: ComputeNeutrinoOpacityRates_Pair
+  PUBLIC :: ComputeNeutrinoOpacityRatesLinearCorections_Pair
   PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeEquilibriumDistributions
   PUBLIC :: ComputeEquilibriumDistributions_DG
@@ -1090,6 +1092,95 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacityRates_NES
 
 
+  SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_NES &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, H_I_1, H_II_1, &
+      A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
+
+    ! --- Neutrino-Electron Scattering Rates Linear Corrections (Multiple J) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: W2     (iE_B:)
+    REAL(DP), INTENT(in)  :: H_1    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_2    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_3    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_I_1  (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_II_1 (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_In_1 (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_In_2 (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_In_3 (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Out_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Out_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Out_3(iE_B:,iS_B:,iX_B:)
+
+    REAL(DP) :: DetBal, Phi_1_Out, Phi_1_In
+    REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
+    INTEGER  :: iE, iE1, iE2, iS, iX
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_In, Phi_1_Out ) &
+    !$OMP MAP( to: H_I_1, H_II_1, W2, H_1, H_2, H_3, J0 ) &
+    !$OMP MAP( from: A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_In, Phi_1_Out ) &
+    !$ACC COPYIN( H_I_1, H_II_1, W2, H_1, H_2, H_3, J0 ) &
+    !$ACC COPYOUT( A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 ) &
+    !$ACC PRESENT( C1, C2 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_In, Phi_1_Out )
+#endif
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
+    DO iE2 = iE_B, iE_E
+
+      SUM1 = Zero
+      SUM2 = Zero
+      SUM3 = Zero
+      SUM4 = Zero
+      SUM5 = Zero
+      SUM6 = Zero
+
+      DO iE1 = iE_B, iE_E
+
+        DetBal =   ( J0(iE2,iS,iX) * ( One - J0(iE1,iS,iX) ) ) &
+                 / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
+
+        IF ( iE1 <= iE2 ) THEN
+          Phi_1_Out = ( C1(iS) * H_I_1(iE1,iE2,iX) + C2(iS) * H_II_1(iE1,iE2,iX) ) * UnitNES
+          Phi_1_In  = Phi_1_Out * DetBal
+        ELSE
+          Phi_1_In  = ( C1(iS) * H_I_1(iE2,iE1,iX) + C2(iS) * H_II_1(iE2,iE1,iX) ) * UnitNES
+          Phi_1_Out = Phi_1_In / DetBal
+        END IF
+
+        SUM1 = SUM1 + Phi_1_In  * W2(iE1) * H_1(iE1,iS,iX)
+        SUM2 = SUM2 + Phi_1_Out * W2(iE1) * H_1(iE1,iS,iX)
+        SUM3 = SUM3 + Phi_1_In  * W2(iE1) * H_2(iE1,iS,iX)
+        SUM4 = SUM4 + Phi_1_Out * W2(iE1) * H_2(iE1,iS,iX)
+        SUM5 = SUM5 + Phi_1_In  * W2(iE1) * H_3(iE1,iS,iX)
+        SUM6 = SUM6 + Phi_1_Out * W2(iE1) * H_3(iE1,iS,iX)
+
+      END DO
+
+      A_In_1 (iE2,iS,iX) = SUM1
+      A_Out_1(iE2,iS,iX) = SUM2
+      A_In_2 (iE2,iS,iX) = SUM3
+      A_Out_2(iE2,iS,iX) = SUM4
+      A_In_3 (iE2,iS,iX) = SUM5
+      A_Out_3(iE2,iS,iX) = SUM6
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_NES
+
+
   SUBROUTINE ComputeNeutrinoOpacities_Pair &
     ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, J_I, J_II )
 
@@ -1258,6 +1349,97 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeNeutrinoOpacityRates_Pair
+
+
+  SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_Pair &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, J_I_1, J_II_1, &
+      A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
+
+    ! --- Neutrino-Electron Scattering Rates Linear Corrections (Multiple J) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: W2     (iE_B:)
+    REAL(DP), INTENT(in)  :: H_1    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_2    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_3    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J_I_1  (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J_II_1 (iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Pro_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Pro_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Pro_3(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Ann_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Ann_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: A_Ann_3(iE_B:,iS_B:,iX_B:)
+
+    REAL(DP) :: DetBal, Phi_1_Ann, Phi_1_Pro
+    REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
+    INTEGER  :: iE, iE1, iE2, iS, iS_A, iX
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_Pro, Phi_1_Ann ) &
+    !$OMP MAP( to: J_I_1, J_II_1, W2, H_1, H_2, H_3, J0 ) &
+    !$OMP MAP( from: A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_Pro, Phi_1_Ann ) &
+    !$ACC COPYIN( J_I_1, J_II_1, W2, H_1, H_2, H_3, J0 ) &
+    !$ACC COPYOUT( A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
+    !$ACC PRESENT( C1, C2 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_Pro, Phi_1_Ann )
+#endif
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
+    DO iE2 = iE_B, iE_E
+
+      ! Get index for corresponding anti-neutrino
+      iS_A = iS + 2*MOD(iS,2) - 1
+
+      SUM1 = Zero
+      SUM2 = Zero
+      SUM3 = Zero
+      SUM4 = Zero
+      SUM5 = Zero
+      SUM6 = Zero
+
+      DO iE1 = iE_B, iE_E
+
+        DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
+                 / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
+
+        IF ( iE1 <= iE2 ) THEN
+          Phi_1_Ann = ( C1(iS) * J_I_1 (iE1,iE2,iX) + C2(iS) * J_II_1(iE1,iE2,iX) ) * UnitPair
+        ELSE
+          Phi_1_Ann = ( C1(iS) * J_II_1(iE2,iE1,iX) + C2(iS) * J_I_1 (iE2,iE1,iX) ) * UnitPair
+        END IF
+        Phi_1_Pro = Phi_1_Ann * DetBal
+
+        SUM1 = SUM1 + Phi_1_Pro * W2(iE1) * H_1(iE1,iS_A,iX)
+        SUM2 = SUM2 + Phi_1_Ann * W2(iE1) * H_1(iE1,iS_A,iX)
+        SUM3 = SUM3 + Phi_1_Pro * W2(iE1) * H_2(iE1,iS_A,iX)
+        SUM4 = SUM4 + Phi_1_Ann * W2(iE1) * H_2(iE1,iS_A,iX)
+        SUM5 = SUM5 + Phi_1_Pro * W2(iE1) * H_3(iE1,iS_A,iX)
+        SUM6 = SUM6 + Phi_1_Ann * W2(iE1) * H_3(iE1,iS_A,iX)
+
+      END DO
+
+      A_Pro_1(iE2,iS,iX) = SUM1
+      A_Ann_1(iE2,iS,iX) = SUM2
+      A_Pro_2(iE2,iS,iX) = SUM3
+      A_Ann_2(iE2,iS,iX) = SUM4
+      A_Pro_3(iE2,iS,iX) = SUM5
+      A_Ann_3(iE2,iS,iX) = SUM6
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_Pair
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Brem &
