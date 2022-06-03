@@ -79,6 +79,8 @@ PROGRAM NeutrinoOpacities
     kT, DetBal, &
     Timer_ReadEos, &
     Timer_ReadOpacities, &
+    Timer_ComputeEquilibrium, &
+    Timer_ComputeEquilibrium_DG, &
     Timer_Compute_EC, &
     Timer_Compute_ES, &
     Timer_Compute_NES, &
@@ -221,13 +223,21 @@ PROGRAM NeutrinoOpacities
 
   ! --- Compute Equilibrium Distributions ---
 
+  Timer_ComputeEquilibrium = MPI_WTIME()
+
   CALL ComputeEquilibriumDistributions &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0 )
 
+  Timer_ComputeEquilibrium = MPI_WTIME() - Timer_ComputeEquilibrium
+
   ! --- Compute Equilibrium Distributions (DG) ---
 
-  CALL ComputeEquilibriumDistributions &
+  Timer_ComputeEquilibrium_DG = MPI_WTIME()
+
+  CALL ComputeEquilibriumDistributions_DG &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG )
+
+  Timer_ComputeEquilibrium_DG = MPI_WTIME() - Timer_ComputeEquilibrium_DG
 
   ! --- Compute Neutrino Number Density ---
 
@@ -455,6 +465,10 @@ PROGRAM NeutrinoOpacities
     Timer_ReadEos
   WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadOpacities = ', &
     Timer_ReadOpacities
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ComputeEquil = ', &
+    Timer_ComputeEquilibrium
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ComputeEquil_DG = ', &
+    Timer_ComputeEquilibrium_DG
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_EC = ',    &
     Timer_Compute_EC, Timer_Compute_EC / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES = ',    &
