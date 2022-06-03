@@ -186,9 +186,6 @@ CONTAINS
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
     LOGICAL :: Verbose
     LOGICAL  :: SuppressBC
-    REAL(DP) :: &
-      dU_R_OLD(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
 
     SuppressBC = .FALSE.
@@ -213,13 +210,13 @@ CONTAINS
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
-    CALL ApplyBoundaryConditions_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC ) THEN
       CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
-
+      CALL ApplyBoundaryConditions_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+    END IF
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -231,7 +228,6 @@ CONTAINS
       DO iNodeZ = 1, nDOFZ
 
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
-        dU_R_OLD(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
 
       END DO
 
@@ -247,8 +243,7 @@ CONTAINS
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              Verbose_Option = Verbose )
-
-    CALL ComputeIncrement_Divergence_X2 &
+   CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              Verbose_Option = Verbose )
 
@@ -256,43 +251,11 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              Verbose_Option = Verbose )
 
-    dU_R_OLD = dU_R
-    CALL ComputeIncrement_ObserverCorrections_NEW &
+   CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
              iX_B0, iX_E0, iX_B1, iX_E1, &
              GE, GX, U_F, U_R, dU_R, &
              Verbose_Option = Verbose )
-
-!    CALL ComputeIncrement_ObserverCorrections &
-!           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-!             iX_B0, iX_E0, iX_B1, iX_E1, &
-!             GE, GX, U_F, U_R, dU_R_OLD, &
-!             Verbose_Option = Verbose )
-
-!    DO iS  = 1, nSpecies
-!    DO iZ4 = iZ_B0(4), iZ_E0(4)
-!    DO iZ3 = iZ_B0(3), iZ_E0(3)
-!    DO iZ2 = iZ_B0(2), iZ_E0(2)
-!    DO iZ1 = iZ_B0(1), iZ_E0(1)
-!
-!      DO iNodeX = 1, nDOFX
-!      DO iNodeE = 1, nDOFE
-!
-!
-!     IF( iZ1 .EQ. 1) THEN
-!          print*, iZ1,iZ2,iZ3,iZ4, &
-!          dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS) , dU_R_OLD(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS), &
-!          dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,4,iS) , dU_R_OLD(iNodeZ,iZ1,iZ2,iZ3,iZ4,4,iS)
-!     END IF
-!      END DO
-!      END DO
-!
-!    END DO
-!    END DO
-!    END DO
-!    END DO
-!    END DO
-!    STOP
 
     ! --- Multiply Inverse Mass Matrix ---
     DO iS  = 1, nSpecies
@@ -2632,728 +2595,7 @@ CONTAINS
 
 
 
-
-
-
   SUBROUTINE ComputeIncrement_ObserverCorrections &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-      iX_B0, iX_E0, iX_B1, iX_E1, &
-      GE, GX, U_F, U_R, dU_R, Verbose_Option )
-
-    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
-
-    INTEGER,  INTENT(in)    :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    INTEGER,  INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: &
-      GE  (1:nDOFE, &
-           iZ_B1(1):iZ_E1(1), &
-           1:nGE)
-    REAL(DP), INTENT(in)    :: &
-      GX  (1:nDOFX, &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4), &
-           1:nGF)
-    REAL(DP), INTENT(in)    :: &
-      U_F (1:nDOFX, &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4), &
-           1:nCF)
-    REAL(DP), INTENT(in)    :: &
-      U_R (1:nDOFZ, &
-           iZ_B1(1):iZ_E1(1), &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4), &
-           1:nCR, &
-           1:nSpecies)
-    REAL(DP), INTENT(inout) :: &
-      dU_R(1:nDOFZ, &
-           iZ_B1(1):iZ_E1(1), &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4), &
-           1:nCR, &
-           1:nSpecies)
-    LOGICAL, INTENT(in), OPTIONAL :: &
-      Verbose_Option
-
-    INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, iNodeX1
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
-    INTEGER  :: nK(4), nK_Z1(4), nV, nV_Z1
-    REAL(DP) :: EdgeEnergyCubed
-    REAL(DP) :: Alpha
-    REAL(DP) :: AlphaM, AlphaP
-    REAL(DP) :: uPR_K(nPR), Flux_K(nCR), E, X1
-    REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
-    REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
-    REAL(DP) :: S_E(3)
-    REAL(DP) :: &
-      uGF_K(nDOFX,nGF, &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      uCF_K(nDOFX,nCF, &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      uPF_K(nDOFX,nPF, &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      U_u(1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP) :: &
-      U_d(1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX0 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX1 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX2 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX3 &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX0_COV &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX1_COV &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX2_COV &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      dU_d_dX3_COV &
-        (nDOFX,0:3, &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      uCR_K(nDOFZ,nCR, &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            nSpecies, &
-            iZ_B1(1):iZ_E1(1))
-    REAL(DP) :: uCR_L &
-                  (nDOF_E,nCR, &
-                   iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-                   iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E1(1))
-    REAL(DP) :: uCR_R &
-                  (nDOF_E,nCR, &
-                   iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-                   iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E1(1))
-    REAL(DP) :: NumericalFlux &
-                  (nDOF_E,nCR, &
-                   iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-                   iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E1(1))
-    REAL(DP) :: dU_E &
-                  (nDOFZ,nCR, &
-                   iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-                   iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E0(1))
-    REAL(DP) :: Flux_q &
-                  (nDOFZ,nCR, &
-                   iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-                   iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E0(1))
-    REAL(DP) :: &
-      dG_dd_dX0 &
-         (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP) :: &
-      dG_dd_dX1 &
-         (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP) :: &
-      dG_dd_dX2 &
-         (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP) :: &
-      dG_dd_dX3 &
-         (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: & 
-      Gamma_udd &
-         (1:nDOFX,0:3,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
-    REAL(DP):: W, C
-
-    LOGICAL :: Verbose
-
-
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
-    END IF
-
-    IF (Verbose) THEN
-       PRINT*, "      ComputeIncrement_ObserverCorrections"
-    END IF
-
-
-
-    CALL ComputeGeometryDerivatives_X0 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX0, &
-             Verbose_Option = Verbose )
-
-
-    CALL ComputeGeometryDerivatives_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX1, &
-             Verbose_Option = Verbose )
-
-
-    CALL ComputeGeometryDerivatives_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX2, &
-             Verbose_Option = Verbose )
-
-
-    CALL ComputeGeometryDerivatives_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX3, &
-             Verbose_Option = Verbose )
-
-    CALL ComputeChristoffel( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
-                             dG_dd_dX0, dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, Gamma_udd )
-
-
-    CALL ComputeWeakDerivatives_X0 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd, dU_d_dX0, dU_d_dX0_COV,  &
-             Verbose_Option = Verbose )
-
-    CALL ComputeWeakDerivatives_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, &
-             Verbose_Option = Verbose )
-    
-    CALL ComputeWeakDerivatives_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd,  dU_d_dX2, dU_d_dX2_COV, &
-             Verbose_Option = Verbose )
-    CALL ComputeWeakDerivatives_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd, dU_d_dX3, dU_d_dX3_COV, &
-             Verbose_Option = Verbose )
-
-
-    CALL ComputeFourVelocity &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, U_u, U_d, uPF_K, &
-             Verbose_Option = Verbose  )
-
-
-
-
-
-    nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
-    nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
-    nV    = nCR * nSpecies * PRODUCT( nK )
-    nV_Z1 = nCR * nSpecies * PRODUCT( nK_Z1 )
-    
-    ASSOCIATE &
-      ( dZ1 => MeshE    % Width, &
-        dZ2 => MeshX(1) % Width, &
-        dZ3 => MeshX(2) % Width, &
-        dZ4 => MeshX(3) % Width )
-
-    ! --- Permute Geometry Fields ---
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iGF = 1, nGF
-
-      DO iNodeX = 1, nDOFX
-
-        uGF_K(iNodeX,iGF,iZ2,iZ3,iZ4) &
-          = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Permute Fluid Fields ---
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iCF = 1, nCF
-
-      DO iNodeX = 1, nDOFX
-
-        uCF_K(iNodeX,iCF,iZ2,iZ3,iZ4) &
-          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Permute Radiation Fields ---
-
-    DO iZ1 = iZ_B1(1), iZ_E1(1)
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iCR = 1, nCR
-
-      DO iNodeZ = 1, nDOFZ
-        uCR_K(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-          = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Compute Primitive Fluid ---
-
-
-    ! --- Interpolate Radiation Fields ---
-
-    ! --- Interpolate Left State ---
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOF_E, nV_Z1, nDOFZ, One, L_E_Up, nDOF_E, &
-             uCR_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)-1), nDOFZ, Zero, &
-             uCR_L(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOF_E )
-
-    ! --- Interpolate Right State ---
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOF_E, nV_Z1, nDOFZ, One, L_E_Dn, nDOF_E, &
-             uCR_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOFZ, Zero, &
-             uCR_R(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOF_E )
-
-    ! --- Numerical Flux ---
-
-    DO iZ1 = iZ_B0(1), iZ_E1(1)
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNode = 1, nDOF_E ! = nDOFX
-        ! --- Left State Primitive --
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_L(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_L(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_L(iNode,iCR_G2      ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_L(iNode,iCR_G3      ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uPR_L(iPR_D ), uPR_L(iPR_I1), &
-                 uPR_L(iPR_I2), uPR_L(iPR_I3), &
-                 uPF_K(iNode,iPF_V1      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNode,iPF_V2      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNode,iPF_V3      ,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                 0.0_DP, 0.0_DP, 0.0_DP,                &   
-                 uGF_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4) )
-        ! --- Left State Flux ---
-
-        Flux_L &
-          = Flux_E( uPR_L(iPR_D ), uPR_L(iPR_I1), &
-                    uPR_L(iPR_I2), uPR_L(iPR_I3), &
-                    uPF_K(iNode,iPF_V1      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNode,iPF_V2      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNode,iPF_V3      ,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4), &
-                    U_u(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX0_COV(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX1_COV(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX2_COV(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX3_COV(iNode,:,iZ2,iZ3,iZ4) )
-        ! --- Right State Primitive ---
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_R(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_R(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_R(iNode,iCR_G2      ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_R(iNode,iCR_G3      ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uPR_R(iPR_D ), uPR_R(iPR_I1), &
-                 uPR_R(iPR_I2), uPR_R(iPR_I3), &
-                 uPF_K(iNode,iPF_V1      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNode,iPF_V2      ,iZ2,iZ3,iZ4), &
-                 uPF_K(iNode,iPF_V3      ,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                 0.0_DP, 0.0_DP, 0.0_DP,                &   
-                 uGF_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                 uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4) )
-
-        ! --- Right State Flux ---
-
-        Flux_R &
-          = Flux_E( uPR_R(iPR_D ), uPR_R(iPR_I1), &
-                    uPR_R(iPR_I2), uPR_R(iPR_I3), &
-                    uPF_K(iNode,iPF_V1      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNode,iPF_V2      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNode,iPF_V3      ,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                    uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4), &
-                    U_u(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX0_COV(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX1_COV(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX2_COV(iNode,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX3_COV(iNode,:,iZ2,iZ3,iZ4) )
-
-        ! --- Numerical Flux ---
-
-        EdgeEnergyCubed &
-          = ( MeshE % Center(iZ1) - Half * MeshE % Width(iZ1) )**3
-
-        IF( UpwindFlux )THEN
-
-          AlphaP = 0.0_DP
-          AlphaM = 1.0_DP 
-
-
-          DO iCR = 1, nCR
-
-            NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-              = AlphaP * Flux_L(iCR) + AlphaM * Flux_R(iCR)
-
-            NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-              = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-                  * EdgeEnergyCubed * Weights_E(iNode) &
-                  * uGF_K(iNode,iGF_SqrtGm,iZ2,iZ3,iZ4) &
-                  * NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1)
-
-          END DO
-
-        ELSE
-
-          W = 1.0_DP - ( uPF_K(iNode,iPF_V1,iZ2,iZ3,iZ4)**2 * uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
-                     + uPF_K(iNode,iPF_V2,iZ2,iZ3,iZ4)**2 * uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4) &
-                     + uPF_K(iNode,iPF_V3,iZ2,iZ3,iZ4)**2 * uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
-       
-          W = 1.0_DP / SQRT(W)
-           
-          C = 1.0_DP
-          CALL ComputeAlpha( uPF_K(iNode,iPF_V1,iZ2,iZ3,iZ4), &
-                             uPF_K(iNode,iPF_V2,iZ2,iZ3,iZ4), &
-                             uPF_K(iNode,iPF_V3,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                             U_u(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_d_dX0(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_d_dX1(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_d_dX2(iNode,:,iZ2,iZ3,iZ4), &
-                             dU_d_dX3(iNode,:,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                             uGF_K(iNode,iGF_Beta_3,iZ2,iZ3,iZ4), &
-                             C, Alpha )
-          DO iCR = 1, nCR
-
-
-            NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-              = NumericalFlux_LLF &
-                  ( W * uPR_L(iCR),  &
-                    W * uPR_R(iCR), &
-                    Flux_L(iCR), Flux_R(iCR), Alpha )
-
-            NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-              = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-                  * EdgeEnergyCubed * Weights_E(iNode) &
-                  * uGF_K(iNode,iGF_SqrtGm,iZ2,iZ3,iZ4) &
-                  * NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1)
-          END DO
-
-
-        END IF
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    ! --- Surface Contributions ---
-
-    ! --- Contributions from Left Face ---!!
-!!    CALL MatrixMatrixMultiply &
-!!          ( 'T', 'N', nDOFZ, nV, nDOF_E, + One, L_E_Dn, nDOF_E, &
-!!             NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), &
- !!            nDOF_E, Zero, dU_E, nDOFZ )
-
-    ! --- Contribution from Right Face ---
-
-!!    CALL MatrixMatrixMultiply &
-!!           ( 'T', 'N', nDOFZ, nV, nDOF_E, - One, L_E_Up, nDOF_E, &
- !!            NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
-  !!           nDOF_E, One,  dU_E, nDOFZ )
-
-
-    !--------------------
-    ! --- Volume Term ---
-    !--------------------
-
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_K(iNodeZ,iCR_N ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_K(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_K(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_K(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uPR_K(iPR_D ), &
-                 uPR_K(iPR_I1), &
-                 uPR_K(iPR_I2), &
-                 uPR_K(iPR_I3), &
-                 uPF_K(iNodeX,iPF_V1,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V2,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V3,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                 0.0_DP, 0.0_DP, 0.0_DP,                &   
-                 uGF_K(iNodeX,iGF_Alpha,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4) )
-
-        Flux_K &
-          = Flux_E( uPR_K(iPR_D ), uPR_K(iPR_I1), &
-                    uPR_K(iPR_I2), uPR_K(iPR_I3), &
-                    uPF_K(iNodeX,iPF_V1      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNodeX,iPF_V2      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNodeX,iPF_V3      ,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Alpha,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4), &
-                    U_u(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX0_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX1_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX2_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4) )
-        DO iCR = 1, nCR
-
-          Flux_q(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-            = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) * Weights_q(iNodeZ) &
-                * GE(iNodeE,iZ1,iGE_Ep3) &
-                * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
-                * Flux_K(iCR)
-        END DO
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    ! --- Volume Contributions --- !!
-
-!!    CALL MatrixMatrixMultiply &
-!!           ( 'T', 'N', nDOFZ, nV, nDOFZ, One, dLdE_q, nDOFZ, &
-!!             Flux_q, nDOFZ, One, dU_E, nDOFZ )
-
-
-    !--------------------------------------------------
-    !--- Volume Sources (Number Flux Equation Only) ---
-    !--------------------------------------------------
-
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-
-
-
-        E = NodeCoordinate( MeshE, iZ1, iNodeE ) 
-
-        W = 1.0_DP - ( uPF_K(iNodeX,iPF_V1,iZ2,iZ3,iZ4)**2 * uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
-                     + uPF_K(iNodeX,iPF_V2,iZ2,iZ3,iZ4)**2 * uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4) &
-                     + uPF_K(iNodeX,iPF_V3,iZ2,iZ3,iZ4)**2 * uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
-       
-        W = 1.0_DP / SQRT(W)
-        
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_K(iNodeZ,iCR_N ,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_K(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_K(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uCR_K(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1), &
-                 uPR_K(iPR_D ), &
-                 uPR_K(iPR_I1), &
-                 uPR_K(iPR_I2), &
-                 uPR_K(iPR_I3), &
-                 uPF_K(iNodeX,iPF_V1,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V2,iZ2,iZ3,iZ4), &
-                 uPF_K(iNodeX,iPF_V3,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                 0.0_DP, 0.0_DP, 0.0_DP,                &   
-                 uGF_K(iNodeX,iGF_Alpha,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                 uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4) )
-
-        iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeX1 )
-
-         S_E = Source_E( uPR_K(iPR_D ), uPR_K(iPR_I1), &
-                    uPR_K(iPR_I2), uPR_K(iPR_I3), &
-                    uPF_K(iNodeX,iPF_V1      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNodeX,iPF_V2      ,iZ2,iZ3,iZ4), &
-                    uPF_K(iNodeX,iPF_V3      ,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Alpha,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Beta_1,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Beta_2,iZ2,iZ3,iZ4), &
-                    uGF_K(iNodeX,iGF_Beta_3,iZ2,iZ3,iZ4), &
-                    U_u(iNodeX,:,iZ2,iZ3,iZ4), &
-                    U_d(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX0(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX1(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX2(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX3(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX0_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX1_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX2_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                    dG_dd_dX1(iNodeX,:,:,iZ2,iZ3,iZ4), &
-                    dG_dd_dX2(iNodeX,:,:,iZ2,iZ3,iZ4), &
-                    dG_dd_dX3(iNodeX,:,:,iZ2,iZ3,iZ4) )
-        ! --- iCR_G1 ---!!
-
-        dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) & 
-          = dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
-            - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-              * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
-              * S_E(1)
-      
-      ! --- iCR_G2 ---
-      
-        dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
-          = dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
-            - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-              * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
-              * S_E(2)
-
-      ! --- iCR_G3 ---
-
-        dU_E(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
-          = dU_E(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
-            - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-              * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
-              * S_E(3)
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1, nSpecies
-    DO iCR = 1, nCR
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      DO iNodeZ = 1, nDOFZ
-
-        dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-          = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-            + dU_E(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1)
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dZ1, etc    END ASSOCIATE ! dZ1, etc..
-
-  END SUBROUTINE ComputeIncrement_ObserverCorrections 
-
-
-  SUBROUTINE ComputeIncrement_ObserverCorrections_NEW &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, & 
       iX_B0, iX_E0, iX_B1, iX_E1, &
       GE, GX, U_F, U_R, dU_R, Verbose_Option )
@@ -3404,7 +2646,7 @@ CONTAINS
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
 
     REAL(DP) :: EdgeEnergyCubed, Beta
-    REAL(DP) :: A(3,3), Lambda(3)
+    REAL(DP) :: A(3,3), Lambda(3), V1, V2, V3
     REAL(DP) :: Flux_K(nCR), uPF_K(nPF)
     REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
     REAL(DP) :: Flux_R(nCR), uPR_R(nPR), W, S_E(3), C
@@ -3629,6 +2871,7 @@ CONTAINS
     CALL ComputeGeometryDerivatives_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX3, &
              Verbose_Option = Verbose )
+
     CALL ComputeChristoffel( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                              dG_dd_dX0, dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, Gamma_udd )
 
@@ -3647,12 +2890,9 @@ CONTAINS
     CALL ComputeWeakDerivatives_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd, dU_d_dX3, dU_d_dX3_COV, &
              Verbose_Option = Verbose )
-
     CALL ComputeFourVelocity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, U_u, U_d, &
              Verbose_Option = Verbose  )
-
-
 
     CALL InitializeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, &
@@ -3711,6 +2951,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
 
     ! --- Permute Radiation Fields ---
 
@@ -3782,13 +3023,11 @@ CONTAINS
                  uGF_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  uGF_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  uGF_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
-
       END DO
 
     END DO
     END DO
     END DO
-
 
 
 
@@ -4039,6 +3278,7 @@ CONTAINS
       iZ1    = IndexTableZ_K(7,iZ_K)
 
       iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
       Flux_K &
         = Flux_E( uD_K (iZ_K), uI1_K(iZ_K), uI2_K(iZ_K), uI3_K(iZ_K), &
                   uV1_K(iX_K), uV2_K(iX_K), uV3_K(iX_K), &
@@ -4061,7 +3301,6 @@ CONTAINS
       END DO
 
     END DO
-
     ! --- Volume Contributions ---!!
 
    CALL MatrixMatrixMultiply &
@@ -4205,7 +3444,7 @@ CONTAINS
 
     END ASSOCIATE ! dZ1, etc.
 
-  END SUBROUTINE ComputeIncrement_ObserverCorrections_NEW
+  END SUBROUTINE ComputeIncrement_ObserverCorrections
 
 
 
