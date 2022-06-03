@@ -222,7 +222,8 @@ CONTAINS
         Mnu = ( ( Me(iX) + Mp(iX) ) - Mn(iX) ) * LeptonNumber(iS)
       END IF
 
-      f0(iE,iS,iX) = FermiDirac( E(iE), Mnu, kT )
+      f0(iE,iS,iX) &
+        = One / ( EXP( MIN( MAX( ( E(iE) - Mnu ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
 
     END DO
     END DO
