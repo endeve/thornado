@@ -219,7 +219,6 @@ CONTAINS
     END IF
 
 
-
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_TwoMoment &
