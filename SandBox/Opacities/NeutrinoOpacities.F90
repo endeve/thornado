@@ -30,6 +30,8 @@ PROGRAM NeutrinoOpacities
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE, &
     C1, C2
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    InitializeReferenceElementE_Lagrange
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar
   USE NeutrinoOpacitiesComputationModule, ONLY: &
@@ -152,6 +154,8 @@ PROGRAM NeutrinoOpacities
   WRITE(*,*)
 
   CALL InitializeReferenceElementE
+
+  CALL InitializeReferenceElementE_Lagrange
 
   ! --- Thermodynamic State ---
 

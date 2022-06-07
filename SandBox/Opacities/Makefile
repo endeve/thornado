@@ -49,6 +49,8 @@ NeutrinoOpacities.o: \
   ProgramInitializationModule.o \
   MeshModule.o \
   UtilitiesModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
   RadiationFieldsModule.o \
