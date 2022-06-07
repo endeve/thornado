@@ -209,20 +209,32 @@ PROGRAM NeutrinoOpacities
 
   Timer_ReadOpacities = MPI_WTIME() - Timer_ReadOpacities
 
+  ! --- Initialize distributions to zero ---
+
+  f0 = 0.0d0
+  f0_DG = 0.0d0
+  J = 0.0d0
+
+  ! --- Initialize scattering functions to zero ---
+
+  H1 = 0.0d0
+  H2 = 0.0d0
+
+  J1 = 0.0d0
+  J2 = 0.0d0
+
+  S_sigma = 0.0d0
+
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
-  !$OMP MAP( to: E, D, T, Y, W2 ) &
+  !$OMP MAP( to: E, D, T, Y, W2, H1, H2, J1, J2, S_sigma, f0, f0_DG, J ) &
   !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
-  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
-  !$OMP             f0, f0_DG, J, &
-  !$OMP             H1, H2, J1, J2, S_sigma )
+  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
-  !$ACC COPYIN( E, D, T, Y, W2 ) &
+  !$ACC COPYIN( E, D, T, Y, W2, H1, H2, J1, J2, S_sigma, f0, f0_DG, J ) &
   !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
-  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
-  !$ACC         f0, f0_DG, J, &
-  !$ACC         H1, H2, J1, J2, S_sigma )
+  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso )
 #endif
 
   ! --- Compute Equilibrium Distributions ---
