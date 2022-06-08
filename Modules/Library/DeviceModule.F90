@@ -65,7 +65,11 @@ MODULE DeviceModule
     magma_queue, &
     magma_getdevice, &
     magma_init, &
+#if defined(THORNADO_CUDA)
     magma_queue_create_from_cuda
+#elif defined(THORNADO_HIP)
+    magma_queue_create_from_hip
+#endif
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -210,7 +214,7 @@ CONTAINS
     CALL magma_queue_create_from_cuda &
            ( magma_device, stream, cublas_handle, cusparse_handle, magma_queue )
 #elif defined(THORNADO_HIP)
-    CALL magma_queue_create_from_cuda &
+    CALL magma_queue_create_from_hip &
            ( magma_device, stream, hipblas_handle, hipsparse_handle, magma_queue )
 #endif
 #endif
