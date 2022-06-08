@@ -161,12 +161,12 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   ! --- GS: Gravity/Geometry Sources ---
 
-  INTEGER, PARAMETER :: iGS_E     = 1
-  INTEGER, PARAMETER :: iGS_S_u_1 = 2
-  INTEGER, PARAMETER :: iGS_S_u_2 = 3
-  INTEGER, PARAMETER :: iGS_S_u_3 = 4
-  INTEGER, PARAMETER :: iGS_S     = 5
-  INTEGER, PARAMETER :: iGS_Mg    = 6
+  INTEGER, PARAMETER :: iGS_E  = 1
+  INTEGER, PARAMETER :: iGS_S1 = 2
+  INTEGER, PARAMETER :: iGS_S2 = 3
+  INTEGER, PARAMETER :: iGS_S3 = 4
+  INTEGER, PARAMETER :: iGS_S  = 5
+  INTEGER, PARAMETER :: iGS_Mg = 6
   INTEGER, PARAMETER, PUBLIC :: nGS = 6
 
 CONTAINS
@@ -397,17 +397,14 @@ CONTAINS
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
                + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX) )
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_1   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) &
-                / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S1-1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_2   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) &
-                / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S2-1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S_u_3   -1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) &
-                / uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
+          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S3-1)+iNX) &
+            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX)
 
           ! Assume Psi^(iStage) ~ Psi^(iStage+1) for Poseidon BCs
 
