@@ -198,8 +198,7 @@ CONTAINS
              Source_Units                 = 'G', &
              Source_Radial_Boundary_Units = 'km', &
              Verbose_Option               = .FALSE., &
-             Print_Setup_Option           = .TRUE.,  &
-             Print_Results_Option         = .TRUE.   )
+             Print_Setup_Option           = .TRUE.   )
 
 #endif
 
