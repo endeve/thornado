@@ -195,10 +195,11 @@ CONTAINS
              Source_RQ_xlocs              = MeshX(1) % Nodes, &
              Source_TQ_xlocs              = MeshX(2) % Nodes, &
              Source_PQ_xlocs              = MeshX(3) % Nodes, &
-             Units_Option                 = 'G', &
-             Radial_Boundary_Units_Option = 'km', &
+             Source_Units                 = 'G', &
+             Source_Radial_Boundary_Units = 'km', &
              Verbose_Option               = .FALSE., &
-             Print_Setup_Option           = .TRUE. )
+             Print_Setup_Option           = .TRUE.,  &
+             Print_Results_Option         = .TRUE.   )
 
 #endif
 
