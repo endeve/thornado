@@ -260,10 +260,9 @@ CONTAINS
 
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
 
-    REAL(DP) :: f0_K(          1:(iE_E-iE_B+1)/nDOFE+1,1:(iS_E-iS_B+1),1:(iX_E-iX_B+1))
-    REAL(DP) :: f0_P(1:nDOFE+2,1:(iE_E-iE_B+1)/nDOFE  ,1:(iS_E-iS_B+1),1:(iX_E-iX_B+1))
-    REAL(DP) :: N_K, V_K, f0_Min, Min_K, Max_K, Theta
-    INTEGER  :: iE, iS, iX, iNodeE, nE, nS, nX
+    REAL(DP) :: f0_K(1:(iE_E-iE_B+1)/nDOFE,1:(iS_E-iS_B+1),1:(iX_E-iX_B+1))
+    REAL(DP) :: N_K, V_K, f0_Min, f0_P, Min_K, Max_K, Theta
+    INTEGER  :: iE, iS, iX, iNodeE, iP_E, nE, nS, nX
 
     nE = ( iE_E - iE_B + 1 ) / nDOFE
     nS = ( iS_E - iS_B + 1 )
@@ -276,11 +275,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: f0, f0_K, f0_P ) &
+    !$OMP MAP( alloc: f0, f0_K ) &
     !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( f0, f0_K, f0_P ) &
+    !$ACC CREATE( f0, f0_K ) &
     !$ACC COPYIN( E, D, T, Y )
 #endif
 
@@ -325,50 +324,38 @@ CONTAINS
     END DO
     END DO
 
-    ! --- Estimate Cell Average in Outer Ghost Element ---
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
-#endif
-    DO iX = 1, nX
-    DO iS = 1, nS
-
-      f0_K(nE+1,iS,iX) = f0_K(nE,iS,iX)**2 / f0_K(nE-1,iS,iX)
-
-    END DO
-    END DO
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFE+2, nE*nS*nX, nDOFE, One, InterpMat_E, nDOFE+2, &
-             f0_Q, nDOFE, Zero, f0_P, nDOFE+2 )
-
     ! --- Limit Equilibrium Distributions ---
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
+    !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta, f0_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta )
+    !$ACC PRIVATE( f0_Min, Min_K, Max_K, Theta, f0_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta )
+    !$OMP PRIVATE( f0_Min, Min_K, Max_K, Theta, f0_P )
 #endif
     DO iX = 1, nX
     DO iS = 1, nS
     DO iE = 1, nE
 
-      f0_Min = f0_K(iE+1,iS,iX)
+      IF( iE < nE ) THEN
+        f0_Min = f0_K(iE+1,iS,iX)
+      ELSE
+        ! --- Estimate Cell Average in Outer Ghost Element ---
+        f0_Min = f0_K(nE,iS,iX)**2 / f0_K(nE-1,iS,iX)
+      END IF
 
       Max_K = f0_Max
       Min_K = f0_Min
-      DO iNodeE = 1, nDOFE+2
-        Max_K = MAX( Max_K, f0_P(iNodeE,iE,iS,iX) )
-        Min_K = MIN( Min_K, f0_P(iNodeE,iE,iS,iX) )
+      DO iP_E = 1, nDOFE+2
+        f0_P = Zero
+        DO iNodeE = 1, nDOFE
+          f0_P = f0_P + InterpMat_E(iP_E,iNodeE) * f0_Q(iNodeE,iE,iS,iX)
+        END DO
+        Max_K = MAX( Max_K, f0_P )
+        Min_K = MIN( Min_K, f0_P )
       END DO
 
       IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
@@ -392,11 +379,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: f0_K, f0_P, E, D, T, Y ) &
+    !$OMP MAP( release: f0_K, E, D, T, Y ) &
     !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( f0_K, f0_P, E, D, T, Y ) &
+    !$ACC DELETE( f0_K, E, D, T, Y ) &
     !$ACC COPYOUT( f0 )
 #endif
 
