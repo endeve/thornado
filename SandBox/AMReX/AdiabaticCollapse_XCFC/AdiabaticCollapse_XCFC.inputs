@@ -9,6 +9,8 @@ thornado.ProgramName = "AdiabaticCollapse_XCFC"
 
 AC.ProgenitorFileName = "../Progenitors/WH07_15M_Sun.h5"
 
+thornado.UseXCFC = 1
+
 thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
