@@ -4,7 +4,7 @@
 MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, FourPi, SqrtTiny
+    DP, Zero, Third, Half, One, Two, FourPi, SqrtTiny
   USE UnitsModule, ONLY: &
     PlanckConstant, &
     AtomicMassUnit, &
@@ -200,7 +200,7 @@ CONTAINS
 
     REAL(DP) :: TMP(1)
 
-    INTEGER :: iE1, iE2, iN_X
+    INTEGER :: iE1, iE2, iN_E, iS, iN_X
 
     iE_B = iZ_B(1)
     iE_E = iZ_E(1)
@@ -590,6 +590,38 @@ CONTAINS
 
         S_Sigma  (iE1,iE2,iN_X) = Zero
         S_Sigma_T(iE1,iE2,iN_X) = Zero
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF ( .NOT. Include_LinearCorrections ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iN_X = 1, nX_G
+      DO iS   = 1, nSpecies
+      DO iN_E = 1, nE_G
+
+        A_In__u_1(iN_E,iS,iN_X) = Zero
+        A_In__u_2(iN_E,iS,iN_X) = Zero
+        A_In__u_3(iN_E,iS,iN_X) = Zero
+        A_Out_u_1(iN_E,iS,iN_X) = Zero
+        A_Out_u_2(iN_E,iS,iN_X) = Zero
+        A_Out_u_3(iN_E,iS,iN_X) = Zero
+        A_Pro_u_1(iN_E,iS,iN_X) = Zero
+        A_Pro_u_2(iN_E,iS,iN_X) = Zero
+        A_Pro_u_3(iN_E,iS,iN_X) = Zero
+        A_Ann_u_1(iN_E,iS,iN_X) = Zero
+        A_Ann_u_2(iN_E,iS,iN_X) = Zero
+        A_Ann_u_3(iN_E,iS,iN_X) = Zero
 
       END DO
       END DO
@@ -1383,7 +1415,7 @@ CONTAINS
 
     IF( Include_LinearCorrections )THEN
 
-      ! --- Insert Computation of Linear Rate Corrections Here
+      ! --- Compute Linear Rate Corrections (NES) ---
 
       CALL ComputeNeutrinoOpacityRatesLinearCorections_NES &
              ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
@@ -1401,7 +1433,7 @@ CONTAINS
 
     IF( Include_LinearCorrections )THEN
 
-      ! --- Insert Computation of Linear Rate Corrections Here
+      ! --- Compute Linear Rate Corrections (Pair) ---
 
       CALL ComputeNeutrinoOpacityRatesLinearCorections_Pair &
              ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
@@ -1851,19 +1883,24 @@ CONTAINS
     INTEGER  :: iN_E, iN_X, iS, iOS
     REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: Eta_T, Chi_T, Kappa
+    REAL(DP) :: A_u_1, A_u_2, A_u_3, A_d_1, A_d_2, A_d_3
+    REAL(DP) :: L_N, L_G1, L_G2, L_G3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+    !$OMP          Eta_T, Chi_T, Kappa, A_u_1, A_u_2, A_u_3, &
+    !$OMP          A_d_1, A_d_2, A_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$ACC          Eta_T, Chi_T, Kappa, iOS )
+    !$ACC          Eta_T, Chi_T, Kappa, A_u_1, A_u_2, A_u_3, &
+    !$ACC          A_d_1, A_d_2, A_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+    !$OMP          Eta_T, Chi_T, Kappa, A_u_1, A_u_2, A_u_3, &
+    !$OMP          A_d_1, A_d_2, A_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #endif
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
@@ -1911,14 +1948,54 @@ CONTAINS
 
         Kappa = Chi_T + Sigma_Iso(iN_E,iN_X)
 
+        ! --- Linear Correction Terms ---
+
+        A_u_1 =   ( A_In__u_1(iN_E,iS,iN_X) - A_Out_u_1(iN_E,iS,iN_X) ) &
+                - ( A_Pro_u_1(iN_E,iS,iN_X) - A_Ann_u_1(iN_E,iS,iN_X) )
+
+        A_u_2 =   ( A_In__u_2(iN_E,iS,iN_X) - A_Out_u_2(iN_E,iS,iN_X) ) &
+                - ( A_Pro_u_2(iN_E,iS,iN_X) - A_Ann_u_2(iN_E,iS,iN_X) )
+
+        A_u_3 =   ( A_In__u_3(iN_E,iS,iN_X) - A_Out_u_3(iN_E,iS,iN_X) ) &
+                - ( A_Pro_u_3(iN_E,iS,iN_X) - A_Ann_u_3(iN_E,iS,iN_X) )
+
+        A_d_1 = Gm_dd_11(iN_X) &
+                  * ( A_In__u_1(iN_E,iS,iN_X) - A_Pro_u_1(iN_E,iS,iN_X) )
+
+        A_d_2 = Gm_dd_22(iN_X) &
+                  * ( A_In__u_2(iN_E,iS,iN_X) - A_Pro_u_2(iN_E,iS,iN_X) )
+
+        A_d_3 = Gm_dd_33(iN_X) &
+                  * ( A_In__u_3(iN_E,iS,iN_X) - A_Pro_u_3(iN_E,iS,iN_X) )
+
+        L_N  = - (   A_u_1 * H_d_1(iN_E,iS,iN_X) &
+                   + A_u_2 * H_d_2(iN_E,iS,iN_X) &
+                   + A_u_3 * H_d_3(iN_E,iS,iN_X) )
+
+        L_G1 = Third * A_d_1 &
+               - (   A_u_1 * k_dd(1,1) &
+                   + A_u_2 * k_dd(2,1) &
+                   + A_u_3 * k_dd(3,1) ) * J(iN_E,iS,iN_X)
+
+        L_G2 = Third * A_d_2 &
+               - (   A_u_1 * k_dd(1,2) &
+                   + A_u_2 * k_dd(2,2) &
+                   + A_u_3 * k_dd(3,2) ) * J(iN_E,iS,iN_X)
+
+        L_G3 = Third * A_d_3 &
+               - (   A_u_1 * k_dd(1,3) &
+                   + A_u_2 * k_dd(2,3) &
+                   + A_u_3 * k_dd(3,3) ) * J(iN_E,iS,iN_X)
+
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
         ! --- Number Equation ---
 
         Gm(iOS+iCR_N,iN_X) &
-          = ( One - Omega(iN_X) ) *     J(iN_E,iS,iN_X) &
-            +       Omega(iN_X)   * ( C_J(iN_E,iS,iN_X) - vDotH + dt * Eta_T ) &
-                                    / ( One + dt * Chi_T )
+          = ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
+            + Omega(iN_X) &
+                * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) &
+                / ( One + dt * Chi_T )
 
         Fm(iOS+iCR_N,iN_X) &
           = Gm(iOS+iCR_N,iN_X) - J(iN_E,iS,iN_X)
@@ -1926,9 +2003,10 @@ CONTAINS
         ! --- Number Flux 1 Equation ---
 
         Gm(iOS+iCR_G1,iN_X) &
-          = ( One - Omega(iN_X) ) *     H_d_1(iN_E,iS,iN_X) &
-            +       Omega(iN_X)   * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 ) &
-                                    / ( One + dt * Kappa )
+          = ( One - Omega(iN_X) ) * H_d_1(iN_E,iS,iN_X) &
+            + Omega(iN_X) &
+                * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) &
+                / ( One + dt * Kappa )
 
         Fm(iOS+iCR_G1,iN_X) &
           = Gm(iOS+iCR_G1,iN_X) - H_d_1(iN_E,iS,iN_X)
@@ -1936,9 +2014,10 @@ CONTAINS
         ! --- Number Flux 2 Equation ---
 
         Gm(iOS+iCR_G2,iN_X) &
-          = ( One - Omega(iN_X) ) *     H_d_2(iN_E,iS,iN_X) &
-            +       Omega(iN_X)   * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 ) &
-                                    / ( One + dt * Kappa )
+          = ( One - Omega(iN_X) ) * H_d_2(iN_E,iS,iN_X) &
+            + Omega(iN_X) &
+                * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) &
+                / ( One + dt * Kappa )
 
         Fm(iOS+iCR_G2,iN_X) &
           = Gm(iOS+iCR_G2,iN_X) - H_d_2(iN_E,iS,iN_X)
@@ -1946,9 +2025,10 @@ CONTAINS
         ! --- Number Flux 3 Equation ---
 
         Gm(iOS+iCR_G3,iN_X) &
-          = ( One - Omega(iN_X) ) *     H_d_3(iN_E,iS,iN_X) &
-            +       Omega(iN_X)   * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 ) &
-                                    / ( One + dt * Kappa )
+          = ( One - Omega(iN_X) ) * H_d_3(iN_E,iS,iN_X) &
+            + Omega(iN_X) &
+                * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) &
+                / ( One + dt * Kappa )
 
         Fm(iOS+iCR_G3,iN_X) &
           = Gm(iOS+iCR_G3,iN_X) - H_d_3(iN_E,iS,iN_X)
@@ -2031,8 +2111,7 @@ CONTAINS
 
 
   SUBROUTINE UpdateNeutrinoRHS_FP &
-    ( MASK, Fm, Gm, J, H_u_1, H_u_2, H_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( MASK, Fm, Gm, J, H_u_1, H_u_2, H_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
