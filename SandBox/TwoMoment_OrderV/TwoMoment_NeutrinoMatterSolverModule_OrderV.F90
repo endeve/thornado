@@ -119,6 +119,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J0
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_1_Iso
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
@@ -174,6 +176,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J0_T
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso_T
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso_T
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_1_Iso_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb_T, Eta_EmAb_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES_T , Eta_NES_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair_T, Eta_Pair_T
@@ -292,6 +296,8 @@ CONTAINS
 
     ALLOCATE(        J0(nE_G,nSpecies,nX_G) )
     ALLOCATE( Sigma_Iso(nE_G,         nX_G) )
+    ALLOCATE( Phi_0_Iso(nE_G,         nX_G) )
+    ALLOCATE( Phi_1_Iso(nE_G,         nX_G) )
     ALLOCATE(  Chi_EmAb(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Eta_EmAb(nE_G,nSpecies,nX_G) )
     ALLOCATE(   Chi_NES(nE_G,nSpecies,nX_G) )
@@ -335,6 +341,8 @@ CONTAINS
 
     ALLOCATE(        J0_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( Sigma_Iso_T(nE_G,         nX_G) )
+    ALLOCATE( Phi_0_Iso_T(nE_G,         nX_G) )
+    ALLOCATE( Phi_1_Iso_T(nE_G,         nX_G) )
     ALLOCATE(  Chi_EmAb_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(  Eta_EmAb_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(   Chi_NES_T(nE_G,nSpecies,nX_G) )
@@ -402,7 +410,7 @@ CONTAINS
     !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$OMP             C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$OMP             J0, Sigma_Iso, &
+    !$OMP             J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
     !$OMP             Chi_Pair, Eta_Pair, &
@@ -415,7 +423,7 @@ CONTAINS
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, &
     !$OMP             J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
-    !$OMP             J0_T, Sigma_Iso_T, &
+    !$OMP             J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
     !$OMP             Chi_Pair_T, Eta_Pair_T, &
@@ -450,7 +458,7 @@ CONTAINS
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$ACC         J0, Sigma_Iso, &
+    !$ACC         J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
@@ -463,7 +471,7 @@ CONTAINS
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
     !$ACC         J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
-    !$ACC         J0_T, Sigma_Iso_T, &
+    !$ACC         J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
@@ -600,6 +608,21 @@ CONTAINS
     IF ( .NOT. Include_LinearCorrections ) THEN
 
 #if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+      DO iN_X = 1, nX_G
+      DO iN_E = 1, nE_G
+
+        Phi_1_Iso(iN_E,iN_X) = Zero
+
+      END DO
+      END DO
+
+#if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
@@ -701,7 +724,7 @@ CONTAINS
     !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$OMP               C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$OMP               J0, Sigma_Iso, &
+    !$OMP               J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
     !$OMP               Chi_Pair, Eta_Pair, &
@@ -714,7 +737,7 @@ CONTAINS
     !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, &
     !$OMP               J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
-    !$OMP               J0_T, Sigma_Iso_T, &
+    !$OMP               J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP               Chi_NES_T, Eta_NES_T, &
     !$OMP               Chi_Pair_T, Eta_Pair_T, &
@@ -748,7 +771,7 @@ CONTAINS
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3, &
-    !$ACC         J0, Sigma_Iso, &
+    !$ACC         J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
@@ -761,7 +784,7 @@ CONTAINS
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
     !$ACC         J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
-    !$ACC         J0_T, Sigma_Iso_T, &
+    !$ACC         J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
@@ -796,7 +819,7 @@ CONTAINS
     DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, V_d_1 )
     DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, V_d_2 )
     DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, V_d_3 )
-    DEALLOCATE( J0, Sigma_Iso )
+    DEALLOCATE( J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NES, Eta_NES )
     DEALLOCATE( Chi_Pair, Eta_Pair )
@@ -809,7 +832,7 @@ CONTAINS
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
     DEALLOCATE( D_T, T_T, Y_T, E_T )
     DEALLOCATE( J_T, H_u_1_T, H_u_2_T, H_u_3_T )
-    DEALLOCATE( J0_T, Sigma_Iso_T )
+    DEALLOCATE( J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
     DEALLOCATE( Chi_NES_T, Eta_NES_T )
     DEALLOCATE( Chi_Pair_T, Eta_Pair_T )
@@ -1071,9 +1094,11 @@ CONTAINS
     INTEGER,  DIMENSION(:), INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
 
-    REAL(DP), DIMENSION(:),     POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J0_P
-    REAL(DP), DIMENSION(:,:),   POINTER :: Sigma_Iso_P
+    REAL(DP), DIMENSION(:,:)  , POINTER :: Sigma_Iso_P
+    REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_0_Iso_P
+    REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_1_Iso_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_EmAb_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_1_P, H_II_1_P
@@ -1107,6 +1132,8 @@ CONTAINS
 
       J0_P        => J0_T       (:,:,1:nX)
       Sigma_Iso_P => Sigma_Iso_T(  :,1:nX)
+      Phi_0_Iso_P => Phi_0_Iso_T(  :,1:nX)
+      Phi_1_Iso_P => Phi_1_Iso_T(  :,1:nX)
       Chi_EmAb_P  => Chi_EmAb_T (:,:,1:nX)
 
       H_I_0_P     => H_I_0_T    (:,:,1:nX)
@@ -1129,6 +1156,8 @@ CONTAINS
 
       J0_P        => J0       (:,:,:)
       Sigma_Iso_P => Sigma_Iso(  :,:)
+      Phi_0_Iso_P => Phi_0_Iso(  :,:)
+      Phi_1_Iso_P => Phi_1_Iso(  :,:)
       Chi_EmAb_P  => Chi_EmAb (:,:,:)
 
       H_I_0_P     => H_I_0    (:,:,:)
@@ -1158,7 +1187,14 @@ CONTAINS
     ! --- Isoenergetic scattering ---
 
     CALL ComputeNeutrinoOpacities_ES &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Sigma_Iso_P )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P )
+
+    IF( Include_LinearCorrections )THEN
+
+      CALL ComputeNeutrinoOpacities_ES &
+             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P )
+
+    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -1170,7 +1206,8 @@ CONTAINS
     DO iX = 1, nX
     DO iE = 1, nE_G
 
-      Sigma_Iso_P(iE,iX) = FourPiEp2(iE) * Sigma_Iso_P(iE,iX)
+      Sigma_Iso_P(iE,iX) &
+        = FourPiEp2(iE) * ( Phi_0_Iso_P(iE,iX) - Third * Phi_1_Iso_P(iE,iX) )
 
     END DO
     END DO
