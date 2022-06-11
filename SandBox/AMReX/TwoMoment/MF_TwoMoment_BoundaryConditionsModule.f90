@@ -41,11 +41,11 @@
     PROCEDURE :: TwoMoment_GetBC => EdgeMap_TwoMoment_GetBC
   END TYPE EdgeMap
 
-  ! --- Hack to get iApplyBC_Euler_XXX. DO NOT CHANGE THESE VALUES ---
-  INTEGER, PARAMETER :: iApplyBC_Euler_Both  = 0
-  INTEGER, PARAMETER :: iApplyBC_Euler_Inner = 1
-  INTEGER, PARAMETER :: iApplyBC_Euler_Outer = 2
-  INTEGER, PARAMETER :: iApplyBC_Euler_None  = 3
+  ! --- Hack to get iApplyBC_TwoMoment_XXX. DO NOT CHANGE THESE VALUES ---
+  INTEGER, PARAMETER :: iApplyBC_TwoMoment_Both  = 0
+  INTEGER, PARAMETER :: iApplyBC_TwoMoment_Inner = 1
+  INTEGER, PARAMETER :: iApplyBC_TwoMoment_Outer = 2
+  INTEGER, PARAMETER :: iApplyBC_TwoMoment_None  = 3
 
 
 CONTAINS
@@ -71,7 +71,8 @@ CONTAINS
     IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_TwoMoment'
 
     CALL ApplyBoundaryConditions_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, &
+             iApplyBC_Option = iApplyBC )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_TwoMoment
 
@@ -121,19 +122,19 @@ CONTAINS
       IF     ( this % IsLowerBoundary( iDim ) .AND. &
                this % IsUpperBoundary( iDim ) )THEN
 
-        iApplyBC(iDim) = iApplyBC_Euler_Both
+        iApplyBC(iDim) = iApplyBC_TwoMoment_Both
 
       ELSE IF( this % IsLowerBoundary( iDim ) )THEN
 
-        iApplyBC(iDim) = iApplyBC_Euler_Inner
+        iApplyBC(iDim) = iApplyBC_TwoMoment_Inner
 
       ELSE IF( this % IsUpperBoundary( iDim ) )THEN
 
-        iApplyBC(iDim) = iApplyBC_Euler_Outer
+        iApplyBC(iDim) = iApplyBC_TwoMoment_Outer
 
       ELSE
 
-        iApplyBC(iDim) = iApplyBC_Euler_None
+        iApplyBC(iDim) = iApplyBC_TwoMoment_None
 
       END IF
 

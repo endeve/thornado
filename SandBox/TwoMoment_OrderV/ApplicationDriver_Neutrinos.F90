@@ -63,7 +63,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: UseEnergyLimiter_TwoMoment
-  LOGICAL       :: FixedTimeStep
+  LOGICAL       :: PrescribedTimeStep
   INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
@@ -71,7 +71,7 @@ PROGRAM ApplicationDriver_Neutrinos
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
+  REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_RATE, t_end
 
   ProgramName = 'Relaxation'
 
@@ -84,7 +84,7 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
   OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
-  FixedTimeStep = .FALSE.
+  PrescribedTimeStep = .FALSE.
 
   RestartFileNumber = - 1
 
@@ -108,19 +108,20 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'BackwardEuler'
 
-      t_end = 1.0d1 * Millisecond
+      t_end = 1.0d2 * Millisecond
 
-      FixedTimeStep = .TRUE.
-      dt_FXD        = 1.0d-3 * Millisecond
-      iCycleD       = 1
-      iCycleW       = 100
-      maxCycles     = 100000
+      PrescribedTimeStep = .TRUE.
+      dt_0               = 1.0d-4 * Millisecond
+      dt_RATE            = 1.04_DP
+      iCycleD            = 1
+      iCycleW            = 1
+      maxCycles          = 100000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .TRUE.
+      UsePositivityLimiter_TwoMoment = .FALSE.
       UseEnergyLimiter_TwoMoment     = .FALSE.
 
     CASE( 'DeleptonizationWave1D' )
@@ -255,9 +256,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
     iCycle = iCycle + 1
 
-    IF( FixedTimeStep )THEN
+    IF( PrescribedTimeStep )THEN
 
-      dt = dt_FXD
+      dt = ( dt_RATE )**( iCycle - 1 ) * dt_0
 
     ELSE
 

@@ -38,7 +38,7 @@ NeutrinoOpacities_Profile: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld
+	rm -f *.o *.mod *.ld *.s
 
 clobber: clean
 	rm -f NeutrinoOpacities_$(MACHINE)
@@ -49,9 +49,11 @@ NeutrinoOpacities.o: \
   ProgramInitializationModule.o \
   MeshModule.o \
   UtilitiesModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
   RadiationFieldsModule.o \
   NeutrinoOpacitiesComputationModule.o \
   DeviceModule.o \
-  NeutrinoOpacities.f90
+  NeutrinoOpacities.F90

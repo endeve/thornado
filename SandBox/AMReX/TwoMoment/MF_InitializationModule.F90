@@ -875,7 +875,6 @@ print*, X1
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
  
               E = NodeCoordinate( MeshE, iZ1, iNodeE )
-
               IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
                 uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
