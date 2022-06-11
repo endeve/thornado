@@ -5,6 +5,8 @@ PROGRAM ApplicationDriver
     Zero, &
     One, &
     Two, &
+    Three, &
+    Four, &
     Pi, &
     TwoPi
   USE ProgramInitializationModule, ONLY: &
@@ -49,7 +51,7 @@ PROGRAM ApplicationDriver
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeMagnetofluid_SSPRK, &
     FinalizeMagnetofluid_SSPRK, &
-    UpdateMagnetofluid_SSPRK 
+    UpdateMagnetofluid_SSPRK
 
   IMPLICIT NONE
 
@@ -76,9 +78,10 @@ PROGRAM ApplicationDriver
   LOGICAL  :: UseDivergenceCleaning = .FALSE.
 
   REAL(DP) :: DampingParameter = 0.0_DP
+  REAL(DP) :: Angle = 0.0_DP
 
-  ProgramName = 'Cleaning2D'
-  AdvectionProfile = 'MagneticSineWaveX2'
+  ProgramName = 'Advection1D'
+  AdvectionProfile = 'MagneticSineWaveX1'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -87,7 +90,7 @@ PROGRAM ApplicationDriver
 
   SELECT CASE ( TRIM( ProgramName ) )
 
-    CASE( 'Advection' )
+    CASE( 'Advection1D' )
 
       SELECT CASE ( TRIM( AdvectionProfile ) )
 
@@ -127,15 +130,15 @@ PROGRAM ApplicationDriver
           xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
           xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-        CASE( 'CPAlfven' )
+        CASE( 'CPAlfvenX1' )
 
           EvolveOnlyMagnetic = .FALSE.
           UseDivergenceCleaning = .FALSE.
 
-          AdvectionProfile = 'CPAlfven'
+          AdvectionProfile = 'CPAlfvenX1'
 
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 10.0_DP * 16.449592691810107_DP
+          t_end = 16.449592691810107_DP
           bcX = [ 1, 0, 0 ]
 
           CoordinateSystem = 'CARTESIAN'
@@ -152,7 +155,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  HydroSineWaveX1'
           WRITE(*,'(A)')     '  MagneticSineWaveX1'
-          WRITE(*,'(A)')     '  CPAlfven'
+          WRITE(*,'(A)')     '  CPAlfvenX1'
           WRITE(*,'(A)')     'Stopping...'
           STOP
 
@@ -206,7 +209,7 @@ PROGRAM ApplicationDriver
           AdvectionProfile = 'MagneticSineWaveX2'
 
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 10000.0_DP
+          t_end = 10.0_DP
           bcX = [ 1, 1, 0 ]
 
           CoordinateSystem = 'CARTESIAN'
@@ -234,11 +237,49 @@ PROGRAM ApplicationDriver
           xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
           xR  = [ 1.0_DP / SQRT( Two ), 1.0_DP / SQRT( Two ), 1.0_DP ]
 
+        CASE( 'CPAlfvenX2' )
+
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'CPAlfvenX2'
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 16.449592691810107_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 2, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, Two * Pi, 1.0_DP ]
+
+        CASE( 'CPAlfvenOblique' )
+
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
+
+          Angle = ATAN(2.0_DP);
+
+          AdvectionProfile = 'CPAlfvenOblique'
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 16.449592691810107_DP
+          bcX = [ 1, 1, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 256, 128, 1 ]
+          swX = [ 1, 1, 0 ]
+          xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
+          xR  = [ Two * Pi / COS( Angle ), Two * Pi / SIN( Angle ), 1.0_DP ]
+
         CASE( 'LoopAdvection' )
 
           EvolveOnlyMagnetic = .TRUE.
           UseDivergenceCleaning = .TRUE.
-          DampingParameter = 1.0
+          DampingParameter = 0.0_DP
 
           AdvectionProfile = 'LoopAdvection'
 
@@ -261,7 +302,9 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     '  HydroSineWaveX2'
           WRITE(*,'(A)')     '  HydroSineWaveX1X2'
           WRITE(*,'(A)')     '  MagneticSineWaveX1X2'
-          WRITE(*,'(A)')     '  CPAlfven'
+          WRITE(*,'(A)')     '  CPAlfvenX2'
+          WRITE(*,'(A)')     '  CPAlfvenOblique'
+          WRITE(*,'(A)')     '  LoopAdvection'
           WRITE(*,'(A)')     'Stopping...'
           STOP
 
@@ -270,11 +313,11 @@ PROGRAM ApplicationDriver
     CASE( 'Cleaning1D' )
 
       EvolveOnlyMagnetic = .TRUE.
-      
+
       UseDivergenceCleaning = .TRUE.
       DampingParameter = 0.0_DP
 
-      SmoothProfile = .FALSE.
+      SmoothProfile = .TRUE.
 
       Gamma = 1.4_DP
       t_end = 10.0_DP
@@ -282,7 +325,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 256, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ -1.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [  1.0_DP, 1.0_DP, 1.0_DP ]
@@ -312,7 +355,7 @@ PROGRAM ApplicationDriver
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
-      WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  Advection1D'
       WRITE(*,'(A)')     '  Advection2D'
       WRITE(*,'(A)')     '  Cleaning1D'
       WRITE(*,'(A)')     '  Cleaning2D'
@@ -376,6 +419,7 @@ PROGRAM ApplicationDriver
          ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
            DampingParameter_Option = DampingParameter )
+
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
@@ -388,7 +432,9 @@ PROGRAM ApplicationDriver
            SmoothProfile_Option &
              = SmoothProfile, &
            ConstantDensity_Option &
-             = ConstantDensity )
+             = ConstantDensity, &
+           Angle_Option &
+             = Angle )
 
   IF( RestartFileNumber .LT. 0 )THEN
 

@@ -86,15 +86,17 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
-                 ConstantDensity_Option )
+                 ConstantDensity_Option, Angle_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWaveX1'
     LOGICAL           :: SmoothProfile
     LOGICAL           :: ConstantDensity = .TRUE.
+    REAL(DP)          :: Angle
 
     uPM(:,:,:,:,iPM_Ne) = Zero
 
@@ -107,20 +109,23 @@ CONTAINS
     IF( PRESENT( ConstantDensity_Option ) ) &
       ConstantDensity = ConstantDensity_Option
 
+    IF( PRESENT( Angle_Option ) ) &
+      Angle = Angle_Option
+
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'Advection' )
+      CASE( 'Advection1D' )
 
-        CALL InitializeFields_Advection &
+        CALL InitializeFields_Advection1D &
                ( TRIM( AdvectionProfile ) )
 
       CASE( 'Advection2D' )
 
         CALL InitializeFields_Advection2D &
-               ( TRIM( AdvectionProfile ) )
+               ( TRIM( AdvectionProfile ), Angle )
 
       CASE( 'Cleaning1D' )
 
@@ -144,7 +149,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_Relativistic_MHD
 
 
-  SUBROUTINE InitializeFields_Advection( AdvectionProfile )
+  SUBROUTINE InitializeFields_Advection1D( AdvectionProfile )
 
     CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
 
@@ -195,7 +200,7 @@ CONTAINS
                    ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
                      uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
                      0.0_DP, P )
-              
+
             !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
             !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
@@ -204,7 +209,7 @@ CONTAINS
             !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
             !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
             !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
             !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
             !PRINT*
@@ -232,7 +237,7 @@ CONTAINS
             !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
             !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
             !         0.0_DP, P )
-    
+
             !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
             !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
@@ -241,12 +246,12 @@ CONTAINS
             !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
             !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
             !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
             !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
            !PRINT*
 
-          ! Variant of Top Hat advection problem from Evans and 
+          ! Variant of Top Hat advection problem from Evans and
           ! Hawley (1988).
 
           CASE( 'TopHat' )
@@ -254,7 +259,7 @@ CONTAINS
           ! Circularly polarized Alfven wave with the exact solution
           ! from Del Zanna et al. (2007) and Mattia and Mignone (2022).
 
-          CASE( 'CPAlfven' )
+          CASE( 'CPAlfvenX1' )
 
             !PRINT*
             !PRINT*, 'In cell: ', iX1, iX2, iX3
@@ -286,8 +291,8 @@ CONTAINS
               = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
 
             VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) * Eta * COS( k * X1 ) &
-                      + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * Eta * SIN( k * X1 ) 
-          
+                      + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * Eta * SIN( k * X1 )
+
             !PRINT*, 'VdotB: ', VdotB
 
             !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
@@ -296,15 +301,15 @@ CONTAINS
 
             V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
- 
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
             V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
             V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
             !PRINT*, 'V1_Transport: ', V1_Transport
             !PRINT*, 'V2_Transport: ', V2_Transport
@@ -313,9 +318,9 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
               = W * VdotB * V1_Transport + ( One / W )
             uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
-              = W * VdotB * V2_Transport + Eta * COS( k * X1 ) / W 
+              = W * VdotB * V2_Transport + Eta * COS( k * X1 ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
-              = W * VdotB * V3_Transport + Eta * SIN( k * X1 ) / W 
+              = W * VdotB * V3_Transport + Eta * SIN( k * X1 ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
             !PRINT*
@@ -329,7 +334,7 @@ CONTAINS
             WRITE(*,'(A)') '  HydroSineWaveX1'
             WRITE(*,'(A)') '  MagneticSineWaveX1'
             WRITE(*,'(A)') '  TopHat'
-            WRITE(*,'(A)') '  CPAlfven'
+            WRITE(*,'(A)') '  CPAlfvenX1'
             WRITE(*,*)
             WRITE(*,'(A)') 'Stopping...'
             STOP
@@ -343,7 +348,7 @@ CONTAINS
                uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
                uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
                uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
-               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &           
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
                uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
                uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
                uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
@@ -364,12 +369,13 @@ CONTAINS
 
     PRINT*, 'Finished initialization.'
 
-  END SUBROUTINE InitializeFields_Advection
+  END SUBROUTINE InitializeFields_Advection1D
 
 
-  SUBROUTINE InitializeFields_Advection2D( AdvectionProfile )
+  SUBROUTINE InitializeFields_Advection2D( AdvectionProfile, Angle )
 
     CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
+    REAL(DP), INTENT(in)         :: Angle
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
@@ -404,7 +410,7 @@ CONTAINS
             !PRINT*, 'In node: ', iNodeX
             !PRINT*, 'X1: ', X1
 
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D) & 
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
               = One + 0.1_DP * SIN ( TwoPi * X2 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.1_DP
@@ -421,7 +427,7 @@ CONTAINS
                    ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
                      uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
                      0.0_DP, P )
-              
+
             !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
             !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
@@ -430,7 +436,7 @@ CONTAINS
             !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
             !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
             !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
             !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
             !PRINT*
@@ -444,7 +450,7 @@ CONTAINS
             !PRINT*, 'In node: ', iNodeX
             !PRINT*, 'X1: ', X1
 
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D) & 
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
               = One + 0.1_DP * SIN ( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP / SQRT( Two )
             uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.1_DP / SQRT( Two )
@@ -461,7 +467,7 @@ CONTAINS
                    ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
                      uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
                      0.0_DP, P )
-              
+
             !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
             !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
@@ -470,7 +476,7 @@ CONTAINS
             !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
             !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
             !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
             !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
             !PRINT*
@@ -500,7 +506,7 @@ CONTAINS
             !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
             !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
             !         0.0_DP, P )
-    
+
             !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
             !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
@@ -509,7 +515,7 @@ CONTAINS
             !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
             !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
             !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
             !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
            !PRINT*
@@ -528,8 +534,8 @@ CONTAINS
             uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = 0.0001_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
               = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0001_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0001_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0001_DP / SQRT( Two )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0001_DP / SQRT( Two )
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
@@ -537,7 +543,7 @@ CONTAINS
             !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
             !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
             !         0.0_DP, P )
-    
+
             !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
             !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
@@ -546,12 +552,164 @@ CONTAINS
             !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
             !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
             !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) & 
+            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
             !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
             !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
            !PRINT*
 
-         ! Loop advection problem from Mosta et al. (2013)
+          ! Circularly polarized Alfven wave based
+          ! on the exact solution from, e.g.,
+          ! Del Zanna et al. (2007) and Mattia and Mignone (2022).
+
+          CASE( 'CPAlfvenX2' )
+
+            !PRINT*
+            !PRINT*, 'In cell: ', iX1, iX2, iX3
+            !PRINT*, 'In node: ', iNodeX
+            !PRINT*, 'X2: ', X2
+
+            Eta = One
+            k   = One
+            h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+            VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                        * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+            !PRINT*, 'h: ', h
+
+            !PRINT*, 'VA: ', VA
+
+            !PRINT*, 'One Period: ', Two * Pi / VA
+
+            W = One / SQRT( One - VA**2 * Eta**2 )
+
+            !PRINT*, 'Lorentz Factor: ', W
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = -VA * Eta * COS( k * X2 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = -VA * Eta * SIN( k * X2 )
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+
+            VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) * Eta * COS( k * X2 ) &
+                      + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * Eta * SIN( k * X2 )
+
+            !PRINT*, 'VdotB: ', VdotB
+
+            !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+            !PRINT*, 'Beta 2: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2)
+            !PRINT*, 'Beta 3: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3)
+
+            V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            !PRINT*, 'V1_Transport: ', V1_Transport
+            !PRINT*, 'V2_Transport: ', V2_Transport
+            !PRINT*, 'V3_Transport: ', V3_Transport
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
+              = W * VdotB * V1_Transport + Eta * COS( k * X2 ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
+              = W * VdotB * V2_Transport + ( One / W )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
+              = W * VdotB * V3_Transport + Eta * SIN( k * X2 ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+            !PRINT*
+
+          ! See oblique case conditions from Londrillo
+          ! and Del Zanna (2004) (with sin and cos switched).
+
+          CASE( 'CPAlfvenOblique' )
+
+            !PRINT*
+            !PRINT*, 'In cell: ', iX1, iX2, iX3
+            !PRINT*, 'In node: ', iNodeX
+            !PRINT*, 'X1: ', X1
+
+            Eta = One
+            k   = One
+            h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+            VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                        * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+            !PRINT*, 'h: ', h
+
+            PRINT*, 'VA: ', VA
+
+            !PRINT*, 'One Period: ', Two * Pi / VA
+
+            W = One / SQRT( One - VA**2 * Eta**2 )
+
+            !PRINT*, 'Lorentz Factor: ', W
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+              =  VA * Eta * SIN( Angle ) * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+              = -VA * Eta * COS( Angle ) * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+              = -VA * Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+
+            VdotB &
+              =  uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                 * ( COS( Angle ) - SIN( Angle ) * Eta &
+                                    * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) &
+                + uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                  * ( SIN( Angle ) + COS( Angle ) * Eta &
+                                     * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) &
+                + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+                  * Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
+
+            !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+            !PRINT*, 'Beta 2: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2)
+            !PRINT*, 'Beta 3: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3)
+
+            V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            !PRINT*, 'V1_Transport: ', V1_Transport
+            !PRINT*, 'V2_Transport: ', V2_Transport
+            !PRINT*, 'V3_Transport: ', V3_Transport
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
+              = W * VdotB * V1_Transport &
+                + ( COS( Angle ) - SIN( Angle ) * Eta &
+                                   * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
+              = W * VdotB * V2_Transport &
+                + ( SIN( Angle ) + COS( Angle ) * Eta &
+                                   * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
+              = W * VdotB * V3_Transport &
+                + Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+            !PRINT*
+
+          ! Loop advection problem from Mosta et al. (2013)
 
           CASE( 'LoopAdvection' )
 
@@ -575,20 +733,20 @@ CONTAINS
 
             V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
- 
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
             V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
             V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) ) 
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1_Transport &
                                              + ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) / W
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2_Transport & 
-                                             + (  1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) ) / W 
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2_Transport &
+                                             + (  1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3_Transport
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
@@ -618,6 +776,8 @@ CONTAINS
             WRITE(*,'(A)') '  HydroSineWaveX1X2'
             WRITE(*,'(A)') '  MagneticSineWaveX2'
             WRITE(*,'(A)') '  MagneticSineWaveX1X2'
+            WRITE(*,'(A)') '  CPAlfvenX2'
+            WRITE(*,'(A)') '  CPAlfvenOblique'
             WRITE(*,'(A)') '  LoopAdvection'
             WRITE(*,*)
             WRITE(*,'(A)') 'Stopping...'
@@ -632,7 +792,7 @@ CONTAINS
                uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
                uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
                uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
-               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &           
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
                uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
                uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
                uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
@@ -710,17 +870,17 @@ CONTAINS
         END IF
 
         uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP         
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
         uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
       END DO
- 
+
       CALL ComputeConserved_MHD_Relativistic &
              ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
                uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
                uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
                uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
-               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &           
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
                uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
                uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
                uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
@@ -747,7 +907,7 @@ CONTAINS
   SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity )
 
     ! 2D divergence cleaning test from Section 5.2 of
-    ! Derigs et al. (2018) with option to use 
+    ! Derigs et al. (2018) with option to use
     ! constant density.
 
     LOGICAL :: ConstantDensity
@@ -755,7 +915,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
     REAL(DP) :: X1, X2
-    
+
     REAL(DP) :: R, R0
 
     R0 = One / SQRT( 8.0_DP )
@@ -799,26 +959,26 @@ CONTAINS
 
           uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
             = ( One / SQRT( Four * Pi ) ) &
-              * ( ( R / R0 )**8 - Two * ( R / R0 )**4 + One ) 
-    
+              * ( ( R / R0 )**8 - Two * ( R / R0 )**4 + One )
+
         ELSE
 
           uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
-   
+
         END IF
 
         uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = One / SQRT( Four * Pi )         
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = One / SQRT( Four * Pi )
         uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
       END DO
- 
+
       CALL ComputeConserved_MHD_Relativistic &
              ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
                uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
                uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
                uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
-               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &           
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
                uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
                uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
                uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
