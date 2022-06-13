@@ -182,6 +182,8 @@ PROGRAM ApplicationDriver_Neutrinos
 
       ProfileName = 'input_thornado_VX_100ms.dat'
 
+      wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
+
     CASE( 'EquilibriumAdvection' )
 
       nSpecies = 2
