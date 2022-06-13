@@ -124,7 +124,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 1.0d-1
+      t_end   = 2.0d+1
       iCycleD = 10
       iCycleW = 10
       maxCycles = 1000000
