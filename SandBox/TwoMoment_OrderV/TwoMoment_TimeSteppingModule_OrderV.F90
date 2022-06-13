@@ -21,7 +21,8 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     ComputeIncrement_Euler_DG_Explicit, &
     OffGridFlux_Euler
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies
+    nCR, nSpecies, &
+    nIterations
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -73,7 +74,8 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
 
   INTERFACE
     SUBROUTINE ImplicitIncrement &
-      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
+        nIterations_Option )
       USE KindModule           , ONLY: DP
       USE ProgramHeaderModule  , ONLY: nDOFX, nDOFE, nDOFZ
       USE GeometryFieldsModuleE, ONLY: nGE
@@ -122,6 +124,13 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
              iZ_B1(4):iZ_E1(4), &
              1:nCR, &
              1:nSpecies)
+      INTEGER,  INTENT(out), OPTIONAL :: &
+        nIterations_Option &
+            (1:nDOFX, &
+             iZ_B0(2):iZ_E0(2), &
+             iZ_B0(3):iZ_E0(3), &
+             iZ_B0(4):iZ_E0(4), &
+             1:2)
     END SUBROUTINE ImplicitIncrement
   END INTERFACE
 
@@ -286,7 +295,8 @@ CONTAINS
 
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
-                 Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM )
+                 Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                 nIterations_Option = nIterations )
 
         CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )

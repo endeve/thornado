@@ -21,6 +21,7 @@ MODULE InputOutputModuleHDF
   USE InputOutputUtilitiesModule, ONLY: &
     NodeCoordinates, &
     Field3D, &
+    Field3D_INT, &
     FromField3D, &
     Field4D, &
     FromField4D, &
@@ -37,7 +38,8 @@ MODULE InputOutputModuleHDF
     nSpecies, &
     uCR, nCR, namesCR, unitsCR, &
     uPR, nPR, namesPR, unitsPR, &
-    uAR, nAR, namesAR, unitsAR
+    uAR, nAR, namesAR, unitsAR, &
+    nIterations, iIter_outer, iIter_inner
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, namesEQ, unitsEQ, &
     opEC, namesEC, unitsEC, &
@@ -195,7 +197,6 @@ CONTAINS
     CHARACTER(256) :: DatasetName
     INTEGER        :: iGF
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -379,14 +380,9 @@ CONTAINS
     CHARACTER(256) :: FileName
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: GroupName2
-    CHARACTER(256) :: GroupName_PL
     CHARACTER(256) :: DatasetName
-    CHARACTER(256) :: DatasetName1
-    CHARACTER(256) :: DatasetName2
-    CHARACTER(256) :: DatasetName3
     INTEGER        :: iFF
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -853,6 +849,26 @@ CONTAINS
 
     END DO
 
+    ! --- Write Iteration Counts ---
+
+    GroupName = 'Iteration Counts'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Outer Iterations'
+
+    CALL WriteDataset3DHDF_INT &
+           ( Field3D_INT &
+               ( nIterations(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iIter_outer), &
+                 nX, nNodesX, nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Inner Iterations'
+
+    CALL WriteDataset3DHDF_INT &
+           ( Field3D_INT &
+               ( nIterations(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iIter_inner), &
+                 nX, nNodesX, nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
+
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )
@@ -1087,7 +1103,6 @@ CONTAINS
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: DatasetName
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(I6.6)' ) FileNumber_AS
 
@@ -1153,7 +1168,6 @@ CONTAINS
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: DatasetName
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(I6.6)' ) FileNumber_ST
 
@@ -1410,6 +1424,37 @@ CONTAINS
     CALL H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset3DHDF
+
+
+  SUBROUTINE WriteDataset3DHDF_INT( Dataset, DatasetName, FILE_ID )
+
+    INTEGER,          INTENT(in) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER(HSIZE_T) :: DATASIZE(3)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 3, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_INTEGER, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    CALL H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_INTEGER, Dataset, DATASIZE, HDFERR )
+
+    CALL H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset3DHDF_INT
 
 
   SUBROUTINE ReadDataset3DHDF( Dataset, DatasetName, FILE_ID )

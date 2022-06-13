@@ -52,7 +52,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
+      nIterations_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -96,6 +97,13 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCR,1:nSpecies)
+    INTEGER,  INTENT(out), OPTIONAL :: &
+      nIterations_Option &
+          (1:nDOFX, &
+           iZ_B0(2):iZ_E0(2), &
+           iZ_B0(3):iZ_E0(3), &
+           iZ_B0(4):iZ_E0(4), &
+           1:2)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iOP
     INTEGER :: iX1, iX2, iX3, iE
