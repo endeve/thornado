@@ -814,10 +814,6 @@ CONTAINS
 
       UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
 
-      ! CALL ComputeEddingtonTensorComponents_dd &
-      !        ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      !          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
       k_dd = EddingtonTensorComponents_dd &
                ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -837,7 +833,6 @@ CONTAINS
         GVEC(j+1,mk) = (One - Omega) * UVEC(j+1) + &
                      Omega / D_ii * (CVEC(j+1) - vK * UVEC(1))
       END DO
-
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
 
