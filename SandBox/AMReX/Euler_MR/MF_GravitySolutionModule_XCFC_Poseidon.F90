@@ -116,8 +116,9 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE Initialization_AMReX, ONLY: &
     Initialize_Poseidon_with_AMReX
   USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Close, &
-    Poseidon_CFA_Set_Uniform_Boundary_Conditions
+    Poseidon_Close
+  USE Poseidon_Interface_BC_Input, ONLY : &
+    Poseidon_Set_Uniform_Boundary_Conditions
   USE Poseidon_Source_Input_Module, ONLY: &
     Poseidon_Input_Sources_Part1, &
     Poseidon_Input_Sources_Part2
@@ -198,7 +199,8 @@ CONTAINS
              Source_Units                 = 'G', &
              Source_Radial_Boundary_Units = 'km', &
              Verbose_Option               = .FALSE., &
-             Print_Setup_Option           = .TRUE.   )
+             Print_Setup_Option           = .TRUE.,  &
+             Print_Results_Option         = .TRUE.   )
 
 #endif
 
@@ -254,9 +256,9 @@ CONTAINS
     OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, &
                         Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
-    CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
+    CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
-    CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
+    CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( 'O', OUTER_BC_TYPES, OUTER_BC_VALUES)
 
     ! --- Set XCFC sources with current conformal factor ---
@@ -866,6 +868,9 @@ CONTAINS
                ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
+
+
+    
 
     DO iLevel = 0, nLevels-1
 
