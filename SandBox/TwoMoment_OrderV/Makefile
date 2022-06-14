@@ -319,6 +319,8 @@ TwoMoment_UtilitiesModule_OrderV.o: \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
+  TwoMoment_TimersModule_OrderV.o \
+  LinearAlgebraModule.o \
   TwoMoment_UtilitiesModule_OrderV.F90
 
 TwoMoment_TroubledCellIndicatorModule.o: \
