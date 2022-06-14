@@ -63,8 +63,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     ComputeNeutrinoOpacityRates_NES, &
     ComputeNeutrinoOpacityRates_Pair, &
     ComputeNeutrinoOpacityRates_Brem, &
-    ComputeNeutrinoOpacityRatesLinearCorections_NES, &
-    ComputeNeutrinoOpacityRatesLinearCorections_Pair
+    ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
+    ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
+    ComputeNeutrinoOpacityRates_LinearCorrections_Brem
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     EddingtonTensorComponents_dd
 
@@ -116,15 +117,27 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_1_Iso
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES, Eta_NES
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES , Eta_NES
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Brem, Eta_Brem
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_In__u_1, A_Out_u_1
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_In__u_2, A_Out_u_2
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_In__u_3, A_Out_u_3
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_Pro_u_1, A_Ann_u_1
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_Pro_u_2, A_Ann_u_2
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_Pro_u_3, A_Ann_u_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__Out_u_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__Out_u_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__Out_u_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Pro_u_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Pro_u_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Pro_u_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Ann_u_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Ann_u_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Ann_u_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Pro_u_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Pro_u_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Pro_u_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Ann_u_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Ann_u_2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Ann_u_3
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0, H_II_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_1, H_II_1
@@ -134,17 +147,17 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
   ! --- Least-squares scratch arrays ---
 
-  INTEGER                                 :: LWORK_outer
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: AMAT_outer, GVEC_outer, FVEC_outer
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: BVEC_outer, GVECm_outer, FVECm_outer
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: WORK_outer, TAU_outer, Alpha_outer
-
-  INTEGER                                 :: LWORK_inner
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: AMAT_inner, GVEC_inner, FVEC_inner
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: BVEC_inner, GVECm_inner, FVECm_inner
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: WORK_inner, TAU_inner, Alpha_inner
-
   INTEGER,  DIMENSION(:)    , ALLOCATABLE :: INFO
+  INTEGER                                 :: LWORK_outer, LWORK_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE ::  BVEC_outer,  BVEC_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: GVECm_outer, GVECm_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: FVECm_outer, FVECm_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE ::  WORK_outer,  WORK_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: Alpha_outer, Alpha_inner
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE ::   TAU_outer,   TAU_inner
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE ::  AMAT_outer,  AMAT_inner
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE ::  GVEC_outer,  GVEC_inner
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE ::  FVEC_outer,  FVEC_inner
 
   ! --- Solver Parameters to be initialized
 
@@ -186,12 +199,24 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES_T , Eta_NES_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair_T, Eta_Pair_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Brem_T, Eta_Brem_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_In__u_1_T, A_Out_u_1_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_In__u_2_T, A_Out_u_2_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_In__u_3_T, A_Out_u_3_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_Pro_u_1_T, A_Ann_u_1_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_Pro_u_2_T, A_Ann_u_2_T
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: A_Pro_u_3_T, A_Ann_u_3_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_2_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_3_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__Out_u_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__Out_u_2_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__Out_u_3_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Pro_u_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Pro_u_2_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Pro_u_3_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Ann_u_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Ann_u_2_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Pair_Ann_u_3_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Pro_u_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Pro_u_2_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Pro_u_3_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Ann_u_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Ann_u_2_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_Brem_Ann_u_3_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_0_T, H_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_1_T, H_II_1_T
@@ -290,30 +315,36 @@ CONTAINS
     ALLOCATE( U_V_d_3(nX_G) )
     ALLOCATE(   V_d_3(nX_G) )
 
-    ALLOCATE(        J0(nE_G,nSpecies,nX_G) )
-    ALLOCATE( Sigma_Iso(nE_G,         nX_G) )
-    ALLOCATE( Phi_0_Iso(nE_G,         nX_G) )
-    ALLOCATE( Phi_1_Iso(nE_G,         nX_G) )
-    ALLOCATE(  Chi_EmAb(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Eta_EmAb(nE_G,nSpecies,nX_G) )
-    ALLOCATE(   Chi_NES(nE_G,nSpecies,nX_G) )
-    ALLOCATE(   Eta_NES(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Chi_Pair(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Eta_Pair(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Chi_Brem(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Eta_Brem(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_In__u_1(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_In__u_2(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_In__u_3(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Out_u_1(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Out_u_2(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Out_u_3(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Pro_u_1(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Pro_u_2(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Pro_u_3(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Ann_u_1(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Ann_u_2(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Ann_u_3(nE_G,nSpecies,nX_G) )
+    ALLOCATE(             J0(nE_G,nSpecies,nX_G) )
+    ALLOCATE(      Sigma_Iso(nE_G,         nX_G) )
+    ALLOCATE(      Phi_0_Iso(nE_G,         nX_G) )
+    ALLOCATE(      Phi_1_Iso(nE_G,         nX_G) )
+    ALLOCATE(       Chi_EmAb(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Eta_EmAb(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_NES(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_NES(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Chi_Pair(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Eta_Pair(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Chi_Brem(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Eta_Brem(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__In__u_1(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__In__u_2(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__In__u_3(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__Out_u_1(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__Out_u_2(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__Out_u_3(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Pro_u_1(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Pro_u_2(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Pro_u_3(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Ann_u_1(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Ann_u_2(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Ann_u_3(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Pro_u_1(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Pro_u_2(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Pro_u_3(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Ann_u_1(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Ann_u_2(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Ann_u_3(nE_G,nSpecies,nX_G) )
 
     ALLOCATE(  H_I_0 (nE_G,nE_G,nX_G) )
     ALLOCATE(  H_I_1 (nE_G,nE_G,nX_G) )
@@ -335,30 +366,36 @@ CONTAINS
     ALLOCATE( H_u_2_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( H_u_3_T(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE(        J0_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( Sigma_Iso_T(nE_G,         nX_G) )
-    ALLOCATE( Phi_0_Iso_T(nE_G,         nX_G) )
-    ALLOCATE( Phi_1_Iso_T(nE_G,         nX_G) )
-    ALLOCATE(  Chi_EmAb_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Eta_EmAb_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(   Chi_NES_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(   Eta_NES_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Chi_Pair_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Eta_Pair_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Chi_Brem_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(  Eta_Brem_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_In__u_1_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_In__u_2_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_In__u_3_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Out_u_1_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Out_u_2_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Out_u_3_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Pro_u_1_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Pro_u_2_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Pro_u_3_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Ann_u_1_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Ann_u_2_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE( A_Ann_u_3_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(             J0_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(      Sigma_Iso_T(nE_G,         nX_G) )
+    ALLOCATE(      Phi_0_Iso_T(nE_G,         nX_G) )
+    ALLOCATE(      Phi_1_Iso_T(nE_G,         nX_G) )
+    ALLOCATE(       Chi_EmAb_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Eta_EmAb_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_NES_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_NES_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Chi_Pair_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Eta_Pair_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Chi_Brem_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(       Eta_Brem_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__In__u_1_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__In__u_2_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__In__u_3_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__Out_u_1_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__Out_u_2_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_NES__Out_u_3_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Pro_u_1_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Pro_u_2_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Pro_u_3_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Ann_u_1_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Ann_u_2_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Pair_Ann_u_3_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Pro_u_1_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Pro_u_2_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Pro_u_3_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Ann_u_1_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Ann_u_2_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE( L_Brem_Ann_u_3_T(nE_G,nSpecies,nX_G) )
 
     ALLOCATE(   H_I_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(   H_I_1_T(nE_G,nE_G,nX_G) )
@@ -411,10 +448,12 @@ CONTAINS
     !$OMP             Chi_NES, Eta_NES, &
     !$OMP             Chi_Pair, Eta_Pair, &
     !$OMP             Chi_Brem, Eta_Brem, &
-    !$OMP             A_In__u_1, A_In__u_2, A_In__u_3, &
-    !$OMP             A_Out_u_1, A_Out_u_2, A_Out_u_3, &
-    !$OMP             A_Pro_u_1, A_Pro_u_2, A_Pro_u_3, &
-    !$OMP             A_Ann_u_1, A_Ann_u_2, A_Ann_u_3, &
+    !$OMP             L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
+    !$OMP             L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
+    !$OMP             L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3, &
+    !$OMP             L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3, &
+    !$OMP             L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
+    !$OMP             L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, &
@@ -424,10 +463,12 @@ CONTAINS
     !$OMP             Chi_NES_T, Eta_NES_T, &
     !$OMP             Chi_Pair_T, Eta_Pair_T, &
     !$OMP             Chi_Brem_T, Eta_Brem_T, &
-    !$OMP             A_In__u_1_T, A_In__u_2_T, A_In__u_3_T, &
-    !$OMP             A_Out_u_1_T, A_Out_u_2_T, A_Out_u_3_T, &
-    !$OMP             A_Pro_u_1_T, A_Pro_u_2_T, A_Pro_u_3_T, &
-    !$OMP             A_Ann_u_1_T, A_Ann_u_2_T, A_Ann_u_3_T, &
+    !$OMP             L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
+    !$OMP             L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
+    !$OMP             L_Pair_Pro_u_1_T, L_Pair_Pro_u_2_T, L_Pair_Pro_u_3_T, &
+    !$OMP             L_Pair_Ann_u_1_T, L_Pair_Ann_u_2_T, L_Pair_Ann_u_3_T, &
+    !$OMP             L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
+    !$OMP             L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP             H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T, &
     !$OMP             PackIndex_outer, UnpackIndex_outer, &
@@ -459,10 +500,12 @@ CONTAINS
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
     !$ACC         Chi_Brem, Eta_Brem, &
-    !$ACC         A_In__u_1, A_In__u_2, A_In__u_3, &
-    !$ACC         A_Out_u_1, A_Out_u_2, A_Out_u_3, &
-    !$ACC         A_Pro_u_1, A_Pro_u_2, A_Pro_u_3, &
-    !$ACC         A_Ann_u_1, A_Ann_u_2, A_Ann_u_3, &
+    !$ACC         L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
+    !$ACC         L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
+    !$ACC         L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3, &
+    !$ACC         L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3, &
+    !$ACC         L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
+    !$ACC         L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
@@ -472,10 +515,12 @@ CONTAINS
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
     !$ACC         Chi_Brem_T, Eta_Brem_T, &
-    !$ACC         A_In__u_1_T, A_In__u_2_T, A_In__u_3_T, &
-    !$ACC         A_Out_u_1_T, A_Out_u_2_T, A_Out_u_3_T, &
-    !$ACC         A_Pro_u_1_T, A_Pro_u_2_T, A_Pro_u_3_T, &
-    !$ACC         A_Ann_u_1_T, A_Ann_u_2_T, A_Ann_u_3_T, &
+    !$ACC         L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
+    !$ACC         L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
+    !$ACC         L_Pair_Pro_u_1_T, L_Pair_Pro_u_2_T, L_Pair_Pro_u_3_T, &
+    !$ACC         L_Pair_Ann_u_1_T, L_Pair_Ann_u_2_T, L_Pair_Ann_u_3_T, &
+    !$ACC         L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
+    !$ACC         L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
@@ -630,30 +675,43 @@ CONTAINS
       DO iS   = 1, nSpecies
       DO iN_E = 1, nE_G
 
-        A_In__u_1  (iN_E,iS,iN_X) = Zero
-        A_In__u_2  (iN_E,iS,iN_X) = Zero
-        A_In__u_3  (iN_E,iS,iN_X) = Zero
-        A_Out_u_1  (iN_E,iS,iN_X) = Zero
-        A_Out_u_2  (iN_E,iS,iN_X) = Zero
-        A_Out_u_3  (iN_E,iS,iN_X) = Zero
-        A_Pro_u_1  (iN_E,iS,iN_X) = Zero
-        A_Pro_u_2  (iN_E,iS,iN_X) = Zero
-        A_Pro_u_3  (iN_E,iS,iN_X) = Zero
-        A_Ann_u_1  (iN_E,iS,iN_X) = Zero
-        A_Ann_u_2  (iN_E,iS,iN_X) = Zero
-        A_Ann_u_3  (iN_E,iS,iN_X) = Zero
-        A_In__u_1_T(iN_E,iS,iN_X) = Zero
-        A_In__u_2_T(iN_E,iS,iN_X) = Zero
-        A_In__u_3_T(iN_E,iS,iN_X) = Zero
-        A_Out_u_1_T(iN_E,iS,iN_X) = Zero
-        A_Out_u_2_T(iN_E,iS,iN_X) = Zero
-        A_Out_u_3_T(iN_E,iS,iN_X) = Zero
-        A_Pro_u_1_T(iN_E,iS,iN_X) = Zero
-        A_Pro_u_2_T(iN_E,iS,iN_X) = Zero
-        A_Pro_u_3_T(iN_E,iS,iN_X) = Zero
-        A_Ann_u_1_T(iN_E,iS,iN_X) = Zero
-        A_Ann_u_2_T(iN_E,iS,iN_X) = Zero
-        A_Ann_u_3_T(iN_E,iS,iN_X) = Zero
+        L_NES__In__u_1  (iN_E,iS,iN_X) = Zero
+        L_NES__In__u_2  (iN_E,iS,iN_X) = Zero
+        L_NES__In__u_3  (iN_E,iS,iN_X) = Zero
+        L_NES__Out_u_1  (iN_E,iS,iN_X) = Zero
+        L_NES__Out_u_2  (iN_E,iS,iN_X) = Zero
+        L_NES__Out_u_3  (iN_E,iS,iN_X) = Zero
+        L_Pair_Pro_u_1  (iN_E,iS,iN_X) = Zero
+        L_Pair_Pro_u_2  (iN_E,iS,iN_X) = Zero
+        L_Pair_Pro_u_3  (iN_E,iS,iN_X) = Zero
+        L_Pair_Ann_u_1  (iN_E,iS,iN_X) = Zero
+        L_Pair_Ann_u_2  (iN_E,iS,iN_X) = Zero
+        L_Pair_Ann_u_3  (iN_E,iS,iN_X) = Zero
+        L_Brem_Pro_u_1  (iN_E,iS,iN_X) = Zero
+        L_Brem_Pro_u_2  (iN_E,iS,iN_X) = Zero
+        L_Brem_Pro_u_3  (iN_E,iS,iN_X) = Zero
+        L_Brem_Ann_u_1  (iN_E,iS,iN_X) = Zero
+        L_Brem_Ann_u_2  (iN_E,iS,iN_X) = Zero
+        L_Brem_Ann_u_3  (iN_E,iS,iN_X) = Zero
+
+        L_NES__In__u_1_T(iN_E,iS,iN_X) = Zero
+        L_NES__In__u_2_T(iN_E,iS,iN_X) = Zero
+        L_NES__In__u_3_T(iN_E,iS,iN_X) = Zero
+        L_NES__Out_u_1_T(iN_E,iS,iN_X) = Zero
+        L_NES__Out_u_2_T(iN_E,iS,iN_X) = Zero
+        L_NES__Out_u_3_T(iN_E,iS,iN_X) = Zero
+        L_Pair_Pro_u_1_T(iN_E,iS,iN_X) = Zero
+        L_Pair_Pro_u_2_T(iN_E,iS,iN_X) = Zero
+        L_Pair_Pro_u_3_T(iN_E,iS,iN_X) = Zero
+        L_Pair_Ann_u_1_T(iN_E,iS,iN_X) = Zero
+        L_Pair_Ann_u_2_T(iN_E,iS,iN_X) = Zero
+        L_Pair_Ann_u_3_T(iN_E,iS,iN_X) = Zero
+        L_Brem_Pro_u_1_T(iN_E,iS,iN_X) = Zero
+        L_Brem_Pro_u_2_T(iN_E,iS,iN_X) = Zero
+        L_Brem_Pro_u_3_T(iN_E,iS,iN_X) = Zero
+        L_Brem_Ann_u_1_T(iN_E,iS,iN_X) = Zero
+        L_Brem_Ann_u_2_T(iN_E,iS,iN_X) = Zero
+        L_Brem_Ann_u_3_T(iN_E,iS,iN_X) = Zero
 
       END DO
       END DO
@@ -816,10 +874,12 @@ CONTAINS
     !$OMP               Chi_NES, Eta_NES, &
     !$OMP               Chi_Pair, Eta_Pair, &
     !$OMP               Chi_Brem, Eta_Brem, &
-    !$OMP               A_In__u_1, A_In__u_2, A_In__u_3, &
-    !$OMP               A_Out_u_1, A_Out_u_2, A_Out_u_3, &
-    !$OMP               A_Pro_u_1, A_Pro_u_2, A_Pro_u_3, &
-    !$OMP               A_Ann_u_1, A_Ann_u_2, A_Ann_u_3, &
+    !$OMP               L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
+    !$OMP               L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
+    !$OMP               L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3, &
+    !$OMP               L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3, &
+    !$OMP               L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
+    !$OMP               L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, &
@@ -829,10 +889,12 @@ CONTAINS
     !$OMP               Chi_NES_T, Eta_NES_T, &
     !$OMP               Chi_Pair_T, Eta_Pair_T, &
     !$OMP               Chi_Brem_T, Eta_Brem_T, &
-    !$OMP               A_In__u_1_T, A_In__u_2_T, A_In__u_3_T, &
-    !$OMP               A_Out_u_1_T, A_Out_u_2_T, A_Out_u_3_T, &
-    !$OMP               A_Pro_u_1_T, A_Pro_u_2_T, A_Pro_u_3_T, &
-    !$OMP               A_Ann_u_1_T, A_Ann_u_2_T, A_Ann_u_3_T, &
+    !$OMP               L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
+    !$OMP               L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
+    !$OMP               L_Pair_Pro_u_1_T, L_Pair_Pro_u_2_T, L_Pair_Pro_u_3_T, &
+    !$OMP               L_Pair_Ann_u_1_T, L_Pair_Ann_u_2_T, L_Pair_Ann_u_3_T, &
+    !$OMP               L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
+    !$OMP               L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP               H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T, &
     !$OMP               ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
@@ -863,10 +925,12 @@ CONTAINS
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
     !$ACC         Chi_Brem, Eta_Brem, &
-    !$ACC         A_In__u_1, A_In__u_2, A_In__u_3, &
-    !$ACC         A_Out_u_1, A_Out_u_2, A_Out_u_3, &
-    !$ACC         A_Pro_u_1, A_Pro_u_2, A_Pro_u_3, &
-    !$ACC         A_Ann_u_1, A_Ann_u_2, A_Ann_u_3, &
+    !$ACC         L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
+    !$ACC         L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
+    !$ACC         L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3, &
+    !$ACC         L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3, &
+    !$ACC         L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
+    !$ACC         L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
@@ -876,10 +940,12 @@ CONTAINS
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
     !$ACC         Chi_Brem_T, Eta_Brem_T, &
-    !$ACC         A_In__u_1_T, A_In__u_2_T, A_In__u_3_T, &
-    !$ACC         A_Out_u_1_T, A_Out_u_2_T, A_Out_u_3_T, &
-    !$ACC         A_Pro_u_1_T, A_Pro_u_2_T, A_Pro_u_3_T, &
-    !$ACC         A_Ann_u_1_T, A_Ann_u_2_T, A_Ann_u_3_T, &
+    !$ACC         L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
+    !$ACC         L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
+    !$ACC         L_Pair_Pro_u_1_T, L_Pair_Pro_u_2_T, L_Pair_Pro_u_3_T, &
+    !$ACC         L_Pair_Ann_u_1_T, L_Pair_Ann_u_2_T, L_Pair_Ann_u_3_T, &
+    !$ACC         L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
+    !$ACC         L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T, &
     !$ACC         ITERATE_outer, PackIndex_outer, UnpackIndex_outer, &
@@ -910,10 +976,12 @@ CONTAINS
     DEALLOCATE( Chi_NES, Eta_NES )
     DEALLOCATE( Chi_Pair, Eta_Pair )
     DEALLOCATE( Chi_Brem, Eta_Brem )
-    DEALLOCATE( A_In__u_1, A_In__u_2, A_In__u_3 )
-    DEALLOCATE( A_Out_u_1, A_Out_u_2, A_Out_u_3 )
-    DEALLOCATE( A_Pro_u_1, A_Pro_u_2, A_Pro_u_3 )
-    DEALLOCATE( A_Ann_u_1, A_Ann_u_2, A_Ann_u_3 )
+    DEALLOCATE( L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3 )
+    DEALLOCATE( L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3 )
+    DEALLOCATE( L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3 )
+    DEALLOCATE( L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3 )
+    DEALLOCATE( L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3 )
+    DEALLOCATE( L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3 )
     DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
     DEALLOCATE( D_T, T_T, Y_T, E_T )
@@ -923,10 +991,12 @@ CONTAINS
     DEALLOCATE( Chi_NES_T, Eta_NES_T )
     DEALLOCATE( Chi_Pair_T, Eta_Pair_T )
     DEALLOCATE( Chi_Brem_T, Eta_Brem_T )
-    DEALLOCATE( A_In__u_1_T, A_In__u_2_T, A_In__u_3_T )
-    DEALLOCATE( A_Out_u_1_T, A_Out_u_2_T, A_Out_u_3_T )
-    DEALLOCATE( A_Pro_u_1_T, A_Pro_u_2_T, A_Pro_u_3_T )
-    DEALLOCATE( A_Ann_u_1_T, A_Ann_u_2_T, A_Ann_u_3_T )
+    DEALLOCATE( L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T )
+    DEALLOCATE( L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T )
+    DEALLOCATE( L_Pair_Pro_u_1_T, L_Pair_Pro_u_2_T, L_Pair_Pro_u_3_T )
+    DEALLOCATE( L_Pair_Ann_u_1_T, L_Pair_Ann_u_2_T, L_Pair_Ann_u_3_T )
+    DEALLOCATE( L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T )
+    DEALLOCATE( L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T )
     DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
     DEALLOCATE( H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
     DEALLOCATE( ITERATE_outer, PackIndex_outer, UnpackIndex_outer )
@@ -1392,15 +1462,18 @@ CONTAINS
 
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_P, J0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_u_1_P, H_u_2_P, H_u_3_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P, Eta_NES_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P , Eta_NES_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Pair_P, Eta_Pair_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Brem_P, Eta_Brem_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: A_In__u_1_P, A_Out_u_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: A_In__u_2_P, A_Out_u_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: A_In__u_3_P, A_Out_u_3_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: A_Pro_u_1_P, A_Ann_u_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: A_Pro_u_2_P, A_Ann_u_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER :: A_Pro_u_3_P, A_Ann_u_3_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_1_P, L_NES__Out_u_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_2_P, L_NES__Out_u_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_3_P, L_NES__Out_u_3_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_Pair_Pro_u_1_P, L_Pair_Ann_u_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_Pair_Pro_u_2_P, L_Pair_Ann_u_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_Pair_Pro_u_3_P, L_Pair_Ann_u_3_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_Brem_Pro_u_1_P, L_Brem_Ann_u_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_Brem_Pro_u_2_P, L_Brem_Ann_u_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: L_Brem_Pro_u_3_P, L_Brem_Ann_u_3_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_1_P, H_II_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
@@ -1435,36 +1508,43 @@ CONTAINS
       CALL ArrayPack( nX, UnpackIndex, &
                       H_u_1, H_u_2, H_u_3, H_u_1_P, H_u_2_P, H_u_3_P )
 
-      Chi_NES_P   => Chi_NES_T  (:,:,1:nX)
-      Eta_NES_P   => Eta_NES_T  (:,:,1:nX)
-      Chi_Pair_P  => Chi_Pair_T (:,:,1:nX)
-      Eta_Pair_P  => Eta_Pair_T (:,:,1:nX)
-      Chi_Brem_P  => Chi_Brem_T (:,:,1:nX)
-      Eta_Brem_P  => Eta_Brem_T (:,:,1:nX)
-      A_In__u_1_P => A_In__u_1_T(:,:,1:nX)
-      A_In__u_2_P => A_In__u_2_T(:,:,1:nX)
-      A_In__u_3_P => A_In__u_3_T(:,:,1:nX)
-      A_Out_u_1_P => A_Out_u_1_T(:,:,1:nX)
-      A_Out_u_2_P => A_Out_u_2_T(:,:,1:nX)
-      A_Out_u_3_P => A_Out_u_3_T(:,:,1:nX)
-      A_Pro_u_1_P => A_Pro_u_1_T(:,:,1:nX)
-      A_Pro_u_2_P => A_Pro_u_2_T(:,:,1:nX)
-      A_Pro_u_3_P => A_Pro_u_3_T(:,:,1:nX)
-      A_Ann_u_1_P => A_Ann_u_1_T(:,:,1:nX)
-      A_Ann_u_2_P => A_Ann_u_2_T(:,:,1:nX)
-      A_Ann_u_3_P => A_Ann_u_3_T(:,:,1:nX)
+      Chi_NES_P        => Chi_NES_T       (:,:,1:nX)
+      Eta_NES_P        => Eta_NES_T       (:,:,1:nX)
+      Chi_Pair_P       => Chi_Pair_T      (:,:,1:nX)
+      Eta_Pair_P       => Eta_Pair_T      (:,:,1:nX)
+      Chi_Brem_P       => Chi_Brem_T      (:,:,1:nX)
+      Eta_Brem_P       => Eta_Brem_T      (:,:,1:nX)
 
-      H_I_0_P     => H_I_0_T    (:,:,1:nX)
-      H_I_1_P     => H_I_1_T    (:,:,1:nX)
-      H_II_0_P    => H_II_0_T   (:,:,1:nX)
-      H_II_1_P    => H_II_1_T   (:,:,1:nX)
+      L_NES__In__u_1_P => L_NES__In__u_1_T(:,:,1:nX)
+      L_NES__In__u_2_P => L_NES__In__u_2_T(:,:,1:nX)
+      L_NES__In__u_3_P => L_NES__In__u_3_T(:,:,1:nX)
+      L_NES__Out_u_1_P => L_NES__Out_u_1_T(:,:,1:nX)
+      L_NES__Out_u_2_P => L_NES__Out_u_2_T(:,:,1:nX)
+      L_NES__Out_u_3_P => L_NES__Out_u_3_T(:,:,1:nX)
+      L_Pair_Pro_u_1_P => L_Pair_Pro_u_1_T(:,:,1:nX)
+      L_Pair_Pro_u_2_P => L_Pair_Pro_u_2_T(:,:,1:nX)
+      L_Pair_Pro_u_3_P => L_Pair_Pro_u_3_T(:,:,1:nX)
+      L_Pair_Ann_u_1_P => L_Pair_Ann_u_1_T(:,:,1:nX)
+      L_Pair_Ann_u_2_P => L_Pair_Ann_u_2_T(:,:,1:nX)
+      L_Pair_Ann_u_3_P => L_Pair_Ann_u_3_T(:,:,1:nX)
+      L_Brem_Pro_u_1_P => L_Brem_Pro_u_1_T(:,:,1:nX)
+      L_Brem_Pro_u_2_P => L_Brem_Pro_u_2_T(:,:,1:nX)
+      L_Brem_Pro_u_3_P => L_Brem_Pro_u_3_T(:,:,1:nX)
+      L_Brem_Ann_u_1_P => L_Brem_Ann_u_1_T(:,:,1:nX)
+      L_Brem_Ann_u_2_P => L_Brem_Ann_u_2_T(:,:,1:nX)
+      L_Brem_Ann_u_3_P => L_Brem_Ann_u_3_T(:,:,1:nX)
 
-      J_I_0_P     => J_I_0_T    (:,:,1:nX)
-      J_I_1_P     => J_I_1_T    (:,:,1:nX)
-      J_II_0_P    => J_II_0_T   (:,:,1:nX)
-      J_II_1_P    => J_II_1_T   (:,:,1:nX)
+      H_I_0_P          => H_I_0_T         (:,:,1:nX)
+      H_I_1_P          => H_I_1_T         (:,:,1:nX)
+      H_II_0_P         => H_II_0_T        (:,:,1:nX)
+      H_II_1_P         => H_II_1_T        (:,:,1:nX)
 
-      S_Sigma_P   => S_Sigma_T  (:,:,1:nX)
+      J_I_0_P          => J_I_0_T         (:,:,1:nX)
+      J_I_1_P          => J_I_1_T         (:,:,1:nX)
+      J_II_0_P         => J_II_0_T        (:,:,1:nX)
+      J_II_1_P         => J_II_1_T        (:,:,1:nX)
+
+      S_Sigma_P        => S_Sigma_T       (:,:,1:nX)
 
       IF ( nX < nX0 ) THEN
 
@@ -1491,42 +1571,49 @@ CONTAINS
 
     ELSE
 
-      J_P         => J        (:,:,:)
-      J0_P        => J0       (:,:,:)
-      H_u_1_P     => H_u_1    (:,:,:)
-      H_u_2_P     => H_u_2    (:,:,:)
-      H_u_3_P     => H_u_3    (:,:,:)
+      J_P              => J             (:,:,:)
+      J0_P             => J0            (:,:,:)
+      H_u_1_P          => H_u_1         (:,:,:)
+      H_u_2_P          => H_u_2         (:,:,:)
+      H_u_3_P          => H_u_3         (:,:,:)
 
-      Chi_NES_P   => Chi_NES  (:,:,:)
-      Eta_NES_P   => Eta_NES  (:,:,:)
-      Chi_Pair_P  => Chi_Pair (:,:,:)
-      Eta_Pair_P  => Eta_Pair (:,:,:)
-      Chi_Brem_P  => Chi_Brem (:,:,:)
-      Eta_Brem_P  => Eta_Brem (:,:,:)
-      A_In__u_1_P => A_In__u_1(:,:,:)
-      A_In__u_2_P => A_In__u_2(:,:,:)
-      A_In__u_3_P => A_In__u_3(:,:,:)
-      A_Out_u_1_P => A_Out_u_1(:,:,:)
-      A_Out_u_2_P => A_Out_u_2(:,:,:)
-      A_Out_u_3_P => A_Out_u_3(:,:,:)
-      A_Pro_u_1_P => A_Pro_u_1(:,:,:)
-      A_Pro_u_2_P => A_Pro_u_2(:,:,:)
-      A_Pro_u_3_P => A_Pro_u_3(:,:,:)
-      A_Ann_u_1_P => A_Ann_u_1(:,:,:)
-      A_Ann_u_2_P => A_Ann_u_2(:,:,:)
-      A_Ann_u_3_P => A_Ann_u_3(:,:,:)
+      Chi_NES_P        => Chi_NES       (:,:,:)
+      Eta_NES_P        => Eta_NES       (:,:,:)
+      Chi_Pair_P       => Chi_Pair      (:,:,:)
+      Eta_Pair_P       => Eta_Pair      (:,:,:)
+      Chi_Brem_P       => Chi_Brem      (:,:,:)
+      Eta_Brem_P       => Eta_Brem      (:,:,:)
 
-      H_I_0_P     => H_I_0    (:,:,:)
-      H_I_1_P     => H_I_1    (:,:,:)
-      H_II_0_P    => H_II_0   (:,:,:)
-      H_II_1_P    => H_II_1   (:,:,:)
+      L_NES__In__u_1_P => L_NES__In__u_1(:,:,:)
+      L_NES__In__u_2_P => L_NES__In__u_2(:,:,:)
+      L_NES__In__u_3_P => L_NES__In__u_3(:,:,:)
+      L_NES__Out_u_1_P => L_NES__Out_u_1(:,:,:)
+      L_NES__Out_u_2_P => L_NES__Out_u_2(:,:,:)
+      L_NES__Out_u_3_P => L_NES__Out_u_3(:,:,:)
+      L_Pair_Pro_u_1_P => L_Pair_Pro_u_1(:,:,:)
+      L_Pair_Pro_u_2_P => L_Pair_Pro_u_2(:,:,:)
+      L_Pair_Pro_u_3_P => L_Pair_Pro_u_3(:,:,:)
+      L_Pair_Ann_u_1_P => L_Pair_Ann_u_1(:,:,:)
+      L_Pair_Ann_u_2_P => L_Pair_Ann_u_2(:,:,:)
+      L_Pair_Ann_u_3_P => L_Pair_Ann_u_3(:,:,:)
+      L_Brem_Pro_u_1_P => L_Brem_Pro_u_1(:,:,:)
+      L_Brem_Pro_u_2_P => L_Brem_Pro_u_2(:,:,:)
+      L_Brem_Pro_u_3_P => L_Brem_Pro_u_3(:,:,:)
+      L_Brem_Ann_u_1_P => L_Brem_Ann_u_1(:,:,:)
+      L_Brem_Ann_u_2_P => L_Brem_Ann_u_2(:,:,:)
+      L_Brem_Ann_u_3_P => L_Brem_Ann_u_3(:,:,:)
 
-      J_I_0_P     => J_I_0    (:,:,:)
-      J_I_1_P     => J_I_1    (:,:,:)
-      J_II_0_P    => J_II_0   (:,:,:)
-      J_II_1_P    => J_II_1   (:,:,:)
+      H_I_0_P          => H_I_0         (:,:,:)
+      H_I_1_P          => H_I_1         (:,:,:)
+      H_II_0_P         => H_II_0        (:,:,:)
+      H_II_1_P         => H_II_1        (:,:,:)
 
-      S_Sigma_P   => S_Sigma  (:,:,:)
+      J_I_0_P          => J_I_0         (:,:,:)
+      J_I_1_P          => J_I_1         (:,:,:)
+      J_II_0_P         => J_II_0        (:,:,:)
+      J_II_1_P         => J_II_1        (:,:,:)
+
+      S_Sigma_P        => S_Sigma       (:,:,:)
 
     END IF
 
@@ -1540,11 +1627,11 @@ CONTAINS
 
       ! --- Compute Linear Rate Corrections (NES) ---
 
-      CALL ComputeNeutrinoOpacityRatesLinearCorections_NES &
+      CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
              ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
                H_u_1_P, H_u_2_P, H_u_3_P, J0_P, H_I_1_P, H_II_1_P, &
-               A_In__u_1_P, A_In__u_2_P, A_In__u_3_P, &
-               A_Out_u_1_P, A_Out_u_2_P, A_Out_u_3_P )
+               L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
+               L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P )
 
     END IF
 
@@ -1558,11 +1645,11 @@ CONTAINS
 
       ! --- Compute Linear Rate Corrections (Pair) ---
 
-      CALL ComputeNeutrinoOpacityRatesLinearCorections_Pair &
+      CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
              ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
                H_u_1_P, H_u_2_P, H_u_3_P, J0_P, J_I_1_P, J_II_1_P, &
-               A_Pro_u_1_P, A_Pro_u_2_P, A_Pro_u_3_P, &
-               A_Ann_u_1_P, A_Ann_u_2_P, A_Ann_u_3_P )
+               L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
+               L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P )
 
     END IF
 
@@ -1571,6 +1658,18 @@ CONTAINS
     CALL ComputeNeutrinoOpacityRates_Brem &
            ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, J_P, J0_P, S_Sigma_P, &
              Eta_Brem_P, Chi_Brem_P )
+
+    IF( Include_LinCorr )THEN
+
+      ! --- Compute Linear Rate Corrections (Brem) ---
+
+      CALL ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
+             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+               H_u_1_P, H_u_2_P, H_u_3_P, J0_P, S_Sigma_P, &
+               L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
+               L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P )
+
+    END IF
 
     IF ( nX < nX_G ) THEN
 
@@ -1592,23 +1691,33 @@ CONTAINS
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, &
-                 A_In__u_1_P, A_In__u_2_P, A_In__u_3_P, &
-                 A_In__u_1  , A_In__u_2  , A_In__u_3 )
+                 L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
+                 L_NES__In__u_1  , L_NES__In__u_2  , L_NES__In__u_3 )
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, &
-                 A_Out_u_1_P, A_Out_u_2_P, A_Out_u_3_P, &
-                 A_Out_u_1  , A_Out_u_2  , A_Out_u_3 )
+                 L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P, &
+                 L_NES__Out_u_1  , L_NES__Out_u_2  , L_NES__Out_u_3 )
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, &
-                 A_Pro_u_1_P, A_Pro_u_2_P, A_Pro_u_3_P, &
-                 A_Pro_u_1  , A_Pro_u_2  , A_Pro_u_3 )
+                 L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
+                 L_Pair_Pro_u_1  , L_Pair_Pro_u_2  , L_Pair_Pro_u_3 )
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, &
-                 A_Ann_u_1_P, A_Ann_u_2_P, A_Ann_u_3_P, &
-                 A_Ann_u_1  , A_Ann_u_2  , A_Ann_u_3 )
+                 L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P, &
+                 L_Pair_Ann_u_1  , L_Pair_Ann_u_2  , L_Pair_Ann_u_3 )
+
+        CALL ArrayUnpack &
+               ( nX, MASK, PackIndex, &
+                 L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
+                 L_Brem_Pro_u_1  , L_Brem_Pro_u_2  , L_Brem_Pro_u_3 )
+
+        CALL ArrayUnpack &
+               ( nX, MASK, PackIndex, &
+                 L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P, &
+                 L_Brem_Ann_u_1  , L_Brem_Ann_u_2  , L_Brem_Ann_u_3 )
 
       END IF
 
@@ -2006,7 +2115,7 @@ CONTAINS
     INTEGER  :: iN_E, iN_X, iS, iOS
     REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: Eta_T, Chi_T, Kappa
-    REAL(DP) :: A_u_1, A_u_2, A_u_3, A_d_1, A_d_2, A_d_3
+    REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
     REAL(DP) :: L_N, L_G1, L_G2, L_G3
 
 #if   defined( THORNADO_OMP_OL )
@@ -2073,42 +2182,51 @@ CONTAINS
 
         ! --- Linear Correction Terms ---
 
-        A_u_1 =   ( A_In__u_1(iN_E,iS,iN_X) - A_Out_u_1(iN_E,iS,iN_X) ) &
-                - ( A_Pro_u_1(iN_E,iS,iN_X) - A_Ann_u_1(iN_E,iS,iN_X) )
+        L_u_1 =   (L_NES__In__u_1(iN_E,iS,iN_X)-L_NES__Out_u_1(iN_E,iS,iN_X)) &
+                - (L_Pair_Pro_u_1(iN_E,iS,iN_X)-L_Pair_Ann_u_1(iN_E,iS,iN_X)) &
+                - (L_Brem_Pro_u_1(iN_E,iS,iN_X)-L_Brem_Ann_u_1(iN_E,iS,iN_X))
 
-        A_u_2 =   ( A_In__u_2(iN_E,iS,iN_X) - A_Out_u_2(iN_E,iS,iN_X) ) &
-                - ( A_Pro_u_2(iN_E,iS,iN_X) - A_Ann_u_2(iN_E,iS,iN_X) )
+        L_u_2 =   (L_NES__In__u_2(iN_E,iS,iN_X)-L_NES__Out_u_2(iN_E,iS,iN_X)) &
+                - (L_Pair_Pro_u_2(iN_E,iS,iN_X)-L_Pair_Ann_u_2(iN_E,iS,iN_X)) &
+                - (L_Brem_Pro_u_2(iN_E,iS,iN_X)-L_Brem_Ann_u_2(iN_E,iS,iN_X))
 
-        A_u_3 =   ( A_In__u_3(iN_E,iS,iN_X) - A_Out_u_3(iN_E,iS,iN_X) ) &
-                - ( A_Pro_u_3(iN_E,iS,iN_X) - A_Ann_u_3(iN_E,iS,iN_X) )
+        L_u_3 =   (L_NES__In__u_3(iN_E,iS,iN_X)-L_NES__Out_u_3(iN_E,iS,iN_X)) &
+                - (L_Pair_Pro_u_3(iN_E,iS,iN_X)-L_Pair_Ann_u_3(iN_E,iS,iN_X)) &
+                - (L_Brem_Pro_u_3(iN_E,iS,iN_X)-L_Brem_Ann_u_3(iN_E,iS,iN_X))
 
-        A_d_1 = Gm_dd_11(iN_X) &
-                  * ( A_In__u_1(iN_E,iS,iN_X) - A_Pro_u_1(iN_E,iS,iN_X) )
+        L_d_1 = Gm_dd_11(iN_X) &
+                  * (   L_NES__In__u_1(iN_E,iS,iN_X) &
+                      - L_Pair_Pro_u_1(iN_E,iS,iN_X) &
+                      - L_BREM_Pro_u_1(iN_E,iS,iN_X) )
 
-        A_d_2 = Gm_dd_22(iN_X) &
-                  * ( A_In__u_2(iN_E,iS,iN_X) - A_Pro_u_2(iN_E,iS,iN_X) )
+        L_d_2 = Gm_dd_22(iN_X) &
+                  * (   L_NES__In__u_2(iN_E,iS,iN_X) &
+                      - L_Pair_Pro_u_2(iN_E,iS,iN_X) &
+                      - L_Brem_Pro_u_2(iN_E,iS,iN_X) )
 
-        A_d_3 = Gm_dd_33(iN_X) &
-                  * ( A_In__u_3(iN_E,iS,iN_X) - A_Pro_u_3(iN_E,iS,iN_X) )
+        L_d_3 = Gm_dd_33(iN_X) &
+                  * (   L_NES__In__u_3(iN_E,iS,iN_X) &
+                      - L_Pair_Pro_u_3(iN_E,iS,iN_X) &
+                      - L_Brem_Pro_u_3(iN_E,iS,iN_X) )
 
-        L_N  = - (   A_u_1 * H_d_1(iN_E,iS,iN_X) &
-                   + A_u_2 * H_d_2(iN_E,iS,iN_X) &
-                   + A_u_3 * H_d_3(iN_E,iS,iN_X) )
+        L_N  = - (   L_u_1 * H_d_1(iN_E,iS,iN_X) &
+                   + L_u_2 * H_d_2(iN_E,iS,iN_X) &
+                   + L_u_3 * H_d_3(iN_E,iS,iN_X) )
 
-        L_G1 = Third * A_d_1 &
-               - (   A_u_1 * k_dd(1,1) &
-                   + A_u_2 * k_dd(2,1) &
-                   + A_u_3 * k_dd(3,1) ) * J(iN_E,iS,iN_X)
+        L_G1 = Third * L_d_1 &
+               - (   L_u_1 * k_dd(1,1) &
+                   + L_u_2 * k_dd(2,1) &
+                   + L_u_3 * k_dd(3,1) ) * J(iN_E,iS,iN_X)
 
-        L_G2 = Third * A_d_2 &
-               - (   A_u_1 * k_dd(1,2) &
-                   + A_u_2 * k_dd(2,2) &
-                   + A_u_3 * k_dd(3,2) ) * J(iN_E,iS,iN_X)
+        L_G2 = Third * L_d_2 &
+               - (   L_u_1 * k_dd(1,2) &
+                   + L_u_2 * k_dd(2,2) &
+                   + L_u_3 * k_dd(3,2) ) * J(iN_E,iS,iN_X)
 
-        L_G3 = Third * A_d_3 &
-               - (   A_u_1 * k_dd(1,3) &
-                   + A_u_2 * k_dd(2,3) &
-                   + A_u_3 * k_dd(3,3) ) * J(iN_E,iS,iN_X)
+        L_G3 = Third * L_d_3 &
+               - (   L_u_1 * k_dd(1,3) &
+                   + L_u_2 * k_dd(2,3) &
+                   + L_u_3 * k_dd(3,3) ) * J(iN_E,iS,iN_X)
 
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 

@@ -67,16 +67,17 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacities_ES_Vector
   PUBLIC :: ComputeNeutrinoOpacities_NES
   PUBLIC :: ComputeNeutrinoOpacityRates_NES
-  PUBLIC :: ComputeNeutrinoOpacityRatesLinearCorections_NES
+  PUBLIC :: ComputeNeutrinoOpacityRates_LinearCorrections_NES
   PUBLIC :: ComputeNeutrinoOpacities_Pair
   PUBLIC :: ComputeNeutrinoOpacityRates_Pair
-  PUBLIC :: ComputeNeutrinoOpacityRatesLinearCorections_Pair
+  PUBLIC :: ComputeNeutrinoOpacityRates_LinearCorrections_Pair
   PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeEquilibriumDistributions
   PUBLIC :: ComputeEquilibriumDistributions_DG
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives
   PUBLIC :: ComputeNeutrinoOpacities_Brem
   PUBLIC :: ComputeNeutrinoOpacityRates_Brem
+  PUBLIC :: ComputeNeutrinoOpacityRates_LinearCorrections_Brem
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -851,7 +852,7 @@ CONTAINS
 
     REAL(DP) :: LogE_P(iP_B:iP_E)
     REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
-    INTEGER  :: iP, iS
+    INTEGER  :: iP
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1040,7 +1041,7 @@ CONTAINS
 
     REAL(DP) :: DetBal, Phi_Out, Phi_In
     REAL(DP) :: SUM1, SUM2
-    INTEGER  :: iE, iE1, iE2, iS, iX
+    INTEGER  :: iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1070,10 +1071,12 @@ CONTAINS
                  / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_Out = ( C1(iS) * H_I(iE1,iE2,iX) + C2(iS) * H_II(iE1,iE2,iX) ) * UnitNES
+          Phi_Out = (   C1(iS) * H_I (iE1,iE2,iX) &
+                      + C2(iS) * H_II(iE1,iE2,iX) ) * UnitNES
           Phi_In  = Phi_Out * DetBal
         ELSE
-          Phi_In  = ( C1(iS) * H_I(iE2,iE1,iX) + C2(iS) * H_II(iE2,iE1,iX) ) * UnitNES
+          Phi_In  = (   C1(iS) * H_I (iE2,iE1,iX) &
+                      + C2(iS) * H_II(iE2,iE1,iX) ) * UnitNES
           Phi_Out = Phi_In / DetBal
         END IF
 
@@ -1092,11 +1095,11 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacityRates_NES
 
 
-  SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_NES &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, H_I_1, H_II_1, &
-      A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
+  SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NES &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, &
+      H_I_1, H_II_1, L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
 
-    ! --- Neutrino-Electron Scattering Rates Linear Corrections (Multiple J) ---
+    ! --- Neutrino-Electron Scattering Rates (Linear Corrections) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
@@ -1108,31 +1111,34 @@ CONTAINS
     REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(in)  :: H_I_1  (iE_B:,iE_B:,iX_B:)
     REAL(DP), INTENT(in)  :: H_II_1 (iE_B:,iE_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_In_1 (iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_In_2 (iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_In_3 (iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Out_1(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Out_2(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Out_3(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_In_1 (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_In_2 (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_In_3 (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Out_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Out_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Out_3(iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: DetBal, Phi_1_Out, Phi_1_In
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
-    INTEGER  :: iE, iE1, iE2, iS, iX
+    INTEGER  :: iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_In, Phi_1_Out ) &
+    !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$OMP          Phi_1_In, Phi_1_Out ) &
     !$OMP MAP( to: H_I_1, H_II_1, W2, H_1, H_2, H_3, J0 ) &
-    !$OMP MAP( from: A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
+    !$OMP MAP( from: L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_In, Phi_1_Out ) &
+    !$ACC PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$ACC          Phi_1_In, Phi_1_Out ) &
     !$ACC COPYIN( H_I_1, H_II_1, W2, H_1, H_2, H_3, J0 ) &
-    !$ACC COPYOUT( A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 ) &
+    !$ACC COPYOUT( L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 ) &
     !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_In, Phi_1_Out )
+    !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$OMP          Phi_1_In, Phi_1_Out )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -1151,10 +1157,12 @@ CONTAINS
                  / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_1_Out = ( C1(iS) * H_I_1(iE1,iE2,iX) + C2(iS) * H_II_1(iE1,iE2,iX) ) * UnitNES
+          Phi_1_Out = (   C1(iS) * H_I_1 (iE1,iE2,iX) &
+                        + C2(iS) * H_II_1(iE1,iE2,iX) ) * UnitNES
           Phi_1_In  = Phi_1_Out * DetBal
         ELSE
-          Phi_1_In  = ( C1(iS) * H_I_1(iE2,iE1,iX) + C2(iS) * H_II_1(iE2,iE1,iX) ) * UnitNES
+          Phi_1_In  = (   C1(iS) * H_I_1 (iE2,iE1,iX) &
+                        + C2(iS) * H_II_1(iE2,iE1,iX) ) * UnitNES
           Phi_1_Out = Phi_1_In / DetBal
         END IF
 
@@ -1167,18 +1175,18 @@ CONTAINS
 
       END DO
 
-      A_In_1 (iE2,iS,iX) = SUM1
-      A_Out_1(iE2,iS,iX) = SUM2
-      A_In_2 (iE2,iS,iX) = SUM3
-      A_Out_2(iE2,iS,iX) = SUM4
-      A_In_3 (iE2,iS,iX) = SUM5
-      A_Out_3(iE2,iS,iX) = SUM6
+      L_In_1 (iE2,iS,iX) = SUM1
+      L_Out_1(iE2,iS,iX) = SUM2
+      L_In_2 (iE2,iS,iX) = SUM3
+      L_Out_2(iE2,iS,iX) = SUM4
+      L_In_3 (iE2,iS,iX) = SUM5
+      L_Out_3(iE2,iS,iX) = SUM6
 
     END DO
     END DO
     END DO
 
-  END SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_NES
+  END SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NES
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair &
@@ -1226,8 +1234,10 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iX = iX_B, iX_E
-      LogT_P(iX) = LOG10( T(iX) / UnitT )
-      LogEta_P(iX) = LOG10( LogEta_P(iX) / ( BoltzmannConstant * T(iX) ) / UnitEta )
+
+      LogT_P  (iX) = LOG10( T(iX) / UnitT )
+      LogEta_P(iX) = LOG10( LogEta_P(iX) &
+                            / ( BoltzmannConstant * T(iX) ) / UnitEta )
     END DO
 
     ! --- Interpolate JI  ---
@@ -1265,7 +1275,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-    DO iX = iX_B, iX_E
+    DO iX  = iX_B, iX_E
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE_E
       J_I (iE1,iE2,iX) = Zero
@@ -1297,7 +1307,7 @@ CONTAINS
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
-    INTEGER  :: iX, iE, iE1, iE2, iS, iS_A
+    INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1330,9 +1340,11 @@ CONTAINS
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_0_Ann = ( C1(iS) * J_I (iE1,iE2,iX) + C2(iS) * J_II(iE1,iE2,iX) ) * UnitPair
+          Phi_0_Ann = (   C1(iS) * J_I (iE1,iE2,iX) &
+                        + C2(iS) * J_II(iE1,iE2,iX) ) * UnitPair
         ELSE
-          Phi_0_Ann = ( C1(iS) * J_II(iE2,iE1,iX) + C2(iS) * J_I (iE2,iE1,iX) ) * UnitPair
+          Phi_0_Ann = (   C1(iS) * J_II(iE2,iE1,iX) &
+                        + C2(iS) * J_I (iE2,iE1,iX) ) * UnitPair
         END IF
         Phi_0_Pro = Phi_0_Ann * DetBal
 
@@ -1351,11 +1363,11 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacityRates_Pair
 
 
-  SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_Pair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, J_I_1, J_II_1, &
-      A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
+  SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, &
+      J_I_1, J_II_1, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 
-    ! --- Neutrino-Electron Scattering Rates Linear Corrections (Multiple J) ---
+    ! --- e^+ e^- Pair Rates (Linear Corrections) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
@@ -1367,31 +1379,34 @@ CONTAINS
     REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
     REAL(DP), INTENT(in)  :: J_I_1  (iE_B:,iE_B:,iX_B:)
     REAL(DP), INTENT(in)  :: J_II_1 (iE_B:,iE_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Pro_1(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Pro_2(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Pro_3(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Ann_1(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Ann_2(iE_B:,iS_B:,iX_B:)
-    REAL(DP), INTENT(out) :: A_Ann_3(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Pro_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Pro_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Pro_3(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Ann_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Ann_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Ann_3(iE_B:,iS_B:,iX_B:)
 
     REAL(DP) :: DetBal, Phi_1_Ann, Phi_1_Pro
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
-    INTEGER  :: iE, iE1, iE2, iS, iS_A, iX
+    INTEGER  :: iE1, iE2, iS, iS_A, iX
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_Pro, Phi_1_Ann ) &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$OMP          Phi_1_Pro, Phi_1_Ann ) &
     !$OMP MAP( to: J_I_1, J_II_1, W2, H_1, H_2, H_3, J0 ) &
-    !$OMP MAP( from: A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
+    !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_Pro, Phi_1_Ann ) &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$ACC          Phi_1_Pro, Phi_1_Ann ) &
     !$ACC COPYIN( J_I_1, J_II_1, W2, H_1, H_2, H_3, J0 ) &
-    !$ACC COPYOUT( A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
+    !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 ) &
     !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, Phi_1_Pro, Phi_1_Ann )
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$OMP          Phi_1_Pro, Phi_1_Ann )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -1413,9 +1428,11 @@ CONTAINS
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_1_Ann = ( C1(iS) * J_I_1 (iE1,iE2,iX) + C2(iS) * J_II_1(iE1,iE2,iX) ) * UnitPair
+          Phi_1_Ann = (   C1(iS) * J_I_1 (iE1,iE2,iX) &
+                        + C2(iS) * J_II_1(iE1,iE2,iX) ) * UnitPair
         ELSE
-          Phi_1_Ann = ( C1(iS) * J_II_1(iE2,iE1,iX) + C2(iS) * J_I_1 (iE2,iE1,iX) ) * UnitPair
+          Phi_1_Ann = (   C1(iS) * J_II_1(iE2,iE1,iX) &
+                        + C2(iS) * J_I_1 (iE2,iE1,iX) ) * UnitPair
         END IF
         Phi_1_Pro = Phi_1_Ann * DetBal
 
@@ -1428,18 +1445,18 @@ CONTAINS
 
       END DO
 
-      A_Pro_1(iE2,iS,iX) = SUM1
-      A_Ann_1(iE2,iS,iX) = SUM2
-      A_Pro_2(iE2,iS,iX) = SUM3
-      A_Ann_2(iE2,iS,iX) = SUM4
-      A_Pro_3(iE2,iS,iX) = SUM5
-      A_Ann_3(iE2,iS,iX) = SUM6
+      L_Pro_1(iE2,iS,iX) = SUM1
+      L_Ann_1(iE2,iS,iX) = SUM2
+      L_Pro_2(iE2,iS,iX) = SUM3
+      L_Ann_2(iE2,iS,iX) = SUM4
+      L_Pro_3(iE2,iS,iX) = SUM5
+      L_Ann_3(iE2,iS,iX) = SUM6
 
     END DO
     END DO
     END DO
 
-  END SUBROUTINE ComputeNeutrinoOpacityRatesLinearCorections_Pair
+  END SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Pair
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Brem &
@@ -1488,11 +1505,11 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
 
-      LogDX_P(1,iX) = LOG10(D(iX) * Xp(iX) / UnitD)
-      LogDX_P(2,iX) = LOG10(D(iX) * Xn(iX) / UnitD)
-      LogDX_P(3,iX) = LOG10(D(iX) * SQRT(ABS(Xp(iX)*Xn(iX))) / UnitD)
+      LogDX_P(1,iX) = LOG10( D(iX) * Xp(iX) / UnitD )
+      LogDX_P(2,iX) = LOG10( D(iX) * Xn(iX) / UnitD )
+      LogDX_P(3,iX) = LOG10( D(iX) * SQRT(ABS(Xp(iX)*Xn(iX))) / UnitD )
 
-      LogT_P(iX)   = LOG10(T(iX) / UnitT)    
+      LogT_P(iX)    = LOG10( T(iX) / UnitT )    
 
     END DO
 
@@ -1521,7 +1538,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC COPYOUT( S_Sigma )
 #endif
-    DO iX = iX_B, iX_E
+    DO iX  = iX_B, iX_E
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE_E
       S_Sigma(iE1,iE2,iX) = Zero
@@ -1537,7 +1554,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoOpacityRates_Brem &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, S_Sigma, Eta, Chi )
 
-    ! --- Pair Rates (Multiple J) ---
+    ! --- Brem Rates (Multiple J) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
@@ -1551,7 +1568,7 @@ CONTAINS
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
     REAL(DP) :: SUM1, SUM2
-    INTEGER  :: iX, iE, iE1, iE2, iS, iS_A
+    INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1567,8 +1584,8 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
 #endif
-    DO iX = iX_B, iX_E
-    DO iS = iS_B, iS_E
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
     DO iE2 = iE_B, iE_E
 
       ! Get index for corresponding anti-neutrino
@@ -1579,7 +1596,7 @@ CONTAINS
 
       DO iE1 = iE_B, iE_E
 
-        DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
+        DetBal = ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
                  / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
         IF ( iE1 <= iE2 ) THEN
@@ -1602,6 +1619,98 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeNeutrinoOpacityRates_Brem
+
+
+  SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, H_1, H_2, H_3, J0, &
+      S_Sigma, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
+
+    ! --- N N Brem Rates (Linear Corrections) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: W2     (iE_B:)
+    REAL(DP), INTENT(in)  :: H_1    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_2    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: H_3    (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: J0     (iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(in)  :: S_Sigma(iE_B:,iE_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Pro_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Pro_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Pro_3(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Ann_1(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Ann_2(iE_B:,iS_B:,iX_B:)
+    REAL(DP), INTENT(out) :: L_Ann_3(iE_B:,iS_B:,iX_B:)
+
+    REAL(DP) :: DetBal, Phi_1_Ann, Phi_1_Pro
+    REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
+    INTEGER  :: iE1, iE2, iS, iS_A, iX
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$OMP          Phi_1_Pro, Phi_1_Ann ) &
+    !$OMP MAP( to: S_Sigma, W2, H_1, H_2, H_3, J0 ) &
+    !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$ACC          Phi_1_Pro, Phi_1_Ann ) &
+    !$ACC COPYIN( S_Sigma, W2, H_1, H_2, H_3, J0 ) &
+    !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 ) &
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
+    !$OMP          Phi_1_Pro, Phi_1_Ann )
+#endif
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
+    DO iE2 = iE_B, iE_E
+
+      ! Get index for corresponding anti-neutrino
+      iS_A = iS + 2*MOD(iS,2) - 1
+
+      SUM1 = Zero
+      SUM2 = Zero
+      SUM3 = Zero
+      SUM4 = Zero
+      SUM5 = Zero
+      SUM6 = Zero
+
+      DO iE1 = iE_B, iE_E
+
+        DetBal = ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
+                 / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
+
+        IF ( iE1 <= iE2 ) THEN
+          Phi_1_Ann = - S_Sigma(iE1,iE2,iX) * Brem_const
+        ELSE
+          Phi_1_Ann = - S_Sigma(iE2,iE1,iX) * Brem_const
+        END IF
+        Phi_1_Pro = Phi_1_Ann * DetBal
+
+        SUM1 = SUM1 + Phi_1_Pro * W2(iE1) * H_1(iE1,iS_A,iX)
+        SUM2 = SUM2 + Phi_1_Ann * W2(iE1) * H_1(iE1,iS_A,iX)
+        SUM3 = SUM3 + Phi_1_Pro * W2(iE1) * H_2(iE1,iS_A,iX)
+        SUM4 = SUM4 + Phi_1_Ann * W2(iE1) * H_2(iE1,iS_A,iX)
+        SUM5 = SUM5 + Phi_1_Pro * W2(iE1) * H_3(iE1,iS_A,iX)
+        SUM6 = SUM6 + Phi_1_Ann * W2(iE1) * H_3(iE1,iS_A,iX)
+
+      END DO
+
+      L_Pro_1(iE2,iS,iX) = SUM1
+      L_Ann_1(iE2,iS,iX) = SUM2
+      L_Pro_2(iE2,iS,iX) = SUM3
+      L_Ann_2(iE2,iS,iX) = SUM4
+      L_Pro_3(iE2,iS,iX) = SUM5
+      L_Ann_3(iE2,iS,iX) = SUM6
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Brem
 
   
   FUNCTION FermiDirac_Scalar( E, Mu, kT ) RESULT( FermiDirac )
