@@ -42,7 +42,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     CFL, &
     nNodes, &
     nStages, &
-    do_reflux
+    do_reflux, &
+    UseXCFC
+  USE AverageDownModule, ONLY: &
+    AverageDownTo
   USE RefluxModule_Euler, ONLY: &
     Reflux_Euler_MF
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
@@ -181,11 +184,16 @@ CONTAINS
 
         DO iLevel = 0, nLevels-1
 
-          IF( a_SSPRK(iS,jS) .NE. Zero ) &
+          IF( a_SSPRK(iS,jS) .NE. Zero )THEN
+
             CALL MF_U(iS,iLevel) &
                    % LinComb( One, MF_U(iS,iLevel), 1, &
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(jS,iLevel), 1, &
                               1, nComp, 0 )
+
+            IF( iLevel .GT. 0) CALL AverageDownTo( iLevel-1, MF_U(iS,:) )
+
+          END IF
 
         END DO ! iLevel
 
@@ -225,7 +233,8 @@ CONTAINS
         CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
-               ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
+               ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:), &
+                 UseXCFC_Option = UseXCFC )
 
         DO iLevel = 0, nLevels-1
 
@@ -251,11 +260,16 @@ CONTAINS
 
       DO iLevel = 0, nLevels-1
 
-        IF( w_SSPRK(iS) .NE. Zero ) &
+        IF( w_SSPRK(iS) .NE. Zero )THEN
+
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iS,iLevel), 1, 1, &
                             nComp, 0 )
+
+          IF( iLevel .GT. 0) CALL AverageDownTo( iLevel-1, MF_uCF )
+
+        END IF
 
       END DO ! iLevel
 

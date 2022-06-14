@@ -11,6 +11,8 @@ MODULE MF_UtilitiesModule
     amrex_mfiter_destroy, &
     amrex_multifab, &
     amrex_imultifab
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_myproc
 
   ! --- thornado Modules ---
 
@@ -95,7 +97,12 @@ CONTAINS
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
     FileName = ''
-    IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
+    IF( PRESENT( FileName_Option ) ) &
+      WRITE(FileName,'(A,I2.2,A,A)') &
+        'myProc', amrex_parallel_myproc(), '_', TRIM( FileName_Option )
+
+    IF( WriteToFile ) &
+      OPEN( 100, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
       '(I2.2,3I4.3,3ES25.16E3,', &
@@ -103,8 +110,6 @@ CONTAINS
       nNodesX(2),  'ES25.16E3,', &
       nNodesX(3),  'ES25.16E3,', &
       nDOFX     ,  'ES25.16E3)'
-
-    IF( WriteToFile ) OPEN( 100, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
     CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 

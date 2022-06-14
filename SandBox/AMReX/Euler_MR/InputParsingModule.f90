@@ -52,7 +52,7 @@ MODULE InputParsingModule
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
   REAL(DP)                  :: t_end
   REAL(DP)                  :: CFL
-  LOGICAL     , SAVE        :: UsePhysicalUnits
+  LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
 
   ! --- Boundary Conditions ---
 
@@ -148,6 +148,7 @@ CONTAINS
     iRestart         = -1
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
+    UseXCFC          = 0
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', ProgramName )
       CALL PP % get   ( 'nNodes', nNodes )
@@ -164,6 +165,7 @@ CONTAINS
       CALL PP % query ( 'dt_wrt', dt_wrt )
       CALL PP % query ( 'dt_chk', dt_chk )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits      )
+      CALL PP % query ( 'UseXCFC', UseXCFC )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW * dt_wrt .GT. Zero )THEN
