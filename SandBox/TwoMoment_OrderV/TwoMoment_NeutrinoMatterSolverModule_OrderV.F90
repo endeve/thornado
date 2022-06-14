@@ -2121,18 +2121,18 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          Eta_T, Chi_T, Kappa, A_u_1, A_u_2, A_u_3, &
-    !$OMP          A_d_1, A_d_2, A_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
+    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$ACC          Eta_T, Chi_T, Kappa, A_u_1, A_u_2, A_u_3, &
-    !$ACC          A_d_1, A_d_2, A_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$ACC          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
+    !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          Eta_T, Chi_T, Kappa, A_u_1, A_u_2, A_u_3, &
-    !$OMP          A_d_1, A_d_2, A_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
+    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #endif
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
