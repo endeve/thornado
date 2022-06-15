@@ -60,8 +60,9 @@ MODULE GravitySolutionModule_CFA_Poseidon
   USE Initialization_Poseidon, ONLY: &
     Initialize_Poseidon
   USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Close, &
-    Poseidon_CFA_Set_Uniform_Boundary_Conditions
+    Poseidon_Close
+  USE Poseidon_Interface_BC_Input, ONLY : &
+    Poseidon_Set_Uniform_Boundary_Conditions
   USE Poseidon_Source_Input_Module, ONLY: &
     Poseidon_Input_Sources_Part1, &
     Poseidon_Input_Sources_Part2
@@ -73,8 +74,8 @@ MODULE GravitySolutionModule_CFA_Poseidon
     Poseidon_Return_Lapse_Function, &
     Poseidon_Return_Shift_Vector, &
     Poseidon_Return_Extrinsic_Curvature
-  USE Initial_Guess_Module, ONLY: &
-    Poseidon_Init_FlatGuess
+  USE Poseidon_Initial_Guess_Module, ONLY: &
+    Poseidon_Initialize_Flat_Guess
 
 #endif
 
@@ -110,22 +111,27 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A6,A)') '', 'Only implemented for 1D spherical symmetry.'
     WRITE(*,*)
-
+   
     CALL Initialize_Poseidon &
-         ( Units_Option                = 'G',                       &
-           Dimensions_Option           = 3,                         &
+         ( Dimensions_Option           = 3,                         &
            FEM_Degree_Option           = MAX( 1, nNodes - 1 ),      &
            L_Limit_Option              = 0,                         &
+           Source_NE                   = nX,                        &
            Domain_Edge_Option          = [ xL(1), xR(1) ],          &
-           NE_Option                   = nX,                        &
-           NQ_Option                   = [ nNodes, 1, 1 ],          &
-           dr_Option                   = MeshX(1) % Width(1:nX(1)), &
-           dt_Option                   = MeshX(2) % Width(1:nX(2)), &
-           dp_Option                   = MeshX(3) % Width(1:nX(3)), &
+           Source_NQ                   = nNodesX,                   &
+           Source_xL                   = [ -Half, +Half ],          &
+           Source_RQ_xlocs             = MeshX(1) % Nodes,          &
+           Source_TQ_xlocs             = MeshX(2) % Nodes,          &
+           Source_PQ_xlocs             = MeshX(3) % Nodes,          &
+           Source_Units                = 'G',                       &
+           Source_Radial_Boundary_Units= ' m',                      &
+           Source_DR_Option            = MeshX(1) % Width(1:nX(1)), &
+           Source_DT_Option            = MeshX(2) % Width(1:nX(2)), &
+           Source_DP_Option            = MeshX(3) % Width(1:nX(3)), &
            Method_Flag_Option          = 3,                         &
            Print_Setup_Option          = .TRUE.,                    &
            Convergence_Criteria_Option = 1.0e-08_DP,                &
-           Verbose_Option              = .FALSE. )
+           Verbose_Option              = .FALSE.)
 
 #endif
 
@@ -180,38 +186,25 @@ CONTAINS
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
     OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
 
-    CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
+    CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
-    CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
+    CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
+    CALL Poseidon_Initialize_Flat_Guess() ! Possibly move this to init call
 
     ! --- Set matter sources with current conformal factor ---
 
     CALL Poseidon_Input_Sources_Part1 &
            ( Input_E      = E,                    &
-             Input_Si     = Si,                   &
-             Input_NE     = nX,                   &
-             Input_NQ     = nNodesX,              &
-             Input_R_Quad = MeshX(1) % Nodes,     &
-             Input_T_Quad = MeshX(2) % Nodes,     &
-             Input_P_Quad = MeshX(3) % Nodes,     &
-             xL           = [-Half, +Half]        )
+             Input_Si     = Si                    )
 
     ! --- Compute conformal factor ---
 
     CALL Poseidon_XCFC_Run_Part1()
 
     CALL Poseidon_Return_Conformal_Factor &
-         ( NE               = nX,               &
-           NQ               = nNodesX,          &
-           RQ_Input         = MeshX(1) % Nodes, &
-           TQ_Input         = MeshX(2) % Nodes, &
-           PQ_Input         = MeshX(3) % Nodes, &
-           Left_Limit       = -Half,            &
-           Right_Limit      = +Half,            &
-           Return_ConFactor = Tmp_ConFact )
+         ( Return_ConFactor = Tmp_ConFact )
 
     CALL UpdateConformalFactorAndMetric &
            ( iX_B0, iX_E0, iX_B1, iX_E1, Tmp_ConFact, G )
@@ -247,56 +240,23 @@ CONTAINS
 
     CALL Poseidon_Input_Sources_Part1 &
            ( Input_E      = E,                    &
-             Input_Si     = Si,                   &
-             Input_NE     = nX,                   &
-             Input_NQ     = nNodesX,              &
-             Input_R_Quad = MeshX(1) % Nodes,     &
-             Input_T_Quad = MeshX(2) % Nodes,     &
-             Input_P_Quad = MeshX(3) % Nodes,     &
-             xL           = [-Half, +Half]        )
+             Input_Si     = Si                    )
 
     CALL Poseidon_Input_Sources_Part2 &
-           ( Input_S      = S,                    &
-             Input_NE     = nX,                   &
-             Input_NQ     = nNodesX,              &
-             Input_R_Quad = MeshX(1) % Nodes,     &
-             Input_T_Quad = MeshX(2) % Nodes,     &
-             Input_P_Quad = MeshX(3) % Nodes,     &
-             xL           = [-Half, +Half]        )
+           ( Input_S      = S                     )
 
     ! --- Compute lapse and shift ---
 
     CALL Poseidon_XCFC_Run_Part2()
 
     CALL Poseidon_Return_Lapse_Function &
-         ( NE           = nX,               &
-           NQ           = nNodesX,          &
-           RQ_Input     = MeshX(1) % Nodes, &
-           TQ_Input     = MeshX(2) % Nodes, &
-           PQ_Input     = MeshX(3) % Nodes, &
-           Left_Limit   = -Half,            &
-           Right_Limit  = +Half,            &
-           Return_Lapse = Tmp_Lapse )
+         ( Return_Lapse = Tmp_Lapse )
 
     CALL Poseidon_Return_Shift_Vector &
-         ( NE           = nX,               &
-           NQ           = nNodesX,          &
-           RQ_Input     = MeshX(1) % Nodes, &
-           TQ_Input     = MeshX(2) % Nodes, &
-           PQ_Input     = MeshX(3) % Nodes, &
-           Left_Limit   = -Half,            &
-           Right_Limit  = +Half,            &
-           Return_Shift = Tmp_Shift )
+         ( Return_Shift = Tmp_Shift )
 
     CALL Poseidon_Return_Extrinsic_Curvature &
-         ( NE          = nX,               &
-           NQ          = nNodesX,          &
-           RQ_Input    = MeshX(1) % Nodes, &
-           TQ_Input    = MeshX(2) % Nodes, &
-           PQ_Input    = MeshX(3) % Nodes, &
-           Left_Limit  = -Half,            &
-           Right_Limit = +Half,            &
-           Return_Kij  = Tmp_ExtrinsicCurvature )
+         ( Return_Kij  = Tmp_ExtrinsicCurvature )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
