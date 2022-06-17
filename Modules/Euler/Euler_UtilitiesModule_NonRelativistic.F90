@@ -351,7 +351,7 @@ CONTAINS
     !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$ACC REDUCTION( MIN: TimeStep )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
 #endif

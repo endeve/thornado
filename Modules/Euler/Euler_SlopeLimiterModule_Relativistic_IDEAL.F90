@@ -545,7 +545,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( iX_B0, iX_E0, U_X, U_N, SqrtGm )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -680,7 +680,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, dU_X1, a1, b1, c1, dX1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -706,7 +706,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X2, a2, b2, c2, dX2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -734,7 +734,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X3, a3, b3, c3, dX3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -768,7 +768,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, dU_X1, U_M, SlopeDifference )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -791,7 +791,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X2, U_M, SlopeDifference )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -817,7 +817,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X3, U_M, SlopeDifference )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -842,7 +842,7 @@ CONTAINS
     !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, U_M, dU_X1, dU_X2, dU_X3, D, &
     !$ACC          SlopeDifference )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1133,7 +1133,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC PRESENT( iX_B0, iX_E0, U_M, a2, b2, c2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1191,7 +1191,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, b1, c1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1213,7 +1213,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, b1, c1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1235,7 +1235,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, b2, c2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -1257,7 +1257,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, b2, c2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -1301,7 +1301,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
       !$ACC PRESENT( iX_B0, iX_E0, b3, c3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -1365,7 +1365,7 @@ CONTAINS
     !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X1, invR_X1 ) &
     !$ACC PRIVATE( R, invR, UK, GK )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( R, invR, UK, GK )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -1410,7 +1410,7 @@ CONTAINS
       !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X2, invR_X2 ) &
       !$ACC PRIVATE( R, invR, UK, GK )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( R, invR, UK, GK )
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -1457,7 +1457,7 @@ CONTAINS
       !$ACC PRESENT( iX_B0, iX_E0, G_K, U_M, R_X3, invR_X3 ) &
       !$ACC PRIVATE( R, invR, UK, GK )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
       !$OMP PRIVATE( R, invR, UK, GK )
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -1592,7 +1592,7 @@ CONTAINS
     !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a2t, b2t, c2t, &
     !$ACC          a3t, b3t, c3t, a1, b1, c1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1624,7 +1624,7 @@ CONTAINS
     !$ACC PRIVATE( Sum_a, Sum_b, Sum_c ) &
     !$ACC PRESENT( iX_B0, iX_E0, a1t, b1t, c1t, a1, b1, c1, invR_X1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( Sum_a, Sum_b, Sum_c )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -1827,7 +1827,7 @@ CONTAINS
     !$ACC PRIVATE( Sum_X1 ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU_X1, dU_X1t, R_X1 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( Sum_X1 )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -1897,7 +1897,7 @@ CONTAINS
       !$ACC PRIVATE( Sum_X3 ) &
       !$ACC PRESENT( iX_B0, iX_E0, dU_X3, dU_X3t, R_X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PARALLEL DO COLLAPSE(4) &
       !$OMP PRIVATE( Sum_X3 )
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)

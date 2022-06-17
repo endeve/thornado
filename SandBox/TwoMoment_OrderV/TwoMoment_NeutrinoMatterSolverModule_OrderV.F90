@@ -1804,7 +1804,7 @@ CONTAINS
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
-    !$OMP          k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP          vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
 
@@ -2439,7 +2439,7 @@ CONTAINS
 #elif defined(THORNADO_OACC  )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP   )
-      !$OMP DO COLLAPSE(2)
+      !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iN_X = 1, nX_G
       DO iFP  = 1, n_FP
@@ -2454,7 +2454,7 @@ CONTAINS
 #elif defined(THORNADO_OACC  )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined(THORNADO_OMP   )
-      !$OMP DO COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iN_X = 1, nX_G
       DO iM   = 1, Mk-1
@@ -2475,7 +2475,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG &
         !$ACC PRIVATE( AA11, AB1 )
 #elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO SIMD &
+        !$OMP PARALLEL DO &
         !$OMP PRIVATE( AA11, AB1 )
 #endif
         DO iN_X = 1, nX_G
@@ -2588,7 +2588,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( SUM1 )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( SUM1 )
 #endif
       DO iN_X = 1, nX_G
@@ -2611,7 +2611,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
       !$ACC PRIVATE( SUM1 )
 #elif defined( THORNADO_OMP    )
-      !$OMP DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( SUM1 )
 #endif
       DO iN_X = 1, nX_G
@@ -2626,6 +2626,23 @@ CONTAINS
 
         END IF
       END DO
+      END DO
+
+    ELSE
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO
+#endif
+      DO iN_X = 1, nX_G
+        IF( MASK(iN_X) )THEN
+
+          Alpha(Mk,iN_X) = One
+
+        END IF
       END DO
 
     END IF
