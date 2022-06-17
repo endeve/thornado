@@ -540,11 +540,13 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+#if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
     !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+#endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
