@@ -87,7 +87,6 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   REAL(DP) :: GravitationalMass
 
-
 CONTAINS
 
 
@@ -109,29 +108,29 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A6,A)') '', 'Only implemented for 1D spherical symmetry.'
     WRITE(*,*)
-   
+
     CALL Initialize_Poseidon &
-         ( Dimensions_Option           = 3,                         &
-           FEM_Degree_Option           = MAX( 1, nNodes - 1 ),      &
-           L_Limit_Option              = 0,                         &
-           Source_NE                   = nX,                        &
-           Domain_Edge_Option          = [ xL(1), xR(1) ],          &
-           Source_NQ                   = nNodesX,                   &
-           Source_xL                   = [ -Half, +Half ],          &
-           Source_RQ_xlocs             = MeshX(1) % Nodes,          &
-           Source_TQ_xlocs             = MeshX(2) % Nodes,          &
-           Source_PQ_xlocs             = MeshX(3) % Nodes,          &
-           Source_Units                = 'G',                       &
-           Source_Radial_Boundary_Units= ' m',                      &
-           Source_DR_Option            = MeshX(1) % Width(1:nX(1)), &
-           Source_DT_Option            = MeshX(2) % Width(1:nX(2)), &
-           Source_DP_Option            = MeshX(3) % Width(1:nX(3)), &
-           Method_Flag_Option          = 3,                         &
-           Flat_Guess_Option           = .TRUE.,                    &
-           Print_Setup_Option          = .TRUE.,                    &
-           Convergence_Criteria_Option = 1.0e-08_DP,                &
-           Verbose_Option              = .TRUE.,                    &
-           Print_Results_Option        = .TRUE. )
+         ( Dimensions_Option            = 3,                         &
+           FEM_Degree_Option            = MAX( 1, nNodes - 1 ),      &
+           L_Limit_Option               = 0,                         &
+           Source_NE                    = nX,                        &
+           Domain_Edge_Option           = [ xL(1), xR(1) ],          &
+           Source_NQ                    = nNodesX,                   &
+           Source_xL                    = [ -Half, +Half ],          &
+           Source_RQ_xlocs              = MeshX(1) % Nodes,          &
+           Source_TQ_xlocs              = MeshX(2) % Nodes,          &
+           Source_PQ_xlocs              = MeshX(3) % Nodes,          &
+           Source_Units                 = 'G',                       &
+           Source_Radial_Boundary_Units = ' m',                      &
+           Source_DR_Option             = MeshX(1) % Width(1:nX(1)), &
+           Source_DT_Option             = MeshX(2) % Width(1:nX(2)), &
+           Source_DP_Option             = MeshX(3) % Width(1:nX(3)), &
+           Method_Flag_Option           = 3,                         &
+           Flat_Guess_Option            = .TRUE.,                    &
+           Print_Setup_Option           = .TRUE.,                    &
+           Convergence_Criteria_Option  = 1.0e-08_DP,                &
+           Verbose_Option               = .FALSE.,                   &
+           Print_Results_Option         = .FALSE. )
 
 #endif
 
@@ -180,23 +179,22 @@ CONTAINS
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
 
-    INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ] ! Neumann
-    OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ] ! Dirichlet
+    INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
+    OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
     OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
 
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
-           ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
+           ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
-           ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
-
+           ( 'O', OUTER_BC_TYPES, OUTER_BC_VALUES )
 
     ! --- Set matter sources with current conformal factor ---
 
     CALL Poseidon_Input_Sources_Part1 &
-           ( Input_E      = E,                    &
-             Input_Si     = Si                    )
+           ( Input_E  = E, &
+             Input_Si = Si )
 
     ! --- Compute conformal factor ---
 
@@ -238,11 +236,11 @@ CONTAINS
     ! --- Set matter sources with updated conformal factor ---
 
     CALL Poseidon_Input_Sources_Part1 &
-           ( Input_E      = E,                    &
-             Input_Si     = Si                    )
+           ( Input_E  = E, &
+             Input_Si = Si )
 
     CALL Poseidon_Input_Sources_Part2 &
-           ( Input_S      = S                     )
+           ( Input_S = S )
 
     ! --- Compute lapse and shift ---
 
@@ -254,11 +252,11 @@ CONTAINS
     CALL Poseidon_Return_Shift_Vector &
          ( Return_Shift = Tmp_Shift )
 
-
     CALL Poseidon_Return_Extrinsic_Curvature &
-         ( Return_Kij  = Tmp_ExtrinsicCurvature )
+         ( Return_Kij = Tmp_ExtrinsicCurvature )
+
     ! --- Copy data from Poseidon arrays to thornado arrays ---
-    
+
     CALL ComputeGeometryFromPoseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              Tmp_Lapse, Tmp_Shift, Tmp_ExtrinsicCurvature, G )
