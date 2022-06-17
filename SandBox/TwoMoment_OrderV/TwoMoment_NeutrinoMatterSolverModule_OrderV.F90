@@ -1631,11 +1631,8 @@ CONTAINS
         !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
         !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 
-        !FFactor &
-        !  = FluxFactor &
-        !      ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
-        !        H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
-        !        Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+        ! ----------------------------------------------------------------------
+
         FFactor = SQRT(   H_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
                         + H_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
                         + H_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
@@ -1664,6 +1661,8 @@ CONTAINS
         k_dd_12 = b * h_d_1 * h_d_2
         k_dd_13 = b * h_d_1 * h_d_3
         k_dd_23 = b * h_d_2 * h_d_3
+
+        ! ----------------------------------------------------------------------
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd_11 &
@@ -1836,11 +1835,8 @@ CONTAINS
           !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
           !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 
-          !FFactor &
-          !  = FluxFactor &
-          !      ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
-          !        H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
-          !        Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+          ! --------------------------------------------------------------------
+
           FFactor = SQRT(   H_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
                           + H_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
                           + H_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
@@ -1869,6 +1865,8 @@ CONTAINS
           k_dd_12 = b * h_d_1 * h_d_2
           k_dd_13 = b * h_d_1 * h_d_3
           k_dd_23 = b * h_d_2 * h_d_3
+
+          ! --------------------------------------------------------------------
 
           vDotK_d_1 &
             = ( V_u_1(iN_X) * k_dd_11 &
@@ -1992,11 +1990,8 @@ CONTAINS
         !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
         !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 
-        !FFactor &
-        !  = FluxFactor &
-        !      ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
-        !        H_u_2(iN_E,iS,iN_X), H_u_3(iN_E,iS,iN_X), &
-        !        Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+        ! ----------------------------------------------------------------------
+
         FFactor = SQRT(   H_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
                         + H_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
                         + H_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
@@ -2025,6 +2020,8 @@ CONTAINS
         k_dd_12 = b * h_d_1 * h_d_2
         k_dd_13 = b * h_d_1 * h_d_3
         k_dd_23 = b * h_d_2 * h_d_3
+
+        ! ----------------------------------------------------------------------
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd_11 &
