@@ -121,7 +121,7 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'GravitationalCollapse'
+  ProgramName = 'AdiabaticCollapse_XCFC'
 
   ProgenitorFileName = '../Progenitors/WH07_15M_Sun.h5'
 
