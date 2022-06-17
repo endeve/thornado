@@ -1554,7 +1554,7 @@ CONTAINS
     !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
-    !$OMP          k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP          vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
 
@@ -2254,7 +2254,7 @@ CONTAINS
 #elif defined(THORNADO_OACC  )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
 #elif defined(THORNADO_OMP   )
-      !$OMP DO COLLAPSE(2)
+      !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iN_X = 1, nX_G
       DO iFP  = 1, n_FP
@@ -2269,7 +2269,7 @@ CONTAINS
 #elif defined(THORNADO_OACC  )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined(THORNADO_OMP   )
-      !$OMP DO COLLAPSE(3)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iN_X = 1, nX_G
       DO iM   = 1, Mk-1
@@ -2290,7 +2290,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG &
         !$ACC PRIVATE( AA11, AB1 )
 #elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO SIMD &
+        !$OMP PARALLEL DO &
         !$OMP PRIVATE( AA11, AB1 )
 #endif
         DO iN_X = 1, nX_G
@@ -2403,7 +2403,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( SUM1 )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO SIMD &
+      !$OMP PARALLEL DO &
       !$OMP PRIVATE( SUM1 )
 #endif
       DO iN_X = 1, nX_G
@@ -2426,7 +2426,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
       !$ACC PRIVATE( SUM1 )
 #elif defined( THORNADO_OMP    )
-      !$OMP DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( SUM1 )
 #endif
       DO iN_X = 1, nX_G
@@ -2450,7 +2450,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO SIMD
+      !$OMP PARALLEL DO
 #endif
       DO iN_X = 1, nX_G
         IF( MASK(iN_X) )THEN

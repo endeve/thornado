@@ -1573,7 +1573,8 @@ CONTAINS
     !$ACC PRIVATE( SUM1, SUM2 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, U_K, Weights_Q, Tau_Q, U_Q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( SUM1, SUM2 )
 #endif
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
