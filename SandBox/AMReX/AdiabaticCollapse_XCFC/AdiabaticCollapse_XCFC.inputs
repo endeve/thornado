@@ -23,7 +23,7 @@ thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
 thornado.CheckpointFileBaseName = "AdiabaticCollapse_XCFC.chk"
-thornado.dt_chk    = 1.0e+2
+thornado.dt_chk    = 1.0e+1
 thornado.iCycleChk = -1
 
 thornado.nNodes  = 2
@@ -41,11 +41,11 @@ geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
 amr.n_cell            = 512 01 01
 thornado.swX          = 01  00 00
 amr.max_grid_size_x   = 128
-amr.blocking_factor_x = 8
-amr.max_level         = 3
+amr.blocking_factor_x = 128
+amr.max_level         = 0
 amr.do_reflux         = 0
 amr.UseAMR            = 0
-amr.TagCriteria       = 10.0 100.0 1000.0
+amr.TagCriteria       = 0.0
 amr.n_error_buf       = 0
 amr.ref_ratio         = 2
 
@@ -57,7 +57,7 @@ poseidon.anderson_m        = 3
 poseidon.converge_criteria = 1.0e-10
 
 # Slope limiter parameters
-SL.UseSlopeLimiter           = 0
+SL.UseSlopeLimiter           = 1
 SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
@@ -68,7 +68,7 @@ SL.LimiterThresholdParameter = 5.00e-3
 SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 0
+PL.UsePositivityLimiter = 1
 PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
