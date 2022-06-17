@@ -77,12 +77,10 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE &
-  !$OMP TARGET( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-  !$OMP         InterpMat_Z, InterpMat_X, PointZ2X )
+  !$OMP TARGET( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE &
-  !$ACC CREATE( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-  !$ACC         InterpMat_Z, InterpMat_X, PointZ2X )
+  !$ACC CREATE( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
 #endif
 
 CONTAINS
@@ -501,18 +499,30 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE &
-    !$OMP TO( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-    !$OMP     InterpMat_Z, InterpMat_X, PointZ2X )
+    !$OMP TO( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
+
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: InterpMat_Z, InterpMat_X, PointZ2X )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE &
-    !$ACC DEVICE( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-    !$ACC         InterpMat_Z, InterpMat_X, PointZ2X )
+    !$ACC DEVICE( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
+
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( InterpMat_Z, InterpMat_X, PointZ2X )
 #endif
 
   END SUBROUTINE InitializePositivityLimiter_TwoMoment
 
 
   SUBROUTINE FinalizePositivityLimiter_TwoMoment
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: InterpMat_Z, InterpMat_X, PointZ2X )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( InterpMat_Z, InterpMat_X, PointZ2X )
+#endif
 
     DEALLOCATE( InterpMat_Z )
     DEALLOCATE( InterpMat_X )
@@ -906,7 +916,8 @@ CONTAINS
                    N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           CALL ComputePointValuesZ_Single &
-                 ( N_Q(:,iZ1,iZ2,iZ3,iZ4,iS), &
+                 ( InterpMat_Z, &
+                   N_Q(:,iZ1,iZ2,iZ3,iZ4,iS), &
                    N_P(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
@@ -1473,7 +1484,7 @@ CONTAINS
   END SUBROUTINE ComputePointValuesZ
 
 
-  SUBROUTINE ComputePointValuesZ_Single( U_Q, U_P )
+  SUBROUTINE ComputePointValuesZ_Single( InterpMat_Z, U_Q, U_P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1481,6 +1492,8 @@ CONTAINS
     !$ACC ROUTINE VECTOR
 #endif
 
+    REAL(DP), INTENT(in)  :: &
+     InterpMat_Z(nPT_Z,nDOFZ)
     REAL(DP), INTENT(in)  :: &
       U_Q(nDOFZ)
     REAL(DP), INTENT(out) :: &

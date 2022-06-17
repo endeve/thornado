@@ -1,3 +1,8 @@
+#define TIMEIT( T, F ) \
+  CALL TimersStart( T ) ; \
+  F ; \
+  CALL TimersStop( T )
+
 PROGRAM NeutrinoOpacities
 
   USE KindModule, ONLY: &
@@ -50,6 +55,9 @@ PROGRAM NeutrinoOpacities
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop
 
   IMPLICIT NONE
 
@@ -61,7 +69,7 @@ PROGRAM NeutrinoOpacities
     nX1      = 2**11, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
-    nSpecies = 2
+    nSpecies = 6
   REAL(DP), PARAMETER :: &
     Unit_D     = Gram / Centimeter**3, &
     Unit_T     = Kelvin, &
@@ -90,15 +98,11 @@ PROGRAM NeutrinoOpacities
     Timer_ComputeKrnl_NES, &
     Timer_ComputeRate_NES, &
     Timer_Compute_NES, &
-    Timer_ComputeKrnl_Corr_NES, &
-    Timer_ComputeRate_Corr_NES, &
-    Timer_Compute_Corr_NES, &
+    Timer_ComputeCorr_NES, &
     Timer_ComputeKrnl_Pair, &
     Timer_ComputeRate_Pair, &
     Timer_Compute_Pair, &
-    Timer_ComputeKrnl_Corr_Pair, &
-    Timer_ComputeRate_Corr_Pair, &
-    Timer_Compute_Corr_Pair, &
+    Timer_ComputeCorr_Pair, &
     Timer_ComputeKrnl_Brem, &
     Timer_ComputeRate_Brem, &
     Timer_Compute_Brem, &
@@ -212,33 +216,27 @@ PROGRAM NeutrinoOpacities
 
   ! --- Initialize Equation of State ---
 
-  Timer_ReadEos = MPI_WTIME()
-
-  CALL InitializeEquationOfState_TABLE &
-         ( EquationOfStateTableName_Option &
-             = 'EquationOfStateTable.h5', &
-           Verbose_Option = .TRUE. )
-
-  Timer_ReadEos = MPI_WTIME() - Timer_ReadEos
+  TIMEIT( Timer_ReadEos, &
+    CALL InitializeEquationOfState_TABLE &
+           ( EquationOfStateTableName_Option &
+               = 'EquationOfStateTable.h5', &
+             Verbose_Option = .TRUE. ) )
 
   ! --- Initialize Opacities ---
 
-  Timer_ReadOpacities = MPI_WTIME()
-
-  CALL InitializeOpacities_TABLE &
-         ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
-           OpacityTableName_Iso_Option  &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
-           OpacityTableName_NES_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
-           OpacityTableName_Pair_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
-           OpacityTableName_Brem_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
-           Verbose_Option = .TRUE. )
-
-  Timer_ReadOpacities = MPI_WTIME() - Timer_ReadOpacities
+  TIMEIT( Timer_ReadOpacities, &
+    CALL InitializeOpacities_TABLE &
+           ( OpacityTableName_EmAb_Option &
+               = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
+             OpacityTableName_Iso_Option  &
+               = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+             OpacityTableName_NES_Option &
+               = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+             OpacityTableName_Pair_Option &
+               = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+             OpacityTableName_Brem_Option &
+               = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
+             Verbose_Option = .TRUE. ) )
 
   ! --- Initialize distributions to zero ---
 
@@ -283,21 +281,15 @@ PROGRAM NeutrinoOpacities
 
   ! --- Compute Equilibrium Distributions ---
 
-  Timer_ComputeEquilibrium = MPI_WTIME()
-
-  CALL ComputeEquilibriumDistributions &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0 )
-
-  Timer_ComputeEquilibrium = MPI_WTIME() - Timer_ComputeEquilibrium
+  TIMEIT( Timer_ComputeEquilibrium, &
+    CALL ComputeEquilibriumDistributions &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0 ) )
 
   ! --- Compute Equilibrium Distributions (DG) ---
 
-  Timer_ComputeEquilibrium_DG = MPI_WTIME()
-
-  CALL ComputeEquilibriumDistributions_DG &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG )
-
-  Timer_ComputeEquilibrium_DG = MPI_WTIME() - Timer_ComputeEquilibrium_DG
+  TIMEIT( Timer_ComputeEquilibrium_DG, &
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG ) )
 
   ! --- Compute Neutrino Number Density ---
 
@@ -327,12 +319,9 @@ PROGRAM NeutrinoOpacities
   
   ! --- Compute Electron Capture Opacities ---
 
-  Timer_Compute_EC = MPI_WTIME()
-
-  CALL ComputeNeutrinoOpacities_EC &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, Chi_EmAb )
-
-  Timer_Compute_EC = MPI_WTIME() - Timer_Compute_EC
+  TIMEIT( Timer_Compute_EC, &
+    CALL ComputeNeutrinoOpacities_EC &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, Chi_EmAb ) )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -352,12 +341,9 @@ PROGRAM NeutrinoOpacities
 
   ! --- Compute Elastic Scattering Opacities ---
 
-  Timer_Compute_ES = MPI_WTIME()
-
-  CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Sigma_Iso )
-
-  Timer_Compute_ES = MPI_WTIME() - Timer_Compute_ES
+  TIMEIT( Timer_Compute_ES, &
+    CALL ComputeNeutrinoOpacities_ES &
+           ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Sigma_Iso ) )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -378,83 +364,70 @@ PROGRAM NeutrinoOpacities
 
   ! --- Compute NES Opacities ---
 
-  Timer_Compute_NES = MPI_WTIME()
+  CALL TimersStart( Timer_Compute_NES )
 
-  CALL ComputeNeutrinoOpacities_NES &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, H_I_0, H_II_0 )
+  TIMEIT( Timer_ComputeKrnl_NES, &
+    CALL ComputeNeutrinoOpacities_NES &
+           ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, H_I_0, H_II_0 ) )
 
-  Timer_ComputeKrnl_NES = MPI_WTIME() - Timer_Compute_NES
-
-  CALL ComputeNeutrinoOpacityRates_NES &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           J, f0_DG, H_I_0, H_II_0, Eta_NES, Chi_NES )
-
-  Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
-  Timer_ComputeRate_NES = Timer_Compute_NES - Timer_ComputeKrnl_NES
+  TIMEIT( Timer_ComputeRate_NES, &
+    CALL ComputeNeutrinoOpacityRates_NES &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+             J, f0_DG, H_I_0, H_II_0, Eta_NES, Chi_NES ) )
 
   ! --- Compute NES Linear Corrections ---
 
-  Timer_Compute_Corr_NES = MPI_WTIME()
+  TIMEIT( Timer_ComputeCorr_NES, &
+    CALL ComputeNeutrinoOpacities_NES &
+           ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, H_I_1, H_II_1 ) )
 
-  CALL ComputeNeutrinoOpacities_NES &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, H_I_1, H_II_1 )
+  TIMEIT( Timer_ComputeCorr_NES, &
+    CALL ComputeNeutrinoOpacityRatesLinearCorections_NES &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, H_1, H_2, H_3, f0_DG, &
+             H_I_1, H_II_1, A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 ) )
 
-  Timer_ComputeKrnl_Corr_NES = MPI_WTIME() - Timer_Compute_Corr_NES
-
-  CALL ComputeNeutrinoOpacityRatesLinearCorections_NES &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, H_1, H_2, H_3, f0_DG, &
-           H_I_1, H_II_1, A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
-
-  Timer_Compute_Corr_NES = MPI_WTIME() - Timer_Compute_Corr_NES
-  Timer_ComputeRate_Corr_NES = Timer_Compute_Corr_NES - Timer_ComputeKrnl_Corr_NES
+  CALL TimersStop( Timer_Compute_NES )
 
   ! --- Compute Pair Opacities ---
 
-  Timer_Compute_Pair = MPI_WTIME()
+  CALL TimersStart( Timer_Compute_Pair )
 
-  CALL ComputeNeutrinoOpacities_Pair &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, J_I_0, J_II_0 )
+  TIMEIT( Timer_ComputeKrnl_Pair, &
+    CALL ComputeNeutrinoOpacities_Pair &
+           ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, J_I_0, J_II_0 ) )
 
-  Timer_ComputeKrnl_Pair = MPI_WTIME() - Timer_Compute_Pair
-
-  CALL ComputeNeutrinoOpacityRates_Pair &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           J, f0_DG, J_I_0, J_II_0, Eta_Pair, Chi_Pair )
-
-  Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
-  Timer_ComputeRate_Pair = Timer_Compute_Pair - Timer_ComputeKrnl_Pair
+  TIMEIT( Timer_ComputeRate_Pair, &
+    CALL ComputeNeutrinoOpacityRates_Pair &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+             J, f0_DG, J_I_0, J_II_0, Eta_Pair, Chi_Pair ) )
 
   ! --- Compute Pair Linear Corrections ---
 
-  Timer_Compute_Corr_Pair = MPI_WTIME()
+  TIMEIT( Timer_ComputeCorr_Pair, &
+    CALL ComputeNeutrinoOpacities_Pair &
+           ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, J_I_1, J_II_1 ) )
 
-  CALL ComputeNeutrinoOpacities_Pair &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, J_I_1, J_II_1 )
+  TIMEIT( Timer_ComputeCorr_Pair, &
+    CALL ComputeNeutrinoOpacityRatesLinearCorections_Pair &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, H_1, H_2, H_3, f0_DG, &
+             J_I_1, J_II_1, A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) )
 
-  Timer_ComputeKrnl_Corr_Pair = MPI_WTIME() - Timer_Compute_Corr_Pair
-
-  CALL ComputeNeutrinoOpacityRatesLinearCorections_Pair &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, H_1, H_2, H_3, f0_DG, &
-           J_I_1, J_II_1, A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
-
-  Timer_Compute_Corr_Pair = MPI_WTIME() - Timer_Compute_Corr_Pair
-  Timer_ComputeRate_Corr_Pair = Timer_Compute_Corr_Pair - Timer_ComputeKrnl_Corr_Pair
+  CALL TimersStop( Timer_Compute_Pair )
 
   ! --- Compute Brem Opacities ---
 
-  Timer_Compute_Brem = MPI_WTIME()
+  CALL TimersStart( Timer_Compute_Brem )
 
-  CALL ComputeNeutrinoOpacities_Brem &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, S_sigma )
+  TIMEIT( Timer_ComputeKrnl_Brem, &
+    CALL ComputeNeutrinoOpacities_Brem &
+           ( 1, nPointsE, 1, nPointsX, D, T, Y, S_sigma ) )
 
-  Timer_ComputeKrnl_Brem = MPI_WTIME() - Timer_Compute_Brem
+  TIMEIT( Timer_ComputeRate_Brem, &
+    CALL ComputeNeutrinoOpacityRates_Brem &
+           ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+             J, f0_DG, S_sigma, Eta_Brem, Chi_Brem ) )
 
-  CALL ComputeNeutrinoOpacityRates_Brem &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
-
-  Timer_Compute_Brem = MPI_WTIME() - Timer_Compute_Brem
-  Timer_ComputeRate_Brem = Timer_Compute_Brem - Timer_ComputeKrnl_Brem
+  CALL TimersStop( Timer_Compute_Brem )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
@@ -607,36 +580,31 @@ PROGRAM NeutrinoOpacities
     Timer_Compute_EC, Timer_Compute_EC / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES = ',    &
     Timer_Compute_ES, Timer_Compute_ES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeKrnl_NES = ',   &
-    Timer_ComputeKrnl_NES, Timer_ComputeKrnl_NES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeRate_NES = ',   &
-    Timer_ComputeRate_NES, Timer_ComputeRate_NES / Timer_Total
+
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES = ',   &
     Timer_Compute_NES, Timer_Compute_NES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeKrnl_Corr_NES = ',   &
-    Timer_ComputeKrnl_Corr_NES, Timer_ComputeKrnl_Corr_NES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeRate_Corr_NES = ',   &
-    Timer_ComputeRate_Corr_NES, Timer_ComputeRate_Corr_NES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Corr_NES = ',   &
-    Timer_Compute_Corr_NES, Timer_Compute_Corr_NES / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeKrnl_Pair = ',   &
-    Timer_ComputeKrnl_Pair, Timer_ComputeKrnl_Pair / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeRate_Pair = ',   &
-    Timer_ComputeRate_Pair, Timer_ComputeRate_Pair / Timer_Total
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Kernel)',   &
+    Timer_ComputeKrnl_NES
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Rate)',   &
+    Timer_ComputeRate_NES
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Corrections)',   &
+    Timer_ComputeCorr_NES
+
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair = ',  &
     Timer_Compute_Pair, Timer_Compute_Pair / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeKrnl_Corr_Pair = ',   &
-    Timer_ComputeKrnl_Corr_Pair, Timer_ComputeKrnl_Corr_Pair / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeRate_Corr_Pair = ',   &
-    Timer_ComputeRate_Corr_Pair, Timer_ComputeRate_Corr_Pair / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Corr_Pair = ',   &
-    Timer_Compute_Corr_Pair, Timer_Compute_Corr_Pair / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeKrnl_Brem = ',   &
-    Timer_ComputeKrnl_Brem, Timer_ComputeKrnl_Brem / Timer_Total
-  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'ComputeRate_Brem = ',   &
-    Timer_ComputeRate_Brem, Timer_ComputeRate_Brem / Timer_Total
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Kernel)',   &
+    Timer_ComputeKrnl_Pair
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Rate)',   &
+    Timer_ComputeRate_Pair
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Corrections)',   &
+    Timer_ComputeCorr_Pair
+
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Brem = ',  &
     Timer_Compute_Brem, Timer_Compute_Brem / Timer_Total
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Kernel)',   &
+    Timer_ComputeKrnl_Brem
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Rate)',   &
+    Timer_ComputeRate_Brem
   WRITE(*,*)
 
   CALL FinalizeDevice

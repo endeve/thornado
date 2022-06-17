@@ -160,6 +160,7 @@ interface
         integer(c_int), value :: line
     end subroutine
 
+#if defined(THORNADO_CUDA)
     subroutine magma_queue_create_from_cuda_internal( dev, stream, cublas_handle, &
     cusparse_handle, queue_ptr, func, file, line ) &
     bind(C, name="magma_queue_create_from_cuda_internal")
@@ -170,6 +171,18 @@ interface
       character(c_char) :: func, file
       integer(c_int), value :: line
     end subroutine magma_queue_create_from_cuda_internal
+#elif defined(THORNADO_HIP)
+    subroutine magma_queue_create_from_hip_internal( dev, stream, hipblas_handle, &
+    hipsparse_handle, queue_ptr, func, file, line ) &
+    bind(C, name="magma_queue_create_from_hip_internal")
+      use iso_c_binding
+      integer(c_int), value :: dev
+      type(c_ptr), value :: stream, hipblas_handle, hipsparse_handle
+      type(c_ptr), target :: queue_ptr  !! queue_t*
+      character(c_char) :: func, file
+      integer(c_int), value :: line
+    end subroutine magma_queue_create_from_hip_internal
+#endif
 
     subroutine magma_queue_sync_internal( queue, func, file, line ) &
     bind(C, name="magma_queue_sync_internal")
@@ -640,6 +653,7 @@ contains
                 __LINE__ )
     end subroutine
 
+#if defined(THORNADO_CUDA)
     subroutine magma_queue_create_from_cuda( dev, stream, cublas_handle, cusparse_handle, queue_ptr )
         use iso_c_binding
         integer(c_int), value :: dev
@@ -652,6 +666,20 @@ contains
                 __FILE__ // c_null_char, &
                 __LINE__ )
     end subroutine
+#elif defined(THORNADO_HIP)
+    subroutine magma_queue_create_from_hip( dev, stream, hipblas_handle, hipsparse_handle, queue_ptr )
+        use iso_c_binding
+        integer(c_int), value :: dev
+        type(c_ptr), value :: stream, hipblas_handle, hipsparse_handle
+        type(c_ptr), target :: queue_ptr  !! queue_t*
+
+        call magma_queue_create_from_hip_internal( &
+                dev, stream, hipblas_handle, hipsparse_handle, queue_ptr, &
+                "magma_queue_create_from_hip" // c_null_char, &
+                __FILE__ // c_null_char, &
+                __LINE__ )
+    end subroutine
+#endif
 
     subroutine magma_queue_sync( queue )
         use iso_c_binding
