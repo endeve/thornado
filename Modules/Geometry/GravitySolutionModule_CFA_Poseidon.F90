@@ -64,8 +64,6 @@ MODULE GravitySolutionModule_CFA_Poseidon
   USE Poseidon_Interface_Source_Input, ONLY: &
     Poseidon_Input_Sources_Part1, &
     Poseidon_Input_Sources_Part2
-  USE Poseidon_Interface_Initial_Guess, ONLY: &
-    Poseidon_Initialize_Flat_Guess
   USE Poseidon_Interface_Run, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2
@@ -129,9 +127,11 @@ CONTAINS
            Source_DT_Option            = MeshX(2) % Width(1:nX(2)), &
            Source_DP_Option            = MeshX(3) % Width(1:nX(3)), &
            Method_Flag_Option          = 3,                         &
+           Flat_Guess_Option           = .TRUE.,                    &
            Print_Setup_Option          = .TRUE.,                    &
            Convergence_Criteria_Option = 1.0e-08_DP,                &
-           Verbose_Option              = .FALSE.)
+           Verbose_Option              = .TRUE.,                    &
+           Print_Results_Option        = .TRUE. )
 
 #endif
 
@@ -191,7 +191,6 @@ CONTAINS
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Poseidon_Initialize_Flat_Guess() ! Possibly move this to init call
 
     ! --- Set matter sources with current conformal factor ---
 
