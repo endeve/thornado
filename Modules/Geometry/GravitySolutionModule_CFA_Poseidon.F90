@@ -57,25 +57,25 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   ! --- Poseidon Modules ---
 
-  USE Initialization_Poseidon, ONLY: &
+  USE Poseidon_Interface_Initialization, ONLY: &
     Initialize_Poseidon
-  USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Close
-  USE Poseidon_Interface_BC_Input, ONLY : &
+  USE Poseidon_Interface_Boundary_Conditions, ONLY : &
     Poseidon_Set_Uniform_Boundary_Conditions
-  USE Poseidon_Source_Input_Module, ONLY: &
+  USE Poseidon_Interface_Source_Input, ONLY: &
     Poseidon_Input_Sources_Part1, &
     Poseidon_Input_Sources_Part2
-  USE Poseidon_XCFC_Interface_Module, ONLY: &
+  USE Poseidon_Interface_Initial_Guess, ONLY: &
+    Poseidon_Initialize_Flat_Guess
+  USE Poseidon_Interface_Run, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2
-  USE Poseidon_Return_Routines_Module, ONLY: &
+  USE Poseidon_Interface_Return_Routines, ONLY: &
     Poseidon_Return_Conformal_Factor, &
     Poseidon_Return_Lapse_Function, &
     Poseidon_Return_Shift_Vector, &
     Poseidon_Return_Extrinsic_Curvature
-  USE Poseidon_Initial_Guess_Module, ONLY: &
-    Poseidon_Initialize_Flat_Guess
+  USE Poseidon_Interface_Close, ONLY: &
+    Poseidon_Close
 
 #endif
 
@@ -255,11 +255,11 @@ CONTAINS
     CALL Poseidon_Return_Shift_Vector &
          ( Return_Shift = Tmp_Shift )
 
+
     CALL Poseidon_Return_Extrinsic_Curvature &
          ( Return_Kij  = Tmp_ExtrinsicCurvature )
-
     ! --- Copy data from Poseidon arrays to thornado arrays ---
-
+    
     CALL ComputeGeometryFromPoseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              Tmp_Lapse, Tmp_Shift, Tmp_ExtrinsicCurvature, G )

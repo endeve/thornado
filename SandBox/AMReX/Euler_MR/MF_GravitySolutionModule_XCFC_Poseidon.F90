@@ -113,23 +113,25 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   ! --- Poseidon Modules ---
 
-  USE Initialization_AMReX, ONLY: &
-    Initialize_Poseidon_with_AMReX
-  USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Close
-  USE Poseidon_Interface_BC_Input, ONLY : &
+  USE Poseidon_Interface_Initialization, ONLY: &
+    Initialize_Poseidon
+  USE Poseidon_Interface_Boundary_Conditions, ONLY : &
     Poseidon_Set_Uniform_Boundary_Conditions
-  USE Poseidon_Source_Input_Module, ONLY: &
+  USE Poseidon_Interface_Source_Input, ONLY: &
     Poseidon_Input_Sources_Part1, &
     Poseidon_Input_Sources_Part2
-  USE Poseidon_XCFC_Interface_Module, ONLY: &
+  USE Poseidon_Interface_Initial_Guess, ONLY: &
+    Poseidon_Initialize_Flat_Guess
+  USE Poseidon_Interface_Run, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2
-  USE Poseidon_Return_Routines_Module, ONLY: &
+  USE Poseidon_Interface_Return_Routines, ONLY: &
     Poseidon_Return_Conformal_Factor, &
     Poseidon_Return_ALL
-  USE Poseidon_Initial_Guess_Module, ONLY: &
-    Poseidon_Initialize_Flat_Guess
+  USE Poseidon_Interface_Close, ONLY: &
+    Poseidon_Close
+
+
 
 #endif
 
@@ -190,7 +192,7 @@ CONTAINS
 
     END IF
 
-    CALL Initialize_Poseidon_with_AMReX &
+    CALL Initialize_Poseidon &
            ( Source_NQ                    = nNodesX, &
              Source_xL                    = [ -Half, +Half ], &
              Source_RQ_xlocs              = MeshX(1) % Nodes, &
@@ -199,8 +201,7 @@ CONTAINS
              Source_Units                 = 'G', &
              Source_Radial_Boundary_Units = 'km', &
              Verbose_Option               = .FALSE., &
-             Print_Setup_Option           = .TRUE.,  &
-             Print_Results_Option         = .TRUE.   )
+             Print_Setup_Option           = .TRUE.   )
 
 #endif
 
