@@ -37,8 +37,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ComputeIncrement_Explicit
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     MF_TwoMoment_ComputeIncrement_Implicit
-  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
+!  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+!    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
   USE MF_TwoMoment_PositivityLimiter, ONLY: &
     MF_TwoMoment_ApplyPositivityLimiter
   USE MF_TwoMoment_SlopeLimiter, ONLY: &
@@ -111,6 +111,7 @@ CONTAINS
       CALL MF_F(iLevel) % setval( 0.0_AR )
 
       DO iS = 1, nStages
+
         CALL MF_DU_Ex(iLevel,iS) % setval( 0.0_AR )
         CALL MF_DU_Im(iLevel,iS) % setval( 0.0_AR )
         CALL MF_DF_Im(iLevel,iS) % setval( 0.0_AR )
@@ -158,108 +159,108 @@ CONTAINS
         END DO
       
         CALL amrex_mfiter_destroy( MFI )
+
       END DO
 
 
 
-  DO iLevel = 0, nLevels-1 
+      DO iLevel = 0, nLevels-1 
 
 
-      DO jS = 1, iS - 1
+        DO jS = 1, iS - 1
 
 
-        IF( a_EX(iS,jS) .NE. 0.0_AR )THEN
-          CALL MF_U(iLevel) &
+          IF( a_EX(iS,jS) .NE. 0.0_AR )THEN
+            CALL MF_U(iLevel) &
                    % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                               dt(iLevel) * a_EX(iS,jS), MF_DU_Ex(iLevel,jS), 1, &
                               1, MF_U(iLevel) % nComp(), swX )
-        END IF
+          END IF
 
-        IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
+          IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
 
 #if defined(MICROPHYSICS_WEAKLIB)  
 
 
-        CALL MF_U(iLevel) &
+            CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 
-        CALL MF_F(iLevel) &
+            CALL MF_F(iLevel) &
                  % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
                             1, MF_F(iLevel) % nComp(), swX )
 
 #else      
         
-        CALL MF_U(iLevel) &
+            CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 #endif
-        END IF
+          END IF
 
-        IF( jS == iS - 1 )THEN
+          IF( jS == iS - 1 )THEN
 
 
-          ! --- Apply Limiters ---
+            ! --- Apply Limiters ---
 
-          CALL MF_TwoMoment_ApplySlopeLimiter &
+            CALL MF_TwoMoment_ApplySlopeLimiter &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-          CALL MF_TwoMoment_ApplyPositivityLimiter &
+            CALL MF_TwoMoment_ApplyPositivityLimiter &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-        END IF
+          END IF
 
 
-      END DO ! jS = 1, iS - 1
+        END DO ! jS = 1, iS - 1
 
-      IF( ANY( a_IM(:,iS) .NE. 0.0_AR ) .OR. ( w_IM(iS) .NE. 0.0_AR ) )THEN
+        IF( ANY( a_IM(:,iS) .NE. 0.0_AR ) .OR. ( w_IM(iS) .NE. 0.0_AR ) )THEN
 
-        ! --- Explicit Solve ---
-        IF (Verbose) THEN
-          PRINT*, "    IMPLICIT: ", iS
-        END IF
+          IF (Verbose) THEN
+            PRINT*, "    IMPLICIT: ", iS
+          END IF
 #if defined(MICROPHYSICS_WEAKLIB)  
-        CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
+          CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
                ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
                  dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
-        CALL MF_U(iLevel) &
+          CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 
-        CALL MF_F(iLevel) &
+          CALL MF_F(iLevel) &
                  % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
                             1, MF_F(iLevel) % nComp(), swX )
-
 #else     
-        CALL MF_TwoMoment_ComputeIncrement_Implicit &
+          CALL MF_TwoMoment_ComputeIncrement_Implicit &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
         
-        CALL MF_U(iLevel) &
+          CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 #endif
-      END IF
-
-      IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
-
-        ! --- Explicit Solve ---
-        IF (Verbose) THEN
-          PRINT*, "    EXPLICIT: ", iS
         END IF
-        CALL MF_TwoMoment_ComputeIncrement_Explicit &
+
+        IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
+
+          ! --- Explicit Solve ---
+          IF (Verbose) THEN
+            PRINT*, "    EXPLICIT: ", iS
+          END IF
+
+          CALL MF_TwoMoment_ComputeIncrement_Explicit &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
-      END IF
+        END IF
+
+      END DO 
 
     END DO ! iS = 1, nStages
-
-  END DO
 
     ! --- Assembly Step ---
 
@@ -312,13 +313,14 @@ CONTAINS
 
       END DO
 
-          CALL MF_TwoMoment_ApplySlopeLimiter &
+        CALL MF_TwoMoment_ApplySlopeLimiter &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-          CALL MF_TwoMoment_ApplyPositivityLimiter &
+        CALL MF_TwoMoment_ApplyPositivityLimiter &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
     END IF
+
   END DO
 
 #if defined(MICROPHYSICS_WEAKLIB)  

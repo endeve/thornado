@@ -3,7 +3,7 @@ MODULE RadiationFieldsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOF
+    nDOF, nDOFX
 
   IMPLICIT NONE
   PRIVATE
@@ -43,7 +43,6 @@ MODULE RadiationFieldsModule
   REAL(DP), DIMENSION(nCR), PUBLIC :: unitsCR
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uCR  (:,:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: rhsCR(:,:,:,:,:,:,:)
 
   ! --- Lagrangian (Primitive) Radiation Fields ---
 
@@ -85,6 +84,10 @@ MODULE RadiationFieldsModule
 
   ! --- Diagnostic Variables ---
 
+  INTEGER, PUBLIC, PARAMETER :: iIter_outer = 1
+  INTEGER, PUBLIC, PARAMETER :: iIter_inner = 2
+
+  INTEGER,  ALLOCATABLE, PUBLIC :: nIterations(:,:,:,:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: Discontinuity(:,:,:,:)
 
   PUBLIC :: CreateRadiationFields
@@ -129,8 +132,8 @@ CONTAINS
     CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
     CALL CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
 
-    ALLOCATE &
-      ( rhsCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
+    ALLOCATE( nIterations(nDOFX,1:nX(1),1:nX(2),1:nX(3),2) )
+    nIterations = 0
 
     ALLOCATE( Discontinuity(1:nE,1:nX(1),1:nX(2),1:nX(3)) )
     Discontinuity = 0.0_DP
@@ -255,7 +258,8 @@ CONTAINS
     !$ACC DELETE( uCR, uPR )
 #endif
 
-    DEALLOCATE( uCR, rhsCR, uPR, uAR )
+    DEALLOCATE( uCR, uPR, uAR )
+    DEALLOCATE( nIterations   )
     DEALLOCATE( Discontinuity )
 
   END SUBROUTINE DestroyRadiationFields
