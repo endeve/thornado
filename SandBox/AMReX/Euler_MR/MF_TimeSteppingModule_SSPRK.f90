@@ -157,6 +157,8 @@ CONTAINS
 
     nComp = nDOFX * nCF
 
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+
     DO iS = 1, nStages
 
       DO iLevel = 0, nLevels-1
@@ -178,8 +180,6 @@ CONTAINS
 
       END DO ! iLevel
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_U(iS,:) )
-
       DO jS = 1, iS-1
 
         DO iLevel = 0, nLevels-1
@@ -191,7 +191,7 @@ CONTAINS
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(jS,iLevel), 1, &
                               1, nComp, 0 )
 
-            IF( iLevel .GT. 0) CALL AverageDownTo( iLevel-1, MF_U(iS,:) )
+            IF( iLevel .GT. 0 ) CALL AverageDownTo( iLevel-1, MF_U(iS,:) )
 
           END IF
 
@@ -295,9 +295,6 @@ CONTAINS
 
     END DO
 
-    CALL ApplySlopeLimiter_Euler_MF( t, MF_uGF, MF_uCF, MF_uDF )
-    CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
-
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
@@ -321,6 +318,8 @@ CONTAINS
     CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 
