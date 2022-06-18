@@ -82,7 +82,25 @@ MODULE RadiationFieldsModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uAR(:,:,:,:,:,:,:)
 
-  ! --- Diagnostic Variables ---
+  ! --- Diagnostic Radiation Variables ---
+
+  INTEGER, PUBLIC, PARAMETER :: iDR_iter_outer  = 1
+  INTEGER, PUBLIC, PARAMETER :: iDR_iter_inner  = 2
+  INTEGER, PUBLIC, PARAMETER :: iDR_PL_Theta_1  = 3
+  INTEGER, PUBLIC, PARAMETER :: iDR_PL_Theta_2  = 4
+  INTEGER, PUBLIC, PARAMETER :: iDR_PL_dEnergy  = 5
+  INTEGER, PUBLIC, PARAMETER :: nDR             = 5
+
+  CHARACTER(32), DIMENSION(nDR), PUBLIC, PARAMETER :: &
+    namesDR = [ 'Inner Iterations                ', &
+                'Outer Iterations                ', &
+                'Positivity Limiter Theta 1      ', &
+                'Positivity Limiter Theta 2      ', &
+                'Positivity Limiter Energy Change' ]
+
+  REAL(DP), DIMENSION(nDR), PUBLIC :: unitsDR
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uDR(:,:,:,:)
 
   INTEGER, PUBLIC, PARAMETER :: iIter_outer = 1
   INTEGER, PUBLIC, PARAMETER :: iIter_inner = 2
@@ -128,9 +146,10 @@ CONTAINS
         '', 'Radiation Fields, nSpecies = ', nSpecies
     END IF
 
-    CALL CreateRadiationFields_Conserved( nX, swX, nE, swE )
-    CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
-    CALL CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Auxiliary ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Diagnostic( nX, swX )
 
     ALLOCATE( nIterations(nDOFX,1:nX(1),1:nX(2),1:nX(3),2) )
     nIterations = 0
@@ -248,6 +267,29 @@ CONTAINS
   END SUBROUTINE CreateRadiationFields_Auxiliary
 
 
+  SUBROUTINE CreateRadiationFields_Diagnostic( nX, swX )
+
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+
+    INTEGER :: iDR
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A29)') '', 'Radiation Fields (Diagnostic)'
+      WRITE(*,*)
+      DO iDR = 1, nDR
+        WRITE(*,'(A5,A)') '', TRIM( namesDR(iDR) )
+      END DO
+    END IF
+
+    ALLOCATE( uDR(1-swX(1):nX(1)+swX(1), &
+                  1-swX(2):nX(2)+swX(2), &
+                  1-swX(3):nX(3)+swX(3), &
+                  1:nDR) )
+
+  END SUBROUTINE CreateRadiationFields_Diagnostic
+
+
   SUBROUTINE DestroyRadiationFields
 
 #if defined(THORNADO_OMP_OL)
@@ -258,7 +300,7 @@ CONTAINS
     !$ACC DELETE( uCR, uPR )
 #endif
 
-    DEALLOCATE( uCR, uPR, uAR )
+    DEALLOCATE( uCR, uPR, uAR, uDR )
     DEALLOCATE( nIterations   )
     DEALLOCATE( Discontinuity )
 
@@ -275,12 +317,14 @@ CONTAINS
       unitsCR = 1.0_DP
       unitsPR = 1.0_DP
       unitsAR = 1.0_DP
+      unitsDR = 1.0_DP
 
     ELSE
 
       unitsCR = 1.0_DP
       unitsPR = 1.0_DP
       unitsAR = 1.0_DP
+      unitsDR = 1.0_DP
 
     END IF
 

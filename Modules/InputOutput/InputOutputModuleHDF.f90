@@ -39,6 +39,7 @@ MODULE InputOutputModuleHDF
     uCR, nCR, namesCR, unitsCR, &
     uPR, nPR, namesPR, unitsPR, &
     uAR, nAR, namesAR, unitsAR, &
+    uDR, nDR, namesDR, unitsDR, &
     nIterations, iIter_outer, iIter_inner
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, namesEQ, unitsEQ, &
@@ -710,18 +711,6 @@ CONTAINS
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
                / U % LengthX3Unit, DatasetName, FILE_ID )
 
-    ! --- Write Energy Grid ---
-
-    GroupName = 'Energy Grid'
-
-    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/E'
-
-    CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshE,nE,nNodesE) &
-               / U % EnergyUnit, DatasetName, FILE_ID )
-
     ! --- Write Cell Center Coordinates ---
 
     DatasetName = TRIM( GroupName ) // '/X1_C'
@@ -740,12 +729,6 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
-             DatasetName, FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/E_C'
-
-    CALL WriteDataset1DHDF &
-           ( MeshE % Center(1:nE) / U % EnergyUnit, &
              DatasetName, FILE_ID )
 
     ! --- Write Cell Widths ---
@@ -767,6 +750,28 @@ CONTAINS
     CALL WriteDataset1DHDF &
            ( MeshX(3) % Width(1:nX(3)) / U % LengthX3Unit, &
              DatasetName, FILE_ID )
+
+    ! --- Write Energy Grid ---
+
+    GroupName = 'Energy Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/E'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshE,nE,nNodesE) &
+               / U % EnergyUnit, DatasetName, FILE_ID )
+
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/E_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshE % Center(1:nE) / U % EnergyUnit, &
+             DatasetName, FILE_ID )
+
+    ! --- Write Cell Widths ---
 
     DatasetName = TRIM( GroupName ) // '/dE'
 
@@ -846,6 +851,21 @@ CONTAINS
                      nDOF, NodeNumberTable ), DatasetName, FILE_ID )
 
       END DO
+
+    END DO
+
+    ! --- Diagnostic ---
+
+    GroupName = 'Radiation Fields/Diagnostic'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DO iRF = 1, nDR
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesDR(iRF) )
+
+      CALL WriteDataset3DHDF &
+             ( uDR(1:nX(1),1:nX(2),1:nX(3),iRF), DatasetName, FILE_ID )
 
     END DO
 
