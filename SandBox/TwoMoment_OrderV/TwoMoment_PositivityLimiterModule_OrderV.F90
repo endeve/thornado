@@ -1051,7 +1051,8 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      ApplyEnergyLimiter(iZ2,iZ3,iZ4,iS) = ANY( LimiterApplied(:,iZ2,iZ3,iZ4,iS) )
+      ApplyEnergyLimiter(iZ2,iZ3,iZ4,iS) &
+        = ANY( LimiterApplied(:,iZ2,iZ3,iZ4,iS) )
 
     END DO
     END DO
@@ -1059,7 +1060,8 @@ CONTAINS
     END DO
 
     CALL ComputeLocalEnergy & ! --- For Energy Correction ---
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, ApplyEnergyLimiter, Energy_K )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, &
+             ApplyEnergyLimiter, Energy_K )
 
     CALL TimersStop( Timer_PL_EnergyLimiter )
 
@@ -1095,7 +1097,8 @@ CONTAINS
     CALL TimersStart( Timer_PL_EnergyLimiter )
 
     CALL ComputeLocalEnergy & ! --- For Energy Correction ---
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, ApplyEnergyLimiter, dEnergy_K )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, &
+             ApplyEnergyLimiter, dEnergy_K )
 
     ! --- Energy Change Due to Positivity Limiter ---
 
@@ -1422,8 +1425,6 @@ CONTAINS
             CALL LimitEnergy( Theta_K2, U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS) )
             CALL LimitEnergy( Theta_K1, U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS) )
             CALL LimitEnergy( Theta_K2, U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS) )
-
-            !IF( ResidualE == Zero ) EXIT
 
           END DO
 
