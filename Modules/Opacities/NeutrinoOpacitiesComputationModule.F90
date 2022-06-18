@@ -1658,7 +1658,7 @@ CONTAINS
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_Pro, Phi_1_Ann ) &
     !$ACC COPYIN( S_Sigma, W2, H_1, H_2, H_3, J0 ) &
-    !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 ) &
+    !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
