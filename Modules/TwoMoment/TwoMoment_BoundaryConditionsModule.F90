@@ -184,7 +184,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
@@ -222,7 +222,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
       DO iS  = 1, nSpecies
       DO iCR = 1, nCR
@@ -603,7 +603,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
 
 
@@ -639,7 +639,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -677,7 +677,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -711,7 +711,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -750,7 +750,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -818,7 +818,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -928,7 +928,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #endif
 
@@ -995,7 +995,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #endif
 
@@ -1137,7 +1137,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1171,7 +1171,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1206,7 +1206,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1239,7 +1239,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1283,7 +1283,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -1351,7 +1351,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -1463,7 +1463,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #endif
 
@@ -1529,7 +1529,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #endif
 
@@ -1674,7 +1674,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1708,7 +1708,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1745,7 +1745,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1779,7 +1779,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -1818,7 +1818,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -1886,7 +1886,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -1998,7 +1998,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies
@@ -2064,7 +2064,7 @@ CONTAINS
       !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
       !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PARALLEL DO COLLAPSE(6) &
       !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #endif
         DO iS = 1, nSpecies

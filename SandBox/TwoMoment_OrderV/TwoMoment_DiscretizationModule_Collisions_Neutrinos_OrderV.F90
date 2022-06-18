@@ -2,6 +2,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFE, &
@@ -293,10 +295,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL ComputeThermodynamicStates_Primitive_TABLE &
-           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
-             PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
@@ -306,6 +304,9 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
+
+      PF_N(iN_X,iPF_E ) = AF_N(iN_X,iAF_E ) * PF_N(iN_X,iPF_D)
+      PF_N(iN_X,iPF_Ne) = AF_N(iN_X,iAF_Ye) * PF_N(iN_X,iPF_D) / AtomicMassUnit
 
       CALL ComputeConserved_Euler_NonRelativistic &
              ( PF_N(iN_X,iPF_D),  &
