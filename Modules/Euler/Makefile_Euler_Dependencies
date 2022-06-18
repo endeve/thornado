@@ -5,8 +5,9 @@ Euler_ErrorModule.o: \
 Euler_MeshRefinementModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModuleX_Lagrange.o \
   ReferenceElementModuleX.o \
-  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   Euler_MeshRefinementModule.F90
 

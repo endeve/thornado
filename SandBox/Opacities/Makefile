@@ -56,4 +56,5 @@ NeutrinoOpacities.o: \
   RadiationFieldsModule.o \
   NeutrinoOpacitiesComputationModule.o \
   DeviceModule.o \
+  TimersModule.o \
   NeutrinoOpacities.F90
