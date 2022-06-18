@@ -79,7 +79,7 @@ PROGRAM ApplicationDriver_Neutrinos
   INTEGER       :: M_inner, MaxIter_inner
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_RATE, t_end
+  REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
 
@@ -134,6 +134,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       PrescribedTimeStep = .TRUE.
       dt_0               = 1.0d-4 * Millisecond
+      dt_MAX             = 1.0d+1 * Millisecond
       dt_RATE            = 1.04_DP
       iCycleD            = 1
       iCycleW            = 1
@@ -282,7 +283,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
     IF( PrescribedTimeStep )THEN
 
-      dt = ( dt_RATE )**( iCycle - 1 ) * dt_0
+      dt = MIN( ( dt_RATE )**( iCycle - 1 ) * dt_0, dt_MAX )
 
     ELSE
 
