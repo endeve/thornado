@@ -21,7 +21,6 @@ MODULE InputOutputModuleHDF
   USE InputOutputUtilitiesModule, ONLY: &
     NodeCoordinates, &
     Field3D, &
-    Field3D_INT, &
     FromField3D, &
     Field4D, &
     FromField4D, &
@@ -39,8 +38,7 @@ MODULE InputOutputModuleHDF
     uCR, nCR, namesCR, unitsCR, &
     uPR, nPR, namesPR, unitsPR, &
     uAR, nAR, namesAR, unitsAR, &
-    uDR, nDR, namesDR, unitsDR, &
-    nIterations, iIter_outer, iIter_inner
+    uDR, nDR, namesDR, unitsDR
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, namesEQ, unitsEQ, &
     opEC, namesEC, unitsEC, &
@@ -868,26 +866,6 @@ CONTAINS
              ( uDR(1:nX(1),1:nX(2),1:nX(3),iRF), DatasetName, FILE_ID )
 
     END DO
-
-    ! --- Write Iteration Counts ---
-
-    GroupName = 'Iteration Counts'
-
-    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/' // 'Outer Iterations'
-
-    CALL WriteDataset3DHDF_INT &
-           ( Field3D_INT &
-               ( nIterations(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iIter_outer), &
-                 nX, nNodesX, nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/' // 'Inner Iterations'
-
-    CALL WriteDataset3DHDF_INT &
-           ( Field3D_INT &
-               ( nIterations(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iIter_inner), &
-                 nX, nNodesX, nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
 
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 

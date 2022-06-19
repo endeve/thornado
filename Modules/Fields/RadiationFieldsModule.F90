@@ -102,12 +102,6 @@ MODULE RadiationFieldsModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uDR(:,:,:,:)
 
-  INTEGER, PUBLIC, PARAMETER :: iIter_outer = 1
-  INTEGER, PUBLIC, PARAMETER :: iIter_inner = 2
-
-  INTEGER,  ALLOCATABLE, PUBLIC :: nIterations(:,:,:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: Discontinuity(:,:,:,:)
-
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
 
@@ -150,12 +144,6 @@ CONTAINS
     CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Auxiliary ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Diagnostic( nX, swX )
-
-    ALLOCATE( nIterations(nDOFX,1:nX(1),1:nX(2),1:nX(3),2) )
-    nIterations = 0
-
-    ALLOCATE( Discontinuity(1:nE,1:nX(1),1:nX(2),1:nX(3)) )
-    Discontinuity = 0.0_DP
 
     CALL SetUnitsRadiationFields
 
@@ -301,8 +289,6 @@ CONTAINS
 #endif
 
     DEALLOCATE( uCR, uPR, uAR, uDR )
-    DEALLOCATE( nIterations   )
-    DEALLOCATE( Discontinuity )
 
   END SUBROUTINE DestroyRadiationFields
 

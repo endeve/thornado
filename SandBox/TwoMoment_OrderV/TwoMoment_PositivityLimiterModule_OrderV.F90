@@ -47,7 +47,8 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nDR, iDR_PL_Theta_1, iDR_PL_Theta_2, iDR_PL_dEnergy
 
   IMPLICIT NONE
   PRIVATE
@@ -532,7 +533,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, uDR_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -562,6 +563,12 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCR, &
           1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      uDR_Option &
+         (iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nDR)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_Z, iP_X
     INTEGER  :: iNodeZ, iNodeE, iNodeX
@@ -590,6 +597,15 @@ CONTAINS
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4), &
          nSpecies)
+    REAL(DP) :: &
+      Theta_1_K &
+        (iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4)), &
+      Theta_2_K &
+        (iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       Energy_K &
         (iZ_B0(1):iZ_E0(1), &
@@ -736,6 +752,17 @@ CONTAINS
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #endif
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      Theta_1_K(iZ2,iZ3,iZ4) = One
+      Theta_2_K(iZ2,iZ3,iZ4) = One
+
+    END DO
+    END DO
+    END DO
 
     CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_0 )
@@ -922,6 +949,8 @@ CONTAINS
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
+          Theta_1_K(iZ2,iZ3,iZ4) = MIN( Theta_1, Theta_1_K(iZ2,iZ3,iZ4) )
+
         END IF
 
       END IF
@@ -1030,6 +1059,8 @@ CONTAINS
                    G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
+
+          Theta_2_K(iZ2,iZ3,iZ4) = MIN( Theta_2, Theta_2_K(iZ2,iZ3,iZ4) )
 
         END IF
 
@@ -1148,6 +1179,42 @@ CONTAINS
 
     CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_1 )
+
+    IF( PRESENT( uDR_Option ) )THEN
+
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+        uDR_Option(iZ2,iZ3,iZ4,iDR_PL_Theta_1) = Theta_1_K(iZ2,iZ3,iZ4)
+        uDR_Option(iZ2,iZ3,iZ4,iDR_PL_Theta_2) = Theta_2_K(iZ2,iZ3,iZ4)
+        uDR_Option(iZ2,iZ3,iZ4,iDR_PL_dEnergy) = Zero
+
+      END DO
+      END DO
+      END DO
+
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        IF( ApplyEnergyLimiter(iZ2,iZ3,iZ4,iS) )THEN
+
+          uDR_Option(iZ2,iZ3,iZ4,iDR_PL_dEnergy) &
+            = uDR_Option(iZ2,iZ3,iZ4,iDR_PL_dEnergy) &
+                + dEnergy_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &

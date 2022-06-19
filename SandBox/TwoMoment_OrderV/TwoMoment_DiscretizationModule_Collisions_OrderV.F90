@@ -18,7 +18,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    iIter_outer
+    nDR, iDR_iter_outer
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -55,7 +55,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
-      nIterations_Option )
+      uDR_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -99,13 +99,12 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCR,1:nSpecies)
-    INTEGER,  INTENT(out), OPTIONAL :: &
-      nIterations_Option &
-          (1:nDOFX, &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           1:2)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      uDR_Option &
+          (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDR)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iOP
     INTEGER :: iX1, iX2, iX3, iE
@@ -505,7 +504,17 @@ CONTAINS
     END DO
     END DO
 
-    IF( PRESENT( nIterations_Option ) )THEN
+    IF( PRESENT( uDR_Option ) )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) = One
+
+      END DO
+      END DO
+      END DO
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -517,8 +526,9 @@ CONTAINS
                  + (iX2-iX_B0(2)) * nDOFX * nX(1) &
                  + (iX3-iX_B0(3)) * nDOFX * nX(1) * nX(2)
 
-        nIterations_Option(iNodeX,iX1,iX2,iX3,iIter_outer) &
-          = MAXVAL( nIterations(:,:,iN_X) )
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
+          = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
+                 REAL( MAXVAL( nIterations(:,:,iN_X) ) ) )
 
       END DO
       END DO
