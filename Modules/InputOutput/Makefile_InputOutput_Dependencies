@@ -3,17 +3,6 @@ InputOutputUtilitiesModule.o: \
   MeshModule.o \
   InputOutputUtilitiesModule.f90
 
-InputOutputModule.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  PolynomialBasisModule_Lagrange.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  InputOutputModule.f90
-
 InputOutputModuleHDF.o: \
   KindModule.o \
   UnitsModule.o \
