@@ -277,7 +277,7 @@ ApplicationDriver_CCSN.o: \
   GravitySolutionModule_Newtonian_Poseidon.o \
   TwoMoment_TimeSteppingModule_OrderV.o \
   InputOutputModuleHDF.o \
-  ApplicationDriver_CCSN.f90
+  ApplicationDriver_CCSN.F90
 
 InitializationModule.o: \
   KindModule.o \
