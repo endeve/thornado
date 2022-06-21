@@ -4,7 +4,7 @@ C       = CC
 FORTRAN = ftn
 FLINKER = ftn
 
-DEBUG    = -g -G0 -O0
+DEBUG    = -g -G0 -O0 -K trap=fp
 OPTIMIZE = -O2
 
 SUFFIX_f90 =
