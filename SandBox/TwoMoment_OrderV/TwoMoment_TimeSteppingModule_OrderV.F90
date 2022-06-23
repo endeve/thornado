@@ -68,10 +68,6 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   PUBLIC :: Finalize_IMEX_RK
   PUBLIC :: Update_IMEX_RK
 
-#if   defined( THORNADO_OMP_OL )
-#elif defined( THORNADO_OACC   )
-#endif
-
   INTERFACE
     SUBROUTINE ImplicitIncrement &
       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
@@ -263,10 +259,22 @@ CONTAINS
             CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
 
-            IF( PRESENT( SolveGravity ) )THEN
+            IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE FROM( Ui )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE HOST       ( Ui )
+#endif
 
               CALL SolveGravity &
                      ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
+
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE TO( GX )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE DEVICE   ( GX )
+#endif
 
             END IF
 
@@ -399,8 +407,20 @@ CONTAINS
 
     IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
 
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE FROM( Ui )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE HOST       ( Ui )
+#endif
+
       CALL SolveGravity &
              ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
+
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE TO( GX )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE DEVICE   ( GX )
+#endif
 
     END IF
 
@@ -439,12 +459,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: U, M ) &
-    !$OMP MAP( release: GE, GX )
+    !$OMP MAP( from: GX, U, M ) &
+    !$OMP MAP( release: GE )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U, M ) &
-    !$ACC DELETE( GE, GX )
+    !$ACC COPYOUT( GX, U, M ) &
+    !$ACC DELETE( GE )
 #endif
 
     CALL TimersStop( Timer_IMEX )
