@@ -512,6 +512,8 @@ CONTAINS
     !$ACC COPYIN( InterpMat_Z, InterpMat_X, PointZ2X )
 #endif
 
+    dEnergyMomentum_PL_TwoMoment = Zero
+
   END SUBROUTINE InitializePositivityLimiter_TwoMoment
 
 
