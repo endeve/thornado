@@ -1,10 +1,14 @@
 function [ Time, Interior, OffGrid, Initial, Change ]...
-  = ReadConservationTally( FileName, Directory )
+  = ReadConservationTally( FileName, Directory, C_F )
 
   if( exist( 'Directory', 'var' ) )
     DirName = Directory;
   else
     DirName = './Output';
+  end
+  
+  if( ~exist( 'C_F', 'var' ) )
+    C_F = 1.0;
   end
   
   FullFileName = [ DirName '/' FileName ];
@@ -31,5 +35,10 @@ function [ Time, Interior, OffGrid, Initial, Change ]...
     
   end
   fclose( fileID );
+  
+  Interior = C_F * Interior;
+  OffGrid  = C_F * OffGrid;
+  Initial  = C_F * Initial;
+  Change   = C_F * Change;
 
 end
