@@ -14,6 +14,13 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 endif
 
+POSEIDON_DIR ?= $(HOME)/poseidon_newton
+ifeq ($(GRAVITY_SOLVER),POSEIDON_NEWTON)
+include $(POSEIDON_DIR)/Build/Makefile_Path
+include $(POSEIDON_DIR)/Build/Makefile_Poseidon_ObjectFiles
+include $(POSEIDON_DIR)/Build/Makefile_Poseidon_Dependencies
+endif
+
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
 DEFINES += $(PP)THORNADO_EULER_NOGPU
@@ -117,6 +124,7 @@ ApplicationDriver_Neutrinos: \
 
 ApplicationDriver_CCSN: \
 	$(weaklib) \
+	$(poseidon) \
 	$(thornado) \
 	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
@@ -133,6 +141,7 @@ ApplicationDriver_CCSN: \
 	ApplicationDriver_CCSN.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_CCSN_$(MACHINE) \
 	$(weaklib) \
+	$(poseidon) \
 	$(thornado) \
 	TwoMoment_TimersModule_OrderV.o \
 	TwoMoment_UtilitiesModule_OrderV.o \
