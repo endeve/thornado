@@ -10,6 +10,11 @@ MODULE ArrayUtilitiesModule
   PUBLIC :: ArrayPack
   PUBLIC :: ArrayUnpack
   PUBLIC :: ArrayCopy
+  PUBLIC :: ArraySet
+  PUBLIC :: ArrayPermute
+  PUBLIC :: ArrayInversePermute
+  PUBLIC :: ArrayPermute2
+  PUBLIC :: ArrayInversePermute2
 
   INTERFACE ArrayPack
     MODULE PROCEDURE ArrayPack1D_1
@@ -67,6 +72,26 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayCopy3D_5
     MODULE PROCEDURE ArrayCopy3D_8
   END INTERFACE ArrayCopy
+
+  INTERFACE ArraySet
+    MODULE PROCEDURE ArraySet1D_1
+  END INTERFACE ArraySet
+
+  INTERFACE ArrayPermute
+    MODULE PROCEDURE ArrayPermute3D_1
+    MODULE PROCEDURE ArrayPermute4D_1
+    MODULE PROCEDURE ArrayPermute5D_1
+    MODULE PROCEDURE ArrayPermute6D_1
+    MODULE PROCEDURE ArrayPermute7D_1
+  END INTERFACE
+
+  INTERFACE ArrayInversePermute
+    MODULE PROCEDURE ArrayInversePermute3D_1
+    MODULE PROCEDURE ArrayInversePermute4D_1
+    MODULE PROCEDURE ArrayInversePermute5D_1
+    MODULE PROCEDURE ArrayInversePermute6D_1
+    MODULE PROCEDURE ArrayInversePermute7D_1
+  END INTERFACE
 
 CONTAINS
 
@@ -1937,6 +1962,535 @@ CONTAINS
     END DO
 
   END SUBROUTINE ArrayCopy3D_8
+
+  
+  SUBROUTINE ArraySet1D_1 &
+    ( Alpha, X1, N )
+
+    REAL(DP),               INTENT(in)  :: Alpha
+    REAL(DP), DIMENSION(N), INTENT(out) :: X1
+    INTEGER,                INTENT(in)  :: N
+
+    INTEGER  :: i
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( X1 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO i = 1, N
+      X1(i) = Alpha
+    END DO
+  END SUBROUTINE ArraySet1D_1
+
+  
+  SUBROUTINE ArrayPermute3D_1 &
+    ( A, B, Order )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(3),     INTENT(in)  :: Order
+
+    INTEGER,  DIMENSION(3) :: iVec, jVec
+    INTEGER :: i1, i2, i3
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iVec, jVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iVec, jVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iVec, jVec )
+#endif
+    DO i3 = LBOUND(A,3), UBOUND(A,3)
+    DO i2 = LBOUND(A,2), UBOUND(A,2)
+    DO i1 = LBOUND(A,1), UBOUND(A,1)
+
+      iVec = [ i1, i2, i3 ]
+      jVec = iVec( Order )
+
+      B(jVec(1),jVec(2),jVec(3)) = A(i1,i2,i3)
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayPermute3D_1
+
+  
+  SUBROUTINE ArrayPermute4D_1 &
+    ( A, B, Order )
+
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(4),       INTENT(in)  :: Order
+
+    INTEGER,  DIMENSION(4) :: iVec, jVec
+    INTEGER :: i1, i2, i3, i4
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iVec, jVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( iVec, jVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iVec, jVec )
+#endif
+    DO i4 = LBOUND(A,4), UBOUND(A,4)
+    DO i3 = LBOUND(A,3), UBOUND(A,3)
+    DO i2 = LBOUND(A,2), UBOUND(A,2)
+    DO i1 = LBOUND(A,1), UBOUND(A,1)
+
+      iVec = [ i1, i2, i3, i4 ]
+      jVec = iVec( Order )
+
+      B(jVec(1),jVec(2),jVec(3),jVec(4)) = A(i1,i2,i3,i4)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayPermute4D_1
+
+  
+  SUBROUTINE ArrayPermute5D_1 &
+    ( A, B, Order )
+
+    REAL(DP), DIMENSION(:,:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(5),         INTENT(in)  :: Order
+
+    INTEGER,  DIMENSION(5) :: iVec, jVec
+    INTEGER :: i1, i2, i3, i4, i5
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iVec, jVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iVec, jVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( iVec, jVec )
+#endif
+    DO i5 = LBOUND(A,5), UBOUND(A,5)
+    DO i4 = LBOUND(A,4), UBOUND(A,4)
+    DO i3 = LBOUND(A,3), UBOUND(A,3)
+    DO i2 = LBOUND(A,2), UBOUND(A,2)
+    DO i1 = LBOUND(A,1), UBOUND(A,1)
+
+      iVec = [ i1, i2, i3, i4, i5 ]
+      jVec = iVec( Order )
+
+      B(jVec(1),jVec(2),jVec(3),jVec(4),jVec(5)) = A(i1,i2,i3,i4,i5)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayPermute5D_1
+
+  
+  SUBROUTINE ArrayPermute6D_1 &
+    ( A, B, Order )
+
+    REAL(DP), DIMENSION(:,:,:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(6),           INTENT(in)  :: Order
+
+    INTEGER,  DIMENSION(6) :: iVec, jVec
+    INTEGER :: i1, i2, i3, i4, i5, i6
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iVec, jVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iVec, jVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iVec, jVec )
+#endif
+    DO i6 = LBOUND(A,6), UBOUND(A,6)
+    DO i5 = LBOUND(A,5), UBOUND(A,5)
+    DO i4 = LBOUND(A,4), UBOUND(A,4)
+    DO i3 = LBOUND(A,3), UBOUND(A,3)
+    DO i2 = LBOUND(A,2), UBOUND(A,2)
+    DO i1 = LBOUND(A,1), UBOUND(A,1)
+
+      iVec = [ i1, i2, i3, i4, i5, i6 ]
+      jVec = iVec( Order )
+
+      B(jVec(1),jVec(2),jVec(3),jVec(4),jVec(5),jVec(6)) = A(i1,i2,i3,i4,i5,i6)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayPermute6D_1
+
+  
+  SUBROUTINE ArrayPermute7D_1 &
+    ( A, B, Order )
+
+    REAL(DP), DIMENSION(:,:,:,:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(7),             INTENT(in)  :: Order
+
+    INTEGER,  DIMENSION(7) :: iVec, jVec
+    INTEGER :: i1, i2, i3, i4, i5, i6, i7
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iVec, jVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iVec, jVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iVec, jVec )
+#endif
+    DO i7 = LBOUND(A,7), UBOUND(A,7)
+    DO i6 = LBOUND(A,6), UBOUND(A,6)
+    DO i5 = LBOUND(A,5), UBOUND(A,5)
+    DO i4 = LBOUND(A,4), UBOUND(A,4)
+    DO i3 = LBOUND(A,3), UBOUND(A,3)
+    DO i2 = LBOUND(A,2), UBOUND(A,2)
+    DO i1 = LBOUND(A,1), UBOUND(A,1)
+
+      iVec = [ i1, i2, i3, i4, i5, i6, i7 ]
+      jVec = iVec( Order )
+
+      B(jVec(1),jVec(2),jVec(3),jVec(4),jVec(5),jVec(6),jVec(7)) = A(i1,i2,i3,i4,i5,i6,i7)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayPermute7D_1
+
+  
+  SUBROUTINE ArrayInversePermute3D_1 &
+    ( A, B, InverseOrder )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(3),     INTENT(in)  :: InverseOrder
+
+    INTEGER,  DIMENSION(3) :: jVec, iVec
+    INTEGER :: j1, j2, j3
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( jVec, iVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( jVec, iVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( jVec, iVec )
+#endif
+    DO j3 = LBOUND(B,3), UBOUND(B,3)
+    DO j2 = LBOUND(B,2), UBOUND(B,2)
+    DO j1 = LBOUND(B,1), UBOUND(B,1)
+
+      jVec = [ j1, j2, j3 ]
+      iVec = jVec( InverseOrder )
+
+      B(j1,j2,j3) = A(iVec(1),iVec(2),iVec(3))
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayInversePermute3D_1
+
+  
+  SUBROUTINE ArrayInversePermute4D_1 &
+    ( A, B, InverseOrder )
+
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(4),       INTENT(in)  :: InverseOrder
+
+    INTEGER,  DIMENSION(4) :: jVec, iVec
+    INTEGER :: j1, j2, j3, j4
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( jVec, iVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( jVec, iVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( jVec, iVec )
+#endif
+    DO j4 = LBOUND(B,4), UBOUND(B,4)
+    DO j3 = LBOUND(B,3), UBOUND(B,3)
+    DO j2 = LBOUND(B,2), UBOUND(B,2)
+    DO j1 = LBOUND(B,1), UBOUND(B,1)
+
+      jVec = [ j1, j2, j3, j4 ]
+      iVec = jVec( InverseOrder )
+
+      B(j1,j2,j3,j4) = A(iVec(1),iVec(2),iVec(3),iVec(4))
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayInversePermute4D_1
+
+  
+  SUBROUTINE ArrayInversePermute5D_1 &
+    ( A, B, InverseOrder )
+
+    REAL(DP), DIMENSION(:,:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(5),         INTENT(in)  :: InverseOrder
+
+    INTEGER,  DIMENSION(5) :: jVec, iVec
+    INTEGER :: j1, j2, j3, j4, j5
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( jVec, iVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( jVec, iVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( jVec, iVec )
+#endif
+    DO j5 = LBOUND(B,5), UBOUND(B,5)
+    DO j4 = LBOUND(B,4), UBOUND(B,4)
+    DO j3 = LBOUND(B,3), UBOUND(B,3)
+    DO j2 = LBOUND(B,2), UBOUND(B,2)
+    DO j1 = LBOUND(B,1), UBOUND(B,1)
+
+      jVec = [ j1, j2, j3, j4, j5 ]
+      iVec = jVec( InverseOrder )
+
+      B(j1,j2,j3,j4,j5) = A(iVec(1),iVec(2),iVec(3),iVec(4),iVec(5))
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayInversePermute5D_1
+
+  
+  SUBROUTINE ArrayInversePermute6D_1 &
+    ( A, B, InverseOrder )
+
+    REAL(DP), DIMENSION(:,:,:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(6),           INTENT(in)  :: InverseOrder
+
+    INTEGER,  DIMENSION(6) :: jVec, iVec
+    INTEGER :: j1, j2, j3, j4, j5, j6
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( jVec, iVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( jVec, iVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( jVec, iVec )
+#endif
+    DO j6 = LBOUND(B,6), UBOUND(B,6)
+    DO j5 = LBOUND(B,5), UBOUND(B,5)
+    DO j4 = LBOUND(B,4), UBOUND(B,4)
+    DO j3 = LBOUND(B,3), UBOUND(B,3)
+    DO j2 = LBOUND(B,2), UBOUND(B,2)
+    DO j1 = LBOUND(B,1), UBOUND(B,1)
+
+      jVec = [ j1, j2, j3, j4, j5, j6 ]
+      iVec = jVec( InverseOrder )
+
+      B(j1,j2,j3,j4,j5,j6) = A(iVec(1),iVec(2),iVec(3),iVec(4),iVec(5),iVec(6))
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayInversePermute6D_1
+
+  
+  SUBROUTINE ArrayInversePermute7D_1 &
+    ( A, B, InverseOrder )
+
+    REAL(DP), DIMENSION(:,:,:,:,:,:,:), INTENT(in)  :: A
+    REAL(DP), DIMENSION(:,:,:,:,:,:,:), INTENT(out) :: B
+    INTEGER,  DIMENSION(7),             INTENT(in)  :: InverseOrder
+
+    INTEGER,  DIMENSION(7) :: jVec, iVec
+    INTEGER :: j1, j2, j3, j4, j5, j6, j7
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( jVec, iVec )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( jVec, iVec ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( jVec, iVec )
+#endif
+    DO j7 = LBOUND(B,7), UBOUND(B,7)
+    DO j6 = LBOUND(B,6), UBOUND(B,6)
+    DO j5 = LBOUND(B,5), UBOUND(B,5)
+    DO j4 = LBOUND(B,4), UBOUND(B,4)
+    DO j3 = LBOUND(B,3), UBOUND(B,3)
+    DO j2 = LBOUND(B,2), UBOUND(B,2)
+    DO j1 = LBOUND(B,1), UBOUND(B,1)
+
+      jVec = [ j1, j2, j3, j4, j5, j6, j7 ]
+      iVec = jVec( InverseOrder )
+
+      B(j1,j2,j3,j4,j5,j6,j7) = A(iVec(1),iVec(2),iVec(3),iVec(4),iVec(5),iVec(6),iVec(7))
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ArrayInversePermute7D_1
+
+  
+  SUBROUTINE ArrayPermute2 &
+    ( A, B, Order, ShapeA, ShapeB, N, ND )
+
+    REAL(DP), DIMENSION(N),  INTENT(in)  :: A
+    REAL(DP), DIMENSION(N),  INTENT(out) :: B
+    INTEGER,  DIMENSION(ND), INTENT(in)  :: Order
+    INTEGER,  DIMENSION(ND), INTENT(in)  :: ShapeA
+    INTEGER,  DIMENSION(ND), INTENT(in)  :: ShapeB
+    INTEGER,                 INTENT(in)  :: N
+    INTEGER,                 INTENT(in)  :: ND
+
+    INTEGER,  DIMENSION(ND) :: iVec, jVec
+    INTEGER,  DIMENSION(ND) :: StrideA, StrideB
+    INTEGER :: iA, jB, k
+
+    StrideA(1) = 1
+    StrideB(1) = 1
+    DO k = 2, ND
+      StrideA(k) = StrideA(k-1) * ShapeA(k-1)
+      StrideB(k) = StrideB(k-1) * ShapeB(k-1)
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: Order, ShapeA, StrideA, StrideB ) &
+    !$OMP PRIVATE( iVec, jVec, jB )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN( Order, ShapeA, StrideA, StrideB ) &
+    !$ACC PRIVATE( iVec, jVec, jB ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iVec, jVec, jB )
+#endif
+    DO iA = 1, N
+
+      iVec = MOD( (iA-1) / StrideA, ShapeA ) + 1
+      jVec = iVec(Order)
+      jB = SUM( (jVec-1) * StrideB ) + 1
+
+      B(jB) = A(iA)
+
+    END DO
+
+  END SUBROUTINE ArrayPermute2
+
+  
+  SUBROUTINE ArrayInversePermute2 &
+    ( A, B, InverseOrder, ShapeA, ShapeB, N, ND )
+
+    REAL(DP), DIMENSION(N),  INTENT(in)  :: A
+    REAL(DP), DIMENSION(N),  INTENT(out) :: B
+    INTEGER,  DIMENSION(ND), INTENT(in)  :: InverseOrder
+    INTEGER,  DIMENSION(ND), INTENT(in)  :: ShapeA
+    INTEGER,  DIMENSION(ND), INTENT(in)  :: ShapeB
+    INTEGER,                 INTENT(in)  :: N
+    INTEGER,                 INTENT(in)  :: ND
+
+    INTEGER,  DIMENSION(ND) :: iVec, jVec
+    INTEGER,  DIMENSION(ND) :: StrideA, StrideB
+    INTEGER :: iA, jB, k
+
+    StrideA(1) = 1
+    StrideB(1) = 1
+    DO k = 2, ND
+      StrideA(k) = StrideA(k-1) * ShapeA(k-1)
+      StrideB(k) = StrideB(k-1) * ShapeB(k-1)
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: InverseOrder, ShapeB, StrideA, StrideB ) &
+    !$OMP PRIVATE( iVec, jVec, iA )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN( InverseOrder, ShapeB, StrideA, StrideB ) &
+    !$ACC PRIVATE( iVec, jVec, iA ) &
+    !$ACC PRESENT( A, B )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iVec, jVec, iA )
+#endif
+    DO jB = 1, N
+
+      jVec = MOD( (jB-1) / StrideB, ShapeB ) + 1
+      iVec = jVec(InverseOrder)
+      iA = SUM( (iVec-1) * StrideA ) + 1
+
+      B(jB) = A(iA)
+
+    END DO
+
+  END SUBROUTINE ArrayInversePermute2
 
 
 END MODULE ArrayUtilitiesModule
