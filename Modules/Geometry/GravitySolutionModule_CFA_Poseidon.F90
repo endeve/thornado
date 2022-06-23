@@ -235,12 +235,11 @@ CONTAINS
 
     ! --- Set matter sources with updated conformal factor ---
 
-    CALL Poseidon_Input_Sources_Part1 &
-           ( Input_E  = E, &
-             Input_Si = Si )
-
     CALL Poseidon_Input_Sources_Part2 &
-           ( Input_S = S )
+           ( Input_E  = E, &
+             Input_Si = Si,&
+             Input_S  = S  )
+
 
     ! --- Compute lapse and shift ---
 
