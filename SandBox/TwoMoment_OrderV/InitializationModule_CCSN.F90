@@ -52,6 +52,12 @@ CONTAINS
 
     CALL InitializeFields_Radiation
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( uCF, uPF, uAF, uCR, uPR )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( uCF, uPF, uAF, uCR, uPR )
+#endif
+
   END SUBROUTINE InitializeFields
 
 
