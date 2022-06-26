@@ -60,79 +60,91 @@ MODULE UnitsModule
   ! --- Units Displayed During Execution and for IO ---
 
   CHARACTER(16), PRIVATE, PARAMETER :: &
-    DisplayLabel_Null            = '', &
-    DisplayLabel_Length_L        = 'km', &
-    DisplayLabel_Length_A        = 'rad', &
-    DisplayLabel_Time            = 'ms', &
-    DisplayLabel_Mass            = 'M_sun', &
-    DisplayLabel_MassDensity     = 'g/cm^3', &
-    DisplayLabel_ParticleDensity = '1/cm^3', &
-    DisplayLabel_Velocity_L      = 'km/s', &
-    DisplayLabel_Velocity_A      = '1/s', &
-    DisplayLabel_Momentum        = 'g cm/s', &
-    DisplayLabel_MomentumDensity = 'g/cm^2/s', &
-    DisplayLabel_Energy          = 'MeV', &
-    DisplayLabel_EnergyGlobal    = 'B', &
-    DisplayLabel_EnergyDensity   = 'erg/cm^3', &
-    DisplayLabel_Pressure        = 'erg/cm^3', &
-    DisplayLabel_Temperature     = 'K'
+    DisplayLabel_Null              = '', &
+    DisplayLabel_Length_L          = 'km', &
+    DisplayLabel_Length_A          = 'rad', &
+    DisplayLabel_Time              = 'ms', &
+    DisplayLabel_Mass              = 'M_sun', &
+    DisplayLabel_MassDensity       = 'g/cm^3', &
+    DisplayLabel_ParticleDensity   = '1/cm^3', &
+    DisplayLabel_Velocity_L        = 'km/s', &
+    DisplayLabel_Velocity_A        = '1/s', &
+    DisplayLabel_Momentum_L        = 'g cm/s', &
+    DisplayLabel_Momentum_A        = 'g cm^2/s', &
+    DisplayLabel_MomentumDensity_L = 'g/cm^2/s', &
+    DisplayLabel_MomentumDensity_A = 'g/cm/s', &
+    DisplayLabel_Energy            = 'MeV', &
+    DisplayLabel_EnergyGlobal      = 'B', &
+    DisplayLabel_EnergyDensity     = 'erg/cm^3', &
+    DisplayLabel_Pressure          = 'erg/cm^3', &
+    DisplayLabel_Temperature       = 'K'
 
   REAL(DP), PRIVATE, PARAMETER :: &
-    DisplayUnit_Length_L        = Kilometer, &
-    DisplayUnit_Length_A        = 1.0_DP, &
-    DisplayUnit_Time            = Millisecond, &
-    DisplayUnit_Mass            = SolarMass, &
-    DisplayUnit_MassDensity     = Gram / Centimeter**3, &
-    DisplayUnit_ParticleDensity = 1.0_DP / Centimeter**3, &
-    DisplayUnit_Velocity_L      = Kilometer / Second, &
-    DisplayUnit_Velocity_A      = 1.0_DP / Second, &
-    DisplayUnit_Momentum        = Gram * Centimeter / Second, &
-    DisplayUnit_MomentumDensity = Gram / Centimeter**2 / Second, &
-    DisplayUnit_Energy          = MeV, &
-    DisplayUnit_EnergyGlobal    = Bethe, &
-    DisplayUnit_EnergyDensity   = Erg / Centimeter**3, &
-    DisplayUnit_Pressure        = Erg / Centimeter**3, &
-    DisplayUnit_Temperature     = Kelvin
+    DisplayUnit_Length_L          = Kilometer, &
+    DisplayUnit_Length_A          = 1.0_DP, &
+    DisplayUnit_Time              = Millisecond, &
+    DisplayUnit_Mass              = SolarMass, &
+    DisplayUnit_MassDensity       = Gram / Centimeter**3, &
+    DisplayUnit_ParticleDensity   = 1.0_DP / Centimeter**3, &
+    DisplayUnit_Velocity_L        = Kilometer / Second, &
+    DisplayUnit_Velocity_A        = 1.0_DP / Second, &
+    DisplayUnit_Momentum_L        = Gram * Centimeter / Second, &
+    DisplayUnit_Momentum_A        = Gram * Centimeter**2 / Second, &
+    DisplayUnit_MomentumDensity_L = Gram / Centimeter**2 / Second, &
+    DisplayUnit_MomentumDensity_A = Gram / Centimeter / Second, &
+    DisplayUnit_Energy            = MeV, &
+    DisplayUnit_EnergyGlobal      = Bethe, &
+    DisplayUnit_EnergyDensity     = Erg / Centimeter**3, &
+    DisplayUnit_Pressure          = Erg / Centimeter**3, &
+    DisplayUnit_Temperature       = Kelvin
 
   TYPE, PRIVATE :: UnitsDisplayType
     LOGICAL  :: &
       Active = .FALSE.
     CHARACTER(16) :: &
-      LengthX1Label        = DisplayLabel_Null, &
-      LengthX2Label        = DisplayLabel_Null, &
-      LengthX3Label        = DisplayLabel_Null, &
-      TimeLabel            = DisplayLabel_Null, &
-      MassLabel            = DisplayLabel_Null, &
-      MassDensityLabel     = DisplayLabel_Null, &
-      ParticleDensityLabel = DisplayLabel_Null, &
-      VelocityX1Label      = DisplayLabel_Null, &
-      VelocityX2Label      = DisplayLabel_Null, &
-      VelocityX3Label      = DisplayLabel_Null, &
-      MomentumLabel        = DisplayLabel_Null, &
-      MomentumDensityLabel = DisplayLabel_Null, &
-      EnergyLabel          = DisplayLabel_Null, &
-      EnergyGlobalLabel    = DisplayLabel_Null, &
-      EnergyDensityLabel   = DisplayLabel_Null, &
-      PressureLabel        = DisplayLabel_Null, &
-      TemperatureLabel     = DisplayLabel_Null
+      LengthX1Label          = DisplayLabel_Null, &
+      LengthX2Label          = DisplayLabel_Null, &
+      LengthX3Label          = DisplayLabel_Null, &
+      TimeLabel              = DisplayLabel_Null, &
+      MassLabel              = DisplayLabel_Null, &
+      MassDensityLabel       = DisplayLabel_Null, &
+      ParticleDensityLabel   = DisplayLabel_Null, &
+      VelocityX1Label        = DisplayLabel_Null, &
+      VelocityX2Label        = DisplayLabel_Null, &
+      VelocityX3Label        = DisplayLabel_Null, &
+      MomentumX1Label        = DisplayLabel_Null, &
+      MomentumX2Label        = DisplayLabel_Null, &
+      MomentumX3Label        = DisplayLabel_Null, &
+      MomentumDensityX1Label = DisplayLabel_Null, &
+      MomentumDensityX2Label = DisplayLabel_Null, &
+      MomentumDensityX3Label = DisplayLabel_Null, &
+      EnergyLabel            = DisplayLabel_Null, &
+      EnergyGlobalLabel      = DisplayLabel_Null, &
+      EnergyDensityLabel     = DisplayLabel_Null, &
+      PressureLabel          = DisplayLabel_Null, &
+      TemperatureLabel       = DisplayLabel_Null
     REAL(DP) :: &
-      LengthX1Unit        = 1.0_DP, &
-      LengthX2Unit        = 1.0_DP, &
-      LengthX3Unit        = 1.0_DP, &
-      TimeUnit            = 1.0_DP, &
-      MassUnit            = 1.0_DP, &
-      MassDensityUnit     = 1.0_DP, &
-      ParticleDensityUnit = 1.0_DP, &
-      VelocityX1Unit      = 1.0_DP, &
-      VelocityX2Unit      = 1.0_DP, &
-      VelocityX3Unit      = 1.0_DP, &
-      MomentumUnit        = 1.0_DP, &
-      MomentumDensityUnit = 1.0_DP, &
-      EnergyUnit          = 1.0_DP, &
-      EnergyGlobalUnit    = 1.0_DP, &
-      EnergyDensityUnit   = 1.0_DP, &
-      PressureUnit        = 1.0_DP, &
-      TemperatureUnit     = 1.0_DP
+      LengthX1Unit          = 1.0_DP, &
+      LengthX2Unit          = 1.0_DP, &
+      LengthX3Unit          = 1.0_DP, &
+      TimeUnit              = 1.0_DP, &
+      MassUnit              = 1.0_DP, &
+      MassDensityUnit       = 1.0_DP, &
+      ParticleDensityUnit   = 1.0_DP, &
+      VelocityX1Unit        = 1.0_DP, &
+      VelocityX2Unit        = 1.0_DP, &
+      VelocityX3Unit        = 1.0_DP, &
+      MomentumX1Unit        = 1.0_DP, &
+      MomentumX2Unit        = 1.0_DP, &
+      MomentumX3Unit        = 1.0_DP, &
+      MomentumDensityX1Unit = 1.0_DP, &
+      MomentumDensityX2Unit = 1.0_DP, &
+      MomentumDensityX3Unit = 1.0_DP, &
+      EnergyUnit            = 1.0_DP, &
+      EnergyGlobalUnit      = 1.0_DP, &
+      EnergyDensityUnit     = 1.0_DP, &
+      PressureUnit          = 1.0_DP, &
+      TemperatureUnit       = 1.0_DP
   END type UnitsDisplayType
 
   TYPE(UnitsDisplayType), PUBLIC :: UnitsDisplay
@@ -174,6 +186,14 @@ CONTAINS
         UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_L
 
+        UnitsDisplay % MomentumX1Label = DisplayLabel_Momentum_L
+        UnitsDisplay % MomentumX2Label = DisplayLabel_Momentum_L
+        UnitsDisplay % MomentumX3Label = DisplayLabel_Momentum_L
+
+        UnitsDisplay % MomentumDensityX1Label = DisplayLabel_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX2Label = DisplayLabel_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX3Label = DisplayLabel_MomentumDensity_L
+
       CASE( 'CYLINDRICAL' )
 
         UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
@@ -183,6 +203,14 @@ CONTAINS
         UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_A
+
+        UnitsDisplay % MomentumX1Label = DisplayLabel_Momentum_L
+        UnitsDisplay % MomentumX2Label = DisplayLabel_Momentum_L
+        UnitsDisplay % MomentumX3Label = DisplayLabel_Momentum_A
+
+        UnitsDisplay % MomentumDensityX1Label = DisplayLabel_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX2Label = DisplayLabel_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX3Label = DisplayLabel_MomentumDensity_A
 
       CASE( 'SPHERICAL' )
 
@@ -194,6 +222,14 @@ CONTAINS
         UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_A
         UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_A
 
+        UnitsDisplay % MomentumX1Label = DisplayLabel_Momentum_L
+        UnitsDisplay % MomentumX2Label = DisplayLabel_Momentum_A
+        UnitsDisplay % MomentumX3Label = DisplayLabel_Momentum_A
+
+        UnitsDisplay % MomentumDensityX1Label = DisplayLabel_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX2Label = DisplayLabel_MomentumDensity_A
+        UnitsDisplay % MomentumDensityX3Label = DisplayLabel_MomentumDensity_A
+
       CASE DEFAULT
 
         WRITE(*,*) 'Invalid choice for coodinate system: ', &
@@ -201,8 +237,6 @@ CONTAINS
 
     END SELECT
 
-    UnitsDisplay % MomentumLabel        = DisplayLabel_Momentum
-    UnitsDisplay % MomentumDensityLabel = DisplayLabel_MomentumDensity
     UnitsDisplay % EnergyLabel          = DisplayLabel_Energy
     UnitsDisplay % EnergyGlobalLabel    = DisplayLabel_EnergyGlobal
     UnitsDisplay % EnergyDensityLabel   = DisplayLabel_EnergyDensity
@@ -226,6 +260,14 @@ CONTAINS
         UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_L
 
+        UnitsDisplay % MomentumX1Unit = DisplayUnit_Momentum_L
+        UnitsDisplay % MomentumX2Unit = DisplayUnit_Momentum_L
+        UnitsDisplay % MomentumX3Unit = DisplayUnit_Momentum_L
+
+        UnitsDisplay % MomentumDensityX1Unit = DisplayUnit_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX2Unit = DisplayUnit_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX3Unit = DisplayUnit_MomentumDensity_L
+
       CASE( 'CYLINDRICAL' )
 
         UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
@@ -235,6 +277,14 @@ CONTAINS
         UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_A
+
+        UnitsDisplay % MomentumX1Unit = DisplayUnit_Momentum_L
+        UnitsDisplay % MomentumX2Unit = DisplayUnit_Momentum_L
+        UnitsDisplay % MomentumX3Unit = DisplayUnit_Momentum_A
+
+        UnitsDisplay % MomentumDensityX1Unit = DisplayUnit_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX2Unit = DisplayUnit_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX3Unit = DisplayUnit_MomentumDensity_A
 
       CASE( 'SPHERICAL' )
 
@@ -246,6 +296,14 @@ CONTAINS
         UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_A
         UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_A
 
+        UnitsDisplay % MomentumX1Unit = DisplayUnit_Momentum_L
+        UnitsDisplay % MomentumX2Unit = DisplayUnit_Momentum_A
+        UnitsDisplay % MomentumX3Unit = DisplayUnit_Momentum_A
+
+        UnitsDisplay % MomentumDensityX1Unit = DisplayUnit_MomentumDensity_L
+        UnitsDisplay % MomentumDensityX2Unit = DisplayUnit_MomentumDensity_A
+        UnitsDisplay % MomentumDensityX3Unit = DisplayUnit_MomentumDensity_A
+
       CASE DEFAULT
 
         WRITE(*,*) 'Invalid choice for coodinate system: ', &
@@ -253,8 +311,6 @@ CONTAINS
 
     END SELECT
 
-    UnitsDisplay % MomentumUnit        = DisplayUnit_Momentum
-    UnitsDisplay % MomentumDensityUnit = DisplayUnit_MomentumDensity
     UnitsDisplay % EnergyUnit          = DisplayUnit_Energy
     UnitsDisplay % EnergyGlobalUnit    = DisplayUnit_EnergyGlobal
     UnitsDisplay % EnergyDensityUnit   = DisplayUnit_EnergyDensity
@@ -269,58 +325,70 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A5,A25,L2)') &
       '', 'Units Activation Status =', UnitsDisplay % Active
-    WRITE(*,'(A5,A27)') &
-      '', '---------------------------'
+    WRITE(*,'(A5,A32)') &
+      '', '--------------------------------'
     WRITE(*,*)
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Length (X1) Units: ', &
       TRIM( UnitsDisplay % LengthX1Label )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Length (X2) Units: ', &
       TRIM( UnitsDisplay % LengthX2Label )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Length (X3) Units: ', &
       TRIM( UnitsDisplay % LengthX3Label )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Time Units: ', &
       TRIM( UnitsDisplay % TimeLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Mass Units: ', &
       TRIM( UnitsDisplay % MassLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Mass Density Units: ', &
       TRIM( UnitsDisplay % MassDensityLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Particle Density Units: ', &
       TRIM( UnitsDisplay % ParticleDensityLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Velocity (X1) Units: ', &
       TRIM( UnitsDisplay % VelocityX1Label )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Velocity (X2) Units: ', &
       TRIM( UnitsDisplay % VelocityX2Label )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Velocity (X3) Units: ', &
       TRIM( UnitsDisplay % VelocityX3Label )
-    WRITE(*,'(A7,A24,A)') &
-      '', 'Momentum Units: ', &
-      TRIM( UnitsDisplay % MomentumLabel )
-    WRITE(*,'(A7,A24,A)') &
-      '', 'Momentum Density Units: ', &
-      TRIM( UnitsDisplay % MomentumDensityLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Momentum (X1) Units: ', &
+      TRIM( UnitsDisplay % MomentumX1Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Momentum (X2) Units: ', &
+      TRIM( UnitsDisplay % MomentumX2Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Momentum (X3) Units: ', &
+      TRIM( UnitsDisplay % MomentumX3Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Momentum Density (X1) Units: ', &
+      TRIM( UnitsDisplay % MomentumDensityX1Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Momentum Density (X2) Units: ', &
+      TRIM( UnitsDisplay % MomentumDensityX2Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Momentum Density (X3) Units: ', &
+      TRIM( UnitsDisplay % MomentumDensityX3Label )
+    WRITE(*,'(A7,A29,A)') &
       '', 'Energy Units: ', &
       TRIM( UnitsDisplay % EnergyLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Energy Global Units: ', &
       TRIM( UnitsDisplay % EnergyGlobalLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Energy Density Units: ', &
       TRIM( UnitsDisplay % EnergyDensityLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Pressure Units: ', &
       TRIM( UnitsDisplay % PressureLabel )
-    WRITE(*,'(A7,A24,A)') &
+    WRITE(*,'(A7,A29,A)') &
       '', 'Temperature Units: ', &
       TRIM( UnitsDisplay % TemperatureLabel )
     WRITE(*,*)
