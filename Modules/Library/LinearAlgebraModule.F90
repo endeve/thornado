@@ -1216,9 +1216,9 @@ CONTAINS
   END SUBROUTINE VectorDotProductBatched
 
 
-  SUBROUTINE VectorGather( nnz, y, x, indx )
+  SUBROUTINE VectorGather( ny, nnz, y, x, indx )
 
-    INTEGER                         :: nnz
+    INTEGER                         :: ny, nnz
     REAL(DP), DIMENSION(*), TARGET  :: y, x
     INTEGER,  DIMENSION(*), TARGET  :: indx
 
@@ -1232,11 +1232,11 @@ CONTAINS
 
     data_on_device = .false.
     sizeof_x = nnz * c_sizeof(0.0_DP)
-    sizeof_y = nnz * c_sizeof(0.0_DP)
+    sizeof_y = ny * c_sizeof(0.0_DP)
     sizeof_indx = nnz * c_sizeof(0)
 
     px => x(1:nnz)
-    py => y(1:nnz)
+    py => y(1:ny)
     pindx => indx(1:nnz)
 
     hx = C_LOC( px )
