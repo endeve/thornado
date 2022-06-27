@@ -13,7 +13,8 @@ module HipsparseModule
   use hipfort_hipsparse, only: &
     hipsparseCreate, &
     hipsparseSetStream, &
-    hipsparseDgthr
+    hipsparseDgthr, &
+    hipsparseDsctr
 
   type(c_ptr) :: hipsparse_handle
   !!$omp threadprivate(hipsparse_handle)

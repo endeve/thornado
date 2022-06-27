@@ -81,6 +81,7 @@ MODULE LinearAlgebraModule
   USE RocsparseModule, ONLY: &
     rocsparse_handle, &
     rocsparse_dgthr, &
+    rocsparse_dsctr, &
     rocsparse_index_base_one
   USE HipblasModule, ONLY: &
     hipblas_handle, &
@@ -102,6 +103,7 @@ MODULE LinearAlgebraModule
   USE HipsparseModule, ONLY: &
     hipsparse_handle, &
     hipsparseDgthr, &
+    hipsparseDsctr, &
     HIPSPARSE_INDEX_BASE_ONE
 #elif defined(THORNADO_LA_ONEMKL)
   USE onemkl_blas_omp_offload_lp64

@@ -11,7 +11,8 @@ module RocsparseModule
   use hipfort_rocsparse_enums, only: &
     rocsparse_index_base_one
   use hipfort_rocsparse, only: &
-    rocsparse_dgthr
+    rocsparse_dgthr, &
+    rocsparse_dsctr
 
   type(c_ptr) :: rocsparse_handle
   !!$omp threadprivate(rocsparse_handle)
