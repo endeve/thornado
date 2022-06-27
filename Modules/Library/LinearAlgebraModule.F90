@@ -133,6 +133,7 @@ MODULE LinearAlgebraModule
   PUBLIC :: MatrixVectorMultiply
   PUBLIC :: MatrixDiagScale
   PUBLIC :: VectorDotProductBatched
+  PUBLIC :: VectorGather
   PUBLIC :: VectorNorm2
   PUBLIC :: VectorNorm2_Kernel
   PUBLIC :: VectorVectorAdd
@@ -1213,6 +1214,71 @@ CONTAINS
     END IF
 
   END SUBROUTINE VectorDotProductBatched
+
+
+  SUBROUTINE VectorGather( nnz, y, x, indx )
+
+    INTEGER                         :: nnz
+    REAL(DP), DIMENSION(*), TARGET  :: y, x
+    INTEGER,  DIMENSION(*), TARGET  :: indx
+
+    INTEGER                         :: ierr
+    INTEGER(C_SIZE_T)               :: sizeof_x, sizeof_y
+    REAL(DP), DIMENSION(:), POINTER :: px, py
+    TYPE(C_PTR)                     :: hx, hy
+    TYPE(C_PTR)                     :: dx, dy
+    LOGICAL                         :: data_on_device
+
+    data_on_device = .false.
+    sizeof_x = nnz * c_sizeof(0.0_DP)
+    sizeof_y = nnz * c_sizeof(0.0_DP)
+
+    px => x(1:nnz)
+    py => y(1:nnz)
+
+    hx = C_LOC( px )
+    hy = C_LOC( py )
+
+    data_on_device = device_is_present( hx,  mydevice, sizeof_x  ) &
+               .AND. device_is_present( hy,  mydevice, sizeof_y  )
+
+    IF ( data_on_device ) THEN
+
+      dx = dev_ptr( px(1) )
+      dy = dev_ptr( py(1) )
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cusparseDgthr( cusparse_handle, nnz, dy, dx, indx, CUSPARSE_INDEX_BASE_ONE )
+#elif defined(THORNADO_LA_ROCM)
+      CALL hipblasCheck( hipsparseDgthr( hipsparse_handle, nnz, dy, dx, indx, HIPSPARSE_INDEX_BASE_ONE ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( y, x, indx )
+      CALL dgthr( nnz, y, x, indx )
+      !$OMP END TARGET VARIANT DISPATCH
+#elif defined(THORNADO_LA_MAGMA)
+      !CALL magma_dgthr( nnz, dy, dx, indx, magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_DEBUG_LA)
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[VectorGather] Data not present on device'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[VectorGather]   x missing'
+      IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
+        WRITE(*,*) '[VectorGather]   y missing'
+#endif
+#endif
+
+      x = y(indx)
+
+    END IF
+
+  END SUBROUTINE VectorGather
 
 
   SUBROUTINE VectorNorm2( n, x, incx, xnorm )
