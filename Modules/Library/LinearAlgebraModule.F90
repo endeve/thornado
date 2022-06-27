@@ -1222,35 +1222,41 @@ CONTAINS
     REAL(DP), DIMENSION(*), TARGET  :: y, x
     INTEGER,  DIMENSION(*), TARGET  :: indx
 
-    INTEGER                         :: ierr
-    INTEGER(C_SIZE_T)               :: sizeof_x, sizeof_y
+    INTEGER                         :: i, ierr
+    INTEGER(C_SIZE_T)               :: sizeof_x, sizeof_y, sizeof_indx
     REAL(DP), DIMENSION(:), POINTER :: px, py
-    TYPE(C_PTR)                     :: hx, hy
-    TYPE(C_PTR)                     :: dx, dy
+    INTEGER,  DIMENSION(:), POINTER :: pindx
+    TYPE(C_PTR)                     :: hx, hy, hindx
+    TYPE(C_PTR)                     :: dx, dy, dindx
     LOGICAL                         :: data_on_device
 
     data_on_device = .false.
     sizeof_x = nnz * c_sizeof(0.0_DP)
     sizeof_y = nnz * c_sizeof(0.0_DP)
+    sizeof_indx = nnz * c_sizeof(0)
 
     px => x(1:nnz)
     py => y(1:nnz)
+    pindx => indx(1:nnz)
 
     hx = C_LOC( px )
     hy = C_LOC( py )
+    hindx = C_LOC( pindx )
 
-    data_on_device = device_is_present( hx,  mydevice, sizeof_x  ) &
-               .AND. device_is_present( hy,  mydevice, sizeof_y  )
+    data_on_device = device_is_present( hx,    mydevice, sizeof_x    ) &
+               .AND. device_is_present( hy,    mydevice, sizeof_y    ) &
+               .AND. device_is_present( hindx, mydevice, sizeof_indx )
 
     IF ( data_on_device ) THEN
 
       dx = dev_ptr( px(1) )
       dy = dev_ptr( py(1) )
+      dindx = dev_ptr( pindx(1) )
 
 #if defined(THORNADO_LA_CUBLAS)
-      ierr = cusparseDgthr( cusparse_handle, nnz, dy, dx, indx, CUSPARSE_INDEX_BASE_ONE )
+      ierr = cusparseDgthr( cusparse_handle, nnz, dy, dx, dindx, CUSPARSE_INDEX_BASE_ONE )
 #elif defined(THORNADO_LA_ROCM)
-      CALL hipblasCheck( hipsparseDgthr( hipsparse_handle, nnz, dy, dx, indx, HIPSPARSE_INDEX_BASE_ONE ) )
+      CALL hipblasCheck( hipsparseDgthr( hipsparse_handle, nnz, dy, dx, dindx, HIPSPARSE_INDEX_BASE_ONE ) )
 #elif defined(THORNADO_LA_ONEMKL)
       !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( y, x, indx )
       CALL dgthr( nnz, y, x, indx )
@@ -1271,10 +1277,14 @@ CONTAINS
         WRITE(*,*) '[VectorGather]   x missing'
       IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
         WRITE(*,*) '[VectorGather]   y missing'
+      IF ( .not. device_is_present( hindx, mindxdevice, sizeof_indx ) ) &
+        WRITE(*,*) '[VectorGather]   indx missing'
 #endif
 #endif
 
-      x = y(indx)
+      DO i = 1, nnz
+        x(i) = y(indx(i))
+      END DO
 
     END IF
 
