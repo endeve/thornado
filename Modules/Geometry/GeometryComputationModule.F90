@@ -25,6 +25,7 @@ MODULE GeometryComputationModule
 
   PUBLIC :: ComputeGeometryX
   PUBLIC :: ComputeGeometryX_FromScaleFactors
+  PUBLIC :: ComputeGeometryX_SpatialMetric
   PUBLIC :: LapseFunction
   PUBLIC :: ConformalFactor
 
@@ -295,6 +296,26 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeGeometryX_CYLINDRICAL
+
+
+  SUBROUTINE ComputeGeometryX_SpatialMetric &
+      ( h_1, h_2, h_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: h_1, h_2, h_3
+    REAL(DP), INTENT(out) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
+
+    Gm_dd_11 = MAX( h_1**2, SqrtTiny )
+    Gm_dd_22 = MAX( h_2**2, SqrtTiny )
+    Gm_dd_33 = MAX( h_3**2, SqrtTiny )
+
+    SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
+
+  END SUBROUTINE ComputeGeometryX_SpatialMetric
 
 
   SUBROUTINE ComputeGeometryX_FromScaleFactors( G )
