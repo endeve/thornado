@@ -45,6 +45,7 @@ MODULE LinearAlgebraModule
   USE CusparseModule, ONLY: &
     cusparse_handle, &
     cusparseDgthr, &
+    cusparseDsctr, &
     CUSPARSE_INDEX_BASE_ONE
 #elif defined(THORNADO_LA_ROCM)
   USE HipModule, ONLY: &
@@ -134,6 +135,7 @@ MODULE LinearAlgebraModule
   PUBLIC :: MatrixDiagScale
   PUBLIC :: VectorDotProductBatched
   PUBLIC :: VectorGather
+  PUBLIC :: VectorScatter
   PUBLIC :: VectorNorm2
   PUBLIC :: VectorNorm2_Kernel
   PUBLIC :: VectorVectorAdd
@@ -1289,6 +1291,81 @@ CONTAINS
     END IF
 
   END SUBROUTINE VectorGather
+
+
+  SUBROUTINE VectorScatter( ny, nnz, x, y, indx )
+
+    INTEGER                         :: ny, nnz
+    REAL(DP), DIMENSION(*), TARGET  :: x, y
+    INTEGER,  DIMENSION(*), TARGET  :: indx
+
+    INTEGER                         :: i, ierr
+    INTEGER(C_SIZE_T)               :: sizeof_x, sizeof_y, sizeof_indx
+    REAL(DP), DIMENSION(:), POINTER :: px, py
+    INTEGER,  DIMENSION(:), POINTER :: pindx
+    TYPE(C_PTR)                     :: hx, hy, hindx
+    TYPE(C_PTR)                     :: dx, dy, dindx
+    LOGICAL                         :: data_on_device
+
+    data_on_device = .false.
+    sizeof_x = nnz * c_sizeof(0.0_DP)
+    sizeof_y = ny * c_sizeof(0.0_DP)
+    sizeof_indx = nnz * c_sizeof(0)
+
+    px => x(1:nnz)
+    py => y(1:ny)
+    pindx => indx(1:nnz)
+
+    hx = C_LOC( px )
+    hy = C_LOC( py )
+    hindx = C_LOC( pindx )
+
+    data_on_device = device_is_present( hx,    mydevice, sizeof_x    ) &
+               .AND. device_is_present( hy,    mydevice, sizeof_y    ) &
+               .AND. device_is_present( hindx, mydevice, sizeof_indx )
+
+    IF ( data_on_device ) THEN
+
+      dx = dev_ptr( px(1) )
+      dy = dev_ptr( py(1) )
+      dindx = dev_ptr( pindx(1) )
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cusparseDsctr( cusparse_handle, nnz, dx, dindx, dy, CUSPARSE_INDEX_BASE_ONE )
+#elif defined(THORNADO_LA_ROCM)
+      CALL hipblasCheck( hipsparseDsctr( hipsparse_handle, nnz, dx, dindx, dy, HIPSPARSE_INDEX_BASE_ONE ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( x, indx, y )
+      CALL dsctr( nnz, x, indx, y )
+      !$OMP END TARGET VARIANT DISPATCH
+#elif defined(THORNADO_LA_MAGMA)
+      !CALL magma_dsctr( nnz, dx, indx, dy, magma_queue )
+#endif
+#if defined(THORNADO_OMP_OL)
+      CALL stream_sync( stream )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_DEBUG_LA)
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[VectorScatter] Data not present on device'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[VectorScatter]   x missing'
+      IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
+        WRITE(*,*) '[VectorScatter]   y missing'
+      IF ( .not. device_is_present( hindx, mindxdevice, sizeof_indx ) ) &
+        WRITE(*,*) '[VectorScatter]   indx missing'
+#endif
+#endif
+
+      DO i = 1, nnz
+        y(indx(i)) = x(i)
+      END DO
+
+    END IF
+
+  END SUBROUTINE VectorScatter
 
 
   SUBROUTINE VectorNorm2( n, x, incx, xnorm )

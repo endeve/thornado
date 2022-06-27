@@ -109,6 +109,18 @@ module CusparseModule
       integer(c_int), value :: idxbase
     end function cusparseDgthr
 
+    function cusparseDsctr(handle, nnz, xval, xind, y, idxbase ) &
+        & bind(c, name="cusparseDsctr")
+      use, intrinsic :: iso_c_binding
+      integer(c_int) :: cusparseDgthr
+      type(c_ptr), value :: handle
+      integer(c_int), value :: nnz
+      type(c_ptr), value :: xval
+      type(c_ptr), value :: xind
+      type(c_ptr), value :: y
+      integer(c_int), value :: idxbase
+    end function cusparseDsctr
+
   end interface
 
 end module CusparseModule
