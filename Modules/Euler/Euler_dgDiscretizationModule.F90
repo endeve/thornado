@@ -2737,7 +2737,6 @@ CONTAINS
 
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT() &
     !$ACC DELETE ( iX_B0, iX_E0, &
     !$ACC          dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2, P )
 #endif
