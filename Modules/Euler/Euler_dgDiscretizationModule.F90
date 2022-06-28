@@ -2666,12 +2666,30 @@ CONTAINS
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0, iX_E0 ) &
+    !$ACC CREATE( dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2, P )
+#endif
+
     CALL ComputeDerivatives_Geometry_NonRelativistic_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, dh_d_2_dX1, dh_d_3_dX1 )
 
     CALL ComputeDerivatives_Geometry_NonRelativistic_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, dh_d_3_dX2 )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( P, Pressure, Pi_du_22, Pi_du_33 ) &
+    !$ACC PRESENT( iX_B0, iX_E0, G, U, dU )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( P, Pressure, Pi_du_22, Pi_du_33 )
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -2714,6 +2732,15 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT() &
+    !$ACC DELETE ( iX_B0, iX_E0, &
+    !$ACC          dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2, P )
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry_NonRelativistic
 
