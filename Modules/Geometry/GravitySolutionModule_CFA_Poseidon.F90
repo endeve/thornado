@@ -126,6 +126,7 @@ CONTAINS
            Source_DT_Option             = MeshX(2) % Width(1:nX(2)), &
            Source_DP_Option             = MeshX(3) % Width(1:nX(3)), &
            Method_Flag_Option           = 3,                         &
+           Max_Iterations_Option        = 20,                        &
            Flat_Guess_Option            = .TRUE.,                    &
            Print_Setup_Option           = .TRUE.,                    &
            Convergence_Criteria_Option  = 1.0e-08_DP,                &
@@ -236,23 +237,22 @@ CONTAINS
     ! --- Set matter sources with updated conformal factor ---
 
     CALL Poseidon_Input_Sources_Part2 &
-           ( Input_E  = E, &
-             Input_Si = Si,&
+           ( Input_E  = E,  &
+             Input_Si = Si, &
              Input_S  = S  )
-
 
     ! --- Compute lapse and shift ---
 
     CALL Poseidon_XCFC_Run_Part2()
 
     CALL Poseidon_Return_Lapse_Function &
-         ( Return_Lapse = Tmp_Lapse )
+           ( Return_Lapse = Tmp_Lapse )
 
     CALL Poseidon_Return_Shift_Vector &
-         ( Return_Shift = Tmp_Shift )
+           ( Return_Shift = Tmp_Shift )
 
     CALL Poseidon_Return_Extrinsic_Curvature &
-         ( Return_Kij = Tmp_ExtrinsicCurvature )
+           ( Return_Kij = Tmp_ExtrinsicCurvature )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
