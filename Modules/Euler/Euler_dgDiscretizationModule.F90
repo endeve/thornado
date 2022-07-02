@@ -2685,7 +2685,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( P, Pressure, Pi_du_22, Pi_du_33 ) &
-    !$ACC PRESENT( iX_B0, iX_E0, G, U, dU )
+    !$ACC PRESENT( iX_B0, iX_E0, G, U, dU, &
+    !$ACC          dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure, Pi_du_22, Pi_du_33 )
@@ -2801,6 +2802,15 @@ CONTAINS
 
     IF( iX_E0(1) .EQ. iX_B0(1) )THEN
 
+#if   defined( THORNADO_OMP_OL )
+      
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dh_d_2_dX1, dh_d_3_dX1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -2822,8 +2832,25 @@ CONTAINS
     nX_K = PRODUCT( (iX_E0 - iX_B0 + 1) )
     nX_F = PRODUCT( (iX_E0 - iX_B0 + 1) + [1,0,0] )
 
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX1, iX_B0, iX_E0 ) &
+    !$ACC CREATE( h_2_K, h_2_F, h_2_q, dh_2_dX1, &
+    !$ACC         h_3_K, h_3_F, h_3_q, dh_3_dX1 )
+#endif
+
     ! --- Permute Geometry Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, h_2_K, h_3_K, G )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX1 = iX_B0(1)-1, iX_E0(1)+1
     DO iX3 = iX_B0(3)  , iX_E0(3)
     DO iX2 = iX_B0(2)  , iX_E0(2)
@@ -2863,6 +2890,13 @@ CONTAINS
              h_3_K(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
              h_3_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_2_F, h_3_F, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX1 = iX_B0(1), iX_E0(1)+1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -2904,6 +2938,13 @@ CONTAINS
     ! --- Volume Term ---
     ! -------------------
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_2_K, h_2_q, h_3_K, h_3_q, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -2929,8 +2970,14 @@ CONTAINS
            ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX1_q, nDOFX, &
              h_3_q, nDOFX, One, dh_3_dX1, nDOFX )
 
-    ASSOCIATE( dX1 => MeshX(1) % Width )
-
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dh_d_2_dX1, dh_2_dX1, dX1, WeightsX_q, &
+    !$ACC          dh_d_3_dX1, dh_3_dX1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -2947,6 +2994,14 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX1, iX_B0, iX_E0, &
+    !$ACC         h_2_K, h_2_F, h_2_q, dh_2_dX1, &
+    !$ACC         h_3_K, h_3_F, h_3_q, dh_3_dX1 )
+#endif
 
     END ASSOCIATE ! dX1
 
@@ -2989,6 +3044,14 @@ CONTAINS
 
     IF( iX_E0(2) .EQ. iX_B0(2) )THEN
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dh_d_3_dX2 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -3009,8 +3072,24 @@ CONTAINS
     nX_K = PRODUCT( (iX_E0 - iX_B0 + 1) )
     nX_F = PRODUCT( (iX_E0 - iX_B0 + 1) + [0,1,0] )
 
+    ASSOCIATE( dX2 => MeshX(2) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX2, iX_B0, iX_E0 ) &
+    !$ACC CREATE( h_3_K, h_3_F, h_3_q, dh_3_dX2 )
+#endif
+
     ! --- Permute Geometry Fields ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, h_3_K, G )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX2 = iX_B0(2)-1, iX_E0(2)+1
     DO iX3 = iX_B0(3)  , iX_E0(3)
     DO iX1 = iX_B0(1)  , iX_E0(1)
@@ -3039,6 +3118,13 @@ CONTAINS
              h_3_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
              h_3_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_3_F, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX2 = iX_B0(2), iX_E0(2)+1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -3068,6 +3154,13 @@ CONTAINS
     ! --- Volume Term ---
     ! -------------------
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_3_K, h_3_q, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -3087,8 +3180,13 @@ CONTAINS
            ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX2_q, nDOFX, &
              h_3_q, nDOFX, One, dh_3_dX2, nDOFX )
 
-    ASSOCIATE( dX2 => MeshX(2) % Width )
-
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dh_d_3_dX2, dh_3_dX2, dX2, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -3104,6 +3202,13 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX2, iX_B0, iX_E0, &
+    !$ACC         h_3_K, h_3_F, h_3_q, dh_3_dX2 )
+#endif
+  
     END ASSOCIATE ! dX2
 
   END SUBROUTINE ComputeDerivatives_Geometry_NonRelativistic_X2
@@ -4233,9 +4338,24 @@ CONTAINS
          iX_B0(2):iX_E0(2), &
          iX_B0(3):iX_E0(3))
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0, iX_E0 ) &
+    !$ACC CREATE( dPhi_dX1 )
+#endif
+
     CALL ComputeDerivatives_Gravity_NonRelativistic_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, dPhi_dX1 )
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, U, dU, dPhi_dX1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -4255,6 +4375,12 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( iX_B0, iX_E0, dPhi_dX1 )
+#endif
 
   END SUBROUTINE ComputeIncrement_Gravity_NonRelativistic
 
@@ -4295,6 +4421,14 @@ CONTAINS
 
     IF( iX_E0(1) .EQ. iX_B0(1) )THEN
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dPhi_dX1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -4315,8 +4449,24 @@ CONTAINS
     nX_K = PRODUCT( (iX_E0 - iX_B0 + 1) )
     nX_F = PRODUCT( (iX_E0 - iX_B0 + 1) + [1,0,0] )
 
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX1, iX_B0, iX_E0 ) &
+    !$ACC CREATE( Phi_K, Phi_F, Phi_q, dPhidX1 )
+#endif
+
     ! --- Permute Newtonian Gravitational Potential ---
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, Phi_K, G )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX1 = iX_B0(1)-1, iX_E0(1)+1
     DO iX3 = iX_B0(3)  , iX_E0(3)
     DO iX2 = iX_B0(2)  , iX_E0(2)
@@ -4345,6 +4495,13 @@ CONTAINS
              Phi_K(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
              Phi_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( Phi_F, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX1 = iX_B0(1), iX_E0(1)+1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -4374,6 +4531,13 @@ CONTAINS
     ! --- Volume Term ---
     ! -------------------
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( Phi_K, Phi_q, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -4393,8 +4557,13 @@ CONTAINS
            ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX1_q, nDOFX, &
              Phi_q, nDOFX, One, dPhidX1, nDOFX )
 
-    ASSOCIATE( dX1 => MeshX(1) % Width )
-
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dPhi_dX1, dPhidX1, dX1, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -4410,7 +4579,14 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX1, iX_B0, iX_E0, &
+    !$ACC         Phi_K, Phi_F, Phi_q, dPhidX1 )
+#endif
+
+  END ASSOCIATE ! dX1
 
   END SUBROUTINE ComputeDerivatives_Gravity_NonRelativistic_X1
 
