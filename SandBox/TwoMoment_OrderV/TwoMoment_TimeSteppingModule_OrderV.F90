@@ -27,7 +27,9 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     TimersStart, &
     TimersStop, &
     Timer_IMEX, &
-    Timer_TimeStepper
+    Timer_TimeStepper, &
+    Timer_Euler, &
+    Timer_Poisson
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -259,8 +261,10 @@ CONTAINS
             CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui, uDF )
 
-            IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
+            IF( PRESENT( SolveGravity ) )THEN
 
+              CALL TimersStart( Timer_Poisson )
+              
 #if   defined( THORNADO_OMP_OL )
               !$OMP TARGET UPDATE FROM( Ui )
 #elif defined( THORNADO_OACC   )
@@ -275,7 +279,9 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
               !$ACC UPDATE DEVICE   ( GX )
 #endif
-
+              
+              CALL TimersStop( Timer_Poisson )
+              
             END IF
 
           END IF
@@ -332,11 +338,15 @@ CONTAINS
 
         IF( EvolveEuler )THEN
 
+          CALL TimersStart( Timer_Euler )
+
           CALL ComputeIncrement_Euler_DG_Explicit &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                    Ui, uDF, StageData(iS) % dU_EX )
 
           StageData(iS) % OffGridFlux_U = OffGridFlux_Euler
+
+          CALL TimersStop( Timer_Euler )
 
         END IF
 
@@ -406,6 +416,8 @@ CONTAINS
     END IF
 
     IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
+      
+      CALL TimersStart( Timer_Poisson )
 
 #if   defined( THORNADO_OMP_OL )
               !$OMP TARGET UPDATE FROM( Ui )
@@ -421,7 +433,9 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
               !$ACC UPDATE DEVICE   ( GX )
 #endif
-
+      
+      CALL TimersStop( Timer_Poisson )
+      
     END IF
 
     CALL CopyArray( U, One, Ui )
