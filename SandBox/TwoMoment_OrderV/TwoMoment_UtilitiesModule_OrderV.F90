@@ -673,6 +673,12 @@ CONTAINS
   SUBROUTINE Alpha_LS_Scalar &
     ( M, Mk, Fm, F, Alpha )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     INTEGER,                  INTENT(in)    :: M, Mk
     REAL(DP), DIMENSION(4),   INTENT(inout) :: Fm
     REAL(DP), DIMENSION(4,M), INTENT(inout) :: F
