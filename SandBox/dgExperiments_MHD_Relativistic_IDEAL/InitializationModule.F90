@@ -86,17 +86,19 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
-                 ConstantDensity_Option, Angle_Option )
+                 ConstantDensity_Option, Angle_Option, RiemannProblemName_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWaveX1'
-    LOGICAL           :: SmoothProfile
+    CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
+    LOGICAL           :: SmoothProfile = .TRUE.
     LOGICAL           :: ConstantDensity = .TRUE.
-    REAL(DP)          :: Angle
+    REAL(DP)          :: Angle = Pi / Four
 
     uPM(:,:,:,:,iPM_Ne) = Zero
 
@@ -111,6 +113,9 @@ CONTAINS
 
     IF( PRESENT( Angle_Option ) ) &
       Angle = Angle_Option
+
+    IF( PRESENT( RiemannProblemName_Option ) ) &
+      RiemannProblemName = TRIM( RiemannProblemName_Option )
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -136,6 +141,11 @@ CONTAINS
 
         CALL InitializeFields_Cleaning2D &
                ( ConstantDensity )
+
+      CASE( 'Riemann1D' )
+
+        CALL InitializeFields_Riemann1D &
+               ( TRIM( RiemannProblemName ) )
 
       CASE DEFAULT
 
@@ -1000,6 +1010,250 @@ CONTAINS
     PRINT*, 'Finished initialization.'
 
   END SUBROUTINE InitializeFields_Cleaning2D
+
+
+  SUBROUTINE InitializeFields_Riemann1D &
+               ( RiemannProblemName )
+
+    CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
+
+    INTEGER iX1, iX2, iX3
+    INTEGER iNodeX, iNodeX1
+    REAL(DP) :: X1, XD
+    REAL(DP) :: CB1_L, CB2_L, CB3_L, &
+                CB1_R, CB2_R, CB3_R
+    REAL(DP) :: VSq_L, VSq_R, W_L, W_R, &
+                VdotB_L, VdotB_R
+
+    REAL(DP) :: LeftState(nPM), RightState(nPM)
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', '1D Riemann Problem Name: ', TRIM( RiemannProblemName )
+    WRITE(*,*)
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'IsolatedContact' )
+
+        ! Isolated contact from Mattia and Mignone (2022).
+
+        XD = Half
+
+        LeftState(iPM_D ) = 10.0_DP
+        LeftState(iPM_V1) = 0.0_DP
+        LeftState(iPM_V2) = 0.7_DP
+        LeftState(iPM_V3) = 0.2_DP
+        LeftState(iPM_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CB1_L = 5.0_DP
+        CB2_L = One
+        CB3_L = Half
+
+        VSq_L = LeftState(iPM_V1)**2 + LeftState(iPM_V2)**2 + LeftState(iPM_V3)**2
+
+        W_L = One / SQRT( One - VSq_L )
+
+        VdotB_L = LeftState(iPM_V1) * CB1_L &
+                    + LeftState(iPM_V2) * CB2_L &
+                    + LeftState(iPM_V3) * CB3_L
+
+        LeftState(iPM_B1) = W_L * VdotB_L * LeftState(iPM_V1) + CB1_L / W_L
+        LeftState(iPM_B2) = W_L * VdotB_L * LeftState(iPM_V2) + CB2_L / W_L
+        LeftState(iPM_B3) = W_L * VdotB_L * LeftState(iPM_V3) + CB3_L / W_L
+
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) = 1.0_DP
+        RightState(iPM_V1) = 0.0_DP
+        RightState(iPM_V2) = 0.7_DP
+        RightState(iPM_V3) = 0.2_DP
+        RightState(iPM_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CB1_R = 5.0_DP
+        CB2_R = One
+        CB3_R = Half
+
+        VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
+
+        W_R = One / SQRT( One - VSq_R )
+
+        VdotB_R = RightState(iPM_V1) * CB1_R &
+                    + RightState(iPM_V2) * CB2_R &
+                    + RightState(iPM_V3) * CB3_R
+
+        RightState(iPM_B1) = W_R * VdotB_R * RightState(iPM_V1) + CB1_R / W_R
+        RightState(iPM_B2) = W_R * VdotB_R * RightState(iPM_V2) + CB2_R / W_R
+        RightState(iPM_B3) = W_R * VdotB_R * RightState(iPM_V3) + CB3_R / W_R
+
+        RightState(iPM_Chi) = 0.0_DP
+
+      CASE( 'RotationalWave' )
+
+        ! Rotational wave from Mattia and Mignone (2022).
+
+        XD = Half
+
+        LeftState(iPM_D ) =  1.0_DP
+        LeftState(iPM_V1) =  0.4_DP
+        LeftState(iPM_V2) = -0.3_DP
+        LeftState(iPM_V3) =  0.5_DP
+        LeftState(iPM_E ) =  1.0_DP / ( Gamma_IDEAL - One )
+
+        CB1_L =  2.4_DP
+        CB2_L =  One
+        CB3_L = -1.6_DP
+
+        VSq_L = LeftState(iPM_V1)**2 + LeftState(iPM_V2)**2 + LeftState(iPM_V3)**2
+
+        W_L = One / SQRT( One - VSq_L )
+
+        VdotB_L = LeftState(iPM_V1) * CB1_L &
+                    + LeftState(iPM_V2) * CB2_L &
+                    + LeftState(iPM_V3) * CB3_L
+
+        LeftState(iPM_B1) = W_L * VdotB_L * LeftState(iPM_V1) + CB1_L / W_L
+        LeftState(iPM_B2) = W_L * VdotB_L * LeftState(iPM_V2) + CB2_L / W_L
+        LeftState(iPM_B3) = W_L * VdotB_L * LeftState(iPM_V3) + CB3_L / W_L
+
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) =  1.0_DP
+        RightState(iPM_V1) =  0.377237_DP
+        RightState(iPM_V2) = -0.482389_DP
+        RightState(iPM_V3) =  0.424190_DP
+        RightState(iPM_E ) =  1.0_DP / ( Gamma_IDEAL - One )
+
+        CB1_R =  2.4_DP
+        CB2_R = -0.1_DP
+        CB3_R = -2.178213_DP
+
+        VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
+
+        W_R = One / SQRT( One - VSq_R )
+
+        VdotB_R = RightState(iPM_V1) * CB1_R &
+                    + RightState(iPM_V2) * CB2_R &
+                    + RightState(iPM_V3) * CB3_R
+
+        RightState(iPM_B1) = W_R * VdotB_R * RightState(iPM_V1) + CB1_R / W_R
+        RightState(iPM_B2) = W_R * VdotB_R * RightState(iPM_V2) + CB2_R / W_R
+        RightState(iPM_B3) = W_R * VdotB_R * RightState(iPM_V3) + CB3_R / W_R
+
+        RightState(iPM_Chi) = 0.0_DP
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for RiemannProblemName: ', RiemannProblemName
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') &
+          "  'IsolatedContacnt' - &
+          Isolated contact problem from Mattia and Mignone (2022) "
+        WRITE(*,'(A)') &
+          "  'RotationalWave' - &
+          Rotational wave problem from Mattia and Mignone (2022)"
+        WRITE(*,'(A)') 'Stopping...'
+        STOP
+
+    END SELECT
+
+    WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Right State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_D   = ', RightState(iPM_D  )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V1  = ', RightState(iPM_V1 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V2  = ', RightState(iPM_V2 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V3  = ', RightState(iPM_V3 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_E   = ', RightState(iPM_E  )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B1  = ', RightState(iPM_B1 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B2  = ', RightState(iPM_B2 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B3  = ', RightState(iPM_B3 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_Chi = ', RightState(iPM_Chi)
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Left State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_D   = ', LeftState(iPM_D  )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V1  = ', LeftState(iPM_V1 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V2  = ', LeftState(iPM_V2 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V3  = ', LeftState(iPM_V3 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_E   = ', LeftState(iPM_E  )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B1  = ', LeftState(iPM_B1 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B2  = ', LeftState(iPM_B2 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B3  = ', LeftState(iPM_B3 )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PM_Chi = ', LeftState(iPM_Chi)
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .LE. XD )THEN
+
+          uPM(iNodeX,iX1,iX2,iX3,iPM_D  ) = LeftState(iPM_D  )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V1 ) = LeftState(iPM_V1 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V2 ) = LeftState(iPM_V2 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V3 ) = LeftState(iPM_V3 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_E  ) = LeftState(iPM_E  )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = LeftState(iPM_B1 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = LeftState(iPM_B2 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = LeftState(iPM_B3 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = LeftState(iPM_Chi)
+
+        ELSE
+
+          uPM(iNodeX,iX1,iX2,iX3,iPM_D  ) = RightState(iPM_D  )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V1 ) = RightState(iPM_V1 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V2 ) = RightState(iPM_V2 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V3 ) = RightState(iPM_V3 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_E  ) = RightState(iPM_E  )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = RightState(iPM_B1 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = RightState(iPM_B2 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = RightState(iPM_B3 )
+          uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = RightState(iPM_Chi)
+
+        END IF
+
+      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_E ), &
+               uPM(:,iX1,iX2,iX3,iPM_Ne), uAM(:,iX1,iX2,iX3,iAM_P) )
+
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Riemann1D
 
 
 END MODULE InitializationModule

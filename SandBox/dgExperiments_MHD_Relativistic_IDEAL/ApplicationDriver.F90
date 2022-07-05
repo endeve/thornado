@@ -59,6 +59,7 @@ PROGRAM ApplicationDriver
 
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
+  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: SmoothProfile, ConstantDensity
   LOGICAL       :: wrt
@@ -80,7 +81,7 @@ PROGRAM ApplicationDriver
   REAL(DP) :: DampingParameter = 0.0_DP
   REAL(DP) :: Angle = 0.0_DP
 
-  ProgramName = 'Advection1D'
+  ProgramName = 'Riemann1D'
   AdvectionProfile = 'MagneticSineWaveX1'
 
   swX               = [ 0, 0, 0 ]
@@ -350,6 +351,40 @@ PROGRAM ApplicationDriver
       xL  = [ -0.5_DP, -0.5_DP, 0.0_DP ]
       xR  = [  1.5_DP,  1.5_DP, 1.0_DP ]
 
+    CASE( 'Riemann1D' )
+
+      RiemannProblemName = 'RotationalWave'
+
+      SELECT CASE ( TRIM( RiemannProblemName ) )
+
+        CASE( 'IsolatedContact' )
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = One
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'RotationalWave' )
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = One
+          bcX   = [ 2, 0, 0 ]
+
+        CASE DEFAULT
+
+          WRITE(*,*)
+          WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
+          WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  IsolatedContact'
+          WRITE(*,'(A)')     'Stopping...'
+          STOP
+
+      END SELECT
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 40, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -359,6 +394,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  Advection2D'
       WRITE(*,'(A)')     '  Cleaning1D'
       WRITE(*,'(A)')     '  Cleaning2D'
+      WRITE(*,'(A)')     '  Riemann1D'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -429,6 +465,8 @@ PROGRAM ApplicationDriver
   CALL InitializeFields_Relativistic_MHD &
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ), &
+           RiemannProblemName_Option &
+             = TRIM( RiemannProblemName ), &
            SmoothProfile_Option &
              = SmoothProfile, &
            ConstantDensity_Option &
