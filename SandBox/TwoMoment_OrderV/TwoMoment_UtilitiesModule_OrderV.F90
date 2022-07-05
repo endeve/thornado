@@ -60,7 +60,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: NumericalFlux_LLF
 
   INTERFACE ComputePrimitive_TwoMoment
-    MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar_Richardson
     MODULE PROCEDURE ComputePrimitive_TwoMoment_Vector_Richardson
   END INTERFACE ComputePrimitive_TwoMoment
 
@@ -670,6 +670,84 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
 
 
+  SUBROUTINE Alpha_LS_Scalar &
+    ( M, Mk, Fm, F, Alpha )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,                  INTENT(in)    :: M, Mk
+    REAL(DP), DIMENSION(4),   INTENT(inout) :: Fm
+    REAL(DP), DIMENSION(4,M), INTENT(inout) :: F
+    REAL(DP), DIMENSION(M),   INTENT(inout) :: Alpha
+
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA
+    REAL(DP) :: A1, A2, B
+    INTEGER  :: iP
+
+    IF ( Mk > 1 ) THEN
+
+      IF ( Mk == 2 ) THEN
+
+        AA11 = Zero
+        AB1 = Zero
+
+        DO iP = 1, 4
+
+          A1 = F(iP,1) - Fm(iP)
+          B  = - Fm(iP)
+
+          AA11 = AA11 + A1 * A1
+          AB1  = AB1  + A1 * B
+
+        END DO
+
+        Alpha(1) = AB1 / ( AA11 + SqrtTiny )
+        Alpha(2) = One - Alpha(1)
+
+      ELSE IF ( Mk == 3 ) THEN
+
+        AA11 = Zero
+        AA12 = Zero
+        AA22 = Zero
+        AB1  = Zero
+        AB2  = Zero
+
+        DO iP = 1, 4
+
+          A1 = F(iP,1) - Fm(iP)
+          A2 = F(iP,2) - Fm(iP)
+          B  = - Fm(iP)
+
+          AA11 = AA11 + A1 * A1
+          AA12 = AA12 + A1 * A2
+          AA22 = AA22 + A2 * A2
+
+          AB1  = AB1  + A1 * B
+          AB2  = AB2  + A2 * B
+
+        END DO
+
+        DET_AA = AA11*AA22 - AA12*AA12
+
+        Alpha(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+        Alpha(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+        Alpha(3) = One - Alpha(1) - Alpha(2)
+
+      ELSE IF ( Mk > 3 ) THEN
+
+        ! --- Not Implemented ---
+
+      END IF
+
+    END IF
+
+  END SUBROUTINE Alpha_LS_Scalar
+
+
   SUBROUTINE Alpha_LS_Vector &
     ( MASK, nZ, M, Mk, Fm, F, Alpha )
 
@@ -958,6 +1036,146 @@ CONTAINS
 !    END IF
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Scalar
+
+
+  SUBROUTINE ComputePrimitive_TwoMoment_Scalar_Richardson &
+    ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), INTENT(in)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  INTENT(out), OPTIONAL :: nIterations_Option
+
+    ! --- Parameters ---
+
+    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+
+    ! --- Local Variables ---
+
+    INTEGER  :: nZ
+    INTEGER  :: iX, iZ
+    INTEGER  :: k, Mk, iM, i, j
+    INTEGER  :: nIterations
+
+    REAL(DP) :: SUM1, k_dd(3,3)
+    REAL(DP) :: vMag, Omega, vI, vK
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+
+    REAL(DP) :: UVEC(4), CVEC(4)
+    REAL(DP) :: GVEC(4,M), GVECm(4)
+    REAL(DP) :: FVEC(4,M), FVECm(4)
+    REAL(DP) :: Alpha(M)
+
+    LOGICAL  :: CONVERGED
+
+    ! --- Initial Guess ---
+
+    CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
+
+    D     = N
+    I_u_1 = Zero
+    I_u_2 = Zero
+    I_u_3 = Zero
+
+    I_d_1 = Gm_dd_11 * I_u_1
+    I_d_2 = Gm_dd_22 * I_u_2
+    I_d_3 = Gm_dd_33 * I_u_3
+
+    k = 0
+    CONVERGED = .FALSE.
+    DO WHILE( .NOT. CONVERGED .AND. k < MaxIterations )
+
+      k = k + 1
+      Mk = MIN( M, k )
+
+      UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
+
+      k_dd = EddingtonTensorComponents_dd &
+               ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+      vMag = SQRT(   V_u_1 * Gm_dd_11 * V_u_1 &
+                   + V_u_2 * Gm_dd_22 * V_u_2 &
+                   + V_u_3 * Gm_dd_33 * V_u_3 )
+
+      Omega = One / ( One + vMag )
+
+      vI =   V_u_1 * UVEC(2) &
+           + V_u_2 * UVEC(3) &
+           + V_u_3 * UVEC(4)
+
+      GVECm(1) = (One - Omega) *   UVEC(iPR_D) &
+                      + Omega  * ( CVEC(iCR_N) - vI )
+
+      DO j = 1, 3
+
+        vK =   V_u_1 * k_dd(j,1) &
+             + V_u_2 * k_dd(j,2) &
+             + V_u_3 * k_dd(j,3)
+
+        GVECm(j+1) = (One - Omega) *   UVEC(j+1) &
+                          + Omega  * ( CVEC(j+1) - vK * UVEC(iPR_D) )
+
+      END DO
+
+      DO i = 1, 4
+
+        FVECm(i) = GVECm(i) - UVEC(i)
+
+        GVEC(i,Mk) = GVECm(i)
+        FVEC(i,Mk) = FVECm(i)
+
+      END DO
+
+
+      IF ( Mk > 1 ) THEN
+
+        CALL Alpha_LS_Scalar( M, Mk, FVECm, FVEC, Alpha )
+
+        DO i = 1, 4
+          SUM1 = Zero
+          DO iM = 1, Mk
+            SUM1 = SUM1 + GVEC(i,iM) * Alpha(iM)
+          END DO
+          GVECm(i) = SUM1
+          FVECm(i) = GVECm(i) - UVEC(i)
+        END DO
+
+      END IF
+
+      D     = GVECm(1)
+      I_d_1 = GVECm(2); I_u_1 = I_d_1 / Gm_dd_11
+      I_d_2 = GVECm(3); I_u_2 = I_d_2 / Gm_dd_22
+      I_d_3 = GVECm(4); I_u_3 = I_d_3 / Gm_dd_33
+
+      CONVERGED = SQRT( SUM( FVECm**2 ) ) <= &
+                             Rtol * SQRT( SUM( CVEC**2 ) )
+
+      IF ( Mk == M .AND. .NOT. CONVERGED ) THEN
+
+        FVEC = ShiftVec( M, mk, FVEC )
+        GVEC = ShiftVec( M, mk, GVEC )
+
+      END IF
+
+    END DO
+
+    IF( PRESENT( nIterations_Option ) ) THEN
+
+      nIterations_Option = k
+
+    END IF
+
+  END SUBROUTINE ComputePrimitive_TwoMoment_Scalar_Richardson
 
 
   FUNCTION Alpha_LS( M, mk, FVEC )

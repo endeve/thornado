@@ -323,7 +323,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
       !$ACC PRESENT( T0_R, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -389,7 +389,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
       !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+      !$OMP PARALLEL DO COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -515,7 +515,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
         !$ACC PRESENT( T1_R, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(7)
+        !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -591,7 +591,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
         !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(7)
+        !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -723,7 +723,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( A, B, C, iX_B, iX_E )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iFF = 1, nCF
     DO iX3 = iX_B(3), iX_E(3)
@@ -787,7 +787,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( A, B, C, iZ_B, iZ_E )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
     DO iRF = 1, nCR

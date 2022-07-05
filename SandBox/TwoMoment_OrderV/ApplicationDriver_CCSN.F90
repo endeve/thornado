@@ -35,6 +35,8 @@ PROGRAM ApplicationDriver_CCSN
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    InitializeNeutrinoMatterSolverParameters
   USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
     SolveGravity_Newtonian_Poseidon
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
@@ -57,6 +59,7 @@ PROGRAM ApplicationDriver_CCSN
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
+  CHARACTER(64) :: OpacityTableName_Brem
   CHARACTER(64) :: ProgenitorFileName
   LOGICAL       :: wrt
   LOGICAL       :: EvolveEuler
@@ -67,15 +70,23 @@ PROGRAM ApplicationDriver_CCSN
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: UseEnergyLimiter_TwoMoment
   LOGICAL       :: RampTimeStep
+  LOGICAL       :: Include_NES
+  LOGICAL       :: Include_Pair
+  LOGICAL       :: Include_Brem
+  LOGICAL       :: Include_LinCorr
   INTEGER       :: RestartFileNumber
   INTEGER       :: nNodes, nSpecies
   INTEGER       :: nX(3), bcX(3), nE, bcE
   INTEGER       :: iCycle, iCycleD, nEquidistantX
+  INTEGER       :: M_outer, MaxIter_outer
+  INTEGER       :: M_inner, MaxIter_inner
   REAL(DP)      :: xL(3), xR(3), eL, eR
   REAL(DP)      :: dEquidistantX, zoomE, CFL, RampFactor
   REAL(DP)      :: t, t_wrt, t_end, dt, dt_wrt
   REAL(DP)      :: dt_Fluid, dt_Neutrinos
   REAL(DP)      :: dt_Initial, dt_Ramp
+  REAL(DP)      :: Rtol_outer, Rtol_inner
+  REAL(DP)      :: wMatterRHS(5)
 
   ProgramName = 'CCSN'
 
@@ -86,6 +97,7 @@ PROGRAM ApplicationDriver_CCSN
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
+  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
   ProgenitorFileName = 'WH07_15M_Sun.h5'
 
@@ -100,22 +112,21 @@ PROGRAM ApplicationDriver_CCSN
 
   ! --- Position Space Grid Parameters ---
 
-  nX  = [ 400, 1, 1 ]
+  nX  = [ 512, 1, 1 ]
   xL  = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ]
   xR  = [ 8.0d3 * Kilometer, Pi   , TwoPi ]
   bcX = [ 30, 0, 0 ]
 
   nEquidistantX = 100
-  dEquidistantX = 0.5d0 * Kilometer
+  dEquidistantX = 0.75d0 * Kilometer
 
   ! --- Energy Space Grid Parameters ---
 
-  nE  = 16
-  eL  = 0.0d0 * MeV
-  eR  = 3.0d2 * MeV
-  bcE = 10
-
-  zoomE = 1.25_DP
+  nE    = 16
+  eL    = 0.0d0 * MeV
+  eR    = 3.0d2 * MeV
+  bcE   = 10
+  zoomE = 1.266038160710160_DP
 
   ! --- Time Step Control ---
 
@@ -140,9 +151,27 @@ PROGRAM ApplicationDriver_CCSN
   EvolveTwoMoment                = .TRUE.
   UseSlopeLimiter_TwoMoment      = .FALSE.
   UsePositivityLimiter_TwoMoment = .TRUE.
-  UseEnergyLimiter_TwoMoment     = .FALSE.
+  UseEnergyLimiter_TwoMoment     = .TRUE.
 
-  TimeSteppingScheme = 'IMEX_PDARS'
+  IF( EvolveEuler .AND. .NOT. EvolveTwoMoment )THEN
+    TimeSteppingScheme = 'SSPRK2'
+  ELSE
+    TimeSteppingScheme = 'IMEX_PDARS'
+  END IF
+
+  ! --- Neutrino-Matter Solvers Parameters ---
+
+  M_outer         = 3
+  MaxIter_outer   = 100
+  Rtol_outer      = 1.0d-8
+  M_inner         = 2
+  MaxIter_inner   = 100
+  Rtol_inner      = 1.0d-8
+  Include_NES     = .TRUE.
+  Include_Pair    = .TRUE.
+  Include_Brem    = .TRUE.
+  Include_LinCorr = .FALSE.
+  wMatterRHS      = [ One, One, One, One, One ]
 
   ! --- Auxiliary Initialization ---
 
@@ -172,6 +201,12 @@ PROGRAM ApplicationDriver_CCSN
     CALL SolveGravity_Newtonian_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF(:,:,:,:,iCF_D) )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( uGF )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( uGF )
+#endif
+    
     ! --- Write Initial Condition ---
 
     CALL ComputeFromConserved_Euler_NonRelativistic &
@@ -201,9 +236,7 @@ PROGRAM ApplicationDriver_CCSN
     ! --- Solve for Gravitational Potential (To Fill Geometry Ghost Cells) ---
 
     CALL SolveGravity_Newtonian_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-             uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF(:,:,:,:,iCF_D) )
 
     CALL ComputeTally &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &
@@ -295,6 +328,12 @@ PROGRAM ApplicationDriver_CCSN
 
     IF( wrt )THEN
 
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE HOST       ( uGF, uCF, uCR )
+#endif
+
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
@@ -316,6 +355,12 @@ PROGRAM ApplicationDriver_CCSN
 
   END DO
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE HOST       ( uGF, uCF, uCR )
+#endif
+  
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
@@ -471,11 +516,13 @@ CONTAINS
            ( OpacityTableName_EmAb_Option &
                = TRIM( OpacityTableName_AbEm ), &
              OpacityTableName_Iso_Option  &
-               = TRIM( OpacityTableName_Iso ), &
+               = TRIM( OpacityTableName_Iso ) , &
              OpacityTableName_NES_Option &
-               = TRIM( OpacityTableName_NES ), &
+               = TRIM( OpacityTableName_NES ) , &
              OpacityTableName_Pair_Option &
                = TRIM( OpacityTableName_Pair ), &
+             OpacityTableName_Brem_Option &
+               = TRIM( OpacityTableName_Brem ), &
              EquationOfStateTableName_Option &
                = TRIM( EosTableName ), &
              Verbose_Option = .TRUE. )
@@ -549,6 +596,34 @@ CONTAINS
                = UsePositivityLimiter_TwoMoment, &
              UseEnergyLimiter_Option &
                = UseEnergyLimiter_TwoMoment, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Set Neutrino-Matter Solver Parameters ---
+
+    CALL InitializeNeutrinoMatterSolverParameters &
+           ( M_outer_Option &
+               = M_outer, &
+             M_inner_Option &
+               = M_inner, &
+             MaxIter_outer_Option &
+               = MaxIter_outer, &
+             MaxIter_inner_Option &
+               = MaxIter_inner, &
+             Rtol_inner_Option &
+               = Rtol_inner, &
+             Rtol_outer_Option &
+               = Rtol_outer, &
+             Include_NES_Option &
+               = Include_NES, &
+             Include_Pair_Option &
+               = Include_Pair, &
+             Include_Brem_Option &
+               = Include_Brem, &
+             Include_LinCorr_Option &
+               = Include_LinCorr, &
+             wMatrRHS_Option &
+               = wMatterRHS, &
              Verbose_Option &
                = .TRUE. )
 

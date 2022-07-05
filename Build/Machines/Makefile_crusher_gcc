@@ -1,11 +1,11 @@
-## Makefile definitions for Crusher with CCE compiler
+## Makefile definitions for Crusher with GCC compiler
 
 C       = CC
 FORTRAN = ftn
 FLINKER = ftn
 
-DEBUG    = -g -G0 -O0 -K trap=fp
-OPTIMIZE = -O2
+DEBUG    = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -finit-real=snan -fbacktrace -fallow-argument-mismatch
+OPTIMIZE = -g -O3
 
 SUFFIX_f90 =
 
@@ -15,14 +15,14 @@ PP    = -D
 ifeq ($(USE_OMP),TRUE)
   OPENMP = -fopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -fopenmp -hvector0 # vector0 needed for now to bypass "invalid bitcast" compiler bug
+  OPENMP = -fopenmp
 endif
 
 ifeq ($(USE_OACC),TRUE)
-  OPENACC = -hacc
+  OPENACC = -fopenacc# --amdgpu-target=gfx90a
 endif
 
-INCLUDE_CUDA     = -I$(CUDA_ROOT)/include
+INCLUDE_CUDA     =
 INCLUDE_HDF5     =
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    = -I$(OLCF_MAGMA_ROOT)/include
@@ -30,7 +30,7 @@ INCLUDE_PETSC    =
 INCLUDE_POSEIDON =
 INCLUDE_ROCM     = -I$(ROCM_PATH)/include -I$(OLCF_HIPFORT_ROOT)/include/hipfort/amdgcn
 
-LIBRARIES_CUDA     = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda -L$(CUDA_ROOT)/compat -lcuda
+LIBRARIES_CUDA     =
 LIBRARIES_HDF5     = -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   =
 LIBRARIES_MAGMA    = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
