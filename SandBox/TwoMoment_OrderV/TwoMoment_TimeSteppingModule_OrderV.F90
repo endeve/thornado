@@ -292,7 +292,8 @@ CONTAINS
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
             CALL ApplyPositivityLimiter_TwoMoment &
-                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
+                     uDR_Option = uDR )
 
             dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -324,7 +325,8 @@ CONTAINS
         IF( EvolveTwoMoment )THEN
 
           CALL ApplyPositivityLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
+                   uDR_Option = uDR )
 
           dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
