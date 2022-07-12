@@ -37,6 +37,8 @@ PROGRAM ApplicationDriver_Neutrinos
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    InitializeNeutrinoMatterSolverParameters
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK
   USE InitializationModule_Neutrinos, ONLY: &
@@ -63,15 +65,23 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UsePositivityLimiter_Euler
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: UseEnergyLimiter_TwoMoment
-  LOGICAL       :: FixedTimeStep
+  LOGICAL       :: PrescribedTimeStep
+  LOGICAL       :: Include_NES
+  LOGICAL       :: Include_Pair
+  LOGICAL       :: Include_Brem
+  LOGICAL       :: Include_LinCorr
   INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
+  INTEGER       :: M_outer, MaxIter_outer
+  INTEGER       :: M_inner, MaxIter_inner
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, dt, dt_CFL, dt_FXD, t_end
+  REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
+  REAL(DP)      :: Rtol_outer, Rtol_inner
+  REAL(DP)      :: wMatterRHS(5)
 
   ProgramName = 'Relaxation'
 
@@ -84,9 +94,21 @@ PROGRAM ApplicationDriver_Neutrinos
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
   OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
 
-  FixedTimeStep = .FALSE.
+  PrescribedTimeStep = .FALSE.
 
   RestartFileNumber = - 1
+
+  M_outer         = 3
+  MaxIter_outer   = 100
+  Rtol_outer      = 1.0d-8
+  M_inner         = 2
+  MaxIter_inner   = 100
+  Rtol_inner      = 1.0d-8
+  Include_NES     = .TRUE.
+  Include_Pair    = .TRUE.
+  Include_Brem    = .TRUE.
+  Include_LinCorr = .FALSE.
+  wMatterRHS      = [ One, One, One, One, One ]
 
   SELECT CASE( TRIM( ProgramName ) )
 
@@ -108,19 +130,21 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'BackwardEuler'
 
-      t_end = 1.0d1 * Millisecond
+      t_end = 1.0d2 * Millisecond
 
-      FixedTimeStep = .TRUE.
-      dt_FXD        = 1.0d-3 * Millisecond
-      iCycleD       = 1
-      iCycleW       = 100
-      maxCycles     = 100000
+      PrescribedTimeStep = .TRUE.
+      dt_0               = 1.0d-4 * Millisecond
+      dt_MAX             = 1.0d+1 * Millisecond
+      dt_RATE            = 1.04_DP
+      iCycleD            = 1
+      iCycleW            = 1
+      maxCycles          = 100000
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
       UseSlopeLimiter_TwoMoment      = .FALSE.
       UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .TRUE.
+      UsePositivityLimiter_TwoMoment = .FALSE.
       UseEnergyLimiter_TwoMoment     = .FALSE.
 
     CASE( 'DeleptonizationWave1D' )
@@ -158,6 +182,8 @@ PROGRAM ApplicationDriver_Neutrinos
       UseEnergyLimiter_TwoMoment     = .TRUE.
 
       ProfileName = 'input_thornado_VX_100ms.dat'
+
+      wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
 
     CASE( 'EquilibriumAdvection' )
 
@@ -255,9 +281,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
     iCycle = iCycle + 1
 
-    IF( FixedTimeStep )THEN
+    IF( PrescribedTimeStep )THEN
 
-      dt = dt_FXD
+      dt = MIN( ( dt_RATE )**( iCycle - 1 ) * dt_0, dt_MAX )
 
     ELSE
 
@@ -554,6 +580,34 @@ CONTAINS
                = UsePositivityLimiter_TwoMoment, &
              UseEnergyLimiter_Option &
                = UseEnergyLimiter_TwoMoment, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Set Neutrino-Matter Solver Parameters ---
+
+    CALL InitializeNeutrinoMatterSolverParameters &
+           ( M_outer_Option &
+               = M_outer, &
+             M_inner_Option &
+               = M_inner, &
+             MaxIter_outer_Option &
+               = MaxIter_outer, &
+             MaxIter_inner_Option &
+               = MaxIter_inner, &
+             Rtol_inner_Option &
+               = Rtol_inner, &
+             Rtol_outer_Option &
+               = Rtol_outer, &
+             Include_NES_Option &
+               = Include_NES, &
+             Include_Pair_Option &
+               = Include_Pair, &
+             Include_Brem_Option &
+               = Include_Brem, &
+             Include_LinCorr_Option &
+               = Include_LinCorr, &
+             wMatrRHS_Option &
+               = wMatterRHS, &
              Verbose_Option &
                = .TRUE. )
 

@@ -205,7 +205,7 @@ elif [[ $THORNADO_MACHINE == summit_xl ]]; then
 
   module load xl
   module load spectrum-mpi
-  module load hdf5/1.10.3
+  module load hdf5/1.10.7
   module load netlib-lapack/3.8.0
   module load essl
 

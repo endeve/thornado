@@ -92,10 +92,10 @@ CONTAINS
 
     REAL(DP) :: BaryonMass
 
+#ifdef GRAVITY_SOLVER_POSEIDON_NEWTON
+
     CALL ComputeTotalBaryonMass &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, D, BaryonMass )
-
-#ifdef GRAVITY_SOLVER_POSEIDON_NEWTON
 
     CALL Poseidon_Newtonian_Source_Input      &
            ( Left_Limit   = - 0.5_DP,         &
@@ -125,10 +125,10 @@ CONTAINS
              Output_R_Quad = MeshX(1) % Nodes, &
              Potential = G(:,1:nX(1),1:nX(2),1:nX(3),iGF_Phi_N) )
 
-#endif
-
     CALL SetBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
+
+#endif
 
   END SUBROUTINE SolveGravity_Newtonian_Poseidon
 

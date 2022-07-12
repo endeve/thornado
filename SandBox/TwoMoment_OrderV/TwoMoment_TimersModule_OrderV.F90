@@ -10,6 +10,8 @@ MODULE TwoMoment_TimersModule_OrderV
 
   REAL(DP), PUBLIC :: Timer_Total
   REAL(DP), PUBLIC :: Timer_IMEX
+  REAL(DP), PUBLIC :: Timer_Euler
+  REAL(DP), PUBLIC :: Timer_Poisson
   REAL(DP), PUBLIC :: Timer_Streaming
   REAL(DP), PUBLIC :: Timer_Streaming_LinearAlgebra
   REAL(DP), PUBLIC :: Timer_Streaming_Divergence
@@ -70,6 +72,9 @@ CONTAINS
 
     Timer_Total                          = Zero
     Timer_IMEX                           = Zero
+
+    Timer_Euler                          = Zero
+    Timer_Poisson                        = Zero
 
     Timer_Streaming                      = Zero
     Timer_Streaming_LinearAlgebra        = Zero
@@ -140,6 +145,10 @@ CONTAINS
       'Timer_Total                              :', Timer_Total                         , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_IMEX                             :', Timer_IMEX                          , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Euler                            :', Timer_Euler                         , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Poisson                          :', Timer_Poisson                       , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Streaming                        :', Timer_Streaming                     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &

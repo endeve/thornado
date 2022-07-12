@@ -2660,200 +2660,577 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNX
-    REAL(DP) :: dX1, dX2
-    REAL(DP) :: P_K(nDOFX)
-    REAL(DP) :: dh2dX1(nDOFX), dh3dX1(nDOFX), dh3dX2(nDOFX)
-    REAL(DP) :: Stress(nDOFX,3)
-    REAL(DP) :: uCF_K(nDOFX,nCF)
-    REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: G_K(nDOFX,nGF)
-    REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF)
-    REAL(DP) :: G_P_X2(nDOFX,nGF), G_N_X2(nDOFX,nGF)
-    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
-    REAL(DP) :: G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF)
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3
+    REAL(DP) :: Pressure, Pi_du_22, Pi_du_33
+    REAL(DP) :: P(nPF)
+    REAL(DP) :: &
+      dh_d_2_dX1 &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
+    REAL(DP) :: &
+      dh_d_3_dX1 &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
+    REAL(DP) :: &
+      dh_d_3_dX2 &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
 
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0, iX_E0 ) &
+    !$ACC CREATE( dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2, P )
+#endif
+
+    CALL ComputeDerivatives_Geometry_NonRelativistic_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dh_d_2_dX1, dh_d_3_dX1 )
+
+    CALL ComputeDerivatives_Geometry_NonRelativistic_X2 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dh_d_3_dX2 )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( P, Pressure, Pi_du_22, Pi_du_33 ) &
+    !$ACC PRESENT( iX_B0, iX_E0, G, U, dU, &
+    !$ACC          dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( P, Pressure, Pi_du_22, Pi_du_33 )
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      dX2 = MeshX(2) % Width(iX2)
-      dX1 = MeshX(1) % Width(iX1)
+      DO iNodeX = 1, nDOFX
 
-!      print*,"iX1, iX2, iX3 = ", iX1, iX2, iX3
+        CALL ComputePrimitive_Euler &
+               ( U(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 P(iPF_D ), P(iPF_V1), P(iPF_V2), &
+                 P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      DO iCF = 1, nCF
+        CALL ComputePressureFromPrimitive &
+               ( P(iPF_D), P(iPF_E), P(iPF_Ne), Pressure )
 
-        uCF_K(:,iCF) = U(:,iX1,iX2,iX3,iCF)
+        Pi_du_22 = U(iNodeX,iX1,iX2,iX3,iCF_S1) * P(iPF_V2) + Pressure
+        Pi_du_33 = U(iNodeX,iX1,iX2,iX3,iCF_S3) * P(iPF_V3) + Pressure
 
-      END DO
+        dU(iNodeX,iX1,iX2,iX3,iCF_S1) &
+          = dU(iNodeX,iX1,iX2,iX3,iCF_S1) &
+              + Pi_du_22 * dh_d_2_dX1(iNodeX,iX1,iX2,iX3) &
+                  / G(iNodeX,iX1,iX2,iX3,iGF_h_2)  &
+              + Pi_du_33 * dh_d_3_dX1(iNodeX,iX1,iX2,iX3) &
+                  / G(iNodeX,iX1,iX2,iX3,iGF_h_3)
 
-      DO iGF = 1, nGF
-
-        G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
-        G_P_X1(:,iGF) = G(:,iX1-1,iX2,iX3,iGF)
-        G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
-
-      END DO
-
-      IF( nDimsX .GT. 1 )THEN
-
-        DO iGF = 1, nGF
-
-          G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
-          G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
-
-        END DO
-
-      END IF
-
-      CALL ComputePrimitive_Euler &
-             ( uCF_K(:,iCF_D ), &
-               uCF_K(:,iCF_S1), &
-               uCF_K(:,iCF_S2), &
-               uCF_K(:,iCF_S3), &
-               uCF_K(:,iCF_E ), &
-               uCF_K(:,iCF_Ne), &
-               uPF_K(:,iPF_D ), &
-               uPF_K(:,iPF_V1), &
-               uPF_K(:,iPF_V2), &
-               uPF_K(:,iPF_V3), &
-               uPF_K(:,iPF_E ), &
-               uPF_K(:,iPF_Ne), &
-               G_K(:,iGF_Gm_dd_11), &
-               G_K(:,iGF_Gm_dd_22), &
-               G_K(:,iGF_Gm_dd_33) )
-
-      CALL ComputePressureFromPrimitive &
-             ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
-
-      DO iNX = 1, nDOFX
-
-        Stress(iNX,1:3) &
-          = StressTensor_Diagonal_Euler &
-              ( uCF_K(iNX,iCF_S1), &
-                uCF_K(iNX,iCF_S2), &
-                uCF_K(iNX,iCF_S3), &
-                uPF_K(iNX,iPF_V1), &
-                uPF_K(iNX,iPF_V2), &
-                uPF_K(iNX,iPF_V3), &
-                P_K  (iNX) )
+        dU(iNodeX,iX1,iX2,iX3,iCF_S2) &
+          = dU(iNodeX,iX1,iX2,iX3,iCF_S2) &
+              + Pi_du_33 * dh_d_3_dX2(iNodeX,iX1,iX2,iX3) &
+                  / G(iNodeX,iX1,iX2,iX3,iGF_h_3)
 
       END DO
-
-      ! --- Scale Factor Derivatives wrt X1 ---
-
-      ! --- Face States (Average of Left and Right States) ---
-
-      DO iGF = iGF_h_2, iGF_h_3
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-                 G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-                 G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
-
-        G_X1_Dn(1:nDOFX_X1,iGF) &
-          = MAX( G_X1_Dn(1:nDOFX_X1,iGF), SqrtTiny )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-                 G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-                 G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
-
-        G_X1_Up(1:nDOFX_X1,iGF) &
-          = MAX( G_X1_Up(1:nDOFX_X1,iGF), SqrtTiny )
-
-      END DO
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Dn(:,iGF_h_2), 1,  One, dh2dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_2), 1,  One, dh2dX1, 1 )
-
-      dh2dx1 = dh2dx1 / ( WeightsX_q(:) * dX1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Dn(:,iGF_h_3), 1,  One, dh3dX1, 1 )
-
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX1, 1 )
-
-      dh3dx1 = dh3dx1 / ( WeightsX_q(:) * dX1 )
-
-      dU(:,iX1,iX2,iX3,iCF_S1) &
-        = dU(:,iX1,iX2,iX3,iCF_S1) &
-            + ( Stress(:,2) * dh2dX1(:) ) / G_K(:,iGF_h_2)  &
-            + ( Stress(:,3) * dh3dX1(:) ) / G_K(:,iGF_h_3)
-
-      IF( nDimsX .GT. 1 )THEN
-
-        ! --- Scale Factor Derivatives wrt X2 ---
-
-        ! --- Face States (Average of Left and Right States) ---
-
-        DO iGF = iGF_h_3, iGF_h_3
-
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                   G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
-
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                   G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
-
-          G_X2_Dn(1:nDOFX_X2,iGF) &
-            = MAX( G_X2_Dn(1:nDOFX_X2,iGF), SqrtTiny )
-
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                   G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
-
-          CALL DGEMV &
-                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                   G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
-
-          G_X2_Up(1:nDOFX_X2,iGF) &
-            = MAX( G_X2_Up(1:nDOFX_X2,iGF), SqrtTiny )
-
-        END DO
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                  WeightsX_X2(:) * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                  WeightsX_X2(:) * G_X2_Dn(:,iGF_h_3), 1,  One, dh3dX2, 1 )
-
-        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX2, 1 )
-
-        dh3dx2 = dh3dx2 / ( WeightsX_q(:) * dX2 )
-
-        dU(:,iX1,iX2,iX3,iCF_S2) &
-          = dU(:,iX1,iX2,iX3,iCF_S2) &
-              + ( Stress(:,3) * dh3dX2(:) ) / G_K(:,iGF_h_3)
-
-      END IF
 
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE ( iX_B0, iX_E0, &
+    !$ACC          dh_d_2_dX1, dh_d_3_dX1, dh_d_3_dX2, P )
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry_NonRelativistic
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_NonRelativistic_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dh_d_2_dX1, dh_d_3_dX1 )
+
+    INTEGER, INTENT(in)   :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(out) :: &
+      dh_d_2_dX1(:,iX_B0(1):,iX_B0(2):,iX_B0(3):), &
+      dh_d_3_dX1(:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: nX_K, nX_F
+    REAL(DP) :: &
+      h_2_K(1:nDOFX, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      h_3_K(1:nDOFX, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      h_2_F(nDOFX_X1, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      h_3_F(nDOFX_X1, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      h_2_q(1:nDOFX, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      h_3_q(1:nDOFX, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dh_2_dX1(nDOFX, &
+               iX_B0(2):iX_E0(2), &
+               iX_B0(3):iX_E0(3), &
+               iX_B0(1):iX_E0(1))
+    REAL(DP) :: &
+      dh_3_dX1(nDOFX, &
+               iX_B0(2):iX_E0(2), &
+               iX_B0(3):iX_E0(3), &
+               iX_B0(1):iX_E0(1))
+
+    IF( iX_E0(1) .EQ. iX_B0(1) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+      
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dh_d_2_dX1, dh_d_3_dX1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iNodeX = 1, nDOFX
+
+          dh_d_2_dX1(iNodeX,iX1,iX2,iX3) = Zero
+          dh_d_3_dX1(iNodeX,iX1,iX2,iX3) = Zero
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX_K = PRODUCT( (iX_E0 - iX_B0 + 1) )
+    nX_F = PRODUCT( (iX_E0 - iX_B0 + 1) + [1,0,0] )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX1, iX_B0, iX_E0 ) &
+    !$ACC CREATE( h_2_K, h_2_F, h_2_q, dh_2_dX1, &
+    !$ACC         h_3_K, h_3_F, h_3_q, dh_3_dX1 )
+#endif
+
+    ! --- Permute Geometry Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, h_2_K, h_3_K, G )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1)-1, iX_E0(1)+1
+    DO iX3 = iX_B0(3)  , iX_E0(3)
+    DO iX2 = iX_B0(2)  , iX_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        h_2_K(iNodeX,iX2,iX3,iX1) = G(iNodeX,iX1,iX2,iX3,iGF_h_2)
+        h_3_K(iNodeX,iX2,iX3,iX1) = G(iNodeX,iX1,iX2,iX3,iGF_h_3)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --------------------
+    ! --- Surface Term ---
+    ! --------------------
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX_F, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             h_2_K(1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             h_2_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX_F, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             h_2_K(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+             h_2_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX_F, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             h_3_K(1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             h_3_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX_F, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             h_3_K(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+             h_3_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_2_F, h_3_F, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX_X1
+
+        h_2_F(iNodeX,iX2,iX3,iX1) &
+          = h_2_F(iNodeX,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+        h_3_F(iNodeX,iX2,iX3,iX1) &
+          = h_3_F(iNodeX,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             h_2_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dh_2_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             h_2_F(1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One , &
+             dh_2_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             h_3_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dh_3_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             h_3_F(1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One , &
+             dh_3_dX1, nDOFX )
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_2_K, h_2_q, h_3_K, h_3_q, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        h_2_q(iNodeX,iX2,iX3,iX1) &
+          = h_2_K(iNodeX,iX2,iX3,iX1) * WeightsX_q(iNodeX)
+        h_3_q(iNodeX,iX2,iX3,iX1) &
+          = h_3_K(iNodeX,iX2,iX3,iX1) * WeightsX_q(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX1_q, nDOFX, &
+             h_2_q, nDOFX, One, dh_2_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX1_q, nDOFX, &
+             h_3_q, nDOFX, One, dh_3_dX1, nDOFX )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dh_d_2_dX1, dh_2_dX1, dX1, WeightsX_q, &
+    !$ACC          dh_d_3_dX1, dh_3_dX1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        dh_d_2_dX1(iNodeX,iX1,iX2,iX3) &
+          = dh_2_dX1(iNodeX,iX2,iX3,iX1) / ( WeightsX_q(iNodeX) * dX1(iX1) )
+        dh_d_3_dX1(iNodeX,iX1,iX2,iX3) &
+          = dh_3_dX1(iNodeX,iX2,iX3,iX1) / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX1, iX_B0, iX_E0, &
+    !$ACC         h_2_K, h_2_F, h_2_q, dh_2_dX1, &
+    !$ACC         h_3_K, h_3_F, h_3_q, dh_3_dX1 )
+#endif
+
+    END ASSOCIATE ! dX1
+
+  END SUBROUTINE ComputeDerivatives_Geometry_NonRelativistic_X1
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_NonRelativistic_X2 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dh_d_3_dX2 )
+
+    INTEGER, INTENT(in)   :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(out) :: &
+      dh_d_3_dX2(:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: nX_K, nX_F
+    REAL(DP) :: &
+      h_3_K(1:nDOFX, &
+            iX_B0(1)  :iX_E0(1), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(2)-1:iX_E0(2)+1)
+    REAL(DP) :: &
+      h_3_F(nDOFX_X2, &
+            iX_B0(1)  :iX_E0(1), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: &
+      h_3_q(1:nDOFX, &
+            iX_B0(1)  :iX_E0(1), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(2)  :iX_E0(2)  )
+    REAL(DP) :: &
+      dh_3_dX2(nDOFX, &
+               iX_B0(1):iX_E0(1), &
+               iX_B0(3):iX_E0(3), &
+               iX_B0(2):iX_E0(2))
+
+    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dh_d_3_dX2 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iNodeX = 1, nDOFX
+
+          dh_d_3_dX2(iNodeX,iX1,iX2,iX3) = Zero
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX_K = PRODUCT( (iX_E0 - iX_B0 + 1) )
+    nX_F = PRODUCT( (iX_E0 - iX_B0 + 1) + [0,1,0] )
+
+    ASSOCIATE( dX2 => MeshX(2) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX2, iX_B0, iX_E0 ) &
+    !$ACC CREATE( h_3_K, h_3_F, h_3_q, dh_3_dX2 )
+#endif
+
+    ! --- Permute Geometry Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, h_3_K, G )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX2 = iX_B0(2)-1, iX_E0(2)+1
+    DO iX3 = iX_B0(3)  , iX_E0(3)
+    DO iX1 = iX_B0(1)  , iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        h_3_K(iNodeX,iX1,iX3,iX2) = G(iNodeX,iX1,iX2,iX3,iGF_h_3)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --------------------
+    ! --- Surface Term ---
+    ! --------------------
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX_F, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             h_3_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+             h_3_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX_F, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             h_3_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
+             h_3_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_3_F, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX_X2
+
+        h_3_F(iNodeX,iX1,iX3,iX2) &
+          = h_3_F(iNodeX,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
+             h_3_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, Zero, &
+             dh_3_dX2, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
+             h_3_F(1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One , &
+             dh_3_dX2, nDOFX )
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h_3_K, h_3_q, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        h_3_q(iNodeX,iX1,iX3,iX2) &
+          = h_3_K(iNodeX,iX1,iX3,iX2) * WeightsX_q(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX2_q, nDOFX, &
+             h_3_q, nDOFX, One, dh_3_dX2, nDOFX )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dh_d_3_dX2, dh_3_dX2, dX2, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        dh_d_3_dX2(iNodeX,iX1,iX2,iX3) &
+          = dh_3_dX2(iNodeX,iX1,iX3,iX2) / ( WeightsX_q(iNodeX) * dX2(iX2) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX2, iX_B0, iX_E0, &
+    !$ACC         h_3_K, h_3_F, h_3_q, dh_3_dX2 )
+#endif
+  
+    END ASSOCIATE ! dX2
+
+  END SUBROUTINE ComputeDerivatives_Geometry_NonRelativistic_X2
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
@@ -3971,82 +4348,266 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: Phi_P_X1(nDOFX)
-    REAL(DP) :: Phi_K   (nDOFX)
-    REAL(DP) :: Phi_N_X1(nDOFX)
-    REAL(DP) :: dPhidX1(nDOFX)
-    REAL(DP) :: Phi_X1_Dn(nDOFX_X1)
-    REAL(DP) :: Phi_X1_Up(nDOFX_X1)
-    REAL(DP) :: uCF_K(nDOFX,nCF)
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3
+    REAL(DP) :: &
+      dPhi_dX1 &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
 
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0, iX_E0 ) &
+    !$ACC CREATE( dPhi_dX1 )
+#endif
+
+    CALL ComputeDerivatives_Gravity_NonRelativistic_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dPhi_dX1 )
+
+#if   defined( THORNADO_OMP_OL )
+
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, U, dU, dPhi_dX1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
+      DO iNodeX = 1, nDOFX
 
-      DO iCF = 1, nCF
+        dU(iNodeX,iX1,iX2,iX3,iCF_S1) &
+          = dU(iNodeX,iX1,iX2,iX3,iCF_S1) &
+              - U(iNodeX,iX1,iX2,iX3,iCF_D ) * dPhi_dX1(iNodeX,iX1,iX2,iX3)
 
-        uCF_K(:,iCF) = U(:,iX1,iX2,iX3,iCF)
+        dU(iNodeX,iX1,iX2,iX3,iCF_E ) &
+          = dU(iNodeX,iX1,iX2,iX3,iCF_E ) &
+              - U(iNodeX,iX1,iX2,iX3,iCF_S1) * dPhi_dX1(iNodeX,iX1,iX2,iX3)
 
       END DO
 
-      Phi_P_X1(:) = G(:,iX1-1,iX2,iX3,iGF_Phi_N)
-      Phi_K   (:) = G(:,iX1,  iX2,iX3,iGF_Phi_N)
-      Phi_N_X1(:) = G(:,iX1+1,iX2,iX3,iGF_Phi_N)
-
-      ! --- Derivative of Potential wrt X1 ---
-
-      ! --- Face States (Average of Left and Right States) ---
-
-      ! --- Face at X1_L ---
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               Phi_P_X1(:), 1, Zero, Phi_X1_Dn(:), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               Phi_K   (:), 1, Half, Phi_X1_Dn(:), 1 )
-
-      ! --- Face at X1_H ---
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               Phi_K   (:), 1, Zero, Phi_X1_Up(:), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               Phi_N_X1(:), 1, Half, Phi_X1_Up(:), 1 )
-
-      ! --- dPhidX1 ---
-
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * Phi_X1_Up(:), 1, Zero, dPhidX1, 1 )
-      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * Phi_X1_Dn(:), 1,  One, dPhidX1, 1 )
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * Phi_K    (:), 1,  One, dPhidX1, 1 )
-
-      dPhidX1 = dPhidX1 / ( WeightsX_q(:) * dX1 )
-
-      ! --- Increments ---
-
-      dU(:,iX1,iX2,iX3,iCF_S1) &
-        = dU(:,iX1,iX2,iX3,iCF_S1) &
-            - uCF_K(:,iCF_D) * dPhidX1(:)
-
-      dU(:,iX1,iX2,iX3,iCF_E) &
-        = dU(:,iX1,iX2,iX3,iCF_E) &
-            - uCF_K(:,iCF_S1) * dPhidX1(:)
-
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( iX_B0, iX_E0, dPhi_dX1 )
+#endif
 
   END SUBROUTINE ComputeIncrement_Gravity_NonRelativistic
+
+
+  SUBROUTINE ComputeDerivatives_Gravity_NonRelativistic_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dPhi_dX1 )
+
+    INTEGER, INTENT(in)   :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(out) :: &
+      dPhi_dX1(:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: nX_K, nX_F
+    REAL(DP) :: &
+      Phi_K(1:nDOFX, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      Phi_F(nDOFX_X1, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      Phi_q(1:nDOFX, &
+            iX_B0(2)  :iX_E0(2), &
+            iX_B0(3)  :iX_E0(3), &
+            iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dPhidX1(nDOFX, &
+              iX_B0(2):iX_E0(2), &
+              iX_B0(3):iX_E0(3), &
+              iX_B0(1):iX_E0(1))
+
+    IF( iX_E0(1) .EQ. iX_B0(1) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dPhi_dX1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iNodeX = 1, nDOFX
+
+          dPhi_dX1(iNodeX,iX1,iX2,iX3) = Zero
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX_K = PRODUCT( (iX_E0 - iX_B0 + 1) )
+    nX_F = PRODUCT( (iX_E0 - iX_B0 + 1) + [1,0,0] )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX1, iX_B0, iX_E0 ) &
+    !$ACC CREATE( Phi_K, Phi_F, Phi_q, dPhidX1 )
+#endif
+
+    ! --- Permute Newtonian Gravitational Potential ---
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, Phi_K, G )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1)-1, iX_E0(1)+1
+    DO iX3 = iX_B0(3)  , iX_E0(3)
+    DO iX2 = iX_B0(2)  , iX_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        Phi_K(iNodeX,iX2,iX3,iX1) = G(iNodeX,iX1,iX2,iX3,iGF_Phi_N)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --------------------
+    ! --- Surface Term ---
+    ! --------------------
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX_F, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             Phi_K(1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             Phi_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX_F, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             Phi_K(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+             Phi_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( Phi_F, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX_X1
+
+        Phi_F(iNodeX,iX2,iX3,iX1) &
+          = Phi_F(iNodeX,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             Phi_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dPhidX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             Phi_F(1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One , &
+             dPhidX1, nDOFX )
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( Phi_K, Phi_q, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        Phi_q(iNodeX,iX2,iX3,iX1) &
+          = Phi_K(iNodeX,iX2,iX3,iX1) * WeightsX_q(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, - One, dLXdX1_q, nDOFX, &
+             Phi_q, nDOFX, One, dPhidX1, nDOFX )
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dPhi_dX1, dPhidX1, dX1, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        dPhi_dX1(iNodeX,iX1,iX2,iX3) &
+          = dPhidX1(iNodeX,iX2,iX3,iX1) / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX1, iX_B0, iX_E0, &
+    !$ACC         Phi_K, Phi_F, Phi_q, dPhidX1 )
+#endif
+
+  END ASSOCIATE ! dX1
+
+  END SUBROUTINE ComputeDerivatives_Gravity_NonRelativistic_X1
 
 
   SUBROUTINE ComputeIncrement_Gravity_Relativistic &

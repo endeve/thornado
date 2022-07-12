@@ -3,14 +3,6 @@ Euler_ErrorModule.o: \
   UtilitiesModule.o \
   Euler_ErrorModule.f90
 
-Euler_MeshRefinementModule.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  PolynomialBasisModule_Lagrange.o \
-  GeometryFieldsModule.o \
-  Euler_MeshRefinementModule.F90
-
 Euler_UtilitiesModule_NonRelativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \

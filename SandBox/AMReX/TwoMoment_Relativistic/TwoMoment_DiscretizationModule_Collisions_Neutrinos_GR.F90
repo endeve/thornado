@@ -229,9 +229,6 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
-             Zeros, &
-             Zeros, &
-             Zeros, & 
              GX_N(:,iGF_Alpha), & 
              GX_N(:,iGF_Beta_1),& 
              GX_N(:,iGF_Beta_2),& 

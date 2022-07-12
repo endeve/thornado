@@ -26,12 +26,15 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     OffGridFlux_Euler_X3_Inner, &
     OffGridFlux_Euler_X3_Outer
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies
+    nCR, nSpecies, &
+    uDR
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_IMEX, &
-    Timer_TimeStepper
+    Timer_TimeStepper, &
+    Timer_Euler, &
+    Timer_Poisson
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -72,19 +75,16 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   PUBLIC :: Finalize_IMEX_RK
   PUBLIC :: Update_IMEX_RK
 
-#if   defined( THORNADO_OMP_OL )
-#elif defined( THORNADO_OACC   )
-#endif
-
   INTERFACE
     SUBROUTINE ImplicitIncrement &
-      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
+        uDR_Option )
       USE KindModule           , ONLY: DP
       USE ProgramHeaderModule  , ONLY: nDOFX, nDOFE, nDOFZ
       USE GeometryFieldsModuleE, ONLY: nGE
       USE GeometryFieldsModule , ONLY: nGF
       USE FluidFieldsModule    , ONLY: nCF
-      USE RadiationFieldsModule, ONLY: nCR, nSpecies
+      USE RadiationFieldsModule, ONLY: nCR, nSpecies, nDR
       INTEGER,  INTENT(in)    :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
       REAL(DP), INTENT(in)    :: &
@@ -127,6 +127,12 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
              iZ_B1(4):iZ_E1(4), &
              1:nCR, &
              1:nSpecies)
+      REAL(DP), INTENT(out), OPTIONAL :: &
+        uDR_Option &
+            (iZ_B1(2):iZ_E1(2), &
+             iZ_B1(3):iZ_E1(3), &
+             iZ_B1(4):iZ_E1(4), &
+             1:nDR)
     END SUBROUTINE ImplicitIncrement
   END INTERFACE
 
@@ -262,9 +268,25 @@ CONTAINS
 
             IF( PRESENT( SolveGravity ) )THEN
 
+              CALL TimersStart( Timer_Poisson )
+              
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE FROM( Ui )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE HOST       ( Ui )
+#endif
+
               CALL SolveGravity &
                      ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
 
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE TO( GX )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE DEVICE   ( GX )
+#endif
+              
+              CALL TimersStop( Timer_Poisson )
+              
             END IF
 
           END IF
@@ -275,7 +297,8 @@ CONTAINS
                    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
             CALL ApplyPositivityLimiter_TwoMoment &
-                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
+                     uDR_Option = uDR )
 
             dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -291,7 +314,8 @@ CONTAINS
 
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
-                 Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM )
+                 Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                 uDR_Option = uDR )
 
         CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
@@ -306,7 +330,8 @@ CONTAINS
         IF( EvolveTwoMoment )THEN
 
           CALL ApplyPositivityLimiter_TwoMoment &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
+                   uDR_Option = uDR )
 
           dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -320,6 +345,8 @@ CONTAINS
 
         IF( EvolveEuler )THEN
 
+          CALL TimersStart( Timer_Euler )
+
           CALL ComputeIncrement_Euler_DG_Explicit &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                    Ui, uDF, StageData(iS) % dU_EX )
@@ -331,6 +358,8 @@ CONTAINS
                     - OffGridFlux_Euler_X2_Inner &
                     + OffGridFlux_Euler_X3_Outer &
                     - OffGridFlux_Euler_X3_Inner
+
+          CALL TimersStop( Timer_Euler )
 
         END IF
 
@@ -390,7 +419,8 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
         CALL ApplyPositivityLimiter_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
+                 uDR_Option = uDR )
 
         dM_PL = dM_PL + dEnergyMomentum_PL_TwoMoment
 
@@ -399,10 +429,26 @@ CONTAINS
     END IF
 
     IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
+      
+      CALL TimersStart( Timer_Poisson )
+
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE FROM( Ui )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE HOST       ( Ui )
+#endif
 
       CALL SolveGravity &
              ( iX_B0, iX_E0, iX_B1, iX_E1, GX, Ui(:,:,:,:,iCF_D) )
 
+#if   defined( THORNADO_OMP_OL )
+              !$OMP TARGET UPDATE TO( GX )
+#elif defined( THORNADO_OACC   )
+              !$ACC UPDATE DEVICE   ( GX )
+#endif
+      
+      CALL TimersStop( Timer_Poisson )
+      
     END IF
 
     CALL CopyArray( U, One, Ui )
@@ -440,12 +486,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: U, M ) &
-    !$OMP MAP( release: GE, GX )
+    !$OMP MAP( from: GX, U, M ) &
+    !$OMP MAP( release: GE )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U, M ) &
-    !$ACC DELETE( GE, GX )
+    !$ACC COPYOUT( GX, U, M ) &
+    !$ACC DELETE( GE )
 #endif
 
     CALL TimersStop( Timer_IMEX )
