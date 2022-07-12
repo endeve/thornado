@@ -96,6 +96,10 @@ CONTAINS
 
         CALL InitializeFields_RadiatingSphere
 
+      CASE( 'GaussianDiffusion1D' )
+
+        CALL InitializeFields_GaussianDiffusion1D( V_0 )
+
       CASE( 'GaussianDiffusion' )
 
         CALL InitializeFields_GaussianDiffusion( V_0 )
@@ -1920,6 +1924,119 @@ CONTAINS
 
   END SUBROUTINE SetInnerBoundary_RadiatingSphere
 
+  SUBROUTINE InitializeFields_GaussianDiffusion1D( V_0 )
+
+    REAL(DP), INTENT(in) :: V_0(3)
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNodeZ2, iNodeZ3
+    REAL(DP) :: X1, X2, t_0, D_min, D_0, X1_0, X2_0
+
+    D_min = 1.0d-06
+    t_0   = 5.0_DP
+    X1_0  = One
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+        iNodeZ3 = NodeNumberTableZ(3,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+
+        D_0 = One / ( Three * uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) )
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = EXP( - ( (X1-X1_0)**2 ) / ( 4.0_DP * t_0 * D_0 ) )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = Half * (X1-X1_0) * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) / t_0
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = 0.0_DP
+
+        IF( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) < D_min )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = D_min
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0d-00
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0d-00
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0d-00
+
+        END IF
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_GaussianDiffusion1D
 
   SUBROUTINE InitializeFields_GaussianDiffusion( V_0 )
 
