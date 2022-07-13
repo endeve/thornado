@@ -168,13 +168,13 @@ CONTAINS
     INTEGER       :: iX1, iX2, iX3, iPF
     INTEGER       :: iNodeX, iNodeX1, iNodeX2, iNodeX3
     REAL(DP)      :: X, X1, X2
-    REAL(DP)      :: a0, a1, a2, a3, a4, a5
+    REAL(DP)      :: a0, a1, a2, a3, a4
     REAL(DP)      :: X0, theta
     CHARACTER(32) :: Problem
 
     INTEGER  :: M, M1, M2, M3, nDOFQ
     INTEGER  :: qNodeX, qNodeX1, qNodeX2, qNodeX3
-    REAL(DP) :: etaG(nNodesX(1)), xG(nNodesX(1)), wG(nNodesX(1))
+    REAL(DP) :: etaG(nNodesX(1)), wG(nNodesX(1))
     REAL(DP), ALLOCATABLE :: etaQ_X1(:), wQ_X1(:)
     REAL(DP), ALLOCATABLE :: etaQ_X2(:), wQ_X2(:)
     REAL(DP), ALLOCATABLE :: etaQ_X3(:), wQ_X3(:)
@@ -542,9 +542,6 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1, XD, Vs
-
-    INTEGER  :: nDetCells
-    REAL(DP) :: Eblast
 
     REAL(DP) :: LeftState(nPF), RightState(nPF)
 

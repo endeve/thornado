@@ -212,7 +212,6 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
-    LOGICAL :: DEBUG = .FALSE.
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF
     INTEGER :: iS, jS
