@@ -3,12 +3,19 @@ MODULE RefluxModule_Euler
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
-    amrex_multifab
+    amrex_multifab, &
+    amrex_multifab_build, &
+    amrex_multifab_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
   USE GeometryFieldsModule, ONLY: &
-    nGF
+    nGF, &
+    iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF
   USE MeshModule, ONLY: &
@@ -22,12 +29,11 @@ MODULE RefluxModule_Euler
     CreateMesh_MF, &
     DestroyMesh_MF
   USE AverageDownModule, ONLY: &
-    AverageDownTo
-  USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
+    AverageDown
   USE InputParsingModule, ONLY: &
     nLevels, &
-    do_reflux
+    swX, &
+    DEBUG
 
   IMPLICIT NONE
   PRIVATE
@@ -44,12 +50,10 @@ CONTAINS
 
   SUBROUTINE Reflux_Euler_MF_MultipleLevels( MF_uGF, MF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
 
     INTEGER :: iLevel
-
-    IF( .NOT. do_reflux ) RETURN
 
     DO iLevel = 0, nLevels-1
 
@@ -58,14 +62,27 @@ CONTAINS
 
     END DO
 
+    CALL AverageDown( MF_uGF, MF )
+
   END SUBROUTINE Reflux_Euler_MF_MultipleLevels
 
 
   SUBROUTINE Reflux_Euler_MF_SingleLevel( FineLevel, MF_uGF, MF )
 
     INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
+
+    INTEGER :: iErr
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      WRITE(*,'(4x,A,I3.3)') &
+        'CALL Reflux_Euler_MF_SingleLevel, FineLevel: ', FineLevel
+
+    END IF
 
     CALL CreateMesh_MF( FineLevel-1, MeshX )
 
@@ -80,17 +97,6 @@ CONTAINS
     END ASSOCIATE
 
     CALL DestroyMesh_MF( MeshX )
-
-    CALL MultiplyWithMetric( MF_uGF(FineLevel), MF    (FineLevel), nCF, +1 )
-    CALL MultiplyWithMetric( MF_uGF(FineLevel), MF_uGF(FineLevel), nGF, +1 )
-
-    CALL AverageDownTo( FineLevel-1, MF_uGF )
-    CALL AverageDownTo( FineLevel-1, MF     )
-
-    CALL MultiplyWithMetric( MF_uGF(FineLevel  ), MF_uGF(FineLevel  ), nGF, -1 )
-    CALL MultiplyWithMetric( MF_uGF(FineLevel  ), MF    (FineLevel  ), nCF, -1 )
-    CALL MultiplyWithMetric( MF_uGF(FineLevel-1), MF_uGF(FineLevel-1), nGF, -1 )
-    CALL MultiplyWithMetric( MF_uGF(FineLevel-1), MF    (FineLevel-1), nCF, -1 )
 
   END SUBROUTINE Reflux_Euler_MF_SingleLevel
 

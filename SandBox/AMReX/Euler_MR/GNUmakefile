@@ -12,7 +12,8 @@ HDF5_LIB       = $(HDF5_HOME)/lib
 LAPACK_INC     = $(LAPACK_HOME)/include
 LAPACK_LIB     = $(LAPACK_HOME)/lib
 
-EOS ?= IDEAL
+EOS            ?= IDEAL
+REFINE_MESH    ?= TRUE
 
 DEBUG     = TRUE
 
@@ -28,11 +29,11 @@ DIM       = 1
 
 EBASE     = ApplicationDriver
 
+INCLUDE_LOCATIONS += $(HDF5_INC)
+LIBRARY_LOCATIONS += $(HDF5_LIB)
+LIBRARIES += -lhdf5_fortran -lhdf5
+
 ifeq ($(EOS),TABLE)
-#  USE_HDF5 = TRUE
-  INCLUDE_LOCATIONS += $(HDF5_INC)
-  LIBRARY_LOCATIONS += $(HDF5_LIB)
-  LIBRARIES += -lhdf5_fortran -lhdf5
   include $(THORNADO_HOME)/SandBox/AMReX/Euler_MR/Make.weaklib
 endif
 
@@ -47,6 +48,12 @@ include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 # Include basic AMReX framework
 include $(AMREX_HOME)/Src/Base/Make.package
 
+ifeq ($(REFINE_MESH),TRUE)
+  # Requires amrex fork from github.com:dunhamsj/amrex
+  # Branch: MeshRefinement_DG
+  include $(AMREX_HOME)/Src/DG/Make.package
+endif
+
 # Include directories and source files needed for amrex_parallel_module
 include $(AMREX_HOME)/Src/Boundary/Make.package
 include $(AMREX_HOME)/Src/AmrCore/Make.package
@@ -55,7 +62,6 @@ include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
 include $(THORNADO_HOME)/SandBox/AMReX/Euler_MR/Make.thornado
-include $(AMREX_HOME)/Src/DG/Make.package
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

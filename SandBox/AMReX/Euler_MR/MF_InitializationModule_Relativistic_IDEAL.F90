@@ -72,16 +72,21 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     UseTiling
   USE MF_Euler_ErrorModule, ONLY: &
     DescribeError_Euler_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap, &
+    ApplyBoundaryConditions_Euler_MF
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeFields_Euler_MF
+  PUBLIC :: InitializeFields_Euler_Relativistic_IDEAL_MF
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFields_Euler_MF( iLevel, MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields_Euler_Relativistic_IDEAL_MF &
+    ( iLevel, MF_uGF, MF_uCF )
 
     INTEGER,              INTENT(in) :: iLevel
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
@@ -120,13 +125,15 @@ CONTAINS
       CASE DEFAULT
 
         CALL DescribeError_Euler_MF &
-               ( 01, Message_Option &
-                       = 'Invalid ProgramName: ' // TRIM( ProgramName ) )
+               ( 201, Message_Option &
+                        = 'Invalid ProgramName: ' // TRIM( ProgramName ) )
 
     END SELECT
 
-  END SUBROUTINE InitializeFields_Euler_MF
+  END SUBROUTINE InitializeFields_Euler_Relativistic_IDEAL_MF
 
+
+  ! --- PRIVATE SUBROUTINES ---
 
   SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 
@@ -147,6 +154,8 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    TYPE(EdgeMap) :: Edge_Map
 
     ! --- Problem-specific parameters ---
 
@@ -220,7 +229,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 202, Message_Option &
+                        = 'Invalid AdvectionProfile: ' &
+                            // TRIM( AdvectionProfile ) )
 
     END SELECT
 
@@ -308,6 +320,11 @@ CONTAINS
       END DO
       END DO
 
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
@@ -340,6 +357,8 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    TYPE(EdgeMap) :: Edge_Map
 
     ! --- Problem-specific parameters ---
 
@@ -450,7 +469,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 203, Message_Option &
+                        = 'Invalid RiemannProblemName: ' &
+                            // TRIM( RiemannProblemName ) )
 
     END SELECT
 
@@ -568,8 +590,13 @@ CONTAINS
       END DO
       END DO
 
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
@@ -600,6 +627,8 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    TYPE(EdgeMap) :: Edge_Map
 
     ! --- Problem-specific parameters ---
 
@@ -678,7 +707,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 204, Message_Option &
+                        = 'Invalid AdvectionProfile: ' &
+                            // TRIM( AdvectionProfile ) )
 
     END SELECT
 
@@ -770,8 +802,13 @@ CONTAINS
       END DO
       END DO
 
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
@@ -804,7 +841,9 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    ! --- Problem-dependent Parameters ---
+    TYPE(EdgeMap) :: Edge_Map
+
+    ! --- Problem-specific Parameters ---
 
     INTEGER  :: iNX1, iNX2
     REAL(DP) :: X1, X2
@@ -938,8 +977,13 @@ CONTAINS
       END DO
       END DO
 
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )
@@ -970,6 +1014,8 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    TYPE(EdgeMap) :: Edge_Map
 
     ! --- Problem-specific parameters ---
 
@@ -1052,7 +1098,10 @@ CONTAINS
 
       CASE DEFAULT
 
-        CALL DescribeError_Euler_MF( 99 )
+        CALL DescribeError_Euler_MF &
+               ( 205, Message_Option &
+                        = 'Invalid AdvectionProfile: ' &
+                            // TRIM( AdvectionProfile ) )
 
     END SELECT
 
@@ -1148,8 +1197,13 @@ CONTAINS
       END DO
       END DO
 
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
       CALL thornado2amrex_X &
-             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B0, iX_E0, uCF, U )
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
       DEALLOCATE( U )
       DEALLOCATE( G )

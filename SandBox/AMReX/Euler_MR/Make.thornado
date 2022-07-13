@@ -28,6 +28,7 @@ CEXE_sources    += MakeFineMaskModule_fi.cpp
 f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
+CEXE_sources    += Restart.cpp
 
 # thornado/Modules/Library
 
@@ -104,9 +105,11 @@ F90EXE_sources  += Euler_CharacteristicDecompositionModule.F90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
+F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_TABLE.F90
 F90EXE_sources  += Euler_SlopeLimiterModule.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
 F90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
+f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.f90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90

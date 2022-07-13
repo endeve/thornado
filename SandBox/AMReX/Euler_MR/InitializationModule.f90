@@ -1,4 +1,5 @@
 MODULE InitializationModule
+use mf_utilitiesmodule
 
   USE ISO_C_BINDING
 
@@ -16,12 +17,12 @@ MODULE InitializationModule
     amrex_amrcore_init, &
     amrex_init_virtual_functions, &
     amrex_init_from_scratch, &
-    amrex_ref_ratio
+    amrex_ref_ratio, &
+    amrex_get_numlevels
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
-    amrex_distromap, &
-    amrex_distromap_build
+    amrex_distromap
   USE amrex_multifab_module, ONLY: &
     amrex_mfiter, &
     amrex_mfiter_build, &
@@ -63,16 +64,25 @@ MODULE InitializationModule
     nDOFX_X1
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE UnitsModule, ONLY: &
+    DescribeUnitsDisplay
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    CoordinateSystem
+    CoordinateSystem, &
+    DescribeGeometryFields, &
+    SetUnitsGeometryFields
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
-    nDF
+    nDF, &
+    DescribeFluidFields_Primitive, &
+    DescribeFluidFields_Conserved, &
+    DescribeFluidFields_Auxiliary, &
+    DescribeFluidFields_Diagnostic, &
+    SetUnitsFluidFields
   USE Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule, ONLY: &
@@ -112,21 +122,33 @@ MODULE InitializationModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_Euler_TallyModule, ONLY: &
+    InitializeTally_Euler_MF, &
+    ComputeTally_Euler_MF
+  USE FillPatchModule, ONLY: &
+    FillPatch, &
+    FillCoarsePatch
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
+    nMaxLevels, &
     swX, &
     StepNo, &
+    iRestart, &
     dt, &
     t_old, &
     t_new, &
+    t_wrt, &
+    t_chk, &
+    dt_wrt, &
+    dt_chk, &
     xL, &
     UseTiling, &
-    do_reflux, &
+    ApplyFluxCorrection, &
     MaxGridSizeX, &
+    BlockingFactor, &
     xL, &
     xR, &
-    CoordSys, &
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
@@ -144,15 +166,15 @@ MODULE InitializationModule
     Min_2, &
     lo_bc, &
     hi_bc, &
-    lo_bc_uCF, &
-    hi_bc_uCF, &
-    ProgramName
+    ProgramName, &
+    TagCriteria, &
+    nRefinementBuffer, &
+    UseAMR
   USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
+    WriteFieldsAMReX_PlotFile, &
+    ReadCheckpointFile
   USE AverageDownModule, ONLY: &
-    AverageDownTo
+    AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
   USE MF_Euler_TimersModule, ONLY: &
@@ -182,39 +204,20 @@ CONTAINS
 
     CALL InitializeParameters
 
-    IF     ( CoordSys .EQ. 0 )THEN
+    IF( amrex_parallel_ioprocessor() )THEN
 
-      CoordinateSystem = 'CARTESIAN'
-
-    ELSE IF( CoordSys .EQ. 1 )THEN
-
-      CoordinateSystem = 'CYLINDRICAL'
-
-    ELSE IF( CoordSys .EQ. 2 )THEN
-
-      CoordinateSystem = 'SPHERICAL'
-
-    ELSE
-
-      CALL DescribeError_Euler_MF &
-             ( 02, Message_Option = 'Invalid CoordSys:', &
-                   Int_Option = [ CoordSys ] )
+      CALL DescribeUnitsDisplay
+      CALL DescribeProgramHeaderX
 
     END IF
 
-    IF( amrex_parallel_ioprocessor() ) CALL DescribeProgramHeaderX
-
     CALL CreateFields_MF
 
-    ALLOCATE( lo_bc    (1:amrex_spacedim,1) )
-    ALLOCATE( hi_bc    (1:amrex_spacedim,1) )
-    ALLOCATE( lo_bc_uCF(1:amrex_spacedim,1:nDOFX*nCF) )
-    ALLOCATE( hi_bc_uCF(1:amrex_spacedim,1:nDOFX*nCF) )
+    ALLOCATE( lo_bc(1:amrex_spacedim,1) )
+    ALLOCATE( hi_bc(1:amrex_spacedim,1) )
 
-    lo_bc     = amrex_bc_bogus
-    hi_bc     = amrex_bc_bogus
-    lo_bc_uCF = amrex_bc_foextrap
-    hi_bc_uCF = amrex_bc_foextrap
+    lo_bc = amrex_bc_bogus
+    hi_bc = amrex_bc_bogus
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
@@ -229,17 +232,31 @@ CONTAINS
 
     CALL DestroyMesh_MF( MeshX )
 
+    ! --- Ordering of calls is important here ---
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
     CALL InitializeMeshRefinement_Euler
 
+    CALL SetUnitsGeometryFields
+
+    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
+
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
+
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
-        CALL InitializeEquationOfState &
-               ( EquationOfState_Option = EquationOfState, &
-                 EquationOfStateTableName_Option = EosTableName, &
-                 Verbose_Option = amrex_parallel_ioprocessor() )
+      CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               EquationOfStateTableName_Option = EosTableName, &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
@@ -295,20 +312,39 @@ CONTAINS
              ClearLevel, &
              ErrorEstimate )
 
-    ALLOCATE( StepNo(0:nLevels-1) )
-    ALLOCATE( dt    (0:nLevels-1) )
-    ALLOCATE( t_old (0:nLevels-1) )
-    ALLOCATE( t_new (0:nLevels-1) )
+    ALLOCATE( StepNo(0:nMaxLevels-1) )
+    ALLOCATE( dt    (0:nMaxLevels-1) )
+    ALLOCATE( t_old (0:nMaxLevels-1) )
+    ALLOCATE( t_new (0:nMaxLevels-1) )
 
     StepNo = 0
     dt     = 0.0_DP
-    t_old  = 0.0_DP
     t_new  = 0.0_DP
 
-    CALL amrex_init_from_scratch( 0.0_DP )
+    CALL InitializeTally_Euler_MF
+
+    IF( iRestart .LT. 0 )THEN
+
+      CALL amrex_init_from_scratch( 0.0_DP )
+      nLevels = amrex_get_numlevels()
+
+    ELSE
+
+      CALL ReadCheckpointFile
+
+    END IF
+
+    CALL AverageDown( MF_uGF, MF_uGF )
+    CALL AverageDown( MF_uGF, MF_uCF )
+
+    t_old = t_new
+    t_chk = t_new(0) + dt_chk
+    t_wrt = t_new(0) + dt_wrt
 
     CALL InitializeFluid_SSPRK_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL DescribeProgramHeader_AMReX
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -331,6 +367,10 @@ CONTAINS
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF )
 
+    CALL ComputeTally_Euler_MF &
+           ( t_new, MF_uGF, MF_uCF, &
+             SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   END SUBROUTINE InitializeProgram
@@ -342,7 +382,7 @@ CONTAINS
       ComputeGeometryX_MF
 
     USE MF_InitializationModule, ONLY: &
-      InitializeFields_MF
+      InitializeFields_Euler_MF
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -375,7 +415,7 @@ CONTAINS
     CALL MF_uDF(iLevel) % SetVal( Zero )
 
     ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-    IF( iLevel .GT. 0 .AND. do_reflux ) &
+    IF( iLevel .GT. 0 .AND. ApplyFluxCorrection ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister(iLevel), BA, DM, &
                amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
@@ -384,14 +424,10 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL InitializeFields_Euler_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
-    IF( iLevel .GT. 0 )THEN
-
-      CALL AverageDownTo( iLevel-1, MF_uCF )
-      CALL AverageDownTo( iLevel-1, MF_uGF )
-
-    END IF
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -400,14 +436,35 @@ CONTAINS
 
   SUBROUTINE MakeNewLevelFromCoarse( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE FillPatchModule, ONLY: FillCoarsePatch
-
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
-print*,'Hello and goodbye from MakeNewLevelFromCoarse'
-stop 'InitializationModule.f90'
+    TYPE(amrex_boxarray)  :: BA
+    TYPE(amrex_distromap) :: DM
+
+    BA = pBA
+    DM = pDM
+
+    CALL ClearLevel( iLevel )
+
+    t_new( iLevel ) = Time
+    t_old( iLevel ) = Time - 1.0e200_DP
+
+    CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
+    CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
+    CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
+
+    IF( iLevel .GT. 0 .AND. ApplyFluxCorrection ) &
+      CALL amrex_fluxregister_build &
+             ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
+               iLevel, nDOFX_X1 * nCF )
+
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -422,8 +479,8 @@ stop 'InitializationModule.f90'
     CALL amrex_multifab_destroy( MF_uCF(iLevel) )
     CALL amrex_multifab_destroy( MF_uGF(iLevel) )
 
-    CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
-
+    IF( iLevel .GT. 0 .AND. ApplyFluxCorrection ) &
+      CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
 
   END SUBROUTINE ClearLevel
 
@@ -434,8 +491,46 @@ stop 'InitializationModule.f90'
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
-print*,'Hello and goodbye from RemakeLevel'
-stop 'InitializationModule.f90'
+    TYPE(amrex_boxarray)  :: BA
+    TYPE(amrex_distromap) :: DM
+    TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uPF_tmp, &
+                             MF_uAF_tmp, MF_uDF_tmp
+
+    BA = pBA
+    DM = pDM
+
+    CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
+    CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uPF_tmp, BA, DM, nDOFX * nPF, swX )
+    CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
+    CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
+
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+
+    CALL ClearLevel( iLevel )
+
+    CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
+    CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
+    CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
+
+    IF( iLevel .GT. 0 .AND. ApplyFluxCorrection ) &
+      CALL amrex_fluxregister_build &
+             ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
+               iLevel, nDOFX_X1 * nCF )
+
+    CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
+    CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
+    CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
+
+    CALL amrex_multifab_destroy( MF_uDF_tmp )
+    CALL amrex_multifab_destroy( MF_uAF_tmp )
+    CALL amrex_multifab_destroy( MF_uPF_tmp )
+    CALL amrex_multifab_destroy( MF_uCF_tmp )
+    CALL amrex_multifab_destroy( MF_uGF_tmp )
 
   END SUBROUTINE RemakeLevel
 
@@ -455,7 +550,6 @@ stop 'InitializationModule.f90'
     REAL(DP),               INTENT(in), VALUE :: Time
     CHARACTER(KIND=c_char), INTENT(in), VALUE :: SetTag, ClearTag
 
-    REAL(DP), ALLOCATABLE, SAVE :: TagCriteria(:)
     TYPE(amrex_parmparse)   :: PP
     TYPE(amrex_tagboxarray) :: Tag
     TYPE(amrex_mfiter)      :: MFI
@@ -495,55 +589,43 @@ stop 'InitializationModule.f90'
         CASE( 'Advection1D' )
 
           CALL TagElements_Advection1D &
-                 ( iLevel, BX % lo, BX % hi, &
-                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                   TagCriteria(iLevel+1), &
-                   SetTag, ClearTag, &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
         CASE( 'RiemannProblem1D' )
 
           CALL TagElements_RiemannProblem1D &
-                 ( iLevel, BX % lo, BX % hi, &
-                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                   TagCriteria(iLevel+1), &
-                   SetTag, ClearTag, &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
         CASE( 'Advection2D' )
 
           CALL TagElements_Advection2D &
-                 ( iLevel, BX % lo, BX % hi, &
-                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                   TagCriteria(iLevel+1), &
-                   SetTag, ClearTag, &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
         CASE( 'KelvinHelmholtz2D' )
 
           CALL TagElements_KelvinHelmholtz2D &
-                 ( iLevel, BX % lo, BX % hi, &
-                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                   TagCriteria(iLevel+1), &
-                   SetTag, ClearTag, &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
         CASE( 'Advection3D' )
 
           CALL TagElements_Advection3D &
-                 ( iLevel, BX % lo, BX % hi, &
-                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                   TagCriteria(iLevel+1), &
-                   SetTag, ClearTag, &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
         CASE DEFAULT
 
           CALL TagElements_uCF &
-                 ( iLevel, BX % lo, BX % hi, &
-                   LBOUND( uCF ), UBOUND( uCF ), uCF, &
-                   TagCriteria(iLevel+1), &
-                   SetTag, ClearTag, &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
       END SELECT
@@ -556,6 +638,42 @@ stop 'InitializationModule.f90'
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
+
+
+  SUBROUTINE DescribeProgramHeader_AMReX
+
+    CHARACTER(32) :: RFMT, IFMT
+
+    WRITE(RFMT,'(A,I2.2,A)') '(4x,A,', nMaxLevels, 'ES11.3E3)'
+    WRITE(IFMT,'(A,I2.2,A)') '(4x,A,', nMaxLevels, 'I3.2)'
+
+    IF( .NOT. ALLOCATED( TagCriteria ) )THEN
+      ALLOCATE( TagCriteria(nMaxLevels) )
+      TagCriteria = 0.0_DP
+    END IF
+
+    IF( .NOT. ALLOCATED( nRefinementBuffer ) )THEN
+      ALLOCATE( nRefinementBuffer(nMaxLevels) )
+      nRefinementBuffer = 1
+    END IF
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(4x,A)')       'INFO: AMReX'
+      WRITE(*,'(4x,A)')       '-----------'
+      WRITE(*,'(4x,A,3I4.3)') '          MaxGridSize: ', MaxGridSizeX
+      WRITE(*,'(4x,A,3I4.3)') '       BlockingFactor: ', BlockingFactor
+      WRITE(*,'(4x,A,I2.2)')  '           nMaxLevels: ', nMaxLevels
+      WRITE(*,'(4x,A,L)')     '  ApplyFluxCorrection: ', ApplyFluxCorrection
+      WRITE(*,'(4x,A,L)')     '            UseTiling: ', UseTiling
+      WRITE(*,'(4x,A,L)')     '               UseAMR: ', UseAMR
+      WRITE(*,TRIM(RFMT))     '          TagCriteria: ', TagCriteria
+      WRITE(*,TRIM(IFMT))     '    nRefinementBuffer: ', nRefinementBuffer
+      WRITE(*,*)
+
+    END IF
+
+  END SUBROUTINE DescribeProgramHeader_AMReX
 
 
 END MODULE InitializationModule

@@ -34,18 +34,106 @@ CONTAINS
 
     SELECT CASE( iErr )
 
-      CASE( 00 )
+      CASE( 000 )
 
         RETURN
 
-      CASE( 01 )
+      CASE( 101 )
 
         WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
         WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: InputParsingModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeParameters'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'iCycleW and dt_wrt cannot both be greater than zero.'
+        WRITE(*,*)
+        WRITE(*,'(2x,A9,I9.8)')      'iCycleW: ', Int_Option(1)
+        WRITE(*,'(2x,A9,ES24.16E3)') 'dt_wrt: ', Real_Option(1)
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 102 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: InputParsingModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeParameters'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'iCycleChk and dt_chk cannot both be greater than zero.'
+        WRITE(*,*)
+        WRITE(*,'(2x,A11,I9.8)')      'iCycleChk: ', Int_Option(1)
+        WRITE(*,'(2x,A11,ES24.16E3)') 'dt_chk: ', Real_Option(1)
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 103 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: InputParsingModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeParameters'
+        WRITE(*,*)
+        WRITE(*,'(2x,A,1x,I3.2)') 'Invalid CoordSys:', Int_Option(1)
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'Valid choices'
+        WRITE(*,'(2x,A)') '-------------'
+        WRITE(*,'(2x,A)') '  0 (CARTESIAN)'
+        WRITE(*,'(2x,A)') '  1 (CYLINDRICAL)'
+        WRITE(*,'(2x,A)') '  2 (SPHERICAL)'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 104 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: InputParsingModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeParameters'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
+        WRITE(*,'(2x,A,I2.2)') 'thornado: nDimsX: ', Int_Option(1)
+        WRITE(*,'(2x,A,I2.2)') 'amrex:    nDimsX: ', Int_Option(2)
+        WRITE(*,'(2x,A)') 'Check DIM parameter in GNUmakefile.'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 201 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
         WRITE(*,'(2x,A)') &
           'MODULE: MF_InitializationModule_Relativistic_IDEAL'
         WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_Euler_MF'
+          'SUBROUTINE: InitializeFields_Euler_Relativistic_IDEAL_MF'
         WRITE(*,*)
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
@@ -57,25 +145,94 @@ CONTAINS
         WRITE(*,'(2x,A)')   '  KelvinHelmholtz2D'
         WRITE(*,'(2x,A)')   '  Advection3D'
         WRITE(*,*)
-        WRITE(*,'(A)') 'Stopping...'
 
         CALL thornado_abort
 
-      CASE( 02 )
+      CASE( 202 )
 
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A)') &
-          'MODULE: InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeProgram'
         WRITE(*,*)
-        WRITE(*,'(2x,A,1x,I3.2)') TRIM( Message ), Int_Option(1)
-        WRITE(*,'(2x,A)') 'Valid choices'
-        WRITE(*,'(2x,A)') '-------------'
-        WRITE(*,'(2x,A)') '  0 (CARTESIAN)'
-        WRITE(*,'(2x,A)') '  1 (CYLINDRICAL)'
-        WRITE(*,'(2x,A)') '  2 (SPHERICAL)'
-        WRITE(*,'(2x,A)')
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeFields_Advection1D'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)')   'Valid choices'
+        WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  SineWave'
+        WRITE(*,'(2x,A)')   '  Gaussian'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 203 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeFields_RiemannProblem1D'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)')   'Valid choices'
+        WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  Sod'
+        WRITE(*,'(2x,A)')   '  SphericalSod'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 204 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeFields_Advection2D'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)')   'Valid choices'
+        WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  SineWaveX1'
+        WRITE(*,'(2x,A)')   '  Gaussian'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 205 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeFields_Advection3D'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)')   'Valid choices'
+        WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  SineWaveX1'
+        WRITE(*,'(2x,A)')   '  Gaussian'
+        WRITE(*,*)
 
         CALL thornado_abort
 
