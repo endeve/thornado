@@ -97,8 +97,6 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: CoordinateSystem_Option
     LOGICAL,      INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER :: iGF
-
     IF( PRESENT( CoordinateSystem_Option ) )THEN
       CoordinateSystem = CoordinateSystem_Option
     ELSE

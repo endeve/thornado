@@ -215,206 +215,206 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector_old
 
 
-  SUBROUTINE ComputePrimitive_Vector_new &
-    ( uD, uS1, uS2, uS3, uE, uNe, &
-      pD, pV1, pV2, pV3, pE, pNe, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    REAL(DP), INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-    REAL(DP), INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
-    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
-
-    INTEGER  :: N, iX, ITERATION, ErrorExists
-    INTEGER  :: IsPhysical(SIZE(uD)), iErr(SIZE(uD))
-
-    REAL(DP) :: W, eps, DhW, p
-    REAL(DP) :: q (SIZE(uD)), r (SIZE(uD)), k (SIZE(uD)), &
-                dz(SIZE(uD)), &
-                za(SIZE(uD)), zb(SIZE(uD)), zc(SIZE(uD)), &
-                fa(SIZE(uD)), fb(SIZE(uD)), fc(SIZE(uD))
-
-    LOGICAL  :: ITERATE(SIZE(uD))
-
-    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
-
-    CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
-
-    ErrorExists = 0
-    ITERATE     = .TRUE.
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$OMP             ITERATE ) &
-    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, &
-    !$OMP             q, r, k, &
-    !$OMP             dz, &
-    !$OMP             za, zb, zc, &
-    !$OMP             fa, fb, fc, &
-    !$OMP             iErr )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC             ITERATE ) &
-    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC             q, r, k, &
-    !$ACC             dz, &
-    !$ACC             za, zb, zc, &
-    !$ACC             fa, fb, fc, &
-    !$ACC             iErr )
-#endif
-
-    CALL TimersStop_Euler( Timer_Euler_CP_CopyIn )
-
-    CALL TimersStart_Euler( Timer_Euler_CP_GetBounds )
-
-    N = SIZE( uD )
-
-    ! --- Eqs. C2/C23/C25 ---
-
-    CALL GetBoundsForBisection &
-           ( N, uD, uS1, uS2, uS3, uE, uNe, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             dz, za, zb, fa, fb, q, r, k, iErr )
-
-    CALL TimersStop_Euler( Timer_Euler_CP_GetBounds )
-
-    CALL TimersStart_Euler( Timer_Euler_CP_Bisection )
-
-    CALL SolveZ_Bisection_Vector &
-           ( N, uD, uNe, q, r, k, &
-             za, zb, fa, fb, &
-             dz, zc, fc, ITERATE )
-
-    CALL TimersStop_Euler( Timer_Euler_CP_Bisection )
-
-    CALL TimersStart_Euler( Timer_Euler_CP_RecoverPrimitives )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( W, eps, DhW, p )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( W, eps, DhW, p ) &
-    !$ACC PRESENT( zc, q, r, &
-    !$ACC          uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( W, eps, DhW, p )
-#endif
-    DO iX = 1, N
-
-      IF( uD(iX) .GT. Min_D )THEN
-
-        ! --- Eqs. C15/C16 ---
-
-        W       = SQRT( One + zc(iX)**2 )
-        pD (iX) = uD (iX) / W
-        eps     = W * q(iX) - zc(iX) * r(iX) + zc(iX)**2 / ( One + W )
-
-        pNe(iX) = uNe(iX) / W
-
-        CALL ComputePressureFromSpecificInternalEnergy &
-               ( pD(iX), eps, AtomicMassUnit * pNe(iX) / pD(iX), p )
-
-        DhW = uD(iX) * ( One + eps + p / pD(iX) ) * W
-
-        ! --- Eq. C26 ---
-
-        pV1(iX) = ( uS1(iX) / Gm_dd_11(iX) ) / DhW
-        pV2(iX) = ( uS2(iX) / Gm_dd_22(iX) ) / DhW
-        pV3(iX) = ( uS3(iX) / Gm_dd_33(iX) ) / DhW
-
-        pE (iX) = pD(iX) * eps
-
-      END IF
-
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_CP_RecoverPrimitives )
-
-    CALL TimersStart_Euler( Timer_Euler_CP_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP REDUCTION( +:ErrorExists )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP REDUCTION( +:ErrorExists )
-#endif
-    DO iX = 1, N
-
-      ErrorExists = ErrorExists + iErr(iX)
-
-      IF( uD(iX) .LT. Min_D )THEN
-
-        pD (iX) = 1.01_DP * Min_D
-        pV1(iX) = Zero
-        pV2(iX) = Zero
-        pV3(iX) = Zero
-        pE (iX) = MAX( uE(iX), SqrtTiny )
-        pNe(iX) = uNe(iX) / uD(iX)
-
-      END IF
-
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_CP_Permute )
-
-    CALL TimersStart_Euler( Timer_Euler_CP_CopyOut )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr, ErrorExists, &
-    !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
-    !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$OMP               q, r, k, &
-    !$OMP               dz, &
-    !$OMP               za, zb, zc, &
-    !$OMP               fa, fb, fc, &
-    !$OMP               ITERATE )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr, ErrorExists, &
-    !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
-    !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC               q, r, k, &
-    !$ACC               dz, &
-    !$ACC               za, zb, zc, &
-    !$ACC               fa, fb, fc, &
-    !$ACC               ITERATE )
-#endif
-
-    IF( ErrorExists .GT. 0 )THEN
-
-      DO iX = 1, N
-
-        CALL DescribeError_Euler &
-          ( iErr(iX), &
-            Int_Option = [ iX ], &
-            Real_Option = [ uD(iX), uS1(iX), uS2(iX), uS3(iX), &
-                            uE(iX), uNe(iX), &
-                            Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) ] )
-
-      END DO
-
-    END IF
-
-    CALL TimersStop_Euler( Timer_Euler_CP_CopyOut )
-
-    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
-
-  END SUBROUTINE ComputePrimitive_Vector_new
+!!$  SUBROUTINE ComputePrimitive_Vector_new &
+!!$    ( uD, uS1, uS2, uS3, uE, uNe, &
+!!$      pD, pV1, pV2, pV3, pE, pNe, &
+!!$      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+!!$
+!!$    REAL(DP), INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
+!!$    REAL(DP), INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+!!$    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+!!$
+!!$    INTEGER  :: N, iX, ErrorExists
+!!$    INTEGER  :: iErr(SIZE(uD))
+!!$
+!!$    REAL(DP) :: W, eps, DhW, p
+!!$    REAL(DP) :: q (SIZE(uD)), r (SIZE(uD)), k (SIZE(uD)), &
+!!$                dz(SIZE(uD)), &
+!!$                za(SIZE(uD)), zb(SIZE(uD)), zc(SIZE(uD)), &
+!!$                fa(SIZE(uD)), fb(SIZE(uD)), fc(SIZE(uD))
+!!$
+!!$    LOGICAL  :: ITERATE(SIZE(uD))
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
+!!$
+!!$    ErrorExists = 0
+!!$    ITERATE     = .TRUE.
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET ENTER DATA &
+!!$    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
+!!$    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$    !$OMP             ITERATE ) &
+!!$    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, &
+!!$    !$OMP             q, r, k, &
+!!$    !$OMP             dz, &
+!!$    !$OMP             za, zb, zc, &
+!!$    !$OMP             fa, fb, fc, &
+!!$    !$OMP             iErr )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC ENTER DATA &
+!!$    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
+!!$    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$    !$ACC             ITERATE ) &
+!!$    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, &
+!!$    !$ACC             q, r, k, &
+!!$    !$ACC             dz, &
+!!$    !$ACC             za, zb, zc, &
+!!$    !$ACC             fa, fb, fc, &
+!!$    !$ACC             iErr )
+!!$#endif
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_CP_CopyIn )
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_CP_GetBounds )
+!!$
+!!$    N = SIZE( uD )
+!!$
+!!$    ! --- Eqs. C2/C23/C25 ---
+!!$
+!!$    CALL GetBoundsForBisection &
+!!$           ( N, uD, uS1, uS2, uS3, uE, uNe, &
+!!$             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$             dz, za, zb, fa, fb, q, r, k, iErr )
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_CP_GetBounds )
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_CP_Bisection )
+!!$
+!!$    CALL SolveZ_Bisection_Vector &
+!!$           ( N, uD, uNe, q, r, k, &
+!!$             za, zb, fa, fb, &
+!!$             dz, zc, fc, ITERATE )
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_CP_Bisection )
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_CP_RecoverPrimitives )
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( W, eps, DhW, p )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRIVATE( W, eps, DhW, p ) &
+!!$    !$ACC PRESENT( zc, q, r, &
+!!$    !$ACC          uD, uS1, uS2, uS3, uE, uNe, &
+!!$    !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
+!!$    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( W, eps, DhW, p )
+!!$#endif
+!!$    DO iX = 1, N
+!!$
+!!$      IF( uD(iX) .GT. Min_D )THEN
+!!$
+!!$        ! --- Eqs. C15/C16 ---
+!!$
+!!$        W       = SQRT( One + zc(iX)**2 )
+!!$        pD (iX) = uD (iX) / W
+!!$        eps     = W * q(iX) - zc(iX) * r(iX) + zc(iX)**2 / ( One + W )
+!!$
+!!$        pNe(iX) = uNe(iX) / W
+!!$
+!!$        CALL ComputePressureFromSpecificInternalEnergy &
+!!$               ( pD(iX), eps, AtomicMassUnit * pNe(iX) / pD(iX), p )
+!!$
+!!$        DhW = uD(iX) * ( One + eps + p / pD(iX) ) * W
+!!$
+!!$        ! --- Eq. C26 ---
+!!$
+!!$        pV1(iX) = ( uS1(iX) / Gm_dd_11(iX) ) / DhW
+!!$        pV2(iX) = ( uS2(iX) / Gm_dd_22(iX) ) / DhW
+!!$        pV3(iX) = ( uS3(iX) / Gm_dd_33(iX) ) / DhW
+!!$
+!!$        pE (iX) = pD(iX) * eps
+!!$
+!!$      END IF
+!!$
+!!$    END DO
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_CP_RecoverPrimitives )
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_CP_Permute )
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP REDUCTION( +:ErrorExists )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC REDUCTION( +:ErrorExists ) &
+!!$    !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP REDUCTION( +:ErrorExists )
+!!$#endif
+!!$    DO iX = 1, N
+!!$
+!!$      ErrorExists = ErrorExists + iErr(iX)
+!!$
+!!$      IF( uD(iX) .LT. Min_D )THEN
+!!$
+!!$        pD (iX) = 1.01_DP * Min_D
+!!$        pV1(iX) = Zero
+!!$        pV2(iX) = Zero
+!!$        pV3(iX) = Zero
+!!$        pE (iX) = MAX( uE(iX), SqrtTiny )
+!!$        pNe(iX) = uNe(iX) / uD(iX)
+!!$
+!!$      END IF
+!!$
+!!$    END DO
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_CP_Permute )
+!!$
+!!$    CALL TimersStart_Euler( Timer_Euler_CP_CopyOut )
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET EXIT DATA &
+!!$    !$OMP MAP( from:    iErr, ErrorExists, &
+!!$    !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
+!!$    !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
+!!$    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$    !$OMP               q, r, k, &
+!!$    !$OMP               dz, &
+!!$    !$OMP               za, zb, zc, &
+!!$    !$OMP               fa, fb, fc, &
+!!$    !$OMP               ITERATE )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC EXIT DATA &
+!!$    !$ACC COPYOUT(      iErr, ErrorExists, &
+!!$    !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
+!!$    !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
+!!$    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$    !$ACC               q, r, k, &
+!!$    !$ACC               dz, &
+!!$    !$ACC               za, zb, zc, &
+!!$    !$ACC               fa, fb, fc, &
+!!$    !$ACC               ITERATE )
+!!$#endif
+!!$
+!!$    IF( ErrorExists .GT. 0 )THEN
+!!$
+!!$      DO iX = 1, N
+!!$
+!!$        CALL DescribeError_Euler &
+!!$          ( iErr(iX), &
+!!$            Int_Option = [ iX ], &
+!!$            Real_Option = [ uD(iX), uS1(iX), uS2(iX), uS3(iX), &
+!!$                            uE(iX), uNe(iX), &
+!!$                            Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) ] )
+!!$
+!!$      END DO
+!!$
+!!$    END IF
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_CP_CopyOut )
+!!$
+!!$    CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+!!$
+!!$  END SUBROUTINE ComputePrimitive_Vector_new
 
 
   !> Compute the primitive variables from the conserved variables,
@@ -1615,80 +1615,80 @@ CONTAINS
   ! --- Auxiliary utilities for ComputePrimitive ---
 
 
-  SUBROUTINE GetBoundsForBisection &
-    ( N, uD, uS1, uS2, uS3, uE, uNe, &
-      Gm11, Gm22, Gm33, &
-      dz, za, zb, fa, fb, q, r, k, iErr )
-
-    INTEGER,  INTENT(in)    :: N
-    REAL(DP), INTENT(in)    :: uD(N), uS1(N), uS2(N), &
-                               uS3(N), uE(N), uNe(N), &
-                               Gm11(N), Gm22(N), Gm33(N)
-    REAL(DP), INTENT(out)   :: dz(N), za(N), zb(N), fa(N), fb(N), &
-                               q(N), r(N), k(N)
-    INTEGER,  INTENT(inout) :: iErr(N)
-
-    INTEGER  :: iX
-    REAL(DP) :: S
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( S )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( S ) &
-    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC          Gm11, Gm22, Gm33, &
-    !$ACC          q, r, k, dz, za, zb, fa, fb, &
-    !$ACC          iErr )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( S )
-#endif
-     DO iX = 1, N
-
-       iErr(iX) = 0
-
-       IF( uD(iX) .GT. Min_D )THEN
-
-         ! --- Eq. C2 ---
-
-         S = SQRT(   uS1(iX)**2 / Gm11(iX) &
-                   + uS2(iX)**2 / Gm22(iX) &
-                   + uS3(iX)**2 / Gm33(iX) )
-
-         q(iX) = uE(iX) / uD(iX)
-         r(iX) = S      / uD(iX)
-         k(iX) = r (iX) / ( One + q(iX) )
-
-         IF( q(iX) .LT. Zero )THEN
-
-           r(iX) = k(iX)
-           q(iX) = Zero
-
-         END IF
-
-         ! --- Eq. C23 ---
-
-         za(iX) = Half * k(iX) / SQRT( One - Fourth * k(iX)**2 ) - SqrtTiny
-         zb(iX) = k(iX)        / SQRT( One - k(iX)**2 )          + SqrtTiny
-
-         dz(iX) = zb(iX) - za(iX)
-
-         ! --- Eq. C25 ---
-
-         CALL ComputeFunZ_Scalar &
-                ( uD(iX), uNe(iX), r(iX), za(iX), q(iX), fa(iX) )
-         CALL ComputeFunZ_Scalar &
-                ( uD(iX), uNe(iX), r(iX), zb(iX), q(iX), fb(iX) )
-
-         IF( .NOT. fa(iX) * fb(iX) .LT. Zero ) iErr(iX) = 8
-
-       END IF ! IF( uD(iX) .GT. Min_D )
-
-     END DO
-
-  END SUBROUTINE GetBoundsForBisection
+!!$  SUBROUTINE GetBoundsForBisection &
+!!$    ( N, uD, uS1, uS2, uS3, uE, uNe, &
+!!$      Gm11, Gm22, Gm33, &
+!!$      dz, za, zb, fa, fb, q, r, k, iErr )
+!!$
+!!$    INTEGER,  INTENT(in)    :: N
+!!$    REAL(DP), INTENT(in)    :: uD(N), uS1(N), uS2(N), &
+!!$                               uS3(N), uE(N), uNe(N), &
+!!$                               Gm11(N), Gm22(N), Gm33(N)
+!!$    REAL(DP), INTENT(out)   :: dz(N), za(N), zb(N), fa(N), fb(N), &
+!!$                               q(N), r(N), k(N)
+!!$    INTEGER,  INTENT(inout) :: iErr(N)
+!!$
+!!$    INTEGER  :: iX
+!!$    REAL(DP) :: S
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( S )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRIVATE( S ) &
+!!$    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
+!!$    !$ACC          Gm11, Gm22, Gm33, &
+!!$    !$ACC          q, r, k, dz, za, zb, fa, fb, &
+!!$    !$ACC          iErr )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( S )
+!!$#endif
+!!$     DO iX = 1, N
+!!$
+!!$       iErr(iX) = 0
+!!$
+!!$       IF( uD(iX) .GT. Min_D )THEN
+!!$
+!!$         ! --- Eq. C2 ---
+!!$
+!!$         S = SQRT(   uS1(iX)**2 / Gm11(iX) &
+!!$                   + uS2(iX)**2 / Gm22(iX) &
+!!$                   + uS3(iX)**2 / Gm33(iX) )
+!!$
+!!$         q(iX) = uE(iX) / uD(iX)
+!!$         r(iX) = S      / uD(iX)
+!!$         k(iX) = r (iX) / ( One + q(iX) )
+!!$
+!!$         IF( q(iX) .LT. Zero )THEN
+!!$
+!!$           r(iX) = k(iX)
+!!$           q(iX) = Zero
+!!$
+!!$         END IF
+!!$
+!!$         ! --- Eq. C23 ---
+!!$
+!!$         za(iX) = Half * k(iX) / SQRT( One - Fourth * k(iX)**2 ) - SqrtTiny
+!!$         zb(iX) = k(iX)        / SQRT( One - k(iX)**2 )          + SqrtTiny
+!!$
+!!$         dz(iX) = zb(iX) - za(iX)
+!!$
+!!$         ! --- Eq. C25 ---
+!!$
+!!$         CALL ComputeFunZ_Scalar &
+!!$                ( uD(iX), uNe(iX), r(iX), za(iX), q(iX), fa(iX) )
+!!$         CALL ComputeFunZ_Scalar &
+!!$                ( uD(iX), uNe(iX), r(iX), zb(iX), q(iX), fb(iX) )
+!!$
+!!$         IF( .NOT. fa(iX) * fb(iX) .LT. Zero ) iErr(iX) = 8
+!!$
+!!$       END IF ! IF( uD(iX) .GT. Min_D )
+!!$
+!!$     END DO
+!!$
+!!$  END SUBROUTINE GetBoundsForBisection
 
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -1767,156 +1767,156 @@ CONTAINS
   END SUBROUTINE ComputeFunZ_Scalar
 
 
-  SUBROUTINE ComputeFunZ_Vector( N, D, Ne, r, z, q, FunZ, ITERATE )
-
-    INTEGER,  INTENT(in)    :: N
-    REAL(DP), INTENT(in)    :: D(N), Ne(N), r(N), z(N)
-    REAL(DP), INTENT(inout) :: q(N)
-    REAL(DP), INTENT(out)   :: FunZ(N)
-    LOGICAL,  INTENT(inout) :: ITERATE(N)
-
-    REAL(DP) :: Wt, Min_E, Max_E, at, ht
-    REAL(DP) :: epst(N), rhoh(N), Ye(N), epsh(N), ph(N)
-
-    INTEGER :: iX
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    D, Ne, r, z, q, FunZ, ITERATE ) &
-    !$OMP MAP( alloc: epst, rhoh, Ye, epsh, ph )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC        ENTER DATA &
-    !$ACC COPYIN(     D, Ne, r, z, q, FunZ, ITERATE ) &
-    !$ACC CREATE(     epst, rhoh, Ye, epsh, ph )
-#endif
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Wt, Min_E, Max_E )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( Wt, Min_E, Max_E ) &
-    !$ACC PRESENT( ITERATE, z, epst, q, r, rhoh, D, Ye, Ne, epsh )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Wt, Min_E, Max_E )
-#endif
-    DO iX = 1, N
-
-      IF( ITERATE(iX) )THEN
-
-        ! --- Eq. C15 ---
-
-        Wt = SQRT( One + z(iX)**2 )
-
-        ! --- Eq. C16 ---
-
-        epst(iX) = Wt * q(iX) - z(iX) * r(iX) + z(iX)**2 / ( One + Wt )
-
-        ! --- Eq. C17 ---
-
-        rhoh(iX) = MAX( MIN( Max_D, D(iX) / Wt ), Min_D )
-
-        ! --- Eq. C18 ---
-
-        Ye(iX) = Ne(iX) * AtomicMassUnit / D(iX)
-
-        CALL ComputeSpecificInternalEnergy_TABLE &
-               ( rhoh(iX), ( One + Offset_Temperature ) * Min_T, Ye(iX), Min_E )
-        CALL ComputeSpecificInternalEnergy_TABLE &
-               ( rhoh(iX), ( One - Offset_Temperature ) * Max_T, Ye(iX), Max_E )
-
-        Min_E = ( One + Offset_Epsilon ) * Min_E
-        Max_E = ( One - Offset_Epsilon ) * Max_E
-
-        epsh(iX) = MAX( MIN( Max_E, epst(iX) ), Min_E )
-
-        ! --- Eq. C27 ---
-
-        IF( epst(iX) .LT. Min_E )THEN
-
-          q(iX) = ( One + q(iX) ) &
-                    * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
-
-          epst(iX) = epsh(iX)
-
-        ELSE IF( epst(iX) .GT. Max_E )THEN
-
-          q(iX) = ( One + q(iX) ) &
-                    * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
-
-          epst(iX) = epsh(iX)
-
-        END IF ! epst(iX) < Min_E || epst(iX) > Max_E
-
-      END IF ! ITERATE(iX)
-
-    END DO ! iX = 1, N
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( ITERATE, rhoh, epsh, Ye, ph )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
-    DO iX = 1, N
-
-      IF( ITERATE(iX) )THEN
-
-        ! --- Eqs. C19/C20 ---
-
-        CALL ComputePressureFromSpecificInternalEnergy &
-               ( rhoh(iX), epsh(iX), Ye(iX), ph(iX) )
-
-      END IF ! ITERATE(iX)
-
-    END DO ! iX = 1, N
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( at, ht )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( at, ht ) &
-    !$ACC PRESENT( ITERATE, ph, rhoh, epsh, epst, z, r, FunZ )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( at, ht )
-#endif
-    DO iX = 1, N
-
-      IF( ITERATE(iX) )THEN
-
-        at = ph(iX) / ( rhoh(iX) * ( One + epsh(iX) ) )
-
-        ! --- Eq. C21 ---
-
-        ht = ( One + epst(iX) ) * ( One + at )
-
-        ! --- Eq. C22 ---
-
-        FunZ(iX) = z(iX) - r(iX) / ht
-
-      END IF ! ITERATE(iX)
-
-    END DO ! iX = 1, N
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    FunZ ) &
-    !$OMP MAP( release: D, Ne, r, z, q, ITERATE, &
-    !$OMP               epst, rhoh, Ye, epsh, ph )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC        EXIT DATA &
-    !$ACC COPYOUT(      FunZ ) &
-    !$ACC DELETE(       D, Ne, r, z, q, ITERATE, &
-    !$ACC               epst, rhoh, Ye, epsh, ph ) &
-    !$ACC
-#endif
-
-  END SUBROUTINE ComputeFunZ_Vector
+!!$  SUBROUTINE ComputeFunZ_Vector( N, D, Ne, r, z, q, FunZ, ITERATE )
+!!$
+!!$    INTEGER,  INTENT(in)    :: N
+!!$    REAL(DP), INTENT(in)    :: D(N), Ne(N), r(N), z(N)
+!!$    REAL(DP), INTENT(inout) :: q(N)
+!!$    REAL(DP), INTENT(out)   :: FunZ(N)
+!!$    LOGICAL,  INTENT(inout) :: ITERATE(N)
+!!$
+!!$    REAL(DP) :: Wt, Min_E, Max_E, at, ht
+!!$    REAL(DP) :: epst(N), rhoh(N), Ye(N), epsh(N), ph(N)
+!!$
+!!$    INTEGER :: iX
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET ENTER DATA &
+!!$    !$OMP MAP( to:    D, Ne, r, z, q, FunZ, ITERATE ) &
+!!$    !$OMP MAP( alloc: epst, rhoh, Ye, epsh, ph )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC        ENTER DATA &
+!!$    !$ACC COPYIN(     D, Ne, r, z, q, FunZ, ITERATE ) &
+!!$    !$ACC CREATE(     epst, rhoh, Ye, epsh, ph )
+!!$#endif
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( Wt, Min_E, Max_E )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRIVATE( Wt, Min_E, Max_E ) &
+!!$    !$ACC PRESENT( ITERATE, z, epst, q, r, rhoh, D, Ye, Ne, epsh )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( Wt, Min_E, Max_E )
+!!$#endif
+!!$    DO iX = 1, N
+!!$
+!!$      IF( ITERATE(iX) )THEN
+!!$
+!!$        ! --- Eq. C15 ---
+!!$
+!!$        Wt = SQRT( One + z(iX)**2 )
+!!$
+!!$        ! --- Eq. C16 ---
+!!$
+!!$        epst(iX) = Wt * q(iX) - z(iX) * r(iX) + z(iX)**2 / ( One + Wt )
+!!$
+!!$        ! --- Eq. C17 ---
+!!$
+!!$        rhoh(iX) = MAX( MIN( Max_D, D(iX) / Wt ), Min_D )
+!!$
+!!$        ! --- Eq. C18 ---
+!!$
+!!$        Ye(iX) = Ne(iX) * AtomicMassUnit / D(iX)
+!!$
+!!$        CALL ComputeSpecificInternalEnergy_TABLE &
+!!$               ( rhoh(iX), ( One + Offset_Temperature ) * Min_T, Ye(iX), Min_E )
+!!$        CALL ComputeSpecificInternalEnergy_TABLE &
+!!$               ( rhoh(iX), ( One - Offset_Temperature ) * Max_T, Ye(iX), Max_E )
+!!$
+!!$        Min_E = ( One + Offset_Epsilon ) * Min_E
+!!$        Max_E = ( One - Offset_Epsilon ) * Max_E
+!!$
+!!$        epsh(iX) = MAX( MIN( Max_E, epst(iX) ), Min_E )
+!!$
+!!$        ! --- Eq. C27 ---
+!!$
+!!$        IF( epst(iX) .LT. Min_E )THEN
+!!$
+!!$          q(iX) = ( One + q(iX) ) &
+!!$                    * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
+!!$
+!!$          epst(iX) = epsh(iX)
+!!$
+!!$        ELSE IF( epst(iX) .GT. Max_E )THEN
+!!$
+!!$          q(iX) = ( One + q(iX) ) &
+!!$                    * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
+!!$
+!!$          epst(iX) = epsh(iX)
+!!$
+!!$        END IF ! epst(iX) < Min_E || epst(iX) > Max_E
+!!$
+!!$      END IF ! ITERATE(iX)
+!!$
+!!$    END DO ! iX = 1, N
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRESENT( ITERATE, rhoh, epsh, Ye, ph )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO
+!!$#endif
+!!$    DO iX = 1, N
+!!$
+!!$      IF( ITERATE(iX) )THEN
+!!$
+!!$        ! --- Eqs. C19/C20 ---
+!!$
+!!$        CALL ComputePressureFromSpecificInternalEnergy &
+!!$               ( rhoh(iX), epsh(iX), Ye(iX), ph(iX) )
+!!$
+!!$      END IF ! ITERATE(iX)
+!!$
+!!$    END DO ! iX = 1, N
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( at, ht )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRIVATE( at, ht ) &
+!!$    !$ACC PRESENT( ITERATE, ph, rhoh, epsh, epst, z, r, FunZ )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( at, ht )
+!!$#endif
+!!$    DO iX = 1, N
+!!$
+!!$      IF( ITERATE(iX) )THEN
+!!$
+!!$        at = ph(iX) / ( rhoh(iX) * ( One + epsh(iX) ) )
+!!$
+!!$        ! --- Eq. C21 ---
+!!$
+!!$        ht = ( One + epst(iX) ) * ( One + at )
+!!$
+!!$        ! --- Eq. C22 ---
+!!$
+!!$        FunZ(iX) = z(iX) - r(iX) / ht
+!!$
+!!$      END IF ! ITERATE(iX)
+!!$
+!!$    END DO ! iX = 1, N
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET EXIT DATA &
+!!$    !$OMP MAP( from:    FunZ ) &
+!!$    !$OMP MAP( release: D, Ne, r, z, q, ITERATE, &
+!!$    !$OMP               epst, rhoh, Ye, epsh, ph )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC        EXIT DATA &
+!!$    !$ACC COPYOUT(      FunZ ) &
+!!$    !$ACC DELETE(       D, Ne, r, z, q, ITERATE, &
+!!$    !$ACC               epst, rhoh, Ye, epsh, ph ) &
+!!$    !$ACC
+!!$#endif
+!!$
+!!$  END SUBROUTINE ComputeFunZ_Vector
 
 #else
 
@@ -1962,62 +1962,62 @@ CONTAINS
   END SUBROUTINE ComputeFunZ_Scalar
 
 
-  SUBROUTINE ComputeFunZ_Vector( N, D, Ne, r, z, q, FunZ, ITERATE )
-
-    INTEGER,  INTENT(in)    :: N
-    REAL(DP), INTENT(in)    :: D(N), Ne(N), r(N), z(N), q(N)
-    REAL(DP), INTENT(out)   :: FunZ(N)
-    LOGICAL,  INTENT(inout) :: ITERATE(N)
-
-    INTEGER  :: iX
-    REAL(DP) :: Wt, rhot, epst, Ye, pt, at, ht
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, Ne, r, z, q, FunZ, ITERATE ) &
-    !$ACC PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
-#endif
-    DO iX = 1, N
-
-      IF( ITERATE(iX) )THEN
-
-        ! --- Eq. C15 ---
-
-        Wt = SQRT( One + z(iX)**2 )
-        rhot = D(iX) / Wt
-
-        ! --- Eq. C16 ---
-
-        epst = Wt * q(iX) - z(iX) * r(iX) + z(iX)**2 / ( One + Wt )
-
-        Ye = Ne(iX) * AtomicMassUnit / D(iX)
-
-        CALL ComputePressureFromSpecificInternalEnergy &
-               ( rhot, epst, Ye, pt )
-
-        ! --- Eq. C20 ---
-
-        at = pt / ( rhot * ( One + epst ) )
-
-        ! --- Eq. C21 ---
-
-        ht = ( One + epst ) * ( One + at )
-
-        ! --- Eq. C22 ---
-
-        FunZ(iX) = z(iX) - r(iX) / ht
-
-      END IF ! ITERATE(iX)
-
-    END DO ! iX = 1, N
-
-  END SUBROUTINE ComputeFunZ_Vector
+!!$  SUBROUTINE ComputeFunZ_Vector( N, D, Ne, r, z, q, FunZ, ITERATE )
+!!$
+!!$    INTEGER,  INTENT(in)    :: N
+!!$    REAL(DP), INTENT(in)    :: D(N), Ne(N), r(N), z(N), q(N)
+!!$    REAL(DP), INTENT(out)   :: FunZ(N)
+!!$    LOGICAL,  INTENT(inout) :: ITERATE(N)
+!!$
+!!$    INTEGER  :: iX
+!!$    REAL(DP) :: Wt, rhot, epst, Ye, pt, at, ht
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRESENT( D, Ne, r, z, q, FunZ, ITERATE ) &
+!!$    !$ACC PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
+!!$#endif
+!!$    DO iX = 1, N
+!!$
+!!$      IF( ITERATE(iX) )THEN
+!!$
+!!$        ! --- Eq. C15 ---
+!!$
+!!$        Wt = SQRT( One + z(iX)**2 )
+!!$        rhot = D(iX) / Wt
+!!$
+!!$        ! --- Eq. C16 ---
+!!$
+!!$        epst = Wt * q(iX) - z(iX) * r(iX) + z(iX)**2 / ( One + Wt )
+!!$
+!!$        Ye = Ne(iX) * AtomicMassUnit / D(iX)
+!!$
+!!$        CALL ComputePressureFromSpecificInternalEnergy &
+!!$               ( rhot, epst, Ye, pt )
+!!$
+!!$        ! --- Eq. C20 ---
+!!$
+!!$        at = pt / ( rhot * ( One + epst ) )
+!!$
+!!$        ! --- Eq. C21 ---
+!!$
+!!$        ht = ( One + epst ) * ( One + at )
+!!$
+!!$        ! --- Eq. C22 ---
+!!$
+!!$        FunZ(iX) = z(iX) - r(iX) / ht
+!!$
+!!$      END IF ! ITERATE(iX)
+!!$
+!!$    END DO ! iX = 1, N
+!!$
+!!$  END SUBROUTINE ComputeFunZ_Vector
 
 #endif
 
@@ -2138,114 +2138,114 @@ CONTAINS
   END SUBROUTINE SolveZ_Bisection_Scalar
 
 
-  SUBROUTINE SolveZ_Bisection_Vector &
-    ( N, uD, uNe, q, r, k, &
-      za, zb, fa, fb, &
-      dz, zc, fc, ITERATE, dzMin_Option )
-
-    INTEGER,  INTENT(in)    :: N
-    REAL(DP), INTENT(in)    :: uD(N), uNe(N), r(N), k(N)
-    REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N), dz(N)
-    REAL(DP), INTENT(out)   :: zc(N), fc(N)
-    LOGICAL,  INTENT(inout) :: ITERATE(N)
-    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
-
-    REAL(DP) :: dzMin
-    INTEGER  :: MAX_IT
-
-    INTEGER :: ITERATION, iX
-
-    dzMin = 1.0e-08
-    IF( PRESENT( dzMin_Option ) ) &
-      dzMin = dzMin_Option
-
-    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
-
-    ITERATION = 0
-    DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
-
-      ITERATION = ITERATION + 1
-
-      ! --- Compute midpoints, zc ---
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRESENT( za, zc, dz, uD, ITERATE )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO
-#endif
-      DO iX = 1, N
-
-        IF( uD(iX) .GT. Min_D .AND. ITERATE(iX) )THEN
-
-          dz(iX) = Half * dz(iX)
-          zc(iX) = za(iX) + dz(iX)
-
-        END IF
-
-      END DO
-
-      CALL ComputeFunZ_Vector( N, uD, uNe, r, zc, q, fc, ITERATE )
-
-      ! --- Change either za or zb to zc, depending on sign of fc ---
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRESENT( uD, uNe, q, r, k, &
-      !$ACC          za, zb, fa, fb, &
-      !$ACC          dz, zc, fc, ITERATE )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO
-#endif
-      DO iX = 1, N
-
-        IF( uD(iX) .GT. Min_D .AND. ITERATE(iX) )THEN
-
-          IF( fa(iX) * fc(iX) .LT. Zero )THEN
-
-            zb(iX) = zc(iX)
-            fb(iX) = fc(iX)
-
-          ELSE
-
-            za(iX) = zc(iX)
-            fa(iX) = fc(iX)
-
-          END IF
-
-          !IF( ABS( dz(iX) ) / MAX( ABS( zc(iX) ), SqrtTiny ) .LE. dzMin ) &
-          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dzMin ) &
-            ITERATE(iX) = .FALSE.
-
-!!$          IF( ITERATION .GT. MAX_IT - 3 )THEN
+!!$  SUBROUTINE SolveZ_Bisection_Vector &
+!!$    ( N, uD, uNe, q, r, k, &
+!!$      za, zb, fa, fb, &
+!!$      dz, zc, fc, ITERATE, dzMin_Option )
 !!$
-!!$            WRITE(*,*) 'iX     = ', iX
-!!$            WRITE(*,*) 'Iter   = ', ITERATION
-!!$            WRITE(*,*) 'za, zb = ', za(iX), zb(iX)
-!!$            WRITE(*,*) 'dz     = ', dz(iX)
-!!$            WRITE(*,*)
+!!$    INTEGER,  INTENT(in)    :: N
+!!$    REAL(DP), INTENT(in)    :: uD(N), uNe(N), r(N), k(N)
+!!$    REAL(DP), INTENT(inout) :: za(N), zb(N), fa(N), fb(N), q(N), dz(N)
+!!$    REAL(DP), INTENT(out)   :: zc(N), fc(N)
+!!$    LOGICAL,  INTENT(inout) :: ITERATE(N)
+!!$    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
+!!$
+!!$    REAL(DP) :: dzMin
+!!$    INTEGER  :: MAX_IT
+!!$
+!!$    INTEGER :: ITERATION, iX
+!!$
+!!$    dzMin = 1.0e-08
+!!$    IF( PRESENT( dzMin_Option ) ) &
+!!$      dzMin = dzMin_Option
+!!$
+!!$    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
+!!$
+!!$    ITERATION = 0
+!!$    DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+!!$
+!!$      ITERATION = ITERATION + 1
+!!$
+!!$      ! --- Compute midpoints, zc ---
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$ACC PARALLEL LOOP GANG VECTOR &
+!!$      !$ACC PRESENT( za, zc, dz, uD, ITERATE )
+!!$#elif defined( THORNADO_OMP    )
+!!$      !$OMP PARALLEL DO
+!!$#endif
+!!$      DO iX = 1, N
+!!$
+!!$        IF( uD(iX) .GT. Min_D .AND. ITERATE(iX) )THEN
+!!$
+!!$          dz(iX) = Half * dz(iX)
+!!$          zc(iX) = za(iX) + dz(iX)
+!!$
+!!$        END IF
+!!$
+!!$      END DO
+!!$
+!!$      CALL ComputeFunZ_Vector( N, uD, uNe, r, zc, q, fc, ITERATE )
+!!$
+!!$      ! --- Change either za or zb to zc, depending on sign of fc ---
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$ACC PARALLEL LOOP GANG VECTOR &
+!!$      !$ACC PRESENT( uD, uNe, q, r, k, &
+!!$      !$ACC          za, zb, fa, fb, &
+!!$      !$ACC          dz, zc, fc, ITERATE )
+!!$#elif defined( THORNADO_OMP    )
+!!$      !$OMP PARALLEL DO
+!!$#endif
+!!$      DO iX = 1, N
+!!$
+!!$        IF( uD(iX) .GT. Min_D .AND. ITERATE(iX) )THEN
+!!$
+!!$          IF( fa(iX) * fc(iX) .LT. Zero )THEN
+!!$
+!!$            zb(iX) = zc(iX)
+!!$            fb(iX) = fc(iX)
+!!$
+!!$          ELSE
+!!$
+!!$            za(iX) = zc(iX)
+!!$            fa(iX) = fc(iX)
 !!$
 !!$          END IF
-
-        ELSE
-
-          ITERATE(iX) = .FALSE.
-
-        END IF ! uD(iX) .GT. Min_D .AND. ITERATE(iX)
-
-      END DO ! iX
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET UPDATE FROM( ITERATE )
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC UPDATE HOST       ( ITERATE )
-#endif
-
-    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
-
-  END SUBROUTINE SolveZ_Bisection_Vector
+!!$
+!!$          !IF( ABS( dz(iX) ) / MAX( ABS( zc(iX) ), SqrtTiny ) .LE. dzMin ) &
+!!$          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dzMin ) &
+!!$            ITERATE(iX) = .FALSE.
+!!$
+!!$!!$          IF( ITERATION .GT. MAX_IT - 3 )THEN
+!!$!!$
+!!$!!$            WRITE(*,*) 'iX     = ', iX
+!!$!!$            WRITE(*,*) 'Iter   = ', ITERATION
+!!$!!$            WRITE(*,*) 'za, zb = ', za(iX), zb(iX)
+!!$!!$            WRITE(*,*) 'dz     = ', dz(iX)
+!!$!!$            WRITE(*,*)
+!!$!!$
+!!$!!$          END IF
+!!$
+!!$        ELSE
+!!$
+!!$          ITERATE(iX) = .FALSE.
+!!$
+!!$        END IF ! uD(iX) .GT. Min_D .AND. ITERATE(iX)
+!!$
+!!$      END DO ! iX
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$OMP TARGET UPDATE FROM( ITERATE )
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$ACC UPDATE HOST       ( ITERATE )
+!!$#endif
+!!$
+!!$    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+!!$
+!!$  END SUBROUTINE SolveZ_Bisection_Vector
 
 END MODULE Euler_UtilitiesModule_Relativistic
