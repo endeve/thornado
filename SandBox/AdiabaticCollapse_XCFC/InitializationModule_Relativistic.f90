@@ -128,7 +128,6 @@ CONTAINS
     INTEGER                :: iX1, iX2, iX3
     INTEGER                :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP)               :: X1
-    CHARACTER(LEN=32)      :: ProgenitorFile
     TYPE(ProgenitorType1D) :: P1D
 
     REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
