@@ -11,11 +11,11 @@ from MakeDataFile import MakeDataFile
 
 """
 
-Default usage, plots last plotfile in DataDirectory:
+Default usage, plots last plotfile in PlotFileDirectory:
 
   $ python3 PlotFieldsAMReX.py
 
-Alernate usage, plot specific file in DataDirectory:
+Alernate usage, plot specific file in PlotFileDirectory:
 
   $ python3 PlotFieldsAMReX.py 10
 
@@ -36,13 +36,13 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'Advection1D'
+ProblemName = 'KelvinHelmholtz2D'
 
 # Specify title of figure
 FigTitle = ProblemName
 
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+PlotFileDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
 # Specify plot file base name
 PlotFileBaseName = ProblemName + '.plt'
@@ -56,46 +56,45 @@ UseLogScale = False
 # Specify whether or not to use physical units
 UsePhysicalUnits = False
 
-# Specify coordinate system (currently supports 'cartesian' and 'spherical' )
+# Specify coordinate system (currently supports 'cartesian' and 'spherical')
 CoordinateSystem = 'cartesian'
 
 # Specify colormap
-cmap = 'viridis'
+cmap = 'jet'
 
 MaxLevel = -1
 
 Verbose = True
 
-UseCustomLimits = False
+UseCustomLimits = True
 vmin = 0.0
 vmax = 2.0
 
-SaveFig = False
+SaveFig = True
 
 #### ====== End of User Input =======
 
-ID           = '{:s}_{:s}'.format( ProblemName, Field )
-DataFileName = '.{:s}_MovieData.dat'.format( ID )
-FigName      = 'fig.{:s}.png'.format( ID )
+ID      = '{:s}_{:s}'.format( ProblemName, Field )
+FigName = 'fig.{:s}.png'.format( ID )
 
-# Append "/" to DataDirectory, if not present
-if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
+# Append "/" to PlotFileDirectory, if not present
+if( not PlotFileDirectory[-1] == '/' ): PlotFileDirectory += '/'
 
-TimeUnit = ''
+TimeUnit   = ''
 LengthUnit = ''
 if( UsePhysicalUnits ):
 
-    TimeUnit = 'ms'
+    TimeUnit   = 'ms'
     LengthUnit = 'km'
 
-#Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
-#  = GetData( DataDirectory, PlotFileBaseName, Field, \
-#             CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
-#             MaxLevel = MaxLevel, \
-#             ReturnTime = True, ReturnMesh = True, Verbose = True )
+Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
+  = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
+             CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
+             MaxLevel = MaxLevel, \
+             ReturnTime = True, ReturnMesh = True, Verbose = True )
 
 Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
-  = GetData( DataDirectory, PlotFileBaseName, Field, \
+  = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = argv, \
              MaxLevel = MaxLevel, \
              ReturnTime = True, ReturnMesh = True, Verbose = True )
@@ -106,14 +105,20 @@ if nX[2] > 1: nDims += 1
 
 if nDims == 1:
 
-#    plt.plot( X10, Data0, 'r.' )
+    plt.plot( X10, Data0, 'r.' )
     plt.plot( X1, Data, 'k.' )
     if( UseLogScale ): plt.yscale( 'log' )
     plt.xlim( xL[0], xU[0] )
     plt.xlabel( 'X1' + ' ' + LengthUnit )
     plt.ylabel( Field )
-    plt.show()
-    plt.close()
+    if SaveFig:
+
+        plt.savefig( FigName, dpi = 300 )
+
+    else:
+
+        plt.show()
+        plt.close()
 
 elif( nDims == 2 ):
 
@@ -131,6 +136,8 @@ elif( nDims == 2 ):
     exit()
     '''
 
+    X1v, X2v = np.meshgrid( X1, X2, indexing = 'ij' )
+
     fig = plt.figure()
     fig.suptitle( FigTitle )
 
@@ -145,7 +152,7 @@ elif( nDims == 2 ):
 
         ax = fig.add_subplot( 111, polar = True )
 
-        im = ax.pcolormesh( X2, X1, Data, \
+        im = ax.pcolormesh( X2v, X1v, Data, \
                             cmap = cmap, \
                             norm = Norm, \
                             shading = 'nearest' )
@@ -159,7 +166,7 @@ elif( nDims == 2 ):
 
         ax = fig.add_subplot( 111 )
 
-        im = ax.pcolormesh( X1, X2, Data, \
+        im = ax.pcolormesh( X1v, X2v, Data, \
                             cmap = cmap, \
                             norm = Norm, \
                             shading = 'nearest' )
@@ -174,9 +181,17 @@ elif( nDims == 2 ):
                  ( Time, TimeUnit ), \
                    transform = ax.transAxes )
 
+        #ax.set_xticks( X1 - 0.5 * dX1 )
+        #ax.set_yticks( X2 - 0.5 * dX2 )
+        #ax.grid()
+
     cbar = fig.colorbar( im )
     cbar.set_label( Field + DataUnit )
 
+    print( dX1.min() )
+    print( dX1.max() )
+    print( dX2.min() )
+    print( dX2.max() )
     if SaveFig:
 
         plt.savefig( FigName, dpi = 300 )
@@ -216,7 +231,7 @@ else:
 
         ax = fig.add_subplot( 111, polar = True )
 
-        im = ax.pcolormesh( X2, X1, Data[:,:,0], \
+        im = ax.pcolormesh( X2v, X1v, Data[:,:,0], \
                             cmap = cmap, \
                             norm = Norm, \
                             shading = 'nearest' )
@@ -230,7 +245,7 @@ else:
 
         ax = fig.add_subplot( 111 )
 
-        im = ax.pcolormesh( X1, X2, Data[:,:,0], \
+        im = ax.pcolormesh( X1v, X2v, Data[:,:,0], \
                             cmap = cmap, \
                             norm = Norm, \
                             shading = 'nearest' )

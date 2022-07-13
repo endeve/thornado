@@ -2,12 +2,12 @@
 
 import numpy as np
 import subprocess
-from os.path import isfile
+from os.path import isdir
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-from UtilitiesModule import ChoosePlotFile, GetData, GetNorm, GetFileArray
-from MakeDataFile import MakeDataFile
+from UtilitiesModule import GetData, GetNorm, GetFileArray
+from MakeDataFile import MakeDataFile, ReadHeader
 
 # --- Get user's HOME directory ---
 
@@ -21,31 +21,40 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 
 #### ========== User Input ==========
 
-# Specify ID to be used for naming purposes
-ID = 'Advection2D'
+# ID to be used for naming purposes
+ID = 'KelvinHelmholtz2D'
 
-# Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
+# Directory containing AMReX plotfiles
+PlotFileDirectory \
+  = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
-# Specify plot file base name
-PlotFileBaseName = 'plt'
+# PlotFile base name (e.g., Advection2D.plt######## -> Advection2D.plt )
+PlotFileBaseName = ID + '.plt'
 
-# Specify field to plot
+# Field to plot
 Field = 'PF_D'
 
-# Specify to plot in log-scale
+# Plot data in log10-scale?
 UseLogScale = False
 
-# Specify whether or not to use physical units
+# Unit system of the data
 UsePhysicalUnits = False
 
-# Specify coordinate system (currently supports 'cartesian' and 'spherical' )
+# Coordinate system (currently supports 'cartesian' and 'spherical' )
 CoordinateSystem = 'cartesian'
 
-# Specify colormap
+# Colormap
 cmap = 'viridis'
 
-Verbose = False
+# First and last snapshots and number of snapshots to include in movie
+SSi = -1 # -1 -> SSi = 0
+SSf = -1 # -1 -> PlotFileArray.shape[0] - 1
+nSS = -1 # -1 -> PlotFileArray.shape[0]
+
+# Max level of refinement to include
+MaxLevel = -1 # -1 -> use all levels
+
+Verbose = True
 
 UseCustomLimits = False
 vmin = 0.0
@@ -57,163 +66,102 @@ zAxisVertical = False
 
 #### ====== End of User Input =======
 
-DataFileName = '.{:s}_{:s}_MovieData2D.dat'.format( ID, Field )
-MovieName    = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
+DataFileDirectory = '.{:s}_{:s}_MovieData2D'.format( ID, Field )
+MovieName         = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 
-# Append "/" to DataDirectory, if not present
-if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
-
-FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
-File = ChoosePlotFile( FileArray, PlotFileBaseName )
+# Append "/" if not present
+if( not PlotFileDirectory[-1] == '/' ): PlotFileDirectory += '/'
+if( not DataFileDirectory[-1] == '/' ): DataFileDirectory += '/'
 
 TimeUnit = ''
-LengthUnit = ''
-if UsePhysicalUnits:
+if UsePhysicalUnits: TimeUnit = 'ms'
 
-    TimeUnit   = 'ms'
-    LengthUnit = 'km'
-
-Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
-  = GetData( DataDirectory, PlotFileBaseName, Field, \
-             CoordinateSystem, UsePhysicalUnits, \
-             ReturnTime = True, ReturnMesh = True )
-
-nDims = 1
-if nX[1] > 1: nDims += 1
-if nX[2] > 1: nDims += 1
-
-assert ( nDims == 2 ), \
-       'Invalid nDims: {:d}\nnDims must equal 2'.format( nDims )
-
-## To make lineout plot
-## From: https://yt-project.org/doc/visualizing/
-##       manual_plotting.html#line-plots
-#
-#oray = ds.ortho_ray( axis = 0, coords = (0,0) )
-#
-#plt.plot( X1, oray[Field], 'k-' )
-#
-#if( UseLogScale ): plt.yscale( 'log' )
-#plt.show()
-#plt.close()
-#exit()
-
-MakeDataFile( Field, DataDirectory, DataFileName, \
-              PlotFileBaseName, CoordinateSystem, FileArray, \
+MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
+              PlotFileBaseName, CoordinateSystem, \
+              SSi = SSi, SSf = SSf, nSS = nSS, \
               UsePhysicalUnits = UsePhysicalUnits, \
-              WriteExtras = False, Verbose = False )
+              MaxLevel = MaxLevel, Verbose = Verbose )
 
-if( not isfile( DataFileName ) ):
+PlotFileArray = GetFileArray( PlotFileDirectory, PlotFileBaseName )
 
-    print( 'File: {:s} does not exist.'.format( DataFileName ) )
-    exit( 'Exiting...' )
+if SSi < 0: SSi = 0
+if SSf < 0: SSf = PlotFileArray.shape[0] - 1
+if nSS < 0: nSS = PlotFileArray.shape[0]
 
-assert isfile( DataFileName ), \
-       'File: {:s} does not exist.'.format( DataFileName )
-
-f = open( DataFileName  )
-header = f.readline()[16:-2]
-DataUnit = f.readline()[9:-1]
-DataShape = ( [ np.int64( dim ) for dim in header.split( ',' ) ] )
-
-if UsePhysicalUnits:
-
-    Time = list( [ np.float64( t ) \
-                 for t in f.readline()[12:-2].split(' ') ] )
-
-else:
-
-    Time = list( [ np.float64( t ) \
-                 for t in f.readline()[7:-2].split(' ') ] )
-
-Time = np.array( Time )
-
-Data = np.loadtxt( DataFileName ).reshape( DataShape )
-
-if CoordinateSystem == 'spherical':
-
-    polar = True
-
-    figsize = (16,9)
-
-else:
-
-    polar = False
-
-    figsize = (8,6)
-
-fig = plt.figure( figsize = figsize )
-ax  = fig.add_subplot( 111, polar = polar )
+fig = plt.figure()
+ax  = fig.add_subplot( 111 )
 
 def f(t):
-    return Data[t]
+
+    iSS = SSi + np.int64( ( SSf - SSi + 1 ) / nSS ) * t
+
+    DataFile = DataFileDirectory + PlotFileArray[iSS] + '.dat'
+
+    DataShape, DataUnits, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3 \
+      = ReadHeader( DataFile )
+
+    Data = np.loadtxt( DataFile ).reshape( np.int64( DataShape ) )
+
+    return Data, DataUnits, X1_C, X2_C, dX1, dX2, Time
+
+
+Data, DataUnits, \
+  X1_C, X2_C, X3_C, dX1, dX2, dX3, xL, xU, nX \
+    = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
+               CoordinateSystem, UsePhysicalUnits, \
+               argv = [ 'a' ], \
+               MaxLevel = MaxLevel, \
+               ReturnTime = False, ReturnMesh = True )
+
+xL = np.array( [ X1_C[0 ]-0.5*dX1[0 ], X2_C[0 ]-0.5*dX2[0 ] ], np.float64 )
+xU = np.array( [ X1_C[-1]+0.5*dX1[-1], X2_C[-1]+0.5*dX2[-1] ], np.float64 )
 
 if not UseCustomLimits:
-
     vmin = Data.min()
     vmax = Data.max()
 
 Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
 
-if CoordinateSystem == 'spherical':
+X1v, X2v = np.meshgrid( X1_C, X2_C, indexing = 'ij' )
 
-    im = ax.pcolormesh( X2, X1, f(0)[:,:], \
-                        cmap = cmap, \
-                        norm = Norm, \
-                        shading = 'nearest' )
+im = ax.pcolormesh( X1v, X2v, Data, \
+                    cmap = cmap, \
+                    norm = Norm, \
+                    shading = 'nearest' )
 
-    ax.set_thetamin( 0.0  )
-    ax.set_thetamax( 180.0 )
-    ax.set_theta_direction( -1 )
-    ax.set_theta_zero_location( 'W' ) # z-axis horizontal
+ax.set_xlim( xL[0], xU[0] )
+ax.set_ylim( xL[1], xU[1] )
+#ax.set_aspect( 'auto' )
 
-    if( zAxisVertical ):
-        ax.set_theta_zero_location( 'N' ) # z-axis vertical
-        time_text = plt.text( 0.5 * np.pi / 2, xU[0] * ( 1.0 + 0.3 ), '' )
-        cbar = fig.colorbar( im )
-    else:
-        ax.set_theta_zero_location( 'W' ) # z-axis horizontal
-        time_text = plt.text( 0.9 *np.pi / 2, xU[0] * ( 1.0 + 0.3 ), '' )
-        ax.set_position( [0.1,-0.45,0.7,2] )
-        cax = fig.add_axes( [0.85,0.1,0.03,0.8] )
-        cbar = fig.colorbar( im, cax = cax )
+time_text = plt.text( 0.5, 0.9, '', transform = ax.transAxes )
 
-else:
+cbar = fig.colorbar( im )
 
-    im = ax.pcolormesh( X1, X2, f(0)[:,:], \
-                        cmap = cmap, \
-                        norm = Norm, \
-                        shading = 'nearest' )
-
-    ax.set_xlim( xL[0], xU[0] )
-    ax.set_ylim( xL[1], xU[1] )
-
-    Width  = xU[0] - xL[0]
-    Height = xU[1] - xL[1]
-
-    time_text \
-      = plt.text( xL[0] + 0.5 * Width, xL[1] + 0.9 * Height, '' )
-
-    cbar = fig.colorbar( im )
-
-cbar.set_label( Field + ' ' + DataUnit )
+cbar.set_label( Field + ' ' + DataUnits )
 
 def UpdateFrame(t):
 
-    im.set_array( f(t)[:,:].flatten() )
-    time_text.set_text( 'Time = {:.3e} {:}'.format( Time[t], TimeUnit ) )
+    Data, DataUnits, X1_C, X2_C, dX1, dX2, Time = f(t)
+
+    X1v, X2v = np.meshgrid( X1_C, X2_C, indexing = 'ij' )
+
+    im = ax.pcolormesh( X1v, X2v, Data, \
+                        cmap = cmap, \
+                        norm = Norm, \
+                        shading = 'nearest' )
+
+    im.set_array( Data.flatten() )
+    time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnit ) )
 
     ret = ( im, time_text )
     return ret
 
-nFrames = FileArray.shape[0]
-
 # Call the animator
 anim = animation.FuncAnimation \
-         ( fig, UpdateFrame, frames = nFrames, \
+         ( fig, UpdateFrame, frames = nSS, \
            blit = True)
 
-fps = max( 1, nFrames / MovieRunTime )
+fps = max( 1, nSS / MovieRunTime )
 
 anim.save( MovieName, fps = fps )
 

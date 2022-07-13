@@ -6,7 +6,7 @@
 thornado.ProgramName = "Advection2D"
 thornado.AdvectionProfile = "SineWaveX1"
 
-thornado.nNodes    = 02
+thornado.nNodes    = 03
 thornado.nStages   = 03
 thornado.t_end     = 1.0e1
 thornado.iCycleD   = 10
@@ -25,19 +25,19 @@ geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-thornado.swX          = 01 01 00
-amr.n_cell            = 32 32 01 # Number of cells in each dimension
-amr.max_grid_size_x   = 8
-amr.max_grid_size_y   = 8
-amr.blocking_factor_x = 4
-amr.blocking_factor_y = 4
-amr.max_level         = 0
-amr.UseTiling         = 0
-amr.do_reflux         = 0
-amr.TagCriteria       = 0.5
-#amr.grid_eff          = 0.1
-amr.n_error_buf       = 0
-amr.ref_ratio         = 2
+thornado.swX            = 01 01 00
+amr.n_cell              = 32 32 01 # Number of cells in each dimension
+amr.max_grid_size_x     = 8
+amr.max_grid_size_y     = 8
+amr.blocking_factor_x   = 4
+amr.blocking_factor_y   = 4
+amr.max_level           = 0
+amr.UseAMR              = 0
+amr.ApplyFluxCorrection = 0
+amr.TagCriteria         = 0.5
+amr.n_error_buf         = 0
+amr.ref_ratio           = 2
+amr.UseTiling           = 0
 
 SL.UseSlopeLimiter = 0
 SL.UseTroubledCellIndicator = 0

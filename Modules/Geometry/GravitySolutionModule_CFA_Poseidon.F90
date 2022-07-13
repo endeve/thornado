@@ -96,6 +96,8 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
+    GravitationalMass = Zero
+
     CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
@@ -207,6 +209,16 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric &
            ( iX_B0, iX_E0, iX_B1, iX_E1, Tmp_ConFact, G )
 
+#else
+
+    Psi_BC          = Zero
+    AlphaPsi_BC     = Zero
+    INNER_BC_TYPES  = 'N'
+    OUTER_BC_TYPES  = 'N'
+    INNER_BC_VALUES = Zero
+    OUTER_BC_VALUES = Zero
+    Tmp_ConFact     = Zero
+
 #endif
 
     CALL TimersStop_Euler( Timer_GravitySolver )
@@ -263,6 +275,12 @@ CONTAINS
     CALL SetBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
+#else
+
+    Tmp_Lapse              = Zero
+    Tmp_Shift              = Zero
+    Tmp_ExtrinsicCurvature = Zero
+
 #endif
 
     CALL TimersStop_Euler( Timer_GravitySolver )
@@ -272,6 +290,7 @@ CONTAINS
 
   ! --- PRIVATE Subroutines ---
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
   SUBROUTINE UpdateConformalFactorAndMetric &
     ( iX_B0, iX_E0, iX_B1, iX_E1, Psi, G )
@@ -505,5 +524,6 @@ CONTAINS
 
   END SUBROUTINE ComputeGravitationalMass
 
+#endif
 
 END MODULE GravitySolutionModule_CFA_Poseidon

@@ -1,148 +1,225 @@
 #!/usr/bin/env python3
 
-import yt
 import numpy as np
+import os
+from multiprocessing import Process, cpu_count
 
-yt.funcs.mylog.setLevel(40) # Suppress initial yt output to screen
+from UtilitiesModule import Overwrite, GetData, ChoosePlotFile, GetFileArray
 
-from UtilitiesModule import OverwriteFile, GetData, ChoosePlotFile
+def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
+                  PlotFileBaseName, CoordinateSystem, \
+                  SSi = -1, SSf = -1, nSS = -1, \
+                  UsePhysicalUnits = True, \
+                  MaxLevel = -1, Verbose = False ):
 
-def MakeDataFile( Field, DataDirectory, DataFileName, \
-                  PlotFileBaseName, CoordinateSystem, FileArray, \
-                  UsePhysicalUnits = True, ReturnMesh = False, \
-                  MaxLevel = -1, \
-                  WriteExtras = False, Verbose = False ):
+    """
+    Generate a directory containing data files where each data file corresponds
+    to a specific AMReX plotfile. Mesh data are stored in the header of each
+    data file and can be accessed with the ReadHeader function.
+    """
 
-    print( '\nRunning MakeDataFile...\n' )
+    if Verbose: print( '\nRunning MakeDataFile...\n' )
 
-    print( 'DataDirectory: {:}\n'.format( DataDirectory ) )
+    if not DataFileDirectory[-1] == '/' : DataFileDirectory += '/'
 
-    if( not DataFileName[0] == '.' ): DataFileName = '.' + DataFileName
+    if Verbose:
+        print( '\nDataFileDirectory: {:}\n'.format( DataFileDirectory ) )
 
-    c = 2.99792458e10
-    if( not UsePhysicalUnits ): c = 1.0
-
-    # Append "/" to DataDirectory, if not present
-    if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
-
-    File = ChoosePlotFile( DataDirectory, PlotFileBaseName )
-
-    # Get some general info about the computational domain
-
-    ds       = yt.load( DataDirectory + FileArray[0] )
-    if MaxLevel == -1: MaxLevel = ds.index.max_level
-    nX       = ds.domain_dimensions
-    xL       = ds.domain_left_edge
-    xU       = ds.domain_right_edge
-
-    nDimsX = 1
-    if nX[1] > 1: nDimsX += 1
-    if nX[2] > 1: nDimsX += 1
-
-    if nDimsX == 3:
-
-      msg = 'MakeDataFile not implemented for nDimsX = 3'
-
-      assert 0, msg
-
-    if WriteExtras:
-
-        # This is if you're running on a computing cluster and don't want
-        # to copy the files to your local machine
-
-        with open( 'FileArray.txt', 'w' ) as f:
-            for i in FileArray:
-                f.write( i )
-                f.write( '\n' )
-        with open( 'Numbers.txt', 'w' ) as f:
-            for i in nX:
-                f.write( str(i) )
-                f.write( ' ' )
-            f.write( '\n' )
-            for i in xL.to_ndarray():
-                f.write( str(i) )
-                f.write( ' ' )
-            f.write( '\n' )
-            for i in xU.to_ndarray():
-                f.write( str(i) )
-                f.write( ' ' )
-            f.write( '\n' )
-
-        exit()
-
-    OW = OverwriteFile( DataFileName )
+    OW = Overwrite( DataFileDirectory )
 
     if OW:
 
-        # Put all time-slices into one array to use for movie making
+        os.system( 'rm -rf {:}'.format( DataFileDirectory ) )
+        os.system(  'mkdir {:}'.format( DataFileDirectory ) )
 
-        Data = np.empty( FileArray.shape[0], object )
-        Time = np.empty( FileArray.shape[0], np.float64 )
+        if PlotFileDirectory[-1] != '/' : PlotFileDirectory += '/'
 
-        print( 'Generating data file: {:}...'.format( DataFileName ) )
+        if Verbose :
+            print( '\nPlotFileDirectory: {:}\n'.format( PlotFileDirectory ) )
 
-        for i in range( FileArray.shape[0] ):
+        PlotFileNameArray = GetFileArray( PlotFileDirectory, PlotFileBaseName )
 
-            print( '{:}/{:}'.format( i+1, FileArray.shape[0] ) )
+        if SSi < 0: SSi = 0
+        if SSf < 0: SSf = PlotFileNameArray.shape[0] - 1
+        if nSS < 0: nSS = PlotFileNameArray.shape[0]
 
-            ds = yt.load( '{:}'.format( DataDirectory + FileArray[i] ) )
+        PlotFileArray = []
+        for i in range( nSS ):
+            iSS = SSi + np.int64( ( SSf - SSi ) / ( nSS - 1 ) * i )
+            PlotFile = str( PlotFileNameArray[iSS] )
+            if PlotFile[-1] == '/' :
+                PlotFileArray.append( PlotFile[0:-1] )
+            else:
+                PlotFileArray.append( PlotFile )
+        PlotFileArray = np.array( PlotFileArray )
 
-            if i == 0:
+        TimeHeaderBase = '# Time []: '
+        X1Base         = '# X1_C []: '
+        X2Base         = '# X2_C []: '
+        X3Base         = '# X3_C []: '
+        dX1Base        = '# dX1  []: '
+        dX2Base        = '# dX2  []: '
+        dX3Base        = '# dX3  []: '
+        if UsePhysicalUnits and CoordinateSystem == 'cartesian' :
+            TimeHeaderBase = '# Time [ms]: '
+            X1Base         = '# X1_C [km]: '
+            X2Base         = '# X2_C [km]: '
+            X3Base         = '# X3_C [km]: '
+            dX1Base        = '# dX1  [km]: '
+            dX2Base        = '# dX2  [km]: '
+            dX3Base        = '# dX3  [km]: '
+        elif UsePhysicalUnits and CoordinateSystem == 'spherical' :
+            TimeHeaderBase = '# Time [ms]: '
+            X1Base         = '# X1_C [km]: '
+            X2Base         = '# X2_C [rad]: '
+            X3Base         = '# X3_C [rad]: '
+            dX1Base        = '# dX1  [km]: '
+            dX2Base        = '# dX2  [rad]: '
+            dX3Base        = '# dX3  [rad]: '
 
-                Data[i], DataUnit, \
-                  X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time[i] \
-                    = GetData( DataDirectory, PlotFileBaseName, Field, \
+        Data, DataUnits, \
+          X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
+            = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
+                       CoordinateSystem, UsePhysicalUnits, \
+                       argv = [ 'a', PlotFileArray[0] ], \
+                       MaxLevel = MaxLevel, \
+                       ReturnTime = True, ReturnMesh = True )
+
+        nDimsX = 1
+        if( nX[1] > 1 ): nDimsX += 1
+        if( nX[2] > 1 ): nDimsX += 1
+
+        def loop( iLo, iHi ):
+
+            for i in range( iLo, iHi ):
+
+                PlotFile = PlotFileArray[i]
+
+                DataFile = DataFileDirectory + PlotFile + '.dat'
+
+                if Verbose:
+                    print( 'Generating data file: {:} ({:}/{:})'.format \
+                             ( DataFile, i+1, nSS ) )
+
+                Data, DataUnits, \
+                  X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
+                    = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
                                CoordinateSystem, UsePhysicalUnits, \
-                               argv = [ 'a', FileArray[i] ], \
+                               argv = [ 'a', PlotFile ], \
                                MaxLevel = MaxLevel, \
                                ReturnTime = True, ReturnMesh = True )
 
-            else:
+                if   nDimsX == 1:
+                    DataShape = '{:d}'.format( X1.shape[0] )
+                elif nDimsX == 2:
+                    DataShape = '{:d} {:d}'.format( X1.shape[0], X2.shape[0] )
+                else:
+                    exit( 'MakeDataFile not implemented for nDimsX > 2' )
 
-                Data[i], DataUnit, Time[i] \
-                  = GetData( DataDirectory, PlotFileBaseName, \
-                             Field, CoordinateSystem, UsePhysicalUnits, \
-                             argv = [ 'a', FileArray[i] ], \
-                             MaxLevel = MaxLevel, \
-                             ReturnTime = True, ReturnMesh = False )
+                # Save multi-D array with np.savetxt. Taken from:
+                # https://stackoverflow.com/questions/3685265/
+                # how-to-write-a-multidimensional-array-to-a-text-file
 
-        if   nDimsX == 1: DataShape \
-                            = (FileArray.shape[0],X1.shape[0])
-        elif nDimsX == 2: DataShape \
-                            = (FileArray.shape[0],X1.shape[0],X2.shape[1])
+                with open( DataFile, 'w' ) as FileOut:
 
-        # Save multi-D array with np.savetxt. Taken from:
-        # https://stackoverflow.com/questions/3685265/
-        # how-to-write-a-multidimensional-array-to-a-text-file
+                    FileOut.write( '# {:}\n'             .format( DataFile  ) )
+                    FileOut.write( '# Array Shape: {:}\n'.format( DataShape ) )
+                    FileOut.write( '# Data Units: {:}\n' .format( DataUnits ) )
 
-        TimeHeader = '# Time [ms] '
-        if not UsePhysicalUnits: TimeHeader = '# Time '
+                    TimeHeader = TimeHeaderBase + '{:.16e}\n'.format( Time )
+                    FileOut.write( TimeHeader )
 
-        with open( DataFileName, 'w' ) as FileOut:
+                    FileOut.write( X1Base )
+                    for iX1 in range( X1.shape[0] ):
+                        FileOut.write( str( X1[iX1] ) + ' ' )
+                    FileOut.write( '\n' )
 
-            FileOut.write( '# Array shape: {:}\n'.format( DataShape ) )
-            FileOut.write( '# Units: {:}\n'.format( DataUnit ) )
+                    FileOut.write( X2Base )
+                    for iX2 in range( X2.shape[0] ):
+                        FileOut.write( str( X2[iX2] ) + ' ' )
+                    FileOut.write( '\n' )
 
-        with open( DataFileName, 'a' ) as FileOut:
+                    FileOut.write( X3Base )
+                    for iX3 in range( X3.shape[0] ):
+                        FileOut.write( str( X3[iX3] ) + ' ' )
+                    FileOut.write( '\n' )
 
-            FileOut.write( TimeHeader )
-            for t in Time:
-                FileOut.write( str( t ) + ' ' )
-            FileOut.write( '\n' )
+                    FileOut.write( dX1Base )
+                    for iX1 in range( dX1.shape[0] ):
+                        FileOut.write( str( dX1[iX1] ) + ' ' )
+                    FileOut.write( '\n' )
 
-        with open( DataFileName, 'a' ) as FileOut:
+                    FileOut.write( dX2Base )
+                    for iX2 in range( dX2.shape[0] ):
+                        FileOut.write( str( dX2[iX2] ) + ' ' )
+                    FileOut.write( '\n' )
 
-            # Iterating through an n-dimensional array produces slices along
-            # the last axis. This is equivalent to Data[i] in this case
+                    FileOut.write( dX3Base )
+                    for iX3 in range( dX3.shape[0] ):
+                        FileOut.write( str( dX3[iX3] ) + ' ' )
+                    FileOut.write( '\n' )
 
-            for TimeSlice in Data:
-                FileOut.write( '# New slice\n' )
-                np.savetxt( FileOut, TimeSlice )
+                    np.savetxt( FileOut, Data )
 
-    if ReturnMesh:
+                # end with open( DataFileName, 'w' ) as FileOut
 
-        return xL, xU, nX, FileArray
+            # end for i in range( nSS )
 
-    else:
+        # end of loop( iLo, iHi )
 
-        return
+        # Adapted from:
+        # https://www.benmather.info/post/2018-11-24-multiprocessing-in-python/
+
+        nProc = cpu_count()
+
+        processes = []
+
+        for i in range( nProc ):
+            iLo = np.int64( np.float64( i     ) / np.float64( nProc ) * nSS )
+            iHi = np.int64( np.float64( i + 1 ) / np.float64( nProc ) * nSS )
+            p = Process( target = loop, args = (iLo,iHi) )
+            p.start()
+            processes.append( p )
+
+        [ p.join() for p in processes ]
+
+    # end if OW
+
+    return # end of MakeDataFile
+
+def ReadHeader( DataFile ):
+
+    f = open( DataFile )
+
+    dum = f.readline()
+
+    s = f.readline(); ind = s.find( ':' )+1
+    DataShape = np.array( list( map( np.int64, s[ind:].split() ) ), np.int64 )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    DataUnits = s[ind:]
+
+    s = f.readline(); ind = s.find( ':' )+1
+    Time = np.float64( s[ind:] )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    X1_C = np.array( list( map( np.float64, s[ind:].split() ) ), np.float64 )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    X2_C = np.array( list( map( np.float64, s[ind:].split() ) ), np.float64 )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    X3_C = np.array( list( map( np.float64, s[ind:].split() ) ), np.float64 )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    dX1 = np.array( list( map( np.float64, s[ind:].split() ) ), np.float64 )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    dX2 = np.array( list( map( np.float64, s[ind:].split() ) ), np.float64 )
+
+    s = f.readline(); ind = s.find( ':' )+1
+    dX3 = np.array( list( map( np.float64, s[ind:].split() ) ), np.float64 )
+
+    f.close()
+
+    return DataShape, DataUnits, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3

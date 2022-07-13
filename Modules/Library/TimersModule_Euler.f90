@@ -827,7 +827,13 @@ CONTAINS
     INTEGER(I8) :: clock_rate
     INTEGER(I8) :: clock_max
 
-    IF( .NOT. TimeIt_Euler ) RETURN
+    IF( .NOT. TimeIt_Euler )THEN
+
+      TimersWtime_Euler = -HUGE( 1.0_DP )
+
+      RETURN
+
+    END IF
 
     CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
     TimersWtime_Euler = REAL( clock_read, DP ) / REAL( clock_rate, DP )

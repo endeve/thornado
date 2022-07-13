@@ -205,7 +205,7 @@ CONTAINS
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
 
-    INTEGER :: iS, jS, iX1, iX2, iX3
+    INTEGER :: iS, jS
 
     REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &

@@ -94,6 +94,7 @@ Euler_PositivityLimiterModule_NonRelativistic_TABLE.o: \
 
 Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   KindModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleX.o \

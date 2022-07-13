@@ -172,18 +172,7 @@ CONTAINS
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
           WRITE(*,'(2x,A,4I5.4)') 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
-          CALL DescribeError_Euler &
-                 ( iErr(iNX,iX1,iX2,iX3), &
-                   Int_Option = [ iNX ], &
-                   Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
-                                   U(iNX,iX1,iX2,iX3,iCF_S1), &
-                                   U(iNX,iX1,iX2,iX3,iCF_S2), &
-                                   U(iNX,iX1,iX2,iX3,iCF_S3), &
-                                   U(iNX,iX1,iX2,iX3,iCF_E ), &
-                                   U(iNX,iX1,iX2,iX3,iCF_Ne), &
-                                   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                   G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
+          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
 
         END IF
 
