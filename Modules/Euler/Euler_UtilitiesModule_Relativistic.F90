@@ -128,7 +128,8 @@ CONTAINS
     INTEGER :: N, ErrorExists
     INTEGER :: iNX, iErr(SIZE(uD))
 
-    N = SIZE(uD)
+    N           = SIZE(uD)
+    ErrorExists = 0
 
     CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
 
@@ -158,7 +159,7 @@ CONTAINS
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP REDUCTION( +:ErrorExists )
@@ -182,12 +183,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr ) &
+    !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr ) &
+    !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #endif
@@ -198,7 +199,12 @@ CONTAINS
 
       DO iNX = 1, N
 
-        CALL DescribeError_Euler( iErr(iNX) )
+        CALL DescribeError_Euler &
+          ( iErr(iNX), &
+            Int_Option = [ iNX ], &
+            Real_Option = [ uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
+                            uE(iNX), uNe(iNX), &
+                            Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ] )
 
       END DO
 
@@ -233,7 +239,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
 
-    ITERATE = .TRUE.
+    ErrorExists = 0
+    ITERATE     = .TRUE.
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
@@ -338,8 +345,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr ) &
-    !$ACC COPYOUT(     ErrorExists )
+    !$ACC PRESENT( uD, uE, uNe, pD, pV1, pV2, pV3, pE, pNe, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP REDUCTION( +:ErrorExists )
@@ -367,7 +373,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr, &
+    !$OMP MAP( from:    iErr, ErrorExists, &
     !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -378,7 +384,7 @@ CONTAINS
     !$OMP               ITERATE )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr, &
+    !$ACC COPYOUT(      iErr, ErrorExists, &
     !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -393,7 +399,12 @@ CONTAINS
 
       DO iX = 1, N
 
-        CALL DescribeError_Euler( iErr(iX) )
+        CALL DescribeError_Euler &
+          ( iErr(iX), &
+            Int_Option = [ iX ], &
+            Real_Option = [ uD(iX), uS1(iX), uS2(iX), uS3(iX), &
+                            uE(iX), uNe(iX), &
+                            Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) ] )
 
       END DO
 
@@ -580,12 +591,14 @@ CONTAINS
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iAF
+    INTEGER :: iNX, iX1, iX2, iX3, iAF, ErrorExists
     INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3))
 
     CALL TimersStart_Euler( Timer_Euler_ComputeFromConserved )
+
+    ErrorExists = 0
 
     ! --- Update primitive variables, pressure, and sound speed ---
 
@@ -628,12 +641,15 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -660,6 +676,8 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
                iErr(iNX,iX1,iX2,iX3) )
 
+      ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
+
       CALL ComputeAuxiliary_Fluid &
              ( P(iNX,iX1,iX2,iX3,iPF_D ), &
                P(iNX,iX1,iX2,iX3,iPF_E ), &
@@ -683,11 +701,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    P, A, iErr ) &
+    !$OMP MAP( from:    P, A, iErr, ErrorExists ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      P, A, iErr ) &
+    !$ACC COPYOUT(      P, A, iErr, ErrorExists ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
@@ -695,7 +713,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CFC_ErrorCheck )
 
-    IF( ANY( iErr .NE. 0 ) )THEN
+    IF( ErrorExists .GT. 0 )THEN
+
+      WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
+      WRITE(*,*) 'iX_B0: ', iX_B0
+      WRITE(*,*) 'iX_E0: ', iX_E0
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -704,11 +726,20 @@ CONTAINS
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
-
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+          CALL DescribeError_Euler &
+            ( iErr(iNX,iX1,iX2,iX3), &
+              Int_Option = [ iNX ], &
+              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+                              U(iNX,iX1,iX2,iX3,iCF_S1), &
+                              U(iNX,iX1,iX2,iX3,iCF_S2), &
+                              U(iNX,iX1,iX2,iX3,iCF_S3), &
+                              U(iNX,iX1,iX2,iX3,iCF_E ), &
+                              U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
 
         END IF
 
@@ -741,7 +772,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       TimeStep
 
-    INTEGER  :: iX1, iX2, iX3, iNX, iDimX
+    INTEGER  :: iX1, iX2, iX3, iNX, iDimX, ErrorExists
     REAL(DP) :: dX(3), dt
     REAL(DP) :: P(nPF), Cs, EigVals(nCF)
     INTEGER  :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
@@ -754,6 +785,8 @@ CONTAINS
         dX3 => MeshX(3) % Width )
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
+
+    ErrorExists = 0
 
     CALL TimersStart_Euler( Timer_Euler_CTS_CopyIn )
 
@@ -776,16 +809,19 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
-    !$OMP REDUCTION( MIN: TimeStep )
+    !$OMP REDUCTION( MIN: TimeStep ) &
+    !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC REDUCTION( MIN: TimeStep ) &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
-    !$OMP REDUCTION( MIN: TimeStep )
+    !$OMP REDUCTION( MIN: TimeStep ) &
+    !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -811,6 +847,8 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
                iErr(iNX,iX1,iX2,iX3) )
+
+      ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
@@ -847,11 +885,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr ) &
+    !$OMP MAP( from:    iErr, ErrorExists ) &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr ) &
+    !$ACC COPYOUT(      iErr, ErrorExists ) &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
@@ -859,9 +897,11 @@ CONTAINS
 
     END ASSOCIATE ! dX1, etc.
 
-    IF( ANY( iErr .NE. 0 ) )THEN
+    IF( ErrorExists .GT. 0 )THEN
 
       WRITE(*,*) 'ERROR: ComputeTimeStep_Euler_Relativistic'
+      WRITE(*,*) 'iX_B0: ', iX_B0
+      WRITE(*,*) 'iX_E0: ', iX_E0
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -872,7 +912,18 @@ CONTAINS
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
+          CALL DescribeError_Euler &
+            ( iErr(iNX,iX1,iX2,iX3), &
+              Int_Option = [ iNX ], &
+              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+                              U(iNX,iX1,iX2,iX3,iCF_S1), &
+                              U(iNX,iX1,iX2,iX3,iCF_S2), &
+                              U(iNX,iX1,iX2,iX3,iCF_S3), &
+                              U(iNX,iX1,iX2,iX3,iCF_E ), &
+                              U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
 
         END IF
 
