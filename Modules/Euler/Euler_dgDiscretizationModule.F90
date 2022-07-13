@@ -150,7 +150,12 @@ MODULE Euler_dgDiscretizationModule
   INTEGER :: nX_X2(3), nX2_X, nNodesX_X2
   INTEGER :: nX_X3(3), nX3_X, nNodesX_X3
 
-  REAL(DP), PUBLIC :: OffGridFlux_Euler(nCF)
+  REAL(DP), PUBLIC :: OffGridFlux_Euler_X1_Inner(nCF), &
+                      OffGridFlux_Euler_X1_Outer(nCF), &
+                      OffGridFlux_Euler_X2_Inner(nCF), &
+                      OffGridFlux_Euler_X2_Outer(nCF), &
+                      OffGridFlux_Euler_X3_Inner(nCF), &
+                      OffGridFlux_Euler_X3_Outer(nCF)
 
 
 CONTAINS
@@ -325,7 +330,12 @@ CONTAINS
     END DO
     END DO
 
-    OffGridFlux_Euler = Zero
+    OffGridFlux_Euler_X1_Inner = Zero
+    OffGridFlux_Euler_X1_Outer = Zero
+    OffGridFlux_Euler_X2_Inner = Zero
+    OffGridFlux_Euler_X2_Outer = Zero
+    OffGridFlux_Euler_X3_Inner = Zero
+    OffGridFlux_Euler_X3_Outer = Zero
 
     CALL TimersStop_Euler( Timer_Euler_Increment )
 
@@ -1129,10 +1139,13 @@ CONTAINS
     DO iCF   = 1       , nCF
     DO iNX_X = 1       , nDOFX_X1
 
-      OffGridFlux_Euler(iCF) &
-        = OffGridFlux_Euler(iCF) &
-            - (   NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1) &
-                - NumericalFlux(iNX_X,iCF,iX2,iX3,iX_B0(1)) )
+      OffGridFlux_Euler_X1_Inner(iCF) &
+        = OffGridFlux_Euler_X1_Inner(iCF) &
+            + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_B0(1))
+
+      OffGridFlux_Euler_X1_Outer(iCF) &
+        = OffGridFlux_Euler_X1_Outer(iCF) &
+            + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1)
 
     END DO
     END DO
@@ -1853,10 +1866,13 @@ CONTAINS
     DO iCF   = 1       , nCF
     DO iNX_X = 1       , nDOFX_X2
 
-      OffGridFlux_Euler(iCF) &
-        = OffGridFlux_Euler(iCF) &
-            - (   NumericalFlux(iNX_X,iCF,iX1,iX3,iX_E0(2)+1) &
-                - NumericalFlux(iNX_X,iCF,iX1,iX3,iX_B0(2)) )
+      OffGridFlux_Euler_X2_Inner(iCF) &
+        = OffGridFlux_Euler_X2_Inner(iCF) &
+            + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_B0(2))
+
+      OffGridFlux_Euler_X2_Outer(iCF) &
+        = OffGridFlux_Euler_X2_Outer(iCF) &
+            + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_E0(2)+1)
 
     END DO
     END DO
@@ -2576,10 +2592,13 @@ CONTAINS
     DO iCF   = 1       , nCF
     DO iNX_X = 1       , nDOFX_X3
 
-      OffGridFlux_Euler(iCF) &
-        = OffGridFlux_Euler(iCF) &
-            - (   NumericalFlux(iNX_X,iCF,iX1,iX2,iX_E0(3)+1) &
-                - NumericalFlux(iNX_X,iCF,iX1,iX2,iX_B0(3)) )
+      OffGridFlux_Euler_X3_Inner(iCF) &
+        = OffGridFlux_Euler_X3_Inner(iCF) &
+            + NumericalFlux(iNX_X,iCF,iX1,iX2,iX_B0(3))
+
+      OffGridFlux_Euler_X3_Outer(iCF) &
+        = OffGridFlux_Euler_X3_Outer(iCF) &
+            + NumericalFlux(iNX_X,iCF,iX1,iX2,iX_E0(3)+1)
 
     END DO
     END DO

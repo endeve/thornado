@@ -26,7 +26,12 @@ MODULE  MF_Euler_dgDiscretizationModule
     nGF
   USE Euler_dgDiscretizationModule,       ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
-    OffGridFlux_Euler
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
 
@@ -252,7 +257,13 @@ CONTAINS
                  SuppressBC_Option = .TRUE. )
 
         MF_OffGridFlux_Euler(iLevel,:) &
-          = MF_OffGridFlux_Euler(iLevel,:) + OffGridFlux_Euler
+          = MF_OffGridFlux_Euler(iLevel,:) &
+              + (   OffGridFlux_Euler_X1_Outer &
+                  - OffGridFlux_Euler_X1_Inner &
+                  + OffGridFlux_Euler_X2_Outer &
+                  - OffGridFlux_Euler_X2_Inner &
+                  + OffGridFlux_Euler_X3_Outer &
+                  - OffGridFlux_Euler_X3_Inner )
 
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
