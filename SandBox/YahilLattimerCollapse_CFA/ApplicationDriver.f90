@@ -24,7 +24,6 @@ PROGRAM ApplicationDriver
     iX_B1, &
     iX_E0, &
     iX_E1, &
-    nDOFX, &
     nDimsX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
