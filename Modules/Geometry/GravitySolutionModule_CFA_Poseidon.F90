@@ -57,23 +57,23 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   ! --- Poseidon Modules ---
 
-  USE Initialization_Poseidon, ONLY: &
+  USE Poseidon_Interface_Initialization, ONLY: &
     Initialize_Poseidon
-  USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Close, &
-    Poseidon_CFA_Set_Uniform_Boundary_Conditions
-  USE Source_Input_Module, ONLY: &
-    Poseidon_XCFC_Input_Sources1, &
-    Poseidon_XCFC_Input_Sources2
-  USE Poseidon_XCFC_Interface_Module, ONLY: &
+  USE Poseidon_Interface_Boundary_Conditions, ONLY : &
+    Poseidon_Set_Uniform_Boundary_Conditions
+  USE Poseidon_Interface_Source_Input, ONLY: &
+    Poseidon_Input_Sources_Part1, &
+    Poseidon_Input_Sources_Part2
+  USE Poseidon_Interface_Run, ONLY: &
     Poseidon_XCFC_Run_Part1, &
-    Poseidon_XCFC_Run_Part2, &
-    Poseidon_Return_ConFactor, &
-    Poseidon_Return_Lapse, &
-    Poseidon_Return_Shift, &
-    Poseidon_Return_ExtrinsicCurvature
-  USE Initial_Guess_Module, ONLY: &
-    Poseidon_Init_FlatGuess
+    Poseidon_XCFC_Run_Part2
+  USE Poseidon_Interface_Return_Routines, ONLY: &
+    Poseidon_Return_Conformal_Factor, &
+    Poseidon_Return_Lapse_Function, &
+    Poseidon_Return_Shift_Vector, &
+    Poseidon_Return_Extrinsic_Curvature
+  USE Poseidon_Interface_Close, ONLY: &
+    Poseidon_Close
 
 #endif
 
@@ -87,7 +87,6 @@ MODULE GravitySolutionModule_CFA_Poseidon
 
   REAL(DP) :: GravitationalMass
 
-
 CONTAINS
 
 
@@ -96,6 +95,8 @@ CONTAINS
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    GravitationalMass = Zero
 
     CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
@@ -111,20 +112,28 @@ CONTAINS
     WRITE(*,*)
 
     CALL Initialize_Poseidon &
-         ( Units_Option                = 'G',                       &
-           Dimensions_Option           = 3,                         &
-           FEM_Degree_Option           = MAX( 1, nNodes - 1 ),      &
-           L_Limit_Option              = 0,                         &
-           Domain_Edge_Option          = [ xL(1), xR(1) ],          &
-           NE_Option                   = nX,                        &
-           NQ_Option                   = [ nNodes, 1, 1 ],          &
-           dr_Option                   = MeshX(1) % Width(1:nX(1)), &
-           dt_Option                   = MeshX(2) % Width(1:nX(2)), &
-           dp_Option                   = MeshX(3) % Width(1:nX(3)), &
-           Method_Flag_Option          = 3,                         &
-           Print_Setup_Option          = .TRUE.,                    &
-           Convergence_Criteria_Option = 1.0e-08_DP,                &
-           Verbose_Option              = .FALSE. )
+         ( Dimensions_Option            = 3,                         &
+           FEM_Degree_Option            = MAX( 1, nNodes - 1 ),      &
+           L_Limit_Option               = 0,                         &
+           Source_NE                    = nX,                        &
+           Domain_Edge_Option           = [ xL(1), xR(1) ],          &
+           Source_NQ                    = nNodesX,                   &
+           Source_xL                    = [ -Half, +Half ],          &
+           Source_RQ_xlocs              = MeshX(1) % Nodes,          &
+           Source_TQ_xlocs              = MeshX(2) % Nodes,          &
+           Source_PQ_xlocs              = MeshX(3) % Nodes,          &
+           Source_Units                 = 'G',                       &
+           Source_Radial_Boundary_Units = ' m',                      &
+           Source_DR_Option             = MeshX(1) % Width(1:nX(1)), &
+           Source_DT_Option             = MeshX(2) % Width(1:nX(2)), &
+           Source_DP_Option             = MeshX(3) % Width(1:nX(3)), &
+           Method_Flag_Option           = 3,                         &
+           Max_Iterations_Option        = 20,                        &
+           Flat_Guess_Option            = .TRUE.,                    &
+           Print_Setup_Option           = .TRUE.,                    &
+           Convergence_Criteria_Option  = 1.0e-08_DP,                &
+           Verbose_Option               = .FALSE.,                   &
+           Print_Results_Option         = .FALSE. )
 
 #endif
 
@@ -173,52 +182,42 @@ CONTAINS
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
 
-    INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ] ! Neumann
-    OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ] ! Dirichlet
+    INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
+    OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
     INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
     OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
 
-    CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
-           ( "I", INNER_BC_TYPES, INNER_BC_VALUES )
-    CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
-           ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
-
-    CALL Poseidon_Init_FlatGuess() ! Possibly move this to init call
+    CALL Poseidon_Set_Uniform_Boundary_Conditions &
+           ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
+    CALL Poseidon_Set_Uniform_Boundary_Conditions &
+           ( 'O', OUTER_BC_TYPES, OUTER_BC_VALUES )
 
     ! --- Set matter sources with current conformal factor ---
 
-    CALL Poseidon_XCFC_Input_Sources1 &
-           ( Local_E      = E,                    &
-             Local_Si     = Si,                   &
-             Local_RE_Dim = nX(1),                &
-             Local_TE_Dim = nX(2),                &
-             Local_PE_Dim = nX(3),                &
-             Local_RQ_Dim = nNodesX(1),           &
-             Local_TQ_Dim = nNodesX(2),           &
-             Local_PQ_Dim = nNodesX(3),           &
-             Input_R_Quad = MeshX(1) % Nodes,     &
-             Input_T_Quad = MeshX(2) % Nodes,     &
-             Input_P_Quad = MeshX(3) % Nodes,     &
-             Left_Limit   = -Half,                &
-             Right_Limit  = +Half )
+    CALL Poseidon_Input_Sources_Part1 &
+           ( Input_E  = E, &
+             Input_Si = Si )
 
     ! --- Compute conformal factor ---
 
     CALL Poseidon_XCFC_Run_Part1()
 
-    CALL Poseidon_Return_ConFactor &
-         ( NE               = nX,               &
-           NQ               = nNodesX,          &
-           RQ_Input         = MeshX(1) % Nodes, &
-           TQ_Input         = MeshX(2) % Nodes, &
-           PQ_Input         = MeshX(3) % Nodes, &
-           Left_Limit       = -Half,            &
-           Right_Limit      = +Half,            &
-           Return_ConFactor = Tmp_ConFact )
+    CALL Poseidon_Return_Conformal_Factor &
+         ( Return_ConFactor = Tmp_ConFact )
 
     CALL UpdateConformalFactorAndMetric &
            ( iX_B0, iX_E0, iX_B1, iX_E1, Tmp_ConFact, G )
+
+#else
+
+    Psi_BC          = Zero
+    AlphaPsi_BC     = Zero
+    INNER_BC_TYPES  = 'N'
+    OUTER_BC_TYPES  = 'N'
+    INNER_BC_VALUES = Zero
+    OUTER_BC_VALUES = Zero
+    Tmp_ConFact     = Zero
 
 #endif
 
@@ -249,68 +248,23 @@ CONTAINS
 
     ! --- Set matter sources with updated conformal factor ---
 
-    CALL Poseidon_XCFC_Input_Sources1 &
-           ( Local_E      = E,                    &
-             Local_Si     = Si,                   &
-             Local_RE_Dim = nX(1),                &
-             Local_TE_Dim = nX(2),                &
-             Local_PE_Dim = nX(3),                &
-             Local_RQ_Dim = nNodesX(1),           &
-             Local_TQ_Dim = nNodesX(2),           &
-             Local_PQ_Dim = nNodesX(3),           &
-             Input_R_Quad = MeshX(1) % Nodes,     &
-             Input_T_Quad = MeshX(2) % Nodes,     &
-             Input_P_Quad = MeshX(3) % Nodes,     &
-             Left_Limit   = -Half,                &
-             Right_Limit  = +Half )
-
-    CALL Poseidon_XCFC_Input_Sources2 &
-           ( Local_S      = S,                    &
-             Local_RE_Dim = nX(1),                &
-             Local_TE_Dim = nX(2),                &
-             Local_PE_Dim = nX(3),                &
-             Local_RQ_Dim = nNodesX(1),           &
-             Local_TQ_Dim = nNodesX(2),           &
-             Local_PQ_Dim = nNodesX(3),           &
-             Input_R_Quad = MeshX(1) % Nodes,     &
-             Input_T_Quad = MeshX(2) % Nodes,     &
-             Input_P_Quad = MeshX(3) % Nodes,     &
-             Left_Limit   = -Half,                &
-             Right_Limit  = +Half )
+    CALL Poseidon_Input_Sources_Part2 &
+           ( Input_E  = E,  &
+             Input_Si = Si, &
+             Input_S  = S  )
 
     ! --- Compute lapse and shift ---
 
     CALL Poseidon_XCFC_Run_Part2()
 
-    CALL Poseidon_Return_Lapse &
-         ( NE           = nX,               &
-           NQ           = nNodesX,          &
-           RQ_Input     = MeshX(1) % Nodes, &
-           TQ_Input     = MeshX(2) % Nodes, &
-           PQ_Input     = MeshX(3) % Nodes, &
-           Left_Limit   = -Half,            &
-           Right_Limit  = +Half,            &
-           Return_Lapse = Tmp_Lapse )
+    CALL Poseidon_Return_Lapse_Function &
+           ( Return_Lapse = Tmp_Lapse )
 
-    CALL Poseidon_Return_Shift &
-         ( NE           = nX,               &
-           NQ           = nNodesX,          &
-           RQ_Input     = MeshX(1) % Nodes, &
-           TQ_Input     = MeshX(2) % Nodes, &
-           PQ_Input     = MeshX(3) % Nodes, &
-           Left_Limit   = -Half,            &
-           Right_Limit  = +Half,            &
-           Return_Shift = Tmp_Shift )
+    CALL Poseidon_Return_Shift_Vector &
+           ( Return_Shift = Tmp_Shift )
 
-    CALL Poseidon_Return_ExtrinsicCurvature &
-         ( NE          = nX,               &
-           NQ          = nNodesX,          &
-           RQ_Input    = MeshX(1) % Nodes, &
-           TQ_Input    = MeshX(2) % Nodes, &
-           PQ_Input    = MeshX(3) % Nodes, &
-           Left_Limit  = -Half,            &
-           Right_Limit = +Half,            &
-           Return_Kij  = Tmp_ExtrinsicCurvature )
+    CALL Poseidon_Return_Extrinsic_Curvature &
+           ( Return_Kij = Tmp_ExtrinsicCurvature )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
@@ -321,6 +275,12 @@ CONTAINS
     CALL SetBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
+#else
+
+    Tmp_Lapse              = Zero
+    Tmp_Shift              = Zero
+    Tmp_ExtrinsicCurvature = Zero
+
 #endif
 
     CALL TimersStop_Euler( Timer_GravitySolver )
@@ -330,6 +290,7 @@ CONTAINS
 
   ! --- PRIVATE Subroutines ---
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
   SUBROUTINE UpdateConformalFactorAndMetric &
     ( iX_B0, iX_E0, iX_B1, iX_E1, Psi, G )
@@ -563,5 +524,6 @@ CONTAINS
 
   END SUBROUTINE ComputeGravitationalMass
 
+#endif
 
 END MODULE GravitySolutionModule_CFA_Poseidon
