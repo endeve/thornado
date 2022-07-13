@@ -877,7 +877,7 @@ CONTAINS
         IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
           uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
-            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
+            = ( One - 1.0d-3 ) * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
           uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
             = 0.0_DP
           uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &

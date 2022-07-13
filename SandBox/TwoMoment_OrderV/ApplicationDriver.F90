@@ -220,7 +220,7 @@ PROGRAM ApplicationDriver
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
