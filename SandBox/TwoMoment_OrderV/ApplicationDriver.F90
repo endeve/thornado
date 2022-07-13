@@ -58,7 +58,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'GaussianDiffusion1D'
+  ProgramName = 'SineWaveStreaming'
 
   nSpecies = 1
 
