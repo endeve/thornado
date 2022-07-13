@@ -113,23 +113,23 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   ! --- Poseidon Modules ---
 
-  USE Initialization_AMReX, ONLY: &
-    Initialize_Poseidon_with_AMReX
-  USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Close
-  USE Poseidon_Interface_BC_Input, ONLY : &
+  USE Poseidon_Interface_Initialization, ONLY: &
+    Initialize_Poseidon
+  USE Poseidon_Interface_Boundary_Conditions, ONLY : &
     Poseidon_Set_Uniform_Boundary_Conditions
-  USE Poseidon_Source_Input_Module, ONLY: &
+  USE Poseidon_Interface_Source_Input, ONLY: &
     Poseidon_Input_Sources_Part1, &
     Poseidon_Input_Sources_Part2
-  USE Poseidon_XCFC_Interface_Module, ONLY: &
+  USE Poseidon_Interface_Run, ONLY: &
     Poseidon_XCFC_Run_Part1, &
     Poseidon_XCFC_Run_Part2
-  USE Poseidon_Return_Routines_Module, ONLY: &
+  USE Poseidon_Interface_Return_Routines, ONLY: &
     Poseidon_Return_Conformal_Factor, &
     Poseidon_Return_ALL
-  USE Poseidon_Initial_Guess_Module, ONLY: &
-    Poseidon_Initialize_Flat_Guess
+  USE Poseidon_Interface_Close, ONLY: &
+    Poseidon_Close
+
+
 
 #endif
 
@@ -190,17 +190,18 @@ CONTAINS
 
     END IF
 
-    CALL Initialize_Poseidon_with_AMReX &
-           ( Source_NQ                    = nNodesX, &
-             Source_xL                    = [ -Half, +Half ], &
-             Source_RQ_xlocs              = MeshX(1) % Nodes, &
-             Source_TQ_xlocs              = MeshX(2) % Nodes, &
-             Source_PQ_xlocs              = MeshX(3) % Nodes, &
-             Source_Units                 = 'G', &
-             Source_Radial_Boundary_Units = 'km', &
-             Verbose_Option               = .FALSE., &
-             Print_Setup_Option           = .TRUE.,  &
-             Print_Results_Option         = .FALSE.   )
+    CALL Initialize_Poseidon &
+           ( Source_NQ                    = nNodesX,            &
+             Source_xL                    = [ -Half, +Half ],   &
+             Source_RQ_xlocs              = MeshX(1) % Nodes,   &
+             Source_TQ_xlocs              = MeshX(2) % Nodes,   &
+             Source_PQ_xlocs              = MeshX(3) % Nodes,   &
+             Source_Units                 = 'G',                &
+             Source_Radial_Boundary_Units = 'km',               &
+             Flat_Guess_Option            = .TRUE.,             &
+             Verbose_Option               = .FALSE.,            &
+             Print_Setup_Option           = .TRUE.,             &
+             Print_Results_Option         = .TRUE.              )
 
 #endif
 
@@ -264,7 +265,6 @@ CONTAINS
     ! --- Set XCFC sources with current conformal factor ---
     CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
-    CALL Poseidon_Initialize_Flat_Guess() ! Possibly move this to init call
 
     ! --- Compute conformal factor ---
 
@@ -295,7 +295,6 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
 
     INTEGER :: iLevel
-    REAL(DP) :: GravitationalMass
 
 !!$    CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -324,9 +323,7 @@ CONTAINS
 
     CALL ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
 
-    CALL ComputeGravitationalMass( MF_uGS, GravitationalMass )
-
-    CALL ApplyBoundaryConditions_Geometry( GravitationalMass, MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry( MF_uGF )
 
     DO iLevel = 0, nLevels-1
 
@@ -872,6 +869,9 @@ CONTAINS
 
     END DO ! WHILE( .NOT. CONVERGED )
 
+
+    
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy( dCF   (iLevel) )
@@ -1065,7 +1065,7 @@ CONTAINS
 
     ! --- Approximate outer boundary with isotropic expressions ---
 
-    Psi_xR   = One + Half * GravitationalMass / xR(1)
+    Psi_xR   = One + Half * Gravitationalmass / xR(1)
     Alpha_xR =   ( One - Half * GravitationalMass / xR(1) ) &
                / ( One + Half * GravitationalMass / xR(1) )
 
@@ -1147,13 +1147,12 @@ CONTAINS
   END SUBROUTINE ComputeGravitationalMass
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry( GravitationalMass, MF_uGF )
+  SUBROUTINE ApplyBoundaryConditions_Geometry( MF_uGF )
 
-    REAL(DP)            , INTENT(in)    :: GravitationalMass
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     CALL ApplyBoundaryConditions_X1_Inner( MF_uGF )
-    CALL ApplyBoundaryConditions_X1_Outer( GravitationalMass, MF_uGF )
+    CALL ApplyBoundaryConditions_X1_Outer( MF_uGF )
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry
 
@@ -1269,9 +1268,8 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_X1_Inner
 
 
-  SUBROUTINE ApplyBoundaryConditions_X1_Outer( GravitationalMass, MF_uGF )
+  SUBROUTINE ApplyBoundaryConditions_X1_Outer( MF_uGF )
 
-    REAL(DP)            , INTENT(in)    :: GravitationalMass
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -1285,13 +1283,9 @@ CONTAINS
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: iNX
 
-    REAL(DP) :: X1
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      CALL CreateMesh_MF( iLevel, MeshX )
 
       DO WHILE( MFI % next() )
 
@@ -1306,95 +1300,51 @@ CONTAINS
 
         IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
-          DO iNX = 1, nNodesX(1)
+          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
 
-            X1 = NodeCoordinate( MeshX(1), iX_E0(1)+1, iNX )
+          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
 
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_Alpha-1)+iNX) &
-              =   ( One - Half * GravitationalMass / X1 ) &
-                / ( One + Half * GravitationalMass / X1 )
+          DO iGF = 1       , nGF
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX = 1       , nDOFX
 
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_Psi-1)+iNX) &
-              = One + Half * GravitationalMass / X1
+            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
 
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_Beta_1-1)+iNX) = Zero
+          END DO
+          END DO
+          END DO
+          END DO
 
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_Beta_2-1)+iNX) = Zero
+          DO iGF = 1, nGF
 
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_Beta_3-1)+iNX) = Zero
-
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_K_dd_11-1)+iNX) = Zero
-
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_K_dd_12-1)+iNX) = Zero
-
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_K_dd_13-1)+iNX) = Zero
-
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_K_dd_22-1)+iNX) = Zero
-
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_K_dd_23-1)+iNX) = Zero
-
-            uGF(iX_E0(1)+1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
-                nDOFX*(iGF_K_dd_33-1)+iNX) = Zero
+            CALL MatrixMatrixMultiply &
+                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
+                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
+                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
+                     nDOFX_X1 )
 
           END DO
 
-!!$          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
-!!$
-!!$          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-!!$          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-!!$
-!!$          DO iGF = 1       , nGF
-!!$          DO iX3 = iX_B0(3), iX_E0(3)
-!!$          DO iX2 = iX_B0(2), iX_E0(2)
-!!$          DO iNX = 1       , nDOFX
-!!$
-!!$            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
-!!$
-!!$          END DO
-!!$          END DO
-!!$          END DO
-!!$          END DO
-!!$
-!!$          DO iGF = 1, nGF
-!!$
-!!$            CALL MatrixMatrixMultiply &
-!!$                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
-!!$                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-!!$                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
-!!$                     nDOFX_X1 )
-!!$
-!!$          END DO
-!!$
-!!$          DO iGF = 1       , nGF
-!!$          DO iX3 = iX_B0(3), iX_E0(3)
-!!$          DO iX2 = iX_B0(2), iX_E0(2)
-!!$          DO iNX = 1       , nDOFX
-!!$
-!!$            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
-!!$
-!!$          END DO
-!!$          END DO
-!!$          END DO
-!!$          END DO
-!!$
-!!$          DEALLOCATE( G_F )
-!!$          DEALLOCATE( G_K )
+          DO iGF = 1       , nGF
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX = 1       , nDOFX
+
+            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+          DEALLOCATE( G_F )
+          DEALLOCATE( G_K )
 
         END IF
 
       END DO
-
-      CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
 
