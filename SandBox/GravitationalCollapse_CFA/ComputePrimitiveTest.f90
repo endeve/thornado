@@ -44,7 +44,7 @@ PROGRAM ComputePrimitiveTest
   INCLUDE 'mpif.h'
 
   INTEGER,  PARAMETER :: MaxIter = 10000000
-  INTEGER             :: i, ITER, iErr
+  INTEGER             :: iErr
   REAL(DP)            :: U(nCF), P(nPF), G(nGF), rhot, Ye, MinE
   REAL(DP), PARAMETER :: UnitsD    = Gram / Centimeter**3
   REAL(DP), PARAMETER :: UnitsS1   = Gram / Centimeter**2 / Second
