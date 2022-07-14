@@ -88,10 +88,8 @@ CONTAINS
 
   SUBROUTINE ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: &
-      MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: &
-      MF_uPF(0:nLevels-1), MF_uAF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uPF(0:), MF_uAF(0:)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -187,10 +185,9 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Euler_MF &
     ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1), &
-                                         MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:), MF_uCF(0:)
     REAL(DP),             INTENT(in)  :: CFL
-    REAL(DP),             INTENT(out) :: TimeStepMin(0:nLevels-1)
+    REAL(DP),             INTENT(out) :: TimeStepMin(0:)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -266,7 +263,7 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
+    CALL amrex_parallel_reduce_min( TimeStepMin, SIZE( TimeStepMin ) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
@@ -275,10 +272,10 @@ CONTAINS
 
   SUBROUTINE ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
