@@ -129,8 +129,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE Poseidon_Interface_Close, ONLY: &
     Poseidon_Close
 
-
-
 #endif
 
   IMPLICIT NONE
@@ -147,28 +145,28 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   ! --- MF: Metric Fields ---
 
-  INTEGER, PARAMETER :: iMF_Psi      = 1
-  INTEGER, PARAMETER :: iMF_Alpha    = 2
-  INTEGER, PARAMETER :: iMF_Beta_1   = 3
-  INTEGER, PARAMETER :: iMF_Beta_2   = 4
-  INTEGER, PARAMETER :: iMF_Beta_3   = 5
-  INTEGER, PARAMETER :: iMF_K_dd_11  = 6
-  INTEGER, PARAMETER :: iMF_K_dd_12  = 7
-  INTEGER, PARAMETER :: iMF_K_dd_13  = 8
-  INTEGER, PARAMETER :: iMF_K_dd_22  = 9
-  INTEGER, PARAMETER :: iMF_K_dd_23  = 10
-  INTEGER, PARAMETER :: iMF_K_dd_33  = 11
-  INTEGER, PARAMETER :: nMF          = 11
+  INTEGER, PARAMETER :: iMF_Psi     = 1
+  INTEGER, PARAMETER :: iMF_Alpha   = 2
+  INTEGER, PARAMETER :: iMF_Beta_1  = 3
+  INTEGER, PARAMETER :: iMF_Beta_2  = 4
+  INTEGER, PARAMETER :: iMF_Beta_3  = 5
+  INTEGER, PARAMETER :: iMF_K_dd_11 = 6
+  INTEGER, PARAMETER :: iMF_K_dd_12 = 7
+  INTEGER, PARAMETER :: iMF_K_dd_13 = 8
+  INTEGER, PARAMETER :: iMF_K_dd_22 = 9
+  INTEGER, PARAMETER :: iMF_K_dd_23 = 10
+  INTEGER, PARAMETER :: iMF_K_dd_33 = 11
+  INTEGER, PARAMETER :: nMF         = 11
 
   ! --- GS: Gravity/Geometry Sources ---
 
-  INTEGER, PARAMETER :: iGS_E  = 1
-  INTEGER, PARAMETER :: iGS_S1 = 2
-  INTEGER, PARAMETER :: iGS_S2 = 3
-  INTEGER, PARAMETER :: iGS_S3 = 4
-  INTEGER, PARAMETER :: iGS_S  = 5
-  INTEGER, PARAMETER :: iGS_Mg = 6
-  INTEGER, PARAMETER, PUBLIC :: nGS = 6
+  INTEGER, PARAMETER         :: iGS_E  = 1
+  INTEGER, PARAMETER         :: iGS_S1 = 2
+  INTEGER, PARAMETER         :: iGS_S2 = 3
+  INTEGER, PARAMETER         :: iGS_S3 = 4
+  INTEGER, PARAMETER         :: iGS_S  = 5
+  INTEGER, PARAMETER         :: iGS_Mg = 6
+  INTEGER, PARAMETER, PUBLIC :: nGS    = 6
 
 CONTAINS
 
@@ -191,17 +189,17 @@ CONTAINS
     END IF
 
     CALL Initialize_Poseidon &
-           ( Source_NQ                    = nNodesX,            &
-             Source_xL                    = [ -Half, +Half ],   &
-             Source_RQ_xlocs              = MeshX(1) % Nodes,   &
-             Source_TQ_xlocs              = MeshX(2) % Nodes,   &
-             Source_PQ_xlocs              = MeshX(3) % Nodes,   &
-             Source_Units                 = 'G',                &
-             Source_Radial_Boundary_Units = 'km',               &
-             Flat_Guess_Option            = .TRUE.,             &
-             Verbose_Option               = .FALSE.,            &
-             Print_Setup_Option           = .TRUE.,             &
-             Print_Results_Option         = .TRUE.              )
+           ( Source_NQ                    = nNodesX,          &
+             Source_xL                    = [ -Half, +Half ], &
+             Source_RQ_xlocs              = MeshX(1) % Nodes, &
+             Source_TQ_xlocs              = MeshX(2) % Nodes, &
+             Source_PQ_xlocs              = MeshX(3) % Nodes, &
+             Source_Units                 = 'G',              &
+             Source_Radial_Boundary_Units = 'km',             &
+             Flat_Guess_Option            = .TRUE.,           &
+             Verbose_Option               = .FALSE.,          &
+             Print_Setup_Option           = .TRUE.,           &
+             Print_Results_Option         = .FALSE. )
 
 #endif
 
@@ -868,9 +866,6 @@ CONTAINS
                ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
-
-
-    
 
     DO iLevel = 0, nLevels-1
 
