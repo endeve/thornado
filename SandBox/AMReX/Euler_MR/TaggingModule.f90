@@ -17,9 +17,8 @@ MODULE TaggingModule
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
-  USE MF_UtilitiesModule, ONLY: &
-    amrex2thornado_X
+    DP, &
+    Two
 
   IMPLICIT NONE
   PRIVATE
@@ -31,7 +30,6 @@ MODULE TaggingModule
   PUBLIC :: TagElements_Advection3D
   PUBLIC :: TagElements_AdiabaticCollapse_XCFC
   PUBLIC :: TagElements_uCF
-
 
 CONTAINS
 
@@ -51,24 +49,21 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3), &
-                  1:nCF)
-
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, indLo, indHi
 
     REAL(DP) :: TagCriteria_this
 
     TagCriteria_this = TagCriteria
 
-    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      indLo = 1 + nDOFX * ( iCF_D - 1 )
+      indHi = nDOFX * iCF_D
+
+!      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      IF( ANY( uCF(iX1,iX2,iX3,indLo:indHi) .GT. TagCriteria_this ) )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -100,24 +95,28 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3), &
-                  1:nCF)
-
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, indLo, indHi
 
     REAL(DP) :: TagCriteria_this
+    REAL(DP) :: GradD(nDOFX)
 
     TagCriteria_this = TagCriteria
-
-    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      indLo = 1 + nDOFX * ( iCF_D - 1 )
+      indHi = nDOFX * iCF_D
+
+      GradD = ( (   uCF(iX1+1,iX2,iX3,indLo:indHi) &
+                  - uCF(iX1-1,iX2,iX3,indLo:indHi) ) )**2! &
+!                / ( Two * MeshX(1) % Width(iX1) ) )**2
+
+      GradD = SQRT( GradD )
+
+      !IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      IF( ANY( GradD .GT. TagCriteria_this ) )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -149,11 +148,6 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3), &
-                  1:nCF)
-
     INTEGER :: iX1, iX2, iX3
 
     REAL(DP) :: Radius
@@ -162,8 +156,6 @@ CONTAINS
 
     TagCriteria_this = TagCriteria
 
-    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -171,8 +163,8 @@ CONTAINS
       Radius = SQRT( ( MeshX(1) % Center(iX1) - 0.5_DP )**2 &
                    + ( MeshX(2) % Center(iX2) - 0.5_DP )**2 )
 
-!      IF( ( MeshX(1) % Center(iX1) .GT. TagCriteria_this ) &
-!           .AND. ( MeshX(2) % Center(iX2) .GT. TagCriteria_this ) )THEN
+!!$      IF( ( MeshX(1) % Center(iX1) .GT. TagCriteria_this ) &
+!!$           .AND. ( MeshX(2) % Center(iX2) .GT. TagCriteria_this ) )THEN
 
       IF( Radius .LT. TagCriteria_this )THEN
 
@@ -206,24 +198,33 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3), &
-                  1:nCF)
-
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, indLo, indHi
 
     REAL(DP) :: TagCriteria_this
+    REAL(DP) :: GradD(nDOFX)
 
     TagCriteria_this = TagCriteria
-
-    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( ABS( MeshX(2) % Center(iX2) ) .GT. TagCriteria_this )THEN
+      indLo = 1 + nDOFX * ( iCF_D - 1 )
+      indHi = nDOFX * iCF_D
+
+      GradD = ( (   uCF(iX1+1,iX2,iX3,indLo:indHi) &
+                  - uCF(iX1-1,iX2,iX3,indLo:indHi) ))**2! &
+!                / ( Two * MeshX(1) % Width(iX1) ) )**2
+
+      GradD = GradD &
+                + ( (   uCF(iX1,iX2+1,iX3,indLo:indHi) &
+                      - uCF(iX1,iX2-1,iX3,indLo:indHi) ) )**2! &
+!                    / ( Two * MeshX(2) % Width(iX2) ) )**2
+
+      GradD = SQRT( GradD )
+
+      IF( ANY( GradD .GT. TagCriteria_this ) )THEN
+      !IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -255,11 +256,6 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3), &
-                  1:nCF)
-
     INTEGER :: iX1, iX2, iX3
 
     REAL(DP) :: Radius
@@ -267,8 +263,6 @@ CONTAINS
     REAL(DP) :: TagCriteria_this
 
     TagCriteria_this = TagCriteria
-
-    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -314,20 +308,11 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-!!$    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-!!$                          iX_B0(2):iX_E0(2), &
-!!$                          iX_B0(3):iX_E0(3), &
-!!$                  1:nCF)
-
     INTEGER :: iX1, iX2, iX3
 
     REAL(DP) :: TagCriteria_this
 
-    REAL(DP) :: Radius
-
     TagCriteria_this = TagCriteria
-
-!!$    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -365,11 +350,6 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    REAL(DP) :: U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3), &
-                  1:nCF)
-
     INTEGER :: iX1, iX2, iX3
 
     REAL(DP) :: TagCriteria_this
@@ -378,25 +358,9 @@ CONTAINS
 
     TagCriteria_this = TagCriteria
 
-    CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo, iX_B0, iX_E0, uCF, U )
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-
-!      IF( ANY( U(:,iX1,iX2,iX3,iCF_D) .GE. TagCriteria_this ) )THEN
-
-!      Radius = SQRT( ( MeshX(1) % Center(iX1) - 0.5_DP )**2 &
-!                   + ( MeshX(2) % Center(iX2) - 0.5_DP )**2 )
-
-!      IF( Radius .LT. TagCriteria_this )THEN
-
-!      IF( ( MeshX(1) % Center(iX1) .GT. TagCriteria_this ) &
-!           .AND. ( MeshX(2) % Center(iX2) .GT. TagCriteria_this ) )THEN
-
-!      IF( ABS( MeshX(1) % Center(iX1) - 0.5_DP ) .LT. TagCriteria_this )THEN
-
-!      IF( ABS( MeshX(2) % Center(iX2) ) .GT. TagCriteria_this )THEN
 
       IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
 
