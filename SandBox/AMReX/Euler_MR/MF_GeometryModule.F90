@@ -21,14 +21,18 @@ MODULE MF_GeometryModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nNodesX
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, &
     LX_X1_Up
   USE GeometryFieldsModule, ONLY: &
-    nGF
+    nGF, &
+    iGF_Beta_1
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE LinearAlgebraModule, ONLY: &
@@ -139,7 +143,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     IF( .NOT. amrex_is_all_periodic() )THEN
 
@@ -152,14 +156,15 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX2, iX3, iGF, nX1_X
+    INTEGER  :: iLevel, iNX, iX2, iX3, iGF, nX1_X, jNX
+    INTEGER  :: iNX1, iNX2, iNX3, jNX1, jNX2, jNX3
     INTEGER  :: iX_B0(3), iX_E0(3)
 
     REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
@@ -178,61 +183,46 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
-
-        ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-        ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-
-        ! --- Lower boundary ---
+        ! --- Lower boundary (Reflecting) ---
 
         IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
 
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
+          DO iGF  = 1       , nGF
+          DO iX3  = iX_B0(3), iX_E0(3)
+          DO iX2  = iX_B0(2), iX_E0(2)
+          DO iNX3 = 1       , nNodesX(3)
+          DO iNX2 = 1       , nNodesX(2)
+          DO iNX1 = 1       , nNodesX(1)
 
-            G_K(iNX,iX2,iX3,iGF) = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-          END DO
-          END DO
-          END DO
-          END DO
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
-          DO iGF = 1, nGF
+            uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+              = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
 
-            CALL MatrixMatrixMultiply &
-                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Dn, &
-                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX_X1 )
-
-          END DO
-
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
-
-            uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
+            IF( iGF .EQ. iGF_Beta_1 ) &
+              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+                = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
 
           END DO
           END DO
           END DO
           END DO
+          END DO
+          END DO
 
-        END IF
+        END IF ! Lower boundary
 
         ! --- Upper boundary ---
 
         IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
-          IF( .NOT. ALLOCATED( G_K ) ) &
-            ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3),1:nGF) )
-          IF( .NOT. ALLOCATED( G_F ) ) &
-            ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3),1:nGF) )
+          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+
+          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
 
           DO iGF = 1       , nGF
           DO iX3 = iX_B0(3), iX_E0(3)
@@ -268,10 +258,10 @@ CONTAINS
           END DO
           END DO
 
-        END IF
+          DEALLOCATE( G_F )
+          DEALLOCATE( G_K )
 
-        DEALLOCATE( G_F )
-        DEALLOCATE( G_K )
+        END IF ! Upper boundary
 
       END DO
 
