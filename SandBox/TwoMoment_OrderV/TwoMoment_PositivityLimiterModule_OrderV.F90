@@ -1322,18 +1322,21 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(4) &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$OMP          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+    !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
+    !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(4) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$ACC          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
+    !$ACC          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
+    !$ACC          V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, GE, GX, U_F, U_R, DeltaE, &
     !$ACC          Weights_Q, ApplyEnergyLimiter )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$OMP          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K, &
+    !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
+    !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K, &
     !$OMP          iNodeX, iNodeE )
 #endif
     DO iS  = 1, nSpecies
