@@ -2373,37 +2373,69 @@ CONTAINS
 
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
+        ! ! --- Number Equation ---
+        !
+        ! Gm(iOS+iCR_N,iN_X) &
+        !   = ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) &
+        !         / ( One + dt * Chi_T )
+        !
+        ! ! --- Number Flux 1 Equation ---
+        !
+        ! Gm(iOS+iCR_G1,iN_X) &
+        !   = ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) &
+        !         / ( One + dt * Kappa )
+        !
+        ! ! --- Number Flux 2 Equation ---
+        !
+        ! Gm(iOS+iCR_G2,iN_X) &
+        !   = ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) &
+        !         / ( One + dt * Kappa )
+        !
+        ! ! --- Number Flux 3 Equation ---
+        !
+        ! Gm(iOS+iCR_G3,iN_X) &
+        !   = ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) &
+        !         / ( One + dt * Kappa )
+
         ! --- Number Equation ---
 
         Gm(iOS+iCR_N,iN_X) &
-          = ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
+          = ( ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
             + Omega(iN_X) &
-                * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) &
-                / ( One + dt * Chi_T )
+                * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) ) &
+                / ( One + Omega(iN_X) * dt * Chi_T )
 
         ! --- Number Flux 1 Equation ---
 
         Gm(iOS+iCR_G1,iN_X) &
-          = ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+          = ( ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
             + Omega(iN_X) &
-                * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) &
-                                    / ( One + dt * Kappa )
+                * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) ) &
+                / ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 2 Equation ---
 
         Gm(iOS+iCR_G2,iN_X) &
-          = ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+          = ( ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
             + Omega(iN_X) &
-                * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) &
-                / ( One + dt * Kappa )
+                * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) ) &
+                / ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 3 Equation ---
 
         Gm(iOS+iCR_G3,iN_X) &
-          = ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+          = ( ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
             + Omega(iN_X) &
-                * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) &
-                / ( One + dt * Kappa )
+                * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) ) &
+                / ( One + Omega(iN_X) * dt * Kappa )
 
         Fm(iOS+iCR_N ,iN_X) = Gm(iOS+iCR_N ,iN_X) - J    (iN_E,iS,iN_X)
         Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X)
