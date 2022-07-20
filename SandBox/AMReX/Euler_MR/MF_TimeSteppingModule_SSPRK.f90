@@ -42,8 +42,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     CFL, &
     nNodes, &
     nStages, &
-    do_reflux, &
-    UseXCFC
+    do_reflux
   USE AverageDownModule, ONLY: &
     AverageDownTo
   USE RefluxModule_Euler, ONLY: &
@@ -233,8 +232,7 @@ CONTAINS
         CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
-               ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:), &
-                 UseXCFC_Option = UseXCFC )
+               ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
         DO iLevel = 0, nLevels-1
 

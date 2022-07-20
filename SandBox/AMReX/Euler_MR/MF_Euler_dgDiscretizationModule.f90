@@ -83,7 +83,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     nLevels, &
     UseTiling, &
     swX, &
-    do_reflux
+    do_reflux, &
+    UseXCFC
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -113,29 +114,22 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
-    ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
+    ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
     REAL(DP),             INTENT(in)    :: Time   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
-    LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 
     INTEGER :: iLevel
-    LOGICAL :: UseXCFC
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
 
     MF_OffGridFlux_Euler = Zero
 
     DO iLevel = 0, nLevels-1
 
       CALL ComputeIncrement_Euler_MF_SingleLevel &
-             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel), &
-               UseXCFC_Option = UseXCFC )
+             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel) )
 
     END DO
 
@@ -143,7 +137,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
-    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
+    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
 !    DO iLevel = 0, nLevels-1
 !
@@ -229,7 +223,6 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
-    LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -251,17 +244,12 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: SurfaceFlux_X3(:,:,:,:,:)
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    LOGICAL :: UseXCFC
 
     TYPE(amrex_multifab) :: SurfaceFluxes(1:nDimsX)
     INTEGER              :: iDimX, nGhost(nDimsX), nDOFX_X(3)
     LOGICAL              :: Nodal(nDimsX)
 
     TYPE(EdgeMap) :: Edge_Map
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
 
     ! --- Maybe don't need to apply boundary conditions since
     !     they're applied in the shock detector ---
