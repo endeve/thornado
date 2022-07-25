@@ -85,6 +85,7 @@ MODULE InputOutputModuleAMReX
     FillPatch
   USE InputParsingModule, ONLY: &
     nLevels, &
+    nMaxLevels, &
     MaxGridSizeX, &
     dt, &
     StepNo, &
@@ -94,7 +95,7 @@ MODULE InputOutputModuleAMReX
     nX, &
     iRestart, &
     UseTiling, &
-    do_reflux
+    UseFluxCorrection
 
   IMPLICIT NONE
   PRIVATE
@@ -119,13 +120,13 @@ MODULE InputOutputModuleAMReX
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, &
+                 ( FinestLevelArr, StepNo, dt, Time, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
-      INTEGER(c_int), INTENT(out) :: FinestLevel
+      INTEGER(c_int), INTENT(out) :: FinestLevelArr(*)
       INTEGER(c_int), INTENT(out) :: StepNo(*)
-      REAL(DP),       INTENT(out) :: dt(*), time(*)
+      REAL(DP),       INTENT(out) :: dt(*), Time(*)
       TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -180,18 +181,13 @@ CONTAINS
       MF_uAF_Option, MF_uDF_Option )
 
     REAL(DP),             INTENT(in) :: Time
-    INTEGER,              INTENT(in) :: StepNo(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uGF_Option(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uCF_Option(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uPF_Option(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uAF_Option(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: &
-      MF_uDF_Option(0:nLevels-1)
+    INTEGER,              INTENT(in) :: StepNo(0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPF_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uAF_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:)
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
@@ -248,7 +244,7 @@ CONTAINS
 
     WRITE(NumberString,'(I8.8)') StepNo(0)
 
-    PlotFileName = TRIM( PlotFileBaseName ) // '_' // NumberString
+    PlotFileName = TRIM( PlotFileBaseName ) // NumberString
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -429,22 +425,24 @@ CONTAINS
     IMPLICIT NONE
 
     INTEGER     :: iLevel, FinestLevel
-    TYPE(c_ptr) :: pBA(0:nLevels-1)
-    TYPE(c_ptr) :: pDM(0:nLevels-1)
-    TYPE(c_ptr) :: pGF(0:nLevels-1)
-    TYPE(c_ptr) :: pCF(0:nLevels-1)
+    TYPE(c_ptr) :: pBA(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pDM(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pGF(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pCF(0:nMaxLevels-1)
     TYPE(c_ptr) :: amrcore
 
     TYPE(amrex_box)       :: BX
-    TYPE(amrex_distromap) :: DM  (0:nLevels-1)
-    TYPE(amrex_boxarray)  :: BA  (0:nLevels-1)
-    TYPE(amrex_geometry)  :: GEOM(0:nLevels-1)
+    TYPE(amrex_distromap) :: DM  (0:nMaxLevels-1)
+    TYPE(amrex_boxarray)  :: BA  (0:nMaxLevels-1)
+    TYPE(amrex_geometry)  :: GEOM(0:nMaxLevels-1)
+
+    INTEGER :: FinestLevelArr(0:0) ! Hack
 
     amrcore = amrex_get_amrcore()
 
     BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
 
-    DO iLevel = 0, nLevels-1
+    DO iLevel = 0, nMaxLevels-1
 
       CALL amrex_boxarray_build ( BA(iLevel), BX )
 
@@ -456,13 +454,14 @@ CONTAINS
 
     END DO
 
-    pBA(0:nLevels-1) = BA(0:nLevels-1) % P
-    pDM(0:nLevels-1) = DM(0:nLevels-1) % P
-
-    FinestLevel = nLevels-1
+    pBA(0:nMaxLevels-1) = BA(0:nMaxLevels-1) % P
+    pDM(0:nMaxLevels-1) = DM(0:nMaxLevels-1) % P
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t_new, pBA, pDM, iRestart )
+           ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
+
+    FinestLevel = FinestLevelArr(0)
+    nLevels = FinestLevel + 1
 
     DO iLevel = 0, nLevels-1
 
@@ -499,7 +498,7 @@ CONTAINS
       CALL MF_uDF(iLevel) % SetVal( Zero )
 
       ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-      IF( iLevel .GT. 0 .AND. do_reflux ) &
+      IF( iLevel .GT. 0 .AND. UseFluxCorrection ) &
         CALL amrex_fluxregister_build &
                ( FluxRegister(iLevel), BA(iLevel), DM(iLevel), &
                  amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
@@ -509,17 +508,17 @@ CONTAINS
     pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
     pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
 
-    CALL ReadMultiFabData( nLevels-1, pGF, 0, iRestart )
-    CALL ReadMultiFabData( nLevels-1, pCF, 1, iRestart )
+    CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
+    CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
 
     DO iLevel = 0, nLevels-1
 
-      CALL FillPatch( iLevel, t_new(0), MF_uGF )
-      CALL FillPatch( iLevel, t_new(0), MF_uCF )
+      CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uGF )
+      CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uCF )
 
     END DO
 
-    CALL amrex_fi_set_finest_level( nLevels-1, amrcore )
+    CALL amrex_fi_set_finest_level( FinestLevel, amrcore )
 
   END SUBROUTINE ReadCheckpointFile
 

@@ -11,12 +11,13 @@ thornado.nStages   = 03
 thornado.t_end     = 1.0e1
 thornado.iCycleD   = 10
 thornado.CFL       = 0.5
-thornado.iCycleW   = 100000
+thornado.iCycleW   = 10
 thornado.iCycleChk = 100000
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 
-thornado.PlotFileBaseName = "Advection3D.plt"
+thornado.PlotFileBaseName       = "Advection3D.plt"
+thornado.CheckpointFileBaseName = "Advection2D.chk"
 
 thornado.bcX         = 01 01 01
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
@@ -25,22 +26,24 @@ geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-thornado.swX            = 01 01 01
-amr.n_cell              = 008 008 008 # Number of cells in each dimension
-amr.max_grid_size_x     = 8
-amr.max_grid_size_y     = 8
-amr.max_grid_size_z     = 8
-amr.blocking_factor_x   = 4
-amr.blocking_factor_y   = 4
-amr.blocking_factor_y   = 4
-amr.max_level           = 0
-amr.UseAMR              = 0
-amr.ApplyFluxCorrection = 0
-amr.TagCriteria         = 0.25
-amr.n_error_buf         = 0
-amr.ref_ratio           = 2
-amr.UseTiling           = 0
+thornado.swX          = 01 01 01
+amr.n_cell            = 008 008 008 # Number of cells in each dimension
+amr.max_grid_size_x   = 8
+amr.max_grid_size_y   = 8
+amr.max_grid_size_z   = 8
+amr.blocking_factor_x = 4
+amr.blocking_factor_y = 4
+amr.blocking_factor_y = 4
+amr.max_level         = 0
+amr.UseAMR            = 0
+amr.UseFluxCorrection = 0
+amr.TagCriteria       = 0.25
+amr.n_error_buf       = 0
+amr.ref_ratio         = 2
+amr.UseTiling         = 0
 
-SL.UseSlopeLimiter = 0
-SL.UseTroubledCellIndicator = 0
-PL.UsePositivityLimiter = 0
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 0
+SL.UseTroubledCellIndicator  = 0
+
+PL.UsePositivityLimiter = 1

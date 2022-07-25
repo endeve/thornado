@@ -19,7 +19,7 @@ MODULE MF_FieldsModule
   USE MF_KindModule, ONLY: &
     DP
   USE InputParsingModule, ONLY: &
-    nLevels
+    nMaxLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -56,15 +56,15 @@ CONTAINS
 
   SUBROUTINE CreateFields_MF
 
-    ALLOCATE( MF_uGF(0:nLevels-1) )
-    ALLOCATE( MF_uCF(0:nLevels-1) )
-    ALLOCATE( MF_uPF(0:nLevels-1) )
-    ALLOCATE( MF_uAF(0:nLevels-1) )
-    ALLOCATE( MF_uDF(0:nLevels-1) )
+    ALLOCATE( MF_uGF(0:nMaxLevels-1) )
+    ALLOCATE( MF_uCF(0:nMaxLevels-1) )
+    ALLOCATE( MF_uPF(0:nMaxLevels-1) )
+    ALLOCATE( MF_uAF(0:nMaxLevels-1) )
+    ALLOCATE( MF_uDF(0:nMaxLevels-1) )
 
-    ALLOCATE( FluxRegister(0:nLevels-1) )
+    ALLOCATE( FluxRegister(0:nMaxLevels-1) )
 
-    ALLOCATE( MF_OffGridFlux_Euler(1:nCF,0:nLevels-1) )
+    ALLOCATE( MF_OffGridFlux_Euler(1:nCF,0:nMaxLevels-1) )
 
   END SUBROUTINE CreateFields_MF
 
@@ -75,7 +75,7 @@ CONTAINS
 
     DEALLOCATE( MF_OffGridFlux_Euler )
 
-    DO iLevel = 0, nLevels-1
+    DO iLevel = 0, nMaxLevels-1
 
       CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
 

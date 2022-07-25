@@ -8,8 +8,9 @@ MODULE MF_TimeSteppingModule_SSPRK
     amrex_multifab, &
     amrex_multifab_build, &
     amrex_multifab_destroy
-  USE amrex_amrcore_module, ONLY: &
-    amrex_regrid
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_communicator, &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -34,19 +35,25 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE MF_FieldsModule, ONLY: &
+    MF_uGF, &
+    MF_uCF, &
+    MF_uDF, &
     MF_OffGridFlux_Euler
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE InputParsingModule, ONLY: &
     nLevels, &
-    UseAMR, &
+    nMaxLevels, &
     swX, &
     CFL, &
     nNodes, &
     nStages, &
-    do_reflux
-  USE AverageDownModule, ONLY: &
-    AverageDownTo
-  USE RefluxModule_Euler, ONLY: &
-    Reflux_Euler_MF
+    UseFluxCorrection, &
+    t_new, &
+    dt, &
+    DEBUG
+  USE FluxCorrectionModule_Euler, ONLY: &
+    ApplyFluxCorrection_Euler_MF
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     nGS, &
     MultiplyWithPsi6_MF, &
@@ -121,61 +128,61 @@ CONTAINS
   END SUBROUTINE FinalizeFluid_SSPRK_MF
 
 
-  SUBROUTINE UpdateFluid_SSPRK_MF &
-    ( t, dt, MF_uGF, MF_uCF, MF_uDF )
+  SUBROUTINE UpdateFluid_SSPRK_MF
 
-    REAL(DP),             INTENT(in)    :: t     (0:nLevels-1)
-    REAL(DP),             INTENT(in)    :: dt    (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
+    TYPE(amrex_multifab) :: MF_U(1:nStages,0:nMaxLevels-1)
+    TYPE(amrex_multifab) :: MF_D(1:nStages,0:nMaxLevels-1)
+    TYPE(amrex_multifab) :: MF_uGS(        0:nMaxLevels-1)
 
-    TYPE(amrex_multifab) :: MF_U(1:nStages,0:nLevels-1)
-    TYPE(amrex_multifab) :: MF_D(1:nStages,0:nLevels-1)
-    TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
+    INTEGER :: iS, jS, nCompCF
+    INTEGER :: iLevel, iErr
 
-    INTEGER :: iS, jS, nComp
-    INTEGER :: iLevel
-
-    REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nLevels-1)
+    REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nMaxLevels-1)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
-    IF( UseAMR )THEN
-
-      DO iLevel = 0, nLevels-1
-
-        IF( iLevel .LT. nLevels-1 ) &
-          CALL amrex_regrid( iLevel, t(iLevel) )
-
-      END DO
-
-    END IF
-
     dM_OffGrid_Euler = Zero
 
-    nComp = nDOFX * nCF
+    nCompCF = nDOFX * nCF
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nGS, 0 )
+      CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
+
+    END DO
 
     CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
 
     DO iS = 1, nStages
 
+      IF( DEBUG )THEN
+
+        CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+        IF( amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A,I2.2)') 'iS: ', iS
+          WRITE(*,*)
+
+        END IF
+
+      END IF ! DEBUG
+
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
                ( MF_U(iS,iLevel), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nComp, swX )
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
         CALL amrex_multifab_build &
                ( MF_D(iS,iLevel), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nComp, swX )
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nComp, swX )
-
-        CALL amrex_multifab_build &
-               ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nGS, 0 )
-        CALL MF_uGS(iLevel) % SetVal( Zero )
+        CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
 
       END DO ! iLevel
 
@@ -188,13 +195,14 @@ CONTAINS
             CALL MF_U(iS,iLevel) &
                    % LinComb( One, MF_U(iS,iLevel), 1, &
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(jS,iLevel), 1, &
-                              1, nComp, 0 )
-
-            IF( iLevel .GT. 0 ) CALL AverageDownTo( iLevel-1, MF_U(iS,:) )
+                              1, nCompCF, 0 )
 
           END IF
 
         END DO ! iLevel
+
+!!$        IF( a_SSPRK(iS,jS) .NE. Zero ) &
+!!$          CALL AverageDown( MF_uGF, MF_U(iS,:) )
 
       END DO ! jS
 
@@ -211,7 +219,7 @@ CONTAINS
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
 
           CALL ApplySlopeLimiter_Euler_MF &
-                 ( t, MF_uGF, MF_U(iS,:), MF_uDF )
+                 ( t_new, MF_uGF, MF_U(iS,:), MF_uDF )
 
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
@@ -232,7 +240,7 @@ CONTAINS
         CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
-               ( t, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
+               ( t_new, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
         DO iLevel = 0, nLevels-1
 
@@ -242,15 +250,10 @@ CONTAINS
 
         END DO
 
-        IF( do_reflux ) CALL Reflux_Euler_MF( MF_uGF, MF_D(iS,:) )
+        IF( nLevels .GT. 1 .AND. UseFluxCorrection ) &
+          CALL ApplyFluxCorrection_Euler_MF( MF_uGF, MF_D(iS,:) )
 
-      END IF ! a(:,iS) .NE. Zero OR w(iS) .NE. Zero
-
-      DO iLevel = 0, nLevels-1
-
-        CALL amrex_multifab_destroy( MF_uGS(iLevel) )
-
-      END DO
+      END IF ! a(:,iS) .NE. Zero .OR. w(iS) .NE. Zero
 
     END DO ! iS
 
@@ -263,13 +266,14 @@ CONTAINS
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iS,iLevel), 1, 1, &
-                            nComp, 0 )
-
-          IF( iLevel .GT. 0) CALL AverageDownTo( iLevel-1, MF_uCF )
+                            nCompCF, 0 )
 
         END IF
 
       END DO ! iLevel
+
+!!$      IF( w_SSPRK(iS) .NE. Zero ) &
+!!$        CALL AverageDown( MF_uGF, MF_uCF )
 
     END DO ! iS
 
@@ -284,15 +288,6 @@ CONTAINS
 
     END DO ! iLevel
 
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_build &
-             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nGS, 0 )
-      CALL MF_uGS(iLevel) % SetVal( Zero )
-
-    END DO
-
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
@@ -301,7 +296,7 @@ CONTAINS
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
 
     CALL ApplySlopeLimiter_Euler_MF &
-           ( t, MF_uGF, MF_uCF, MF_uDF )
+           ( t_new, MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )

@@ -107,7 +107,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     nX, &
     nNodes, &
     xL, &
-    xR
+    xR, &
+    UseXCFC
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -360,6 +361,8 @@ CONTAINS
 
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
     DO iLevel = 0, nLevels-1
 
       CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
@@ -508,6 +511,8 @@ CONTAINS
 
     END DO
 
+#endif
+
   END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF
 
 
@@ -535,6 +540,8 @@ CONTAINS
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
 !    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     DO iLevel = 0, nLevels-1
 
@@ -660,6 +667,8 @@ CONTAINS
 
     END DO
 
+#endif
+
 !    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
   END SUBROUTINE ComputePressureTensorTrace_XCFC_MF
@@ -685,50 +694,54 @@ CONTAINS
 
     REAL(DP) :: Psi6
 
-    DO iLevel = 0, nLevels-1
+    IF( UseXCFC )THEN
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+        CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
-      DO WHILE( MFI % next() )
+        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
-        Mask => iMF_Mask % DataPtr( MFI )
+        DO WHILE( MFI % next() )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+          Mask => iMF_Mask % DataPtr( MFI )
 
-        BX = MFI % tilebox()
+          uGF => MF_uGF(iLevel) % DataPtr( MFI )
+          uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
+          BX = MFI % tilebox()
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNX = 1       , nDOFX
+          iX_B0 = BX % lo
+          iX_E0 = BX % hi
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+          DO iNX = 1       , nDOFX
 
-          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
-          DO iCF = 1, nCF
+            Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-            uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) &
-              = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) * Psi6**( Power )
+            DO iCF = 1, nCF
+
+              uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) &
+                = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) * Psi6**( Power )
+
+            END DO
 
           END DO
+          END DO
+          END DO
+          END DO
 
-        END DO
-        END DO
-        END DO
-        END DO
+        END DO ! WHILE( MFI % next() )
 
-      END DO
+        CALL amrex_mfiter_destroy( MFI )
 
-      CALL amrex_mfiter_destroy( MFI )
+      END DO ! iLevel
 
-    END DO
+    END IF ! UseXCFC
 
   END SUBROUTINE MultiplyWithPsi6_MF
 
@@ -753,6 +766,8 @@ CONTAINS
     REAL(DP) :: MinLF, MinCF
 
     INTEGER, PARAMETER :: MAX_ITER = 10
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     DO iLevel = 0, nLevels-1
 
@@ -878,6 +893,8 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
     END DO
+
+#endif
 
   END SUBROUTINE InitializeMetric_MF
 

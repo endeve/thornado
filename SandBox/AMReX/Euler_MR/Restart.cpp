@@ -45,8 +45,6 @@ extern "C"
     chk_file = "chk";
     pp.query("CheckpointFileBaseName",chk_file);
 
-    chk_file = chk_file + "_";
-
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
@@ -135,16 +133,16 @@ extern "C"
   } // End of WriteCheckpointFile function
 
   void readheaderandboxarraydata
-         ( int nLevels, int stepno[],
-	   Real dt[], Real time[],
+         ( int FinestLevelArr[], int StepNo[],
+	   Real dt[], Real Time[],
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
+
+    int FinestLevel;
 
     ParmParse pp("thornado");
     chk_file = "chk";
     pp.query("CheckpointFileBaseName",chk_file);
-
-    chk_file = chk_file + "_";
 
     std::stringstream sChkFile;
     sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
@@ -169,9 +167,10 @@ extern "C"
     // Read in title line
     std::getline( is, line );
 
-    // Read in nLevels
-    is >> nLevels;
+    // Read in FinestLevel
+    is >> FinestLevel;
     GotoNextLine( is );
+    FinestLevelArr[0] = FinestLevel;
 
     // Read in array of istep
     std::getline( is, line );
@@ -180,7 +179,7 @@ extern "C"
         int i = 0;
         while (lis >> word)
 	{
-          stepno[i++] = std::stoi(word);
+          StepNo[i++] = std::stoi(word);
         }
     }
 
@@ -202,12 +201,12 @@ extern "C"
       int i = 0;
       while( lis >> word )
       {
-        time[i++] = std::stod( word );
+        Time[i++] = std::stod( word );
       }
     }
 
     // Read in level 'iLevel' BoxArray from Header
-    for( int iLevel = 0; iLevel <= nLevels; ++iLevel )
+    for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
     {
 
       BoxArray& ba1 = *ba[iLevel];
@@ -231,8 +230,6 @@ extern "C"
     ParmParse pp("thornado");
     chk_file = "chk";
     pp.query("CheckpointFileBaseName",chk_file);
-
-    chk_file = chk_file + "_";
 
     std::stringstream sChkFile;
 

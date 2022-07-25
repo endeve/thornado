@@ -14,7 +14,8 @@ thornado.CFL       = 0.5
 thornado.iCycleW   = 100
 thornado.iCycleChk = 100000
 
-thornado.PlotFileBaseName = "RiemannProblem1D.plt"
+thornado.PlotFileBaseName       = "RiemannProblem1D.plt"
+thornado.CheckpointFileBaseName = "RiemannProblem1D.chk"
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 
@@ -25,18 +26,20 @@ geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-thornado.swX            = 01 00 00
-amr.n_cell              = 128 01 01 # Number of cells in each dimension
-amr.max_grid_size_x     = 8
-amr.blocking_factor_x   = 4
-amr.max_level           = 1
-amr.UseAMR              = 1
-amr.ApplyFluxCorrection = 0
-amr.TagCriteria         = 0.5
-amr.n_error_buf         = 0
-amr.ref_ratio           = 2
-amr.UseTiling           = 0
+thornado.swX          = 01 00 00
+amr.n_cell            = 128 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 8
+amr.blocking_factor_x = 4
+amr.max_level         = 0
+amr.UseAMR            = 0
+amr.UseFluxCorrection = 0
+amr.TagCriteria       = 0.5
+amr.n_error_buf       = 0
+amr.ref_ratio         = 2
+amr.UseTiling         = 0
 
-SL.UseSlopeLimiter = 1
-SL.UseTroubledCellIndicator = 0
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 0
+SL.UseTroubledCellIndicator  = 0
+
 PL.UsePositivityLimiter = 1

@@ -16,7 +16,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_reduce_sum
+    amrex_parallel_reduce_sum, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
@@ -45,8 +46,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     nDF
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_Psi, &
-    iGF_SqrtGm
+    iGF_Psi
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
     OffGridFlux_Euler_X1_Inner, &
@@ -74,8 +74,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex2thornado_X, &
     thornado2amrex_X, &
     thornado2amrex_X_F, &
-    amrex2thornado_X_F, &
-    MultiplyWithMetric
+    amrex2thornado_X_F
   USE MF_FieldsModule, ONLY: &
     FluxRegister, &
     MF_OffGridFlux_Euler
@@ -83,8 +82,10 @@ MODULE  MF_Euler_dgDiscretizationModule
     nLevels, &
     UseTiling, &
     swX, &
-    do_reflux, &
-    UseXCFC
+    UseFluxCorrection, &
+    UsePositivityLimiter, &
+    UseXCFC, &
+    DEBUG
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -94,6 +95,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -116,22 +119,34 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
     ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
-    REAL(DP),             INTENT(in)    :: Time   (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
+    REAL(DP),             INTENT(in)    :: Time   (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:)
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iErr
 
     MF_OffGridFlux_Euler = Zero
 
     DO iLevel = 0, nLevels-1
 
+      IF( DEBUG )THEN
+
+        CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+        WRITE(*,'(2x,A,I3.3)') &
+          'CALL ComputeIncrement_Euler_MF_SingleLevel, iLevel: ', &
+          iLevel
+
+      END IF
+
       CALL ComputeIncrement_Euler_MF_SingleLevel &
              ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel) )
 
     END DO
+
+    CALL AverageDown( MF_uGF, MF_duCF )
 
   END SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels
 
@@ -145,9 +160,9 @@ CONTAINS
 !
 !      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
-!      CALL FillPatch( iLevel, Time, MF_uGF )
-!      CALL FillPatch( iLevel, Time, MF_uCF )
-!      CALL FillPatch( iLevel, Time, MF_uDF )
+!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
+!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
+!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
 !
 !      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
@@ -219,9 +234,9 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
 
     TYPE(amrex_mfiter) :: MFI
@@ -258,35 +273,13 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-    IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
+    ! --- This conditions spoils conservation, but is needed for
+    !     mesh refinement ---
+    IF( ( .NOT. UsePositivityLimiter ) .OR. ( nDOFX .EQ. 1 ) )THEN
 
-      ! --- nGF must be LAST ---
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uDF(iLevel), nDF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uDF(iLevel-1), nDF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, +1 )
-
-    END IF
-
-    CALL FillPatch( iLevel, Time, MF_uDF )
-    CALL FillPatch( iLevel, Time, MF_uCF )
-    CALL FillPatch( iLevel, Time, MF_uGF )
-
-    IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
-
-      ! --- nGF must be FIRST ---
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uDF(iLevel), nDF, -1 )
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uDF(iLevel-1), nDF, -1 )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
 
     END IF
 
@@ -445,7 +438,7 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    IF( do_reflux )THEN
+    IF( UseFluxCorrection )THEN
 
       IF( iLevel .GT. 0 ) &
         CALL FluxRegister( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
@@ -453,7 +446,7 @@ CONTAINS
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
 
-    END IF ! do_reflux
+    END IF ! UseFluxCorrection
 
     DO iDimX = 1, nDimsX
 

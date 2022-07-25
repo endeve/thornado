@@ -4,8 +4,6 @@ MODULE MF_Euler_TallyModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_imultifab, &
@@ -15,27 +13,20 @@ MODULE MF_Euler_TallyModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_amr_module, ONLY: &
-    amrex_geom
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, &
-    nNodesX, &
-    nDimsX
+    nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE MeshModule, ONLY: &
-    MeshType, &
-    CreateMesh, &
-    DestroyMesh
+    MeshType
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_SqrtGm, &
-    CoordinateSystem
+    iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -47,12 +38,11 @@ MODULE MF_Euler_TallyModule
     DP, &
     Zero
   USE InputParsingModule, ONLY: &
-    nX, &
     nLevels, &
+    nMaxLevels, &
     ProgramName, &
     UseTiling, &
-    xL, &
-    xR
+    UseFluxCorrection
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -113,6 +103,20 @@ CONTAINS
     IF( SuppressTally ) RETURN
 
     IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( nMaxLevels .GT. 1 )THEN
+
+        IF( .NOT. UseFluxCorrection )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(4x,A)') &
+            'WARNING: Euler tally not accurate when UseFluxCorrection is false'
+          WRITE(*,'(4x,A)') &
+            '-------'
+
+        END IF
+
+      END IF
 
       BaseFileName = ''
       IF( PRESENT( BaseFileName_Option ) ) &
@@ -186,9 +190,9 @@ CONTAINS
   SUBROUTINE ComputeTally_Euler_MF &
     ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, Verbose_Option )
 
-    REAL(DP),             INTENT(in) :: Time  (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    REAL(DP),             INTENT(in) :: Time  (0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
@@ -302,7 +306,7 @@ CONTAINS
 
   SUBROUTINE IncrementOffGridTally_Euler_MF( dM )
 
-    REAL(DP), INTENT(in) :: dM(1:nCF,0:nLevels-1)
+    REAL(DP), INTENT(in) :: dM(1:,0:)
 
     INTEGER :: iLevel
 
