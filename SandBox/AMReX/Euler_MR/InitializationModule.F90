@@ -348,6 +348,9 @@ CONTAINS
     ELSE
 
       CALL amrex_init_from_scratch( 0.0_DP )
+      ! nLevels read from checkpoint file
+
+      CALL ReadCheckpointFile
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -363,8 +366,6 @@ CONTAINS
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
 #endif
-
-      CALL ReadCheckpointFile
 
     END IF
 
