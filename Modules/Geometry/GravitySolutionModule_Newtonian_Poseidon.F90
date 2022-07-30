@@ -1,7 +1,7 @@
 MODULE GravitySolutionModule_Newtonian_Poseidon
 
   USE KindModule, ONLY: &
-    DP, Pi, FourPi
+    DP, Zero, Half, Pi, FourPi
   USE UnitsModule, ONLY: &
     Kilogram
   USE ProgramHeaderModule, ONLY: &
@@ -21,14 +21,19 @@ MODULE GravitySolutionModule_Newtonian_Poseidon
 
   ! --- Poseidon Modules --------------------
 
-  USE Poseidon_Main_Module, ONLY: &
-    Poseidon_Initialize, &
-    Poseidon_Newtonian_Source_Input, &
-    Poseidon_Set_Uniform_Boundary_Condition, &
-    Poseidon_Run,  &
-    Poseidon_Newtonian_Potential_Output, &
+  USE Poseidon_Interface_Initialization, ONLY: &
+    Initialize_Poseidon
+  USE Poseidon_Interface_Boundary_Conditions, ONLY : &
+    Poseidon_Set_Uniform_Boundary_Conditions
+  USE Poseidon_Interface_Source_Input, ONLY: &
+    Poseidon_Input_Sources
+  USE Poseidon_Interface_Run, ONLY: &
+    Poseidon_Run
+  USE Poseidon_Interface_Return_Routines, ONLY: &
+    Poseidon_Return_Newtonian_Potential
+  USE Poseidon_Interface_Close, ONLY: &
     Poseidon_Close
-
+  
   ! -----------------------------------------
 
 #endif
@@ -47,22 +52,23 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTON
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') '', 'InitializeGravitySolver_Newtonian_Poseidon'
-    WRITE(*,'(A4,A)') '', 'Only implemented for 1D spherical symmetry.'
-    WRITE(*,*)
-
-    CALL Poseidon_Initialize &
-         ( FEM_Degree_Input          &
-             = MAX( 1, nNodes - 1 ), &
-           L_Limit_Input = 0,        &
-           Inner_Radius = xL(1),     &
-           Outer_Radius = xR(1),     &
-           R_Elements_Input = nX(1), &
-           T_Elements_Input = nX(2), &
-           P_Elements_Input = nX(3), &
-           Input_Delta_R_Vector      &
-             = MeshX(1) % Width(1:nX(1)) )
+    CALL Initialize_Poseidon &
+           ( FEM_Degree_Option            = MAX( 1, nNodes - 1 ),      &
+             L_Limit_Option               = 0,                         &
+             Source_NE                    = nX,                        &
+             Domain_Edge_Option           = [ xL(1), xR(1) ],          &
+             Source_NQ                    = nNodesX,                   &
+             Source_xL                    = [ -Half, +Half ],          &
+             Source_RQ_xlocs              = MeshX(1) % Nodes,          &
+             Source_TQ_xlocs              = MeshX(2) % Nodes,          &
+             Source_PQ_xlocs              = MeshX(3) % Nodes,          &
+             Source_Units                 = 'G',                       &
+             Source_Radial_Boundary_Units = ' m',                      &
+             Source_DR_Option             = MeshX(1) % Width(1:nX(1)), &
+             Source_DT_Option             = MeshX(2) % Width(1:nX(2)), &
+             Source_DP_Option             = MeshX(3) % Width(1:nX(3)), &
+             Newtonian_Mode_Option        = .TRUE.,                    &
+             Verbose_Option               = .FALSE. )
 
 #endif
 
@@ -97,33 +103,25 @@ CONTAINS
     CALL ComputeTotalBaryonMass &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, D, BaryonMass )
 
-    CALL Poseidon_Newtonian_Source_Input      &
-           ( Left_Limit   = - 0.5_DP,         &
-             Right_Limit  = + 0.5_DP,         &
-             Num_Nodes    = nNodes,           &
-             Input_R_Quad = MeshX(1) % Nodes, &
-             Rho = D(:,iX_B0(1):iX_E0(1),     &
-                       iX_B0(2):iX_E0(2),     &
-                       iX_B0(3):iX_E0(3)) )
+    CALL Poseidon_Input_Sources                     &
+           ( Input_Rho = D(:,iX_B0(1):iX_E0(1),     &
+                             iX_B0(2):iX_E0(2),     &
+                             iX_B0(3):iX_E0(3)) )
 
-    CALL Poseidon_Set_Uniform_Boundary_Condition &
-           ( BC_Location_Input = 'I',            &
-             BC_Type_Input     = 'N',            &
-             BC_Value_Input    = 0.0_DP )
+    CALL Poseidon_Set_Uniform_Boundary_Conditions   &
+           ( BC_Location_Input = 'I',               &
+             BC_Type_Input     = 'N',               &
+             BC_Value_Input    = Zero )
 
-    CALL Poseidon_Set_Uniform_Boundary_Condition &
-           ( BC_Location_Input = 'O',            &
-             BC_Type_Input     = 'D',            &
+    CALL Poseidon_Set_Uniform_Boundary_Conditions   &
+           ( BC_Location_Input = 'O',               &
+             BC_Type_Input     = 'D',               &
              BC_Value_Input    = - BaryonMass / xR(1) )
 
     CALL Poseidon_Run
 
-    CALL Poseidon_Newtonian_Potential_Output   &
-           ( Left_Limit    = - 0.5_DP,         &
-             Right_Limit   = + 0.5_DP,         &
-             Num_Nodes     = nNodes,           &
-             Output_R_Quad = MeshX(1) % Nodes, &
-             Potential = G(:,1:nX(1),1:nX(2),1:nX(3),iGF_Phi_N) )
+    CALL Poseidon_Return_Newtonian_Potential   &
+           ( Return_Potential = G(:,1:nX(1),1:nX(2),1:nX(3),iGF_Phi_N) )
 
     CALL SetBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
@@ -152,7 +150,7 @@ CONTAINS
 
     ! --- Assuming 1D spherical symmetry ---
 
-    Mass = 0.0_DP
+    Mass = Zero
     DO iX3 = 1, nX(3)
     DO iX2 = 1, nX(2)
     DO iX1 = 1, nX(1)
