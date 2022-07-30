@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import psutil
 import numpy as np
 import os
 from multiprocessing import Process, cpu_count
@@ -18,9 +19,9 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
     data file and can be accessed with the ReadHeader function.
     """
 
-    if Verbose: print( '\nRunning MakeDataFile...\n' )
+    if Verbose: print( '\nRunning MakeDataFile...' )
 
-    if not DataFileDirectory[-1] == '/' : DataFileDirectory += '/'
+    if not DataFileDirectory[-1] == '/': DataFileDirectory += '/'
 
     if Verbose:
         print( '\nDataFileDirectory: {:}\n'.format( DataFileDirectory ) )
@@ -32,10 +33,10 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
         os.system( 'rm -rf {:}'.format( DataFileDirectory ) )
         os.system(  'mkdir {:}'.format( DataFileDirectory ) )
 
-        if PlotFileDirectory[-1] != '/' : PlotFileDirectory += '/'
+        if PlotFileDirectory[-1] != '/': PlotFileDirectory += '/'
 
-        if Verbose :
-            print( '\nPlotFileDirectory: {:}\n'.format( PlotFileDirectory ) )
+        if Verbose:
+            print( 'PlotFileDirectory: {:}\n'.format( PlotFileDirectory ) )
 
         PlotFileNameArray = GetFileArray( PlotFileDirectory, PlotFileBaseName )
 
@@ -47,7 +48,7 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
         for i in range( nSS ):
             iSS = SSi + np.int64( ( SSf - SSi ) / ( nSS - 1 ) * i )
             PlotFile = str( PlotFileNameArray[iSS] )
-            if PlotFile[-1] == '/' :
+            if PlotFile[-1] == '/':
                 PlotFileArray.append( PlotFile[0:-1] )
             else:
                 PlotFileArray.append( PlotFile )
@@ -60,7 +61,7 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
         dX1Base        = '# dX1  []: '
         dX2Base        = '# dX2  []: '
         dX3Base        = '# dX3  []: '
-        if UsePhysicalUnits and CoordinateSystem == 'cartesian' :
+        if UsePhysicalUnits and CoordinateSystem == 'cartesian':
             TimeHeaderBase = '# Time [ms]: '
             X1Base         = '# X1_C [km]: '
             X2Base         = '# X2_C [km]: '
@@ -68,7 +69,7 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
             dX1Base        = '# dX1  [km]: '
             dX2Base        = '# dX2  [km]: '
             dX3Base        = '# dX3  [km]: '
-        elif UsePhysicalUnits and CoordinateSystem == 'spherical' :
+        elif UsePhysicalUnits and CoordinateSystem == 'spherical':
             TimeHeaderBase = '# Time [ms]: '
             X1Base         = '# X1_C [km]: '
             X2Base         = '# X2_C [rad]: '
@@ -76,6 +77,14 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
             dX1Base        = '# dX1  [km]: '
             dX2Base        = '# dX2  [rad]: '
             dX3Base        = '# dX3  [rad]: '
+
+        printProcMem = False
+        Verbose      = True
+
+        if printProcMem:
+            process = psutil.Process( os.getpid() )
+            print( 'mem: {:.3e} kB'.format \
+                    ( process.memory_info().rss / 1024.0 ) )
 
         Data, DataUnits, \
           X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
@@ -93,13 +102,17 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
 
             for i in range( iLo, iHi ):
 
+                if printProcMem:
+                    print( 'mem: {:.3e} kB'.format \
+                            ( process.memory_info().rss / 1024.0 ) )
+
                 PlotFile = PlotFileArray[i]
 
                 DataFile = DataFileDirectory + PlotFile + '.dat'
 
                 if Verbose:
                     print( 'Generating data file: {:} ({:}/{:})'.format \
-                             ( DataFile, i+1, nSS ) )
+                             ( DataFile, i+1-iLo, iHi-iLo ) )
 
                 Data, DataUnits, \
                   X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
@@ -172,16 +185,25 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
 
         nProc = cpu_count()
 
-        processes = []
+        print( 'Generating {:} with {:} processes...\n'.format \
+             ( DataFileDirectory, nProc ) )
 
-        for i in range( nProc ):
-            iLo = np.int64( np.float64( i     ) / np.float64( nProc ) * nSS )
-            iHi = np.int64( np.float64( i + 1 ) / np.float64( nProc ) * nSS )
-            p = Process( target = loop, args = (iLo,iHi) )
-            p.start()
-            processes.append( p )
+        if nProc > 1:
 
-        [ p.join() for p in processes ]
+          processes = []
+
+          for i in range( nProc ):
+              iLo = np.int64( np.float64( i     ) / np.float64( nProc ) * nSS )
+              iHi = np.int64( np.float64( i + 1 ) / np.float64( nProc ) * nSS )
+              p = Process( target = loop, args = (iLo,iHi) )
+              p.start()
+              processes.append( p )
+
+          [ p.join() for p in processes ]
+
+        else:
+
+          loop( 0, nSS )
 
     # end if OW
 
