@@ -1,0 +1,80 @@
+##### YahilCollapse_XCFC #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 0
+
+thornado.ProgramName = "YahilCollapse_XCFC"
+
+thornado.UseXCFC = 1
+
+YC.D0              = 1.75
+YC.CentralDensity  = 7.0e9 # g/cm^3
+YC.CentralPressure = 6.0e27 # erg/cm^3
+YC.CoreRadius      = 1.0e5 # km
+YC.CollapseTime    = 1.50e2 # ms
+
+thornado.iRestart = -1
+
+thornado.UsePhysicalUnits = 1
+
+thornado.PlotFileBaseName = "YahilCollapse_XCFC.plt"
+thornado.t_end   = 3.0e+2
+thornado.iCycleD = 1
+
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+thornado.CheckpointFileBaseName = "YahilCollapse_XCFC.chk"
+thornado.dt_chk    = 1.0e+0
+thornado.iCycleChk = -1
+
+thornado.nNodes  = 2
+thornado.nStages = 2
+
+thornado.CFL = 0.5
+
+thornado.bcX         = 30 00 00
+geometry.is_periodic = 0  1  1
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 000.0 0.0               0.0
+geometry.prob_hi   = 1.0e5 3.1415926535897931 6.2831853071795862
+
+amr.n_cell            = 8192 01 01
+thornado.swX          = 01  00 00
+#amr.max_grid_size_x   = 512
+#amr.blocking_factor_x = 512
+amr.max_level         = 0
+amr.UseFluxCorrection = 0
+amr.UseAMR            = 0
+amr.TagCriteria       = 0.0
+amr.n_error_buf       = 0
+amr.ref_ratio         = 2
+
+# Poseidon parameters
+poseidon.fem_degree        = 1
+poseidon.l_limit           = 0
+poseidon.max_fp_iters      = 20
+poseidon.anderson_m        = 3
+poseidon.converge_criteria = 1.0e-08
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.SlopeLimiterMethod        = "TVD"
+SL.BetaTVD                   = 1.75e+0
+SL.BetaTVB                   = 0.00e+0
+SL.SlopeTolerance            = 1.00e-6
+SL.UseCharacteristicLimiting = 0
+SL.UseTroubledCellIndicator  = 0
+SL.LimiterThresholdParameter = 5.00e-3
+SL.UseConservativeCorrection = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-13
+PL.Min_2                = 1.0e-13
+
+# Equation of state parameters
+EoS.Gamma_IDEAL = 1.30

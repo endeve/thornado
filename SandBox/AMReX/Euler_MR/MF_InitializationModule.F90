@@ -13,6 +13,8 @@ MODULE MF_InitializationModule
     InitializeFields_Euler_Relativistic_IDEAL_MF
   USE MF_InitializationModule_AdiabaticCollapse_XCFC, ONLY: &
     InitializeFields_Euler_AdiabaticCollapse_XCFC_MF
+  USE MF_InitializationModule_YahilCollapse_XCFC, ONLY: &
+    InitializeFields_Euler_YahilCollapse_XCFC_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -32,6 +34,11 @@ CONTAINS
     IF( TRIM( ProgramName ) .EQ. 'AdiabaticCollapse_XCFC' )THEN
 
       CALL InitializeFields_Euler_AdiabaticCollapse_XCFC_MF &
+             ( iLevel, MF_uGF, MF_uCF )
+
+    ELSE IF( TRIM( ProgramName ) .EQ. 'YahilCollapse_XCFC' )THEN
+
+      CALL InitializeFields_Euler_YahilCollapse_XCFC_MF &
              ( iLevel, MF_uGF, MF_uCF )
 
     ELSE
