@@ -396,9 +396,11 @@ CONTAINS
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], &
                               uSurfaceFlux_X1, SurfaceFlux_X1 )
 
-      iLo_MF = LBOUND( uSurfaceFlux_X2 )
 
-      IF( nDimsX .GT. 1 ) &
+      IF( nDimsX .GT. 1 )THEN
+
+        iLo_MF = LBOUND( uSurfaceFlux_X2 )
+
         CALL thornado2amrex_X_F &
                ( nDOFX_X2, nCF, [ iX_B0(1), iX_B0(2)  , iX_B0(3) ], &
                                 [ iX_E0(1), iX_E0(2)+1, iX_E0(3) ], iLo_MF, &
@@ -406,15 +408,20 @@ CONTAINS
                                 [ iX_E0(1), iX_E0(2)+1, iX_E0(3) ], &
                                 uSurfaceFlux_X2, SurfaceFlux_X2 )
 
-      iLo_MF = LBOUND( uSurfaceFlux_X3 )
+      END IF
 
-      IF( nDimsX .GT. 2 ) &
+      IF( nDimsX .GT. 2 )THEN
+
+        iLo_MF = LBOUND( uSurfaceFlux_X3 )
+
         CALL thornado2amrex_X_F &
                ( nDOFX_X3, nCF, [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], iLo_MF, &
                                 [ iX_B0(1), iX_B0(2), iX_B0(3)   ], &
                                 [ iX_E0(1), iX_E0(2), iX_E0(3)+1 ], &
                                 uSurfaceFlux_X3, SurfaceFlux_X3 )
+
+      END IF
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
