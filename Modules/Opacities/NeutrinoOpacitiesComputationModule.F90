@@ -742,16 +742,17 @@ CONTAINS
     REAL(DP) :: LogE_P(iE_B:iE_E)
     REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
     INTEGER  :: iX, iE
+    REAL(DP) :: Phi0(iE_B:iE_E,iX_B:iX_E), Phi1(iE_B:iE_E,iX_B:iX_E)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opES ) &
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opES, Phi0, Phi1 ) &
     !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opES ) &
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opES, Phi0, Phi1 ) &
     !$ACC COPYIN( E, D, T, Y )
 #endif
 
@@ -779,9 +780,15 @@ CONTAINS
       LogE_P(iE) = LOG10( E(iE) / UnitE )
     END DO
 
+    !CALL LogInterpolateSingleVariable_1D3D_Custom &
+    !       ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+    !         OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES )
     CALL LogInterpolateSingleVariable_1D3D_Custom &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES )
+             OS_Iso(1,1), Iso_T(:,:,:,:,1,1), Phi0 )
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(1,2), Iso_T(:,:,:,:,2,1), Phi1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -792,17 +799,18 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
-      opES(iE,iX) = opES(iE,iX) * UnitES
+      !opES(iE,iX) = opES(iE,iX) * UnitES
+      opES(iE,iX) = (Phi0(iE,iX) - Phi1(iE,iX) / 3.0d0) * UnitES
     END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y, Phi0, Phi1 ) &
     !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y, Phi0, Phi1 ) &
     !$ACC COPYOUT( opES )
 #endif
 

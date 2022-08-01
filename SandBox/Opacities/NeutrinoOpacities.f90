@@ -70,6 +70,7 @@ PROGRAM NeutrinoOpacities
     UnitPair   = 1.0_DP / ( Centimeter * MeV**3 ), &
     BaryonMass = AtomicMassUnit, &
     Unit_Qdot  = 1.0_DP / ( BaryonMass * Second ), &
+    Unit_Edot  = 1.0_DP / ( BaryonMass * Second ), &
     eL         = 0.0e0_DP * Unit_E, &
     eR         = 3.0e2_DP * Unit_E, &
     ZoomE      = 1.183081754893913_DP
@@ -98,12 +99,16 @@ PROGRAM NeutrinoOpacities
     f0       , & ! --- Equilibrium Distribution
     f0_DG    , & ! --- Equilibrium Distribution (DG Approximation)
     J        , & ! --- Neutrino Number Density
+    Zero_J   , & ! --- All zeros
     Eta_EmAb , & ! --- Electron Capture Emissivity
     Chi_EmAb , & ! --- Electron Capture Opacity
+    Edot_EmAb, & ! --- FourPi / PlanckConstant**3 / D * |Chi_EmAb| * E**3
     Eta_Iso  , & ! --- Iso Emissivity
     Chi_Iso  , & ! --- Iso Opacity
+    Edot_Iso , & ! --- FourPi / PlanckConstant**3 / D * Chi_Iso * E**3
     Eta_NES  , & ! --- NES Emissivity
     Chi_NES  , & ! --- NES Opacity
+    Edot_NES , & ! --- FourPi / PlanckConstant**3 / D * Chi_NES * E**3
     Eta_Pair , & ! --- Pair Emissivity
     Chi_Pair , & ! --- Pair Opacity
     Qdot_Pair, & ! --- Pair Heating Rate
@@ -154,12 +159,12 @@ PROGRAM NeutrinoOpacities
 
   ! --- Thermodynamic State ---
 
-  D = 5.6d13 * Unit_D
-  T = 3.0d11 * Unit_T
-  Y = 2.9d-1 * Unit_Y
-!  D = 1.050d10 * Unit_D
-!  T = 3.481d10 * Unit_T
-!  Y = 2.530d-1 * Unit_Y
+!  D = 5.6d13 * Unit_D
+!  T = 3.0d11 * Unit_T
+!  Y = 2.9d-1 * Unit_Y
+  D = 1.0d10 * Unit_D
+  T = 10444070263.062922d0 * Unit_T !3.481d10 * Unit_T
+  Y = 0.46d0 * Unit_Y
 
   ! --- Energy Grid ---
 
@@ -253,8 +258,9 @@ PROGRAM NeutrinoOpacities
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    J(iE,iS,iX) = 0.0d0
-    !J(iE,iS,iX) = f0_DG(iE,iS,iX)
+    !J(iE,iS,iX) = 0.0d0
+    J(iE,iS,iX) = f0_DG(iE,iS,iX)
+    Zero_J(iE,iS,iX) = 0.0d0
 
   END DO
   END DO
@@ -320,7 +326,7 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeNeutrinoOpacityRates_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           J, f0_DG, H1, H2, Eta_NES, Chi_NES )
+           Zero_J, f0_DG, H1, H2, Eta_NES, Chi_NES )
 
   Timer_Compute_NES = MPI_WTIME() - Timer_Compute_NES
 
@@ -333,7 +339,7 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeNeutrinoOpacityRates_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           J, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
+           Zero_J, f0_DG, J1, J2, Eta_Pair, Chi_Pair )
 
   Timer_Compute_Pair = MPI_WTIME() - Timer_Compute_Pair
 
@@ -346,7 +352,7 @@ PROGRAM NeutrinoOpacities
 
   CALL ComputeNeutrinoOpacityRates_Brem &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
-           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
+           Zero_J, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
 
   Timer_Compute_Brem = MPI_WTIME() - Timer_Compute_Brem
 
@@ -370,8 +376,11 @@ PROGRAM NeutrinoOpacities
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX) * E(iE)**3
-    Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX) * E(iE)**3
+    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
+    Edot_Iso(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
+    Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
+    Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
+    Edot_NES(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_NES(iE,iS,iX))  * E(iE)**3
 
   END DO
   END DO
@@ -435,6 +444,10 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Eta_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Brem_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
+         ( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Edot, 'Edot_EmAb_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Edot_EmAb(:,iNuE_Bar,1) / Unit_Edot, 'Edot_EmAb_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE
          ( nPointsE, Qdot_Pair(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Pair_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Qdot_Pair(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Pair_NuE_Bar.dat' )
@@ -443,6 +456,16 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Qdot_Brem(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Brem_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Qdot_Brem(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Brem_NuE_Bar.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Edot_NES(:,iNuE    ,1)  / Unit_Qdot, 'Edot_NES_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Edot_NES(:,iNuE_Bar,1)  / Unit_Qdot, 'Edot_NES_NuE_Bar.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Edot_Iso(:,iNuE    ,1)  / Unit_Qdot, 'Edot_Iso_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Edot_Iso(:,iNuE_Bar,1)  / Unit_Qdot, 'Edot_Iso_NuE_Bar.dat' )
 
   CALL WriteMatrix &
          ( nPointsE, nPointsE, H1(:,:,1), 'H1.dat'  )
