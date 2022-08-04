@@ -1,11 +1,19 @@
 ## Makefile definitions for Beacon with Intel compiler
+## VERY IMPORTANT: heap-arrays is needed for the large table of the app
 
 C       = mpic++ --c++11
-FORTRAN = mpiifort
-FLINKER = mpiifort
+FORTRAN = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0 
+#-init=snan -traceback
+FLINKER = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0
+#-init=snan -traceback
+# -O0 -fpe0
 
-DEBUG    = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
-OPTIMIZE = -g -fast
+DEBUG    = -warn all -ftrapuv  -$(OP_LEVEL) 
+#-traceback 
+#-debug offload 
+OPTIMIZE = -warn all -$(OP_LEVEL) 
+#-traceback 
+#-debug offload
 
 SUFFIX_f90 =
 
@@ -13,9 +21,17 @@ MDEFS =
 PP    = -D
 
 ifeq ($(USE_OMP),TRUE)
-  OPENMP = -qopenmp
+  OPENMP = -fiopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -qopenmp
+  OPENMP = -fiopenmp -fopenmp-targets=spir64
+#PVC rev B AOT 
+# _gen -Xopenmp-target-backend "-device 12.60.5"
+#ATS AOT  
+#  _gen -Xopenmp-target-backend "-device xehp -revision_id 4"
+#OLD:: NOT ALWAYS WORKING::PVC reb b AOT 
+#_gen -Xopenmp-target-backend "-device 0x0bd6 -revision_id 0x2f"
+#PVC rev a AOT
+#  _gen -Xopenmp-target-backend "-device 0x0bd5 -revision_id 3"
 endif
 
 ifeq ($(USE_OACC),TRUE)
@@ -23,17 +39,19 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = $(HDF5_INC)
-INCLUDE_LAPACK   = -mkl
+INCLUDE_HDF5     = -I$(HDF5_INC)
+INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
+INCLUDE_ONEMKL   = -qmkl -fpp
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = $(HDF5_LIB) -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5     = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   =
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     =
+LIBRARIES_ONEMKL   = -qmkl -lmkl_sycl -lsycl -lOpenCL

@@ -2,7 +2,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five, &
-    SqrtTiny
+    SqrtTiny, Fifth, Third
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
   USE MeshModule, ONLY: &
@@ -474,7 +474,6 @@ CONTAINS
 
       k = k + 1
       Mk = MIN( M, k )
-
       CALL TimersStart( Timer_Streaming_NumericalFlux_RHS )
 
 #if   defined( THORNADO_OMP_OL )
@@ -548,9 +547,10 @@ CONTAINS
 
         CALL Alpha_LS_Vector &
                ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
-
+!! Shaoping removed SIMD because the SUM1 result is wrong (needs reduction) with SIMD. Without it the result is correct.
+!! tested SIMDLEN(1/8/16) all produce NaN in the Two-Moment Tally at Cycle = 00000001
 #if   defined( THORNADO_OMP_OL )
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
         !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
@@ -564,6 +564,7 @@ CONTAINS
           DO i = 1, 4
             IF ( ITERATE(iZ) ) THEN
               SUM1 = Zero
+!! Shaoping This produces NaNs with SIMD          !DIR$ VECTOR NOVECREMAINDER              
               DO iM = 1, Mk
                 SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
               END DO
@@ -1793,8 +1794,11 @@ CONTAINS
 
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
-
-    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+!!Shaoping Modified the code. A=[1,2,3.0,4.0] seems not working for offload
+!!    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+    h_u(1) =  I_u_1 / ( FF * D )
+    h_u(2) =  I_u_2 / ( FF * D )
+    h_u(3) =  I_u_3 / ( FF * D )
 
     Gm_uu      = Zero
     Gm_uu(1,1) = One / Gm_dd_11
@@ -1873,10 +1877,54 @@ CONTAINS
     INTEGER  :: i, j
     REAL(DP) :: FF, EF, a, b
     REAL(DP) :: h_d(3), Gm_dd(3,3)
+    REAL(DP) :: valueClosure, tmp1
 
-    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
+!! Shaoping inline the following function. Run hangs if not inlined
+!! Shaoping Tried "!DIR$ ATTRIBUTES FORCEINLINE", did not help, Ran hangs. 04-07-2022
+!!    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      FF = MIN( MAX( SQRT( Gm_dd_11 * I_u_1**2 &
+                         + Gm_dd_22 * I_u_2**2 &
+                         + Gm_dd_33 * I_u_3**2 )/MAX( D, SqrtTiny ),  SqrtTiny ), One )
+                      
+!! Shaoping function inline ENDs                      
+
+!! Shaoping inline the following function.  Run hangs if not inlined 
+!!    EF = EddingtonFactor( D, FF )
+
+#ifdef THORNADO_DEBUG
+    IF( IEEE_IS_NAN(D) ) STOP 'NAN in D when call EddingtonFactor_Scalar'
+#endif
+
+#ifdef MOMENT_CLOSURE_MINERBO
+    ! --- Maximum Entropy (ME) Minerbo Closure ---
+    valueClosure = Three * Fifth * FF**2 * ( One - Third * FF + FF**2 )
+    EF = Third + Two * Third * valueClosure !!ClosurePolynomial_ME_CB( FF )
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
+    ! --- Cernohorsky-Bludman ME Closure ---
+    tmp1 = FF / MAX( One - D, SqrtTiny)
+    valueClosure = Three * Fifth * tmp1**2 * ( One - Third * tmp1 + tmp1**2 ) 
+    EF = Third + Two * Third * ( One - D ) * ( One - Two * D ) * valueClosure !! &
+!!          * ClosurePolynomial_ME_CB( FF / MAX( One - D, SqrtTiny ) )
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
+    ! --- Banach-Larecki ME Closure ---
+    tmp1 = FF / MAX( One - D, SqrtTiny)
+    valueClosure = ( 9.0_DP * tmp1**2 - 5.0_DP &
+          + SQRT( 33.0_DP * tmp1**4 - 42.0_DP * tmp1**2 + 25.0_DP ) ) / 8.0_DP
+    EF = Third + Two * Third * ( One - D ) * ( One - Two * D ) * valueClosure !!&
+!!          * ClosurePolynomial_ME_BL( FF / MAX( One - D, SqrtTiny ) )
+#elif  MOMENT_CLOSURE_KERSHAW_BL
+    ! --- Banach-Larecki Kershaw Closure ---
+    tmp1 = FF / MAX( One - D, SqrtTiny)
+    valueClosure = tmp1**2
+    EF = Third + Two * Third * ( One - D ) * ( One - Two * D ) *valueClosure !!&
+!!          * ClosurePolynomial_KE_BL( FF / MAX( One - D, SqrtTiny ) )
+#elif  MOMENT_CLOSURE_LEVERMORE
+    ! --- Levermore Closure ---
+      EF = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
+#endif
+
+!!Shaoping function inline ENDs
 
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
@@ -1971,7 +2019,11 @@ CONTAINS
     a = Half * ( FF - HF )
     b = Half * ( Five * HF - Three * FF )
 
-    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+!!Shaoping  Modified the code. A=[1,2,3.0,4.0] seems not working for offload.
+!!    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+    h_u(1) = I_u_1 / ( FF * D )
+    h_u(2) = I_u_2 / ( FF * D )
+    h_u(3) = I_u_3 / ( FF * D )
 
     Gm_uu      = Zero
     Gm_uu(1,1) = One / Gm_dd_11

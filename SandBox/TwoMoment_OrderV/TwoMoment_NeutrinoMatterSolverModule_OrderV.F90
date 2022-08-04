@@ -1056,11 +1056,13 @@ CONTAINS
     CALL TimersStart( Timer_Collisions_OuterLoop )
 
     k_outer = 0
+    
     DO WHILE( ANY( ITERATE_outer(:) ) .AND. k_outer < MaxIter_outer )
 
       k_outer  = k_outer + 1
       Mk_outer = MIN( M_outer, k_outer )
 
+      print*,"Outer loop =", k_outer
       CALL ComputeJNorm( ITERATE_outer, J )
 
       CALL CreatePackIndex &
@@ -1090,6 +1092,7 @@ CONTAINS
         k_inner  = k_inner + 1
         Mk_inner = MIN( M_inner, k_inner )
 
+        print*,"Inner loop =", k_inner
         CALL CreatePackIndex &
                ( ITERATE_inner, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
@@ -1216,6 +1219,10 @@ CONTAINS
     END DO ! --- Outer Loop ---
 
     CALL TimersStop( Timer_Collisions_OuterLoop )
+
+!!Shaoping: added the following update from, otherwise they are all zero and caused floating point errors and of course wrong results.    
+
+    !$OMP TARGET UPDATE FROM (nIterations_Inner, nIterations_Outer)
 
     nIterations_Inner &
       = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
@@ -1866,8 +1873,10 @@ CONTAINS
       SUM_V2 = Zero
       SUM_V3 = Zero
 
+!!Shaoping: Remove SIMD as it causes wrong results for SUM1      
+
 #if   defined( THORNADO_OMP_OL )
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
       !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
       !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -2070,8 +2079,10 @@ CONTAINS
         SUM_V2 = Zero
         SUM_V3 = Zero
 
+!!Shaoping: Remove SIMD as it causes wrong results for SUM1      
+
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PARALLEL DO COLLAPSE(2) &
         !$OMP PRIVATE( vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
         !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
         !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -2206,7 +2217,8 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+!! Shaoping: changed to (out) as Fm and Gm is not used but only being assigned.    
+    REAL(DP), DIMENSION(:,:)  , INTENT(out) :: Fm, Gm
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
@@ -2220,8 +2232,11 @@ CONTAINS
     REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
     REAL(DP) :: L_N, L_G1, L_G2, L_G3
 
+!!Shaoping: Remove SIMD as it causes wrong results for SUM      
+
+
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -2711,10 +2726,13 @@ CONTAINS
           END IF
         END DO
 
-      END IF
+      END IF 
+
+!!Shaoping: Remove SIMD as it causes wrong results for SUM1      
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
       !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
@@ -2736,8 +2754,11 @@ CONTAINS
         END IF
       END DO
 
+!!Shaoping: Remove SIMD as it causes wrong results for SUM1      
+
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+!!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &

@@ -356,6 +356,7 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nDF) )
 
+               uDF = 0.0
   END SUBROUTINE CreateFluidFields_Diagnostic
 
 

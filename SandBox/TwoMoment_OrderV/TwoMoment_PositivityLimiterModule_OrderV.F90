@@ -1585,9 +1585,9 @@ CONTAINS
 
     REAL(DP) :: SUM1
     INTEGER  :: iNodeZ, iP_Z
-
+!!!Shaoping SIMD is removed form OMP PARALLEL DO 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD &
+    !$OMP PARALLEL DO &
     !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR &

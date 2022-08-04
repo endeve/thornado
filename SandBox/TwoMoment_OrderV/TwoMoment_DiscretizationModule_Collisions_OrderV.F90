@@ -792,13 +792,24 @@ CONTAINS
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
     REAL(DP) :: vMag, Omega, vI, vK, Alpha(M)
-    REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
+    REAL(DP) :: WORK(LWORK)
+!! Shaoping inlining ShiftVec and Alpha_LS functions 
+    INTEGER  :: ii, jj
+    REAL(DP) :: FTMP(4,M), GTMP(4,M)
+    REAL(DP) :: BVEC(4), AMAT(4,M)
+    REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1
+
 
     Kappa = Chi + Sigma
 
     ! --- Constant Vector ---
 
-    CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
+!!! Shaoping Modified the code. A=[1,2,3.0,4.0] seems not working for offload. Will try a reproducer
+!!    CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
+    CVEC(1) = N
+    CVEC(2) = G_d_1
+    CVEC(3) = G_d_2
+    CVEC(4) = G_d_3
 
     ! --- Initial Guess ---
 
@@ -818,7 +829,12 @@ CONTAINS
       k  = k + 1
       mk = MIN( M, k )
 
-      UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
+!!! Shaoping Modified the code. A=[1,2,3.0,4.0] seems not working for offload. Will try a reproducer
+!!      UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
+      UVEC(1) = D
+      UVEC(2) = I_d_1
+      UVEC(3) = I_d_2
+      UVEC(4) = I_d_3
 
       k_dd = EddingtonTensorComponents_dd &
                ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -854,18 +870,57 @@ CONTAINS
 
         GVECm = GVEC(:,mk)
 
-      ELSE
+     ELSE
+!! Shaoping inlining Alpha_LS function 
+        BVEC = - FVEC(:,mk)
+        DO ii = 1, mk - 1
+           AMAT(:,ii) = FVEC(:,ii) - FVEC(:,mk)
+        END DO
 
-        Alpha = Alpha_LS( M, mk, FVEC )
+        IF( mk == 2 )THEN
+           AA11 = Zero
+           AB1  = Zero
+           DO ii = 1, 4
+              AA11 = AA11 + AMAT(ii,1) * AMAT(ii,1)
+              AB1  = AB1  + AMAT(ii,1) * BVEC(ii)
+           END DO
+           BVEC(1) = AB1 / AA11
+        ELSEIF( mk == 3 )THEN
+           AA11 = Zero
+           AA12 = Zero
+           AA22 = Zero
+           AB1  = Zero
+           AB2  = Zero
+           DO ii = 1, 4
+              AA11 = AA11 + AMAT(ii,1) * AMAT(ii,1)
+              AA12 = AA12 + AMAT(ii,1) * AMAT(ii,2)
+              AA22 = AA22 + AMAT(ii,2) * AMAT(ii,2)
+              AB1  = AB1  + AMAT(ii,1) * BVEC(ii)
+              AB2  = AB2  + AMAT(ii,2) * BVEC(ii)
+           END DO
+           DET_AA = AA11 * AA22 - AA12 * AA12
+           BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+           BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+        ELSEIF( mk > 3 )THEN
+           ! --- Not Implemented ---
+        END IF
+
+        SUM1 = Zero
+        DO ii = 1, mk - 1
+           Alpha(ii) = BVEC(ii)
+           SUM1 = SUM1 + BVEC(ii)
+        END DO
+        Alpha(mk) = One - SUM1
+!!        Alpha = Alpha_LS( M, mk, FVEC )
 
         GVECm = Zero
         DO i = 1, mk
 
-          GVECm = GVECm + Alpha(i) * GVEC(:,i)
+           GVECm = GVECm + Alpha(i) * GVEC(:,i)
 
         END DO
 
-      END IF
+     END IF
 
       FVECm = GVECm - UVEC
 
@@ -879,10 +934,24 @@ CONTAINS
       UVEC = GVECm
 
       IF( mk == M .AND. .NOT. CONVERGED )THEN
+!! Shaoping inlining ShiftVec function 
 
-        FVEC = ShiftVec( M, mk, FVEC )
-        GVEC = ShiftVec( M, mk, GVEC )
+         DO jj = 1, mk - 1
+            DO ii = 1, 4
+               FTMP(ii,jj) = FVEC(ii,jj+1)
+               GTMP(ii,jj) = GVEC(ii,jj+1)
+            END DO
+         END DO
 
+         DO jj = 1, mk - 1
+            DO ii = 1, 4
+               FVEC(ii,jj) = FTMP(ii,jj)
+               GVEC(ii,jj) = GTMP(ii,jj)
+            END DO
+         END DO
+
+         !!        FVEC = ShiftVec( M, mk, FVEC )
+         !!        GVEC = ShiftVec( M, mk, GVEC )
       END IF
 
       D     = UVEC(1)

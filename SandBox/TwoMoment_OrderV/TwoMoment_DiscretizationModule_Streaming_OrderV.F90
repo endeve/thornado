@@ -488,16 +488,17 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs     
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -902,6 +903,11 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
+!! Shaoping Added UPDATE FROM as these variables are now on the Device, needs to update their value on the Host
+#if defined(THORNADO_OMP_OL)
+!$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+#endif
+
     DO iS  = 1       , nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1079,12 +1085,13 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence_X
 
+!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs    
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ3, dZ4, &
     !$OMP               iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP               GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP               uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$OMP               uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ3, dZ4, &
@@ -1260,11 +1267,12 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ4 => MeshX(3) % Width )
 
+!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs     
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
@@ -1674,6 +1682,10 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
+!! Shaoping Added UPDATE FROM as these variables are now on the Device, needs to update their value on the Host
+#if defined(THORNADO_OMP_OL)
+!$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+#endif
     DO iS  = 1       , nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1851,11 +1863,12 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence_X
 
+!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
@@ -2030,11 +2043,12 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width )
 
+!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
@@ -2444,6 +2458,10 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
+!! Shaoping Added UPDATE FROM as these variables are now on the Device, needs to update their value on the Host
+#if defined(THORNADO_OMP_OL)
+!$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+#endif
     DO iS  = 1       , nSpecies
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2621,11 +2639,12 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence_X
 
+!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs    
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
@@ -2965,6 +2984,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_Eigenvalues )
 
+!!! Shaoping Modified the code. A=[1,2,3.0,4.0] seems not working for offload.    
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( A, Lambda )
@@ -2983,22 +3003,32 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         ! --- Quadratic Form Matrix ---
+        
+        A(1,1) =          dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4)
+        A(2,1) = Half * ( dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4) + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4) )
+        A(3,1) = Half * ( dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) )
+        A(1,2) = Half * ( dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4) + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4) )
+        A(2,2) =          dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4)
+        A(3,2) = Half * ( dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) )
+        A(1,3) = Half * ( dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) )
+        A(2,3) = Half * ( dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) )
+        A(3,3) =          dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4)
 
-        A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
-                                dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
-                                dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
-        A(:,2) = Half * [       dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
-                          Two * dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
-                                dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
-        A(:,3) = Half * [       dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
-                                dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
-                          Two * dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
+!!        A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
+!!                                dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
+!!                              + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
+!!                                dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
+!!                              + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
+!!        A(:,2) = Half * [       dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+!!                              + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
+!!                          Two * dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
+!!                                dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
+!!                              + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
+!!        A(:,3) = Half * [       dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+!!                              + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
+!!                                dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
+!!                              + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
+!!                          Two * dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
 
         CALL EigenvaluesSymmetric3( A, Lambda )
 
@@ -3092,8 +3122,13 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
+!Shaoping  Modified the code. A=[1,2,3.0,4.0] seems not working for offload.
+!!      uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
 
-      uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
+      uPR_L(1) = uD_L(iZ_F)
+      uPR_L(2) = uI1_L(iZ_F)
+      uPR_L(3) = uI2_L(iZ_F)
+      uPR_L(4) = uI3_L(iZ_F)
 
       ! --- Right State Flux ---
 
@@ -3120,7 +3155,14 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
 
-      uPR_R = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
+!Shaoping  Modified the code. A=[1,2,3.0,4.0] seems not working for offload.
+!!      uPR_R = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
+
+      uPR_R(1) = uD_R(iZ_F)
+      uPR_R(2) = uI1_R(iZ_F)
+      uPR_R(3) = uI2_R(iZ_F)
+      uPR_R(4) = uI3_R(iZ_F)
+
 
       ! --- Numerical Flux (Local Lax-Friedrichs) ---
 
@@ -5355,9 +5397,11 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+!! Shaoping Deleted mapping for dZ1, ... dZ4 as this causes crash for -O1.
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &
+!!    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &
+    !$OMP MAP( to: &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
@@ -5379,10 +5423,11 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
-
+!! Shaoping Deleted mapping for dZ1, ... dZ4 as this causes crash for -O1.
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, &
+!!    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, &
+    !$OMP MAP( release:  &
     !$OMP               nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3, &
     !$OMP               uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )

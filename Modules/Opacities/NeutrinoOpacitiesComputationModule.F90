@@ -122,6 +122,8 @@ MODULE NeutrinoOpacitiesComputationModule
 
 CONTAINS
 
+!!Shaoping: SIMD removed for the loops to do summations. Otherwise the sum may not be right. 
+
 
   SUBROUTINE ComputeEquilibriumDistributions_Point( E, D, T, Y, f0, iSpecies )
 #if defined(THORNADO_OMP_OL)
@@ -1001,7 +1003,7 @@ CONTAINS
     INTEGER  :: iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO  COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
     !$OMP MAP( to: H_I, H_II, W2, J, J0 ) &
     !$OMP MAP( from: Eta, Chi )
@@ -1080,7 +1082,7 @@ CONTAINS
     INTEGER  :: iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_In, Phi_1_Out ) &
     !$OMP MAP( to: H_I_1, H_II_1, W2, H_1, H_2, H_3, J0 ) &
@@ -1267,7 +1269,7 @@ CONTAINS
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
     !$OMP MAP( to: J_I, J_II, W2, J, J0 ) &
     !$OMP MAP( from: Eta, Chi )
@@ -1348,7 +1350,7 @@ CONTAINS
     INTEGER  :: iE1, iE2, iS, iS_A, iX
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO  COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
     !$OMP MAP( to: J_I_1, J_II_1, W2, H_1, H_2, H_3, J0 ) &
@@ -1528,7 +1530,7 @@ CONTAINS
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
     !$OMP MAP( to: S_Sigma, W2, J, J0 ) &
     !$OMP MAP( from: Eta, Chi )
@@ -1605,7 +1607,7 @@ CONTAINS
     INTEGER  :: iE1, iE2, iS, iS_A, iX
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
     !$OMP MAP( to: S_Sigma, W2, H_1, H_2, H_3, J0 ) &

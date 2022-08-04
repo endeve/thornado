@@ -78,6 +78,7 @@ MODULE DeviceModule
     omp_get_default_device, &
     omp_is_initial_device, &
     omp_target_is_present
+ USE omp_lib, ONLY : omp_get_num_devices
 #endif
 
 #if defined(THORNADO_OACC)
@@ -148,6 +149,8 @@ CONTAINS
 #if defined(THORNADO_GPU)
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, nranks, ierr )
+!! Shaoping. To avoid cll MPI_FINALIZE twices which leads to "In MPIR_Free_contextid, the context id is not in use (Internal MPI error!)"    
+    ndevices = omp_get_num_devices() 
 #if defined(THORNADO_CUDA)
     ierr = cudaGetDeviceCount( ndevices )
 #elif defined(THORNADO_HIP)

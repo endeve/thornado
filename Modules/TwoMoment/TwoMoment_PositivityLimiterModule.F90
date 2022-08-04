@@ -987,7 +987,7 @@ CONTAINS
               DO iP_Z = 1, nPT_Z
 
                 iP_X = PointZ2X(iP_Z)
-
+!! Shaoping we got compile error without -O0 as  "Total size of kernel arguments exceeds limit!"               
                 Gam = GammaFun &
                       ( U_P_N (iP_Z,iZ1,iZ2,iZ3,iZ4,iS),   &
                         U_P_G1(iP_Z,iZ1,iZ2,iZ3,iZ4,iS),   &

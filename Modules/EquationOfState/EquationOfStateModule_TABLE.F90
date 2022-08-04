@@ -669,9 +669,10 @@ CONTAINS
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) THEN
           CALL DescribeEOSInversionError( Error(iP) )
+!! Shaoping : As D, E, Y are passed in as intent(in), so the following UPDATE FROM is wrong.           
 #if defined(THORNADO_OMP_OL)
-          !$OMP TARGET UPDATE FROM &
-          !$OMP ( D(iP), E(iP), Y(iP) )
+!!          !$OMP TARGET UPDATE FROM &
+!!          !$OMP ( D(iP), E(iP), Y(iP) )
 #elif defined(THORNADO_OACC)
           !$ACC UPDATE HOST &
           !$ACC ( D(iP), E(iP), Y(iP) )
@@ -985,9 +986,11 @@ CONTAINS
 
     nP = SIZE( D )
 
+!! Shaoping: Adding D_T, T_T, Y_T, E_T to OMP MAP (to:) list, otherwise these are not available (values are zero) in the nested function calls of looking up the table.
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( to: D, Ev, Ne ) &
+    !$OMP MAP( to: D, Ev, Ne , D_T, T_T, Y_T, E_T) &
     !$OMP MAP( from: T, Em, Y, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
