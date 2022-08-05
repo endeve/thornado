@@ -11,7 +11,7 @@ function load_set_common(){
    module purge
    
    #module load oneapi/eng-compiler/2022.01.30.005
-   #module load oneapi/eng-compiler/2022.06.30.002
+   module load oneapi/eng-compiler/2022.06.30.002
 
 
    export OP_LEVEL=O1
