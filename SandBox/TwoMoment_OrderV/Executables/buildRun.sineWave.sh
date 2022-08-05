@@ -11,25 +11,11 @@ function load_set_common(){
    module purge
    
    #module load oneapi/eng-compiler/2022.01.30.005
-   #module load oneapi/eng-compiler/2022.01.30.006
-   #module load oneapi/eng-compiler/2022.01.30.007
    #module load oneapi/eng-compiler/2022.06.30.002
-   #module load nightly-compiler/2022.07.05
-   #module load nightly-compiler/2022.07.26
-   #module load nightly-compiler/2022.07.27
-   #module load nightly-compiler/2022.08.02
-   module load nightly-compiler/2022.08.03
-   #module switch -f intel_compute_runtime/release/agama-prerelease-475 neo/agama-prerelease/531-22.28.023672.11691-main
-   #module switch -f intel_compute_runtime/release/agama-prerelease-475 neo/agama-prerelease/534-22.28.023672.11688-main
-   #module switch -f intel_compute_runtime/release/agama-prerelease-475 neo/agama-prerelease/535-22.28.023711.11742-main
-   #module switch -f intel_compute_runtime/release/agama-prerelease-475 neo/agama-prerelease/546-22.30.023803.11807-main
-   #module switch -f intel_compute_runtime/release/agama-prerelease-475 neo/agama-prerelease/552-22.30.023828.11834-main
-   module switch -f intel_compute_runtime/release/agama-prerelease-475 neo/agama-prerelease/554-22.31.023852.11876-main
 
 
    export OP_LEVEL=O1
-   export LOG_FILE=sineWave.${OP_LEVEL}.0803.umd554
-   #export LOG_FILE=sineWave.${OP_LEVEL}.eng06.30.002
+   export LOG_FILE=sineWave.${OP_LEVEL}
    rm $LOG_FILE
    export APP_NAME=ApplicationDriver
    export EXASTAR_HOME=/localdisk/quanshao
@@ -40,8 +26,6 @@ function load_set_common(){
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/ExaStar/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
    export IGC_OverrideOCLMaxParamSize=4096
-   export MPIR_CVAR_ENABLE_GPU=0
-##   export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
    #export OMP_NUM_THREADS=1
 }
 
