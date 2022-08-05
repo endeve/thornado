@@ -1,7 +1,5 @@
 MODULE ReferenceElementModuleX_Lagrange
-!! Shaoping  adding this module causes run hangs. However, remove "-heap-arrays 0" make the code run.
-!! Shaoping  16,512 freshly compiled first time runs, but the second time hangs.
-!! Shaoping  1024 even freshly compiled hangs. Then 512 freshly hangs, but the rerun goes. Interesting. 
+
   USE KindModule, ONLY: &
     DP, Half
   USE ProgramHeaderModule, ONLY: &
