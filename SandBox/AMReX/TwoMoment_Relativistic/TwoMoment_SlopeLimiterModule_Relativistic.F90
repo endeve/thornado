@@ -219,12 +219,12 @@ CONTAINS
     END IF
 
 
-    IF( .NOT. SuppressBC )THEN
-
-      CALL ApplyBoundaryConditions_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
-
-    END IF
+!   IF( .NOT. SuppressBC )THEN
+!
+!      CALL ApplyBoundaryConditions_TwoMoment &
+!             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+!
+!    END IF
 
     SELECT CASE ( TRIM( SlopeLimiterMethod ) )
 
