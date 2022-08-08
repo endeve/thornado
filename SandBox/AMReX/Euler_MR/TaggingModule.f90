@@ -28,8 +28,9 @@ MODULE TaggingModule
   PUBLIC :: TagElements_Advection2D
   PUBLIC :: TagElements_KelvinHelmholtz2D
   PUBLIC :: TagElements_Advection3D
-  PUBLIC :: TagElements_AdiabaticCollapse_XCFC
   PUBLIC :: TagElements_YahilCollapse_XCFC
+  PUBLIC :: TagElements_AdiabaticCollapse_XCFC
+  PUBLIC :: TagElements_CoreCollapseSupernova_XCFC
   PUBLIC :: TagElements_uCF
 
 CONTAINS
@@ -116,8 +117,8 @@ CONTAINS
 
       GradD = SQRT( GradD )
 
-      !IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
-      IF( ANY( GradD .GT. TagCriteria_this ) )THEN
+      IF( ABS( MeshX(1) % Center(iX1) - 1.0_DP ) .GT. TagCriteria_this )THEN
+      !IF( ANY( GradD .GT. TagCriteria_this ) )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -294,6 +295,48 @@ CONTAINS
   END SUBROUTINE TagElements_Advection3D
 
 
+  SUBROUTINE TagElements_YahilCollapse_XCFC &
+    ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, TagCriteria, &
+      SetTag, ClearTag, TagLo, TagHi, Tag )
+
+    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
+                            TagLo(4), TagHi(4)
+    REAL(DP), INTENT(in) :: uCF(iLo(1):iHi(1),iLo(2):iHi(2), &
+                                iLo(3):iHi(3),iLo(4):iHi(4))
+    REAL(DP), INTENT(in) :: TagCriteria
+    CHARACTER(KIND=c_char), INTENT(in)    :: SetTag, ClearTag
+    CHARACTER(KIND=c_char), INTENT(inout) :: Tag(TagLo(1):TagHi(1), &
+                                                 TagLo(2):TagHi(2), &
+                                                 TagLo(3):TagHi(3), &
+                                                 TagLo(4):TagHi(4))
+
+    INTEGER :: iX1, iX2, iX3
+
+    REAL(DP) :: TagCriteria_this
+
+    TagCriteria_this = TagCriteria
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( MeshX(1) % Center(iX1) / Kilometer .LT. TagCriteria_this )THEN
+
+        Tag(iX1,iX2,iX3,1) = SetTag
+
+      ELSE
+
+        Tag(iX1,iX2,iX3,1) = ClearTag
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE TagElements_YahilCollapse_XCFC
+
+
   SUBROUTINE TagElements_AdiabaticCollapse_XCFC &
     ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, TagCriteria, &
       SetTag, ClearTag, TagLo, TagHi, Tag )
@@ -336,7 +379,7 @@ CONTAINS
   END SUBROUTINE TagElements_AdiabaticCollapse_XCFC
 
 
-  SUBROUTINE TagElements_YahilCollapse_XCFC &
+  SUBROUTINE TagElements_CoreCollapseSupernova_XCFC &
     ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, TagCriteria, &
       SetTag, ClearTag, TagLo, TagHi, Tag )
 
@@ -375,7 +418,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE TagElements_YahilCollapse_XCFC
+  END SUBROUTINE TagElements_CoreCollapseSupernova_XCFC
 
 
   SUBROUTINE TagElements_uCF &

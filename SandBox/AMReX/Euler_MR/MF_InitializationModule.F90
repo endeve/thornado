@@ -11,10 +11,12 @@ MODULE MF_InitializationModule
     ProgramName
   USE MF_InitializationModule_Relativistic_IDEAL, ONLY: &
     InitializeFields_Euler_Relativistic_IDEAL_MF
-  USE MF_InitializationModule_AdiabaticCollapse_XCFC, ONLY: &
-    InitializeFields_Euler_AdiabaticCollapse_XCFC_MF
   USE MF_InitializationModule_YahilCollapse_XCFC, ONLY: &
     InitializeFields_Euler_YahilCollapse_XCFC_MF
+  USE MF_InitializationModule_AdiabaticCollapse_XCFC, ONLY: &
+    InitializeFields_Euler_AdiabaticCollapse_XCFC_MF
+  USE MF_InitializationModule_CoreCollapseSupernova_XCFC, ONLY: &
+    InitializeFields_Euler_CoreCollapseSupernova_XCFC_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -31,14 +33,19 @@ CONTAINS
 
 #ifdef HYDRO_RELATIVISTIC
 
-    IF( TRIM( ProgramName ) .EQ. 'AdiabaticCollapse_XCFC' )THEN
+    IF( TRIM( ProgramName ) .EQ. 'YahilCollapse_XCFC' )THEN
+
+      CALL InitializeFields_Euler_YahilCollapse_XCFC_MF &
+             ( iLevel, MF_uGF, MF_uCF )
+
+    ELSE IF( TRIM( ProgramName ) .EQ. 'AdiabaticCollapse_XCFC' )THEN
 
       CALL InitializeFields_Euler_AdiabaticCollapse_XCFC_MF &
              ( iLevel, MF_uGF, MF_uCF )
 
-    ELSE IF( TRIM( ProgramName ) .EQ. 'YahilCollapse_XCFC' )THEN
+    ELSE IF( TRIM( ProgramName ) .EQ. 'CoreCollapseSupernova_XCFC' )THEN
 
-      CALL InitializeFields_Euler_YahilCollapse_XCFC_MF &
+      CALL InitializeFields_Euler_CoreCollapseSupernova_XCFC_MF &
              ( iLevel, MF_uGF, MF_uCF )
 
     ELSE

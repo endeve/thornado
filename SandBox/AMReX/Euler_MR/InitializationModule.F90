@@ -578,8 +578,9 @@ CONTAINS
       TagElements_Advection2D, &
       TagElements_KelvinHelmholtz2D, &
       TagElements_Advection3D, &
-      TagElements_AdiabaticCollapse_XCFC, &
       TagElements_YahilCollapse_XCFC, &
+      TagElements_AdiabaticCollapse_XCFC, &
+      TagElements_CoreCollapseSupernova_XCFC, &
       TagElements_uCF
 
     INTEGER,                INTENT(in), VALUE :: iLevel
@@ -658,6 +659,13 @@ CONTAINS
                    uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
+        CASE( 'YahilCollapse_XCFC' )
+
+          CALL TagElements_YahilCollapse_XCFC &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
         CASE( 'AdiabaticCollapse_XCFC' )
 
           CALL TagElements_AdiabaticCollapse_XCFC &
@@ -665,9 +673,9 @@ CONTAINS
                    uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
-        CASE( 'YahilCollapse_XCFC' )
+        CASE( 'CoreCollapseSupernova_XCFC' )
 
-          CALL TagElements_YahilCollapse_XCFC &
+          CALL TagElements_CoreCollapseSupernova_XCFC &
                  ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
                    uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )

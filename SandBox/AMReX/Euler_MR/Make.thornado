@@ -30,12 +30,12 @@ f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
 CEXE_sources    += Restart.cpp
 
-# AdiabaticCollapse_XCFC
+f90EXE_sources += MF_InitializationModule_YahilCollapse_XCFC.f90
 f90EXE_sources += MF_InitializationModule_AdiabaticCollapse_XCFC.f90
+f90EXE_sources += MF_InitializationModule_CoreCollapseSupernova_XCFC.f90
+
 f90EXE_sources += ProgenitorModule.f90
 F90EXE_sources += MF_GravitySolutionModule_XCFC_Poseidon.F90
-
-f90EXE_sources += MF_InitializationModule_YahilCollapse_XCFC.f90
 
 # thornado/Modules/Library
 
