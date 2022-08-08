@@ -96,7 +96,7 @@ CONTAINS
     TYPE(amrex_mfiter)                    :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
-    
+    INTEGER :: iZ2 
     LOGICAL :: Verbose
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
