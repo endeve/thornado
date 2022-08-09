@@ -30,6 +30,8 @@ MODULE MF_GeometryModule
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, &
     LX_X1_Up
+  USE UnitsModule, ONLY: &
+    SolarMass
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Beta_1
@@ -49,7 +51,8 @@ MODULE MF_GeometryModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
-    UseTiling
+    UseTiling, &
+    ProgramName
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -82,11 +85,24 @@ CONTAINS
     REAL(DP) :: Mass
 
     Mass = Zero
-    CALL amrex_parmparse_build( PP, 'thornado' )
 
-      CALL PP % query( 'Mass', Mass )
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
 
-    CALL amrex_parmparse_destroy( PP )
+      CALL amrex_parmparse_build( PP, 'SAS' )
+        CALL PP % query( 'Mass', Mass )
+      CALL amrex_parmparse_destroy( PP )
+
+      Mass = Mass * SolarMass
+
+    ELSE
+
+      CALL amrex_parmparse_build( PP, 'thornado' )
+        CALL PP % query( 'Mass', Mass )
+      CALL amrex_parmparse_destroy( PP )
+
+      Mass = Mass * SolarMass
+
+    END IF
 
     CALL amrex_mfiter_build( MFI, MF_uGF )
 

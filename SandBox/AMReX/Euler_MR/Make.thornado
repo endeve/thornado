@@ -30,6 +30,7 @@ f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
 CEXE_sources    += Restart.cpp
 
+f90EXE_sources += MF_InitializationModule_StandingAccretionShock_Relativistic.f90
 f90EXE_sources += MF_InitializationModule_YahilCollapse_XCFC.f90
 f90EXE_sources += MF_InitializationModule_AdiabaticCollapse_XCFC.f90
 f90EXE_sources += MF_InitializationModule_CoreCollapseSupernova_XCFC.f90

@@ -11,6 +11,8 @@ MODULE MF_InitializationModule
     ProgramName
   USE MF_InitializationModule_Relativistic_IDEAL, ONLY: &
     InitializeFields_Euler_Relativistic_IDEAL_MF
+  USE MF_InitializationModule_StandingAccretionShock_Relativistic, ONLY: &
+    InitializeFields_Euler_StandingAccretionShock_Relativistic_MF
   USE MF_InitializationModule_YahilCollapse_XCFC, ONLY: &
     InitializeFields_Euler_YahilCollapse_XCFC_MF
   USE MF_InitializationModule_AdiabaticCollapse_XCFC, ONLY: &
@@ -28,12 +30,17 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Euler_MF( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER,              INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER,              INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF, MF_uCF
 
 #ifdef HYDRO_RELATIVISTIC
 
-    IF( TRIM( ProgramName ) .EQ. 'YahilCollapse_XCFC' )THEN
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
+
+      CALL InitializeFields_Euler_StandingAccretionShock_Relativistic_MF &
+             ( iLevel, MF_uGF, MF_uCF )
+
+    ELSE IF( TRIM( ProgramName ) .EQ. 'YahilCollapse_XCFC' )THEN
 
       CALL InitializeFields_Euler_YahilCollapse_XCFC_MF &
              ( iLevel, MF_uGF, MF_uCF )

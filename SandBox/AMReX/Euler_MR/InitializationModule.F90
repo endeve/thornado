@@ -578,6 +578,7 @@ CONTAINS
       TagElements_Advection2D, &
       TagElements_KelvinHelmholtz2D, &
       TagElements_Advection3D, &
+      TagElements_StandingAccretionShock_Relativistic, &
       TagElements_YahilCollapse_XCFC, &
       TagElements_AdiabaticCollapse_XCFC, &
       TagElements_CoreCollapseSupernova_XCFC, &
@@ -655,6 +656,13 @@ CONTAINS
         CASE( 'Advection3D' )
 
           CALL TagElements_Advection3D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'StandingAccretionShock_Relativistic' )
+
+          CALL TagElements_StandingAccretionShock_Relativistic &
                  ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
                    uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
