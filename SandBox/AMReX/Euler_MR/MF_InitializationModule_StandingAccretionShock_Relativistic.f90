@@ -174,6 +174,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: P    (:,:)
     REAL(DP), ALLOCATABLE :: Field(:,:)
     LOGICAL               :: InitializeFromFile, ResetEndTime
+    LOGICAL               :: FirstPreShockElement, &
+                             AllPreShockElements, &
+                             AllPostShockElements
     INTEGER, PARAMETER    :: nX_LeastSquares = 5
     CHARACTER(LEN=:), ALLOCATABLE :: PerturbationType
 
@@ -325,130 +328,143 @@ CONTAINS
 
       CALL LocateFirstUnShockedElement &
              ( iX_B1, iX_E1, ShockRadius, &
-               iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
+               iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
+               FirstPreShockElement, AllPreShockElements, AllPostShockElements )
 
-      ! --- Pre-shock Fields ---
+      IF( .NOT. AllPostShockElements )THEN
 
-      X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
+        ! --- Pre-shock Fields ---
 
-      ! --- Use Newtonian values as initial guesses ---
+        X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
 
-      V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
-      D0 = -Mdot / ( FourPi * X1**2 * V0 )
-      P0 = K_1 * D0**( Gamma_IDEAL )
+        ! --- Use Newtonian values as initial guesses ---
 
-      DO iX1 = iX_E1(1), iX1_1, -1
+        V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
+        D0 = -Mdot / ( FourPi * X1**2 * V0 )
+        P0 = K_1 * D0**( Gamma_IDEAL )
 
-        DO iNX1 = nNodesX(1), 1, -1
+        DO iX1 = iX_E1(1), iX1_1, -1
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+          DO iNX1 = nNodesX(1), 1, -1
 
-          IF( X1 .LE. ShockRadius ) CYCLE
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-          Alpha = LapseFunction  ( X1, MassPNS )
-          Psi   = ConformalFactor( X1, MassPNS )
+            IF( X1 .LE. ShockRadius ) CYCLE
 
-          CALL NewtonRaphson_SAS &
-                 ( X1, MassPNS, Mdot, K_1, &
-                   Alpha, Psi, D0, V0, P0, &
-                   D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
+            Alpha = LapseFunction  ( X1, MassPNS )
+            Psi   = ConformalFactor( X1, MassPNS )
 
-          D0 = D(iNX1,iX1)
-          V0 = V(iNX1,iX1)
-          P0 = P(iNX1,iX1)
+            CALL NewtonRaphson_SAS &
+                   ( X1, MassPNS, Mdot, K_1, &
+                     Alpha, Psi, D0, V0, P0, &
+                     D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
 
-        END DO
+            D0 = D(iNX1,iX1)
+            V0 = V(iNX1,iX1)
+            P0 = P(iNX1,iX1)
 
-      END DO
-
-      ! --- Apply Jump Conditions ---
-
-      D_1 = D(iNX1_1,iX1_1)
-      V_1 = V(iNX1_1,iX1_1)
-      P_1 = P(iNX1_1,iX1_1)
-
-      CALL ApplyJumpConditions_SAS &
-             ( MassPNS, Mdot, ShockRadius, &
-               LapseFunction  ( X1_1, MassPNS ), &
-               ConformalFactor( X1_1, MassPNS ), D_1, V_1, P_1, &
-               LapseFunction  ( X1_2, MassPNS ), &
-               ConformalFactor( X1_2, MassPNS ), D_2, V_2, P_2 )
-
-      K_2 = P_2 / D_2**( Gamma_IDEAL )
-
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(*,*)
-        WRITE(*,'(6x,A)') 'Jump Conditions'
-        WRITE(*,'(6x,A)') '---------------'
-        WRITE(*,*)
-        WRITE(*,'(8x,A)') 'Pre-shock:'
-        WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
-        WRITE(*,'(10x,A,I2.2)')       'iNX1     = ', iNX1_1
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-          D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
-        WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-          V_1 / ( Kilometer / Second ), ' km/s'
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-          P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
-        WRITE(*,*)
-        WRITE(*,'(8x,A)') 'Post-shock:'
-        WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
-        WRITE(*,'(10x,A,I2.2)')       'iNX1     = ', iNX1_2
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
-          D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
-        WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
-          V_2 / ( Kilometer / Second ), ' km/s'
-        WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
-          P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
-        WRITE(*,*)
-
-      END IF
-
-      ! --- Post-shock Fields ---
-
-      AdvectionTime = Zero
-
-      D0 = D_2
-      V0 = V_2
-      P0 = P_2
-
-      DO iX1 = iX1_2, iX_B1(1), -1
-
-        DO iNX1 = nNodesX(1), 1, -1
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
-
-          IF( X1 .GT. ShockRadius ) CYCLE
-
-          Alpha = LapseFunction  ( X1, MassPNS )
-          Psi   = ConformalFactor( X1, MassPNS )
-
-          CALL NewtonRaphson_SAS &
-                 ( X1, MassPNS, Mdot, K_2, &
-                   Alpha, Psi, D0, V0, P0, &
-                   D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
-
-          D0 = D(iNX1,iX1)
-          V0 = V(iNX1,iX1)
-          P0 = P(iNX1,iX1)
-
-          AdvectionTime &
-            = AdvectionTime &
-                + WeightsX1(iNX1) * MeshX(1) % Width(iX1) / ABS( V(iNX1,iX1) )
+          END DO
 
         END DO
 
-      END DO
+      END IF ! .NOT. AllPostShockElements
 
-      IF( ResetEndTime )THEN
-        t_end = 50.0_DP * AdvectionTime
-        WRITE(*,'(6x,A,ES9.2E3,A)') &
-          't_end: ', &
-          t_end / Millisecond, ' ms'
-      END IF
+      IF( .NOT. AllPostShockElements .AND. .NOT. AllPreShockElements )THEN
+
+        ! --- Apply Jump Conditions ---
+
+        D_1 = D(iNX1_1,iX1_1)
+        V_1 = V(iNX1_1,iX1_1)
+        P_1 = P(iNX1_1,iX1_1)
+
+        CALL ApplyJumpConditions_SAS &
+               ( MassPNS, Mdot, ShockRadius, &
+                 LapseFunction  ( X1_1, MassPNS ), &
+                 ConformalFactor( X1_1, MassPNS ), D_1, V_1, P_1, &
+                 LapseFunction  ( X1_2, MassPNS ), &
+                 ConformalFactor( X1_2, MassPNS ), D_2, V_2, P_2 )
+
+        K_2 = P_2 / D_2**( Gamma_IDEAL )
+
+        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(6x,A)') 'Jump Conditions'
+          WRITE(*,'(6x,A)') '---------------'
+          WRITE(*,*)
+          WRITE(*,'(8x,A)') 'Pre-shock:'
+          WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_1
+          WRITE(*,'(10x,A,I2.2)')       'iNX1     = ', iNX1_1
+          WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_1 / Kilometer, '  km'
+          WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+            D_1 / ( Gram / Centimeter**3 ), '  g/cm^3'
+          WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+            V_1 / ( Kilometer / Second ), ' km/s'
+          WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+            P_1 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+          WRITE(*,*)
+          WRITE(*,'(8x,A)') 'Post-shock:'
+          WRITE(*,'(10x,A,I4.4)')       'iX1      = ', iX1_2
+          WRITE(*,'(10x,A,I2.2)')       'iNX1     = ', iNX1_2
+          WRITE(*,'(10x,A,ES13.6E3,A)') 'X1       = ', X1_2 / Kilometer, '  km'
+          WRITE(*,'(10x,A,ES13.6E3,A)') 'Density  = ', &
+            D_2 / ( Gram / Centimeter**3 ), '  g/cm^3'
+          WRITE(*,'(10x,A,ES14.6E3,A)') 'Velocity = ', &
+            V_2 / ( Kilometer / Second ), ' km/s'
+          WRITE(*,'(10x,A,ES13.6E3,A)') 'Pressure = ', &
+            P_2 / ( Erg / Centimeter**3 ), '  erg/cm^3'
+          WRITE(*,*)
+
+        END IF
+
+      END IF ! .NOT. AllPostShockElements .AND. .NOT. AllPreShockElements
+
+      IF( .NOT. AllPreShockElements )THEN
+
+        ! --- Post-shock Fields ---
+
+        AdvectionTime = Zero
+
+        D0 = D_2
+        V0 = V_2
+        P0 = P_2
+
+        DO iX1 = iX1_2, iX_B1(1), -1
+
+          DO iNX1 = nNodesX(1), 1, -1
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+            IF( X1 .GT. ShockRadius ) CYCLE
+
+            Alpha = LapseFunction  ( X1, MassPNS )
+            Psi   = ConformalFactor( X1, MassPNS )
+
+            CALL NewtonRaphson_SAS &
+                   ( X1, MassPNS, Mdot, K_2, &
+                     Alpha, Psi, D0, V0, P0, &
+                     D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
+
+            D0 = D(iNX1,iX1)
+            V0 = V(iNX1,iX1)
+            P0 = P(iNX1,iX1)
+
+            AdvectionTime &
+              = AdvectionTime &
+                  + WeightsX1(iNX1) * MeshX(1) % Width(iX1) / ABS( V(iNX1,iX1) )
+
+          END DO
+
+        END DO
+
+        IF( ResetEndTime )THEN
+          t_end = 50.0_DP * AdvectionTime
+          WRITE(*,'(6x,A,ES9.2E3,A)') &
+            't_end: ', &
+            t_end / Millisecond, ' ms'
+        END IF
+
+      END IF ! .NOT. AllPreShockElements
 
     END IF
 
@@ -560,7 +576,7 @@ CONTAINS
             ! IF( TRIM( PerturbedField ) .EQ. 'Pressure' )THEN
               uPF_K(iNX,iPF_E ) = uPert / ( Gamma_IDEAL - One )
             ! END IF
-             uPF_K(iNX,iPF_D) = uPert
+             !uPF_K(iNX,iPF_D) = uPert
 
           END IF ! Apply perturbation
 
@@ -601,7 +617,7 @@ CONTAINS
                amrex_geom(iLevel) % domain % hi + swX, &
                nX_LeastSquares )
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
       IF( .NOT. InitializeFromFile ) &
         WRITE(*,'(6x,A,ES13.6E3,A)') &
@@ -963,16 +979,23 @@ CONTAINS
 
   SUBROUTINE LocateFirstUnShockedElement &
     ( iX_B1, iX_E1, ShockRadius, &
-      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2 )
+      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
+      FirstPreShockElement, AllPreShockElements, AllPostShockElements )
 
-    INTEGER,        INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(DP),       INTENT(in)  :: ShockRadius
-    INTEGER,        INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
-    REAL(DP),       INTENT(out) :: X1_1, X1_2
+    INTEGER , INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: ShockRadius
+    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
+    REAL(DP), INTENT(out) :: X1_1, X1_2
+    LOGICAL , INTENT(out) :: FirstPreShockElement, &
+                             AllPreShockElements, &
+                             AllPostShockElements
 
     REAL(DP) :: X1, dX1
-    INTEGER  :: iX1, iNX1
-    LOGICAL  :: FirstPreShockElement = .FALSE.
+    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements
+
+    FirstPreShockElement  = .FALSE.
+    nPreShockElements     = 0
+    nPostShockElements    = 0
 
     X1 = Zero
 
@@ -983,9 +1006,17 @@ CONTAINS
         dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
         X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+        IF( X1 .LE. ShockRadius )THEN
+
+          nPreShockElements = nPreShockElements + 1
+
+          CYCLE
+
+        END IF
 
         IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+
+          nPostShockElements = nPostShockElements + 1
 
           iX1_1  = iX1
           iNX1_1 = iNX1
@@ -1011,6 +1042,23 @@ CONTAINS
       END DO
 
     END DO
+
+    IF( nPostShockElements .EQ. 0 )THEN
+
+      AllPostShockElements = .FALSE.
+      AllPreShockElements  = .TRUE.
+
+    ELSE IF( nPreShockElements .EQ. 0 )THEN
+
+      AllPostShockElements = .TRUE.
+      AllPreShockElements  = .FALSE.
+
+    ELSE
+
+      AllPostShockElements = .FALSE.
+      AllPreShockElements  = .FALSE.
+
+    END IF
 
   END SUBROUTINE LocateFirstUnShockedElement
 
