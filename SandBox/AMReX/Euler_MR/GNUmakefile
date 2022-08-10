@@ -7,11 +7,11 @@ WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
 LAPACK_HOME   ?= $(LAPACK_DIR)
 
-HDF5_INC       = $(HDF5_HOME)/include
-HDF5_LIB       = $(HDF5_HOME)/lib
+HDF5_INC       ?= $(HDF5_HOME)/include
+HDF5_LIB       ?= $(HDF5_HOME)/lib
 
-LAPACK_INC     = $(LAPACK_HOME)/include
-LAPACK_LIB     = $(LAPACK_HOME)/lib
+LAPACK_INC     ?= $(LAPACK_HOME)/include
+LAPACK_LIB     ?= $(LAPACK_HOME)/lib
 
 EOS            ?= TABLE
 EVOLVE_GRAVITY ?= TRUE
