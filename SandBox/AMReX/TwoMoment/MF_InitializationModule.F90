@@ -131,7 +131,7 @@ MODULE MF_InitializationModule
     BoltzmannConstant, &
     GravitationalConstant
 ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule, ONLY: &
     nLevels, &
     xL,      &
     xR,      &

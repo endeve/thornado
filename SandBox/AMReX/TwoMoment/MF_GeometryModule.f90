@@ -27,7 +27,7 @@ MODULE MF_GeometryModule
     ComputeGeometryE
 
   ! --- Local Modules ---
-  USE MyAmrModule,        ONLY: &
+  USE InputParsingModule,        ONLY: &
     nLevels, &
     nX,      &
     UseTiling

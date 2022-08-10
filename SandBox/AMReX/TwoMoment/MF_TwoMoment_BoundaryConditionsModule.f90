@@ -25,7 +25,7 @@
     nGF
   ! --- Local Modules ---
 
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,              ONLY: &
     DEBUG
 
   IMPLICIT NONE

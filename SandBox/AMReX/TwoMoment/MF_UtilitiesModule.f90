@@ -100,7 +100,7 @@ MODULE MF_UtilitiesModule
   USE UnitsModule, ONLY: &
     MeV
   ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule, ONLY: &
     nLevels, &
     nSpecies, &
     UseTiling

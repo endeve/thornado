@@ -35,7 +35,7 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     amrex2thornado_Z, &
     thornado2amrex_Z, &
     thornado2amrex_X
-  USE MyAmrModule,                       ONLY: &
+  USE InputParsingModule,                       ONLY: &
     nLevels, &
     nSpecies, &
     UseTiling, &

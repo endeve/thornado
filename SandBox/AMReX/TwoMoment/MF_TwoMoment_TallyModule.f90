@@ -68,7 +68,7 @@ MODULE MF_TwoMoment_TallyModule
     FourPi, &
     One,   &
     Half
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule, ONLY: &
     nX, &
     nLevels, &
     ProgramName, &

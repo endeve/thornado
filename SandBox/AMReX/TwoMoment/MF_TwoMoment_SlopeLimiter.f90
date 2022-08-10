@@ -31,7 +31,7 @@ MODULE MF_TwoMoment_SlopeLimiter
     amrex2thornado_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z
-  USE MyAmrModule,                       ONLY: &
+  USE InputParsingModule,                       ONLY: &
     nLevels, &
     nSpecies, &
     UseTiling, &

@@ -4,9 +4,13 @@ AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
+LAPACK_HOME   ?= $(LAPACK_DIR)
 
-HDF5_INC       = $(HDF5_HOME)/serial/include
-HDF5_LIB       = $(HDF5_HOME)/serial/lib
+HDF5_INC      ?= $(HDF5_HOME)/include
+HDF5_LIB      ?= $(HDF5_HOME)/lib
+
+LAPACK_INC     ?= $(LAPACK_HOME)/include
+LAPACK_LIB     ?= $(LAPACK_HOME)/lib
 
 DEBUG     = FALSE
 
@@ -35,6 +39,9 @@ ifeq ($(WEAK),TABLE)
   include $(THORNADO_HOME)/SandBox/AMReX/TwoMoment/Make.weaklib
 endif
 
+INCLUDE_LOCATIONS += $(LAPACK_INC)
+LIBRARY_LOCATIONS += $(LAPACK_LIB)
+LIBRARIES += -llapack -lblas
 
 INCLUDE_LOCATIONS += /usr/include
 LIBRARY_LOCATIONS += /usr/lib/x86_64-linux-gnu/lapack
@@ -46,6 +53,7 @@ include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
 include $(AMREX_HOME)/Src/Base/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
+include $(AMREX_HOME)/Src/DG/Make.package
 
 ### Checkpoint ###
 #include $(AMREX_HOME)/Src/Base/Make.package

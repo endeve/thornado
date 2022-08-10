@@ -35,7 +35,7 @@ MODULE MF_TwoMoment_UtilitiesModule
   USE MeshModule, ONLY: &
     MeshX
   ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule, ONLY: &
     nLevels, nSpecies, nE, UseTiling
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &

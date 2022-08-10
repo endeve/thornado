@@ -44,7 +44,7 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   USE MF_TwoMoment_SlopeLimiter, ONLY: &
     MF_TwoMoment_ApplySlopeLimiter
   ! --- Local Modules ---
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,                      ONLY: &
     nLevels, DEBUG, UseTiling
 
   IMPLICIT NONE

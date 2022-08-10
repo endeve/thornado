@@ -121,7 +121,7 @@ MODULE InitializationModule
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
     InitializeTimers
   ! --- Local modules ---
-  USE MyAmrDataModule,                  ONLY: &
+  USE MF_FieldsModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
@@ -135,7 +135,7 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule,         ONLY: &
     MF_InitializeTally_Euler, &
     MF_ComputeTally_Euler
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,                      ONLY: &
     t_end,                     &
     t,                         &
     dt,                        &

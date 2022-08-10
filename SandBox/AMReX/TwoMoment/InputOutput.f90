@@ -48,7 +48,7 @@ MODULE InputOutput
     MeshE,          &
     NodeCoordinate
 
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,                      ONLY: &
     t_end,                     &
     t,                         &
     dt,                        &
@@ -78,7 +78,7 @@ MODULE InputOutput
     StepNo,                    &
     UseTiling,                 &
     MyAmrInit
-  USE MyAmrDataModule,    ONLY: &
+  USE MF_FieldsModule,    ONLY: &
     MF_uCR, &
     MF_uPR
 
@@ -170,7 +170,7 @@ MODULE InputOutput
 
  SUBROUTINE ReadCheckpointFile( iChkFile )
 
-    USE MyAmrModule
+    USE InputParsingModule
 
     IMPLICIT NONE
 

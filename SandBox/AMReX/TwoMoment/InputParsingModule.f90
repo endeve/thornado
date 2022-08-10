@@ -1,4 +1,4 @@
-MODULE MyAmrModule
+MODULE InputParsingModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,      ONLY: &
@@ -36,7 +36,7 @@ MODULE MyAmrModule
     MeV, &
     SolarMass
   ! --- Local Modules ---
-  USE MyAmrDataModule, ONLY: &
+  USE MF_FieldsModule, ONLY: &
     InitializeDataAMReX, &
     FinalizeDataAMReX
   ! --- thornado ---
@@ -337,4 +337,4 @@ CONTAINS
 
 
 
-END MODULE MyAmrModule
+END MODULE InputParsingModule

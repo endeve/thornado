@@ -88,7 +88,7 @@
     NumericalFlux_LLF
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule, ONLY: &
     Mass,     &
     nX,    &
     Direction, &

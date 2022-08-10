@@ -48,7 +48,7 @@ MODULE MF_Euler_TallyModule
     DP, &
     Zero, &
     FourPi
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule, ONLY: &
     nX, &
     nLevels, &
     ProgramName, &

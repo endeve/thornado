@@ -1,5 +1,5 @@
 
-MODULE MyAmrDataModule
+MODULE MF_FieldsModule
 
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
@@ -66,4 +66,4 @@ CONTAINS
 
 
 
-END MODULE MyAmrDataModule
+END MODULE MF_FieldsModule

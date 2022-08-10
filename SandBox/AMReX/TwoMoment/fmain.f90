@@ -16,7 +16,7 @@ PROGRAM main
   USE MF_UtilitiesModule,     ONLY: & 
     WriteNodalDataToFile, &
     WriteEulerToFile
-  USE MyAmrDataModule,                  ONLY: &
+  USE MF_FieldsModule,                  ONLY: &
     MF_uCR, &
     MF_uPR, &
     MF_uCF, &
@@ -32,7 +32,7 @@ PROGRAM main
     InitializeProgram
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,                      ONLY: &
     nLevels,   &
     StepNo,    &
     t,         &

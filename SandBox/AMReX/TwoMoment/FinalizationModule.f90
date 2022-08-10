@@ -15,7 +15,7 @@ MODULE FinalizationModule
     FinalizeTimers
 
   ! --- Local Modules ---
-  USE MyAmrModule,                 ONLY: &
+  USE InputParsingModule,                 ONLY: &
     nLevels, MyAmrFinalize
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,    ONLY: &
     MF_FinalizeField_IMEX_RK

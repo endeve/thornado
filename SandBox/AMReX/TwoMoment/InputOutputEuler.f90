@@ -77,12 +77,12 @@ MODULE InputOutputEuler
   USE MF_KindModule,           ONLY: &
     DP, &
     Zero
-  USE MyAmrModule,      ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels,          &
     MaxGridSizeX,     &
     UseTiling,        &
     nX
-  USE MyAmrDataModule,         ONLY: &
+  USE MF_FieldsModule,         ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
@@ -170,7 +170,7 @@ CONTAINS
 
   SUBROUTINE ReadCheckpointFile( iChkFile )
 
-    USE MyAmrModule
+    USE InputParsingModule
 
     IMPLICIT NONE
 
