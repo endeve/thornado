@@ -4,4 +4,4 @@ DEFINES += -DTHORNADO_USE_AMREX
 DEFINES += -DGRAVITY_SOLVER_POSEIDON_CFA
 DEFINES += -DREFINE_MESH
 
-include ../Euler_MR/GNUmakefile
+include ../Euler_MR/GNUmakefile_YC_XCFC
