@@ -129,7 +129,10 @@ CONTAINS
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
+      G = Zero ! Uninitialized variables cause crash in IO in DEBUG mode
+
 #if defined HYDRO_RELATIVISTIC
+
 
       CALL ComputeGeometryX &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
