@@ -41,10 +41,7 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
   INTEGER                   :: nStages
-  INTEGER                   :: nE, swE, bcE, nSpecies
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk
-  REAL(DP)                  :: eL, eR, zoomE
-  CHARACTER(:), ALLOCATABLE :: Scheme
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
   REAL(DP)                  :: t_end
   REAL(DP)                  :: CFL
@@ -58,11 +55,9 @@ MODULE InputParsingModule
 
   ! --- Slope Limiter ---
 
-  LOGICAL                       :: UseSlopeLimiter_Euler
-  LOGICAL                       :: UseSlopeLimiter_Transport
+  LOGICAL                       :: UseSlopeLimiter
   CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
-  REAL(DP)                      :: BetaTVD_Euler, BetaTVD_Transport
-  REAL(DP)                      :: BetaTVB, SlopeTolerance
+  REAL(DP)                      :: BetaTVD, BetaTVB, SlopeTolerance
   LOGICAL                       :: UseCharacteristicLimiting
   LOGICAL                       :: UseTroubledCellIndicator
   REAL(DP)                      :: LimiterThresholdParameter
@@ -70,21 +65,15 @@ MODULE InputParsingModule
 
   ! --- Positivity Limiter ---
 
-  LOGICAL  :: UsePositivityLimiter_Euler
-  LOGICAL  :: UsePositivityLimiter_Transport
-  REAL(DP) :: Min_1_Euler, Min_2_Euler
-  REAL(DP) :: Min_1_Transport, Min_2_Transport
-  REAL(DP) :: Max_1_Euler, Max_2_Euler
+  LOGICAL  :: UsePositivityLimiter
+  REAL(DP) :: Min_1, Min_2
+  REAL(DP) :: Max_1, Max_2
 
   ! --- Equation of State ---
 
-  REAL(DP)                  :: Gamma_IDEAL
   CHARACTER(:), ALLOCATABLE :: EquationOfState
   CHARACTER(:), ALLOCATABLE :: EosTableName
-  CHARACTER(:), ALLOCATABLE :: OpacityTableName_AbEm
-  CHARACTER(:), ALLOCATABLE :: OpacityTableName_Iso
-  CHARACTER(:), ALLOCATABLE :: OpacityTableName_NES
-  CHARACTER(:), ALLOCATABLE :: OpacityTableName_Pair
+  REAL(DP)                  :: Gamma_IDEAL
 
   ! --- geometry ---
 
@@ -154,14 +143,6 @@ CONTAINS
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', ProgramName )
       CALL PP % get   ( 'nNodes', nNodes )
-      CALL PP % query ( 'nE', nE )
-      CALL PP % get   ( 'Scheme',           Scheme )
-      CALL PP % get   ( 'swE',              swE )
-      CALL PP % get   ( 'zoomE',  zoomE )
-      CALL PP % get   ( 'nSpecies',        nSpecies )
-      CALL PP % get   ( 'bcE',              bcE )
-      CALL PP % get   ( 'eL',  eL )
-      CALL PP % get   ( 'eR',  eR )
       CALL PP % get   ( 'nStages', nStages )
       CALL PP % getarr( 'swX', swX )
       CALL PP % getarr( 'bcX', bcX )
@@ -190,11 +171,9 @@ CONTAINS
 
     ! --- Slope Limiter Parameters SL.* ---
 
-    UseSlopeLimiter_Euler     = .TRUE.
-    UseSlopeLimiter_Transport = .TRUE.
+    UseSlopeLimiter           = .TRUE.
     SlopeLimiterMethod        = 'TVD'
-    BetaTVD_Euler             = 1.75_DP
-    BetaTVD_Transport         = 1.75_DP
+    BetaTVD                   = 1.75_DP
     BetaTVB                   = Zero
     SlopeTolerance            = 1.0e-6_DP
     UseCharacteristicLimiting = .TRUE.
@@ -202,11 +181,9 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     UseConservativeCorrection = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter_Euler'    , UseSlopeLimiter_Euler     )
-      CALL PP % query( 'UseSlopeLimiter_Transport', UseSlopeLimiter_Transport )
+      CALL PP % query( 'UseSlopeLimiter'          , UseSlopeLimiter           )
       CALL PP % query( 'SlopeLimiterMethod'       , SlopeLimiterMethod        )
-      CALL PP % query( 'BetaTVD_Euler'            , BetaTVD_Euler             )
-      CALL PP % query( 'BetaTVD_Transport'        , BetaTVD_Transport         )
+      CALL PP % query( 'BetaTVD'                  , BetaTVD                   )
       CALL PP % query( 'BetaTVB'                  , BetaTVB                   )
       CALL PP % query( 'SlopeTolerance'           , SlopeTolerance            )
       CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
@@ -217,21 +194,13 @@ CONTAINS
 
     ! --- Positivity Limiter Parameters PL.* ---
 
-    UsePositivityLimiter_Euler     = .TRUE.
-    UsePositivityLimiter_Transport = .TRUE.
-    Min_1_Euler                    = 1.0e-12_DP
-    Min_2_Euler                    = 1.0e-12_DP
-    Min_1_Transport                = 1.0e-12_DP
-    Min_2_Transport                = 1.0e-12_DP
+    UsePositivityLimiter = .TRUE.
+    Min_1                = 1.0e-12_DP
+    Min_2                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % query( 'UsePositivityLimiter_Euler', &
-                        UsePositivityLimiter_Euler )
-      CALL PP % query( 'UsePositivityLimiter_Transport', &
-                        UsePositivityLimiter_Transport )
-      CALL PP % query( 'Min_1_Euler'    , Min_1_Euler )
-      CALL PP % query( 'Min_2_Euler'    , Min_2_Euler )
-      CALL PP % query( 'Min_1_Transport', Min_1_Transport )
-      CALL PP % query( 'Min_2_Transport', Min_2_Transport )
+      CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
+      CALL PP % query( 'Min_1'               , Min_1                )
+      CALL PP % query( 'Min_2'               , Min_2                )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
@@ -275,28 +244,18 @@ CONTAINS
       xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
       xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
       xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
-      eL    = eL    * UnitsDisplay % EnergyUnit
-      eR    = eR    * UnitsDisplay % EnergyUnit
 
     END IF
 
     ! --- Equation of State Parameters EoS.* ---
 
-    EquationOfState       = 'IDEAL'
-    Gamma_IDEAL           = 4.0_DP / 3.0_DP
-    EosTableName          = ''
-    OpacityTableName_AbEm = ''
-    OpacityTableName_Iso  = ''
-    OpacityTableName_NES  = ''
-    OpacityTableName_Pair = ''
+    EquationOfState = 'IDEAL'
+    Gamma_IDEAL     = 4.0_DP / 3.0_DP
+    EosTableName    = ''
     CALL amrex_parmparse_build( PP, 'EoS' )
-      CALL PP % query( 'EquationOfState', EquationOfState )
-      CALL PP % query( 'Gamma_IDEAL', Gamma_IDEAL )
-      CALL PP % query( 'EosTableName', EosTableName )
-      CALL PP % query( 'OpacityTableName_AbEm',OpacityTableName_AbEm )
-      CALL PP % query( 'OpacityTableName_Iso', OpacityTableName_Iso )
-      CALL PP % query( 'OpacityTableName_NES', OpacityTableName_NES )
-      CALL PP % query( 'OpacityTableName_Pair', OpacityTableName_Pair )
+      CALL PP % query ( 'EquationOfState', EquationOfState )
+      CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
+      CALL PP % query ( 'EosTableName', EosTableName )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters amr.* ---
@@ -361,15 +320,10 @@ CONTAINS
            ( ProgramName_Option = TRIM( ProgramName ), &
              nNodes_Option      = nNodes,              &
              nX_Option          = nX,                  &
-             nE_Option          = nE,                  &
              swX_Option         = swX,                 &
-             swE_Option         = swE,                 &
              xL_Option          = xL,                  &
              xR_Option          = xR,                  &
-             eL_Option          = eL,                  &
-             eR_Option          = eR,                  &
              bcX_Option         = bcX,                 &
-             bcE_Option         = bcE,                 &
              Verbose_Option     = amrex_parallel_ioprocessor() )
 
     IF( nDimsX .NE. amrex_spacedim ) &
@@ -384,5 +338,6 @@ CONTAINS
     IF( amrex_spacedim .GT. 2 ) iOS_CPP(3) = 1
 
   END SUBROUTINE InitializeParameters
+
 
 END MODULE InputParsingModule

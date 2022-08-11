@@ -29,8 +29,8 @@ MODULE InputParsingModule
     Zero, &
     One, &
     Two
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
+  USE MF_ErrorModule, ONLY: &
+    DescribeError_MF
 
   IMPLICIT NONE
 
@@ -160,11 +160,11 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
-      CALL DescribeError_Euler_MF &
+      CALL DescribeError_MF &
              ( 101, Int_Option = [ iCycleW ], Real_Option = [ dt_wrt ] )
 
     IF( iCycleChk * dt_chk .GT. Zero ) &
-      CALL DescribeError_Euler_MF &
+      CALL DescribeError_MF &
              ( 102, Int_Option = [ iCycleChk ], Real_Option = [ dt_chk ] )
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
@@ -225,7 +225,7 @@ CONTAINS
 
     ELSE
 
-      CALL DescribeError_Euler_MF( 103, Int_Option = [ coord_sys ] )
+      CALL DescribeError_MF( 103, Int_Option = [ coord_sys ] )
 
     END IF
 
@@ -327,7 +327,7 @@ CONTAINS
              Verbose_Option     = amrex_parallel_ioprocessor() )
 
     IF( nDimsX .NE. amrex_spacedim ) &
-      CALL DescribeError_Euler_MF &
+      CALL DescribeError_MF &
              ( 104, Int_Option = [ nDimsX, amrex_spacedim ] )
 
     iOS_CPP = 0
@@ -338,5 +338,6 @@ CONTAINS
     IF( amrex_spacedim .GT. 2 ) iOS_CPP(3) = 1
 
   END SUBROUTINE InitializeParameters
+
 
 END MODULE InputParsingModule

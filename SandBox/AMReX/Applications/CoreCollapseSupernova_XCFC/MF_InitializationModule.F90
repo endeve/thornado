@@ -9,8 +9,8 @@ MODULE MF_InitializationModule
 
   USE InputParsingModule, ONLY: &
     ProgramName
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
+  USE MF_ErrorModule, ONLY: &
+    DescribeError_MF
   USE MF_InitializationModule_CoreCollapseSupernova_XCFC, ONLY: &
     InitializeFields_CoreCollapseSupernova_XCFC_MF
 
@@ -36,7 +36,7 @@ CONTAINS
 
     ELSE
 
-      CALL DescribeError_Euler_MF( 99, 'ProgramName not found' )
+      CALL DescribeError_MF( 99, 'ProgramName not found' )
 
     END IF
 

@@ -1,5 +1,4 @@
 PROGRAM ApplicationDriver
-use mf_utilitiesmodule
 
   ! --- AMReX Modules ---
 
@@ -23,8 +22,7 @@ use mf_utilitiesmodule
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP, &
-    Two
+    DP
   USE MF_FieldsModule, ONLY: &
     MF_uGF, &
     MF_uCF, &
@@ -47,8 +45,6 @@ use mf_utilitiesmodule
     ComputeTally_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     UpdateFluid_SSPRK_MF
-  USE AverageDownModule, ONLY: &
-    AverageDownTo
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &

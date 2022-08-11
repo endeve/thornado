@@ -95,8 +95,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     DestroyMesh_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler_MF
-  USE MF_Euler_ErrorModule, ONLY: &
-    DescribeError_Euler_MF
+  USE MF_ErrorModule, ONLY: &
+    DescribeError_MF
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
     iLeaf_MFM
@@ -877,7 +877,7 @@ CONTAINS
       IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. MAX_ITER ) &
-        CALL DescribeError_Euler_MF &
+        CALL DescribeError_MF &
                ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )

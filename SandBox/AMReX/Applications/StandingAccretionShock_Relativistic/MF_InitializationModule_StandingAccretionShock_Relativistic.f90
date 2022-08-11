@@ -121,12 +121,12 @@ MODULE MF_InitializationModule_StandingAccretionShock_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeFields_Euler_StandingAccretionShock_Relativistic_MF
+  PUBLIC :: InitializeFields_StandingAccretionShock_Relativistic_MF
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFields_Euler_StandingAccretionShock_Relativistic_MF &
+  SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
     INTEGER             , INTENT(in)    :: iLevel
@@ -630,7 +630,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE InitializeFields_Euler_StandingAccretionShock_Relativistic_MF
+  END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic_MF
 
 
   ! --- Auxiliary utilities for SAS problem ---

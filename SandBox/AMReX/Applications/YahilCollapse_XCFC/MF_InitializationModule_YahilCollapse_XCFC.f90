@@ -98,12 +98,12 @@ MODULE MF_InitializationModule_YahilCollapse_XCFC
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeFields_Euler_YahilCollapse_XCFC_MF
+  PUBLIC :: InitializeFields_YahilCollapse_XCFC_MF
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFields_Euler_YahilCollapse_XCFC_MF &
+  SUBROUTINE InitializeFields_YahilCollapse_XCFC_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
     INTEGER             , INTENT(in) :: iLevel
@@ -302,7 +302,7 @@ CONTAINS
     DEALLOCATE( Denom )
     DEALLOCATE( Numer )
 
-  END SUBROUTINE InitializeFields_Euler_YahilCollapse_XCFC_MF
+  END SUBROUTINE InitializeFields_YahilCollapse_XCFC_MF
 
 
   ! --- Auxiliary functions for Yahil collapse problem ---

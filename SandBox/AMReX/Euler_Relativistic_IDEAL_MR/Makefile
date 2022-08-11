@@ -3,4 +3,4 @@ DEFINES += -DHYDRO_RIEMANN_SOLVER_HLL
 DEFINES += -DTHORNADO_USE_AMREX
 DEFINES += -DREFINE_MESH
 
-include ../Modules/Euler_MR/GNUmakefile
+include GNUmakefile_Euler_Relativistic

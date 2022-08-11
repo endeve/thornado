@@ -1,4 +1,4 @@
-MODULE MF_Euler_ErrorModule
+MODULE MF_ErrorModule
 
   ! --- thornado Modules ---
 
@@ -13,12 +13,12 @@ MODULE MF_Euler_ErrorModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: DescribeError_Euler_MF
+  PUBLIC :: DescribeError_MF
 
 CONTAINS
 
 
-  SUBROUTINE DescribeError_Euler_MF &
+  SUBROUTINE DescribeError_MF &
     ( iErr, Message_Option, Int_Option, Real_Option )
 
     INTEGER,          INTENT(in)           :: iErr
@@ -246,7 +246,7 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE DescribeError_Euler_MF
+  END SUBROUTINE DescribeError_MF
 
 
-END MODULE MF_Euler_ErrorModule
+END MODULE MF_ErrorModule

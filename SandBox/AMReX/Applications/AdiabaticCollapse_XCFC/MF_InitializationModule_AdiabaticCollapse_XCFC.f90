@@ -87,12 +87,12 @@ MODULE MF_InitializationModule_AdiabaticCollapse_XCFC
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeFields_Euler_AdiabaticCollapse_XCFC_MF
+  PUBLIC :: InitializeFields_AdiabaticCollapse_XCFC_MF
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFields_Euler_AdiabaticCollapse_XCFC_MF &
+  SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
     INTEGER             , INTENT(in) :: iLevel
@@ -269,7 +269,7 @@ CONTAINS
 
     END ASSOCIATE ! P1D variables
 
-  END SUBROUTINE InitializeFields_Euler_AdiabaticCollapse_XCFC_MF
+  END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC_MF
 
 
   ! --- PRIVATE SUBROUTINES ---
