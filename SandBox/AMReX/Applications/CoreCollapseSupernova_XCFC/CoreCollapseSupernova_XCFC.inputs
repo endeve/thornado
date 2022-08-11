@@ -7,7 +7,7 @@ debug.DEBUG = 0
 
 thornado.ProgramName = "CoreCollapseSupernova_XCFC"
 
-AC.ProgenitorFileName = "../Progenitors/WH07_15M_Sun.h5"
+AC.ProgenitorFileName = "WH07_15M_Sun.h5"
 
 thornado.UseXCFC = 1
 

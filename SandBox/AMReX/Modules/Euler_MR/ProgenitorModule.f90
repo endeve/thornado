@@ -56,7 +56,7 @@ CONTAINS
     CALL H5open_f( hdferr )
 
     CALL H5Fopen_f &
-           ( TRIM( '../Progenitors/' // FileName ), &
+           ( TRIM( '../../Progenitors/' // FileName ), &
              H5F_ACC_RDONLY_F, FileID, hdferr )
 
     CALL ReadInteger1D( FileID, './mesh/array_dimensions', Dims )

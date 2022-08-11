@@ -6,4 +6,4 @@ DEFINES += -DMICROPHYSICS_WEAKLIB
 DEFINES += -DREFINE_MESH
 DEFINES += -DMOMENT_CLOSURE_MINERBO
 
-include ../Modules/Euler_MR/GNUmakefile_CCSN_XCFC
+include ../../Modules/Euler_MR/GNUmakefile_CCSN_XCFC
