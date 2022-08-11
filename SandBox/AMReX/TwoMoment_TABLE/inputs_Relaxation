@@ -27,7 +27,7 @@ thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = 0100     # MOD this number to write plotfile
 thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
-thornado.UsePhysicalUnits = 1  
+thornado.UsePhysicalUnits = 1
 
 geometry.coord_sys   = 1             # Cartesian
 geometry.prob_lo     = 0.0 0.0 0.0         # Lower spatial domain size
@@ -52,7 +52,7 @@ SL.UseSlopeLimiter           = 0
 SL.BetaTVD                   = 1.75e0
 
 # Equation of State parameters
-EoS.EosTableName = 'wl-EOS-SFHo-15-25-50.h5'
+EoS.EosTableName = '../EosTables/wl-EOS-SFHo-15-25-50.h5'
 EoS.EquationOfState = "TABLE"
 
 #Opacity parameters

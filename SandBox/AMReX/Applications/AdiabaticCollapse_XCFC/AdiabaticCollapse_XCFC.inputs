@@ -74,4 +74,4 @@ PL.Min_2                = 1.0e-13
 
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"
-EoS.EosTableName = "wl-EOS-SFHo-25-50-100.h5"
+EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-25-50-100.h5"
