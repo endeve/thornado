@@ -339,20 +339,20 @@ CONTAINS
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
                                 Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+
+!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+!                               Verbose_Option = amrex_parallel_ioprocessor()  )
+    
+    
+
+
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
-    
-    
-
-
-!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
-!                              Verbose_Option = amrex_parallel_ioprocessor()  )
-!
-!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
-!                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
