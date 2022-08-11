@@ -5,4 +5,4 @@ DEFINES += -DTHORNADO_USE_AMREX
 
 EOS = TABLE
 
-include ../Euler/GNUmakefile
+include ../Modules/Euler/GNUmakefile

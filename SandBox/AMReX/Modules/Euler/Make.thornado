@@ -1,6 +1,6 @@
 # Include wrappers and ApplicationDriver
 
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Euler
 f90EXE_sources  += ApplicationDriver.f90
 F90EXE_sources  += InitializationModule.F90
 f90EXE_sources  += FinalizationModule.f90

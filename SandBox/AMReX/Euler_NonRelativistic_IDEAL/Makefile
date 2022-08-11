@@ -2,4 +2,4 @@ DEFINES += -DHYDRO_NONRELATIVISTIC
 DEFINES += -DHYDRO_RIEMANN_SOLVER_HLL
 DEFINES += -DTHORNADO_USE_AMREX
 
-include ../Euler/GNUmakefile
+include ../Modules/Euler/GNUmakefile
