@@ -36,7 +36,7 @@ LIBRARY_LOCATIONS += $(HDF5_LIB)
 LIBRARIES += -lhdf5_fortran -lhdf5
 
 ifeq ($(EOS),TABLE)
-  include $(THORNADO_HOME)/SandBox/AMReX/Euler_MR/Make.weaklib
+  include $(THORNADO_HOME)/SandBox/AMReX/Modules/Euler_MR/Make.weaklib
 endif
 
 INCLUDE_LOCATIONS += $(LAPACK_INC)
@@ -63,7 +63,7 @@ include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
-include $(THORNADO_HOME)/SandBox/AMReX/Euler_MR/Make.thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Modules/Euler_MR/Make.thornado
 
 ifeq ($(EVOLVE_GRAVITY),TRUE)
   include $(POSEIDON_HOME)/Build/Make.Poseidon
