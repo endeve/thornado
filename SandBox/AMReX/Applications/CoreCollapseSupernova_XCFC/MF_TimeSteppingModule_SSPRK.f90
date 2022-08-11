@@ -34,11 +34,11 @@ MODULE MF_TimeSteppingModule_SSPRK
     ApplySlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_FieldsModule, ONLY: &
+  USE MF_FieldsModule_Euler, ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uDF, &
-    MF_OffGridFlux_Euler
+    OffGridFlux_Euler_MF
   USE AverageDownModule, ONLY: &
     AverageDown
   USE InputParsingModule, ONLY: &
@@ -246,7 +246,7 @@ CONTAINS
 
           dM_OffGrid_Euler(:,iLevel) &
             = dM_OffGrid_Euler(:,iLevel) &
-                + dt(iLevel) * w_SSPRK(iS) * MF_OffGridFlux_Euler(:,iLevel)
+                + dt(iLevel) * w_SSPRK(iS) * OffGridFlux_Euler_MF(:,iLevel)
 
         END DO
 

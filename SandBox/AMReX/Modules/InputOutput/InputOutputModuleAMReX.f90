@@ -414,13 +414,14 @@ CONTAINS
 
   SUBROUTINE ReadCheckpointFile
 
-    USE MF_FieldsModule, ONLY: &
-      MF_uGF, &
+    USE MF_FieldsModule_Geometry, ONLY: &
+      MF_uGF
+    USE MF_FieldsModule_Euler, ONLY: &
       MF_uCF, &
       MF_uPF, &
       MF_uAF, &
       MF_uDF, &
-      FluxRegister
+      FluxRegister_Euler
 
     IMPLICIT NONE
 
@@ -500,7 +501,7 @@ CONTAINS
       ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
       IF( iLevel .GT. 0 .AND. UseFluxCorrection ) &
         CALL amrex_fluxregister_build &
-               ( FluxRegister(iLevel), BA(iLevel), DM(iLevel), &
+               ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
                  amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
 
     END DO

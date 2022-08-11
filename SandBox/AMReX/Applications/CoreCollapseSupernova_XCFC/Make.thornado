@@ -1,77 +1,75 @@
-# Include wrappers and ApplicationDriver
+### AMReX ###
 
-# thornado/SandBox/AMReX/CoreCollapseSupernova_XCFC
+# THORNADO_DIR/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
 
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/CoreCollapseSupernova_XCFC
-f90EXE_Sources  += ApplicationDriver.f90
-f90EXE_Sources  += FinalizationModule.f90
-F90EXE_Sources  += InitializationModule.F90
-f90EXE_Sources  += InputOutputModule.f90
-f90EXE_Sources  += InputParsingModule.f90
-f90EXE_Sources  += MF_InitializationModule_CoreCollapseSupernova_XCFC.f90
-f90EXE_Sources  += MF_UtilitiesModule.f90
-f90EXE_Sources  += MF_TimeSteppingModule.f90
-f90EXE_sources  += MF_TallyModule.f90
-f90EXE_sources  += MF_FieldsModule.f90
-
-# thornado/SandBox/AMReX/TwoMoment
-
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
-f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
-f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
-f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
-f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
-f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
-f90EXE_sources  += MF_TwoMoment_PositivityLimiter.f90
-f90EXE_sources  += MF_TwoMoment_SlopeLimiter.f90
-
-# thornado/SandBox/AMReX/TwoMoment_Relativistic
-
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment_Relativistic
-F90EXE_sources  += TwoMoment_UtilitiesModule_Relativistic.F90
-F90EXE_sources  += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90
-F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Relativistic.F90
-F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.F90
-F90EXE_sources  += TwoMoment_OpacityModule_Relativistic.F90
-F90EXE_sources  += TwoMoment_PositivityLimiterModule_Relativistic.F90
-F90EXE_sources  += TwoMoment_SlopeLimiterModule_Relativistic.F90
-F90EXE_sources  += TwoMoment_NeutrinoMatterSolverModule_Relativistic.F90
-F90EXE_sources  += TwoMoment_TimersModule_Relativistic.F90
-
-# thornado/SandBox/AMReX/Euler_MR
-
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler_MR
-f90EXE_sources  += MF_KindModule.f90
-f90EXE_sources  += FillPatchModule.f90
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+f90EXE_sources  += MF_InitializationModule_CoreCollapseSupernova_XCFC.f90
+f90EXE_sources  += MF_InitializationModule.f90
+F90EXE_sources  += InitializationModule.F90
+f90EXE_sources  += FinalizationModule.f90
+f90EXE_sources  += ApplicationDriver.f90
+f90EXE_sources  += MF_TimeSteppingModule_SSPRK.f90
+f90EXE_sources  += InputParsingModule.f90
 f90EXE_sources  += TaggingModule.f90
-F90EXE_sources  += MF_GeometryModule.F90
-f90EXE_sources  += MF_Euler_UtilitiesModule.f90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/Numbers
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Numbers
+f90EXE_sources  += MF_KindModule.f90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/Library
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Library
+f90EXE_sources  += ProgenitorModule.f90
 f90EXE_sources  += MF_ErrorModule.f90
+f90EXE_sources  += MakeFineMaskModule.f90
+CEXE_sources    += MakeFineMaskModule_fi.cpp
+f90EXE_sources  += MF_UtilitiesModule.f90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/Mesh
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Mesh
 f90EXE_sources  += MF_MeshModule.f90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/MeshRefinement
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/MeshRefinement
+f90EXE_sources  += FillPatchModule.f90
+f90EXE_sources  += FluxCorrectionModule_Euler.f90
+f90EXE_sources  += AverageDownModule.f90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/InputOutput
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/InputOutput
+f90EXE_sources  += InputOutputModuleAMReX.f90
+CEXE_sources    += Restart.cpp
+
+# THORNADO_DIR/SandBox/AMReX/Modules/Fields
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Fields
+f90EXE_sources  += MF_FieldsModule_Euler.f90
+f90EXE_sources  += MF_FieldsModule_Geometry.f90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/Geometry
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Geometry
+F90EXE_sources  += MF_GeometryModule.F90
+F90EXE_sources  += MF_GravitySolutionModule_XCFC_Poseidon.F90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/Euler_MR
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Euler_MR
+f90EXE_sources  += MF_Euler_UtilitiesModule.f90
 f90EXE_sources  += MF_Euler_TimersModule.f90
 f90EXE_sources  += MF_Euler_BoundaryConditionsModule.f90
 f90EXE_sources  += MF_Euler_dgDiscretizationModule.f90
-f90EXE_sources  += AverageDownModule.f90
-f90EXE_sources  += FluxCorrectionModule_Euler.f90
-f90EXE_sources  += MakeFineMaskModule.f90
-CEXE_sources    += MakeFineMaskModule_fi.cpp
 f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
-CEXE_sources    += Restart.cpp
 
-f90EXE_sources += MF_InitializationModule_CoreCollapseSupernova_XCFC.f90
+### Native thornado ###
 
-f90EXE_sources += ProgenitorModule.f90
-F90EXE_sources += MF_GravitySolutionModule_XCFC_Poseidon.F90
-
-# thornado/Modules/Opacities
-
-VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
-F90EXE_sources += NeutrinoOpacitiesComputationModule.F90
-f90EXE_sources += NeutrinoOpacitiesModule.f90
-
-# thornado/Modules/Library
+# THORNADO_DIR/Modules/Library
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
 f90EXE_sources  += QuadratureModule.f90
@@ -92,41 +90,47 @@ f90EXE_sources  += PolynomialBasisMappingModule.f90
 F90EXE_sources  += LinearAlgebraModule.F90
 F90EXE_sources  += ArrayUtilitiesModule.F90
 
-# thornado/Modules/Mesh
+# THORNADO_DIR/Modules/Mesh
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Mesh
 F90EXE_sources  += MeshModule.F90
 
-# thornado/Modules/Units
+# THORNADO_DIR/Modules/Units
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
 f90EXE_sources  += PhysicalConstantsModule.f90
 f90EXE_sources  += UnitsModule.f90
 
-# thornado/Modules/Numbers
+# THORNADO_DIR/Modules/Numbers
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
 f90EXE_sources  += KindModule.f90
 
-# thornado/Modules/Fields
+# THORNADO_DIR/Modules/Fields
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
-F90EXE_sources += FluidFieldsModule.F90
-F90EXE_sources += RadiationFieldsModule.F90
+F90EXE_sources  += FluidFieldsModule.F90
+F90EXE_sources  += RadiationFieldsModule.F90
 
-# thornado/Modules/ProgramHeader
+# THORNADO_DIR/Modules/ProgramHeader
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/ProgramHeader
 F90EXE_sources  += ProgramHeaderModule.F90
 
-# thornado/Modules/EquationOfState
+# THORNADO_DIR/Modules/EquationOfState
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/EquationOfState
 F90EXE_sources  += EquationOfStateModule.F90
 F90EXE_sources  += EquationOfStateModule_IDEAL.F90
 F90EXE_sources  += EquationOfStateModule_TABLE.F90
 
-# thornado/Modules/Geometry
+# thornado/Modules/Opacities
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
+F90EXE_sources  += NeutrinoOpacitiesComputationModule.F90
+f90EXE_sources  += NeutrinoOpacitiesModule.f90
+
+# THORNADO_DIR/Modules/Geometry
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 F90EXE_sources  += GeometryFieldsModule.F90
@@ -135,7 +139,7 @@ F90EXE_sources  += GeometryComputationModule.F90
 F90EXE_sources  += GeometryComputationModuleE.F90
 f90EXE_sources  += GeometryComputationModule_XCFC.f90
 
-# thornado/Modules/Euler
+# THORNADO_DIR/Modules/Euler
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 F90EXE_sources  += Euler_UtilitiesModule_NonRelativistic.F90
@@ -161,10 +165,33 @@ f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.f90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90
 
-# thornado/Modules/TwoMoment
+# THORNADO_DIR/SandBox/AMReX/TwoMoment
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
+f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
+f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
+f90EXE_sources  += MF_TwoMoment_PositivityLimiter.f90
+f90EXE_sources  += MF_TwoMoment_SlopeLimiter.f90
+
+# THORNADO_DIR/SandBox/AMReX/TwoMoment_Relativistic
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment_Relativistic
+F90EXE_sources  += TwoMoment_UtilitiesModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Relativistic.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.F90
+F90EXE_sources  += TwoMoment_OpacityModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_PositivityLimiterModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_SlopeLimiterModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_NeutrinoMatterSolverModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_TimersModule_Relativistic.F90
+
+# THORNADO_DIR/Modules/TwoMoment
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
 F90EXE_sources  += TwoMoment_ClosureModule.F90
 F90EXE_sources  += TwoMoment_UtilitiesModule.F90
 F90EXE_sources  += TwoMoment_BoundaryConditionsModule.F90
-

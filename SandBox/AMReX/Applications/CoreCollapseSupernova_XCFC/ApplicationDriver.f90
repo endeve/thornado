@@ -24,8 +24,9 @@ PROGRAM ApplicationDriver
   USE MF_KindModule, ONLY: &
     DP, &
     Two
-  USE MF_FieldsModule, ONLY: &
-    MF_uGF, &
+  USE MF_FieldsModule_Geoemtry, ONLY: &
+    MF_uGF
+  USE MF_FieldsModule_Euler, ONLY: &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &

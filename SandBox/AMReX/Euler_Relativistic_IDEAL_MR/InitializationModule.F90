@@ -102,14 +102,16 @@ MODULE InitializationModule
     DP, &
     Zero, &
     One
-  USE MF_FieldsModule, ONLY: &
-    CreateFields_MF, &
-    MF_uGF, &
+  USE MF_FieldsModule_Geometry, ONLY: &
+    CreateFields_Geometry_MF, &
+    MF_uGF
+  USE MF_FieldsModule_Euler, ONLY: &
+    CreateFields_Euler_MF, &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
     MF_uDF, &
-    FluxRegister
+    FluxRegister_Euler
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
@@ -213,7 +215,8 @@ CONTAINS
 
     END IF
 
-    CALL CreateFields_MF
+    CALL CreateFields_Geometry_MF
+    CALL CreateFields_Euler_MF
 
     ALLOCATE( lo_bc(1:amrex_spacedim,1) )
     ALLOCATE( hi_bc(1:amrex_spacedim,1) )
@@ -452,7 +455,7 @@ CONTAINS
     ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
     IF( iLevel .GT. 0 .AND. UseFluxCorrection ) &
       CALL amrex_fluxregister_build &
-             ( FluxRegister(iLevel), BA, DM, &
+             ( FluxRegister_Euler(iLevel), BA, DM, &
                amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
 
     CALL CreateMesh_MF( iLevel, MeshX )
@@ -494,7 +497,7 @@ CONTAINS
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection ) &
       CALL amrex_fluxregister_build &
-             ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
+             ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
@@ -515,7 +518,7 @@ CONTAINS
     CALL amrex_multifab_destroy( MF_uGF(iLevel) )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection ) &
-      CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
+      CALL amrex_fluxregister_destroy( FluxRegister_Euler(iLevel) )
 
   END SUBROUTINE ClearLevel
 
@@ -554,7 +557,7 @@ CONTAINS
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection ) &
       CALL amrex_fluxregister_build &
-             ( FluxRegister(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
+             ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
     CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )

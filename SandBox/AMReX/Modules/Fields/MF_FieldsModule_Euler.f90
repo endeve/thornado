@@ -1,4 +1,4 @@
-MODULE MF_FieldsModule
+MODULE MF_FieldsModule_Euler
 
   ! --- AMReX Modules ---
 
@@ -24,10 +24,6 @@ MODULE MF_FieldsModule
   IMPLICIT NONE
   PRIVATE
 
-  ! --- Geometry Fields ---
-
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF(:)
-
   ! --- Conserved Fluid Fields ---
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF(:)
@@ -44,69 +40,55 @@ MODULE MF_FieldsModule
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF(:)
 
-  ! --- Radiation Fields ---
+  TYPE(amrex_fluxregister), ALLOCATABLE, PUBLIC :: FluxRegister_Euler(:)
 
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCR(:)
-  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPR(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: OffGridFlux_Euler_MF(:,:)
 
-  TYPE(amrex_fluxregister), ALLOCATABLE, PUBLIC :: FluxRegister(:)
-
-  REAL(DP), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Euler(:,:)
-
-  PUBLIC :: CreateFields_MF
-  PUBLIC :: DestroyFields_MF
+  PUBLIC :: CreateFields_Euler_MF
+  PUBLIC :: DestroyFields_Euler_MF
 
 CONTAINS
 
 
-  SUBROUTINE CreateFields_MF
+  SUBROUTINE CreateFields_Euler_MF
 
-    ALLOCATE( MF_uGF(0:nMaxLevels-1) )
     ALLOCATE( MF_uCF(0:nMaxLevels-1) )
     ALLOCATE( MF_uPF(0:nMaxLevels-1) )
     ALLOCATE( MF_uAF(0:nMaxLevels-1) )
     ALLOCATE( MF_uDF(0:nMaxLevels-1) )
-    ALLOCATE( MF_uCR(0:nMaxLevels-1) )
-    ALLOCATE( MF_uPR(0:nMaxLevels-1) )
 
-    ALLOCATE( FluxRegister(0:nMaxLevels-1) )
+    ALLOCATE( FluxRegister_Euler(0:nMaxLevels-1) )
 
-    ALLOCATE( MF_OffGridFlux_Euler(1:nCF,0:nMaxLevels-1) )
+    ALLOCATE( OffGridFlux_Euler_MF(1:nCF,0:nMaxLevels-1) )
 
-  END SUBROUTINE CreateFields_MF
+  END SUBROUTINE CreateFields_Euler_MF
 
 
-  SUBROUTINE DestroyFields_MF
+  SUBROUTINE DestroyFields_Euler_MF
 
     INTEGER :: iLevel
 
-    DEALLOCATE( MF_OffGridFlux_Euler )
+    DEALLOCATE( OffGridFlux_Euler_MF )
 
     DO iLevel = 0, nMaxLevels-1
 
-      CALL amrex_fluxregister_destroy( FluxRegister(iLevel) )
+      CALL amrex_fluxregister_destroy( FluxRegister_Euler(iLevel) )
 
-      CALL amrex_multifab_destroy( MF_uPR(iLevel) )
-      CALL amrex_multifab_destroy( MF_uCR(iLevel) )
       CALL amrex_multifab_destroy( MF_uDF(iLevel) )
       CALL amrex_multifab_destroy( MF_uAF(iLevel) )
       CALL amrex_multifab_destroy( MF_uPF(iLevel) )
       CALL amrex_multifab_destroy( MF_uCF(iLevel) )
-      CALL amrex_multifab_destroy( MF_uGF(iLevel) )
 
     END DO
 
-    DEALLOCATE( FluxRegister )
+    DEALLOCATE( FluxRegister_Euler )
 
-    DEALLOCATE( MF_uPR )
-    DEALLOCATE( MF_uCR )
     DEALLOCATE( MF_uDF )
     DEALLOCATE( MF_uAF )
     DEALLOCATE( MF_uPF )
     DEALLOCATE( MF_uCF )
-    DEALLOCATE( MF_uGF )
 
-  END SUBROUTINE DestroyFields_MF
+  END SUBROUTINE DestroyFields_Euler_MF
 
 
-END MODULE MF_FieldsModule
+END MODULE MF_FieldsModule_Euler

@@ -111,7 +111,7 @@ MODULE MF_InitializationModule_StandingAccretionShock_Relativistic
 !!$    FileName_Nodal1DIC_SAS
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
-  USE MF_FieldsModule, ONLY: &
+  USE MF_FieldsModule_Euler, ONLY: &
     MF_uPF, &
     MF_uAF, &
     MF_uDF

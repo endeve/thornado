@@ -20,13 +20,15 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
-  USE MF_FieldsModule, ONLY: &
+  USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
+    DestroyFields_Geometry_MF
+  USE MF_FieldsModule_Euler, ONLY: &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
     MF_uDF, &
-    DestroyFields_MF
+    DestroyFields_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     FinalizeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -105,7 +107,8 @@ CONTAINS
     DEALLOCATE( dt )
     DEALLOCATE( StepNo )
 
-    CALL DestroyFields_MF
+    CALL DestroyFields_Geometry_MF
+    CALL DestroyFields_Euler_MF
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
