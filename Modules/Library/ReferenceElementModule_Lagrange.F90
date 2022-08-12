@@ -1,7 +1,7 @@
 MODULE ReferenceElementModule_Lagrange
 
   USE KindModule, ONLY: &
-    DP, Half
+    DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nNodesE, nNodesX, nDOF
   USE ReferenceElementModule, ONLY: &
@@ -31,6 +31,7 @@ MODULE ReferenceElementModule_Lagrange
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLdX1_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLdX2_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLdX3_q
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: InterpMat
 
   PUBLIC :: InitializeReferenceElement_Lagrange
   PUBLIC :: FinalizeReferenceElement_Lagrange
@@ -46,6 +47,7 @@ CONTAINS
     INTEGER :: iNode_X1, iNodeE_X1            , iNodeX2_X1, iNodeX3_X1
     INTEGER :: iNode_X2, iNodeE_X2, iNodeX1_X2            , iNodeX3_X2
     INTEGER :: iNode_X3, iNodeE_X3, iNodeX1_X3, iNodeX2_X3
+    INTEGER :: i, iOS, nDOF_K
 
     ALLOCATE( L_E_Dn(nDOF_E,nDOF) )
     ALLOCATE( L_E_Up(nDOF_E,nDOF) )
@@ -58,6 +60,7 @@ CONTAINS
 
     ALLOCATE( L_X3_Dn(nDOF_X3,nDOF) )
     ALLOCATE( L_X3_Up(nDOF_X3,nDOF) )
+
 
     DO iNode_E = 1, nDOF_E
 
@@ -88,9 +91,7 @@ CONTAINS
 
     END DO
 
-    !$OMP PARALLEL DO PRIVATE &
-    !$OMP&              ( iNode,iNodeE,iNodeX1,iNodeX2,iNodeX3, &
-    !$OMP&                iNode_X1,iNodeE_X1,iNodeX2_X1,iNodeX3_X1 )
+
     DO iNode_X1 = 1, nDOF_X1
 
       iNodeE_X1  = NodeNumberTable_X1(1,iNode_X1)
@@ -119,12 +120,8 @@ CONTAINS
       END DO
 
     END DO
-    !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE &
-    !$OMP&              ( iNode,iNodeE,iNodeX1,iNodeX2,iNodeX3,  &
-    !$OMP&                iNode_X2,iNodeE_X2,iNodeX1_X2,iNodeX3_X2, &
-    !$OMP&                iNode_X3,iNodeE_X3,iNodeX1_X3,iNodeX2_X3 )
+
     DO iNode = 1, nDOF
 
       iNodeE  = NodeNumberTable(1,iNode)
@@ -152,6 +149,7 @@ CONTAINS
 
       END DO
 
+
       DO iNode_X3 = 1, nDOF_X3
 
         iNodeE_X3  = NodeNumberTable_X3(1,iNode_X3)
@@ -173,15 +171,12 @@ CONTAINS
       END DO
 
     END DO
-    !$OMP END PARALLEL DO
 
     ALLOCATE( dLdE_q (nDOF,nDOF) )
     ALLOCATE( dLdX1_q(nDOF,nDOF) )
     ALLOCATE( dLdX2_q(nDOF,nDOF) )
     ALLOCATE( dLdX3_q(nDOF,nDOF) )
 
-    !$OMP PARALLEL DO PRIVATE( iNode, iNodeE, iNodeX1, iNodeX2, iNodeX3, &
-    !$OMP&                     jNode, jNodeE, jNodeX1, jNodeX2, jNodeX3 )
     DO jNode = 1, nDOF
 
       jNodeE  = NodeNumberTable(1,jNode)
@@ -223,18 +218,98 @@ CONTAINS
       END DO
 
     END DO
-    !$OMP END PARALLEL DO
+
+    ! --- Total Number of Points on Elements (Interior and Faces) ---
+
+    nDOF_K = nNodesE * PRODUCT( nNodesX )
+
+    IF( nNodesE > 1 )THEN
+
+      nDOF_K = nDOF_K + 2 * PRODUCT( nNodesX )
+
+    END IF
+
+    DO i = 1, 3
+
+      IF( nNodesX(i) > 1 )THEN
+
+        nDOF_K &
+          = nDOF_K + 2 * nNodesE * PRODUCT( nNodesX, MASK = [1,2,3] .NE. i )
+
+      END IF
+
+    END DO
+
+    ALLOCATE( InterpMat(nDOF_K,nDOF) )
+
+    InterpMat = Zero
+
+    DO jNode = 1, nDOF
+
+      InterpMat(jNode,jNode) = One
+
+      iOS = nDOF
+
+      IF( nNodesE > 1 )THEN
+
+        InterpMat(iOS+1:iOS+nDOF_E,jNode) = L_E_Dn(1:nDOF_E,jNode)
+
+        iOS = iOS + nDOF_E
+
+        InterpMat(iOS+1:iOS+nDOF_E,jNode) = L_E_Up(1:nDOF_E,jNode)
+
+        iOS = iOS + nDOF_E
+
+      END IF
+
+      IF( nNodesX(1) > 1 )THEN
+
+         InterpMat(iOS+1:iOS+nDOF_X1,jNode) = L_X1_Dn(1:nDOF_X1,jNode)
+
+         iOS = iOS + nDOF_X1
+
+         InterpMat(iOS+1:iOS+nDOF_X1,jNode) = L_X1_Up(1:nDOF_X1,jNode)
+
+         iOS = iOS + nDOF_X1
+
+      END IF
+
+      IF( nNodesX(2) > 1 )THEN
+
+         InterpMat(iOS+1:iOS+nDOF_X2,jNode) = L_X2_Dn(1:nDOF_X2,jNode)
+
+         iOS = iOS + nDOF_X2
+
+         InterpMat(iOS+1:iOS+nDOF_X2,jNode) = L_X2_Up(1:nDOF_X2,jNode)
+
+         iOS = iOS + nDOF_X2
+
+      END IF
+
+      IF( nNodesX(3) > 1 )THEN
+
+         InterpMat(iOS+1:iOS+nDOF_X3,jNode) = L_X3_Dn(1:nDOF_X3,jNode)
+
+         iOS = iOS + nDOF_X3
+
+         InterpMat(iOS+1:iOS+nDOF_X3,jNode) = L_X3_Up(1:nDOF_X3,jNode)
+
+      END IF
+
+    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
     !$OMP          L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
-    !$OMP          dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
+    !$OMP          dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q, &
+    !$OMP          InterpMat )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
     !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
-    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
+    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q, &
+    !$ACC         InterpMat )
 #endif
 
   END SUBROUTINE InitializeReferenceElement_Lagrange
@@ -246,12 +321,14 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
     !$OMP               L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
-    !$OMP               dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
+    !$OMP               dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q, &
+    !$OMP               InterpMat )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( L_X1_Dn, L_X2_Dn, L_X3_Dn, L_E_Dn, &
     !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, L_E_Up, &
-    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q )
+    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q, dLdE_q, &
+    !$ACC         InterpMat )
 #endif
 
     DEALLOCATE( L_E_Dn )
@@ -267,6 +344,8 @@ CONTAINS
     DEALLOCATE( dLdX1_q )
     DEALLOCATE( dLdX2_q )
     DEALLOCATE( dLdX3_q )
+
+    DEALLOCATE( InterpMat )
 
   END SUBROUTINE FinalizeReferenceElement_Lagrange
 
