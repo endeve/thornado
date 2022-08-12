@@ -127,7 +127,7 @@ extern "C"
                                         "Level_", "Geometry" ) );
       VisMF::Write( MF_uCF1, amrex::MultiFabFileFullPrefix
                                       ( iLevel, checkpointname,
-                                        "Level_", "Conserved" ) );
+                                        "Level_", "Conserved_Euler" ) );
     }
 
   } // End of WriteCheckpointFile function
@@ -254,7 +254,7 @@ extern "C"
         MF_Name = "Geometry";
 	break;
       case 1:
-	MF_Name = "Conserved";
+	MF_Name = "Conserved_Euler";
 	break;
       default:
         std::cout << "Invalid." << std::endl;
