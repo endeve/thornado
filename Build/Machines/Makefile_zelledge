@@ -23,8 +23,8 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = -I/usr/local/hdf5/serial
-#INCLUDE_HDF5     = -I/usr/lib/x86_64-linux-gnu/hdf5/serial
+#INCLUDE_HDF5     = -I/usr/local/hdf5/serial
+INCLUDE_HDF5     = -I/usr/lib/x86_64-linux-gnu/hdf5/serial/include
 INCLUDE_LAPACK   = -I/usr/include
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
