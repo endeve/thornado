@@ -1,4 +1,6 @@
 
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TwoMoment
+
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
@@ -122,7 +124,7 @@ CEXE_sources   += Restart.cpp
 
 
 
-F90EXE_sources += dgemv.F90 lsame.F90
+#F90EXE_sources += dgemv.F90 lsame.F90
 
 F90EXE_sources += TwoMoment_UtilitiesModule_Relativistic.F90
 F90EXE_sources += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90

@@ -2,4 +2,4 @@ DEFINES += -DMOMENT_CLOSURE_MINERBO
 DEFINES += -DHYDRO_RELATIVISTIC
 DEFINES += -DTHORNADO_USE_AMREX
 
-include ../TwoMoment/GNUmakefile
+include GNUmakefile_TwoMoment_Test
