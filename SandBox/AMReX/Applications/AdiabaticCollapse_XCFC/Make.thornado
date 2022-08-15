@@ -9,7 +9,6 @@ F90EXE_sources  += InitializationModule.F90
 f90EXE_sources  += FinalizationModule.f90
 f90EXE_sources  += ApplicationDriver.f90
 f90EXE_sources  += MF_TimeSteppingModule_SSPRK.f90
-f90EXE_sources  += InputParsingModule.f90
 f90EXE_sources  += TaggingModule.f90
 
 # THORNADO_DIR/SandBox/AMReX/Modules/Numbers
@@ -56,6 +55,10 @@ f90EXE_sources  += MF_FieldsModule_TwoMoment.f90
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Geometry
 F90EXE_sources  += MF_GeometryModule.F90
 F90EXE_sources  += MF_GravitySolutionModule_XCFC_Poseidon.F90
+
+# THORNADO_DIR/SandBox/AMReX/Modules/ProgramHeader
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/ProgramHeader
+f90EXE_sources  += InputParsingModule.f90
 
 # THORNADO_DIR/SandBox/AMReX/Modules/Euler_MR
 
