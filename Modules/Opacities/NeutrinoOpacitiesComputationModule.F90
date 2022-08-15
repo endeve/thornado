@@ -21,8 +21,12 @@ MODULE NeutrinoOpacitiesComputationModule
     MatrixMatrixMultiply
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
+  USE ReferenceElementModule, ONLY: &
+    Weights_Q
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InterpMat_E
+  USE ReferenceElementModule_Lagrange, ONLY: &
+    InterpMat
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
@@ -104,6 +108,11 @@ MODULE NeutrinoOpacitiesComputationModule
                                     / TwoPi**3 * UnitBrem
 
   REAL(dp), PARAMETER :: Alpha_Brem(3) = [ 1.0d0, 1.0d0, 28.d0/3.d0 ]
+
+  INTERFACE ComputeEquilibriumDistributions_DG
+    MODULE PROCEDURE ComputeEquilibriumDistributions_DG_E
+    MODULE PROCEDURE ComputeEquilibriumDistributions_DG_Z
+  END INTERFACE ComputeEquilibriumDistributions_DG
 
   INTERFACE FermiDirac
     MODULE PROCEDURE FermiDirac_Scalar
@@ -245,7 +254,7 @@ CONTAINS
   END SUBROUTINE ComputeEquilibriumDistributions
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_DG &
+  SUBROUTINE ComputeEquilibriumDistributions_DG_E &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
@@ -388,7 +397,207 @@ CONTAINS
     !$ACC COPYOUT( f0 )
 #endif
 
-  END SUBROUTINE ComputeEquilibriumDistributions_DG
+  END SUBROUTINE ComputeEquilibriumDistributions_DG_E
+
+
+  SUBROUTINE ComputeEquilibriumDistributions_DG_Z &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, SqrtGm, f0 )
+
+    INTEGER,  INTENT(in)          :: iE_B, iE_E
+    INTEGER,  INTENT(in)          :: iS_B, iS_E
+    INTEGER,  INTENT(in)          :: iX_B, iX_E
+    REAL(DP), INTENT(in) , TARGET :: E (iE_B:iE_E)
+    REAL(DP), INTENT(in) , TARGET :: D                     (iX_B:iX_E)
+    REAL(DP), INTENT(in) , TARGET :: T                     (iX_B:iX_E)
+    REAL(DP), INTENT(in) , TARGET :: Y                     (iX_B:iX_E)
+    REAL(DP), INTENT(in) , TARGET :: SqrtGm                (iX_B:iX_E)
+    REAL(DP), INTENT(out), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP), PARAMETER :: f0_Min = SqrtTiny
+
+    INTEGER  :: nE, nX, nS
+    INTEGER  :: iE, iX, iS, iP
+    INTEGER  :: iNodeE, iNodeX, iNodeZ
+    REAL(DP) :: kT, Mnu, Exponent, N_K, V_K, f0_P
+    REAL(DP) :: Min_K, Max_K, Theta
+    REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:), Y_Q(:,:)
+    REAL(DP), POINTER :: Me_Q(:,:), Mp_Q(:,:), Mn_Q(:,:), SqrtGm_Q(:,:)
+    REAL(DP), TARGET  :: Me(iX_B:iX_E), Mp(iX_B:iX_E), Mn(iX_B:iX_E)
+    REAL(DP) :: &
+      Tau_Q(1:nDOFE*nDOFX, &
+            1:(iE_E-iE_B+1)/nDOFE, &
+            1:(iX_E-iX_B+1)/nDOFX)
+    REAL(DP) :: &
+      f0_K (1:(iE_E-iE_B+1)/nDOFE, &
+            1:(iS_E-iS_B+1)      , &
+            1:(iX_E-iX_B+1)/nDOFX)
+    REAL(DP) :: &
+      f0_Q (1:nDOFE*nDOFX, &
+            1:(iE_E-iE_B+1)/nDOFE, &
+            1:(iS_E-iS_B+1)      , &
+            1:(iX_E-iX_B+1)/nDOFX)
+
+    nE = (iE_E-iE_B+1)/nDOFE ! --- Number of energy  elements
+    nX = (iX_E-iE_B+1)/nDOFX ! --- Number of spatial elements
+    nS = (iS_E-iS_B+1)       ! --- Number of species
+
+    ! --- Compute Chemical Potentials ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mp )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mn )
+
+    E_Q (1:nDOFE,1:nE) => E (:)
+    D_Q (1:nDOFX,1:nX) => D (:)
+    T_Q (1:nDOFX,1:nX) => T (:)
+    Y_Q (1:nDOFX,1:nX) => Y (:)
+    Me_Q(1:nDOFX,1:nX) => Me(:)
+    Mp_Q(1:nDOFX,1:nX) => Mp(:)
+    Mn_Q(1:nDOFX,1:nX) => Mn(:)
+
+    SqrtGm_Q(1:nDOFX,1:nX) => SqrtGm(:)
+
+    ! --- Compute Fermi-Dirac Distribution in Elements ---
+
+    DO iX = 1, nX
+    DO iS = 1, nS
+    DO iE = 1, nE
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        kT = BoltzmannConstant * T_Q(iNodeX,iX)
+
+        IF( iS > iNuE_Bar )THEN
+          Mnu = Zero
+        ELSE
+          Mnu = (   Me_Q(iNodeX,iX) &
+                  + Mp_Q(iNodeX,iX) &
+                  - Mn_Q(iNodeX,iX) ) * LeptonNumber(iS)
+        END IF
+
+        Exponent &
+          = MIN( MAX( ( E_Q(iNodeE,iE) - Mnu ) / kT, - Log1d100 ), Log1d100 )
+
+        f0_Q(iNodeZ,iE,iS,iX) = One / ( EXP( Exponent ) + One )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Energy-Position Space Volume Jacobian ---
+
+    DO iX = 1, nX
+    DO iE = 1, nE
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        Tau_Q(iNodeZ,iE,iX) = E_Q(iNodeE,iE)**2 * SqrtGm_Q(iNodeX,iX)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+
+    ! --- Cell Average of Equilibrium Distribution ---
+
+    DO iX = 1, nX
+    DO iS = 1, nS
+    DO iE = 1, nE
+
+      V_K = Zero
+      N_K = Zero
+
+      DO iNodeZ = 1, nDOFE * nDOFX
+
+        V_K = V_K + Weights_Q(iNodeZ) * Tau_Q(iNodeZ,iE,iX)
+        N_K = N_K + Weights_Q(iNodeZ) * Tau_Q(iNodeZ,iE,iX) &
+                      * f0_Q(iNodeZ,iE,iS,iX)
+
+      END DO
+
+      f0_K(iE,iS,iX) = MAX( MIN( N_K / V_K, f0_Max ), f0_Min )
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Apply Bound-Enforcing Limiter to Equilibrium Distribution ---
+
+    DO iX = 1, nX
+    DO iS = 1, nS
+    DO iE = 1, nE
+
+      Max_K = f0_Max
+      Min_K = f0_Min
+      DO iP = 1, SIZE( InterpMat, 1 )
+        f0_P = Zero
+        DO iNodeZ = 1, nDOFE * nDOFX
+          f0_P = f0_P + InterpMat(iP,iNodeZ) * f0_Q(iNodeZ,iE,iS,iX)
+        END DO
+        Max_K = MAX( Max_K, f0_P )
+        Min_K = MIN( Min_K, f0_P )
+      END DO
+
+      IF( Min_K < f0_Min .OR. Max_K > f0_Max )THEN
+
+        Theta &
+          = MIN( One, &
+                 ABS((f0_Min-f0_K(iE,iS,iX))/(Min_K-f0_K(iE,iS,iX)+SqrtTiny)), &
+                 ABS((f0_Max-f0_K(iE,iS,iX))/(Max_K-f0_K(iE,iS,iX)+SqrtTiny)) )
+
+        Theta = ( One - 1.0d-2 ) * Theta
+
+        DO iNodeZ = 1, nDOFE * nDOFX
+
+          f0_Q(iNodeZ,iE,iS,iX) &
+            = ( One - Theta ) * f0_K(iE,iS,iX) &
+              +       Theta   * f0_Q(iNodeZ,iE,iS,iX)
+
+        END DO
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Permute for Output ---
+
+    DO iX = 1, nX
+    DO iS = 1, nS
+    DO iE = 1, nE
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        f0((iE-1)*nDOFE+iNodeE,iS,(iX-1)*nDOFX+iNodeX) &
+          = f0_Q(iNodeZ,iE,iS,iX)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeEquilibriumDistributions_DG_Z
 
 
   SUBROUTINE ComputeEquilibriumDistributionAndDerivatives &
