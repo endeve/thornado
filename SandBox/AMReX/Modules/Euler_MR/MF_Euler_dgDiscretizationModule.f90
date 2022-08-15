@@ -83,7 +83,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     UseTiling, &
     swX, &
     UseFluxCorrection_Euler, &
-    UsePositivityLimiter, &
+    UsePositivityLimiter_Euler, &
     UseXCFC, &
     DEBUG
   USE MF_MeshModule, ONLY: &
@@ -275,7 +275,7 @@ CONTAINS
 
     ! --- This conditions spoils conservation, but is needed for
     !     mesh refinement ---
-    IF( ( .NOT. UsePositivityLimiter ) .OR. ( nDOFX .EQ. 1 ) )THEN
+    IF( ( .NOT. UsePositivityLimiter_Euler ) .OR. ( nDOFX .EQ. 1 ) )THEN
 
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )

@@ -23,19 +23,32 @@ MODULE MF_Euler_PositivityLimiterModule
     nDF
   USE GeometryFieldsModule, ONLY: &
     nGF
+  USE EquationOfStateModule_TABLE, ONLY: &
+    Min_D, &
+    Max_D, &
+    Min_T, &
+    Max_T, &
+    Min_Y, &
+    Max_Y
   USE Euler_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_Euler, &
+    FinalizePositivityLimiter_Euler, &
     ApplyPositivityLimiter_Euler
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    One
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
+    UsePositivityLimiter_Euler, &
+    Min_1_Euler, &
+    Min_2_Euler, &
+    EquationOfState, &
     nLevels, &
-    UsePositivityLimiter, &
     UseTiling, &
     DEBUG
 !!$  USE AverageDownModule, ONLY: &
@@ -50,6 +63,8 @@ MODULE MF_Euler_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: InitializePositivityLimiter_Euler_MF
+  PUBLIC :: FinalizePositivityLimiter_Euler_MF
   PUBLIC :: ApplyPositivityLimiter_Euler_MF
 
   INTERFACE ApplyPositivityLimiter_Euler_MF
@@ -58,6 +73,40 @@ MODULE MF_Euler_PositivityLimiterModule
   END INTERFACE ApplyPositivityLimiter_Euler_MF
 
 CONTAINS
+
+
+  SUBROUTINE InitializePositivityLimiter_Euler_MF
+
+    IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
+
+      CALL InitializePositivityLimiter_Euler &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter_Euler, &
+               Verbose_Option = amrex_parallel_ioprocessor(), &
+               Min_1_Option = ( One + EPSILON(One) ) * Min_D, &
+               Min_2_Option = ( One + EPSILON(One) ) * Min_T, &
+               Min_3_Option = ( One + EPSILON(One) ) * Min_Y, &
+               Max_1_Option = ( One - EPSILON(One) ) * Max_D, &
+               Max_2_Option = ( One - EPSILON(One) ) * Max_T, &
+               Max_3_Option = ( One - EPSILON(One) ) * Max_Y )
+
+    ELSE
+
+      CALL InitializePositivityLimiter_Euler &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter_Euler, &
+               Verbose_Option = amrex_parallel_ioprocessor(), &
+               Min_1_Option = Min_1_Euler, &
+               Min_2_Option = Min_2_Euler )
+
+    END IF
+
+  END SUBROUTINE InitializePositivityLimiter_Euler_MF
+
+
+  SUBROUTINE FinalizePositivityLimiter_Euler_MF
+
+    CALL FinalizePositivityLimiter_Euler
+
+  END SUBROUTINE FinalizePositivityLimiter_Euler_MF
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
@@ -129,7 +178,7 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
-    IF( .NOT. UsePositivityLimiter ) RETURN
+    IF( .NOT. UsePositivityLimiter_Euler ) RETURN
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 

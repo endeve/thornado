@@ -69,9 +69,9 @@ SL.LimiterThresholdParameter_Euler = 5.00e-3
 SL.UseConservativeCorrection_Euler = 1
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 1
-PL.Min_1                = 1.0e-13
-PL.Min_2                = 1.0e-13
+PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
 EoS.EquationOfState = "IDEAL"

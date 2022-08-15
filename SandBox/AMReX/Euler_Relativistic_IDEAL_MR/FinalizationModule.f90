@@ -11,8 +11,6 @@ MODULE FinalizationModule
 
   USE ReferenceElementModuleX, ONLY: &
     FinalizeReferenceElementX
-  USE Euler_PositivityLimiterModule, ONLY: &
-    FinalizePositivityLimiter_Euler
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
 
@@ -29,6 +27,8 @@ MODULE FinalizationModule
     DestroyFields_Euler_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     FinalizeSlopeLimiter_Euler_MF
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     FinalizeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -98,7 +98,7 @@ CONTAINS
 
     CALL FinalizeSlopeLimiter_Euler_MF
 
-    CALL FinalizePositivityLimiter_Euler
+    CALL FinalizePositivityLimiter_Euler_MF
 
     CALL FinalizeEquationOfState
 

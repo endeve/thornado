@@ -82,19 +82,8 @@ MODULE InitializationModule
     DescribeFluidFields_Auxiliary, &
     DescribeFluidFields_Diagnostic, &
     SetUnitsFluidFields
-  USE Euler_SlopeLimiterModule, ONLY: &
-    InitializeSlopeLimiter_Euler
-  USE Euler_PositivityLimiterModule, ONLY: &
-    InitializePositivityLimiter_Euler
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
-  USE EquationOfStateModule_TABLE, ONLY: &
-    Min_D, &
-    Max_D, &
-    Min_T, &
-    Max_T, &
-    Min_Y, &
-    Max_Y
 
   ! --- Local Modules ---
 
@@ -116,6 +105,7 @@ MODULE InitializationModule
     InitializeSlopeLimiter_Euler_MF, &
     ApplySlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
@@ -154,9 +144,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    UsePositivityLimiter, &
-    Min_1, &
-    Min_2, &
     lo_bc, &
     hi_bc, &
     ProgramName, &
@@ -249,22 +236,12 @@ CONTAINS
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
                               Verbose_Option = amrex_parallel_ioprocessor() )
 
-    IF( EquationOfState .EQ. 'TABLE' )THEN
+    IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
                EquationOfStateTableName_Option = EosTableName, &
                Verbose_Option = amrex_parallel_ioprocessor() )
-
-      CALL InitializePositivityLimiter_Euler &
-             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
-               Verbose_Option = amrex_parallel_ioprocessor(), &
-               Min_1_Option = ( One + EPSILON(One) ) * Min_D, &
-               Min_2_Option = ( One + EPSILON(One) ) * Min_T, &
-               Min_3_Option = ( One + EPSILON(One) ) * Min_Y, &
-               Max_1_Option = ( One - EPSILON(One) ) * Max_D, &
-               Max_2_Option = ( One - EPSILON(One) ) * Max_T, &
-               Max_3_Option = ( One - EPSILON(One) ) * Max_Y )
 
     ELSE
 
@@ -273,13 +250,9 @@ CONTAINS
                  Gamma_IDEAL_Option = Gamma_IDEAL, &
                  Verbose_Option = amrex_parallel_ioprocessor() )
 
-      CALL InitializePositivityLimiter_Euler &
-             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
-               Verbose_Option = amrex_parallel_ioprocessor(), &
-               Min_1_Option = Min_1, &
-               Min_2_Option = Min_2 )
-
     END IF
+
+    CALL InitializePositivityLimiter_Euler_MF
 
     CALL InitializeSlopeLimiter_Euler_MF
 
