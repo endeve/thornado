@@ -353,7 +353,7 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       ! nLevels read from checkpoint file
 
-      CALL ReadCheckpointFile
+      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 

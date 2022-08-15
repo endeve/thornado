@@ -55,7 +55,7 @@ MODULE InputOutputModuleAMReX
     WeightsX_q, &
     nDOFX_X1
   USE ReferenceElementModuleZ, ONLY: &
-    nDOFZ_Z1
+    nDOFZ_Z2
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModule, ONLY: &
@@ -100,6 +100,18 @@ MODULE InputOutputModuleAMReX
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_FieldsModule_Geometry, ONLY: &
+    MF_uGF
+  USE MF_FieldsModule_Euler, ONLY: &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uAF, &
+    MF_uDF, &
+    FluxRegister_Euler
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    MF_uCR, &
+    MF_uPR, &
+    FluxRegister_TwoMoment
   USE FillPatchModule, ONLY: &
     FillPatch
   USE InputParsingModule, ONLY: &
@@ -537,141 +549,174 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE ReadCheckpointFile! &
-!    ( ReadFields_uGF_Option, ReadFields_uCF_Option, ReadFields_uCR_Option )
+  SUBROUTINE ReadCheckpointFile &
+    ( ReadFields_uCF_Option, ReadFields_uCR_Option )
 
-!!$    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uGF
-!!$
-!!$    USE MF_FieldsModule_Geometry, ONLY: &
-!!$      MF_uGF
-!!$    USE MF_FieldsModule_Euler, ONLY: &
-!!$      MF_uCF, &
-!!$      MF_uPF, &
-!!$      MF_uAF, &
-!!$      MF_uDF, &
-!!$      FluxRegister_Euler
-!!$    USE MF_FieldsModule_TwoMoment, ONLY: &
-!!$      MF_uCR, &
-!!$      MF_uPR, &
-!!$      FluxRegister_TwoMoment
-!!$
-!!$    IMPLICIT NONE
-!!$
-!!$    INTEGER     :: iLevel, FinestLevel
-!!$    TYPE(c_ptr) :: pBA(0:nMaxLevels-1)
-!!$    TYPE(c_ptr) :: pDM(0:nMaxLevels-1)
-!!$    TYPE(c_ptr) :: pGF(0:nMaxLevels-1)
-!!$    TYPE(c_ptr) :: pCF(0:nMaxLevels-1)
-!!$    TYPE(c_ptr) :: pCR(0:nMaxLevels-1)
-!!$    TYPE(c_ptr) :: amrcore
-!!$
-!!$    TYPE(amrex_box)       :: BX
-!!$    TYPE(amrex_distromap) :: DM  (0:nMaxLevels-1)
-!!$    TYPE(amrex_boxarray)  :: BA  (0:nMaxLevels-1)
-!!$    TYPE(amrex_geometry)  :: GEOM(0:nMaxLevels-1)
-!!$
-!!$    INTEGER :: FinestLevelArr(0:0) ! Hack
-!!$
-!!$    amrcore = amrex_get_amrcore()
-!!$
-!!$    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
-!!$
-!!$    DO iLevel = 0, nMaxLevels-1
-!!$
-!!$      CALL amrex_boxarray_build ( BA(iLevel), BX )
-!!$
-!!$      CALL BA(iLevel) % maxSize( MaxGridSizeX )
-!!$
-!!$      CALL amrex_geometry_build( GEOM(iLevel), BX )
-!!$
-!!$      CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
-!!$
-!!$    END DO
-!!$
-!!$    pBA(0:nMaxLevels-1) = BA(0:nMaxLevels-1) % P
-!!$    pDM(0:nMaxLevels-1) = DM(0:nMaxLevels-1) % P
-!!$
-!!$    CALL ReadHeaderAndBoxArrayData &
-!!$           ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
-!!$
-!!$    FinestLevel = FinestLevelArr(0)
-!!$    nLevels = FinestLevel + 1
-!!$
-!!$    DO iLevel = 0, nLevels-1
-!!$
-!!$      BA(iLevel) = pBA(iLevel)
-!!$      DM(iLevel) = pDM(iLevel)
-!!$
-!!$    END DO
-!!$
-!!$    DO iLevel = 0, nLevels-1
-!!$
-!!$      CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
-!!$      CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
-!!$
-!!$    END DO
-!!$
-!!$    DO iLevel = 0, nLevels-1
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
-!!$      CALL MF_uPF(iLevel) % SetVal( Zero )
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
-!!$      CALL MF_uAF(iLevel) % SetVal( Zero )
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
-!!$      CALL MF_uDF(iLevel) % SetVal( Zero )
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
-!!$               nDOFZ * nCR * nE * nSpecies, swX )
-!!$
-!!$      CALL amrex_multifab_build &
-!!$             ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
-!!$               nDOFZ * nPR * nE * nSpecies, swX )
-!!$      CALL MF_uPR(iLevel) % SetVal( Zero )
-!!$
-!!$      ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-!!$      IF( iLevel .GT. 0 .AND. UseFluxCorrection )THEN
-!!$
-!!$        CALL amrex_fluxregister_build &
-!!$               ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
-!!$                 amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
-!!$
-!!$        CALL amrex_fluxregister_build &
-!!$               ( FluxRegister_TwoMoment(iLevel), BA(iLevel), DM(iLevel), &
-!!$                 amrex_ref_ratio(iLevel-1), iLevel, &
-!!$                 nDOFZ_Z1 * nCR * nE * nSpecies )
-!!$
-!!$      END IF
-!!$
-!!$    END DO
-!!$
-!!$    pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
-!!$    pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
-!!$    pCR(0:nLevels-1) = MF_uCR(0:nLevels-1) % P
-!!$
-!!$    CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
-!!$    CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
-!!$    CALL ReadMultiFabData( FinestLevel, pCR, 2, iRestart )
-!!$
-!!$    DO iLevel = 0, nLevels-1
-!!$
-!!$      CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uGF )
-!!$      CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uCF )
-!!$
-!!$    END DO
-!!$
-!!$    CALL amrex_fi_set_finest_level( FinestLevel, amrcore )
+    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCF_Option
+    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCR_Option
+
+    INTEGER     :: iLevel, FinestLevel
+    TYPE(c_ptr) :: pBA(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pDM(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pGF(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pCF(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pCR(0:nMaxLevels-1)
+    TYPE(c_ptr) :: amrcore
+
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_distromap) :: DM  (0:nMaxLevels-1)
+    TYPE(amrex_boxarray)  :: BA  (0:nMaxLevels-1)
+    TYPE(amrex_geometry)  :: GEOM(0:nMaxLevels-1)
+
+    INTEGER :: FinestLevelArr(0:0) ! Hack
+
+    LOGICAL :: ReadFields_uCF
+    LOGICAL :: ReadFields_uCR
+
+    ReadFields_uCF = .FALSE.
+    IF( PRESENT( ReadFields_uCF_Option ) ) &
+      ReadFields_uCF = ReadFields_uCF_Option
+
+    ReadFields_uCR = .FALSE.
+    IF( PRESENT( ReadFields_uCR_Option ) ) &
+      ReadFields_uCR = ReadFields_uCR_Option
+
+    amrcore = amrex_get_amrcore()
+
+    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
+
+    DO iLevel = 0, nMaxLevels-1
+
+      CALL amrex_boxarray_build ( BA(iLevel), BX )
+
+      CALL BA(iLevel) % maxSize( MaxGridSizeX )
+
+      CALL amrex_geometry_build( GEOM(iLevel), BX )
+
+      CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
+
+    END DO
+
+    pBA(0:nMaxLevels-1) = BA(0:nMaxLevels-1) % P
+    pDM(0:nMaxLevels-1) = DM(0:nMaxLevels-1) % P
+
+    CALL ReadHeaderAndBoxArrayData &
+           ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
+
+    FinestLevel = FinestLevelArr(0)
+    nLevels = FinestLevel + 1
+
+    DO iLevel = 0, nLevels-1
+
+      BA(iLevel) = pBA(iLevel)
+      DM(iLevel) = pDM(iLevel)
+
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
+      CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
+
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
+      CALL MF_uGF(iLevel) % SetVal( Zero )
+
+      IF( ReadFields_uCF )THEN
+
+        CALL amrex_multifab_build &
+               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
+        CALL MF_uCF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
+        CALL MF_uPF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
+        CALL MF_uAF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
+        CALL MF_uDF(iLevel) % SetVal( Zero )
+
+        ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
+        IF( iLevel .GT. 0 .AND. UseFluxCorrection )THEN
+
+          CALL amrex_fluxregister_build &
+                 ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
+                   amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
+
+        END IF
+
+      END IF
+
+      IF( ReadFields_uCR )THEN
+
+        CALL amrex_multifab_build &
+               ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nCR * nE * nSpecies, swX )
+        CALL MF_uCR(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nPR * nE * nSpecies, swX )
+        CALL MF_uPR(iLevel) % SetVal( Zero )
+
+        ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
+        IF( iLevel .GT. 0 .AND. UseFluxCorrection )THEN
+
+          CALL amrex_fluxregister_build &
+                 ( FluxRegister_TwoMoment(iLevel), BA(iLevel), DM(iLevel), &
+                   amrex_ref_ratio(iLevel-1), iLevel, &
+                   nDOFZ_Z2 * nCR * nE * nSpecies )
+
+        END IF
+
+      END IF
+
+    END DO
+
+    pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
+    CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uGF )
+
+    END DO
+
+    IF( ReadFields_uCF )THEN
+
+      pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
+      CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
+
+      DO iLevel = 0, nLevels-1
+
+        CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uCF )
+
+      END DO
+
+    END IF
+
+    IF( ReadFields_uCR )THEN
+
+      pCR(0:nLevels-1) = MF_uCR(0:nLevels-1) % P
+      CALL ReadMultiFabData( FinestLevel, pCR, 2, iRestart )
+
+      DO iLevel = 0, nLevels-1
+
+        CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uCR )
+
+      END DO
+
+    END IF
+
+    CALL amrex_fi_set_finest_level( FinestLevel, amrcore )
 
   END SUBROUTINE ReadCheckpointFile
 
