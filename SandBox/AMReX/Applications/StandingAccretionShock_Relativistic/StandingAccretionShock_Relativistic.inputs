@@ -46,16 +46,16 @@ geometry.coord_sys = 2
 geometry.prob_lo   = 4.0e1 0.0               0.0
 geometry.prob_hi   = 1.0e4 3.1415926535897931 6.2831853071795862
 
-amr.n_cell            = 512 01 01
-thornado.swX          = 01  00 00
-#amr.max_grid_size_x   = 640
-#amr.blocking_factor_x = 640
-amr.max_level         = 5
-amr.UseFluxCorrection = 1
-amr.UseAMR            = 0
-amr.TagCriteria       = 5.0e3 1.0e3 5.0e2 1.0e2 7.5e1
-amr.n_error_buf       = 0
-amr.ref_ratio         = 2
+amr.n_cell                  = 512 01 01
+thornado.swX                = 01  00 00
+#amr.max_grid_size_x         = 640
+#amr.blocking_factor_x       = 640
+amr.max_level               = 5
+amr.UseFluxCorrection_Euler = 1
+amr.UseAMR                  = 0
+amr.TagCriteria             = 5.0e3 1.0e3 5.0e2 1.0e2 7.5e1
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1

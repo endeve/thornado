@@ -42,7 +42,7 @@ MODULE MF_Euler_TallyModule
     nMaxLevels, &
     ProgramName, &
     UseTiling, &
-    UseFluxCorrection
+    UseFluxCorrection_Euler
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -106,7 +106,7 @@ CONTAINS
 
       IF( nMaxLevels .GT. 1 )THEN
 
-        IF( .NOT. UseFluxCorrection )THEN
+        IF( .NOT. UseFluxCorrection_Euler )THEN
 
           WRITE(*,*)
           WRITE(*,'(4x,A)') &

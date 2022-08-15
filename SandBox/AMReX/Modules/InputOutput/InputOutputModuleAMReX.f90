@@ -128,7 +128,8 @@ MODULE InputOutputModuleAMReX
     nSpecies, &
     iRestart, &
     UseTiling, &
-    UseFluxCorrection
+    UseFluxCorrection_Euler, &
+    UseFluxCorrection_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -645,7 +646,7 @@ CONTAINS
         CALL MF_uDF(iLevel) % SetVal( Zero )
 
         ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-        IF( iLevel .GT. 0 .AND. UseFluxCorrection )THEN
+        IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler )THEN
 
           CALL amrex_fluxregister_build &
                  ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
@@ -668,7 +669,7 @@ CONTAINS
         CALL MF_uPR(iLevel) % SetVal( Zero )
 
         ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
-        IF( iLevel .GT. 0 .AND. UseFluxCorrection )THEN
+        IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
 
           CALL amrex_fluxregister_build &
                  ( FluxRegister_TwoMoment(iLevel), BA(iLevel), DM(iLevel), &

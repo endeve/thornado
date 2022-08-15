@@ -82,7 +82,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     nLevels, &
     UseTiling, &
     swX, &
-    UseFluxCorrection, &
+    UseFluxCorrection_Euler, &
     UsePositivityLimiter, &
     UseXCFC, &
     DEBUG
@@ -445,7 +445,7 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    IF( UseFluxCorrection )THEN
+    IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
         CALL FluxRegister_Euler( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
@@ -453,7 +453,7 @@ CONTAINS
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
 
-    END IF ! UseFluxCorrection
+    END IF ! UseFluxCorrection_Euler
 
     DO iDimX = 1, nDimsX
 
