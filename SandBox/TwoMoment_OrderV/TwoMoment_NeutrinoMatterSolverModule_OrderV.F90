@@ -14,7 +14,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
-    nDOFE
+    nDOFE, nDOFX
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -109,6 +109,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
 
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J0
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso
@@ -173,6 +174,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   ! --- Temporary arrays for scatter/gather (packing)
 
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: D_T, T_T, Y_T, E_T
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_u_1_T
@@ -280,6 +282,7 @@ CONTAINS
     ALLOCATE( G_V_d_3(nX_G) )
     ALLOCATE( U_V_d_3(nX_G) )
 
+    ALLOCATE(         SqrtGm(              nX_G) )
     ALLOCATE(             J0(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso(nE_G,         nX_G) )
     ALLOCATE(      Phi_0_Iso(nE_G,         nX_G) )
@@ -325,6 +328,8 @@ CONTAINS
     ALLOCATE( T_T(nX_G) )
     ALLOCATE( Y_T(nX_G) )
     ALLOCATE( E_T(nX_G) )
+
+    ALLOCATE( SqrtGm_T(nX_G) )
 
     ALLOCATE(     J_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( H_u_1_T(nE_G,nSpecies,nX_G) )
@@ -912,6 +917,7 @@ CONTAINS
     DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
     DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
     DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
+    DEALLOCATE( SqrtGm )
     DEALLOCATE( J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NES, Eta_NES )
@@ -925,7 +931,7 @@ CONTAINS
     DEALLOCATE( L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3 )
     DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
-    DEALLOCATE( D_T, T_T, Y_T, E_T )
+    DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T )
     DEALLOCATE( J_T, H_u_1_T, H_u_2_T, H_u_3_T )
     DEALLOCATE( J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
@@ -1033,6 +1039,8 @@ CONTAINS
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
+    SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
+
     ! --- Initial RHS ---
 
     CALL TimersStart( Timer_Collisions_InitializeRHS )
@@ -1047,7 +1055,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
-    CALL ComputeOpacities_Packed( D, T, Y )
+    CALL ComputeOpacities_Packed( D, T, Y, SqrtGm )
 
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1073,7 +1081,7 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
-               ( D, T, Y, &
+               ( D, T, Y, SqrtGm, &
                  ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeOpacity )
@@ -1248,15 +1256,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeOpacities_Packed &
-    ( D, T, Y, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, T, Y, SqrtGm, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y, SqrtGm
     LOGICAL,  DIMENSION(:), INTENT(in), OPTIONAL :: MASK
     INTEGER,                INTENT(in), OPTIONAL :: nX_P
     INTEGER,  DIMENSION(:), INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
 
-    REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P, SqrtGm_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J0_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Sigma_Iso_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_0_Iso_P
@@ -1290,7 +1298,10 @@ CONTAINS
       T_P => T_T(1:nX)
       Y_P => Y_T(1:nX)
 
-      CALL ArrayPack( nX, UnpackIndex, D, T, Y, D_P, T_P, Y_P )
+      SqrtGm_P => SqrtGm_T(1:nX)
+
+      CALL ArrayPack &
+             ( nX, UnpackIndex, D, T, Y, SqrtGm, D_P, T_P, Y_P, SqrtGm_P )
 
       J0_P        => J0_T       (:,:,1:nX)
       Sigma_Iso_P => Sigma_Iso_T(  :,1:nX)
@@ -1316,6 +1327,8 @@ CONTAINS
       T_P => T(:)
       Y_P => Y(:)
 
+      SqrtGm_P => SqrtGm(:)
+
       J0_P        => J0       (:,:,:)
       Sigma_Iso_P => Sigma_Iso(  :,:)
       Phi_0_Iso_P => Phi_0_Iso(  :,:)
@@ -1340,6 +1353,9 @@ CONTAINS
 
     CALL ComputeEquilibriumDistributions_DG &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, J0_P )
+
+!!$    CALL ComputeEquilibriumDistributions_DG &
+!!$           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, SqrtGm_P, J0_P )
 
     ! --- EmAb ---
 
@@ -2969,7 +2985,62 @@ CONTAINS
   END SUBROUTINE CheckConvergence_Outer
 
 
-  FUNCTION ENORM( X )
+!!$  SUBROUTINE CheckConvergence_Outer &
+!!$    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, nIterations_Outer, Fm )
+!!$
+!!$    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER, MASK_INNER
+!!$    INTEGER,                    INTENT(in)    :: n_FP, k_outer
+!!$    INTEGER,  DIMENSION(:)    , INTENT(inout) :: nIterations_Outer
+!!$    REAL(DP), DIMENSION(:,:)  , INTENT(in)    :: Fm
+!!$
+!!$    LOGICAL  :: CONVERGED
+!!$    INTEGER  :: iX, iOS
+!!$    REAL(DP) :: Fnorm_Y(nDOFX), Fnorm_Ef(nDOFX), Fnorm_V(nDOFX)
+!!$
+!!$#if   defined( THORNADO_OMP_OL )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$#elif defined( THORNADO_OACC   )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$#endif
+!!$    DO iX = 1, nX_G / nDOFX
+!!$      iOS = (iX-1) * nDOFX
+!!$      IF( ANY( MASK_OUTER(iOS+1:iOS+nDOFX) ) )THEN
+!!$
+!!$        Fnorm_Y  =      ABS( Fm(iY ,iOS+1:iOS+nDOFX) )
+!!$        Fnorm_Ef =      ABS( Fm(iEf,iOS+1:iOS+nDOFX) )
+!!$        Fnorm_V  = MAX( ABS( Fm(iV1,iOS+1:iOS+nDOFX) ), &
+!!$                        ABS( Fm(iV2,iOS+1:iOS+nDOFX) ), &
+!!$                        ABS( Fm(iV3,iOS+1:iOS+nDOFX) ) )
+!!$
+!!$        CONVERGED = ALL( Fnorm_Y  <= Rtol_outer ) .AND. &
+!!$                    ALL( Fnorm_Ef <= Rtol_outer ) .AND. &
+!!$                    ALL( Fnorm_V  <= Rtol_outer )
+!!$
+!!$        IF( CONVERGED )THEN
+!!$          MASK_OUTER       (iOS+1:iOS+nDOFX) = .FALSE.
+!!$          nIterations_Outer(iOS+1:iOS+nDOFX) = k_outer
+!!$        END IF
+!!$
+!!$        MASK_INNER(iOS+1:iOS+nDOFX) = MASK_OUTER(iOS+1:iOS+nDOFX)
+!!$
+!!$      END IF
+!!$    END DO
+!!$
+!!$#if   defined( THORNADO_OMP_OL )
+!!$    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER )
+!!$#elif defined( THORNADO_OACC   )
+!!$    !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
+!!$#endif
+!!$
+!!$  END SUBROUTINE CheckConvergence_Outer
+
+
+  FUNCTION ENORM( X ) ! Delete Me?
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
 #elif defined( THORNADO_OACC   )
