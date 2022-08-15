@@ -350,4 +350,48 @@ CONTAINS
   END SUBROUTINE InitializeParameters
 
 
+  SUBROUTINE DescribeProgramHeader_AMReX
+
+    CHARACTER(32) :: RFMT, IFMT
+
+    WRITE(RFMT,'(A,I2.2,A)') '(4x,A26,1x,', nMaxLevels, 'ES11.3E3)'
+    WRITE(IFMT,'(A,I2.2,A)') '(4x,A26,1x,', nMaxLevels, 'I3.2)'
+
+    IF( .NOT. ALLOCATED( TagCriteria ) )THEN
+      ALLOCATE( TagCriteria(nMaxLevels) )
+      TagCriteria = 0.0_DP
+    END IF
+
+    IF( .NOT. ALLOCATED( nRefinementBuffer ) )THEN
+      ALLOCATE( nRefinementBuffer(nMaxLevels) )
+      nRefinementBuffer = 1
+    END IF
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(4x,A)')            'INFO: AMReX'
+      WRITE(*,'(4x,A)')            '-----------'
+      WRITE(*,'(4x,A26,1x,3I4.3)')   'MaxGridSizeX:', &
+                                      MaxGridSizeX
+      WRITE(*,'(4x,A26,1x,3I4.3)')   'BlockingFactor:', &
+                                      BlockingFactor
+      WRITE(*,'(4x,A26,1x,I2.2)')    'nMaxLevels:', &
+                                      nMaxLevels
+      WRITE(*,'(4x,A26,1x,L)')       'UseFluxCorrection_Euler:', &
+                                      UseFluxCorrection_Euler
+      WRITE(*,'(4x,A26,1x,L)')       'UseTiling:', &
+                                      UseTiling
+      WRITE(*,'(4x,A26,1x,L)')       'UseAMR:', &
+                                      UseAMR
+      WRITE(*,TRIM(RFMT))            'TagCriteria:', &
+                                      TagCriteria
+      WRITE(*,TRIM(IFMT))            'nRefinementBuffer:', &
+                                      nRefinementBuffer
+      WRITE(*,*)
+
+    END IF
+
+  END SUBROUTINE DescribeProgramHeader_AMReX
+
+
 END MODULE InputParsingModule
