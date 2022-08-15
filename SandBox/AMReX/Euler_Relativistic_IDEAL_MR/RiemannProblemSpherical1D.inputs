@@ -8,7 +8,7 @@ thornado.RiemannProblemName = "SphericalSod"
 
 thornado.nNodes    = 03
 thornado.nStages   = 03
-thornado.t_end     = 0.8
+thornado.t_end     = 0.1
 thornado.iCycleD   = 10
 thornado.CFL       = 0.5
 thornado.iCycleW   = 100

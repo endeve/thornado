@@ -75,6 +75,8 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
 f90EXE_sources  += QuadratureModule.f90
 F90EXE_sources  += ReferenceElementModule.F90
 F90EXE_sources  += ReferenceElementModuleX.F90
+F90EXE_sources  += ReferenceElementModuleZ.F90
+F90EXE_sources  += ReferenceElementModuleE.F90
 F90EXE_sources  += ReferenceElementModuleX_Lagrange.F90
 F90EXE_sources  += DeviceModule.F90
 f90EXE_sources  += LagrangePolynomialsModule.f90
@@ -107,6 +109,7 @@ f90EXE_sources  += KindModule.f90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 F90EXE_sources += FluidFieldsModule.F90
+F90EXE_sources += RadiationFieldsModule.F90
 
 # THORNADO_DIR/Modules/ProgramHeader
 

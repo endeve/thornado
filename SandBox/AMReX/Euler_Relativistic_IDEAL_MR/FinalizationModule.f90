@@ -80,8 +80,11 @@ CONTAINS
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
              MF_uGF % BA % P, &
-             MF_uGF % P, &
-             MF_uCF % P )
+             iWriteFields_uGF = 1, &
+             iWriteFields_uCF = 1, &
+             iWriteFields_uCR = 0, &
+             pMF_uGF_Option = MF_uGF % P, &
+             pMF_uCF_Option = MF_uCF % P )
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
 

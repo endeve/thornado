@@ -7,6 +7,7 @@ Modified by sjdunham for multiple MultiFabs
 
 */
 
+#include <cstddef> /* For NULL */
 #include <sstream>
 #include <iomanip>
 
@@ -27,7 +28,13 @@ extern "C"
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
-           BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF )
+           BoxArray** BA,
+           int iWriteFields_uGF = 0,
+           int iWriteFields_uCF = 0,
+           int iWriteFields_uCR = 0,
+           MultiFab** pMF_uGF = NULL,
+           MultiFab** pMF_uCF = NULL,
+           MultiFab** pMF_uCR = NULL )
   {
 
     // chk00010            Write a checkpoint file with this root directory
@@ -40,6 +47,15 @@ extern "C"
     //                     data at each level of refinement
 
     // Checkpoint file name, e.g., chk00010
+
+    bool WriteFields_uGF = false;
+    if( iWriteFields_uGF == 1 ) WriteFields_uGF = true;
+
+    bool WriteFields_uCF = false;
+    if( iWriteFields_uCF == 1 ) WriteFields_uCF = true;
+
+    bool WriteFields_uCR = false;
+    if( iWriteFields_uCR == 1 ) WriteFields_uCR = true;
 
     ParmParse pp("thornado");
     chk_file = "chk";
@@ -120,17 +136,30 @@ extern "C"
     // Write the MultiFab data to, e.g., chk00010/Level_0/
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
     {
-      MultiFab& MF_uGF1 = *MF_uGF[iLevel];
-      MultiFab& MF_uCF1 = *MF_uCF[iLevel];
-      VisMF::Write( MF_uGF1, amrex::MultiFabFileFullPrefix
-                                      ( iLevel, checkpointname,
-                                        "Level_", "Geometry" ) );
-      VisMF::Write( MF_uCF1, amrex::MultiFabFileFullPrefix
-                                      ( iLevel, checkpointname,
-                                        "Level_", "Conserved_Euler" ) );
+
+      if( WriteFields_uGF ) {
+        MultiFab& MF_uGF1 = *pMF_uGF[iLevel];
+        VisMF::Write( MF_uGF1, amrex::MultiFabFileFullPrefix
+                                        ( iLevel, checkpointname,
+                                          "Level_", "Geometry" ) );
+      }
+
+      if( WriteFields_uCF ) {
+        MultiFab& MF_uCF1 = *pMF_uCF[iLevel];
+        VisMF::Write( MF_uCF1, amrex::MultiFabFileFullPrefix
+                                        ( iLevel, checkpointname,
+                                          "Level_", "Conserved_Euler" ) );
+      }
+
+      if( WriteFields_uCR ) {
+        MultiFab& MF_uCR1 = *pMF_uCR[iLevel];
+        VisMF::Write( MF_uCR1, amrex::MultiFabFileFullPrefix
+                                        ( iLevel, checkpointname,
+                                          "Level_", "Conserved_TwoMoment" ) );
+      }
     }
 
-  } // End of WriteCheckpointFile function
+  } // End of writefieldsamrex_checkpoint
 
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
@@ -255,6 +284,9 @@ extern "C"
 	break;
       case 1:
 	MF_Name = "Conserved_Euler";
+	break;
+      case 2:
+	MF_Name = "Conserved_TwoMoment";
 	break;
       default:
         std::cout << "Invalid." << std::endl;
