@@ -9,7 +9,6 @@ F90EXE_sources  += InitializationModule.F90
 f90EXE_sources  += FinalizationModule.f90
 f90EXE_sources  += ApplicationDriver.f90
 f90EXE_sources  += MF_TimeSteppingModule_SSPRK.f90
-f90EXE_sources  += InputParsingModule.f90
 f90EXE_sources  += TaggingModule.f90
 
 # THORNADO_DIR/SandBox/AMReX/Modules/Numbers
@@ -113,8 +112,8 @@ f90EXE_sources  += KindModule.f90
 # THORNADO_DIR/Modules/Fields
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
-F90EXE_sources += FluidFieldsModule.F90
-F90EXE_sources += RadiationFieldsModule.F90
+F90EXE_sources  += FluidFieldsModule.F90
+F90EXE_sources  += RadiationFieldsModule.F90
 
 # THORNADO_DIR/Modules/ProgramHeader
 
