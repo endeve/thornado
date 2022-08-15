@@ -41,6 +41,7 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
   INTEGER                   :: nStages
+  INTEGER                   :: nE, nSpecies
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
   REAL(DP)                  :: t_end
@@ -140,6 +141,8 @@ CONTAINS
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
     UseXCFC          = .FALSE.
+    nE               = 1
+    nSpecies         = 1
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', ProgramName )
       CALL PP % get   ( 'nNodes', nNodes )
@@ -157,6 +160,8 @@ CONTAINS
       CALL PP % query ( 'dt_chk', dt_chk )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
       CALL PP % query ( 'UseXCFC', UseXCFC )
+      CALL PP % query ( 'nE', nE )
+      CALL PP % query ( 'nSpecies', nSpecies )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
