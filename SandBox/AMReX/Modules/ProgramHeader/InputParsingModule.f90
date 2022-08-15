@@ -83,7 +83,6 @@ MODULE InputParsingModule
 
   ! --- amr ---
 
-  INTEGER, ALLOCATABLE :: nX(:)
   INTEGER :: MaxGridSizeX1
   INTEGER :: MaxGridSizeX2
   INTEGER :: MaxGridSizeX3
@@ -98,11 +97,12 @@ MODULE InputParsingModule
   LOGICAL :: UseTiling
   LOGICAL :: UseFluxCorrection_Euler
   LOGICAL :: UseFluxCorrection_TwoMoment
+  LOGICAL :: UseAMR
+  INTEGER , ALLOCATABLE :: nX(:)
   INTEGER , ALLOCATABLE :: RefinementRatio(:)
   INTEGER , ALLOCATABLE :: StepNo(:)
   INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
   REAL(DP), ALLOCATABLE :: TagCriteria(:)
-  LOGICAL :: UseAMR
 
   REAL(DP), ALLOCATABLE :: dt   (:)
   REAL(DP), ALLOCATABLE :: t_old(:)
@@ -126,9 +126,12 @@ CONTAINS
     WriteNodalData    = .FALSE.
     NodalDataFileName = ''
     CALL amrex_parmparse_build( PP, 'debug' )
-      CALL PP % query( 'DEBUG', DEBUG )
-      CALL PP % query( 'WriteNodalData', WriteNodalData )
-      CALL PP % query( 'NodalDataFileName', NodalDataFileName )
+      CALL PP % query( 'DEBUG', &
+                        DEBUG )
+      CALL PP % query( 'WriteNodalData', &
+                        WriteNodalData )
+      CALL PP % query( 'NodalDataFileName', &
+                        NodalDataFileName )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- thornado Parameters thornado.* ---
@@ -145,24 +148,42 @@ CONTAINS
     nE               = 1
     nSpecies         = 1
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get   ( 'ProgramName', ProgramName )
-      CALL PP % get   ( 'nNodes', nNodes )
-      CALL PP % get   ( 'nStages', nStages )
-      CALL PP % getarr( 'swX', swX )
-      CALL PP % getarr( 'bcX', bcX )
-      CALL PP % get   ( 't_end', t_end )
-      CALL PP % get   ( 'CFL', CFL )
-      CALL PP % query ( 'iCycleD', iCycleD )
-      CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
-      CALL PP % query ( 'iCycleW', iCycleW )
-      CALL PP % query ( 'iCycleChk', iCycleChk )
-      CALL PP % query ( 'iRestart', iRestart )
-      CALL PP % query ( 'dt_wrt', dt_wrt )
-      CALL PP % query ( 'dt_chk', dt_chk )
-      CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
-      CALL PP % query ( 'UseXCFC', UseXCFC )
-      CALL PP % query ( 'nE', nE )
-      CALL PP % query ( 'nSpecies', nSpecies )
+      CALL PP % get   ( 'ProgramName', &
+                         ProgramName )
+      CALL PP % get   ( 'nNodes', &
+                         nNodes )
+      CALL PP % get   ( 'nStages', &
+                         nStages )
+      CALL PP % getarr( 'swX', &
+                         swX )
+      CALL PP % getarr( 'bcX', &
+                         bcX )
+      CALL PP % get   ( 't_end', &
+                         t_end )
+      CALL PP % get   ( 'CFL', &
+                         CFL )
+      CALL PP % query ( 'iCycleD', &
+                         iCycleD )
+      CALL PP % query ( 'PlotFileBaseName', &
+                         PlotFileBaseName )
+      CALL PP % query ( 'iCycleW', &
+                         iCycleW )
+      CALL PP % query ( 'iCycleChk', &
+                         iCycleChk )
+      CALL PP % query ( 'iRestart', &
+                         iRestart )
+      CALL PP % query ( 'dt_wrt', &
+                         dt_wrt )
+      CALL PP % query ( 'dt_chk', &
+                         dt_chk )
+      CALL PP % query ( 'UsePhysicalUnits', &
+                         UsePhysicalUnits )
+      CALL PP % query ( 'UseXCFC', &
+                         UseXCFC )
+      CALL PP % query ( 'nE', &
+                         nE )
+      CALL PP % query ( 'nSpecies', &
+                         nSpecies )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
@@ -175,7 +196,7 @@ CONTAINS
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
-    ! --- Slope Limiter Parameters SL.* ---
+    ! --- Euler Slope Limiter Parameters SL.* ---
 
     UseSlopeLimiter           = .TRUE.
     SlopeLimiterMethod        = 'TVD'
@@ -187,34 +208,49 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     UseConservativeCorrection = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter'          , UseSlopeLimiter           )
-      CALL PP % query( 'SlopeLimiterMethod'       , SlopeLimiterMethod        )
-      CALL PP % query( 'BetaTVD'                  , BetaTVD                   )
-      CALL PP % query( 'BetaTVB'                  , BetaTVB                   )
-      CALL PP % query( 'SlopeTolerance'           , SlopeTolerance            )
-      CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
-      CALL PP % query( 'UseTroubledCellIndicator' , UseTroubledCellIndicator  )
-      CALL PP % query( 'LimiterThresholdParameter', LimiterThresholdParameter )
-      CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
+      CALL PP % query( 'UseSlopeLimiter', &
+                        UseSlopeLimiter )
+      CALL PP % query( 'SlopeLimiterMethod', &
+                        SlopeLimiterMethod )
+      CALL PP % query( 'BetaTVD', &
+                        BetaTVD )
+      CALL PP % query( 'BetaTVB', &
+                        BetaTVB )
+      CALL PP % query( 'SlopeTolerance', &
+                        SlopeTolerance )
+      CALL PP % query( 'UseCharacteristicLimiting', &
+                        UseCharacteristicLimiting )
+      CALL PP % query( 'UseTroubledCellIndicator', &
+                        UseTroubledCellIndicator )
+      CALL PP % query( 'LimiterThresholdParameter', &
+                        LimiterThresholdParameter )
+      CALL PP % query( 'UseConservativeCorrection', &
+                        UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- Positivity Limiter Parameters PL.* ---
+    ! --- Euler Positivity Limiter Parameters PL.* ---
 
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_DP
     Min_2                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
-      CALL PP % query( 'Min_1'               , Min_1                )
-      CALL PP % query( 'Min_2'               , Min_2                )
+      CALL PP % query( 'UsePositivityLimiter', &
+                        UsePositivityLimiter )
+      CALL PP % query( 'Min_1', &
+                        Min_1 )
+      CALL PP % query( 'Min_2', &
+                        Min_2 )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
 
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys', coord_sys )
-      CALL PP % getarr( 'prob_lo'  , xL       )
-      CALL PP % getarr( 'prob_hi'  , xR       )
+      CALL PP % get   ( 'coord_sys', &
+                         coord_sys )
+      CALL PP % getarr( 'prob_lo', &
+                         xL )
+      CALL PP % getarr( 'prob_hi', &
+                         xR )
     CALL amrex_parmparse_destroy( PP )
 
     IF     ( coord_sys .EQ. 0 )THEN
@@ -259,9 +295,12 @@ CONTAINS
     Gamma_IDEAL     = 4.0_DP / 3.0_DP
     EosTableName    = ''
     CALL amrex_parmparse_build( PP, 'EoS' )
-      CALL PP % query ( 'EquationOfState', EquationOfState )
-      CALL PP % query ( 'Gamma_IDEAL', Gamma_IDEAL )
-      CALL PP % query ( 'EosTableName', EosTableName )
+      CALL PP % query ( 'EquationOfState', &
+                         EquationOfState )
+      CALL PP % query ( 'Gamma_IDEAL', &
+                         Gamma_IDEAL )
+      CALL PP % query ( 'EosTableName', &
+                         EosTableName )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters amr.* ---
@@ -299,25 +338,38 @@ CONTAINS
     UseFluxCorrection_TwoMoment = .FALSE.
     UseTiling                   = .FALSE.
     CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr  ( 'n_cell'           , nX                )
-      CALL PP % query   ( 'max_grid_size_x'  , MaxGridSizeX1     )
-      CALL PP % query   ( 'max_grid_size_y'  , MaxGridSizeX2     )
-      CALL PP % query   ( 'max_grid_size_z'  , MaxGridSizeX3     )
-      CALL PP % query   ( 'blocking_factor_x', BlockingFactorX1  )
-      CALL PP % query   ( 'blocking_factor_y', BlockingFactorX2  )
-      CALL PP % query   ( 'blocking_factor_z', BlockingFactorX3  )
-      CALL PP % get     ( 'max_level'        , MaxLevel          )
+      CALL PP % getarr  ( 'n_cell', &
+                           nX )
+      CALL PP % query   ( 'max_grid_size_x', &
+                           MaxGridSizeX1 )
+      CALL PP % query   ( 'max_grid_size_y', &
+                           MaxGridSizeX2 )
+      CALL PP % query   ( 'max_grid_size_z', &
+                           MaxGridSizeX3 )
+      CALL PP % query   ( 'blocking_factor_x', &
+                           BlockingFactorX1 )
+      CALL PP % query   ( 'blocking_factor_y', &
+                           BlockingFactorX2 )
+      CALL PP % query   ( 'blocking_factor_z', &
+                           BlockingFactorX3 )
+      CALL PP % get     ( 'max_level', &
+                           MaxLevel )
       IF( MaxLevel .GT. 0 )THEN
-        CALL PP % query ( 'UseAMR'           , UseAMR            )
+        CALL PP % query ( 'UseAMR', &
+                           UseAMR )
         CALL PP % query ( 'UseFluxCorrection_Euler', &
                            UseFluxCorrection_Euler )
         CALL PP % query ( 'UseFluxCorrection_TwoMoment', &
                            UseFluxCorrection_TwoMoment )
-        CALL PP % getarr( 'TagCriteria'      , TagCriteria       )
-        CALL PP % getarr( 'n_error_buf'      , nRefinementBuffer )
+        CALL PP % getarr( 'TagCriteria', &
+                           TagCriteria )
+        CALL PP % getarr( 'n_error_buf', &
+                           nRefinementBuffer )
       END IF
-      CALL PP % getarr  ( 'ref_ratio'        , RefinementRatio   )
-      CALL PP % query   ( 'UseTiling'        , UseTiling         )
+      CALL PP % getarr  ( 'ref_ratio', &
+                           RefinementRatio )
+      CALL PP % query   ( 'UseTiling', &
+                           UseTiling )
     CALL amrex_parmparse_destroy( PP )
 
     MaxGridSizeX   = [ MaxGridSizeX1   , MaxGridSizeX2   , MaxGridSizeX3    ]
