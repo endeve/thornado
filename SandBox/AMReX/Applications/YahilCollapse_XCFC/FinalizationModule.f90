@@ -92,6 +92,8 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
+    CALL FinalizeFluid_SSPRK_MF
+
     CALL FinalizeTally_Euler_MF
 
     CALL FinalizeSlopeLimiter_Euler_MF
