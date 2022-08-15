@@ -113,6 +113,7 @@ MODULE InitializationModule
     MF_uDF, &
     FluxRegister_Euler
   USE MF_Euler_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_Euler_MF, &
     ApplySlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
@@ -153,15 +154,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    UseSlopeLimiter, &
-    BetaTVD, &
-    BetaTVB, &
-    SlopeTolerance, &
-    UseCharacteristicLimiting, &
-    UseTroubledCellIndicator, &
-    SlopeLimiterMethod, &
-    LimiterThresholdParameter, &
-    UseConservativeCorrection, &
     UsePositivityLimiter, &
     Min_1, &
     Min_2, &
@@ -289,27 +281,7 @@ CONTAINS
 
     END IF
 
-    CALL InitializeSlopeLimiter_Euler &
-           ( BetaTVD_Option &
-               = BetaTVD, &
-             BetaTVB_Option &
-               = BetaTVB, &
-             SlopeTolerance_Option &
-               = SlopeTolerance, &
-             UseSlopeLimiter_Option &
-               = UseSlopeLimiter, &
-             UseCharacteristicLimiting_Option &
-               = UseCharacteristicLimiting, &
-             UseTroubledCellIndicator_Option &
-               = UseTroubledCellIndicator, &
-             SlopeLimiterMethod_Option &
-               = SlopeLimiterMethod, &
-             LimiterThresholdParameter_Option &
-               = LimiterThresholdParameter, &
-             UseConservativeCorrection_Option &
-               = UseConservativeCorrection, &
-             Verbose_Option &
-               = amrex_parallel_ioprocessor() )
+    CALL InitializeSlopeLimiter_Euler_MF
 
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &

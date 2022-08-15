@@ -29,6 +29,8 @@ MODULE MF_Euler_SlopeLimiterModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE Euler_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_Euler, &
+    FinalizeSlopeLimiter_Euler, &
     ApplySlopeLimiter_Euler
 
   ! --- Local Modules ---
@@ -39,9 +41,17 @@ MODULE MF_Euler_SlopeLimiterModule
     amrex2thornado_X, &
     thornado2amrex_X
   USE InputParsingModule, ONLY: &
+    BetaTVD_Euler, &
+    BetaTVB_Euler, &
+    SlopeTolerance_Euler, &
+    UseSlopeLimiter_Euler, &
+    UseCharacteristicLimiting_Euler, &
+    UseTroubledCellIndicator_Euler, &
+    SlopeLimiterMethod_Euler, &
+    LimiterThresholdParameter_Euler, &
+    UseConservativeCorrection_Euler, &
     nLevels, &
     swX, &
-    UseSlopeLimiter, &
     UseTiling, &
     DEBUG
   USE MF_MeshModule, ONLY: &
@@ -64,6 +74,8 @@ MODULE MF_Euler_SlopeLimiterModule
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: InitializeSlopeLimiter_Euler_MF
+  PUBLIC :: FinalizeSlopeLimiter_Euler_MF
   PUBLIC :: ApplySlopeLimiter_Euler_MF
 
   INTERFACE ApplySlopeLimiter_Euler_MF
@@ -72,6 +84,40 @@ MODULE MF_Euler_SlopeLimiterModule
   END INTERFACE ApplySlopeLimiter_Euler_MF
 
 CONTAINS
+
+
+  SUBROUTINE InitializeSlopeLimiter_Euler_MF
+
+    CALL InitializeSlopeLimiter_Euler &
+           ( BetaTVD_Option &
+               = BetaTVD_Euler, &
+             BetaTVB_Option &
+               = BetaTVB_Euler, &
+             SlopeTolerance_Option &
+               = SlopeTolerance_Euler, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter_Euler, &
+             UseCharacteristicLimiting_Option &
+               = UseCharacteristicLimiting_Euler, &
+             UseTroubledCellIndicator_Option &
+               = UseTroubledCellIndicator_Euler, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod_Euler, &
+             LimiterThresholdParameter_Option &
+               = LimiterThresholdParameter_Euler, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection_Euler, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
+
+  END SUBROUTINE InitializeSlopeLimiter_Euler_MF
+
+
+  SUBROUTINE FinalizeSlopeLimiter_Euler_MF
+
+    CALL FinalizeSlopeLimiter_Euler
+
+  END SUBROUTINE FinalizeSlopeLimiter_Euler_MF
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels &
@@ -139,7 +185,7 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
-    IF( .NOT. UseSlopeLimiter ) RETURN
+    IF( .NOT. UseSlopeLimiter_Euler ) RETURN
 
     ! --- Apply boundary conditions to interior domains ---
 

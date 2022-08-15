@@ -56,13 +56,15 @@ MODULE InputParsingModule
 
   ! --- Slope Limiter ---
 
-  LOGICAL                       :: UseSlopeLimiter
-  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
-  REAL(DP)                      :: BetaTVD, BetaTVB, SlopeTolerance
-  LOGICAL                       :: UseCharacteristicLimiting
-  LOGICAL                       :: UseTroubledCellIndicator
-  REAL(DP)                      :: LimiterThresholdParameter
-  LOGICAL                       :: UseConservativeCorrection
+  LOGICAL                       :: UseSlopeLimiter_Euler
+  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod_Euler
+  REAL(DP)                      :: BetaTVD_Euler
+  REAL(DP)                      :: BetaTVB_Euler
+  REAL(DP)                      :: SlopeTolerance_Euler
+  LOGICAL                       :: UseCharacteristicLimiting_Euler
+  LOGICAL                       :: UseTroubledCellIndicator_Euler
+  REAL(DP)                      :: LimiterThresholdParameter_Euler
+  LOGICAL                       :: UseConservativeCorrection_Euler
 
   ! --- Positivity Limiter ---
 
@@ -196,39 +198,39 @@ CONTAINS
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
-    ! --- Euler Slope Limiter Parameters SL.* ---
+    ! --- Slope Limiter Parameters SL.* ---
 
-    UseSlopeLimiter           = .TRUE.
-    SlopeLimiterMethod        = 'TVD'
-    BetaTVD                   = 1.75_DP
-    BetaTVB                   = Zero
-    SlopeTolerance            = 1.0e-6_DP
-    UseCharacteristicLimiting = .TRUE.
-    UseTroubledCellIndicator  = .TRUE.
-    LimiterThresholdParameter = 0.03_DP
-    UseConservativeCorrection = .TRUE.
+    UseSlopeLimiter_Euler           = .TRUE.
+    SlopeLimiterMethod_Euler        = 'TVD'
+    BetaTVD_Euler                   = 1.75_DP
+    BetaTVB_Euler                   = Zero
+    SlopeTolerance_Euler            = 1.0e-6_DP
+    UseCharacteristicLimiting_Euler = .TRUE.
+    UseTroubledCellIndicator_Euler  = .TRUE.
+    LimiterThresholdParameter_Euler = 0.03_DP
+    UseConservativeCorrection_Euler = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter', &
-                        UseSlopeLimiter )
-      CALL PP % query( 'SlopeLimiterMethod', &
-                        SlopeLimiterMethod )
-      CALL PP % query( 'BetaTVD', &
-                        BetaTVD )
-      CALL PP % query( 'BetaTVB', &
-                        BetaTVB )
-      CALL PP % query( 'SlopeTolerance', &
-                        SlopeTolerance )
-      CALL PP % query( 'UseCharacteristicLimiting', &
-                        UseCharacteristicLimiting )
-      CALL PP % query( 'UseTroubledCellIndicator', &
-                        UseTroubledCellIndicator )
-      CALL PP % query( 'LimiterThresholdParameter', &
-                        LimiterThresholdParameter )
-      CALL PP % query( 'UseConservativeCorrection', &
-                        UseConservativeCorrection )
+      CALL PP % query( 'UseSlopeLimiter_Euler', &
+                        UseSlopeLimiter_Euler )
+      CALL PP % query( 'SlopeLimiterMethod_Euler', &
+                        SlopeLimiterMethod_Euler )
+      CALL PP % query( 'BetaTVD_Euler', &
+                        BetaTVD_Euler )
+      CALL PP % query( 'BetaTVB_Euler', &
+                        BetaTVB_Euler )
+      CALL PP % query( 'SlopeTolerance_Euler', &
+                        SlopeTolerance_Euler )
+      CALL PP % query( 'UseCharacteristicLimiting_Euler', &
+                        UseCharacteristicLimiting_Euler )
+      CALL PP % query( 'UseTroubledCellIndicator_Euler', &
+                        UseTroubledCellIndicator_Euler )
+      CALL PP % query( 'LimiterThresholdParameter_Euler', &
+                        LimiterThresholdParameter_Euler )
+      CALL PP % query( 'UseConservativeCorrection_Euler', &
+                        UseConservativeCorrection_Euler )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- Euler Positivity Limiter Parameters PL.* ---
+    ! --- Positivity Limiter Parameters PL.* ---
 
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_DP

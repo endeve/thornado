@@ -58,15 +58,15 @@ amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
 # Slope limiter parameters
-SL.UseSlopeLimiter           = 1
-SL.SlopeLimiterMethod        = "TVD"
-SL.BetaTVD                   = 1.75e+0
-SL.BetaTVB                   = 0.00e+0
-SL.SlopeTolerance            = 1.00e-6
-SL.UseCharacteristicLimiting = 1
-SL.UseTroubledCellIndicator  = 1
-SL.LimiterThresholdParameter = 5.00e-3
-SL.UseConservativeCorrection = 1
+SL.UseSlopeLimiter_Euler           = 1
+SL.SlopeLimiterMethod_Euler        = "TVD"
+SL.BetaTVD_Euler                   = 1.75e+0
+SL.BetaTVB_Euler                   = 0.00e+0
+SL.SlopeTolerance_Euler            = 1.00e-6
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 5.00e-3
+SL.UseConservativeCorrection_Euler = 1
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter = 1
