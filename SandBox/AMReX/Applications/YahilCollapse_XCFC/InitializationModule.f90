@@ -279,8 +279,6 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
       CALL CreateMesh_MF( 0, MeshX )
 
       CALL InitializeGravitySolver_XCFC_Poseidon_MF
@@ -291,17 +289,13 @@ CONTAINS
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-#endif
 
     ELSE
 
       CALL amrex_init_from_scratch( 0.0_DP )
       ! nLevels read from checkpoint file
 
-      CALL ReadCheckpointFile
-
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
       CALL CreateMesh_MF( 0, MeshX )
 
@@ -313,8 +307,6 @@ CONTAINS
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-#endif
 
     END IF
 
@@ -365,8 +357,8 @@ CONTAINS
     USE MF_GeometryModule, ONLY: &
       ComputeGeometryX_MF
 
-    USE MF_InitializationModule_Euler, ONLY: &
-      InitializeFields_Euler_MF
+    USE MF_InitializationModule, ONLY: &
+      InitializeFields_MF
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -408,7 +400,7 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_Euler_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
     CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
     CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
@@ -522,16 +514,7 @@ CONTAINS
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
 
     USE TaggingModule, ONLY: &
-      TagElements_Advection1D, &
-      TagElements_RiemannProblem1D, &
-      TagElements_Advection2D, &
-      TagElements_KelvinHelmholtz2D, &
-      TagElements_Advection3D, &
-      TagElements_StandingAccretionShock_Relativistic, &
-      TagElements_YahilCollapse_XCFC, &
-      TagElements_AdiabaticCollapse_XCFC, &
-      TagElements_CoreCollapseSupernova_XCFC, &
-      TagElements_uCF
+      TagElements
 
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp
@@ -572,79 +555,10 @@ CONTAINS
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
-      SELECT CASE( TRIM( ProgramName ) )
-
-        CASE( 'Advection1D' )
-
-          CALL TagElements_Advection1D &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'RiemannProblem1D' )
-
-          CALL TagElements_RiemannProblem1D &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'Advection2D' )
-
-          CALL TagElements_Advection2D &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'KelvinHelmholtz2D' )
-
-          CALL TagElements_KelvinHelmholtz2D &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'Advection3D' )
-
-          CALL TagElements_Advection3D &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'StandingAccretionShock_Relativistic' )
-
-          CALL TagElements_StandingAccretionShock_Relativistic &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'YahilCollapse_XCFC' )
-
-          CALL TagElements_YahilCollapse_XCFC &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'AdiabaticCollapse_XCFC' )
-
-          CALL TagElements_AdiabaticCollapse_XCFC &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE( 'CoreCollapseSupernova_XCFC' )
-
-          CALL TagElements_CoreCollapseSupernova_XCFC &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-        CASE DEFAULT
-
-          CALL TagElements_uCF &
-                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-
-      END SELECT
+      CALL TagElements &
+             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+               LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
     END DO
 

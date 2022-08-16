@@ -279,8 +279,6 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
       CALL CreateMesh_MF( 0, MeshX )
 
       CALL InitializeGravitySolver_XCFC_Poseidon_MF
@@ -291,8 +289,6 @@ CONTAINS
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-#endif
 
     ELSE
 
@@ -301,8 +297,6 @@ CONTAINS
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
       CALL CreateMesh_MF( 0, MeshX )
 
       CALL InitializeGravitySolver_XCFC_Poseidon_MF
@@ -313,8 +307,6 @@ CONTAINS
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-#endif
 
     END IF
 
