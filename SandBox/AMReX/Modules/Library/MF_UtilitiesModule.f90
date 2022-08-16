@@ -16,6 +16,7 @@ MODULE MF_UtilitiesModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
+    nDOFZ, &
     nNodesX
   USE MeshModule, ONLY: &
     MeshX, &
@@ -52,6 +53,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: MultiplyWithMetric
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
+  PUBLIC :: amrex2thornado_Z
+  PUBLIC :: thornado2amrex_Z
   PUBLIC :: thornado2amrex_X_F
   PUBLIC :: amrex2thornado_X_F
 
@@ -353,6 +356,90 @@ CONTAINS
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
   END SUBROUTINE thornado2amrex_X
+
+
+  SUBROUTINE amrex2thornado_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_thornado )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(DP), INTENT(in)  :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(out) :: &
+      Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ
+
+    DO iS  = 1      , nS
+    DO iFd = 1      , nFields
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
+      DO iNodeZ = 1    , nDOFZ
+
+        iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+
+        Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS) &
+          = Data_amrex(iZ2,iZ3,iZ4,iD)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE amrex2thornado_Z
+
+
+  SUBROUTINE thornado2amrex_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_thornado )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(DP), INTENT(out) :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(in)  :: &
+      Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iNodeZ, iD
+
+    DO iS  = 1      , nS
+    DO iFd = 1      , nFields
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iZ1    = iE_B0, iE_E0
+      DO iNodeZ = 1    , nDOFZ
+
+        iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+               + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+               + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+
+        Data_amrex(iZ2,iZ3,iZ4,iD) &
+          = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE thornado2amrex_Z
 
 
   SUBROUTINE thornado2amrex_X_F &
