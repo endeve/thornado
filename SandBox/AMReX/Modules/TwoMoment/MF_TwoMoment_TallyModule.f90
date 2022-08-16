@@ -92,9 +92,9 @@ MODULE MF_TwoMoment_TallyModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_InitializeTally_TwoMoment
-  PUBLIC :: MF_ComputeTally_TwoMoment
-  PUBLIC :: MF_FinalizeTally_TwoMoment
+  PUBLIC :: InitializeTally_TwoMoment_MF
+  PUBLIC :: ComputeTally_TwoMoment_MF
+  PUBLIC :: FinalizeTally_TwoMoment_MF
 
   LOGICAL :: SuppressTally
 
@@ -117,7 +117,7 @@ MODULE MF_TwoMoment_TallyModule
 CONTAINS
 
 
-  SUBROUTINE MF_InitializeTally_TwoMoment &
+  SUBROUTINE InitializeTally_TwoMoment_MF &
     ( SuppressTally_Option, BaseFileName_Option )
 
     LOGICAL,  INTENT(in),         OPTIONAL :: &
@@ -218,11 +218,11 @@ CONTAINS
     Momentum_X2           = Zero
     Momentum_X3           = Zero
 
-  END SUBROUTINE MF_InitializeTally_TwoMoment
+  END SUBROUTINE InitializeTally_TwoMoment_MF
 
 
 
-  SUBROUTINE MF_FinalizeTally_TwoMoment
+  SUBROUTINE FinalizeTally_TwoMoment_MF
 
     IF( SuppressTally ) RETURN
 
@@ -232,10 +232,10 @@ CONTAINS
     DEALLOCATE( Momentum_X2 )
     DEALLOCATE( Momentum_X3 )
 
-  END SUBROUTINE MF_FinalizeTally_TwoMoment
+  END SUBROUTINE FinalizeTally_TwoMoment_MF
 
 
-  SUBROUTINE MF_ComputeTally_TwoMoment &
+  SUBROUTINE ComputeTally_TwoMoment_MF &
     ( GEOM, MF_uGF, MF_uCF, MF_uCR, Time, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
@@ -354,7 +354,7 @@ CONTAINS
 
 
 
-  END SUBROUTINE MF_ComputeTally_TwoMoment
+  END SUBROUTINE ComputeTally_TwoMoment_MF
 
 
   SUBROUTINE ComputeTally_TwoMoment( iZ_B0, iZ_E0, G, UF, U, iLevel )

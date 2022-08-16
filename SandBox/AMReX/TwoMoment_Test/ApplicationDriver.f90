@@ -28,7 +28,7 @@ PROGRAM main
     MF_uPR, &
     MF_uCR
   USE MF_TwoMoment_TallyModule,         ONLY: &
-    MF_ComputeTally_TwoMoment
+    ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
     ComputeTally_Euler_MF
   USE InitializationModule,             ONLY: &
@@ -112,7 +112,7 @@ num = 1
       CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, Verbose_Option = .FALSE. )
 
-      CALL MF_ComputeTally_TwoMoment( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
+      CALL ComputeTally_TwoMoment_MF( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
                                     t_new(0), Verbose_Option = .FALSE. )
     IF( ALL( t_new + dt .GT. t_wrt ) )THEN
       t_wrt = t_wrt + dt_wrt
@@ -146,7 +146,7 @@ num = 1
 !      CALL ComputeTally_Euler_MF &
 !             ( t_new, MF_uGF, MF_uCF, Verbose_Option = .FALSE. )
 
-!      CALL MF_ComputeTally_TwoMoment( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
+!      CALL ComputeTally_TwoMoment_MF( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
 !                                    t_new(0), Verbose_Option = .FALSE. )
 
       num = num + 1
@@ -195,7 +195,7 @@ num = 1
   CALL ComputeTally_Euler_MF &
          ( t_new, MF_uGF, MF_uCF, Verbose_Option = .FALSE. )
 
-  CALL MF_ComputeTally_TwoMoment( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
+  CALL ComputeTally_TwoMoment_MF( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
                                     t_new(0), Verbose_Option = .FALSE. )
   CALL FinalizeProgram
 

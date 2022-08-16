@@ -61,7 +61,7 @@ MODULE FinalizationModule
   USE MF_Euler_TallyModule, ONLY: &
     FinalizeTally_Euler_MF
   USE MF_TwoMoment_TallyModule, ONLY: &
-    MF_FinalizeTally_TwoMoment
+    FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
@@ -111,7 +111,7 @@ CONTAINS
     DEALLOCATE( dt )
     DEALLOCATE( StepNo )
 
-    CALL MF_FinalizeTally_TwoMoment
+    CALL FinalizeTally_TwoMoment_MF
 
     CALL FinalizeTally_Euler_MF
 

@@ -162,8 +162,8 @@ MODULE InitializationModule
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
   USE MF_TwoMoment_TallyModule, ONLY: &
-    MF_InitializeTally_TwoMoment, &
-    MF_ComputeTally_TwoMoment
+    InitializeTally_TwoMoment_MF, &
+    ComputeTally_TwoMoment_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     MF_InitializeField_IMEX_RK
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
@@ -366,7 +366,7 @@ CONTAINS
 
     CALL InitializeTally_Euler_MF
 
-    CALL MF_InitializeTally_TwoMoment
+    CALL InitializeTally_TwoMoment_MF
 
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &
@@ -458,7 +458,7 @@ CONTAINS
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
 
-    CALL MF_ComputeTally_TwoMoment &
+    CALL ComputeTally_TwoMoment_MF &
            ( amrex_geom(0), MF_uGF, MF_uCF, MF_uCR, &
              t_new(0), Verbose_Option = .FALSE. )
 

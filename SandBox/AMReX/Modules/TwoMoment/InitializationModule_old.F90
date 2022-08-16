@@ -130,8 +130,8 @@ MODULE InitializationModule
     MF_uPR, &
     MF_uCR
   USE MF_TwoMoment_TallyModule,         ONLY: &
-    MF_InitializeTally_TwoMoment, &
-    MF_ComputeTally_TwoMoment
+    InitializeTally_TwoMoment_MF, &
+    ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
     MF_InitializeTally_Euler, &
     MF_ComputeTally_Euler
@@ -197,7 +197,7 @@ MODULE InitializationModule
     MF_InitializeField_IMEX_RK
   USE TwoMoment_ClosureModule,                       ONLY: &
     InitializeClosure_TwoMoment
-  USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
+  USE MF_TwoMoment_UtilitiesModule,     ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeFromConserved_Euler
 
@@ -229,7 +229,7 @@ CONTAINS
 
     ! --- Parse parameter file ---
     CALL MyAmrInit
-    
+
 
     CALL InitializeTimers
 
@@ -279,7 +279,7 @@ CONTAINS
         CALL amrex_multifab_build &
                ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
         CALL MF_uAF(iLevel) % SetVal( Zero )
-        
+
         CALL amrex_multifab_build &
                ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
         CALL MF_uAF(iLevel) % SetVal( Zero )
@@ -344,8 +344,8 @@ CONTAINS
 
     CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
-    
-    
+
+
 
 
 !    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
@@ -389,7 +389,7 @@ CONTAINS
       CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
 
-      CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, & 
+      CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, &
                        Verbose_Option = amrex_parallel_ioprocessor()  )
 #endif
 
@@ -427,9 +427,9 @@ CONTAINS
     CALL MF_ComputeTally_Euler( GEOM, MF_uGF, MF_uCF, t(0), &
                                 Verbose_Option = .FALSE. )
 
-    CALL MF_InitializeTally_TwoMoment
+    CALL InitializeTally_TwoMoment_MF
 
-    CALL MF_ComputeTally_TwoMoment( GEOM, MF_uGF, MF_uCF, MF_uCR, &
+    CALL ComputeTally_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, &
                                     t(0), Verbose_Option = .FALSE. )
     CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
@@ -451,8 +451,8 @@ CONTAINS
                num_Option = 0 )
 
     OPEN( NEWUNIT = FileUnit, FILE = "Num_Iter.dat" )
-    
-    WRITE(FileUnit,'(5(A25,x))') & 
+
+    WRITE(FileUnit,'(5(A25,x))') &
     "nIter_Inner ", "nIter_Outer"
 
     CLOSE ( FileUnit )
