@@ -26,6 +26,8 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     nCF
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_Neutrinos
+  USE MeshModule, ONLY: &
+    MeshX
 
 
 
@@ -40,6 +42,9 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     nSpecies, &
     UseTiling, &
     nE
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -102,6 +107,8 @@ CONTAINS
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -186,7 +193,7 @@ CONTAINS
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, Verbose_Option = Verbose )
 
         CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
- 
+
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
@@ -194,6 +201,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO
 

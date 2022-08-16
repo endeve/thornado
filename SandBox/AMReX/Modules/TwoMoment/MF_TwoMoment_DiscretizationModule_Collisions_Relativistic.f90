@@ -26,6 +26,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
     nCF
   USE TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
+  USE MeshModule, ONLY: &
+    MeshX
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -37,6 +39,9 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
     nSpecies, &
     UseTiling, &
     nE
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -97,6 +102,8 @@ CONTAINS
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -173,7 +180,7 @@ CONTAINS
         CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )
 
- 
+
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
@@ -181,6 +188,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO
 

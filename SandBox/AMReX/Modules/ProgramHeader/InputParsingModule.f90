@@ -40,7 +40,7 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: swX(:)
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
-  REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk
+  REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
   REAL(DP)                  :: t_end
   LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
@@ -133,12 +133,34 @@ MODULE InputParsingModule
   LOGICAL                   :: WriteNodalData
   CHARACTER(:), ALLOCATABLE :: NodalDataFileName
 
+real(dp)::mass,r0,kt,mu0,e0
+real(dp)::d_0,chi,sigma
+
 CONTAINS
 
 
   SUBROUTINE InitializeParameters
 
     TYPE(amrex_parmparse) :: PP
+
+mass=zero
+r0=zero
+e0=zero
+mu0=zero
+kt=zero
+d_0=zero
+chi=zero
+sigma=zero
+call amrex_parmparse_build( pp, 'ST' )
+  call pp % query( 'mass',mass )
+  call pp % query( 'r0',r0 )
+  call pp % query( 'mu0',mu0 )
+  call pp % query( 'e0',e0 )
+  call pp % query( 'kt',kt )
+  call pp % query( 'd_0',d_0 )
+  call pp % query( 'chi',chi )
+  call pp % query( 'sigma',sigma )
+call amrex_parmparse_destroy( pp )
 
     ! --- debug Parameters debug.* ---
 
@@ -164,6 +186,7 @@ CONTAINS
     iRestart         = -1
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
+    dt_rel           = 0.0_DP
     UseXCFC          = .FALSE.
     Scheme           = ''
     nE               = 1
@@ -204,6 +227,8 @@ CONTAINS
                          dt_wrt )
       CALL PP % query ( 'dt_chk', &
                          dt_chk )
+      CALL PP % query ( 'dt_rel', &
+                         dt_rel )
       CALL PP % query ( 'UsePhysicalUnits', &
                          UsePhysicalUnits )
       CALL PP % query ( 'UseXCFC', &
@@ -508,5 +533,8 @@ CONTAINS
 
   END SUBROUTINE DescribeProgramHeader_AMReX
 
+
+subroutine myamrfinalize
+end subroutine myamrfinalize
 
 END MODULE InputParsingModule

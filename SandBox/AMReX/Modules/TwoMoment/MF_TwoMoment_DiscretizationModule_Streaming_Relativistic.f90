@@ -26,6 +26,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nCF
   USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
+  USE MeshModule, ONLY: &
+    MeshX
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -37,6 +39,9 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nSpecies, &
     UseTiling, &
     nE
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -94,6 +99,8 @@ CONTAINS
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -184,6 +191,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO
 

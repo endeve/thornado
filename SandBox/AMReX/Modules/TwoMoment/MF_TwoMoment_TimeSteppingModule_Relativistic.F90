@@ -32,7 +32,7 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies
+    nCR
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     MF_TwoMoment_ComputeIncrement_Explicit
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
@@ -45,7 +45,7 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ApplySlopeLimiter
   ! --- Local Modules ---
   USE InputParsingModule,                      ONLY: &
-    nLevels, DEBUG, UseTiling
+    nLevels, DEBUG, UseTiling, nSpecies
 
   IMPLICIT NONE
   PRIVATE
@@ -351,21 +351,27 @@ CONTAINS
     ALLOCATE( MF_DU_Im(0:nLevels-1,1:nStages) )
     ALLOCATE( MF_DF_Im(0:nLevels-1,1:nStages) )
 
-    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
 
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+        ( MF_U(iLevel), BA(iLevel), DM(iLevel), &
+          nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
       CALL amrex_multifab_build &
         ( MF_F(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
+
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+
         CALL amrex_multifab_build &
-               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+
         CALL amrex_multifab_build &
                ( MF_DF_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 

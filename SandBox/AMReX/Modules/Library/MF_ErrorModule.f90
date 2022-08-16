@@ -131,9 +131,9 @@ CONTAINS
         WRITE(*,'(2x,A,A)') '-----------'
         WRITE(*,*)
         WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+          'MODULE: MF_InitializationModule'
         WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_Relativistic_IDEAL_MF'
+          'SUBROUTINE: InitializeFields_MF'
         WRITE(*,*)
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
@@ -156,7 +156,7 @@ CONTAINS
         WRITE(*,'(2x,A,A)') '-----------'
         WRITE(*,*)
         WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+          'MODULE: MF_InitializationModule'
         WRITE(*,'(2x,A)') &
           'SUBROUTINE: InitializeFields_Advection1D'
         WRITE(*,*)
@@ -178,7 +178,7 @@ CONTAINS
         WRITE(*,'(2x,A,A)') '-----------'
         WRITE(*,*)
         WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+          'MODULE: MF_InitializationModule'
         WRITE(*,'(2x,A)') &
           'SUBROUTINE: InitializeFields_RiemannProblem1D'
         WRITE(*,*)
@@ -200,7 +200,7 @@ CONTAINS
         WRITE(*,'(2x,A,A)') '-----------'
         WRITE(*,*)
         WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+          'MODULE: MF_InitializationModule'
         WRITE(*,'(2x,A)') &
           'SUBROUTINE: InitializeFields_Advection2D'
         WRITE(*,*)
@@ -222,7 +222,7 @@ CONTAINS
         WRITE(*,'(2x,A,A)') '-----------'
         WRITE(*,*)
         WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+          'MODULE: MF_InitializationModule'
         WRITE(*,'(2x,A)') &
           'SUBROUTINE: InitializeFields_Advection3D'
         WRITE(*,*)
@@ -232,6 +232,27 @@ CONTAINS
         WRITE(*,'(2x,A)')   '-------------'
         WRITE(*,'(2x,A)')   '  SineWaveX1'
         WRITE(*,'(2x,A)')   '  Gaussian'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 301 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_InitializationModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: InitializeFields_MF'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)')   'Valid choices'
+        WRITE(*,'(2x,A)')   '-------------'
+        WRITE(*,'(2x,A)')   '  SineWaveStreaming'
         WRITE(*,*)
 
         CALL thornado_abort

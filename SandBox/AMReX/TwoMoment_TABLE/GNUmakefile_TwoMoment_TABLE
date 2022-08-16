@@ -14,7 +14,7 @@ HDF5_LIB ?= $(HDF5_HOME)/lib
 LAPACK_INC ?= /usr/include
 LAPACK_LIB ?= /usr/lib/x86_64-linux-gnu/lapack
 
-REFINE_MESH ?= FALSE
+REFINE_MESH ?= TRUE
 
 DEBUG = FALSE
 

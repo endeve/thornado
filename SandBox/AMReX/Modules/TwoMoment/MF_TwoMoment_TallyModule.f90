@@ -82,6 +82,9 @@ MODULE MF_TwoMoment_TallyModule
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 
 
 
@@ -96,14 +99,14 @@ MODULE MF_TwoMoment_TallyModule
   LOGICAL :: SuppressTally
 
 
-  REAL(DP) :: hc3    
+  REAL(DP) :: hc3
 
 
   CHARACTER(256) :: Neutrino_FileName
   REAL(DP), ALLOCATABLE :: Neutrino_LeptonNumber(:)
   REAL(DP), ALLOCATABLE :: Neutrino_Energy(:)
 
-  
+
   CHARACTER(256) :: Momentum_FileName
   REAL(DP), ALLOCATABLE :: Momentum_X1(:)
   REAL(DP), ALLOCATABLE :: Momentum_X2(:)
@@ -132,7 +135,7 @@ CONTAINS
     CHARACTER(256) :: Momentum1Label
     CHARACTER(256) :: Momentum2Label
     CHARACTER(256) :: Momentum3Label
-   
+
 
 
     SuppressTally = .FALSE.
@@ -202,7 +205,7 @@ CONTAINS
 
       WRITE(FileUnit,'(5(A25,x))') &
         TRIM( TimeLabel ), &
-        TRIM( Momentum1Label ), TRIM( Momentum2Label ), TRIM( Momentum3Label ) 
+        TRIM( Momentum1Label ), TRIM( Momentum2Label ), TRIM( Momentum3Label )
 
       CLOSE( FileUnit )
 
@@ -296,12 +299,12 @@ CONTAINS
         iZ_B0(1) = iE_B0
         iZ_E0(1) = iE_E0
 
-        
+
         iZ_B0(2:4) = iX_B0
         iZ_E0(2:4) = iX_E0
- 
-        
-  
+
+
+
 
         ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
@@ -380,17 +383,7 @@ CONTAINS
                     iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
                     iZ_B0(4):iZ_E0(4))
 
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-
-
-
+    CALL CreateMesh_MF( iLevel, MeshX )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -444,14 +437,14 @@ CONTAINS
             =   FourPi * dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
             * Weights_q(iNodeZ)                                &
             * ( uGE(iNodeE,iZ1,iGE_Ep2) / hc3 )                &
-            * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)                 
-    
+            * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+
       END DO
       END DO
 
-    
-   
-       
+
+
+
     END DO
     END DO
     END DO
@@ -469,7 +462,7 @@ CONTAINS
       DO iNodeE = 1, nDOFE
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-        
+
         Neutrino_LeptonNumber(iLevel)                     &
           = Neutrino_LeptonNumber(iLevel)                 &
               + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
@@ -479,9 +472,9 @@ CONTAINS
       END DO
       END DO
 
-    
-   
-       
+
+
+
     END DO
     END DO
     END DO
@@ -504,14 +497,14 @@ CONTAINS
             =   FourPi * dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
             * Weights_q(iNodeZ)                                &
             * ( uGE(iNodeE,iZ1,iGE_Ep3) / hc3 )                &
-            * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)                 
-    
+            * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+
       END DO
       END DO
 
-    
-   
-       
+
+
+
     END DO
     END DO
     END DO
@@ -534,7 +527,7 @@ CONTAINS
         vsq = PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
             + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) &
             + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
-        W = 1.0_DP / SQRT( 1.0_DP - vsq ) 
+        W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
         Neutrino_Energy                                       &
           = Neutrino_Energy                                   &
@@ -576,27 +569,20 @@ CONTAINS
       END DO
       END DO
 
-    
-   
-       
+
+
+
     END DO
     END DO
     END DO
     END DO
     END DO
 
-
-
-
-    DO iDim = 1, 3
-
-      CALL DestroyMesh( MeshX(iDim) )
-
-    END DO
+    END ASSOCIATE
 
     CALL DestroyMesh( MeshE )
 
-    END ASSOCIATE
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ComputeTally_TwoMoment
 
@@ -616,7 +602,7 @@ CONTAINS
 
       WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
         Time / UnitsDisplay % TimeUnit,                       &
-        Neutrino_LeptonNumber(0),                             & 
+        Neutrino_LeptonNumber(0),                             &
         Neutrino_Energy(0) / UnitsDisplay % EnergyGlobalUnit
 
       CLOSE( FileUnit )

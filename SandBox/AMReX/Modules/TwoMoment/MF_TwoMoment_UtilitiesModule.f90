@@ -37,6 +37,9 @@ MODULE MF_TwoMoment_UtilitiesModule
   ! --- Local Modules ---
   USE InputParsingModule, ONLY: &
     nLevels, nSpecies, nE, UseTiling
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
@@ -80,6 +83,8 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      CALL CreateMesh_MF( iLevel, MeshX )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -115,6 +120,8 @@ CONTAINS
       END DO ! --- Loop over grids (boxes) ---
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO ! --- Loop over levels ---
 
@@ -466,7 +473,7 @@ CONTAINS
     REAL(amrex_real),     INTENT(in)  :: CFL
     REAL(amrex_real),     INTENT(in) ::  &
       G (1:nDOFX,iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), &
-         iX_B1(3):iX_E1(3),1:nGF)     
+         iX_B1(3):iX_E1(3),1:nGF)
     REAL(amrex_real),     INTENT(out) :: dt
 
 
@@ -480,29 +487,28 @@ CONTAINS
         dX3 => MeshX(3) % Width )
 
 
-
     dt_min = 100000.0_amrex_real
     dt_s = 0.0_amrex_real
- 
-    
+
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
- 
+
       DO iNodeX = 1, nDOFX
-    
-        dX(1) = dX1(iX1) 
+
+        dX(1) = dX1(iX1)
 
         dt_s = ( dX(1) * G(iNodeX,iX1,iX2,iX3,iGF_h_1) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
 
         IF ( dt_s .LT. dt_min(1) ) THEN
-          
+
           dt_min(1) = dt_s
-      
+
         END IF
 
-      END DO 
- 
+      END DO
+
 
     END DO
     END DO
@@ -511,20 +517,20 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
- 
+
       DO iNodeX = 1, nDOFX
-    
-        dX(2) = dX2(iX2) 
+
+        dX(2) = dX2(iX2)
 
         dt_s = ( dX(2) * G(iNodeX,iX1,iX2,iX3,iGF_h_2) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
         IF ( dt_s .LT. dt_min(2) ) THEN
-          
+
           dt_min(2) = dt_s
-      
+
         END IF
 
-      END DO 
- 
+      END DO
+
 
     END DO
     END DO
@@ -533,26 +539,26 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
- 
+
       DO iNodeX = 1, nDOFX
-    
-        dX(3) = dX3(iX3) 
+
+        dX(3) = dX3(iX3)
 
         dt_s = ( dX(3) * G(iNodeX,iX1,iX2,iX3,iGF_h_3) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
         IF ( dt_s .LT. dt_min(3) ) THEN
-          
+
           dt_min(3) = dt_s
-      
+
         END IF
 
-      END DO 
- 
+      END DO
+
 
     END DO
     END DO
     END DO
     dt = MINVAL( dt_min )
-    END ASSOCIATE 
+    END ASSOCIATE
   END SUBROUTINE CalculateTimeStep
 
 
