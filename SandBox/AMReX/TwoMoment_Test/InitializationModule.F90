@@ -165,7 +165,7 @@ MODULE InitializationModule
     InitializeTally_TwoMoment_MF, &
     ComputeTally_TwoMoment_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
-    MF_InitializeField_IMEX_RK
+    Initialize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment_MF
   USE FillPatchModule, ONLY: &
@@ -437,7 +437,7 @@ CONTAINS
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
 
-    CALL MF_InitializeField_IMEX_RK &
+    CALL Initialize_IMEX_RK_MF &
            ( Scheme, MF_uGF % BA, MF_uGF % DM, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 

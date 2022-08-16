@@ -53,7 +53,7 @@ PROGRAM main
   USE ProgramHeaderModule,  ONLY: &
     nDOFZ
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,      ONLY: &
-    MF_Update_IMEX_RK
+    Update_IMEX_RK_MF
 
   ! --- thornado Modules ---
   USE InputOutputModuleAMReX, ONLY: &
@@ -107,7 +107,7 @@ num = 1
        TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
        TRIM( UnitsDisplay % TimeLabel )
     END IF
-    CALL MF_Update_IMEX_RK &
+    CALL Update_IMEX_RK_MF &
            ( t_new, dt, uGE, MF_uGF, MF_uCF, MF_uCR, amrex_geom, &
             Verbose_Option = amrex_parallel_ioprocessor()  )
 

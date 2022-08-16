@@ -18,7 +18,7 @@ MODULE FinalizationModule
   USE InputParsingModule,                 ONLY: &
     nLevels, MyAmrFinalize
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,    ONLY: &
-    MF_FinalizeField_IMEX_RK
+    Finalize_IMEX_RK_MF
 
 
   IMPLICIT NONE
@@ -41,7 +41,7 @@ MODULE FinalizationModule
 
     CALL DestroyRadiationFields
 
-    CALL MF_FinalizeField_IMEX_RK
+    CALL Finalize_IMEX_RK_MF
 
     DO iLevel = 0, nLevels-1
       CALL amrex_geometry_destroy( GEOM(iLevel) )

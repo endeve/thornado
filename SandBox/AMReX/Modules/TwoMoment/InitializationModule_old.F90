@@ -194,7 +194,7 @@ MODULE InitializationModule
   USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
-    MF_InitializeField_IMEX_RK
+    Initialize_IMEX_RK_MF
   USE TwoMoment_ClosureModule,                       ONLY: &
     InitializeClosure_TwoMoment
   USE MF_TwoMoment_UtilitiesModule,     ONLY: &
@@ -402,7 +402,7 @@ CONTAINS
 
     END DO
 
-    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM, &
+    CALL Initialize_IMEX_RK_MF( Scheme, BA, DM, &
                                      Verbose_Option = amrex_parallel_ioprocessor() )
 
 

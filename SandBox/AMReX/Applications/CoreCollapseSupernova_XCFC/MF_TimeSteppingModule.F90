@@ -96,14 +96,14 @@ MODULE MF_TimeSteppingModule
 
   PUBLIC :: Initialize_IMEX_RK
   PUBLIC :: Finalize_IMEX_RK
-  PUBLIC :: MF_InitializeField_IMEX_RK
-  PUBLIC :: MF_FinalizeField_IMEX_RK
-  PUBLIC :: MF_Update_IMEX_RK
+  PUBLIC :: Initialize_IMEX_RK_MF
+  PUBLIC :: Finalize_IMEX_RK_MF
+  PUBLIC :: Update_IMEX_RK_MF
 
 CONTAINS
 
 
-  SUBROUTINE MF_Update_IMEX_RK &
+  SUBROUTINE Update_IMEX_RK_MF &
     ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, Verbose_Option )
 
     REAL(DP)            , INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
@@ -388,10 +388,10 @@ CONTAINS
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
 
-  END SUBROUTINE MF_Update_IMEX_RK
+  END SUBROUTINE Update_IMEX_RK_MF
 
 
-  SUBROUTINE MF_InitializeField_IMEX_RK &
+  SUBROUTINE Initialize_IMEX_RK_MF &
     ( Scheme, BA, DM, Verbose_Option )
 
     CHARACTER(LEN=*)     , INTENT(in) :: Scheme
@@ -449,10 +449,10 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_InitializeField_IMEX_RK
+  END SUBROUTINE Initialize_IMEX_RK_MF
 
 
-  SUBROUTINE MF_FinalizeField_IMEX_RK
+  SUBROUTINE Finalize_IMEX_RK_MF
 
     INTEGER :: iLevel, iS
 
@@ -483,7 +483,7 @@ CONTAINS
     DEALLOCATE( MF_DF_Ex)
     DEALLOCATE( MF_DF_Im)
 
-  END SUBROUTINE MF_FinalizeField_IMEX_RK
+  END SUBROUTINE Finalize_IMEX_RK_MF
 
 
   SUBROUTINE Initialize_IMEX_RK( Scheme, Verbose_Option )

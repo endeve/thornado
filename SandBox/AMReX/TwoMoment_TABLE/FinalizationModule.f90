@@ -52,7 +52,7 @@ MODULE FinalizationModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic, ONLY: &
-    MF_FinalizeField_IMEX_RK
+    Finalize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
@@ -104,7 +104,7 @@ CONTAINS
              pMF_uGF_Option = MF_uGF % P, &
              pMF_uCF_Option = MF_uCF % P )
 
-    CALL MF_FinalizeField_IMEX_RK
+    CALL Finalize_IMEX_RK_MF
 
     DEALLOCATE( t_new )
     DEALLOCATE( t_old )
