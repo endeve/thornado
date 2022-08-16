@@ -11,8 +11,12 @@ MODULE FinalizationModule
 
   USE ReferenceElementModuleX, ONLY: &
     FinalizeReferenceElementX
+  USE ReferenceElementModuleZ, ONLY: &
+    FinalizeReferenceElementZ
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
+  USE MeshModule, ONLY: &
+    MeshE
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
@@ -29,12 +33,17 @@ MODULE FinalizationModule
     MF_uAF, &
     MF_uDF, &
     DestroyFields_Euler_MF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    MF_uCR, &
+    DestroyFields_TwoMoment_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     FinalizeSlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     FinalizePositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    FinalizeFluid_SSPRK_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    FinalizeSlopeLimiter_TwoMoment_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE InputOutputModuleAMReX, ONLY: &
@@ -98,9 +107,11 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
-    CALL FinalizeFluid_SSPRK_MF
+    CALL Finalize_IMEX_RK_MF
 
     CALL FinalizeGravitySolver_XCFC_Poseidon_MF
+
+    CALL FinalizeTally_TwoMoment_MF
 
     CALL FinalizeTally_Euler_MF
 
@@ -109,24 +120,43 @@ CONTAINS
     DEALLOCATE( dt )
     DEALLOCATE( StepNo )
 
+    CALL FinalizeSlopeLimiter_TwoMoment_MF
+
+    CALL FinalizePositivityLimiter_TwoMoment_MF
+
     CALL FinalizeSlopeLimiter_Euler_MF
 
     CALL FinalizePositivityLimiter_Euler_MF
 
     CALL FinalizeEquationOfState
 
+    CALL DestroyGeometryFieldsE
+
     CALL FinalizeMeshRefinement_Euler
+
+    CALL FinalizeReferenceElement_Lagrange
+    CALL FinalizeReferenceElement
+
+    CALL FinalizeReferenceElementZ
+
+    CALL FinalizeReferenceElementE_Lagrange
+    CALL FinalizeReferenceElementE
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
 
+    CALL DestroyMesh( MeshE )
+
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
 
+    CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF
     CALL DestroyFields_Geometry_MF
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
+    CALL FinalizeTimers
 
     CALL FinalizeTimers_AMReX_Euler( WriteAtIntermediateTime_Option = .TRUE. )
 

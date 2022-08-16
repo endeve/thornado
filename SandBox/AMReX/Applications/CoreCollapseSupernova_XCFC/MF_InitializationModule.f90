@@ -35,7 +35,11 @@ MODULE MF_InitializationModule
     nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -70,7 +74,7 @@ MODULE MF_InitializationModule
     iCR_N, &
     iCR_G1, &
     iCR_G2, &
-    iCR_G3
+    iCR_G3, &
     nPR, &
     iPR_D, &
     iPR_I1, &
@@ -118,7 +122,7 @@ CONTAINS
     ! --- thornado ---
 
     INTEGER  :: iX1, iX2, iX3, iZ1, iS
-    INTEGER  :: iNX, iNX1, iNZ
+    INTEGER  :: iNX, iNX1, iNZ, iNX_Z
     REAL(DP) :: X1
     REAL(DP) :: uGF_K(nDOFX,nGF)
     REAL(DP) :: uCF_K(nDOFX,nCF)
@@ -310,7 +314,7 @@ CONTAINS
                        uGF_K(iNX_Z,iGF_Gm_dd_11), &
                        uGF_K(iNX_Z,iGF_Gm_dd_22), &
                        uGF_K(iNX_Z,iGF_Gm_dd_33), &
-                       0.0_AR, 0.0_AR, 0.0_AR,    & ! off-diagonal metric comp.
+                       0.0_DP, 0.0_DP, 0.0_DP,    & ! off-diagonal metric comp.
                        uGF_K(iNX_Z,iGF_Alpha),    &
                        uGF_K(iNX_Z,iGF_Beta_1),   &
                        uGF_K(iNX_Z,iGF_Beta_2),   &

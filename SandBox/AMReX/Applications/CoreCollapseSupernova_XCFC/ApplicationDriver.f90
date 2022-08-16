@@ -24,13 +24,14 @@ PROGRAM main
   USE MF_KindModule, ONLY: &
     DP, &
     Two
-  USE MF_FieldsModule_Geoemtry, ONLY: &
+  USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
   USE MF_FieldsModule_Euler, ONLY: &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
-    MF_uDF, &
+    MF_uDF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR
   USE InitializationModule, ONLY: &
@@ -47,8 +48,6 @@ PROGRAM main
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    UpdateFluid_SSPRK_MF
   USE AverageDownModule, ONLY: &
     AverageDownTo
   USE InputParsingModule, ONLY: &
@@ -229,7 +228,7 @@ PROGRAM main
 
     END IF
 
-    CALL UpdateFluid_SSPRK_MF
+    CALL Update_IMEX_RK_MF
 
     IF( DEBUG )THEN
 
@@ -325,7 +324,9 @@ CONTAINS
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
-               MF_uDF_Option = MF_uDF )
+               MF_uDF_Option = MF_uDF, &
+               MF_uCR_Option = MF_uCR, &
+               MF_uPR_Option = MF_uPR )
 
       CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )
@@ -376,8 +377,12 @@ CONTAINS
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
                MF_uGF % BA % P, &
-               MF_uGF % P, &
-               MF_uCF % P )
+               iWriteFields_uGF = 1, &
+               iWriteFields_uCF = 1, &
+               iWriteFields_uCR = 1, &
+               pMF_uGF_Option = MF_uGF % P, &
+               pMF_uCF_Option = MF_uCF % P, &
+               pMF_uCR_Option = MF_uCR % P )
 
       CALL FinalizeTimers_Euler &
              !( Verbose_Option = amrex_parallel_ioprocessor(), &

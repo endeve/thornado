@@ -21,6 +21,8 @@ MODULE MF_TimeSteppingModule
     amrex_distromap, &
     amrex_distromap_build, &
     amrex_distromap_destroy
+  USE amrex_amrcore_module, ONLY: &
+    GEOM => amrex_geom
 
   ! --- thornado Modules ---
 
@@ -35,32 +37,48 @@ MODULE MF_TimeSteppingModule
     swX, &
     nX
   USE GeometryFieldsModuleE, ONLY: &
-    nGE
-  USE GeometryFieldsModule, ONLY: &
-    nGF
+    uGE
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
-    nCR, &
-    nSpecies
+    nCR
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit_MF
 !!$  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
 !!$    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
-  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_TwoMoment_MF
-  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
-    ApplySlopeLimiter_TwoMoment_MF
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
+  USE MF_FieldsModule_Geometry, ONLY: &
+    MF_uGF
+  USE MF_FieldsModule_Euler, ONLY: &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uDF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    MF_uCR, &
+    MF_uPR
   USE InputParsingModule, ONLY: &
+    t_new, &
+    dt, &
     nLevels, &
+    nMaxLevels, &
     DEBUG, &
-    UseTiling
+    UseTiling, &
+    nE, &
+    nSpecies
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
+  USE MF_Euler_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_Euler_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_TwoMoment_MF
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
@@ -75,21 +93,14 @@ MODULE MF_TimeSteppingModule
   PRIVATE
 
   TYPE :: StageDataType
-    REAL(DP), ALLOCATABLE :: dU_IM(:,:,:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: dU_EX(:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dR_IM(:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dR_EX(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dF_EX(:,:,:,:,:)
   END TYPE StageDataType
 
   INTEGER                           :: nStages
   REAL(DP)            , ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP)            , ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_U(:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_F(:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_DU_Im(:,:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_DU_Ex(:,:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_DF_Im(:,:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_DF_Ex(:,:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_uGS  (:,:)
   REAL(DP)            , ALLOCATABLE :: U0(:,:,:,:,:,:,:)
   REAL(DP)            , ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType) , ALLOCATABLE :: StageData(:)
@@ -103,206 +114,206 @@ MODULE MF_TimeSteppingModule
 CONTAINS
 
 
-  SUBROUTINE Update_IMEX_RK_MF &
-    ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, Verbose_Option )
+  SUBROUTINE Update_IMEX_RK_MF
 
-    REAL(DP)            , INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
-    REAL(DP)            , INTENT(in)    :: uGE(:,:,:)
-    LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
+    TYPE(amrex_multifab) :: MF_R    (0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_F    (0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DR_Im(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DR_Ex(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DF_Im(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DF_Ex(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_uGS  (0:nMaxLevels-1          )
 
-    INTEGER :: iLevel, iS, jS
+    INTEGER :: iS, jS, nCompCF, nCompCR, iLevel
 
-    ! --- For physical boundary conditions ---
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
+    REAL(DP) :: dM_OffGrid_Euler    (1:nCF,0:nMaxLevels-1)
+    REAL(DP) :: dM_OffGrid_TwoMoment(1:nCR,0:nMaxLevels-1)
 
-    LOGICAL :: Verbose
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
-      Verbose = Verbose_Option
+    LOGICAL, PARAMETER :: Verbose = .TRUE.
 
-    ! --- Set temporary MultiFabs U and dU to zero --
+    dM_OffGrid_Euler     = Zero
+    dM_OffGrid_TwoMoment = Zero
+
+    nCompCF = nDOFX * nCF
+    nCompCR = nDOFZ * nCR * nE * nSpecies
+
     DO iLevel = 0, nLevels-1
 
-      CALL MF_U(iLevel) % setval( Zero )
-      CALL MF_F(iLevel) % setval( Zero )
-
-      DO iS = 1, nStages
-
-        CALL MF_DU_Ex(iLevel,iS) % setval( Zero )
-        CALL MF_DU_Im(iLevel,iS) % setval( Zero )
-        CALL MF_DF_Ex(iLevel,iS) % setval( Zero )
-        CALL MF_DF_Im(iLevel,iS) % setval( Zero )
-
-      END DO
+      CALL amrex_multifab_build &
+             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nGS, 0 )
+      CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
 
     END DO
 
     CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCR )
+    !!$CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCR ) (needs mods for radiation)
 
     DO iS = 1, nStages
 
-      ! --- Copy data from input MultiFab to temporary MultiFab ---
-
       DO iLevel = 0, nLevels-1
 
-        CALL MF_U(iLevel) &
-               % COPY( MF_uCR(iLevel), 1, 1, &
-                       MF_uCR(iLevel) % nComp(), swX )
+        CALL amrex_multifab_build &
+               ( MF_F(iLevel,iS), MF_uCF(iLevel) % BA, &
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        CALL MF_F(iLevel) &
-               % COPY( MF_uCF(iLevel), 1, 1, &
-                       MF_uCF(iLevel) % nComp(), swX )
+        CALL amrex_multifab_build &
+               ( MF_DF_Ex(iLevel,iS), MF_uCF(iLevel) % BA, &
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        ! --- Apply boundary conditions to interior domains ---
+        CALL amrex_multifab_build &
+               ( MF_DF_Im(iLevel,iS), MF_uCF(iLevel) % BA, &
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
-        CALL MF_F(iLevel) % Fill_Boundary( GEOM(iLevel) )
+        CALL amrex_multifab_build &
+               ( MF_R(iLevel,iS), MF_uCR(iLevel) % BA, &
+                 MF_uCR(iLevel) % DM, nCompCR, swX )
 
-        ! --- Copy ghost data from physical boundaries ---
+        CALL amrex_multifab_build &
+               ( MF_DR_Ex(iLevel,iS), MF_uCR(iLevel) % BA, &
+                 MF_uCR(iLevel) % DM, nCompCR, swX )
 
-        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+        CALL amrex_multifab_build &
+               ( MF_DR_Im(iLevel,iS), MF_uCR(iLevel) % BA, &
+                 MF_uCR(iLevel) % DM, nCompCR, swX )
 
-        DO WHILE( MFI % next() )
+        CALL MF_F(iLevel,iS) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
+        CALL MF_R(iLevel,iS) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
 
-          uCR => MF_uCR(iLevel) % DataPtr( MFI )
-          U   => MF_U  (iLevel) % DataPtr( MFI )
-          U   =  uCR
+      END DO ! iLevel = 0, nLevels-1
 
-          uCF => MF_uCF(iLevel) % DataPtr( MFI )
-          F   => MF_F  (iLevel) % DataPtr( MFI )
-          F   =  uCF
+      DO jS = 1, iS-1
 
-        END DO
-
-        CALL amrex_mfiter_destroy( MFI )
-
-      END DO
-
-      DO iLevel = 0, nLevels-1
-
-        DO jS = 1, iS - 1
+        DO iLevel = 0, nLevels-1
 
           IF( a_EX(iS,jS) .NE. Zero )THEN
 
-            CALL MF_U(iLevel) &
-                   % LinComb( 1.0_DP,              MF_U(iLevel),    1, &
-                              dt(iLevel) * a_EX(iS,jS), MF_DU_Ex(iLevel,jS), 1, &
-                              1, MF_U(iLevel) % nComp(), swX )
+            CALL MF_R(iLevel,iS) &
+                   % LinComb &
+                       ( One                     , MF_R    (iLevel,iS), 1, &
+                         dt(iLevel) * a_EX(iS,jS), MF_DR_Ex(iLevel,jS), 1, &
+                         1, nCompCR, swX )
 
-            CALL MF_F(iLevel) &
-                   % LinComb( 1.0_DP,              MF_F(iLevel),    1, &
-                              dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
-                              1, MF_F(iLevel) % nComp(), swX )
+            CALL MF_F(iLevel,iS) &
+                   % LinComb &
+                       ( One                     , MF_F    (iLevel,iS), 1, &
+                         dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
+                         1, nCompCF, swX )
 
           END IF
 
           IF( a_IM(iS,jS) .NE. Zero )THEN
 
-            CALL MF_U(iLevel) &
-                 % LinComb( 1.0_DP,              MF_U(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
+            CALL MF_R(iLevel,iS) &
+                 % LinComb &
+                     ( One                     , MF_R    (iLevel,iS), 1, &
+                       dt(iLevel) * a_IM(iS,iS), MF_DR_Im(iLevel,jS), 1, &
+                       1, nCompCR, swX )
 
-            CALL MF_F(iLevel) &
-                 % LinComb( 1.0_DP,              MF_F(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
-                            1, MF_F(iLevel) % nComp(), swX )
-
-          END IF
-
-          IF( jS == iS - 1 )THEN
-
-            ! --- Apply Limiters ---
-
-            CALL ApplySlopeLimiter_TwoMoment_MF &
-                   ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose  )
-
-            CALL ApplyPositivityLimiter_TwoMoment_MF &
-                   ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose  )
+            CALL MF_F(iLevel,iS) &
+                 % LinComb &
+                     ( One                     , MF_F    (iLevel,iS), 1, &
+                       dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
+                       1, nCompCF, swX )
 
           END IF
 
-        END DO ! jS = 1, iS - 1
+        END DO ! iLevel = 0, nLevels-1
 
-        IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
+!!$        IF( a_SSPRK(iS,jS) .NE. Zero ) &
+!!$          CALL AverageDown( MF_uGF, MF_F(iS,:) )
 
-          IF (Verbose) THEN
-            PRINT*, "    IMPLICIT: ", iS
-          END IF
+        IF( jS .EQ. iS - 1 )THEN
 
-          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
-               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
-                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+          CALL ApplySlopeLimiter_TwoMoment_MF &
+                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                   Verbose_Option = Verbose  )
 
-          CALL MF_U(iLevel) &
-                 % LinComb( 1.0_DP,              MF_U(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                   Verbose_Option = Verbose  )
 
-          CALL MF_F(iLevel) &
-                 % LinComb( 1.0_DP,              MF_F(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
-                            1, MF_F(iLevel) % nComp(), swX )
+          CALL ApplySlopeLimiter_Euler_MF &
+                 ( t_new, MF_uGF, MF_F(:,jS), MF_uDF )
+
+          CALL ApplyPositivityLimiter_Euler_MF &
+                 ( MF_uGF, MF_F(:,jS), MF_uDF )
 
         END IF
 
-        IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
+      END DO ! jS = 1, iS-1
 
-          ! --- Explicit Solve ---
-          IF (Verbose) THEN
-            PRINT*, "    EXPLICIT: ", iS
-          END IF
+! Why is this update not over jS?
+      IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
-          CALL ComputeIncrement_TwoMoment_Explicit_MF &
-                 ( GEOM, MF_uGF, MF_F, MF_U, MF_DU_Ex(:,iS), &
-                   Verbose_Option = Verbose )
+        DO iLevel = 0, nLevels-1
 
-          IF( iS .NE. 1 )THEN
+!!$          ! Should this be MF_F(:,iS) instead of MF_uCF?
+!!$          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
+!!$               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), &
+!!$                 MF_R(:,iS), MF_DR_Im(:,iS), &
+!!$                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-                   ( MF_uGF, MF_F(iS,:), MF_uGS )
+          CALL MF_R(iLevel,iS) &
+                 % LinComb &
+                     ( One                     , MF_R    (iLevel,iS), 1, &
+                       dt(iLevel) * a_IM(iS,iS), MF_DR_Im(iLevel,iS), 1, &
+                       1, nCompCR, swX )
 
-            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+          CALL MF_F(iLevel,iS) &
+                 % LinComb &
+                     ( One                     , MF_F    (iLevel,iS), 1, &
+                       dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
+                       1, nCompCF, swX )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F(:,iS) )
+        END DO ! iLevel = 0, nLevels-1
 
-            CALL ApplySlopeLimiter_Euler_MF &
-                   ( t_new, MF_uGF, MF_F(:,iS), MF_uDF )
+      END IF
 
-            CALL ApplyPositivityLimiter_Euler_MF &
-                   ( MF_uGF, MF_F(:,iS), MF_uDF )
+      IF( ANY( a_Ex(:,iS) .NE. Zero ) .OR. ( w_Ex(iS) .NE. Zero ) )THEN
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_F(:,iS) )
+        CALL ComputeIncrement_TwoMoment_Explicit_MF &
+               ( GEOM, MF_uGF, MF_F(:,iS), MF_R(:,iS), MF_DR_Ex(:,iS), &
+                 Verbose_Option = Verbose )
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-                   ( MF_uGF, MF_F(:,iS), MF_uGS )
+        IF( iS .NE. 1 )THEN
 
-            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+          CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+                 ( MF_uGF, MF_F(:,iS), MF_uGS )
 
-            CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_F(:,iS), MF_uGS )
-
-            CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
-
-          END IF
+          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F(:,iS) )
 
-          CALL ComputeIncrement_Euler_MF &
-                 ( t_new, MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
+          CALL ApplySlopeLimiter_Euler_MF &
+                 ( t_new, MF_uGF, MF_F(:,iS), MF_uDF )
 
-        END IF
+          CALL ApplyPositivityLimiter_Euler_MF &
+                 ( MF_uGF, MF_F(:,iS), MF_uDF )
 
-      END DO ! iLevel = 0, nLevels-1
+          CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_F(:,iS) )
+
+          CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+                 ( MF_uGF, MF_F(:,iS), MF_uGS )
+
+          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+          CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_F(:,iS), MF_uGS )
+
+          CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+        END IF ! iS .NE. 1
+
+        CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F(:,iS) )
+
+        CALL ComputeIncrement_Euler_MF &
+               ( t_new, MF_uGF, MF_F(:,iS), MF_uDF, MF_DF_Ex(:,iS) )
+
+      END IF
 
     END DO ! iS = 1, nStages
 
+! need to understand assembly step better
     ! --- Assembly Step ---
 
     DO iLevel = 0, nLevels-1
@@ -310,57 +321,58 @@ CONTAINS
       IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
           ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-        U = uCR
-        F = uCF
-
-        IF (Verbose) THEN
-          PRINT*, "    ASSEMBLY:"
-        END IF
+!!$        U = uCR
+!!$        F = uCF
 
         DO iS = 1, nStages
 
           IF( w_IM(iS) .NE. Zero )THEN
 
-            CALL MF_U(iLevel) &
-                   % LinComb( 1.0_DP,              MF_U(iLevel),    1, &
-                              dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
-                              1, MF_U(iLevel) % nComp(), swX )
+            CALL MF_R(iLevel,iS) &
+                   % LinComb &
+                       ( One                  , MF_R    (iLevel,iS), 1, &
+                         dt(iLevel) * w_IM(iS), MF_DR_Im(iLevel,iS), 1, &
+                         1, nCompCR, swX )
 
-            CALL MF_F(iLevel) &
-                   % LinComb( 1.0_DP,              MF_F(iLevel),    1, &
-                              dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
-                              1, MF_F(iLevel) % nComp(), swX )
+            CALL MF_F(iLevel,iS) &
+                   % LinComb &
+                       ( One                  , MF_F    (iLevel,iS), 1, &
+                         dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
+                         1, nCompCF, swX )
 
           END IF
 
           IF( w_EX(iS) .NE. Zero )THEN
 
-            CALL MF_U(iLevel) &
-                   % LinComb( 1.0_DP,              MF_U(iLevel),    1, &
-                              dt(iLevel) * w_EX(iS), MF_DU_Ex(iLevel,iS), 1, &
-                              1, MF_U(iLevel) % nComp(), swX )
+            CALL MF_R(iLevel,iS) &
+                   % LinComb &
+                       ( One                  , MF_R    (iLevel,iS), 1, &
+                         dt(iLevel) * w_EX(iS), MF_DR_Ex(iLevel,iS), 1, &
+                         1, nCompCR, swX )
 
-            CALL MF_F(iLevel) &
-                   % LinComb( 1.0_DP,              MF_F(iLevel),    1, &
-                              dt(iLevel) * w_EX(iS), MF_DF_Ex(iLevel,iS), 1, &
-                              1, MF_F(iLevel) % nComp(), swX )
+            CALL MF_F(iLevel,iS) &
+                   % LinComb &
+                       ( One                  , MF_F    (iLevel,iS), 1, &
+                         dt(iLevel) * w_EX(iS), MF_DF_Ex(iLevel,iS), 1, &
+                         1, nCompCF, swX )
 
           END IF
 
-        END DO
+        END DO ! iS = 1, nStages
 
-        CALL ApplySlopeLimiter_TwoMoment_MF &
-               ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
+      END IF ! ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
+             ! ANY( a_EX(nStages,:) .NE. w_EX(:) )
 
-        CALL ApplyPositivityLimiter_TwoMoment_MF &
-               ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
+    END DO ! iLevel = 0, nLevels-1
 
-      END IF
+!!$    CALL ApplySlopeLimiter_TwoMoment_MF &
+!!$           ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
+!!$
+!!$    CALL ApplyPositivityLimiter_TwoMoment_MF &
+!!$           ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
 
-    END DO
-
-    uCR = U
-    uCF = F
+!!$    uCR = U
+!!$    uCF = F
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -399,89 +411,14 @@ CONTAINS
     TYPE(amrex_distromap), INTENT(in) :: DM(0:nLevels-1)
     LOGICAL              , INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER         :: iS, iLevel
-    TYPE(amrex_box) :: BX
-
     CALL Initialize_IMEX_RK( Scheme, Verbose_Option )
-
-    ALLOCATE( MF_U  (0:nLevels-1) )
-    ALLOCATE( MF_F  (0:nLevels-1) )
-    ALLOCATE( MF_uGS(0:nLevels-1) )
-    ALLOCATE( MF_DU_Ex(0:nLevels-1,1:nStages) )
-    ALLOCATE( MF_DU_Im(0:nLevels-1,1:nStages) )
-    ALLOCATE( MF_DF_Ex(0:nLevels-1,1:nStages) )
-    ALLOCATE( MF_DF_Im(0:nLevels-1,1:nStages) )
-
-    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_build &
-             ( MF_U(iLevel), BA(iLevel), DM(iLevel), &
-               nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
-
-      CALL amrex_multifab_build &
-             ( MF_F(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
-
-      CALL amrex_multifab_build &
-             ( MF_uGS(iLevel), BA(iLevel), DM(iLevel), &
-               nDOFX * nGS, 0 )
-      CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
-
-      DO iS = 1, nStages
-
-        CALL amrex_multifab_build &
-               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
-
-        CALL amrex_multifab_build &
-               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
-
-        CALL amrex_multifab_build &
-               ( MF_DF_Ex(iLevel,iS), BA(iLevel), DM(iLevel), &
-                 nDOFX * nCF, swX )
-
-        CALL amrex_multifab_build &
-               ( MF_DF_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
-
-      END DO
-
-    END DO
 
   END SUBROUTINE Initialize_IMEX_RK_MF
 
 
   SUBROUTINE Finalize_IMEX_RK_MF
 
-    INTEGER :: iLevel, iS
-
     CALL Finalize_IMEX_RK
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_destroy( MF_U  (iLevel) )
-      CALL amrex_multifab_destroy( MF_F  (iLevel) )
-      CALL amrex_multifab_destroy( MF_uGS(iLevel) )
-
-      DO iS = 1, nStages
-
-        CALL amrex_multifab_destroy( MF_DU_Ex(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DU_Im(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DF_Ex(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DF_Im(iLevel,iS) )
-
-      END DO
-
-    END DO
-
-    DEALLOCATE( MF_uGS )
-    DEALLOCATE( MF_F )
-    DEALLOCATE( MF_U )
-    DEALLOCATE( MF_DU_Ex)
-    DEALLOCATE( MF_DU_Im)
-    DEALLOCATE( MF_DF_Ex)
-    DEALLOCATE( MF_DF_Im)
 
   END SUBROUTINE Finalize_IMEX_RK_MF
 
@@ -628,8 +565,8 @@ CONTAINS
 
     DO i = 1, nStages
 
-      CALL AllocateArray7D( StageData(i) % dU_IM )
-      CALL AllocateArray7D( StageData(i) % dU_EX )
+      CALL AllocateArray7D( StageData(i) % dR_IM )
+      CALL AllocateArray7D( StageData(i) % dR_EX )
       CALL AllocateArray5D( StageData(i) % dF_EX )
 
     END DO
@@ -649,8 +586,8 @@ CONTAINS
 
     DO i = 1, nStages
 
-      CALL DeallocateArray7D( StageData(i) % dU_IM )
-      CALL DeallocateArray7D( StageData(i) % dU_EX )
+      CALL DeallocateArray7D( StageData(i) % dR_IM )
+      CALL DeallocateArray7D( StageData(i) % dR_EX )
       CALL DeallocateArray5D( StageData(i) % dF_EX )
 
     END DO
