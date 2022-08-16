@@ -3,7 +3,6 @@
 # THORNADO_DIR/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-f90EXE_sources  += MF_InitializationModule_AdiabaticCollapse_XCFC.f90
 f90EXE_sources  += MF_InitializationModule.f90
 F90EXE_sources  += InitializationModule.F90
 f90EXE_sources  += FinalizationModule.f90

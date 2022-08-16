@@ -3,7 +3,6 @@
 # THORNADO_DIR/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
-f90EXE_sources  += MF_InitializationModule_Relativistic_IDEAL.f90
 f90EXE_sources  += MF_InitializationModule.f90
 F90EXE_sources  += InitializationModule.F90
 f90EXE_sources  += FinalizationModule.f90
