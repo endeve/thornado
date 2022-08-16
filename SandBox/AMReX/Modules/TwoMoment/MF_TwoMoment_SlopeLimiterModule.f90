@@ -1,4 +1,4 @@
-MODULE MF_TwoMoment_SlopeLimiter
+MODULE MF_TwoMoment_SlopeLimiterModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,     ONLY: &
@@ -45,13 +45,13 @@ MODULE MF_TwoMoment_SlopeLimiter
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ApplySlopeLimiter
+  PUBLIC :: ApplySlopeLimiter_TwoMoment_MF
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ApplySlopeLimiter( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
+  SUBROUTINE ApplySlopeLimiter_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
@@ -179,10 +179,10 @@ CONTAINS
 
 
 
-  END SUBROUTINE MF_TwoMoment_ApplySlopeLimiter
+  END SUBROUTINE ApplySlopeLimiter_TwoMoment_MF
 
 
 
 
 
-END MODULE MF_TwoMoment_SlopeLimiter
+END MODULE MF_TwoMoment_SlopeLimiterModule

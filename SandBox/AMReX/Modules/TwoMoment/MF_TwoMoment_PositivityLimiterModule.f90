@@ -1,4 +1,4 @@
-MODULE MF_TwoMoment_PositivityLimiter
+MODULE MF_TwoMoment_PositivityLimiterModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,     ONLY: &
@@ -40,13 +40,13 @@ MODULE MF_TwoMoment_PositivityLimiter
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ApplyPositivityLimiter
+  PUBLIC :: ApplyPositivityLimiter_TwoMoment_MF
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ApplyPositivityLimiter( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
+  SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
@@ -164,10 +164,10 @@ CONTAINS
 
 
 
-  END SUBROUTINE MF_TwoMoment_ApplyPositivityLimiter
+  END SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF
 
 
 
 
 
-END MODULE MF_TwoMoment_PositivityLimiter
+END MODULE MF_TwoMoment_PositivityLimiterModule

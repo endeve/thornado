@@ -175,8 +175,8 @@ f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
 f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
 f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
 f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
-f90EXE_sources  += MF_TwoMoment_PositivityLimiter.f90
-f90EXE_sources  += MF_TwoMoment_SlopeLimiter.f90
+f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule.f90
+f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule.f90
 
 # THORNADO_DIR/SandBox/AMReX/TwoMoment_Relativistic
 

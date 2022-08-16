@@ -47,10 +47,10 @@ MODULE MF_TimeSteppingModule
     MF_TwoMoment_ComputeIncrement_Explicit
 !!$  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
 !!$    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
-  USE MF_TwoMoment_PositivityLimiter, ONLY: &
-    MF_TwoMoment_ApplyPositivityLimiter
-  USE MF_TwoMoment_SlopeLimiter, ONLY: &
-    MF_TwoMoment_ApplySlopeLimiter
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_TwoMoment_MF
 
   ! --- Local Modules ---
 
@@ -221,10 +221,10 @@ CONTAINS
 
             ! --- Apply Limiters ---
 
-            CALL MF_TwoMoment_ApplySlopeLimiter &
+            CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose  )
 
-            CALL MF_TwoMoment_ApplyPositivityLimiter &
+            CALL ApplyPositivityLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose  )
 
           END IF
@@ -349,10 +349,10 @@ CONTAINS
 
         END DO
 
-        CALL MF_TwoMoment_ApplySlopeLimiter &
+        CALL ApplySlopeLimiter_TwoMoment_MF &
                ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
 
-        CALL MF_TwoMoment_ApplyPositivityLimiter &
+        CALL ApplyPositivityLimiter_TwoMoment_MF &
                ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
 
       END IF
