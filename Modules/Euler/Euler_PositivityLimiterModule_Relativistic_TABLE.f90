@@ -297,25 +297,6 @@ CONTAINS
   END SUBROUTINE ComputePointValues
 
 
-  SUBROUTINE Computeq( N, U, G, Min_ESq, q )
-
-    INTEGER,  INTENT(in)  :: N
-    REAL(DP), INTENT(in)  :: U(N,nCF), G(N,nGF), Min_ESq
-    REAL(DP), INTENT(out) :: q(N)
-
-    q = qFun( U(1:N,iCF_D ), &
-              U(1:N,iCF_S1), &
-              U(1:N,iCF_S2), &
-              U(1:N,iCF_S3), &
-              U(1:N,iCF_E ), &
-              G(1:N,iGF_Gm_dd_11), &
-              G(1:N,iGF_Gm_dd_22), &
-              G(1:N,iGF_Gm_dd_33), &
-              Min_ESq )
-
-  END SUBROUTINE Computeq
-
-
   REAL(DP) ELEMENTAL FUNCTION qFun &
     ( D, S1, S2, S3, tau, Gm11, Gm22, Gm33, Min_ESq )
 

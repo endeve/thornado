@@ -92,8 +92,8 @@ MODULE RadiationFieldsModule
   INTEGER, PUBLIC, PARAMETER :: nDR             = 5
 
   CHARACTER(32), DIMENSION(nDR), PUBLIC, PARAMETER :: &
-    namesDR = [ 'Inner Iterations                ', &
-                'Outer Iterations                ', &
+    namesDR = [ 'Outer Iterations                ', &
+                'Inner Iterations                ', &
                 'Positivity Limiter Theta 1      ', &
                 'Positivity Limiter Theta 2      ', &
                 'Positivity Limiter Energy Change' ]

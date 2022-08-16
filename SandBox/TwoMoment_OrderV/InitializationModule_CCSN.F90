@@ -24,7 +24,7 @@ MODULE InitializationModule_CCSN
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeConserved_Euler_NonRelativistic
-  USE TwoMoment_UtilitiesModule, ONLY: &
+  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeConserved_TwoMoment
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Primitive_TABLE, &
@@ -163,18 +163,11 @@ CONTAINS
 
     INTEGER  :: iE, iX1, iX2, iX3, iS
     INTEGER  :: iNodeE, iNodeX, iNodeZ
-    REAL(DP) :: Gm_dd_11(nDOFX)
-    REAL(DP) :: Gm_dd_22(nDOFX)
-    REAL(DP) :: Gm_dd_33(nDOFX)
 
     DO iS = 1, nSpecies
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-
-      Gm_dd_11 = uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11)
-      Gm_dd_22 = uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22)
-      Gm_dd_33 = uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33)
 
       DO iE = iE_B0, iE_E0
 
@@ -189,17 +182,20 @@ CONTAINS
           uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 
           CALL ComputeConserved_TwoMoment &
-                 ( uPR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
-                   uPR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
-                   uPR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
-                   uPR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
-                   uCR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
-                   uCR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
-                   uCR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
-                   uCR(iNodeZ:iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
-                   Gm_dd_11(iNodeX:iNodeX), &
-                   Gm_dd_22(iNodeX:iNodeX), &
-                   Gm_dd_33(iNodeX:iNodeX) )
+                 ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V1), &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V2), &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V3), &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
         END DO

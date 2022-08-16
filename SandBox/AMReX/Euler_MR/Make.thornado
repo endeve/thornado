@@ -2,7 +2,7 @@
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler_MR
 f90EXE_sources  += MF_KindModule.f90
-f90EXE_sources  += InitializationModule.f90
+F90EXE_sources  += InitializationModule.F90
 f90EXE_sources  += FinalizationModule.f90
 f90EXE_sources  += ApplicationDriver.f90
 f90EXE_sources  += InputParsingModule.f90
@@ -28,6 +28,12 @@ CEXE_sources    += MakeFineMaskModule_fi.cpp
 f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources  += MF_Euler_TallyModule.f90
+CEXE_sources    += Restart.cpp
+
+# AdiabaticCollapse_XCFC
+f90EXE_sources += MF_InitializationModule_AdiabaticCollapse_XCFC.f90
+f90EXE_sources += ProgenitorModule.f90
+F90EXE_sources += MF_GravitySolutionModule_XCFC_Poseidon.F90
 
 # thornado/Modules/Library
 
@@ -104,9 +110,11 @@ F90EXE_sources  += Euler_CharacteristicDecompositionModule.F90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 f90EXE_sources  += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
+F90EXE_sources  += Euler_SlopeLimiterModule_Relativistic_TABLE.F90
 F90EXE_sources  += Euler_SlopeLimiterModule.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
 F90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
+f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.f90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90

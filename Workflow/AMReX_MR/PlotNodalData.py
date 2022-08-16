@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 from os.path import isfile
 
 Root = '/home/kkadoogan/Work/Codes/thornado/'
-Root += 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
+Root += 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
 nF = 2 # 0: fluid; 1: SqrtGm
-Grid = np.array( [ 'UniGrid', 'MultiGrid' ], str )
-nN  = np.array( [ '02' ], str )
-nX1 = np.array( [ '032' ], str )
+Grid = np.array( [ 'UniGrid', 'MultiGrid' ], str)
+nN  = np.array( [ '02', '03' ], str )
+nX1 = np.array( [ '032', '128' ], str )
 nX2 = np.array( [ '001' ], str )
 nX3 = np.array( [ '001' ], str )
 

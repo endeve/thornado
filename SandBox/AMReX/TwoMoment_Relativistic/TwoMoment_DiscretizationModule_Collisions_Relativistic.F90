@@ -72,7 +72,7 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3, iE
     INTEGER :: iNodeZ, iNodeX, iNodeE, iN_X, iN_E
     LOGICAL :: Verbose
-
+  
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
@@ -80,7 +80,6 @@ CONTAINS
     IF (Verbose) THEN
       PRINT*, "      ComputeIncrement_TwoMoment_Implicit (Start)"
     END IF
-
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
     DO iS  = 1, nSpecies
@@ -117,6 +116,8 @@ CONTAINS
 
     END DO
     END DO
+
+
     ! --- Arrange Fluid Fields ---
 
     DO iN_X = 1, nX_G
@@ -131,7 +132,6 @@ CONTAINS
 
     END DO
     END DO
-
     ! --- Arrange Radiation Fields ---
 
     DO iS   = 1, nSpecies
@@ -199,6 +199,8 @@ CONTAINS
                GX_N(iGF_Gm_dd_22,iN_X), &
                GX_N(iGF_Gm_dd_33,iN_X) )
 
+
+
       DO iN_E = 1, nE_G
       DO iS   = 1, nSpecies
         CALL ComputeIncrement_FixedPoint &
@@ -223,7 +225,7 @@ CONTAINS
                  dCR_N(iCR_N ,iS,iN_E,iN_X), &
                  dCR_N(iCR_G1,iS,iN_E,iN_X), &
                  dCR_N(iCR_G2,iS,iN_E,iN_X), &
-                 dCR_N(iCR_G3,iS,iN_E,iN_X) )
+                 dCR_N(iCR_G3,iS,iN_E,iN_X), iNodeX, iX1 )
                  
 
       END DO
@@ -277,7 +279,7 @@ CONTAINS
     ( dt, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, D_0, Chi, Sigma, &
       alp, B_u_1, B_u_2, B_u_3,  &
-      dN, dG_d_1, dG_d_2, dG_d_3 )
+      dN, dG_d_1, dG_d_2, dG_d_3, iNodeX, iX1 )
 
     REAL(DP), INTENT(in)  :: dt
     REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
@@ -286,7 +288,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D_0, Chi, Sigma
     REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     REAL(DP), INTENT(out) :: dN, dG_d_1, dG_d_2, dG_d_3
-
+    INTEGER,  INTENT(in)  :: iNodeX, iX1
     ! --- Parameters ---
 
     INTEGER,  PARAMETER :: M = 2
@@ -309,7 +311,6 @@ CONTAINS
     REAL(DP) :: LMAT(4,4), DET, Alpha(M)
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
     REAL(DP) :: W, DTE, B_d_1, B_d_2, B_d_3
-
 
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
@@ -498,7 +499,6 @@ CONTAINS
 
     nE_G = nDOFE * nE
     nX_G = nDOFX * PRODUCT( nX )
-
     ALLOCATE( GX_N(nGF,nX_G) )
     ALLOCATE( CF_N(nCF,nX_G) )
     ALLOCATE( CR_N (nCR,nSpecies,nE_G,nX_G) )

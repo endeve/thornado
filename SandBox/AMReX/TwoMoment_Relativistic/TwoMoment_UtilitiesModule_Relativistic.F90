@@ -46,6 +46,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: Flux_E
   PUBLIC :: Source_E
   PUBLIC :: NumericalFlux_LLF
+  PUBLIC :: ComputeForFluid
 
 CONTAINS
 
@@ -2471,5 +2472,120 @@ CONTAINS
     RETURN
   END FUNCTION NumericalFlux_LLF
 
+  SUBROUTINE ComputeForFluid &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E, S_u_i, S  )
 
-END MODULE TwoMoment_UtilitiesModule_Relativistic!
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(out) :: E, S_u_i(3), S
+      
+
+    REAL(DP) :: DT
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
+    REAL(DP) :: W, Vsq, V_u(3), I_u(3)
+    REAL(DP) :: vDotI, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK 
+    REAL(DP) :: vDotK_u_1, vDotK_u_2, vDotK_u_3
+    REAL(DP) :: k_dd_ij(1:3,1:3), k_ud_munu(0:3,0:3), k_uu_munu(0:3,0:3)
+    REAL(DP) :: S_uu_ij(1:3,1:3)
+
+    CALL ComputeEddingtonTensorComponents_dd &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_dd_ij   )
+
+    CALL ComputeEddingtonTensorComponents_ud &
+       ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+         alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_munu )
+
+    CALL  ComputeEddingtonTensorComponents_uu &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_uu_munu  )
+
+    V_u(1) = V_u_1
+    V_u(2) = V_u_2
+    V_u(3) = V_u_3
+
+    I_u(1) = I_u_1
+    I_u(2) = I_u_2
+    I_u(3) = I_u_3
+
+    V_d_1 =  Gm_dd_11 * V_u_1 
+    V_d_2 =  Gm_dd_22 * V_u_2 
+    V_d_3 =  Gm_dd_33 * V_u_3 
+
+    B_d_1 =  Gm_dd_11 * B_u_1 
+    B_d_2 =  Gm_dd_22 * B_u_2 
+    B_d_3 =  Gm_dd_33 * B_u_3 
+
+    Vsq = V_d_1 * V_u_1 + V_d_2 * V_u_2 + V_d_3 * V_u_3
+ 
+    W = 1.0_DP / SQRT( 1.0_DP - Vsq )
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    vDotI = V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3
+
+    vDotK_d_1 &
+        = ( V_u_1 * k_dd_ij(1,1) &
+        +   V_u_2 * k_dd_ij(2,1) &
+        +   V_u_3 * k_dd_ij(3,1) ) * D
+    vDotK_d_2 &                                              
+        = ( V_u_1 * k_dd_ij(1,2) &
+        +   V_u_2 * k_dd_ij(2,2) &
+        +   V_u_3 * k_dd_ij(3,2) ) * D
+    vDotK_d_3 &                                              
+        = ( V_u_1 * k_dd_ij(1,3) &
+        +   V_u_2 * k_dd_ij(2,3) &
+        +   V_u_3 * k_dd_ij(3,3) ) * D
+
+    vDotK_u_1 &
+        = ( V_u_1 * k_ud_ij(1,1) &
+        +   V_u_2 * k_ud_ij(1,2) &
+        +   V_u_3 * k_ud_ij(1,3) ) * D
+    vDotK_u_2 &                                              
+        = ( V_u_1 * k_ud_ij(2,1) &
+        +   V_u_2 * k_ud_ij(2,2) &
+        +   V_u_3 * k_ud_ij(2,3) ) * D
+    vDotK_u_3 &                                              
+        = ( V_u_1 * k_ud_ij(3,1) &
+        +   V_u_2 * k_ud_ij(3,2) &
+        +   V_u_3 * k_ud_ij(3,3) ) * D
+
+
+     vvDotK = V_u_1 * vDotK_d_1 &
+            + V_u_2 * vDotK_d_2 & 
+            + V_u_3 * vDotK_d_3 
+
+
+     E = W**2 * D + 2 * W * VdotI + vvDotK 
+ 
+     S_u_i(1) = W * V_u_1 * ( W * D + vDotI ) + W * I_u_1 + vDotK_u_1
+     S_u_i(2) = W * V_u_2 * ( W * D + vDotI ) + W * I_u_2 + vDotK_u_2
+     S_u_i(3) = W * V_u_3 * ( W * D + vDotI ) + W * I_u_3 + vDotK_u_3
+
+     DO i = 1,3
+     DO j = 1,3
+
+       S_uu_ij(i,j) = k_uu_munu(i,j) * D  &
+                    + W * ( V_u(i) * I_u(j) + V_u(j) * I_u(i) ) 
+                    + W**2 * D * V_u(i) * V_u(j) 
+
+     END DO
+     END DO
+      
+     S = Gm_dd_11 * S_uu_ij(1,1) &
+       + Gm_dd_22 * S_uu_ij(2,2) &
+       + Gm_dd_33 * S_uu_ij(3,3) 
+
+
+  END SUBROUTINE ComputeForFluid
+
+END MODULE TwoMoment_UtilitiesModule_Relativistic

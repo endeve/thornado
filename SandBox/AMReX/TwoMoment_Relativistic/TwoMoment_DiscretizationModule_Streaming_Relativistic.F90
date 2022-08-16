@@ -206,7 +206,6 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
@@ -539,6 +538,21 @@ CONTAINS
     END DO
 
 
+    DO iGF = iGF_Alpha, iGF_Beta_3
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
+
+    END DO
 
     ! --- Recompute Geometry from Scale Factors ---
 
@@ -600,7 +614,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
 
 
     ! --- Interpolate Fluid Fields ---
@@ -734,7 +747,6 @@ CONTAINS
     END DO
 
 
-
     ! --- Interpolate Radiation Fields ---
 
     DO iCR = 1, nCR
@@ -800,6 +812,8 @@ CONTAINS
     !$OMP PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
     !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R )
 #endif
+
+!the issue is here it might be an issue with the face value of Alpha
     DO iZ_F = 1, nNodesZ_X1
 
       iX_F = PositionIndexZ_F(iZ_F)
@@ -1302,6 +1316,21 @@ CONTAINS
     END DO
 
 
+    DO iGF = iGF_Alpha, iGF_Beta_3
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+               GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+               GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
+
+    END DO
 
     ! --- Recompute Geometry from Scale Factors ---
 
@@ -1448,7 +1477,6 @@ CONTAINS
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_33) )
-!check to make sure this is right
 
       iX_F = iNodeX &
              + ( iZ2 - iZP_B0(2) ) * nDOFX_X2 &
@@ -2071,6 +2099,23 @@ CONTAINS
 
     END DO
 
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    DO iGF = iGF_Alpha, iGF_Beta_3
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X3, nX3_X, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+               GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX_X3 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X3, nX3_X, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+               GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX_X3 )
+
+    END DO
 
     ! --- Recompute Geometry from Scale Factors ---
 
@@ -2862,7 +2907,6 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX1, &
              Verbose_Option = Verbose )
 
-
     CALL ComputeGeometryDerivatives_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX2, &
              Verbose_Option = Verbose )
@@ -2871,6 +2915,10 @@ CONTAINS
     CALL ComputeGeometryDerivatives_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX3, &
              Verbose_Option = Verbose )
+
+ 
+
+
 
     CALL ComputeChristoffel( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                              dG_dd_dX0, dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, Gamma_udd )
@@ -2974,7 +3022,6 @@ CONTAINS
 
         uCR_K(iNodeZ,iZ2,iZ3,iZ4,iS,iZ1,iCR) &
           = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-
       END DO
 
     END DO
@@ -3419,7 +3466,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     CALL FinalizeIncrement_ObserverCorrections
 
 #if   defined( THORNADO_OMP_OL )
@@ -6781,7 +6827,6 @@ CONTAINS
      INTEGER :: iX1, iX2, iX3, iNodeX, mu, nu, rho, sig
      REAL(DP) :: G_dd_11, G_dd_22, G_dd_33, B(3), A
 
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -7067,10 +7112,10 @@ CONTAINS
     Gm_dd_22_F(1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Gm_dd_22)
     Gm_dd_33_F(1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Gm_dd_33)
     SqrtGm_F  (1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_SqrtGm  )
-    G_Alpha_F (1:nNodesX_X) => GX_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Alpha   )
-    G_Beta_1_F(1:nNodesX_X) => GX_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Beta_1  )
-    G_Beta_2_F(1:nNodesX_X) => GX_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Beta_2  )
-    G_Beta_3_F(1:nNodesX_X) => GX_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Beta_3  )
+    G_Alpha_F (1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Alpha   )
+    G_Beta_1_F(1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Beta_1  )
+    G_Beta_2_F(1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Beta_2  )
+    G_Beta_3_F(1:nNodesX_X) => GX_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Beta_3  )
 
 
     uN_K (1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_N )

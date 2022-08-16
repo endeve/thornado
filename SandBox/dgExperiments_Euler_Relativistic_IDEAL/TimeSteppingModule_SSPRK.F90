@@ -21,7 +21,12 @@ MODULE TimeSteppingModule_SSPRK
     TimersStop_Euler, &
     Timer_Euler_UpdateFluid
   USE Euler_dgDiscretizationModule, ONLY: &
-    OffGridFlux_Euler
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE Euler_TallyModule_Relativistic, ONLY: &
     IncrementOffGridTally_Euler_Relativistic
 
@@ -207,7 +212,6 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
-    LOGICAL :: DEBUG = .FALSE.
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF
     INTEGER :: iS, jS
@@ -276,7 +280,13 @@ CONTAINS
 
         dM_OffGrid_Euler &
           = dM_OffGrid_Euler &
-              + dt * w_SSPRK(iS) * OffGridFlux_Euler
+              + dt * w_SSPRK(iS) &
+                  * (   OffGridFlux_Euler_X1_Outer &
+                      - OffGridFlux_Euler_X1_Inner &
+                      + OffGridFlux_Euler_X2_Outer &
+                      - OffGridFlux_Euler_X2_Inner &
+                      + OffGridFlux_Euler_X3_Outer &
+                      - OffGridFlux_Euler_X3_Inner )
 
       END IF
 

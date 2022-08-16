@@ -103,9 +103,9 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'GravitationalCollapse' )
+      CASE( 'AdiabaticCollapse_XCFC' )
 
-         CALL InitializeFields_GravitationalCollapse &
+         CALL InitializeFields_AdiabaticCollapse_XCFC &
                 ( TRIM( ProgenitorFileName ) )
 
       CASE DEFAULT
@@ -120,7 +120,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_Relativistic
 
 
-  SUBROUTINE InitializeFields_GravitationalCollapse &
+  SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC &
     ( ProgenitorFileName )
 
     CHARACTER(LEN=*), INTENT(in) :: ProgenitorFileName
@@ -128,7 +128,6 @@ CONTAINS
     INTEGER                :: iX1, iX2, iX3
     INTEGER                :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP)               :: X1
-    CHARACTER(LEN=32)      :: ProgenitorFile
     TYPE(ProgenitorType1D) :: P1D
 
     REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
@@ -352,7 +351,7 @@ CONTAINS
 
     CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
 
-  END SUBROUTINE InitializeFields_GravitationalCollapse
+  END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC
 
 
   REAL(DP) FUNCTION Interpolate1D( x, y, n, xq )

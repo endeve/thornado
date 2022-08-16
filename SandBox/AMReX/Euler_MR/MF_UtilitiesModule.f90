@@ -30,7 +30,8 @@ MODULE MF_UtilitiesModule
     DP
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
-    iCoarse_MFM
+    DestroyFineMask, &
+    iLeaf_MFM
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -47,6 +48,7 @@ MODULE MF_UtilitiesModule
   PRIVATE
 
   PUBLIC :: ShowVariableFromMultiFab
+  PUBLIC :: ShowVariableFromMultiFab_Single
   PUBLIC :: MultiplyWithMetric
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
@@ -62,12 +64,12 @@ CONTAINS
 
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
-    ( iLevel, MF, iField, iMF_Mask, &
+    ( iLevel, MF, iField, iMF_Mask_Option, &
       swXX_Option, WriteToFile_Option, FileName_Option )
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
-    TYPE(amrex_imultifab), INTENT(in) :: iMF_Mask
+    TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_Mask_Option
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileName_Option
@@ -97,11 +99,11 @@ CONTAINS
     IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
 
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
-      '(I2.2,3I4.3,3ES25.16E3,', &
-      nNodesX(1),  'ES25.16E3,', &
-      nNodesX(2),  'ES25.16E3,', &
-      nNodesX(3),  'ES25.16E3,', &
-      nDOFX     ,  'ES25.16E3)'
+      '(I2.2,3I5.3,3ES12.03E3,', &
+      nNodesX(1),  'ES12.03E3,', &
+      nNodesX(2),  'ES12.03E3,', &
+      nNodesX(3),  'ES12.03E3,', &
+      nDOFX     ,  'ES12.03E3)'
 
     IF( WriteToFile ) OPEN( 100, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
@@ -111,10 +113,11 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        Mask => iMF_Mask % DataPtr( MFI )
+      IF( PRESENT( iMF_Mask_Option ) ) &
+        Mask => iMF_Mask_Option % DataPtr( MFI )
 
       F => MF % DataPtr( MFI )
+
       BX = MFI % tilebox()
 
       lo = LBOUND( F ); hi = UBOUND( F )
@@ -123,9 +126,18 @@ CONTAINS
       DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
       DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
 
-        IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
+        IF( PRESENT( iMF_Mask_Option ) )THEN
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iCoarse_MFM ) CYCLE
+          IF( nLevels .GT. 1 )THEN
+
+            IF(       ALL( [ iX1, iX2, iX3 ] .LE. BX % hi ) &
+                .AND. ALL( [ iX1, iX2, iX3 ] .GE. BX % lo ) )THEN
+
+              IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+
+            END IF
+
+          END IF
 
         END IF
 
@@ -171,9 +183,15 @@ CONTAINS
 
     CALL DestroyMesh_MF( MeshX )
 
-    IF( WriteToFile) CLOSE(100)
+    IF( WriteToFile )THEN
 
-    WRITE(*,*)
+      CLOSE(100)
+
+    ELSE
+
+      WRITE(*,*)
+
+    END IF
 
   END SUBROUTINE ShowVariableFromMultiFab_Single
 
@@ -182,7 +200,7 @@ CONTAINS
     ( MF, iField, swXX_Option, WriteToFile_Option, FileName_Option )
 
     INTEGER             , INTENT(in) :: iField
-    TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)        , INTENT(in), OPTIONAL :: FileName_Option
@@ -206,56 +224,50 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) &
-        CALL MakeFineMask &
-               ( iMF_Mask, MF(iLevel) % BA, MF(iLevel) % DM, &
-                 MF(iLevel+1) % BA )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF % BA, MF % DM )
 
       CALL ShowVariableFromMultiFab_Single &
-             ( iLevel, MF(iLevel), iField, iMF_Mask, &
+             ( iLevel, MF(iLevel), iField, &
+               iMF_Mask_Option = iMF_Mask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
                FileName_Option = TRIM( FileName ) )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
   END SUBROUTINE ShowVariableFromMultiFab_Vector
 
 
-  SUBROUTINE MultiplyWithMetric( MF_uGF, MF, nFd, Power )
+  SUBROUTINE MultiplyWithMetric( MF_SqrtGm, MF, nFd, Power )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
     TYPE(amrex_multifab), INTENT(inout) :: MF
     INTEGER             , INTENT(in)    :: nFd, Power
 
     INTEGER                       :: iX1, iX2, iX3, iNX, iFd
-    INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: F(:,:,:,:)
-    REAL(DP)                      :: G_K(nDOFX,nGF)
+    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: F     (:,:,:,:)
     REAL(DP)                      :: F_K(nDOFX,nFd)
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_SqrtGm, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      G => MF_uGF % DataPtr( MFI )
-      F => MF     % DataPtr( MFI )
+      SqrtGm => MF_SqrtGm % DataPtr( MFI )
+      F      => MF        % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
-      lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_F = LBOUND( F ); hi_F = UBOUND( F )
 
       DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
       DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
       DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
-
-        G_K(1:nDOFX,1:nGF) &
-          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
         F_K(1:nDOFX,1:nFd) &
           = RESHAPE( F(iX1,iX2,iX3,lo_F(4):hi_F(4)), [ nDOFX, nFd ] )
@@ -263,7 +275,7 @@ CONTAINS
         DO iFd = 1, nFd
         DO iNX = 1, nDOFX
 
-          F_K(iNX,iFd) = F_K(iNX,iFd) * G_K(iNX,iGF_SqrtGm)**( Power )
+          F_K(iNX,iFd) = F_K(iNX,iFd) * SqrtGm(iX1,iX2,iX3,iNX)**( Power )
 
         END DO
         END DO

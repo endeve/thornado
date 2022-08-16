@@ -153,7 +153,7 @@ CONTAINS
 
     LOGICAL  :: Verbose
     INTEGER  :: i
-    REAL(DP) :: xEQ, Zoom, dx0
+    REAL(DP) :: xEQ, Zoom
     REAL(DP) :: x_a, x_b, x_c
     REAL(DP) :: f_a, f_b, f_c
     REAL(DP) :: x_ab

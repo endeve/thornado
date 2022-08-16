@@ -76,7 +76,7 @@ CONTAINS
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
-
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iNodeZ
 
     LOGICAL :: Verbose
 
@@ -91,9 +91,17 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
+
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
+
+
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 

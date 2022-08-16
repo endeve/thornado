@@ -19,7 +19,12 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
-    OffGridFlux_Euler
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, &
     uDR
@@ -264,7 +269,7 @@ CONTAINS
             IF( PRESENT( SolveGravity ) )THEN
 
               CALL TimersStart( Timer_Poisson )
-              
+
 #if   defined( THORNADO_OMP_OL )
               !$OMP TARGET UPDATE FROM( Ui )
 #elif defined( THORNADO_OACC   )
@@ -279,9 +284,9 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
               !$ACC UPDATE DEVICE   ( GX )
 #endif
-              
+
               CALL TimersStop( Timer_Poisson )
-              
+
             END IF
 
           END IF
@@ -346,7 +351,13 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                    Ui, uDF, StageData(iS) % dU_EX )
 
-          StageData(iS) % OffGridFlux_U = OffGridFlux_Euler
+          StageData(iS) % OffGridFlux_U &
+            =   OffGridFlux_Euler_X1_Outer &
+              - OffGridFlux_Euler_X1_Inner &
+              + OffGridFlux_Euler_X2_Outer &
+              - OffGridFlux_Euler_X2_Inner &
+              + OffGridFlux_Euler_X3_Outer &
+              - OffGridFlux_Euler_X3_Inner
 
           CALL TimersStop( Timer_Euler )
 
@@ -418,7 +429,7 @@ CONTAINS
     END IF
 
     IF( EvolveEuler .AND. PRESENT( SolveGravity ) )THEN
-      
+
       CALL TimersStart( Timer_Poisson )
 
 #if   defined( THORNADO_OMP_OL )
@@ -435,9 +446,9 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
               !$ACC UPDATE DEVICE   ( GX )
 #endif
-      
+
       CALL TimersStop( Timer_Poisson )
-      
+
     END IF
 
     CALL CopyArray( U, One, Ui )

@@ -6,13 +6,6 @@ PROGRAM TestPressure
     InitializeEquationOfState, &
     FinalizeEquationOfState,   &
     ComputePressureFromSpecificInternalEnergy
-  USE EquationOfStateModule_TABLE, ONLY: &
-    Min_D, &
-    Max_D, &
-    Min_T, &
-    Max_T, &
-    Min_Y, &
-    Max_Y
   USE UnitsModule, ONLY: &
     Gram, Centimeter, Erg
 

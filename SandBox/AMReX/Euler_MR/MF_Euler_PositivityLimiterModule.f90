@@ -9,6 +9,9 @@ MODULE MF_Euler_PositivityLimiterModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_communicator, &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -33,7 +36,12 @@ MODULE MF_Euler_PositivityLimiterModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UsePositivityLimiter, &
-    UseTiling
+    UseTiling, &
+    DEBUG
+!!$  USE AverageDownModule, ONLY: &
+!!$    AverageDown
+!!$  USE FillPatchModule, ONLY: &
+!!$    FillPatch
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -55,18 +63,45 @@ CONTAINS
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
     ( MF_uGF, MF_uCF, MF_uDF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
-    INTEGER :: iLevel
+    INTEGER, PARAMETER :: nCycles = 1
 
-    DO iLevel = 0, nLevels-1
+    INTEGER :: iCycle, iLevel, iErr
 
-      CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
-             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
+    DO iCycle = 1, nCycles
 
-    END DO
+      DO iLevel = 0, nLevels-1
+
+        IF( DEBUG )THEN
+
+          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+          IF( amrex_parallel_ioprocessor() )THEN
+
+            WRITE(*,'(2x,A,I3.3)') &
+              'CALL ApplyPositivityLimiter_Euler_MF_SingleLevel, iLevel: ', &
+              iLevel
+
+          END IF
+
+        END IF ! DEBUG
+
+        CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
+               ( iLevel, MF_uGF, MF_uCF, MF_uDF )
+
+!!$        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+
+      END DO ! iLevel
+
+      ! --- Ensure underlying coarse cells are consistent with
+      !     cells on refined level ---
+
+!!$      CALL AverageDown( MF_uGF, MF_uCF )
+
+    END DO ! iCycle
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels
 
@@ -75,9 +110,9 @@ CONTAINS
     ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -86,8 +121,8 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
 
-    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
@@ -129,17 +164,17 @@ CONTAINS
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-      CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+      CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-      CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+      CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
-      CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
+      CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
-      CALL ApplyPositivityLimiter_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+      CALL ApplyPositivityLimiter_Euler( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
 
-      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
-      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
+      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 

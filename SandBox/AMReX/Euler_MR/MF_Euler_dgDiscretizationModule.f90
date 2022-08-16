@@ -4,6 +4,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE amrex_amrcore_module, ONLY: &
     amrex_get_finest_level
+  USE amrex_amr_module, ONLY: &
+    amrex_geom
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
@@ -14,7 +16,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_reduce_sum
+    amrex_parallel_reduce_sum, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
@@ -43,10 +46,15 @@ MODULE  MF_Euler_dgDiscretizationModule
     nDF
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_Psi, &
-    iGF_SqrtGm
+    iGF_Psi
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit, &
+    OffGridFlux_Euler_X1_Inner, &
+    OffGridFlux_Euler_X1_Outer, &
+    OffGridFlux_Euler_X2_Inner, &
+    OffGridFlux_Euler_X2_Outer, &
+    OffGridFlux_Euler_X3_Inner, &
+    OffGridFlux_Euler_X3_Outer
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
   USE LinearAlgebraModule, ONLY: &
@@ -66,15 +74,17 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex2thornado_X, &
     thornado2amrex_X, &
     thornado2amrex_X_F, &
-    amrex2thornado_X_F, &
-    MultiplyWithMetric
+    amrex2thornado_X_F
   USE MF_FieldsModule, ONLY: &
-    FluxRegister
+    FluxRegister, &
+    MF_OffGridFlux_Euler
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
     swX, &
-    do_reflux
+    ApplyFluxCorrection, &
+    UsePositivityLimiter, &
+    DEBUG
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -84,6 +94,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -106,27 +118,41 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
     ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF, UseXCFC_Option )
 
-    REAL(DP),             INTENT(in)    :: Time   (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
+    REAL(DP),             INTENT(in)    :: Time   (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iErr
     LOGICAL :: UseXCFC
 
     UseXCFC = .FALSE.
     IF( PRESENT( UseXCFC_Option ) ) &
       UseXCFC = UseXCFC_Option
 
+    MF_OffGridFlux_Euler = Zero
+
     DO iLevel = 0, nLevels-1
+
+      IF( DEBUG )THEN
+
+        CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+        WRITE(*,'(2x,A,I3.3)') &
+          'CALL ComputeIncrement_Euler_MF_SingleLevel, iLevel: ', &
+          iLevel
+
+      END IF
 
       CALL ComputeIncrement_Euler_MF_SingleLevel &
              ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel), &
                UseXCFC_Option = UseXCFC )
 
     END DO
+
+    CALL AverageDown( MF_uGF, MF_duCF )
 
   END SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels
 
@@ -140,9 +166,9 @@ CONTAINS
 !
 !      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
-!      CALL FillPatch( iLevel, Time, MF_uGF )
-!      CALL FillPatch( iLevel, Time, MF_uCF )
-!      CALL FillPatch( iLevel, Time, MF_uDF )
+!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
+!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
+!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
 !
 !      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 !
@@ -214,9 +240,9 @@ CONTAINS
 
     INTEGER,              INTENT(in)    :: iLevel
     REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF
     LOGICAL,              INTENT(in), OPTIONAL :: UseXCFC_Option
 
@@ -259,35 +285,11 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
-    IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
+    IF( ( .NOT. UsePositivityLimiter ) .OR. ( nDOFX .EQ. 1 ) )THEN
 
-      ! --- nGF must be LAST ---
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uDF(iLevel), nDF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, +1 )
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uDF(iLevel-1), nDF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, +1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, +1 )
-
-    END IF
-
-    CALL FillPatch( iLevel, Time, MF_uDF )
-    CALL FillPatch( iLevel, Time, MF_uCF )
-    CALL FillPatch( iLevel, Time, MF_uGF )
-
-    IF( nLevels .GT. 1 .AND. iLevel .GT. 0 )THEN
-
-      ! --- nGF must be FIRST ---
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uGF(iLevel), nGF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uCF(iLevel), nCF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel), MF_uDF(iLevel), nDF, -1 )
-
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uGF(iLevel-1), nGF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uCF(iLevel-1), nCF, -1 )
-      CALL MultiplyWithMetric( MF_uGF(iLevel-1), MF_uDF(iLevel-1), nDF, -1 )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
 
     END IF
 
@@ -392,6 +394,8 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
 
+      CALL IncrementOffGridTally_Euler( iLevel, iX_B0, iX_E0 )
+
       iLo_MF = LBOUND( uSurfaceFlux_X1 )
 
       CALL thornado2amrex_X_F &
@@ -439,9 +443,11 @@ CONTAINS
 
     END DO ! MFI
 
+    CALL amrex_parallel_reduce_sum( MF_OffGridFlux_Euler(:,iLevel), nCF )
+
     CALL amrex_mfiter_destroy( MFI )
 
-    IF( do_reflux )THEN
+    IF( ApplyFluxCorrection )THEN
 
       IF( iLevel .GT. 0 ) &
         CALL FluxRegister( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
@@ -449,7 +455,7 @@ CONTAINS
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
 
-    END IF ! do_reflux
+    END IF ! ApplyFluxCorrection
 
     DO iDimX = 1, nDimsX
 
@@ -460,6 +466,38 @@ CONTAINS
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel
+
+
+  ! --- PRIVATE SUBROUTINES ---
+
+
+  SUBROUTINE IncrementOffGridTally_Euler( iLevel, iX_B0, iX_E0 )
+
+    INTEGER , INTENT(in) :: iLevel
+    INTEGER , INTENT(in) :: iX_B0(3), iX_E0(3)
+
+    IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) - OffGridFlux_Euler_X1_Inner
+    IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) + OffGridFlux_Euler_X1_Outer
+
+    IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) - OffGridFlux_Euler_X2_Inner
+    IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) + OffGridFlux_Euler_X2_Outer
+
+    IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) - OffGridFlux_Euler_X3_Inner
+    IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
+      MF_OffGridFlux_Euler(:,iLevel) &
+        = MF_OffGridFlux_Euler(:,iLevel) + OffGridFlux_Euler_X3_Outer
+
+  END SUBROUTINE IncrementOffGridTally_Euler
 
 
 END MODULE MF_Euler_dgDiscretizationModule
