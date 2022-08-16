@@ -40,14 +40,22 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: swX(:)
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
-  INTEGER                   :: nStages
-  INTEGER                   :: nE, nSpecies
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
   REAL(DP)                  :: t_end
-  REAL(DP)                  :: CFL
   LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
   LOGICAL     , SAVE        :: DEBUG
+
+  ! --- TimeStepping ---
+
+  CHARACTER(:), ALLOCATABLE :: Scheme
+  INTEGER                   :: nStages
+  REAL(DP)                  :: CFL
+
+  ! --- Transport ---
+
+  INTEGER  :: nE, nSpecies, swE, bcE
+  REAL(DP) :: eL, eR, zoomE
 
   ! --- Boundary Conditions ---
 
@@ -57,8 +65,10 @@ MODULE InputParsingModule
   ! --- Slope Limiter ---
 
   LOGICAL                       :: UseSlopeLimiter_Euler
+  LOGICAL                       :: UseSlopeLimiter
   CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod_Euler
   REAL(DP)                      :: BetaTVD_Euler
+  REAL(DP)                      :: BetaTVD
   REAL(DP)                      :: BetaTVB_Euler
   REAL(DP)                      :: SlopeTolerance_Euler
   LOGICAL                       :: UseCharacteristicLimiting_Euler
@@ -70,13 +80,21 @@ MODULE InputParsingModule
 
   LOGICAL  :: UsePositivityLimiter_Euler
   REAL(DP) :: Min_1_Euler, Min_2_Euler
-  REAL(DP) :: Max_1, Max_2
+  LOGICAL  :: UsePositivityLimiter
+  REAL(DP) :: Min_1, Min_2
 
   ! --- Equation of State ---
 
   CHARACTER(:), ALLOCATABLE :: EquationOfState
   CHARACTER(:), ALLOCATABLE :: EosTableName
   REAL(DP)                  :: Gamma_IDEAL
+
+  ! --- Opacity Tables ---
+
+  CHARACTER(:), ALLOCATABLE :: OpacityTableName_AbEm
+  CHARACTER(:), ALLOCATABLE :: OpacityTableName_Iso
+  CHARACTER(:), ALLOCATABLE :: OpacityTableName_NES
+  CHARACTER(:), ALLOCATABLE :: OpacityTableName_Pair
 
   ! --- geometry ---
 
@@ -147,8 +165,14 @@ CONTAINS
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
     UseXCFC          = .FALSE.
+    Scheme           = ''
     nE               = 1
     nSpecies         = 1
+    swE              = 0
+    bcE              = 0
+    eL               = 0.0_DP
+    eR               = 1.0_DP
+    zoomE            = 1.0_DP
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', &
                          ProgramName )
@@ -156,6 +180,8 @@ CONTAINS
                          nNodes )
       CALL PP % get   ( 'nStages', &
                          nStages )
+      CALL PP % query ( 'Scheme', &
+                         Scheme )
       CALL PP % getarr( 'swX', &
                          swX )
       CALL PP % getarr( 'bcX', &
@@ -186,6 +212,16 @@ CONTAINS
                          nE )
       CALL PP % query ( 'nSpecies', &
                          nSpecies )
+      CALL PP % query ( 'swE', &
+                         swE )
+      CALL PP % query ( 'bcE', &
+                         bcE )
+      CALL PP % query ( 'eL', &
+                         eL )
+      CALL PP % query ( 'eR', &
+                         eR )
+      CALL PP % query ( 'zoomE', &
+                         zoomE )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
@@ -289,6 +325,9 @@ CONTAINS
       xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
       xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
 
+      eL = eL * UnitsDisplay % EnergyUnit
+      eR = eR * UnitsDisplay % EnergyUnit
+
     END IF
 
     ! --- Equation of State Parameters EoS.* ---
@@ -303,6 +342,23 @@ CONTAINS
                          Gamma_IDEAL )
       CALL PP % query ( 'EosTableName', &
                          EosTableName )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- Opacity table parameters OP.* ---
+
+    OpacityTableName_AbEm = ''
+    OpacityTableName_Iso  = ''
+    OpacityTableName_NES  = ''
+    OpacityTableName_Pair = ''
+    CALL amrex_parmparse_build( PP, 'OP' )
+      CALL PP % query( 'OpacityTableName_AbEm', &
+                        OpacityTableName_AbEm )
+      CALL PP % query( 'OpacityTableName_Iso', &
+                        OpacityTableName_Iso )
+      CALL PP % query( 'OpacityTableName_NES', &
+                        OpacityTableName_NES )
+      CALL PP % query( 'OpacityTableName_Pair', &
+                        OpacityTableName_Pair )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters amr.* ---
@@ -382,12 +438,17 @@ CONTAINS
 
     CALL InitializeProgramHeader &
            ( ProgramName_Option = TRIM( ProgramName ), &
-             nNodes_Option      = nNodes,              &
-             nX_Option          = nX,                  &
-             swX_Option         = swX,                 &
-             xL_Option          = xL,                  &
-             xR_Option          = xR,                  &
-             bcX_Option         = bcX,                 &
+             nNodes_Option      = nNodes, &
+             nX_Option          = nX, &
+             nE_Option          = nE, &
+             swX_Option         = swX, &
+             swE_Option         = swE, &
+             xL_Option          = xL, &
+             xR_Option          = xR, &
+             eL_option          = eL, &
+             eR_option          = eR, &
+             bcX_Option         = bcX, &
+             bcE_Option         = bcE, &
              Verbose_Option     = amrex_parallel_ioprocessor() )
 
     IF( nDimsX .NE. amrex_spacedim ) &
