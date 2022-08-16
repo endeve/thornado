@@ -51,8 +51,7 @@ MODULE MF_TwoMoment_UtilitiesModule
 
   PUBLIC :: ComputeTimeStep_TwoMoment_Fancy_MF
   PUBLIC :: ComputeTimeStep_TwoMoment_MF
-  PUBLIC :: MF_ComputeFromConserved
-  PUBLIC :: MF_ComputeFromConserved_Euler
+  PUBLIC :: ComputeFromConserved_TwoMoment_MF
 
 CONTAINS
 
@@ -152,7 +151,8 @@ CONTAINS
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_MF
 
-  SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+  SUBROUTINE ComputeFromConserved_TwoMoment_MF &
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
     TYPE(amrex_multifab), INTENT(in   ) :: &
       MF_uGF(0:nLevels-1), MF_uCR(0:nLevels-1), MF_uCF(0:nLevels-1)
@@ -368,103 +368,7 @@ CONTAINS
 
 
 
-  END SUBROUTINE MF_ComputeFromConserved
-
-
-  SUBROUTINE MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-    TYPE(amrex_multifab), INTENT(in)    :: &
-      MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: &
-      MF_uPF(0:nLevels-1), MF_uAF(0:nLevels-1)
-
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
-
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
-
-    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: P(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
-
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uPF => MF_uPF(iLevel) % DataPtr( MFI )
-        uAF => MF_uAF(iLevel) % DataPtr( MFI )
-
-        iLo_MF = LBOUND( uGF )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
-
-
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
-
-        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
-
-        ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nPF) )
-
-        ALLOCATE( A(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nAF) )
-
-
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
-
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
-
-        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, P )
-
-        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAF, A )
-
-        CALL ComputeFromConserved_Euler_Relativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
-
-        CALL thornado2amrex_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, P )
-
-        CALL thornado2amrex_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAF, A )
-
-
-        DEALLOCATE( A )
-
-        DEALLOCATE( P )
-
-        DEALLOCATE( U )
-
-        DEALLOCATE( G )
-
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
-
-  END SUBROUTINE MF_ComputeFromConserved_Euler
-
-
+  END SUBROUTINE ComputeFromConserved_TwoMoment_MF
 
 
   SUBROUTINE CalculateTimeStep( iX_B1, iX_E1, iX_B0, iX_E0, CFL, G, dt)

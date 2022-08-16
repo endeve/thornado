@@ -54,7 +54,7 @@ MODULE FinalizationModule
   USE MF_TwoMoment_TimeSteppingModule_Relativistic, ONLY: &
     MF_FinalizeField_IMEX_RK
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    MF_ComputeFromConserved
+    ComputeFromConserved_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -81,7 +81,7 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL MF_ComputeFromConserved &
+    CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
     CALL ComputeFromConserved_Euler_MF &

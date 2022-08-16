@@ -167,7 +167,7 @@ MODULE InitializationModule
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     MF_InitializeField_IMEX_RK
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    MF_ComputeFromConserved
+    ComputeFromConserved_TwoMoment_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -446,7 +446,7 @@ CONTAINS
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    CALL MF_ComputeFromConserved &
+    CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
     CALL WriteFieldsAMReX_PlotFile &

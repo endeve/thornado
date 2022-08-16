@@ -13,8 +13,9 @@ PROGRAM main
   USE MF_TwoMoment_UtilitiesModule,     ONLY: &
     ComputeTimeStep_TwoMoment_MF,                &
     ComputeTimeStep_TwoMoment_Fancy_MF,          &
-    MF_ComputeFromConserved,           &
-    MF_ComputeFromConserved_Euler
+    ComputeFromConserved_TwoMoment_MF
+  USE MF_Euler_UtilitiesModule, ONLY: &
+    ComputeFromConserved_Euler_MF
   USE MF_UtilitiesModule,     ONLY: &
     ShowVariableFromMultiFab
   USE MF_FieldsModule_Geometry,                  ONLY: &
@@ -123,9 +124,9 @@ num = 1
 
     IF( wrt )THEN
 
-      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+      CALL ComputeFromConserved_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-      CALL MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
                ( t_new(0), StepNo, MF_uGF, &
@@ -165,7 +166,7 @@ num = 1
 
   END IF
 
-  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+  CALL ComputeFromConserved_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t_new, &
@@ -182,7 +183,7 @@ num = 1
              MF_uPR_Option = MF_uPR, &
              PlotFileNumber_Option = num )
 
-  CALL MF_ComputeFromConserved_Euler( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+  CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
 
 !!$  CALL WriteFieldsAMReX_PlotFile_Euler &
