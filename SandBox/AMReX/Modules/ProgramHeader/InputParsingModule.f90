@@ -65,10 +65,10 @@ MODULE InputParsingModule
   ! --- Slope Limiter ---
 
   LOGICAL                       :: UseSlopeLimiter_Euler
-  LOGICAL                       :: UseSlopeLimiter
+  LOGICAL                       :: UseSlopeLimiter_TwoMoment
   CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod_Euler
   REAL(DP)                      :: BetaTVD_Euler
-  REAL(DP)                      :: BetaTVD
+  REAL(DP)                      :: BetaTVD_TwoMoment
   REAL(DP)                      :: BetaTVB_Euler
   REAL(DP)                      :: SlopeTolerance_Euler
   LOGICAL                       :: UseCharacteristicLimiting_Euler
@@ -262,8 +262,10 @@ call amrex_parmparse_destroy( pp )
     ! --- Slope Limiter Parameters SL.* ---
 
     UseSlopeLimiter_Euler           = .TRUE.
+    UseSlopeLimiter_TwoMoment       = .TRUE.
     SlopeLimiterMethod_Euler        = 'TVD'
     BetaTVD_Euler                   = 1.75_DP
+    BetaTVD_TwoMoment               = 1.75_DP
     BetaTVB_Euler                   = Zero
     SlopeTolerance_Euler            = 1.0e-6_DP
     UseCharacteristicLimiting_Euler = .TRUE.
@@ -273,10 +275,14 @@ call amrex_parmparse_destroy( pp )
     CALL amrex_parmparse_build( PP, 'SL' )
       CALL PP % query( 'UseSlopeLimiter_Euler', &
                         UseSlopeLimiter_Euler )
+      CALL PP % query( 'UseSlopeLimiter_TwoMoment', &
+                        UseSlopeLimiter_TwoMoment )
       CALL PP % query( 'SlopeLimiterMethod_Euler', &
                         SlopeLimiterMethod_Euler )
       CALL PP % query( 'BetaTVD_Euler', &
                         BetaTVD_Euler )
+      CALL PP % query( 'BetaTVD_TwoMoment', &
+                        BetaTVD_TwoMoment )
       CALL PP % query( 'BetaTVB_Euler', &
                         BetaTVB_Euler )
       CALL PP % query( 'SlopeTolerance_Euler', &

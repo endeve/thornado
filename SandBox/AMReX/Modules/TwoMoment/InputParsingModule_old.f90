@@ -89,9 +89,9 @@ MODULE InputParsingModule
   LOGICAL  :: UsePositivityLimiter
   REAL(AR) :: Min_1, Min_2
 
-  LOGICAL  :: UseSlopeLimiter
-  REAL(AR) :: BetaTVD
-  
+  LOGICAL  :: UseSlopeLimiter_TwoMoment
+  REAL(AR) :: BetaTVD_TwoMoment
+
 
   REAL(AR) :: Mass, R0, kT, mu0, E0
 
@@ -136,13 +136,13 @@ CONTAINS
       CALL PP % get   ( 'ProgramName',      ProgramName )
       CALL PP % get   ( 'Scheme',           Scheme )
       CALL PP % getarr( 'bcX',              bcX )
-      CALL PP % getarr( 'swX',              swX ) 
+      CALL PP % getarr( 'swX',              swX )
       CALL PP % getarr( 'V_0',              V_0 )
       CALL PP % query ( 'nE', nE )
       CALL PP % get   ( 'swE',              swE )
       CALL PP % get   ( 'bcE',              bcE )
       CALL PP % get   ( 'eL',  eL )
-      CALL PP % get   ( 'eR',  eR )  
+      CALL PP % get   ( 'eR',  eR )
       CALL PP % query   ( 'D_0',  D_0 )
       CALL PP % query   ( 'Chi',  Chi )
       CALL PP % query   ( 'Sigma',  Sigma )
@@ -156,7 +156,7 @@ CONTAINS
       CALL PP % query ( 'Direction', Direction )
 
     CALL amrex_parmparse_destroy( PP )
-          
+
 
     CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
@@ -206,15 +206,15 @@ CONTAINS
       xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
       xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
       xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
-      eL = eL * UnitsDisplay % EnergyUnit 
-      eR = eR * UnitsDisplay % EnergyUnit 
+      eL = eL * UnitsDisplay % EnergyUnit
+      eR = eR * UnitsDisplay % EnergyUnit
 
       Chi = Chi * ( 1.0_AR / Centimeter )
 
       Mass = Mass * SolarMass
-      E0 = E0 * MeV 
-      mu0 = mu0 * MeV 
-      kT = kT * MeV 
+      E0 = E0 * MeV
+      mu0 = mu0 * MeV
+      kT = kT * MeV
       R0 = R0 * kilometer
 
     END IF
@@ -272,11 +272,11 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.* ---
-    UseSlopeLimiter = .FALSE.
-    BetaTVD = 1.0_AR
+    UseSlopeLimiter_TwoMoment = .FALSE.
+    BetaTVD_TwoMoment = 1.0_AR
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter', UseSlopeLimiter )
-      CALL PP % query( 'BetaTVD'               , BetaTVD                )
+      CALL PP % query( 'UseSlopeLimiter_TwoMoment', UseSlopeLimiter_TwoMoment )
+      CALL PP % query( 'BetaTVD_TwoMoment'               , BetaTVD_TwoMoment                )
     CALL amrex_parmparse_destroy( PP )
 
 
@@ -316,7 +316,7 @@ CONTAINS
     t = 0.0e0_AR
 
 
-    CALL InitializeDataAMReX( nLevels )    
+    CALL InitializeDataAMReX( nLevels )
 
   END SUBROUTINE MyAmrInit
 

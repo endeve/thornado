@@ -185,8 +185,8 @@ MODULE InitializationModule
     Min_1,                     &
     Min_2,                     &
     UsePositivityLimiter,      &
-    UseSlopeLimiter,      &
-    BetaTVD,      &
+    UseSlopeLimiter_TwoMoment,      &
+    BetaTVD_TwoMoment,      &
     Direction,    &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
@@ -417,9 +417,9 @@ CONTAINS
 
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option &
-               = BetaTVD, &
+               = BetaTVD_TwoMoment, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter, &
+               = UseSlopeLimiter_TwoMoment, &
              Verbose_Option &
                = amrex_parallel_ioprocessor()  )
 

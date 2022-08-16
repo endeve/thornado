@@ -173,8 +173,8 @@ MODULE InitializationModule
     FillCoarsePatch
   USE InputParsingModule, ONLY: &
     nX, &
-    UseSlopeLimiter, &
-    BetaTVD, &
+    UseSlopeLimiter_TwoMoment, &
+    BetaTVD_TwoMoment, &
     UsePositivityLimiter, &
     Min_1, &
     Min_2, &
@@ -358,9 +358,9 @@ CONTAINS
 
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option &
-               = BetaTVD, &
+               = BetaTVD_TwoMoment, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter, &
+               = UseSlopeLimiter_TwoMoment, &
              Verbose_Option &
                = amrex_parallel_ioprocessor()  )
 
