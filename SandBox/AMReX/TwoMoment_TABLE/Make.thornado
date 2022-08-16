@@ -5,6 +5,8 @@
 F90EXE_sources += InitializationModule.F90
 F90EXE_sources += MF_InitializationModule.F90
 f90EXE_sources += FinalizationModule.f90
+F90EXE_sources += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
+f90EXE_sources += ApplicationDriver.f90
 
 # THORNADO_DIR/SandBox/AMReX/Modules/TwoMoment
 
@@ -16,7 +18,7 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TwoMoment
 f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
 #f90EXE_sources  += FinalizationModule.f90
 #f90EXE_sources  += MF_GeometryModule.f90
-f90EXE_sources  += fmain.f90
+#f90EXE_sources  += fmain.f90
 #f90EXE_sources  += MF_FieldsModule.f90
 #f90EXE_sources  += InputParsingModule.f90
 f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
@@ -24,7 +26,7 @@ f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
 f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
 #f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
 f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
-F90EXE_sources  += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
+#F90EXE_sources  += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
 f90EXE_sources  += MF_TwoMoment_PositivityLimiter.f90
 f90EXE_sources  += MF_TwoMoment_SlopeLimiter.f90
 f90EXE_sources  += MF_TwoMoment_TallyModule.f90
