@@ -17,6 +17,10 @@ MODULE FinalizationModule
   ! --- Local Modules ---
   USE InputParsingModule,                 ONLY: &
     nLevels, MyAmrFinalize
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    FinalizeSlopeLimiter_TwoMoment_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,    ONLY: &
     Finalize_IMEX_RK_MF
 
@@ -36,7 +40,7 @@ MODULE FinalizationModule
 
 
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
-    
+
     INTEGER :: iLevel
 
     CALL DestroyRadiationFields
@@ -45,12 +49,16 @@ MODULE FinalizationModule
 
     DO iLevel = 0, nLevels-1
       CALL amrex_geometry_destroy( GEOM(iLevel) )
-    END DO  
- 
+    END DO
+
+    CALL FinalizeSlopeLimiter_TwoMoment_MF
+
+    CALL FinalizePositivityLimiter_TwoMoment_MF
+
     CALL MyAmrFinalize
- 
+
     CALL FinalizeTimers
- 
+
     CALL amrex_amrcore_finalize
 
     CALL amrex_finalize

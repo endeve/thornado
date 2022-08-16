@@ -112,10 +112,6 @@ MODULE InitializationModule
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile
-  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
-    InitializePositivityLimiter_TwoMoment
-  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
-    InitializeSlopeLimiter_TwoMoment
   USE InputOutputEuler,           ONLY: &
     WriteFieldsAMReX_PlotFile_Euler
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
@@ -182,17 +178,16 @@ MODULE InitializationModule
     OpacityTableName_Iso,     &
     OpacityTableName_NES,     &
     OpacityTableName_Pair,     &
-    Min_1_TwoMoment,                     &
-    Min_2_TwoMoment,                     &
-    UsePositivityLimiter_TwoMoment,      &
-    UseSlopeLimiter_TwoMoment,      &
-    BetaTVD_TwoMoment,      &
     Direction,    &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_TwoMoment_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     Initialize_IMEX_RK_MF
   USE TwoMoment_ClosureModule,                       ONLY: &
@@ -408,20 +403,9 @@ CONTAINS
 
     CALL InitializeClosure_TwoMoment
 
-    CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = Min_1_TwoMoment, &
-           Min_2_Option = Min_2_TwoMoment, &
-           UsePositivityLimiter_Option &
-             = UsePositivityLimiter_TwoMoment, &
-           Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL InitializePositivityLimiter_TwoMoment_MF
 
-    CALL InitializeSlopeLimiter_TwoMoment &
-           ( BetaTVD_Option &
-               = BetaTVD_TwoMoment, &
-             UseSlopeLimiter_Option &
-               = UseSlopeLimiter_TwoMoment, &
-             Verbose_Option &
-               = amrex_parallel_ioprocessor()  )
+    CALL InitializeSlopeLimiter_TwoMoment_MF
 
     CALL MF_InitializeTally_Euler
 

@@ -123,10 +123,6 @@ MODULE InitializationModule
     SetOpacities
   USE OpacityModule_Table, ONLY:   &
     InitializeOpacities_TABLE
-  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
-    InitializeSlopeLimiter_TwoMoment
-  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
-    InitializePositivityLimiter_TwoMoment
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
@@ -164,6 +160,10 @@ MODULE InitializationModule
   USE MF_TwoMoment_TallyModule, ONLY: &
     InitializeTally_TwoMoment_MF, &
     ComputeTally_TwoMoment_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_TwoMoment_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     Initialize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
@@ -173,11 +173,6 @@ MODULE InitializationModule
     FillCoarsePatch
   USE InputParsingModule, ONLY: &
     nX, &
-    UseSlopeLimiter_TwoMoment, &
-    BetaTVD_TwoMoment, &
-    UsePositivityLimiter_TwoMoment, &
-    Min_1_TwoMoment, &
-    Min_2_TwoMoment, &
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
@@ -349,20 +344,9 @@ CONTAINS
 
     CALL InitializeClosure_TwoMoment
 
-    CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = Min_1_TwoMoment, &
-           Min_2_Option = Min_2_TwoMoment, &
-           UsePositivityLimiter_Option &
-             = UsePositivityLimiter_TwoMoment, &
-           Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL InitializePositivityLimiter_TwoMoment_MF
 
-    CALL InitializeSlopeLimiter_TwoMoment &
-           ( BetaTVD_Option &
-               = BetaTVD_TwoMoment, &
-             UseSlopeLimiter_Option &
-               = UseSlopeLimiter_TwoMoment, &
-             Verbose_Option &
-               = amrex_parallel_ioprocessor()  )
+    CALL InitializeSlopeLimiter_TwoMoment_MF
 
     CALL InitializeTally_Euler_MF
 

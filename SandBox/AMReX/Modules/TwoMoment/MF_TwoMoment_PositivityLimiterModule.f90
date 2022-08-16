@@ -12,6 +12,8 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     amrex_mfiter,   &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -25,6 +27,8 @@ MODULE MF_TwoMoment_PositivityLimiterModule
   USE FluidFieldsModule,            ONLY: &
     nCF
   USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -32,6 +36,9 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     amrex2thornado_Z, &
     thornado2amrex_Z
   USE InputParsingModule,                       ONLY: &
+    UsePositivityLimiter_TwoMoment, &
+    Min_1_TwoMoment, &
+    Min_2_TwoMoment, &
     nLevels, &
     nSpecies, &
     UseTiling, &
@@ -40,10 +47,30 @@ MODULE MF_TwoMoment_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: InitializePositivityLimiter_TwoMoment_MF
+  PUBLIC :: FinalizePositivityLimiter_TwoMoment_MF
   PUBLIC :: ApplyPositivityLimiter_TwoMoment_MF
 
-
 CONTAINS
+
+
+  SUBROUTINE InitializePositivityLimiter_TwoMoment_MF
+
+    CALL InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option = Min_1_TwoMoment, &
+             Min_2_Option = Min_2_TwoMoment, &
+             UsePositivityLimiter_Option &
+               = UsePositivityLimiter_TwoMoment, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
+
+  END SUBROUTINE InitializePositivityLimiter_TwoMoment_MF
+
+
+  SUBROUTINE FinalizePositivityLimiter_TwoMoment_MF
+
+    CALL FinalizePositivityLimiter_TwoMoment
+
+  END SUBROUTINE FinalizePositivityLimiter_TwoMoment_MF
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )

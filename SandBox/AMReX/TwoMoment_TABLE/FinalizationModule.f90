@@ -25,10 +25,6 @@ MODULE FinalizationModule
     DestroyGeometryFieldsE
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
-  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
-    FinalizeSlopeLimiter_TwoMoment
-  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
-    FinalizePositivityLimiter_TwoMoment
   USE TwoMoment_OpacityModule_Relativistic, ONLY: &
     DestroyOpacities
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
@@ -51,6 +47,10 @@ MODULE FinalizationModule
     DestroyFields_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    FinalizeSlopeLimiter_TwoMoment_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_TimeSteppingModule_Relativistic, ONLY: &
     Finalize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
@@ -115,9 +115,9 @@ CONTAINS
 
     CALL FinalizeTally_Euler_MF
 
-    CALL FinalizeSlopeLimiter_TwoMoment
+    CALL FinalizeSlopeLimiter_TwoMoment_MF
 
-    CALL FinalizePositivityLimiter_TwoMoment
+    CALL FinalizePositivityLimiter_TwoMoment_MF
 
     CALL DestroyOpacities
 

@@ -12,6 +12,8 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     amrex_mfiter,   &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -25,6 +27,8 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   USE FluidFieldsModule,            ONLY: &
     nCF
   USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
+    InitializeSlopeLimiter_TwoMoment, &
+    FinalizeSlopeLimiter_TwoMoment, &
     ApplySlopeLimiter_TwoMoment
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -32,6 +36,8 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     amrex2thornado_Z, &
     thornado2amrex_Z
   USE InputParsingModule,                       ONLY: &
+    UseSlopeLimiter_TwoMoment, &
+    BetaTVD_TwoMoment, &
     nLevels, &
     nSpecies, &
     UseTiling, &
@@ -45,10 +51,29 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: InitializeSlopeLimiter_TwoMoment_MF
+  PUBLIC :: FinalizeSlopeLimiter_TwoMoment_MF
   PUBLIC :: ApplySlopeLimiter_TwoMoment_MF
 
-
 CONTAINS
+
+
+  SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
+
+    CALL InitializeSlopeLimiter_TwoMoment &
+           ( BetaTVD_Option = BetaTVD_TwoMoment, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter_TwoMoment, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
+
+  END SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
+
+
+  SUBROUTINE FinalizeSlopeLimiter_TwoMoment_MF
+
+    CALL FinalizeSlopeLimiter_TwoMoment
+
+  END SUBROUTINE FinalizeSlopeLimiter_TwoMoment_MF
 
 
   SUBROUTINE ApplySlopeLimiter_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
