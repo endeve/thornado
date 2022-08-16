@@ -175,9 +175,9 @@ MODULE InitializationModule
     nX, &
     UseSlopeLimiter_TwoMoment, &
     BetaTVD_TwoMoment, &
-    UsePositivityLimiter, &
-    Min_1, &
-    Min_2, &
+    UsePositivityLimiter_TwoMoment, &
+    Min_1_TwoMoment, &
+    Min_2_TwoMoment, &
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
@@ -350,10 +350,10 @@ CONTAINS
     CALL InitializeClosure_TwoMoment
 
     CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = Min_1, &
-           Min_2_Option = Min_2, &
+         ( Min_1_Option = Min_1_TwoMoment, &
+           Min_2_Option = Min_2_TwoMoment, &
            UsePositivityLimiter_Option &
-             = UsePositivityLimiter, &
+             = UsePositivityLimiter_TwoMoment, &
            Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL InitializeSlopeLimiter_TwoMoment &

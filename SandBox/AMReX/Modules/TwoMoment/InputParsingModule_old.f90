@@ -86,8 +86,8 @@ MODULE InputParsingModule
   CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Pair
 
   ! --- Positivity limiter ---
-  LOGICAL  :: UsePositivityLimiter
-  REAL(AR) :: Min_1, Min_2
+  LOGICAL  :: UsePositivityLimiter_TwoMoment
+  REAL(AR) :: Min_1_TwoMoment, Min_2_TwoMoment
 
   LOGICAL  :: UseSlopeLimiter_TwoMoment
   REAL(AR) :: BetaTVD_TwoMoment
@@ -262,13 +262,13 @@ CONTAINS
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
     ! --- Positivitiy limiter parameters PL.* ---
-    UsePositivityLimiter = .FALSE.
-    Min_1                = 1.0e-12_AR
-    Min_2                = 1.0e-12_AR
+    UsePositivityLimiter_TwoMoment = .FALSE.
+    Min_1_TwoMoment                = 1.0e-12_AR
+    Min_2_TwoMoment                = 1.0e-12_AR
     CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
-      CALL PP % query( 'Min_1'               , Min_1                )
-      CALL PP % query( 'Min_2'               , Min_2                )
+      CALL PP % query( 'UsePositivityLimiter_TwoMoment', UsePositivityLimiter_TwoMoment )
+      CALL PP % query( 'Min_1_TwoMoment'               , Min_1_TwoMoment                )
+      CALL PP % query( 'Min_2_TwoMoment'               , Min_2_TwoMoment                )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.* ---

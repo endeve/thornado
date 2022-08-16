@@ -80,8 +80,8 @@ MODULE InputParsingModule
 
   LOGICAL  :: UsePositivityLimiter_Euler
   REAL(DP) :: Min_1_Euler, Min_2_Euler
-  LOGICAL  :: UsePositivityLimiter
-  REAL(DP) :: Min_1, Min_2
+  LOGICAL  :: UsePositivityLimiter_TwoMoment
+  REAL(DP) :: Min_1_TwoMoment, Min_2_TwoMoment
 
   ! --- Equation of State ---
 
@@ -299,16 +299,25 @@ call amrex_parmparse_destroy( pp )
 
     ! --- Positivity Limiter Parameters PL.* ---
 
-    UsePositivityLimiter_Euler = .TRUE.
-    Min_1_Euler                = 1.0e-12_DP
-    Min_2_Euler                = 1.0e-12_DP
+    UsePositivityLimiter_Euler     = .TRUE.
+    UsePositivityLimiter_TwoMoment = .TRUE.
+    Min_1_Euler                    = 1.0e-12_DP
+    Min_1_TwoMoment                = 1.0e-12_DP
+    Min_2_Euler                    = 1.0e-12_DP
+    Min_2_TwoMoment                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
       CALL PP % query( 'UsePositivityLimiter_Euler', &
                         UsePositivityLimiter_Euler )
+      CALL PP % query( 'UsePositivityLimiter_TwoMoment', &
+                        UsePositivityLimiter_TwoMoment )
       CALL PP % query( 'Min_1_Euler', &
                         Min_1_Euler )
+      CALL PP % query( 'Min_1_TwoMoment', &
+                        Min_1_TwoMoment )
       CALL PP % query( 'Min_2_Euler', &
                         Min_2_Euler )
+      CALL PP % query( 'Min_2_TwoMoment', &
+                        Min_2_TwoMoment )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
