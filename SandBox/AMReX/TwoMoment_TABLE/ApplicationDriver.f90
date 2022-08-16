@@ -11,8 +11,8 @@ PROGRAM main
 
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: &
-    MF_ComputeTimeStep,                &
-    MF_ComputeTimeStep_Fancy,          &
+    ComputeTimeStep_TwoMoment_MF,                &
+    ComputeTimeStep_TwoMoment_Fancy_MF,          &
     MF_ComputeFromConserved,           &
     MF_ComputeFromConserved_Euler
   USE MF_UtilitiesModule,     ONLY: &
@@ -89,7 +89,8 @@ num = 1
 
     ELSE
 
-      CALL MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
+      CALL ComputeTimeStep_TwoMoment_Fancy_MF &
+             ( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
 
     END IF
 

@@ -49,8 +49,8 @@ MODULE MF_TwoMoment_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_ComputeTimeStep_Fancy
-  PUBLIC :: MF_ComputeTimeStep
+  PUBLIC :: ComputeTimeStep_TwoMoment_Fancy_MF
+  PUBLIC :: ComputeTimeStep_TwoMoment_MF
   PUBLIC :: MF_ComputeFromConserved
   PUBLIC :: MF_ComputeFromConserved_Euler
 
@@ -59,7 +59,7 @@ CONTAINS
 
 
 
-  SUBROUTINE MF_ComputeTimeStep_Fancy( MF_uGF, nX, nNodes, xR, xL, CFL, TimeStepMin )
+  SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF( MF_uGF, nX, nNodes, xR, xL, CFL, TimeStepMin )
 
     TYPE(amrex_multifab),  INTENT(in)  :: MF_uGF(0:nLevels-1)
     INTEGER,              INTENT(in)  :: nX(:), nNodes
@@ -126,9 +126,9 @@ CONTAINS
     END DO ! --- Loop over levels ---
 
 
-  END SUBROUTINE MF_ComputeTimeStep_Fancy
+  END SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF
 
-  SUBROUTINE MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, TimeStepMin )
+  SUBROUTINE ComputeTimeStep_TwoMoment_MF( nX, xR, xL, nNodes, CFL, TimeStepMin )
     INTEGER,              INTENT(in)  :: nX(:), nNodes
     REAL(amrex_real),     INTENT(in)  :: xR(:), xL(:), CFL
     REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels-1)
@@ -150,7 +150,7 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE MF_ComputeTimeStep
+  END SUBROUTINE ComputeTimeStep_TwoMoment_MF
 
   SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
