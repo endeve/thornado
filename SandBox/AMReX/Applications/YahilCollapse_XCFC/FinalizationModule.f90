@@ -11,8 +11,12 @@ MODULE FinalizationModule
 
   USE ReferenceElementModuleX, ONLY: &
     FinalizeReferenceElementX
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    FinalizeReferenceElementX_Lagrange
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
+  USE Euler_MeshRefinementModule, ONLY: &
+    FinalizeMeshRefinement_Euler
 
   ! --- Local Modules ---
 
@@ -53,6 +57,8 @@ MODULE FinalizationModule
     Timer_AMReX_Euler_Finalize, &
     Timer_AMReX_Euler_InputOutput, &
     FinalizeTimers_AMReX_Euler
+  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    FinalizeGravitySolver_XCFC_Poseidon_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -94,7 +100,14 @@ CONTAINS
 
     CALL FinalizeFluid_SSPRK_MF
 
+    CALL FinalizeGravitySolver_XCFC_Poseidon_MF
+
     CALL FinalizeTally_Euler_MF
+
+    DEALLOCATE( t_new )
+    DEALLOCATE( t_old )
+    DEALLOCATE( dt )
+    DEALLOCATE( StepNo )
 
     CALL FinalizeSlopeLimiter_Euler_MF
 
@@ -102,15 +115,13 @@ CONTAINS
 
     CALL FinalizeEquationOfState
 
+    CALL FinalizeMeshRefinement_Euler
+
+    CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
 
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
-
-    DEALLOCATE( t_new )
-    DEALLOCATE( t_old )
-    DEALLOCATE( dt )
-    DEALLOCATE( StepNo )
 
     CALL DestroyFields_Euler_MF
     CALL DestroyFields_Geometry_MF
