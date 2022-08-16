@@ -54,12 +54,12 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
+  PUBLIC :: ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
 
 
 CONTAINS
 
-  SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos( GEOM, MF_uGF, MF_uCF, MF_duCF, &
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF( GEOM, MF_uGF, MF_uCF, MF_duCF, &
                                                      MF_uCR, MF_duCR, dt, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
@@ -206,7 +206,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
 
 
 END MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR

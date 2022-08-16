@@ -51,13 +51,13 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ComputeIncrement_Implicit
+  PUBLIC :: ComputeIncrement_TwoMoment_Implicit_MF
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, dt, Verbose_Option )
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, dt, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
@@ -193,7 +193,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_MF
 
 
 END MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic

@@ -50,13 +50,13 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ComputeIncrement_Explicit
+  PUBLIC :: ComputeIncrement_TwoMoment_Explicit_MF
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
@@ -198,7 +198,7 @@ CONTAINS
 
 
 
-  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit
+  END SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF
 
 
 END MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic

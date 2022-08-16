@@ -44,9 +44,9 @@ MODULE MF_TimeSteppingModule
     nCR, &
     nSpecies
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    MF_TwoMoment_ComputeIncrement_Explicit
+    ComputeIncrement_TwoMoment_Explicit_MF
 !!$  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-!!$    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
+!!$    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
@@ -237,7 +237,7 @@ CONTAINS
             PRINT*, "    IMPLICIT: ", iS
           END IF
 
-          CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
+          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
                ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
                  dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
@@ -260,7 +260,7 @@ CONTAINS
             PRINT*, "    EXPLICIT: ", iS
           END IF
 
-          CALL MF_TwoMoment_ComputeIncrement_Explicit &
+          CALL ComputeIncrement_TwoMoment_Explicit_MF &
                  ( GEOM, MF_uGF, MF_F, MF_U, MF_DU_Ex(:,iS), &
                    Verbose_Option = Verbose )
 
