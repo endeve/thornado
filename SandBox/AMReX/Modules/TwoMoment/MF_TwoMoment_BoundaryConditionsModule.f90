@@ -31,7 +31,7 @@
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_ApplyBoundaryConditions_TwoMoment
+  PUBLIC :: ApplyBoundaryConditions_TwoMoment_MF
   PUBLIC :: ConstructEdgeMap
 
   TYPE, PUBLIC :: EdgeMap
@@ -51,7 +51,7 @@
 CONTAINS
 
 
-  SUBROUTINE MF_ApplyBoundaryConditions_TwoMoment &
+  SUBROUTINE ApplyBoundaryConditions_TwoMoment_MF &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
     INTEGER,       INTENT(in   ) :: &
@@ -74,7 +74,7 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, &
              iApplyBC_Option = iApplyBC )
 
-  END SUBROUTINE MF_ApplyBoundaryConditions_TwoMoment
+  END SUBROUTINE ApplyBoundaryConditions_TwoMoment_MF
 
 
   SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )

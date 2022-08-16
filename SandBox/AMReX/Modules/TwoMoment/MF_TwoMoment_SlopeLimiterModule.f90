@@ -39,7 +39,7 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
-    MF_ApplyBoundaryConditions_TwoMoment
+    ApplyBoundaryConditions_TwoMoment_MF
 
 
   IMPLICIT NONE
@@ -157,7 +157,7 @@ CONTAINS
 
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
-        CALL MF_ApplyBoundaryConditions_TwoMoment &
+        CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
 

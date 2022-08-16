@@ -95,7 +95,7 @@ MODULE MF_UtilitiesModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Primitive_TABLE, &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
-    ComputeAuxiliary_Fluid_TABLE, & 
+    ComputeAuxiliary_Fluid_TABLE, &
     ApplyEquationOfState_TABLE
   USE UnitsModule, ONLY: &
     MeV
@@ -108,7 +108,7 @@ MODULE MF_UtilitiesModule
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
-    MF_ApplyBoundaryConditions_TwoMoment
+    ApplyBoundaryConditions_TwoMoment_MF
 
 
   IMPLICIT NONE
@@ -426,7 +426,7 @@ MODULE MF_UtilitiesModule
 
 
 
-        CALL MF_ApplyBoundaryConditions_TwoMoment &
+        CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, CR, Edge_Map )
 
       END DO
@@ -667,7 +667,7 @@ MODULE MF_UtilitiesModule
 
 
   SUBROUTINE WriteEulertoFile( MF_uCF, MF_uGF, n )
- 
+
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
     INTEGER, INTENT(in) :: n
@@ -723,7 +723,7 @@ MODULE MF_UtilitiesModule
         ALLOCATE( PF(1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nPF) )
-        
+
         ALLOCATE( AF(1:nDOFX,iX_B1(1):iX_E1(1), &
                               iX_B1(2):iX_E1(2), &
                               iX_B1(3):iX_E1(3),1:nAF) )
@@ -752,7 +752,7 @@ MODULE MF_UtilitiesModule
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
- 
+
            CALL ComputeAuxiliary_Fluid_TABLE &
                ( PF(:,iX1,iX2,iX3,iPF_D ), &
                  PF(:,iX1,iX2,iX3,iPF_E ), &
@@ -766,7 +766,7 @@ MODULE MF_UtilitiesModule
                  AF(:,iX1,iX2,iX3,iAF_Cs) )
 
 
-             
+
           CALL ApplyEquationOfState_TABLE &
                ( PF(:,iX1,iX2,iX3,iPF_D ), &
                  AF(:,iX1,iX2,iX3,iAF_T ), &
@@ -799,7 +799,7 @@ MODULE MF_UtilitiesModule
         OPEN( UNIT = 106, FILE = 'Mu'//trim(nm) //'.dat'      )
         OPEN( UNIT = 107, FILE = 'E.dat'      )
         OPEN( UNIT = 108, FILE = 'T'//trim(nm) //'.dat'      )
- 
+
 
         DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
