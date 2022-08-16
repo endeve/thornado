@@ -133,7 +133,7 @@ CONTAINS
         WRITE(*,'(2x,A)') &
           'MODULE: MF_InitializationModule_Relativistic_IDEAL'
         WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_Euler_Relativistic_IDEAL_MF'
+          'SUBROUTINE: InitializeFields_Relativistic_IDEAL_MF'
         WRITE(*,*)
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
