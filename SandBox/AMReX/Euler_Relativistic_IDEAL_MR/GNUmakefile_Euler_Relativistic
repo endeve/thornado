@@ -22,7 +22,7 @@ USE_OMP = FALSE
 
 DIM = 1
 
-EBASE = ApplicationDriver
+EBASE = main
 
 INCLUDE_LOCATIONS += $(HDF5_INC)
 LIBRARY_LOCATIONS += $(HDF5_LIB)

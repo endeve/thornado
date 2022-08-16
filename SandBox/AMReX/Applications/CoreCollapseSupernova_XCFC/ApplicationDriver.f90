@@ -1,4 +1,4 @@
-PROGRAM ApplicationDriver
+PROGRAM main
 
   ! --- AMReX Modules ---
 
@@ -397,4 +397,4 @@ CONTAINS
   END SUBROUTINE WriteCheckpointFile
 
 
-END PROGRAM ApplicationDriver
+END PROGRAM main
