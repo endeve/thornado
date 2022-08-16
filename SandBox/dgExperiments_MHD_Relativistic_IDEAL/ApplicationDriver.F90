@@ -353,19 +353,64 @@ PROGRAM ApplicationDriver
 
     CASE( 'Riemann1D' )
 
-      RiemannProblemName = 'RotationalWave'
+      RiemannProblemName = 'IsolatedContact'
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      UseDivergenceCleaning = .FALSE.
+      DampingParameter = 0.0_DP
+
+      bcX = [ 2, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'IsolatedContact' )
+
           Gamma = 5.0_DP / 3.0_DP
           t_end = One
-          bcX   = [ 2, 0, 0 ]
+
+          nX  = [ 40, 1, 1 ]
 
         CASE( 'RotationalWave' )
+
           Gamma = 5.0_DP / 3.0_DP
           t_end = One
-          bcX   = [ 2, 0, 0 ]
+
+          nX  = [ 40, 1, 1 ]
+
+        CASE( 'ShockTube1' )
+
+          Gamma = Two
+          t_end = 0.4_DP
+
+          nX  = [ 400, 1, 1 ]
+
+        CASE( 'ShockTube2' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.55_DP
+
+          nX  = [ 800, 1, 1 ]
+
+        CASE( 'ShockTube3' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.4_DP
+
+          nX  = [ 400, 1, 1 ]
+
+        CASE( 'ShockTube4' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.55_DP
+
+          nX  = [ 800, 1, 1 ]
 
         CASE DEFAULT
 
@@ -373,17 +418,15 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  IsolatedContact'
+          WRITE(*,'(A)')     '  RotationalWave'
+          WRITE(*,'(A)')     '  ShockTube1'
+          WRITE(*,'(A)')     '  ShockTube2'
+          WRITE(*,'(A)')     '  ShockTube3'
+          WRITE(*,'(A)')     '  ShockTube4'
           WRITE(*,'(A)')     'Stopping...'
           STOP
 
       END SELECT
-
-      CoordinateSystem = 'CARTESIAN'
-
-      nX  = [ 40, 1, 1 ]
-      swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
     CASE DEFAULT
 

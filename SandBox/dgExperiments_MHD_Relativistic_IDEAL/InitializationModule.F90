@@ -1036,7 +1036,8 @@ CONTAINS
 
       CASE( 'IsolatedContact' )
 
-        ! Isolated contact from Mattia and Mignone (2022).
+        ! --- Isolated contact from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                                ---
 
         XD = Half
 
@@ -1090,7 +1091,8 @@ CONTAINS
 
       CASE( 'RotationalWave' )
 
-        ! Rotational wave from Mattia and Mignone (2022).
+        ! --- Rotational wave from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                               ---
 
         XD = Half
 
@@ -1142,6 +1144,226 @@ CONTAINS
 
         RightState(iPM_Chi) = 0.0_DP
 
+      CASE( 'ShockTube1' )
+
+        ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                               ---
+
+        XD = Half
+
+        LeftState(iPM_D ) =  1.0_DP
+        LeftState(iPM_V1) =  0.0_DP
+        LeftState(iPM_V2) =  0.0_DP
+        LeftState(iPM_V3) =  0.0_DP
+        LeftState(iPM_E ) =  1.0_DP / ( Gamma_IDEAL - One )
+
+        CB1_L =  0.5_DP
+        CB2_L =  One
+        CB3_L =  0.0_DP
+
+        VSq_L = LeftState(iPM_V1)**2 + LeftState(iPM_V2)**2 + LeftState(iPM_V3)**2
+
+        W_L = One / SQRT( One - VSq_L )
+
+        VdotB_L = LeftState(iPM_V1) * CB1_L &
+                    + LeftState(iPM_V2) * CB2_L &
+                    + LeftState(iPM_V3) * CB3_L
+
+        LeftState(iPM_B1) = W_L * VdotB_L * LeftState(iPM_V1) + CB1_L / W_L
+        LeftState(iPM_B2) = W_L * VdotB_L * LeftState(iPM_V2) + CB2_L / W_L
+        LeftState(iPM_B3) = W_L * VdotB_L * LeftState(iPM_V3) + CB3_L / W_L
+
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) =  0.125_DP
+        RightState(iPM_V1) =  0.0_DP
+        RightState(iPM_V2) =  0.0_DP
+        RightState(iPM_V3) =  0.0_DP
+        RightState(iPM_E ) =  0.1_DP / ( Gamma_IDEAL - One )
+
+        CB1_R =  0.5_DP
+        CB2_R = -One
+        CB3_R =  0.0_DP
+
+        VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
+
+        W_R = One / SQRT( One - VSq_R )
+
+        VdotB_R = RightState(iPM_V1) * CB1_R &
+                    + RightState(iPM_V2) * CB2_R &
+                    + RightState(iPM_V3) * CB3_R
+
+        RightState(iPM_B1) = W_R * VdotB_R * RightState(iPM_V1) + CB1_R / W_R
+        RightState(iPM_B2) = W_R * VdotB_R * RightState(iPM_V2) + CB2_R / W_R
+        RightState(iPM_B3) = W_R * VdotB_R * RightState(iPM_V3) + CB3_R / W_R
+
+        RightState(iPM_Chi) = 0.0_DP
+
+      CASE( 'ShockTube2' )
+
+        ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                               ---
+
+        XD = Half
+
+        LeftState(iPM_D ) = 1.08_DP
+        LeftState(iPM_V1) = 0.4_DP
+        LeftState(iPM_V2) = 0.3_DP
+        LeftState(iPM_V3) = 0.2_DP
+        LeftState(iPM_E ) = 0.95_DP / ( Gamma_IDEAL - One )
+
+        CB1_L = 2.0_DP
+        CB2_L = 0.3_DP
+        CB3_L = 0.3_DP
+
+        VSq_L = LeftState(iPM_V1)**2 + LeftState(iPM_V2)**2 + LeftState(iPM_V3)**2
+
+        W_L = One / SQRT( One - VSq_L )
+
+        VdotB_L = LeftState(iPM_V1) * CB1_L &
+                    + LeftState(iPM_V2) * CB2_L &
+                    + LeftState(iPM_V3) * CB3_L
+
+        LeftState(iPM_B1) = W_L * VdotB_L * LeftState(iPM_V1) + CB1_L / W_L
+        LeftState(iPM_B2) = W_L * VdotB_L * LeftState(iPM_V2) + CB2_L / W_L
+        LeftState(iPM_B3) = W_L * VdotB_L * LeftState(iPM_V3) + CB3_L / W_L
+
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) = One
+        RightState(iPM_V1) = -0.45_DP
+        RightState(iPM_V2) = -0.2_DP
+        RightState(iPM_V3) =  0.2_DP
+        RightState(iPM_E ) = One / ( Gamma_IDEAL - One )
+
+        CB1_R =  2.0_DP
+        CB2_R = -0.7_DP
+        CB3_R =  0.5_DP
+
+        VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
+
+        W_R = One / SQRT( One - VSq_R )
+
+        VdotB_R = RightState(iPM_V1) * CB1_R &
+                    + RightState(iPM_V2) * CB2_R &
+                    + RightState(iPM_V3) * CB3_R
+
+        RightState(iPM_B1) = W_R * VdotB_R * RightState(iPM_V1) + CB1_R / W_R
+        RightState(iPM_B2) = W_R * VdotB_R * RightState(iPM_V2) + CB2_R / W_R
+        RightState(iPM_B3) = W_R * VdotB_R * RightState(iPM_V3) + CB3_R / W_R
+
+        RightState(iPM_Chi) = 0.0_DP
+
+      CASE( 'ShockTube3' )
+
+        ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                               ---
+
+        XD = Half
+
+        LeftState(iPM_D ) = One
+        LeftState(iPM_V1) = 0.999_DP
+        LeftState(iPM_V2) = 0.0_DP
+        LeftState(iPM_V3) = 0.0_DP
+        LeftState(iPM_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+        CB1_L = 10.0_DP
+        CB2_L = 7.0_DP
+        CB3_L = 7.0_DP
+
+        VSq_L = LeftState(iPM_V1)**2 + LeftState(iPM_V2)**2 + LeftState(iPM_V3)**2
+
+        W_L = One / SQRT( One - VSq_L )
+
+        VdotB_L = LeftState(iPM_V1) * CB1_L &
+                    + LeftState(iPM_V2) * CB2_L &
+                    + LeftState(iPM_V3) * CB3_L
+
+        LeftState(iPM_B1) = W_L * VdotB_L * LeftState(iPM_V1) + CB1_L / W_L
+        LeftState(iPM_B2) = W_L * VdotB_L * LeftState(iPM_V2) + CB2_L / W_L
+        LeftState(iPM_B3) = W_L * VdotB_L * LeftState(iPM_V3) + CB3_L / W_L
+
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) = One
+        RightState(iPM_V1) = -0.999_DP
+        RightState(iPM_V2) =  0.0_DP
+        RightState(iPM_V3) =  0.0_DP
+        RightState(iPM_E ) =  0.1_DP / ( Gamma_IDEAL - One )
+
+        CB1_R =  10.0_DP
+        CB2_R = -7.0_DP
+        CB3_R =  7.0_DP ! Typo?
+
+        VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
+
+        W_R = One / SQRT( One - VSq_R )
+
+        VdotB_R = RightState(iPM_V1) * CB1_R &
+                    + RightState(iPM_V2) * CB2_R &
+                    + RightState(iPM_V3) * CB3_R
+
+        RightState(iPM_B1) = W_R * VdotB_R * RightState(iPM_V1) + CB1_R / W_R
+        RightState(iPM_B2) = W_R * VdotB_R * RightState(iPM_V2) + CB2_R / W_R
+        RightState(iPM_B3) = W_R * VdotB_R * RightState(iPM_V3) + CB3_R / W_R
+
+        RightState(iPM_Chi) = 0.0_DP
+
+      CASE( 'ShockTube4' )
+
+        ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                               ---
+
+        XD = Half
+
+        LeftState(iPM_D ) =  One
+        LeftState(iPM_V1) =  0.0_DP
+        LeftState(iPM_V2) =  0.3_DP
+        LeftState(iPM_V3) =  0.4_DP
+        LeftState(iPM_E ) =  5.0_DP / ( Gamma_IDEAL - One )
+
+        CB1_L =  One
+        CB2_L =  6.0_DP
+        CB3_L =  2.0_DP
+
+        VSq_L = LeftState(iPM_V1)**2 + LeftState(iPM_V2)**2 + LeftState(iPM_V3)**2
+
+        W_L = One / SQRT( One - VSq_L )
+
+        VdotB_L = LeftState(iPM_V1) * CB1_L &
+                    + LeftState(iPM_V2) * CB2_L &
+                    + LeftState(iPM_V3) * CB3_L
+
+        LeftState(iPM_B1) = W_L * VdotB_L * LeftState(iPM_V1) + CB1_L / W_L
+        LeftState(iPM_B2) = W_L * VdotB_L * LeftState(iPM_V2) + CB2_L / W_L
+        LeftState(iPM_B3) = W_L * VdotB_L * LeftState(iPM_V3) + CB3_L / W_L
+
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) =  0.9_DP
+        RightState(iPM_V1) =  0.0_DP
+        RightState(iPM_V2) =  0.0_DP
+        RightState(iPM_V3) =  0.0_DP
+        RightState(iPM_E ) =  5.3_DP / ( Gamma_IDEAL - One )
+
+        CB1_R = One
+        CB2_R = 5.0_DP
+        CB3_R = 2.0_DP
+
+        VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
+
+        W_R = One / SQRT( One - VSq_R )
+
+        VdotB_R = RightState(iPM_V1) * CB1_R &
+                    + RightState(iPM_V2) * CB2_R &
+                    + RightState(iPM_V3) * CB3_R
+
+        RightState(iPM_B1) = W_R * VdotB_R * RightState(iPM_V1) + CB1_R / W_R
+        RightState(iPM_B2) = W_R * VdotB_R * RightState(iPM_V2) + CB2_R / W_R
+        RightState(iPM_B3) = W_R * VdotB_R * RightState(iPM_V3) + CB3_R / W_R
+
+        RightState(iPM_Chi) = 0.0_DP
+
       CASE DEFAULT
 
         WRITE(*,*)
@@ -1150,10 +1372,22 @@ CONTAINS
         WRITE(*,'(A)') 'Valid choices:'
         WRITE(*,'(A)') &
           "  'IsolatedContacnt' - &
-          Isolated contact problem from Mattia and Mignone (2022) "
+          Isolated contact problem from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
         WRITE(*,'(A)') &
           "  'RotationalWave' - &
-          Rotational wave problem from Mattia and Mignone (2022)"
+          Rotational wave problem from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
+        WRITE(*,'(A)') &
+          "  'ShockTube1' - &
+          1st shock tube problem (ST1) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
+        WRITE(*,'(A)') &
+          "  'ShockTube2' - &
+          2nd shock tube problem (ST2) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
+        WRITE(*,'(A)') &
+          "  'ShockTube3' - &
+          3rd shock tube problem (ST3) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
+        WRITE(*,'(A)') &
+          "  'ShockTube4' - &
+          4th shock tube problem (ST4) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
         WRITE(*,'(A)') 'Stopping...'
         STOP
 
