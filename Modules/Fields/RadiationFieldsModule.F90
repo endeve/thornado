@@ -107,6 +107,7 @@ MODULE RadiationFieldsModule
   PUBLIC :: SetUnitsRadiationFields
   PUBLIC :: DescribeRadiationFields_Conserved
   PUBLIC :: DescribeRadiationFields_Primitive
+  PUBLIC :: SetNumberOfSpecies
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET( LeptonNumber )
@@ -117,6 +118,15 @@ MODULE RadiationFieldsModule
 CONTAINS
 
 
+  SUBROUTINE SetNumberOfSpecies( nS )
+
+    INTEGER, INTENT(in) :: nS
+
+    nSpecies = nS
+
+  END SUBROUTINE SetNumberOfSpecies
+
+
   SUBROUTINE CreateRadiationFields &
     ( nX, swX, nE, swE, nSpecies_Option, Verbose_Option )
 
@@ -125,11 +135,13 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: nSpecies_Option
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    IF( PRESENT( nSpecies_Option ) )THEN
-      nSpecies = nSpecies_Option
-    ELSE
-      nSpecies = 1
-    END IF
+    INTEGER :: nS
+
+    nS = 1
+    IF( PRESENT( nSpecies_Option ) ) &
+      nS = nSpecies_Option
+
+    CALL SetNumberOfSpecies( nS )
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -166,16 +178,7 @@ CONTAINS
     INTEGER, INTENT(in) :: nX(3), swX(3)
     INTEGER, INTENT(in) :: nE,    swE
 
-    INTEGER :: iCR
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
-      WRITE(*,*)
-      DO iCR = 1, nCR
-        WRITE(*,'(A5,A)') '', TRIM( namesCR(iCR) )
-      END DO
-    END IF
+    CALL DescribeRadiationFields_Conserved( Verbose )
 
     ALLOCATE &
       ( uCR(1:nDOF, &
@@ -221,16 +224,7 @@ CONTAINS
     INTEGER, INTENT(in) :: nX(3), swX(3)
     INTEGER, INTENT(in) :: nE,    swE
 
-    INTEGER :: iPR
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Primitive)'
-      WRITE(*,*)
-      DO iPR = 1, nPR
-        WRITE(*,'(A5,A)') '', TRIM( namesPR(iPR) )
-      END DO
-    END IF
+    CALL DescribeRadiationFields_Primitive( Verbose )
 
     ALLOCATE &
       ( uPR(1:nDOF, &
@@ -260,10 +254,10 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Radiation Fields (Primitive)'
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Primitive)'
       WRITE(*,*)
       DO iPR = 1, nPR
-        WRITE(*,'(A5,A32)') '', TRIM( namesPR(iPR) )
+        WRITE(*,'(A5,A34)') '', TRIM( namesPR(iPR) )
       END DO
 
     END IF
