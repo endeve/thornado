@@ -68,11 +68,19 @@ MODULE InitializationModule
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     nDOFX_X1
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    InitializeReferenceElementX_Lagrange
+  USE ReferenceElementModuleE, ONLY: &
+    InitializeReferenceElementE
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    InitializeReferenceElementE_Lagrange
   USE ReferenceElementModuleZ, ONLY: &
     InitializeReferenceElementZ, &
     nDOFZ_Z2
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-    InitializeReferenceElementX_Lagrange
+  USE ReferenceElementModule, ONLY: &
+    InitializeReferenceElement
+  USE ReferenceElementModule_Lagrange, ONLY: &
+    InitializeReferenceElement_Lagrange
   USE UnitsModule, ONLY: &
     DescribeUnitsDisplay
   USE MeshModule, ONLY: &
@@ -107,8 +115,12 @@ MODULE InitializationModule
     SetUnitsRadiationFields
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
-  USE OpacityModule_Table, ONLY:   &
+  USE TwoMoment_ClosureModule, ONLY: &
+    InitializeClosure_TwoMoment
+  USE OpacityModule_Table, ONLY: &
     InitializeOpacities_TABLE
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    InitializeTimers
 
   ! --- Local Modules ---
 
@@ -145,6 +157,8 @@ MODULE InitializationModule
     ApplyPositivityLimiter_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
+  USE MF_TwoMoment_UtilitiesModule, ONLY: &
+    ComputeFromConserved_TwoMoment_MF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF

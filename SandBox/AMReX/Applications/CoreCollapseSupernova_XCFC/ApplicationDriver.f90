@@ -7,7 +7,8 @@ PROGRAM main
     amrex_parallel_communicator
   USE amrex_amrcore_module, ONLY: &
    amrex_regrid, &
-   amrex_get_numlevels
+   amrex_get_numlevels, &
+   amrex_geom
 
   ! --- thornado Modules ---
 
@@ -43,11 +44,15 @@ PROGRAM main
     ComputeFromConserved_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
+  USE MF_TimeSteppingModule, ONLY: &
+    Update_IMEX_RK_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    ComputeTally_TwoMoment_MF
   USE AverageDownModule, ONLY: &
     AverageDownTo
   USE InputParsingModule, ONLY: &
@@ -329,7 +334,12 @@ CONTAINS
                MF_uPR_Option = MF_uPR )
 
       CALL ComputeTally_Euler_MF &
-             ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )
+             ( t_new, MF_uGF, MF_uCF, &
+               Verbose_Option = amrex_parallel_ioprocessor() )
+
+      CALL ComputeTally_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR, t_new(0), &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       wrt = .FALSE.
 

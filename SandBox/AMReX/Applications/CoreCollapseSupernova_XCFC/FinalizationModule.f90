@@ -6,21 +6,38 @@ MODULE FinalizationModule
     amrex_finalize
   USE amrex_amrcore_module, ONLY: &
     amrex_amrcore_finalize
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
-  USE ReferenceElementModuleX, ONLY: &
-    FinalizeReferenceElementX
+  USE ReferenceElementModule_Lagrange, ONLY: &
+    FinalizeReferenceElement_Lagrange
+  USE ReferenceElementModule, ONLY: &
+    FinalizeReferenceElement
   USE ReferenceElementModuleZ, ONLY: &
     FinalizeReferenceElementZ
+  USE ReferenceElementModuleE_Lagrange, ONLY: &
+    FinalizeReferenceElementE_Lagrange
+  USE ReferenceElementModuleE, ONLY: &
+    FinalizeReferenceElementE
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
+  USE ReferenceElementModuleX, ONLY: &
+    FinalizeReferenceElementX
   USE MeshModule, ONLY: &
-    MeshE
+    MeshE, &
+    DestroyMesh
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
     FinalizeMeshRefinement_Euler
+  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+    FinalizeTimers
+  USE GeometryFieldsModuleE, ONLY: &
+    DestroyGeometryFieldsE
 
   ! --- Local Modules ---
 
@@ -44,6 +61,8 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_TwoMoment_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     FinalizePositivityLimiter_TwoMoment_MF
+  USE MF_TimeSteppingModule, ONLY: &
+    Finalize_IMEX_RK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE InputOutputModuleAMReX, ONLY: &
@@ -52,6 +71,12 @@ MODULE FinalizationModule
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF, &
     FinalizeTally_Euler_MF
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    ComputeTally_TwoMoment_MF, &
+    FinalizeTally_TwoMoment_MF
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    ComputeTally_TwoMoment_MF, &
+    FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
@@ -102,6 +127,10 @@ CONTAINS
              pMF_uCF_Option = MF_uCF % P )
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
+
+    CALL ComputeTally_TwoMoment_MF &
+           ( amrex_geom, MF_uGF, MF_uCF, MF_uCR, t_new(0), &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
