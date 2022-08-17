@@ -1,9 +1,9 @@
 MODULE TwoMoment_UtilitiesModule_Relativistic
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, Three, Five, SqrtTiny
+    DP, Zero, Half, One, Two, Three, Five, SqrtTiny, FourPi
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, nDOFX, nDOFE
+    nDOFZ, nDOFX, nDOFE, swE, nNodesE
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
@@ -26,6 +26,20 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
     FluxFactor_Relativistic, &
     EddingtonFactor, &
     HeatFluxFactor
+  USE GeometryFieldsModuleE,     ONLY: &
+    nGE, iGE_Ep3
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
+  USE MyAmrModule, ONLY: &
+    eL, &
+    eR, &
+    nE, &
+    zoomE
+  USE MeshModule, ONLY: &
+    MeshType, &
+    CreateMesh, &
+    DestroyMesh
+
 
   IMPLICIT NONE
   PRIVATE
@@ -2473,117 +2487,215 @@ CONTAINS
   END FUNCTION NumericalFlux_LLF
 
   SUBROUTINE ComputeForFluid &
-    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E, S_u_i, S  )
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, E, S, S_i )
+    
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE  (1:nDOFE, &
+           iZ_B1(1):iZ_E1(1), &
+           1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX  (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nGF)
+    REAL(DP), INTENT(in)    :: &
+      U_F (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCF)
+    REAL(DP), INTENT(in)    :: &
+      U_R (1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCR, &
+           1:nSpecies)
 
-    REAL(DP), INTENT(in)  :: &
-      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
-    REAL(DP), INTENT(out) :: E, S_u_i(3), S
-      
+    REAL(DP), INTENT(out) :: & 
+      E (1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4) )
+    REAL(DP), INTENT(out) :: & 
+      S (1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4) )
+    REAL(DP), INTENT(out) :: & 
+      S_i (1:nDOFX,1:3, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4) )
 
-    REAL(DP) :: DT
-    REAL(DP) :: I_d_1, I_d_2, I_d_3
-    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
-    REAL(DP) :: W, Vsq, V_u(3), I_u(3)
-    REAL(DP) :: vDotI, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK 
-    REAL(DP) :: vDotK_u_1, vDotK_u_2, vDotK_u_3
-    REAL(DP) :: k_dd_ij(1:3,1:3), k_ud_munu(0:3,0:3), k_uu_munu(0:3,0:3)
-    REAL(DP) :: S_uu_ij(1:3,1:3)
 
-    CALL ComputeEddingtonTensorComponents_dd &
-           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_dd_ij   )
+    REAL(DP) :: &
+      E_int (1:nDOFZ, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nSpecies )
 
-    CALL ComputeEddingtonTensorComponents_ud &
-       ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-         alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_munu )
+    REAL(DP) :: &
+      S_i_int (1:nDOFZ,1:3, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nSpecies )
+     REAL(DP) :: P_F(nDOFX, nPF)
+     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iNodeZ, iNodeX, iNodeE, iS     
+     REAL(DP) :: vG, V_d_1, V_d_2, V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, W 
+     REAL(DP) :: N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, Vsq 
+     TYPE(MeshType) :: MeshE
 
-    CALL  ComputeEddingtonTensorComponents_uu &
-    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_uu_munu  )
+     CALL CreateMesh &
+           ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
 
-    V_u(1) = V_u_1
-    V_u(2) = V_u_2
-    V_u(3) = V_u_3
-
-    I_u(1) = I_u_1
-    I_u(2) = I_u_2
-    I_u(3) = I_u_3
-
-    V_d_1 =  Gm_dd_11 * V_u_1 
-    V_d_2 =  Gm_dd_22 * V_u_2 
-    V_d_3 =  Gm_dd_33 * V_u_3 
-
-    B_d_1 =  Gm_dd_11 * B_u_1 
-    B_d_2 =  Gm_dd_22 * B_u_2 
-    B_d_3 =  Gm_dd_33 * B_u_3 
-
-    Vsq = V_d_1 * V_u_1 + V_d_2 * V_u_2 + V_d_3 * V_u_3
+     ASSOCIATE &
+      ( dZ1 => MeshE  % Width )
  
-    W = 1.0_DP / SQRT( 1.0_DP - Vsq )
+     DO iZ2 = iZ_B1(2), iZ_E1(2)
+     DO iZ3 = iZ_B1(3), iZ_E1(3)
+     DO iZ4 = iZ_B1(4), iZ_E1(4)
 
-    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+       DO iNodeX = 1, nDOFX
 
-    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
-    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
-    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
-          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-
-    vDotI = V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3
-
-    vDotK_d_1 &
-        = ( V_u_1 * k_dd_ij(1,1) &
-        +   V_u_2 * k_dd_ij(2,1) &
-        +   V_u_3 * k_dd_ij(3,1) ) * D
-    vDotK_d_2 &                                              
-        = ( V_u_1 * k_dd_ij(1,2) &
-        +   V_u_2 * k_dd_ij(2,2) &
-        +   V_u_3 * k_dd_ij(3,2) ) * D
-    vDotK_d_3 &                                              
-        = ( V_u_1 * k_dd_ij(1,3) &
-        +   V_u_2 * k_dd_ij(2,3) &
-        +   V_u_3 * k_dd_ij(3,3) ) * D
-
-    vDotK_u_1 &
-        = ( V_u_1 * k_ud_ij(1,1) &
-        +   V_u_2 * k_ud_ij(1,2) &
-        +   V_u_3 * k_ud_ij(1,3) ) * D
-    vDotK_u_2 &                                              
-        = ( V_u_1 * k_ud_ij(2,1) &
-        +   V_u_2 * k_ud_ij(2,2) &
-        +   V_u_3 * k_ud_ij(2,3) ) * D
-    vDotK_u_3 &                                              
-        = ( V_u_1 * k_ud_ij(3,1) &
-        +   V_u_2 * k_ud_ij(3,2) &
-        +   V_u_3 * k_ud_ij(3,3) ) * D
+        CALL ComputePrimitive_Euler_Relativistic &
+               ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D ), &
+                 U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S1), &
+                 U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S2), &
+                 U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
+                 U_F(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
+                 U_F(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
+                 P_F(iNodeX,iPF_D ), &
+                 P_F(iNodeX,iPF_V1), &
+                 P_F(iNodeX,iPF_V2), &
+                 P_F(iNodeX,iPF_V3), &
+                 P_F(iNodeX,iPF_E ), &
+                 P_F(iNodeX,iPF_Ne), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
 
-     vvDotK = V_u_1 * vDotK_d_1 &
-            + V_u_2 * vDotK_d_2 & 
-            + V_u_3 * vDotK_d_3 
+     
+       END DO
+       
+       DO iS = 1, nSpecies
+       DO iZ1 = iZ_B1(1), iZ_E1(1)
+
+         DO iNodeZ = 1, nDOFZ
+
+           iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
 
-     E = W**2 * D + 2 * W * VdotI + vvDotK 
- 
-     S_u_i(1) = W * V_u_1 * ( W * D + vDotI ) + W * I_u_1 + vDotK_u_1
-     S_u_i(2) = W * V_u_2 * ( W * D + vDotI ) + W * I_u_2 + vDotK_u_2
-     S_u_i(3) = W * V_u_3 * ( W * D + vDotI ) + W * I_u_3 + vDotK_u_3
+           Gm_dd_11 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
+           Gm_dd_22 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
+           Gm_dd_33 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
 
-     DO i = 1,3
-     DO j = 1,3
 
-       S_uu_ij(i,j) = k_uu_munu(i,j) * D  &
-                    + W * ( V_u(i) * I_u(j) + V_u(j) * I_u(i) ) 
-                    + W**2 * D * V_u(i) * V_u(j) 
+           V_u_1 = P_F(iNodeX,iPF_V1)
+           V_u_2 = P_F(iNodeX,iPF_V2)
+           V_u_3 = P_F(iNodeX,iPF_V3)
+           
+           V_d_1 = Gm_dd_11 * V_u_1
+           V_d_2 = Gm_dd_22 * V_u_2
+           V_d_3 = Gm_dd_33 * V_u_3
+           
 
+           Vsq = V_u_1 * V_d_1 + V_u_2 * V_d_2 + V_u_3 * V_d_3  
+
+           W = 1.0_DP / SQRT( 1.0_DP - Vsq )
+
+
+           N     = U_R (iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
+           G_d_1 = U_R (iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+           G_d_2 = U_R (iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+           G_d_3 = U_R (iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+
+
+           vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3 
+
+
+           E_int(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) = W * N + vG
+           
+           S_i_int(iNodeZ,1,iZ1,iZ2,iZ3,iZ4,iS) = W * V_d_1 * N + G_d_1
+           S_i_int(iNodeZ,2,iZ1,iZ2,iZ3,iZ4,iS) = W * V_d_2 * N + G_d_2
+           S_i_int(iNodeZ,3,iZ1,iZ2,iZ3,iZ4,iS) = W * V_d_3 * N + G_d_3
+
+
+     
+         END DO
+
+       END DO
+       END DO
+     
      END DO
      END DO
-      
-     S = Gm_dd_11 * S_uu_ij(1,1) &
-       + Gm_dd_22 * S_uu_ij(2,2) &
-       + Gm_dd_33 * S_uu_ij(3,3) 
+     END DO
+
+
+     E   = 0.0_DP
+     S_i = 0.0_DP
+
+     DO iS  = 1, nSpecies
+     DO iZ4 = iZ_B0(4), iZ_E0(4)
+     DO iZ3 = iZ_B0(3), iZ_E0(3)
+     DO iZ2 = iZ_B0(2), iZ_E0(2)
+     DO iZ1 = iZ_B0(1), iZ_E0(1) 
+
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        E(iNodeX,iZ2,iZ3,iZ4) = E(iNodeX,iZ2,iZ3,iZ4) &
+                              + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+                              * GE(iNodeE,iZ1,iGE_Ep3) &
+                              * E_int(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+
+
+        S_i(iNodeX,1,iZ2,iZ3,iZ4) = S_i(iNodeX,1,iZ2,iZ3,iZ4) &
+                                  + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+                                  * GE(iNodeE,iZ1,iGE_Ep3) &
+                                  * S_i_int(iNodeZ,1,iZ1,iZ2,iZ3,iZ4,iS)
+
+
+        S_i(iNodeX,2,iZ2,iZ3,iZ4) = S_i(iNodeX,2,iZ2,iZ3,iZ4) &
+                                  + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+                                  * GE(iNodeE,iZ1,iGE_Ep3) &
+                                  * S_i_int(iNodeZ,2,iZ1,iZ2,iZ3,iZ4,iS)
+
+
+        S_i(iNodeX,3,iZ2,iZ3,iZ4) = S_i(iNodeX,3,iZ2,iZ3,iZ4) &
+                                  + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+                                  * GE(iNodeE,iZ1,iGE_Ep3) &
+                                  * S_i_int(iNodeZ,3,iZ1,iZ2,iZ3,iZ4,iS)
+      END DO
+      END DO
+
+    
+   
+       
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+
+
+    CALL DestroyMesh( MeshE )
+
+    END ASSOCIATE
+
 
 
   END SUBROUTINE ComputeForFluid
