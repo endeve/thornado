@@ -124,8 +124,10 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
+    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF
+
 
   SUBROUTINE ComputeTimeStep_TwoMoment_MF( nX, xR, xL, nNodes, CFL, TimeStepMin )
     INTEGER,              INTENT(in)  :: nX(:), nNodes
@@ -418,6 +420,7 @@ CONTAINS
     END DO
     END DO
 
+    IF( iX_B0(2) .GT. iX_E0(2) )THEN
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -439,7 +442,9 @@ CONTAINS
     END DO
     END DO
     END DO
+    END IF
 
+    IF( iX_B0(3) .GT. iX_E0(3) )THEN
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -461,6 +466,7 @@ CONTAINS
     END DO
     END DO
     END DO
+    END IF
     dt = MINVAL( dt_min )
     END ASSOCIATE
   END SUBROUTINE CalculateTimeStep

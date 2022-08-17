@@ -50,6 +50,6 @@ amr.UseTiling         = 0
 
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 1
-PL.Min_1                = 1.0e-12
-PL.Min_2                = 1.0e-12
+PL.UsePositivityLimiter_TwoMoment = 1
+PL.Min_1_TwoMoment                = 1.0e-12
+PL.Min_2_TwoMoment                = 1.0e-12

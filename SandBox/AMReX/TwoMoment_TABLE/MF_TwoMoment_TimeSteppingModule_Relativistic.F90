@@ -32,20 +32,20 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies
+    nCR
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    MF_TwoMoment_ComputeIncrement_Explicit
+    ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
-    MF_TwoMoment_ComputeIncrement_Implicit
+    ComputeIncrement_TwoMoment_Implicit_MF
 !  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-!    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
-  USE MF_TwoMoment_PositivityLimiter, ONLY: &
-    MF_TwoMoment_ApplyPositivityLimiter
-  USE MF_TwoMoment_SlopeLimiter, ONLY: &
-    MF_TwoMoment_ApplySlopeLimiter
+!    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_TwoMoment_MF
   ! --- Local Modules ---
-  USE MyAmrModule,                      ONLY: &
-    nLevels, DEBUG, UseTiling
+  USE InputParsingModule,                      ONLY: &
+    nLevels, DEBUG, UseTiling, nSpecies
 
   IMPLICIT NONE
   PRIVATE
@@ -72,15 +72,15 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
 
   PUBLIC :: Initialize_IMEX_RK
   PUBLIC :: Finalize_IMEX_RK
-  PUBLIC :: MF_InitializeField_IMEX_RK
-  PUBLIC :: MF_FinalizeField_IMEX_RK
-  PUBLIC :: MF_Update_IMEX_RK
+  PUBLIC :: Initialize_IMEX_RK_MF
+  PUBLIC :: Finalize_IMEX_RK_MF
+  PUBLIC :: Update_IMEX_RK_MF
 
 CONTAINS
 
 
-  SUBROUTINE MF_Update_IMEX_RK( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, Verbose_Option )
-   
+  SUBROUTINE Update_IMEX_RK_MF( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, Verbose_Option )
+
 
     REAL(AR),     INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
@@ -96,7 +96,7 @@ CONTAINS
     TYPE(amrex_mfiter)                    :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
-    INTEGER :: iZ2 
+
     LOGICAL :: Verbose
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -157,14 +157,14 @@ CONTAINS
           F   => MF_F  (iLevel) % DataPtr( MFI )
           F   =  uCF
         END DO
-      
+
         CALL amrex_mfiter_destroy( MFI )
 
       END DO
 
 
 
-      DO iLevel = 0, nLevels-1 
+      DO iLevel = 0, nLevels-1
 
 
         DO jS = 1, iS - 1
@@ -179,7 +179,7 @@ CONTAINS
 
           IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
 
-#if defined(MICROPHYSICS_WEAKLIB)  
+#if defined(MICROPHYSICS_WEAKLIB)
 
 
             CALL MF_U(iLevel) &
@@ -192,8 +192,8 @@ CONTAINS
                             dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
                             1, MF_F(iLevel) % nComp(), swX )
 
-#else      
-        
+#else
+
             CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
@@ -206,10 +206,10 @@ CONTAINS
 
             ! --- Apply Limiters ---
 
-            CALL MF_TwoMoment_ApplySlopeLimiter &
+            CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-            CALL MF_TwoMoment_ApplyPositivityLimiter &
+            CALL ApplyPositivityLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
           END IF
@@ -222,10 +222,10 @@ CONTAINS
           IF (Verbose) THEN
             PRINT*, "    IMPLICIT: ", iS
           END IF
-#if defined(MICROPHYSICS_WEAKLIB)  
-          CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
-               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
-                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+#if defined(MICROPHYSICS_WEAKLIB)
+!          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
+!               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
+!                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
@@ -236,10 +236,10 @@ CONTAINS
                  % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
                             1, MF_F(iLevel) % nComp(), swX )
-#else     
-          CALL MF_TwoMoment_ComputeIncrement_Implicit &
+#else
+          CALL ComputeIncrement_TwoMoment_Implicit_MF &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
-        
+
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
@@ -254,11 +254,11 @@ CONTAINS
             PRINT*, "    EXPLICIT: ", iS
           END IF
 
-          CALL MF_TwoMoment_ComputeIncrement_Explicit &
+          CALL ComputeIncrement_TwoMoment_Explicit_MF &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
         END IF
 
-      END DO 
+      END DO
 
     END DO ! iS = 1, nStages
 
@@ -268,14 +268,14 @@ CONTAINS
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
         ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-#if defined(MICROPHYSICS_WEAKLIB)  
+#if defined(MICROPHYSICS_WEAKLIB)
       U = uCR
       F = uCF
 #else
       U = uCR
 #endif
 
-      IF (Verbose) THEN 
+      IF (Verbose) THEN
         PRINT*, "    ASSEMBLY:"
       END IF
         !set Ui to U0 again ask about this
@@ -283,12 +283,12 @@ CONTAINS
 
         IF( w_IM(iS) .NE. 0.0_AR )THEN
 
-#if defined(MICROPHYSICS_WEAKLIB)  
+#if defined(MICROPHYSICS_WEAKLIB)
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
-          
+
           CALL MF_F(iLevel) &
                  % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
                             dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
@@ -313,26 +313,26 @@ CONTAINS
 
       END DO
 
-        CALL MF_TwoMoment_ApplySlopeLimiter &
+        CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-        CALL MF_TwoMoment_ApplyPositivityLimiter &
+        CALL ApplyPositivityLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
     END IF
 
   END DO
 
-#if defined(MICROPHYSICS_WEAKLIB)  
+#if defined(MICROPHYSICS_WEAKLIB)
   uCR = U
   uCF = F
 #else
   uCR = U
 #endif
 
-  END SUBROUTINE MF_Update_IMEX_RK
+  END SUBROUTINE Update_IMEX_RK_MF
 
-  SUBROUTINE MF_InitializeField_IMEX_RK &
+  SUBROUTINE Initialize_IMEX_RK_MF &
     ( Scheme, BA, DM, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in) :: Scheme
@@ -351,21 +351,27 @@ CONTAINS
     ALLOCATE( MF_DU_Im(0:nLevels-1,1:nStages) )
     ALLOCATE( MF_DF_Im(0:nLevels-1,1:nStages) )
 
-    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
 
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+        ( MF_U(iLevel), BA(iLevel), DM(iLevel), &
+          nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
 
       CALL amrex_multifab_build &
         ( MF_F(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
+
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+
         CALL amrex_multifab_build &
-               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+
         CALL amrex_multifab_build &
                ( MF_DF_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
 
@@ -374,14 +380,14 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE MF_InitializeField_IMEX_RK
+  END SUBROUTINE Initialize_IMEX_RK_MF
 
 
-  SUBROUTINE MF_FinalizeField_IMEX_RK
+  SUBROUTINE Finalize_IMEX_RK_MF
 
     INTEGER :: iLevel, iS
 
-    CALL Finalize_IMEX_RK    
+    CALL Finalize_IMEX_RK
 
     DO iLevel = 0, nLevels-1
 
@@ -402,7 +408,7 @@ CONTAINS
     DEALLOCATE( MF_DU_Im)
     DEALLOCATE( MF_DF_Im)
 
-  END SUBROUTINE MF_FinalizeField_IMEX_RK
+  END SUBROUTINE Finalize_IMEX_RK_MF
 
   SUBROUTINE Initialize_IMEX_RK( Scheme, Verbose_Option )
 
@@ -520,7 +526,7 @@ CONTAINS
       c_IM(i) = SUM( a_IM(i,1:i) )
       c_EX(i) = SUM( a_EX(i,1:i-1) )
     END DO
-    
+
     IF (Verbose) THEN
       WRITE(*,*)
       WRITE(*,'(A6,A)') '', 'Implicit Butcher Table:'
@@ -547,7 +553,7 @@ CONTAINS
     DO i = 1, nStages
 
 
-#if defined(MICROPHYSICS_WEAKLIB)  
+#if defined(MICROPHYSICS_WEAKLIB)
       CALL AllocateArray7D( StageData(i) % dU_IM )
       CALL AllocateArray7D( StageData(i) % dU_EX )
       CALL AllocateArray5D( StageData(i) % dF_EX )
@@ -576,7 +582,7 @@ CONTAINS
 
     DO i = 1, nStages
 
-#if defined(MICROPHYSICS_WEAKLIB)  
+#if defined(MICROPHYSICS_WEAKLIB)
       CALL DeallocateArray7D( StageData(i) % dU_IM )
       CALL DeallocateArray7D( StageData(i) % dU_EX )
       CALL DeallocateArray5D( StageData(i) % dF_EX )

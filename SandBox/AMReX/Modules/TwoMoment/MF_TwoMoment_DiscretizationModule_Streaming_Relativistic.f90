@@ -96,7 +96,12 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
+
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
 
