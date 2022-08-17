@@ -205,7 +205,7 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Radiation Fields (Conserved)'
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
       WRITE(*,*)
       DO iCR = 1, nCR
         WRITE(*,'(A5,A32)') '', TRIM( namesCR(iCR) )
