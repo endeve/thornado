@@ -32,6 +32,8 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
 
   ! --- Local Modules ---
+  USE MF_KindModule, ONLY: &
+    Zero
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
