@@ -26,6 +26,7 @@ thornado.CheckpointFileBaseName = "CoreCollapseSupernova_XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 
+thornado.Scheme  = "IMEX_PDARS"
 thornado.nNodes  = 2
 thornado.nStages = 2
 
