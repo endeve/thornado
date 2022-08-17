@@ -30,6 +30,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     MeshX
 
   ! --- Local Modules ---
+  USE MF_KindModule, ONLY: &
+    Zero
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
@@ -96,7 +98,12 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
+
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
 

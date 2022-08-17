@@ -135,6 +135,7 @@ MODULE InputParsingModule
 
 real(dp)::mass,r0,kt,mu0,e0
 real(dp)::d_0,chi,sigma
+character(:),allocatable::direction
 
 CONTAINS
 
@@ -160,6 +161,10 @@ call amrex_parmparse_build( pp, 'ST' )
   call pp % query( 'd_0',d_0 )
   call pp % query( 'chi',chi )
   call pp % query( 'sigma',sigma )
+call amrex_parmparse_destroy( pp )
+direction=''
+call amrex_parmparse_build( pp, 'thornado' )
+  call pp % query( 'direction',direction )
 call amrex_parmparse_destroy( pp )
 
     ! --- debug Parameters debug.* ---
