@@ -11,19 +11,92 @@ MODULE MF_UtilitiesModule
     amrex_mfiter_destroy, &
     amrex_multifab, &
     amrex_imultifab
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_sum
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
+    nDOFE, &
     nDOFZ, &
-    nNodesX
+    nNodesX, &
+    nNodesE, &
+    iE_B0, &
+    iE_E0, &
+    iE_B1, &
+    iE_E1
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE UnitsModule, ONLY: &
+    MeV
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_SqrtGm
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3
+  USE FluidFieldsModule, ONLY: &
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
+    nPF, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne, &
+    iPF_D, &
+    iPF_E, &
+    iPF_Ne, &
+    unitsPF, &
+    nAF, &
+    iAF_P, &
+    iAF_T, &
+    iAF_Ye, &
+    iAF_S, &
+    iAF_E, &
+    iAF_Gm, &
+    iAF_Cs, &
+    iAF_Me, &
+    iAF_Mp, &
+    iAF_Mn, &
+    iAF_Xp, &
+    iAF_Xn, &
+    iAF_Xa, &
+    iAF_Xh, &
+    unitsAF
+  USE RadiationFieldsModule, ONLY: &
+    nCR, &
+    iCR_N, &
+    iCR_G1, &
+    iCR_G2, &
+    iCR_G3, &
+    nPR, &
+    iPR_D, &
+    iPR_I1, &
+    iPR_I2, &
+    iPR_I3
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeAuxiliary_Fluid_TABLE, &
+    ApplyEquationOfState_TABLE
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_TwoMoment
 
   ! --- Local Modules ---
 
@@ -36,10 +109,18 @@ MODULE MF_UtilitiesModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    swX
+    nX, &
+    nE, &
+    swX, &
+    swE, &
+    nSpecies
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap, &
+    ApplyBoundaryConditions_TwoMoment_MF
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -531,17 +612,17 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(EdgeMap)      :: Edge_Map
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
 
-    REAL(AR), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: CF (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: PF (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: CR (:,:,:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: PR (:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CF (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PF (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CR (:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PR (:,:,:,:,:,:,:)
 
-    REAL(AR) :: D, I1, I2, I3, N, G1, G2, G3
+    REAL(DP) :: D, I1, I2, I3, N, G1, G2, G3
 
     ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                         1-swX(2):nX(2)+swX(2), &
@@ -562,11 +643,11 @@ CONTAINS
                         1-swX(1):nX(1)+swX(1), &
                         1-swX(2):nX(2)+swX(2), &
                         1-swX(3):nX(3)+swX(3),1:nPR,1:nSpecies) )
-    G = 0.0_AR
-    CF = 0.0_AR
-    PF = 0.0_AR
-    CR = 0.0_AR
-    PR = 0.0_AR
+    G = 0.0_DP
+    CF = 0.0_DP
+    PF = 0.0_DP
+    CR = 0.0_DP
+    PR = 0.0_DP
 
     ! --- Convert AMReX MultiFabs to thornado arrays ---
 
@@ -673,7 +754,7 @@ CONTAINS
 
 
 
-        CALL MF_ApplyBoundaryConditions_TwoMoment &
+        CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, CR, Edge_Map )
 
       END DO
@@ -780,7 +861,7 @@ CONTAINS
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
-                 0.0_AR, 0.0_AR, 0.0_AR,                &
+                 0.0_DP, 0.0_DP, 0.0_DP,                &
                  G(iNodeX ,iZ2,iZ3,iZ4,iGF_Alpha  ), &
                  G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_1  ), &
                  G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_2  ), &
@@ -922,16 +1003,16 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
 
-    REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: AF(:,:,:,:,:)
-    REAL(AR), ALLOCATABLE :: PF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: AF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:)
 
-    REAL(AR) :: Mu(1:nDOFX), num
+    REAL(DP) :: Mu(1:nDOFX), num
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iX1, iX2, iX3, l

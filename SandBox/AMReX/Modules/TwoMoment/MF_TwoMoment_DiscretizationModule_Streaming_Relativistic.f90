@@ -30,6 +30,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     MeshX
 
   ! --- Local Modules ---
+  USE MF_KindModule, ONLY: &
+    Zero
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &

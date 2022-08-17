@@ -30,7 +30,8 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
     nGE, iGE_Ep3
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
-  USE MyAmrModule, ONLY: &
+  ! Get these from somewhere else?
+  USE InputParsingModule, ONLY: &
     eL, &
     eR, &
     nE, &
@@ -51,7 +52,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: ComputeEddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_ud
-  PUBLIC :: ComputeHeatFluxTensorComponents_ddd_Lagrangian 
+  PUBLIC :: ComputeHeatFluxTensorComponents_ddd_Lagrangian
   PUBLIC :: ComputeHeatFluxTensorComponents_uud_Lagrangian
   PUBLIC :: ComputeHeatFluxTensorComponents_udd_Lagrangian
   PUBLIC :: Flux_X1
@@ -95,14 +96,14 @@ CONTAINS
     REAL(DP) :: LMAT(4,4), DET, Alpha(M)
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
     REAL(DP) :: W, DT
-    
+
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
@@ -117,9 +118,9 @@ CONTAINS
 
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
     k = 0
@@ -214,7 +215,7 @@ CONTAINS
 
       END IF
 
-     
+
       D     = UVEC(1)
       I_d_1 = UVEC(2); I_u_1 = ( 1.0_DP - B_d_1 * V_u_1 / alp ) * I_d_1 / Gm_dd_11  &
             - I_d_2 * B_d_1 * V_u_2 / ( alp *Gm_dd_11 ) - I_d_3 * B_d_1 * V_u_3 / ( Gm_dd_11 * alp )
@@ -380,7 +381,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
       !$OMP PRIVATE( iX, k_dd, absV, Omega, vI, vK, I_d_1, I_d_2, I_d_3, &
-      !$OMP          B_d_1, B_d_2, B_d_3, W, DT ) 
+      !$OMP          B_d_1, B_d_2, B_d_3, W, DT )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -396,12 +397,12 @@ CONTAINS
 
 
           I_d_1 = DT * ( B_d_2 * V_u_2(iX) + B_d_3 * V_u_3(iX) - alp(iX) ) * Gm_dd_11(iX) * I_u_1(iZ) &
-          - DT * ( B_d_1 * V_u_2(iX) *Gm_dd_22(iX) ) * I_u_2(iZ) - DT * ( B_d_1 * V_u_3(iX) * Gm_dd_33(iX) ) * I_u_3(iZ) 
+          - DT * ( B_d_1 * V_u_2(iX) *Gm_dd_22(iX) ) * I_u_2(iZ) - DT * ( B_d_1 * V_u_3(iX) * Gm_dd_33(iX) ) * I_u_3(iZ)
           I_d_2 = DT * ( B_d_1 * V_u_1(iX) + B_d_3 * V_u_3(iX) - alp(iX) ) * Gm_dd_22(iX) * I_u_2(iZ) &
-          - DT * ( B_d_2 * V_u_1(iX) * Gm_dd_11(iX) ) * I_u_1(iZ) - DT * ( Gm_dd_33(iX) * I_u_3(iZ) * B_d_2 * V_u_3(iX) ) 
+          - DT * ( B_d_2 * V_u_1(iX) * Gm_dd_11(iX) ) * I_u_1(iZ) - DT * ( Gm_dd_33(iX) * I_u_3(iZ) * B_d_2 * V_u_3(iX) )
           I_d_3 = DT * ( B_d_1 * V_u_1(iX) + B_d_2 * V_u_2(iX) - alp(iX) ) * Gm_dd_33(iX) * I_u_3(iZ) &
           - DT * ( Gm_dd_11(iX) * I_u_1(iZ) * B_d_3 * V_u_1(iX) ) - DT * ( Gm_dd_22(iX) * I_u_2(iZ) * B_d_3 * V_u_2(iX) )
-    
+
           UVEC(iPR_D ,iZ) = D    (iZ)
           UVEC(iPR_I1,iZ) = I_d_1
           UVEC(iPR_I2,iZ) = I_d_2
@@ -413,8 +414,8 @@ CONTAINS
 
 
           absV = SQRT(   Gm_dd_11(iX) * V_u_1(iX) * V_u_1(iX) &
-                       + Gm_dd_22(iX) * V_u_2(iX) * V_u_2(iX) &  
-                       + Gm_dd_33(iX) * V_u_3(iX) * V_u_3(iX) ) 
+                       + Gm_dd_22(iX) * V_u_2(iX) * V_u_2(iX) &
+                       + Gm_dd_33(iX) * V_u_3(iX) * V_u_3(iX) )
 
           W = 1.0_DP / SQRT( 1.0_DP - absV**2)
 
@@ -423,7 +424,7 @@ CONTAINS
 
           Omega = 1.0_DP / ( absV + W )
 
- 
+
           vI =   V_u_1(iX) * UVEC(iPR_I1,iZ) &
                + V_u_2(iX) * UVEC(iPR_I2,iZ) &
                + V_u_3(iX) * UVEC(iPR_I3,iZ)
@@ -714,8 +715,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23
     REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     REAL(DP) :: k_dd_ij(1:3,1:3)
-    REAL(DP) :: W  
-    REAL(DP) :: DT 
+    REAL(DP) :: W
+    REAL(DP) :: DT
     REAL(DP) :: B_d_1, B_d_2, B_d_3
     REAL(DP) :: I_d_1, I_d_2, I_d_3 ! --- Index Up
 
@@ -730,16 +731,16 @@ CONTAINS
     B_d_3 = Gm_dd_33 * B_u_3
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
+
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
- 
+
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -912,9 +913,9 @@ CONTAINS
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
     EF = EddingtonFactor( D, FF )
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
+
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
@@ -927,13 +928,13 @@ CONTAINS
     u_d_1 = W * V_d_1
     u_d_2 = W * V_d_2
     u_d_3 = W * V_d_3
- 
+
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
     h_d_1 = I_d_1 / ( FF * D )
@@ -942,7 +943,7 @@ CONTAINS
 
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
-   
+
     ! --- Diagonal Eddington Tensor Components ---
 
     k_dd_11 = a * ( Gm_dd_11 + u_d_1 * u_d_1 ) + b * h_d_1 * h_d_1
@@ -952,23 +953,23 @@ CONTAINS
     k_dd_12 = a * u_d_1 * u_d_2 + b * h_d_1 * h_d_2
     k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
     k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3
-   
+
     k_dd_ij(1,1) = k_dd_11
- 
+
     k_dd_ij(1,2) = k_dd_12
- 
+
     k_dd_ij(1,3) = k_dd_13
- 
+
     k_dd_ij(2,1) = k_dd_12
- 
+
     k_dd_ij(2,2) = k_dd_22
- 
+
     k_dd_ij(2,3) = k_dd_23
- 
+
     k_dd_ij(3,1) = k_dd_13
- 
+
     k_dd_ij(3,2) = k_dd_23
- 
+
     k_dd_ij(3,3) = k_dd_33
 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
@@ -994,13 +995,13 @@ CONTAINS
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
     EF = EddingtonFactor( D, FF )
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
 
-    Gm_uu_11 = 1.0_DP / Gm_dd_11 - B_u_1**2 / alp**2 
-    Gm_uu_22 = 1.0_DP / Gm_dd_22 - B_u_2**2 / alp**2 
-    Gm_uu_33 = 1.0_DP / Gm_dd_33 - B_u_3**2 / alp**2 
+
+    Gm_uu_11 = 1.0_DP / Gm_dd_11 - B_u_1**2 / alp**2
+    Gm_uu_22 = 1.0_DP / Gm_dd_22 - B_u_2**2 / alp**2
+    Gm_uu_33 = 1.0_DP / Gm_dd_33 - B_u_3**2 / alp**2
 
     V_d_1 = Gm_dd_11 * V_u_1
     V_d_2 = Gm_dd_22 * V_u_2
@@ -1012,9 +1013,9 @@ CONTAINS
 
     V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
 
-    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
-    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
-    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp )
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp )
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp )
 
 
     h_u_1 = I_u_1 / ( FF * D )
@@ -1024,7 +1025,7 @@ CONTAINS
 
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
-   
+
     ! --- Diagonal Euuington Tensor Components ---
 
     k_uu_11 = a * ( Gm_uu_11 + u_u_1 * u_u_1 ) + b * h_u_1 * h_u_1
@@ -1040,40 +1041,40 @@ CONTAINS
     k_uu_20 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_12 + V_d_2 * k_uu_22 + V_d_3 * k_uu_23 ) / alp
 
     k_uu_30 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_13 + V_d_2 * k_uu_23 + V_d_3 * k_uu_33 ) / alp
-    
+
     k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
                + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
 
     k_uu_munu(0,0) = k_uu_00
- 
+
     k_uu_munu(0,1) = k_uu_10
- 
+
     k_uu_munu(0,2) = k_uu_20
- 
+
     k_uu_munu(0,3) = k_uu_30
- 
+
     k_uu_munu(1,0) = k_uu_10
- 
+
     k_uu_munu(1,1) = k_uu_11
- 
+
     k_uu_munu(1,2) = k_uu_12
- 
+
     k_uu_munu(1,3) = k_uu_13
- 
+
     k_uu_munu(2,0) = k_uu_20
- 
+
     k_uu_munu(2,1) = k_uu_12
- 
+
     k_uu_munu(2,2) = k_uu_22
- 
+
     k_uu_munu(2,3) = k_uu_23
- 
+
     k_uu_munu(3,0) = k_uu_30
- 
+
     k_uu_munu(3,1) = k_uu_13
- 
+
     k_uu_munu(3,2) = k_uu_23
- 
+
     k_uu_munu(3,3) = k_uu_33
 
 
@@ -1092,8 +1093,8 @@ CONTAINS
     REAL(DP) :: h_u_1, h_u_2, h_u_3, h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
     REAL(DP) :: u_d_1, u_d_2, u_d_3, u_u_1, u_u_2, u_u_3, W, x, y
-    REAL(DP) :: k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, k_ud_21, k_ud_31, k_ud_32, & 
-                k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00 
+    REAL(DP) :: k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, k_ud_21, k_ud_31, k_ud_32, &
+                k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -1102,9 +1103,9 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
+
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
@@ -1119,17 +1120,17 @@ CONTAINS
     u_d_2 = W * V_d_2
     u_d_3 = W * V_d_3
 
-    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
-    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
-    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
- 
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp )
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp )
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp )
+
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -1160,9 +1161,9 @@ CONTAINS
     k_ud_31 = a * u_u_3 * u_d_1 + b * h_u_3 * h_d_1
     k_ud_32 = a * u_u_3 * u_d_2 + b * h_u_3 * h_d_2
 
-    x = ( 1.0_DP / alp ) * ( 1.0_DP / ( 1.0_DP - V_0 / alp ) ) 
-    y = ( 1.0_DP / alp ) 
- 
+    x = ( 1.0_DP / alp ) * ( 1.0_DP / ( 1.0_DP - V_0 / alp ) )
+    y = ( 1.0_DP / alp )
+
     k_ud_01 = x * ( V_d_1 * k_ud_11 + V_d_2 * k_ud_21 + V_d_3 * k_ud_31 )
     k_ud_02 = x * ( V_d_1 * k_ud_12 + V_d_2 * k_ud_22 + V_d_3 * k_ud_32 )
     k_ud_03 = x * ( V_d_1 * k_ud_13 + V_d_2 * k_ud_23 + V_d_3 * k_ud_33 )
@@ -1174,37 +1175,37 @@ CONTAINS
     k_ud_00 = x * y * ( V_u_1 * V_d_1 * k_ud_11 + V_u_1 * V_d_2 * k_ud_21 + V_u_1 * V_d_3 * k_ud_31 &
             + V_u_2 * V_d_1 * k_ud_12 + V_u_2 * V_d_2 * k_ud_22 + V_u_2 * V_d_3 * k_ud_32 &
             + V_u_3 * V_d_1 * k_ud_13 + V_u_3 * V_d_2 * k_ud_23 + V_u_3 * V_d_3 * k_ud_33 )
-            
+
     k_ud_munu(0,0) = k_ud_00
- 
+
     k_ud_munu(0,1) = k_ud_01
- 
+
     k_ud_munu(0,2) = k_ud_02
- 
+
     k_ud_munu(0,3) = k_ud_03
- 
+
     k_ud_munu(1,0) = k_ud_10
- 
+
     k_ud_munu(1,1) = k_ud_11
- 
+
     k_ud_munu(1,2) = k_ud_12
- 
+
     k_ud_munu(1,3) = k_ud_13
- 
+
     k_ud_munu(2,0) = k_ud_20
- 
+
     k_ud_munu(2,1) = k_ud_21
- 
+
     k_ud_munu(2,2) = k_ud_22
- 
+
     k_ud_munu(2,3) = k_ud_23
- 
+
     k_ud_munu(3,0) = k_ud_30
- 
+
     k_ud_munu(3,1) = k_ud_31
- 
+
     k_ud_munu(3,2) = k_ud_32
- 
+
     k_ud_munu(3,3) = k_ud_33
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
@@ -1212,7 +1213,7 @@ CONTAINS
   SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_ddd_ijk )
- 
+
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
 
@@ -1226,13 +1227,13 @@ CONTAINS
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W
     REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
     REAL(DP) :: &
-      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
-      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
-      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
-      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
-      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
+      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, &
+      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, &
+      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, &
+      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, &
+      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, &
       l_ddd_332, l_ddd_333
-   
+
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -1240,9 +1241,9 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
+
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
@@ -1260,9 +1261,9 @@ CONTAINS
 
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -1276,7 +1277,7 @@ CONTAINS
     h_dd_21 = u_d_1 * u_d_2
     h_dd_31 = u_d_1 * u_d_3
     h_dd_32 = u_d_2 * u_d_3
- 
+
     a = Half * ( FF - HF )
     b = Half * ( Five * HF - Three * FF )
 
@@ -1285,139 +1286,139 @@ CONTAINS
     h_d_3 = I_d_3 / ( FF * D )
 
 
-     l_ddd_111 & 
+     l_ddd_111 &
       = a * ( h_d_1 * h_dd_11 + h_d_1 * h_dd_11 + h_d_1 * h_dd_11 ) + b * h_d_1 * h_d_1 * h_d_1
 
-    l_ddd_112 & 
+    l_ddd_112 &
       = a * ( h_d_1 * h_dd_12 + h_d_1 * h_dd_12 + h_d_2 * h_dd_11 ) + b * h_d_1 * h_d_1 * h_d_2
 
-    l_ddd_113 & 
+    l_ddd_113 &
       = a * ( h_d_1 * h_dd_13 + h_d_1 * h_dd_13 + h_d_3 * h_dd_11 ) + b * h_d_1 * h_d_1 * h_d_3
 
-    l_ddd_121 & 
+    l_ddd_121 &
       = a * ( h_d_1 * h_dd_21 + h_d_2 * h_dd_11 + h_d_1 * h_dd_12 ) + b * h_d_1 * h_d_2 * h_d_1
 
-    l_ddd_122 & 
+    l_ddd_122 &
       = a * ( h_d_1 * h_dd_22 + h_d_2 * h_dd_12 + h_d_2 * h_dd_12 ) + b * h_d_1 * h_d_2 * h_d_2
 
-    l_ddd_123 & 
+    l_ddd_123 &
       = a * ( h_d_1 * h_dd_23 + h_d_2 * h_dd_13 + h_d_3 * h_dd_12 ) + b * h_d_1 * h_d_2 * h_d_3
 
-    l_ddd_131 & 
+    l_ddd_131 &
       = a * ( h_d_1 * h_dd_31 + h_d_3 * h_dd_11 + h_d_1 * h_dd_13 ) + b * h_d_1 * h_d_3 * h_d_1
 
-    l_ddd_132 & 
+    l_ddd_132 &
       = a * ( h_d_1 * h_dd_32 + h_d_3 * h_dd_12 + h_d_2 * h_dd_13 ) + b * h_d_1 * h_d_3 * h_d_2
 
-    l_ddd_133 & 
+    l_ddd_133 &
       = a * ( h_d_1 * h_dd_33 + h_d_3 * h_dd_13 + h_d_3 * h_dd_13 ) + b * h_d_1 * h_d_3 * h_d_3
 
-    l_ddd_211 & 
+    l_ddd_211 &
       = a * ( h_d_2 * h_dd_11 + h_d_1 * h_dd_21 + h_d_1 * h_dd_21 ) + b * h_d_2 * h_d_1 * h_d_1
 
-    l_ddd_212 & 
+    l_ddd_212 &
       = a * ( h_d_2 * h_dd_12 + h_d_1 * h_dd_22 + h_d_2 * h_dd_21 ) + b * h_d_2 * h_d_1 * h_d_2
 
-    l_ddd_213 & 
+    l_ddd_213 &
       = a * ( h_d_2 * h_dd_13 + h_d_1 * h_dd_23 + h_d_3 * h_dd_21 ) + b * h_d_2 * h_d_1 * h_d_3
 
-    l_ddd_221 & 
+    l_ddd_221 &
       = a * ( h_d_2 * h_dd_21 + h_d_2 * h_dd_21 + h_d_1 * h_dd_22 ) + b * h_d_2 * h_d_2 * h_d_1
 
-    l_ddd_222 & 
+    l_ddd_222 &
       = a * ( h_d_2 * h_dd_22 + h_d_2 * h_dd_22 + h_d_2 * h_dd_22 ) + b * h_d_2 * h_d_2 * h_d_2
 
-    l_ddd_223 & 
+    l_ddd_223 &
       = a * ( h_d_2 * h_dd_23 + h_d_2 * h_dd_23 + h_d_3 * h_dd_22 ) + b * h_d_2 * h_d_2 * h_d_3
 
-    l_ddd_231 & 
+    l_ddd_231 &
       = a * ( h_d_2 * h_dd_31 + h_d_3 * h_dd_21 + h_d_1 * h_dd_23 ) + b * h_d_2 * h_d_3 * h_d_1
 
-    l_ddd_232 & 
+    l_ddd_232 &
       = a * ( h_d_2 * h_dd_32 + h_d_3 * h_dd_22 + h_d_2 * h_dd_23 ) + b * h_d_2 * h_d_3 * h_d_2
 
-    l_ddd_233 & 
+    l_ddd_233 &
       = a * ( h_d_2 * h_dd_33 + h_d_3 * h_dd_23 + h_d_3 * h_dd_23 ) + b * h_d_2 * h_d_3 * h_d_3
 
-    l_ddd_311 & 
+    l_ddd_311 &
       = a * ( h_d_3 * h_dd_11 + h_d_1 * h_dd_31 + h_d_1 * h_dd_31 ) + b * h_d_3 * h_d_1 * h_d_1
 
-    l_ddd_312 & 
+    l_ddd_312 &
       = a * ( h_d_3 * h_dd_12 + h_d_1 * h_dd_32 + h_d_2 * h_dd_31 ) + b * h_d_3 * h_d_1 * h_d_2
 
-    l_ddd_313 & 
+    l_ddd_313 &
       = a * ( h_d_3 * h_dd_13 + h_d_1 * h_dd_33 + h_d_3 * h_dd_31 ) + b * h_d_3 * h_d_1 * h_d_3
 
-    l_ddd_321 & 
+    l_ddd_321 &
       = a * ( h_d_3 * h_dd_21 + h_d_2 * h_dd_31 + h_d_1 * h_dd_32 ) + b * h_d_3 * h_d_2 * h_d_1
 
-    l_ddd_322 & 
+    l_ddd_322 &
       = a * ( h_d_3 * h_dd_22 + h_d_2 * h_dd_32 + h_d_2 * h_dd_32 ) + b * h_d_3 * h_d_2 * h_d_2
 
-    l_ddd_323 & 
+    l_ddd_323 &
       = a * ( h_d_3 * h_dd_23 + h_d_2 * h_dd_33 + h_d_3 * h_dd_32 ) + b * h_d_3 * h_d_2 * h_d_3
 
-    l_ddd_331 & 
+    l_ddd_331 &
       = a * ( h_d_3 * h_dd_31 + h_d_3 * h_dd_31 + h_d_1 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_1
 
-    l_ddd_332 & 
+    l_ddd_332 &
       = a * ( h_d_3 * h_dd_32 + h_d_3 * h_dd_32 + h_d_2 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_2
 
-    l_ddd_333 & 
+    l_ddd_333 &
       = a * ( h_d_3 * h_dd_33 + h_d_3 * h_dd_33 + h_d_3 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_3
 
     l_ddd_ijk(1,1,1) = l_ddd_111
- 
+
     l_ddd_ijk(1,1,2) = l_ddd_112
- 
+
     l_ddd_ijk(1,1,3) = l_ddd_113
- 
+
     l_ddd_ijk(1,2,1) = l_ddd_121
- 
+
     l_ddd_ijk(1,2,2) = l_ddd_122
- 
+
     l_ddd_ijk(1,2,3) = l_ddd_123
- 
+
     l_ddd_ijk(1,3,1) = l_ddd_131
- 
+
     l_ddd_ijk(1,3,2) = l_ddd_132
- 
+
     l_ddd_ijk(1,3,3) = l_ddd_133
- 
+
     l_ddd_ijk(2,1,1) = l_ddd_211
- 
+
     l_ddd_ijk(2,1,2) = l_ddd_212
- 
+
     l_ddd_ijk(2,1,3) = l_ddd_213
- 
+
     l_ddd_ijk(2,2,1) = l_ddd_221
- 
+
     l_ddd_ijk(2,2,2) = l_ddd_222
- 
+
     l_ddd_ijk(2,2,3) = l_ddd_223
- 
+
     l_ddd_ijk(2,3,1) = l_ddd_231
- 
+
     l_ddd_ijk(2,3,2) = l_ddd_232
- 
+
     l_ddd_ijk(2,3,3) = l_ddd_233
- 
+
     l_ddd_ijk(3,1,1) = l_ddd_311
- 
+
     l_ddd_ijk(3,1,2) = l_ddd_312
- 
+
     l_ddd_ijk(3,1,3) = l_ddd_313
- 
+
     l_ddd_ijk(3,2,1) = l_ddd_321
- 
+
     l_ddd_ijk(3,2,2) = l_ddd_322
- 
+
     l_ddd_ijk(3,2,3) = l_ddd_323
- 
+
     l_ddd_ijk(3,3,1) = l_ddd_331
- 
+
     l_ddd_ijk(3,3,2) = l_ddd_332
- 
+
     l_ddd_ijk(3,3,3) = l_ddd_333
 
   END SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian
@@ -1427,7 +1428,7 @@ CONTAINS
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_munurho )
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
-     REAL(DP), INTENT(out)  :: &  
+     REAL(DP), INTENT(out)  :: &
       l_uud_munurho(0:3,0:3,0:3)
 
     REAL(DP) :: FF, HF, a, b, DT, V_0, x, y
@@ -1439,24 +1440,24 @@ CONTAINS
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
     REAL(DP) :: h_uu_11, h_uu_22, h_uu_33, h_uu_12, h_uu_13, h_uu_23, h_uu_21, h_uu_31, h_uu_32
     REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
-    REAL(DP) :: Gm_uu_11, Gm_uu_22, Gm_uu_33  
- 
+    REAL(DP) :: Gm_uu_11, Gm_uu_22, Gm_uu_33
+
     REAL(DP) :: &
-      l_uud_000, l_uud_001, l_uud_002, l_uud_003, & 
-      l_uud_010, l_uud_011, l_uud_012, l_uud_013, & 
-      l_uud_020, l_uud_021, l_uud_022, l_uud_023, & 
-      l_uud_030, l_uud_031, l_uud_032, l_uud_033, & 
-      l_uud_100, l_uud_101, l_uud_102, l_uud_103, & 
-      l_uud_110, l_uud_111, l_uud_112, l_uud_113, & 
-      l_uud_120, l_uud_121, l_uud_122, l_uud_123, & 
-      l_uud_130, l_uud_131, l_uud_132, l_uud_133, & 
-      l_uud_200, l_uud_201, l_uud_202, l_uud_203, & 
-      l_uud_210, l_uud_211, l_uud_212, l_uud_213, & 
-      l_uud_220, l_uud_221, l_uud_222, l_uud_223, & 
-      l_uud_230, l_uud_231, l_uud_232, l_uud_233, & 
-      l_uud_300, l_uud_301, l_uud_302, l_uud_303, & 
-      l_uud_310, l_uud_311, l_uud_312, l_uud_313, & 
-      l_uud_320, l_uud_321, l_uud_322, l_uud_323, & 
+      l_uud_000, l_uud_001, l_uud_002, l_uud_003, &
+      l_uud_010, l_uud_011, l_uud_012, l_uud_013, &
+      l_uud_020, l_uud_021, l_uud_022, l_uud_023, &
+      l_uud_030, l_uud_031, l_uud_032, l_uud_033, &
+      l_uud_100, l_uud_101, l_uud_102, l_uud_103, &
+      l_uud_110, l_uud_111, l_uud_112, l_uud_113, &
+      l_uud_120, l_uud_121, l_uud_122, l_uud_123, &
+      l_uud_130, l_uud_131, l_uud_132, l_uud_133, &
+      l_uud_200, l_uud_201, l_uud_202, l_uud_203, &
+      l_uud_210, l_uud_211, l_uud_212, l_uud_213, &
+      l_uud_220, l_uud_221, l_uud_222, l_uud_223, &
+      l_uud_230, l_uud_231, l_uud_232, l_uud_233, &
+      l_uud_300, l_uud_301, l_uud_302, l_uud_303, &
+      l_uud_310, l_uud_311, l_uud_312, l_uud_313, &
+      l_uud_320, l_uud_321, l_uud_322, l_uud_323, &
       l_uud_330, l_uud_331, l_uud_332, l_uud_333
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -1465,12 +1466,12 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
-    Gm_uu_11 = 1.0_DP /  Gm_dd_11 - B_u_1**2 / alp**2 
-    Gm_uu_22 = 1.0_DP /  Gm_dd_22 - B_u_2**2 / alp**2 
-    Gm_uu_33 = 1.0_DP /  Gm_dd_33 - B_u_3**2 / alp**2 
+    Gm_uu_11 = 1.0_DP /  Gm_dd_11 - B_u_1**2 / alp**2
+    Gm_uu_22 = 1.0_DP /  Gm_dd_22 - B_u_2**2 / alp**2
+    Gm_uu_33 = 1.0_DP /  Gm_dd_33 - B_u_3**2 / alp**2
 
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
@@ -1484,17 +1485,17 @@ CONTAINS
     u_d_2 = W * V_d_2
     u_d_3 = W * V_d_3
 
-    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
-    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
-    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp )
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp )
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp )
 
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -1518,7 +1519,7 @@ CONTAINS
     h_ud_21 = u_u_2 * u_d_1
     h_ud_31 = u_u_3 * u_d_1
     h_ud_32 = u_u_3 * u_d_2
- 
+
 
 
 
@@ -1535,343 +1536,343 @@ CONTAINS
     h_d_3 = I_d_3 / ( FF * D )
 
     ! --- Diagonal Heat Flux Tensor Components ---
-    l_uud_111 & 
+    l_uud_111 &
       = a * ( h_u_1 * h_ud_11 + h_u_1 * h_ud_11 + h_d_1 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_1
 
-    l_uud_112 & 
+    l_uud_112 &
       = a * ( h_u_1 * h_ud_12 + h_u_1 * h_ud_12 + h_d_2 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_2
 
-    l_uud_113 & 
+    l_uud_113 &
       = a * ( h_u_1 * h_ud_13 + h_u_1 * h_ud_13 + h_d_3 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_3
 
-    l_uud_121 & 
+    l_uud_121 &
       = a * ( h_u_1 * h_ud_21 + h_u_2 * h_ud_11 + h_d_1 * h_uu_12 ) + b * h_u_1 * h_u_2 * h_d_1
 
-    l_uud_122 & 
+    l_uud_122 &
       = a * ( h_u_1 * h_ud_22 + h_u_2 * h_ud_12 + h_d_2 * h_uu_12 ) + b * h_u_1 * h_u_2 * h_d_2
 
-    l_uud_123 & 
+    l_uud_123 &
       = a * ( h_u_1 * h_ud_23 + h_u_2 * h_ud_13 + h_d_3 * h_uu_12 ) + b * h_u_1 * h_u_2 * h_d_3
 
-    l_uud_131 & 
+    l_uud_131 &
       = a * ( h_u_1 * h_ud_31 + h_u_3 * h_ud_11 + h_d_1 * h_uu_13 ) + b * h_u_1 * h_u_3 * h_d_1
 
-    l_uud_132 & 
+    l_uud_132 &
       = a * ( h_u_1 * h_ud_32 + h_u_3 * h_ud_12 + h_d_2 * h_uu_13 ) + b * h_u_1 * h_u_3 * h_d_2
 
-    l_uud_133 & 
+    l_uud_133 &
       = a * ( h_u_1 * h_ud_33 + h_u_3 * h_ud_13 + h_d_3 * h_uu_13 ) + b * h_u_1 * h_u_3 * h_d_3
 
-    l_uud_211 & 
+    l_uud_211 &
       = a * ( h_u_2 * h_ud_11 + h_u_1 * h_ud_21 + h_d_1 * h_uu_21 ) + b * h_u_2 * h_u_1 * h_d_1
 
-    l_uud_212 & 
+    l_uud_212 &
       = a * ( h_u_2 * h_ud_12 + h_u_1 * h_ud_22 + h_d_2 * h_uu_21 ) + b * h_u_2 * h_u_1 * h_d_2
 
-    l_uud_213 & 
+    l_uud_213 &
       = a * ( h_u_2 * h_ud_13 + h_u_1 * h_ud_23 + h_d_3 * h_uu_21 ) + b * h_u_2 * h_u_1 * h_d_3
 
-    l_uud_221 & 
+    l_uud_221 &
       = a * ( h_u_2 * h_ud_21 + h_u_2 * h_ud_21 + h_d_1 * h_uu_22 ) + b * h_u_2 * h_u_2 * h_d_1
 
-    l_uud_222 & 
+    l_uud_222 &
       = a * ( h_u_2 * h_ud_22 + h_u_2 * h_ud_22 + h_d_2 * h_uu_22 ) + b * h_u_2 * h_u_2 * h_d_2
 
-    l_uud_223 & 
+    l_uud_223 &
       = a * ( h_u_2 * h_ud_23 + h_u_2 * h_ud_23 + h_d_3 * h_uu_22 ) + b * h_u_2 * h_u_2 * h_d_3
 
-    l_uud_231 & 
+    l_uud_231 &
       = a * ( h_u_2 * h_ud_31 + h_u_3 * h_ud_21 + h_d_1 * h_uu_23 ) + b * h_u_2 * h_u_3 * h_d_1
 
-    l_uud_232 & 
+    l_uud_232 &
       = a * ( h_u_2 * h_ud_32 + h_u_3 * h_ud_22 + h_d_2 * h_uu_23 ) + b * h_u_2 * h_u_3 * h_d_2
 
-    l_uud_233 & 
+    l_uud_233 &
       = a * ( h_u_2 * h_ud_33 + h_u_3 * h_ud_23 + h_d_3 * h_uu_23 ) + b * h_u_2 * h_u_3 * h_d_3
 
-    l_uud_311 & 
+    l_uud_311 &
       = a * ( h_u_3 * h_ud_11 + h_u_1 * h_ud_31 + h_d_1 * h_uu_31 ) + b * h_u_3 * h_u_1 * h_d_1
 
-    l_uud_312 & 
+    l_uud_312 &
       = a * ( h_u_3 * h_ud_12 + h_u_1 * h_ud_32 + h_d_2 * h_uu_31 ) + b * h_u_3 * h_u_1 * h_d_2
 
-    l_uud_313 & 
+    l_uud_313 &
       = a * ( h_u_3 * h_ud_13 + h_u_1 * h_ud_33 + h_d_3 * h_uu_31 ) + b * h_u_3 * h_u_1 * h_d_3
 
-    l_uud_321 & 
+    l_uud_321 &
       = a * ( h_u_3 * h_ud_21 + h_u_2 * h_ud_31 + h_d_1 * h_uu_32 ) + b * h_u_3 * h_u_2 * h_d_1
 
-    l_uud_322 & 
+    l_uud_322 &
       = a * ( h_u_3 * h_ud_22 + h_u_2 * h_ud_32 + h_d_2 * h_uu_32 ) + b * h_u_3 * h_u_2 * h_d_2
 
-    l_uud_323 & 
+    l_uud_323 &
       = a * ( h_u_3 * h_ud_23 + h_u_2 * h_ud_33 + h_d_3 * h_uu_32 ) + b * h_u_3 * h_u_2 * h_d_3
 
-    l_uud_331 & 
+    l_uud_331 &
       = a * ( h_u_3 * h_ud_31 + h_u_3 * h_ud_31 + h_d_1 * h_uu_33 ) + b * h_u_3 * h_u_3 * h_d_1
 
-    l_uud_332 & 
+    l_uud_332 &
       = a * ( h_u_3 * h_ud_32 + h_u_3 * h_ud_32 + h_d_2 * h_uu_33 ) + b * h_u_3 * h_u_3 * h_d_2
 
-    l_uud_333 & 
+    l_uud_333 &
       = a * ( h_u_3 * h_ud_33 + h_u_3 * h_ud_33 + h_d_3 * h_uu_33 ) + b * h_u_3 * h_u_3 * h_d_3
 
     V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
 
-    x = ( 1.0_DP / alp ) * ( 1.0_DP / ( 1.0_DP - V_0 / alp ) ) 
-    y = ( 1.0_DP / alp ) 
+    x = ( 1.0_DP / alp ) * ( 1.0_DP / ( 1.0_DP - V_0 / alp ) )
+    y = ( 1.0_DP / alp )
 
     l_uud_011 = x * (V_d_1 * l_uud_111 + V_d_2 * l_uud_211 + V_d_3 * l_uud_311)
- 
-    l_uud_012 = x * (V_d_1 * l_uud_112 + V_d_2 * l_uud_212 + V_d_3 * l_uud_312) 
- 
-    l_uud_013 = x * (V_d_1 * l_uud_113 + V_d_2 * l_uud_213 + V_d_3 * l_uud_313) 
- 
-    l_uud_021 = x * (V_d_1 * l_uud_121 + V_d_2 * l_uud_221 + V_d_3 * l_uud_321) 
- 
-    l_uud_022 = x * (V_d_1 * l_uud_122 + V_d_2 * l_uud_222 + V_d_3 * l_uud_322) 
- 
-    l_uud_023 = x * (V_d_1 * l_uud_123 + V_d_2 * l_uud_223 + V_d_3 * l_uud_323) 
- 
-    l_uud_031 = x * (V_d_1 * l_uud_131 + V_d_2 * l_uud_231 + V_d_3 * l_uud_331) 
- 
-    l_uud_032 = x * (V_d_1 * l_uud_132 + V_d_2 * l_uud_232 + V_d_3 * l_uud_332) 
+
+    l_uud_012 = x * (V_d_1 * l_uud_112 + V_d_2 * l_uud_212 + V_d_3 * l_uud_312)
+
+    l_uud_013 = x * (V_d_1 * l_uud_113 + V_d_2 * l_uud_213 + V_d_3 * l_uud_313)
+
+    l_uud_021 = x * (V_d_1 * l_uud_121 + V_d_2 * l_uud_221 + V_d_3 * l_uud_321)
+
+    l_uud_022 = x * (V_d_1 * l_uud_122 + V_d_2 * l_uud_222 + V_d_3 * l_uud_322)
+
+    l_uud_023 = x * (V_d_1 * l_uud_123 + V_d_2 * l_uud_223 + V_d_3 * l_uud_323)
+
+    l_uud_031 = x * (V_d_1 * l_uud_131 + V_d_2 * l_uud_231 + V_d_3 * l_uud_331)
+
+    l_uud_032 = x * (V_d_1 * l_uud_132 + V_d_2 * l_uud_232 + V_d_3 * l_uud_332)
 
     l_uud_033 = x * (V_d_1 * l_uud_133 + V_d_2 * l_uud_233 + V_d_3 * l_uud_333)
- 
-    l_uud_101 = x * (V_d_1 * l_uud_111 + V_d_2 * l_uud_121 + V_d_3 * l_uud_131) 
- 
-    l_uud_102 = x * (V_d_1 * l_uud_112 + V_d_2 * l_uud_122 + V_d_3 * l_uud_132) 
- 
-    l_uud_103 = x * (V_d_1 * l_uud_113 + V_d_2 * l_uud_123 + V_d_3 * l_uud_133) 
- 
-    l_uud_201 = x * (V_d_1 * l_uud_211 + V_d_2 * l_uud_221 + V_d_3 * l_uud_231) 
- 
-    l_uud_202 = x * (V_d_1 * l_uud_212 + V_d_2 * l_uud_222 + V_d_3 * l_uud_232) 
- 
-    l_uud_203 = x * (V_d_1 * l_uud_213 + V_d_2 * l_uud_223 + V_d_3 * l_uud_233) 
- 
-    l_uud_301 = x * (V_d_1 * l_uud_311 + V_d_2 * l_uud_321 + V_d_3 * l_uud_331) 
- 
-    l_uud_302 = x * (V_d_1 * l_uud_312 + V_d_2 * l_uud_322 + V_d_3 * l_uud_332) 
- 
+
+    l_uud_101 = x * (V_d_1 * l_uud_111 + V_d_2 * l_uud_121 + V_d_3 * l_uud_131)
+
+    l_uud_102 = x * (V_d_1 * l_uud_112 + V_d_2 * l_uud_122 + V_d_3 * l_uud_132)
+
+    l_uud_103 = x * (V_d_1 * l_uud_113 + V_d_2 * l_uud_123 + V_d_3 * l_uud_133)
+
+    l_uud_201 = x * (V_d_1 * l_uud_211 + V_d_2 * l_uud_221 + V_d_3 * l_uud_231)
+
+    l_uud_202 = x * (V_d_1 * l_uud_212 + V_d_2 * l_uud_222 + V_d_3 * l_uud_232)
+
+    l_uud_203 = x * (V_d_1 * l_uud_213 + V_d_2 * l_uud_223 + V_d_3 * l_uud_233)
+
+    l_uud_301 = x * (V_d_1 * l_uud_311 + V_d_2 * l_uud_321 + V_d_3 * l_uud_331)
+
+    l_uud_302 = x * (V_d_1 * l_uud_312 + V_d_2 * l_uud_322 + V_d_3 * l_uud_332)
+
     l_uud_303 = x * (V_d_1 * l_uud_313 + V_d_2 * l_uud_323 + V_d_3 * l_uud_333)
- 
-    l_uud_110 = y * (V_u_1 * l_uud_111 + V_u_2 * l_uud_112 + V_u_3 * l_uud_113) 
- 
-    l_uud_120 = y * (V_u_1 * l_uud_121 + V_u_2 * l_uud_122 + V_u_3 * l_uud_123) 
- 
+
+    l_uud_110 = y * (V_u_1 * l_uud_111 + V_u_2 * l_uud_112 + V_u_3 * l_uud_113)
+
+    l_uud_120 = y * (V_u_1 * l_uud_121 + V_u_2 * l_uud_122 + V_u_3 * l_uud_123)
+
     l_uud_130 = y * (V_u_1 * l_uud_131 + V_u_2 * l_uud_132 + V_u_3 * l_uud_133)
- 
+
     l_uud_210 = y * (V_u_1 * l_uud_211 + V_u_2 * l_uud_212 + V_u_3 * l_uud_213)
- 
+
     l_uud_220 = y * (V_u_1 * l_uud_221 + V_u_2 * l_uud_222 + V_u_3 * l_uud_223)
- 
+
     l_uud_230 = y * (V_u_1 * l_uud_231 + V_u_2 * l_uud_232 + V_u_3 * l_uud_233)
- 
+
     l_uud_310 = y * (V_u_1 * l_uud_311 + V_u_2 * l_uud_312 + V_u_3 * l_uud_313)
- 
+
     l_uud_320 = y * (V_u_1 * l_uud_321 + V_u_2 * l_uud_322 + V_u_3 * l_uud_323)
- 
+
     l_uud_330 = y * (V_u_1 * l_uud_331 + V_u_2 * l_uud_332 + V_u_3 * l_uud_333)
 
-    l_uud_001 = x**2 * (  V_d_1 * V_d_1 * l_uud_111 + V_d_1 * V_d_2 * l_uud_121 + V_d_1 * V_d_3 * l_uud_131 & 
-              + V_d_2 * V_d_1 * l_uud_211 + V_d_2 * V_d_2 * l_uud_221 + V_d_2 * V_d_3 * l_uud_231 & 
-              + V_d_3 * V_d_1 * l_uud_311 + V_d_3 * V_d_2 * l_uud_321 + V_d_3 * V_d_3 * l_uud_331 ) 
-             
- 
-    l_uud_002 = x**2 * (  V_d_1 * V_d_1 * l_uud_112 + V_d_1 * V_d_2 * l_uud_122 + V_d_1 * V_d_3 * l_uud_132 & 
-              + V_d_2 * V_d_1 * l_uud_212 + V_d_2 * V_d_2 * l_uud_222 + V_d_2 * V_d_3 * l_uud_232 & 
-              + V_d_3 * V_d_1 * l_uud_312 + V_d_3 * V_d_2 * l_uud_322 + V_d_3 * V_d_3 * l_uud_332 ) 
-             
- 
-    l_uud_003 = x**2 * (  V_d_1 * V_d_1 * l_uud_113 + V_d_1 * V_d_2 * l_uud_123 + V_d_1 * V_d_3 * l_uud_133 & 
-              + V_d_2 * V_d_1 * l_uud_213 + V_d_2 * V_d_2 * l_uud_223 + V_d_2 * V_d_3 * l_uud_233 & 
-              + V_d_3 * V_d_1 * l_uud_313 + V_d_3 * V_d_2 * l_uud_323 + V_d_3 * V_d_3 * l_uud_333 ) 
-
-    l_uud_100 = x * y * (  V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_u_3 * l_uud_113 & 
-              + V_d_2 * V_u_1 * l_uud_121 + V_d_2 * V_u_2 * l_uud_122 + V_d_2 * V_u_3 * l_uud_123 & 
-              + V_d_3 * V_u_1 * l_uud_131 + V_d_3 * V_u_2 * l_uud_132 + V_d_3 * V_u_3 * l_uud_133 ) 
-             
- 
-    l_uud_200 = x * y * (  V_d_1 * V_u_1 * l_uud_211 + V_d_1 * V_u_2 * l_uud_212 + V_d_1 * V_u_3 * l_uud_213 & 
-              + V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_u_3 * l_uud_223 & 
-              + V_d_3 * V_u_1 * l_uud_231 + V_d_3 * V_u_2 * l_uud_232 + V_d_3 * V_u_3 * l_uud_233 ) 
-             
-    l_uud_300 = x * y * (  V_d_1 * V_u_1 * l_uud_311 + V_d_1 * V_u_2 * l_uud_312 + V_d_1 * V_u_3 * l_uud_313 & 
-              + V_d_2 * V_u_1 * l_uud_321 + V_d_2 * V_u_2 * l_uud_322 + V_d_2 * V_u_3 * l_uud_323 & 
-              + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
+    l_uud_001 = x**2 * (  V_d_1 * V_d_1 * l_uud_111 + V_d_1 * V_d_2 * l_uud_121 + V_d_1 * V_d_3 * l_uud_131 &
+              + V_d_2 * V_d_1 * l_uud_211 + V_d_2 * V_d_2 * l_uud_221 + V_d_2 * V_d_3 * l_uud_231 &
+              + V_d_3 * V_d_1 * l_uud_311 + V_d_3 * V_d_2 * l_uud_321 + V_d_3 * V_d_3 * l_uud_331 )
 
 
-    l_uud_010 = x * y * (  V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_u_3 * l_uud_113 & 
-              + V_d_2 * V_u_1 * l_uud_211 + V_d_2 * V_u_2 * l_uud_212 + V_d_2 * V_u_3 * l_uud_213 & 
-              + V_d_3 * V_u_1 * l_uud_311 + V_d_3 * V_u_2 * l_uud_312 + V_d_3 * V_u_3 * l_uud_313 ) 
-             
- 
-    l_uud_020 = x * y * (  V_d_1 * V_u_1 * l_uud_121 + V_d_1 * V_u_2 * l_uud_122 + V_d_1 * V_u_3 * l_uud_123 & 
-              + V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_u_3 * l_uud_223 & 
-              + V_d_3 * V_u_1 * l_uud_321 + V_d_3 * V_u_2 * l_uud_322 + V_d_3 * V_u_3 * l_uud_323 ) 
-             
- 
-    l_uud_030 = x * y * (  V_d_1 * V_u_1 * l_uud_131 + V_d_1 * V_u_2 * l_uud_132 + V_d_1 * V_u_3 * l_uud_133 & 
-              + V_d_2 * V_u_1 * l_uud_231 + V_d_2 * V_u_2 * l_uud_232 + V_d_2 * V_u_3 * l_uud_233 & 
-              + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
+    l_uud_002 = x**2 * (  V_d_1 * V_d_1 * l_uud_112 + V_d_1 * V_d_2 * l_uud_122 + V_d_1 * V_d_3 * l_uud_132 &
+              + V_d_2 * V_d_1 * l_uud_212 + V_d_2 * V_d_2 * l_uud_222 + V_d_2 * V_d_3 * l_uud_232 &
+              + V_d_3 * V_d_1 * l_uud_312 + V_d_3 * V_d_2 * l_uud_322 + V_d_3 * V_d_3 * l_uud_332 )
+
+
+    l_uud_003 = x**2 * (  V_d_1 * V_d_1 * l_uud_113 + V_d_1 * V_d_2 * l_uud_123 + V_d_1 * V_d_3 * l_uud_133 &
+              + V_d_2 * V_d_1 * l_uud_213 + V_d_2 * V_d_2 * l_uud_223 + V_d_2 * V_d_3 * l_uud_233 &
+              + V_d_3 * V_d_1 * l_uud_313 + V_d_3 * V_d_2 * l_uud_323 + V_d_3 * V_d_3 * l_uud_333 )
+
+    l_uud_100 = x * y * (  V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_u_3 * l_uud_113 &
+              + V_d_2 * V_u_1 * l_uud_121 + V_d_2 * V_u_2 * l_uud_122 + V_d_2 * V_u_3 * l_uud_123 &
+              + V_d_3 * V_u_1 * l_uud_131 + V_d_3 * V_u_2 * l_uud_132 + V_d_3 * V_u_3 * l_uud_133 )
+
+
+    l_uud_200 = x * y * (  V_d_1 * V_u_1 * l_uud_211 + V_d_1 * V_u_2 * l_uud_212 + V_d_1 * V_u_3 * l_uud_213 &
+              + V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_u_3 * l_uud_223 &
+              + V_d_3 * V_u_1 * l_uud_231 + V_d_3 * V_u_2 * l_uud_232 + V_d_3 * V_u_3 * l_uud_233 )
+
+    l_uud_300 = x * y * (  V_d_1 * V_u_1 * l_uud_311 + V_d_1 * V_u_2 * l_uud_312 + V_d_1 * V_u_3 * l_uud_313 &
+              + V_d_2 * V_u_1 * l_uud_321 + V_d_2 * V_u_2 * l_uud_322 + V_d_2 * V_u_3 * l_uud_323 &
+              + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 )
+
+
+    l_uud_010 = x * y * (  V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_u_3 * l_uud_113 &
+              + V_d_2 * V_u_1 * l_uud_211 + V_d_2 * V_u_2 * l_uud_212 + V_d_2 * V_u_3 * l_uud_213 &
+              + V_d_3 * V_u_1 * l_uud_311 + V_d_3 * V_u_2 * l_uud_312 + V_d_3 * V_u_3 * l_uud_313 )
+
+
+    l_uud_020 = x * y * (  V_d_1 * V_u_1 * l_uud_121 + V_d_1 * V_u_2 * l_uud_122 + V_d_1 * V_u_3 * l_uud_123 &
+              + V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_u_3 * l_uud_223 &
+              + V_d_3 * V_u_1 * l_uud_321 + V_d_3 * V_u_2 * l_uud_322 + V_d_3 * V_u_3 * l_uud_323 )
+
+
+    l_uud_030 = x * y * (  V_d_1 * V_u_1 * l_uud_131 + V_d_1 * V_u_2 * l_uud_132 + V_d_1 * V_u_3 * l_uud_133 &
+              + V_d_2 * V_u_1 * l_uud_231 + V_d_2 * V_u_2 * l_uud_232 + V_d_2 * V_u_3 * l_uud_233 &
+              + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 )
 
     l_uud_000 &
       = x**2 * y * (   V_d_1 * V_d_1 * V_u_1 * l_uud_111 &
                      + V_d_1 * V_d_1 * V_u_2 * l_uud_112 &
-                     + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
+                     + V_d_1 * V_d_1 * V_u_3 * l_uud_113 &
                      + V_d_1 * V_d_2 * V_u_1 * l_uud_121 &
                      + V_d_1 * V_d_2 * V_u_2 * l_uud_122 &
-                     + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
+                     + V_d_1 * V_d_2 * V_u_3 * l_uud_123 &
                      + V_d_1 * V_d_3 * V_u_1 * l_uud_131 &
                      + V_d_1 * V_d_3 * V_u_2 * l_uud_132 &
-                     + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
+                     + V_d_1 * V_d_3 * V_u_3 * l_uud_133 &
                      + V_d_2 * V_d_1 * V_u_1 * l_uud_211 &
                      + V_d_2 * V_d_1 * V_u_2 * l_uud_212 &
-                     + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
+                     + V_d_2 * V_d_1 * V_u_3 * l_uud_213 &
                      + V_d_2 * V_d_2 * V_u_1 * l_uud_221 &
                      + V_d_2 * V_d_2 * V_u_2 * l_uud_222 &
-                     + V_d_2 * V_d_2 * V_u_3 * l_uud_223 & 
+                     + V_d_2 * V_d_2 * V_u_3 * l_uud_223 &
                      + V_d_2 * V_d_3 * V_u_1 * l_uud_231 &
                      + V_d_2 * V_d_3 * V_u_2 * l_uud_232 &
-                     + V_d_2 * V_d_3 * V_u_3 * l_uud_233 & 
+                     + V_d_2 * V_d_3 * V_u_3 * l_uud_233 &
                      + V_d_3 * V_d_1 * V_u_1 * l_uud_311 &
                      + V_d_3 * V_d_1 * V_u_2 * l_uud_312 &
-                     + V_d_3 * V_d_1 * V_u_3 * l_uud_313 & 
+                     + V_d_3 * V_d_1 * V_u_3 * l_uud_313 &
                      + V_d_3 * V_d_2 * V_u_1 * l_uud_321 &
                      + V_d_3 * V_d_2 * V_u_2 * l_uud_322 &
-                     + V_d_3 * V_d_2 * V_u_3 * l_uud_323 & 
+                     + V_d_3 * V_d_2 * V_u_3 * l_uud_323 &
                      + V_d_3 * V_d_3 * V_u_1 * l_uud_331 &
                      + V_d_3 * V_d_3 * V_u_2 * l_uud_332 &
                      + V_d_3 * V_d_3 * V_u_3 * l_uud_333 )
 
     l_uud_munurho(0,0,0) = l_uud_000
- 
+
     l_uud_munurho(0,0,1) = l_uud_001
- 
+
     l_uud_munurho(0,0,2) = l_uud_002
- 
+
     l_uud_munurho(0,0,3) = l_uud_003
- 
+
     l_uud_munurho(0,1,0) = l_uud_010
- 
+
     l_uud_munurho(0,1,1) = l_uud_011
- 
+
     l_uud_munurho(0,1,2) = l_uud_012
- 
+
     l_uud_munurho(0,1,3) = l_uud_013
- 
+
     l_uud_munurho(0,2,0) = l_uud_020
- 
+
     l_uud_munurho(0,2,1) = l_uud_021
- 
+
     l_uud_munurho(0,2,2) = l_uud_022
- 
+
     l_uud_munurho(0,2,3) = l_uud_023
- 
+
     l_uud_munurho(0,3,0) = l_uud_030
- 
+
     l_uud_munurho(0,3,1) = l_uud_031
- 
+
     l_uud_munurho(0,3,2) = l_uud_032
- 
+
     l_uud_munurho(0,3,3) = l_uud_033
- 
+
     l_uud_munurho(1,0,0) = l_uud_100
- 
+
     l_uud_munurho(1,0,1) = l_uud_101
- 
+
     l_uud_munurho(1,0,2) = l_uud_102
- 
+
     l_uud_munurho(1,0,3) = l_uud_103
- 
+
     l_uud_munurho(1,1,0) = l_uud_110
- 
+
     l_uud_munurho(1,1,1) = l_uud_111
- 
+
     l_uud_munurho(1,1,2) = l_uud_112
- 
+
     l_uud_munurho(1,1,3) = l_uud_113
- 
+
     l_uud_munurho(1,2,0) = l_uud_120
- 
+
     l_uud_munurho(1,2,1) = l_uud_121
- 
+
     l_uud_munurho(1,2,2) = l_uud_122
- 
+
     l_uud_munurho(1,2,3) = l_uud_123
- 
+
     l_uud_munurho(1,3,0) = l_uud_130
- 
+
     l_uud_munurho(1,3,1) = l_uud_131
- 
+
     l_uud_munurho(1,3,2) = l_uud_132
- 
+
     l_uud_munurho(1,3,3) = l_uud_133
- 
+
     l_uud_munurho(2,0,0) = l_uud_200
- 
+
     l_uud_munurho(2,0,1) = l_uud_201
- 
+
     l_uud_munurho(2,0,2) = l_uud_202
- 
+
     l_uud_munurho(2,0,3) = l_uud_203
- 
+
     l_uud_munurho(2,1,0) = l_uud_210
- 
+
     l_uud_munurho(2,1,1) = l_uud_211
- 
+
     l_uud_munurho(2,1,2) = l_uud_212
- 
+
     l_uud_munurho(2,1,3) = l_uud_213
- 
+
     l_uud_munurho(2,2,0) = l_uud_220
- 
+
     l_uud_munurho(2,2,1) = l_uud_221
- 
+
     l_uud_munurho(2,2,2) = l_uud_222
- 
+
     l_uud_munurho(2,2,3) = l_uud_223
- 
+
     l_uud_munurho(2,3,0) = l_uud_230
- 
+
     l_uud_munurho(2,3,1) = l_uud_231
- 
+
     l_uud_munurho(2,3,2) = l_uud_232
- 
+
     l_uud_munurho(2,3,3) = l_uud_233
- 
+
     l_uud_munurho(3,0,0) = l_uud_300
- 
+
     l_uud_munurho(3,0,1) = l_uud_301
- 
+
     l_uud_munurho(3,0,2) = l_uud_302
- 
+
     l_uud_munurho(3,0,3) = l_uud_303
- 
+
     l_uud_munurho(3,1,0) = l_uud_310
- 
+
     l_uud_munurho(3,1,1) = l_uud_311
- 
+
     l_uud_munurho(3,1,2) = l_uud_312
- 
+
     l_uud_munurho(3,1,3) = l_uud_313
- 
+
     l_uud_munurho(3,2,0) = l_uud_320
- 
+
     l_uud_munurho(3,2,1) = l_uud_321
- 
+
     l_uud_munurho(3,2,2) = l_uud_322
- 
+
     l_uud_munurho(3,2,3) = l_uud_323
- 
+
     l_uud_munurho(3,3,0) = l_uud_330
- 
+
     l_uud_munurho(3,3,1) = l_uud_331
- 
+
     l_uud_munurho(3,3,2) = l_uud_332
- 
+
     l_uud_munurho(3,3,3) = l_uud_333
 
 
@@ -1888,15 +1889,15 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
-      l_udd_ijk(1:3,1:3,1:3)      
+      l_udd_ijk(1:3,1:3,1:3)
 
     REAL(DP) :: &
-      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
-      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
-      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
-      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
-      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
-      l_udd_332, l_udd_333 
+      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, &
+      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, &
+      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, &
+      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, &
+      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, &
+      l_udd_332, l_udd_333
     REAL(DP) :: FF, HF, a, b, DT
     REAL(DP) :: h_u_1, h_u_2, h_u_3
     REAL(DP) :: h_d_1, h_d_2, h_d_3
@@ -1905,7 +1906,7 @@ CONTAINS
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
     REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
     REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
-   
+
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -1913,9 +1914,9 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
-   
+
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
@@ -1928,17 +1929,17 @@ CONTAINS
     u_d_2 = W * V_d_2
     u_d_3 = W * V_d_3
 
-    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
-    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
-    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp )
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp )
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp )
 
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -1962,7 +1963,7 @@ CONTAINS
     h_ud_21 = u_u_2 * u_d_1
     h_ud_31 = u_u_3 * u_d_1
     h_ud_32 = u_u_3 * u_d_2
- 
+
 
 
 
@@ -1980,141 +1981,141 @@ CONTAINS
 
     ! --- Diagonal Heat Flux Tensor Components ---
 
-    l_udd_111 & 
+    l_udd_111 &
       = a * ( h_u_1 * h_dd_11 + h_d_1 * h_ud_11 + h_d_1 * h_ud_11 ) + b * h_u_1 * h_d_1 * h_d_1
 
-    l_udd_112 & 
+    l_udd_112 &
       = a * ( h_u_1 * h_dd_12 + h_d_1 * h_ud_12 + h_d_2 * h_ud_11 ) + b * h_u_1 * h_d_1 * h_d_2
 
-    l_udd_113 & 
+    l_udd_113 &
       = a * ( h_u_1 * h_dd_13 + h_d_1 * h_ud_13 + h_d_3 * h_ud_11 ) + b * h_u_1 * h_d_1 * h_d_3
 
-    l_udd_121 & 
+    l_udd_121 &
       = a * ( h_u_1 * h_dd_21 + h_d_2 * h_ud_11 + h_d_1 * h_ud_12 ) + b * h_u_1 * h_d_2 * h_d_1
 
-    l_udd_122 & 
+    l_udd_122 &
       = a * ( h_u_1 * h_dd_22 + h_d_2 * h_ud_12 + h_d_2 * h_ud_12 ) + b * h_u_1 * h_d_2 * h_d_2
 
-    l_udd_123 & 
+    l_udd_123 &
       = a * ( h_u_1 * h_dd_23 + h_d_2 * h_ud_13 + h_d_3 * h_ud_12 ) + b * h_u_1 * h_d_2 * h_d_3
 
-    l_udd_131 & 
+    l_udd_131 &
       = a * ( h_u_1 * h_dd_31 + h_d_3 * h_ud_11 + h_d_1 * h_ud_13 ) + b * h_u_1 * h_d_3 * h_d_1
 
-    l_udd_132 & 
+    l_udd_132 &
       = a * ( h_u_1 * h_dd_32 + h_d_3 * h_ud_12 + h_d_2 * h_ud_13 ) + b * h_u_1 * h_d_3 * h_d_2
 
-    l_udd_133 & 
+    l_udd_133 &
       = a * ( h_u_1 * h_dd_33 + h_d_3 * h_ud_13 + h_d_3 * h_ud_13 ) + b * h_u_1 * h_d_3 * h_d_3
 
-    l_udd_211 & 
+    l_udd_211 &
       = a * ( h_u_2 * h_dd_11 + h_d_1 * h_ud_21 + h_d_1 * h_ud_21 ) + b * h_u_2 * h_d_1 * h_d_1
 
-    l_udd_212 & 
+    l_udd_212 &
       = a * ( h_u_2 * h_dd_12 + h_d_1 * h_ud_22 + h_d_2 * h_ud_21 ) + b * h_u_2 * h_d_1 * h_d_2
 
-    l_udd_213 & 
+    l_udd_213 &
       = a * ( h_u_2 * h_dd_13 + h_d_1 * h_ud_23 + h_d_3 * h_ud_21 ) + b * h_u_2 * h_d_1 * h_d_3
 
-    l_udd_221 & 
+    l_udd_221 &
       = a * ( h_u_2 * h_dd_21 + h_d_2 * h_ud_21 + h_d_1 * h_ud_22 ) + b * h_u_2 * h_d_2 * h_d_1
 
-    l_udd_222 & 
+    l_udd_222 &
       = a * ( h_u_2 * h_dd_22 + h_d_2 * h_ud_22 + h_d_2 * h_ud_22 ) + b * h_u_2 * h_d_2 * h_d_2
 
-    l_udd_223 & 
+    l_udd_223 &
       = a * ( h_u_2 * h_dd_23 + h_d_2 * h_ud_23 + h_d_3 * h_ud_22 ) + b * h_u_2 * h_d_2 * h_d_3
 
-    l_udd_231 & 
+    l_udd_231 &
       = a * ( h_u_2 * h_dd_31 + h_d_3 * h_ud_21 + h_d_1 * h_ud_23 ) + b * h_u_2 * h_d_3 * h_d_1
 
-    l_udd_232 & 
+    l_udd_232 &
       = a * ( h_u_2 * h_dd_32 + h_d_3 * h_ud_22 + h_d_2 * h_ud_23 ) + b * h_u_2 * h_d_3 * h_d_2
 
-    l_udd_233 & 
+    l_udd_233 &
       = a * ( h_u_2 * h_dd_33 + h_d_3 * h_ud_23 + h_d_3 * h_ud_23 ) + b * h_u_2 * h_d_3 * h_d_3
 
-    l_udd_311 & 
+    l_udd_311 &
       = a * ( h_u_3 * h_dd_11 + h_d_1 * h_ud_31 + h_d_1 * h_ud_31 ) + b * h_u_3 * h_d_1 * h_d_1
 
-    l_udd_312 & 
+    l_udd_312 &
       = a * ( h_u_3 * h_dd_12 + h_d_1 * h_ud_32 + h_d_2 * h_ud_31 ) + b * h_u_3 * h_d_1 * h_d_2
 
-    l_udd_313 & 
+    l_udd_313 &
       = a * ( h_u_3 * h_dd_13 + h_d_1 * h_ud_33 + h_d_3 * h_ud_31 ) + b * h_u_3 * h_d_1 * h_d_3
 
-    l_udd_321 & 
+    l_udd_321 &
       = a * ( h_u_3 * h_dd_21 + h_d_2 * h_ud_31 + h_d_1 * h_ud_32 ) + b * h_u_3 * h_d_2 * h_d_1
 
-    l_udd_322 & 
+    l_udd_322 &
       = a * ( h_u_3 * h_dd_22 + h_d_2 * h_ud_32 + h_d_2 * h_ud_32 ) + b * h_u_3 * h_d_2 * h_d_2
 
-    l_udd_323 & 
+    l_udd_323 &
       = a * ( h_u_3 * h_dd_23 + h_d_2 * h_ud_33 + h_d_3 * h_ud_32 ) + b * h_u_3 * h_d_2 * h_d_3
 
-    l_udd_331 & 
+    l_udd_331 &
       = a * ( h_u_3 * h_dd_31 + h_d_3 * h_ud_31 + h_d_1 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_1
 
-    l_udd_332 & 
+    l_udd_332 &
       = a * ( h_u_3 * h_dd_32 + h_d_3 * h_ud_32 + h_d_2 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_2
 
-    l_udd_333 & 
+    l_udd_333 &
       = a * ( h_u_3 * h_dd_33 + h_d_3 * h_ud_33 + h_d_3 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_3
 
     l_udd_ijk(1,1,1) = l_udd_111
- 
+
     l_udd_ijk(1,1,2) = l_udd_112
- 
+
     l_udd_ijk(1,1,3) = l_udd_113
- 
+
     l_udd_ijk(1,2,1) = l_udd_121
- 
+
     l_udd_ijk(1,2,2) = l_udd_122
- 
+
     l_udd_ijk(1,2,3) = l_udd_123
- 
+
     l_udd_ijk(1,3,1) = l_udd_131
- 
+
     l_udd_ijk(1,3,2) = l_udd_132
- 
+
     l_udd_ijk(1,3,3) = l_udd_133
- 
+
     l_udd_ijk(2,1,1) = l_udd_211
- 
+
     l_udd_ijk(2,1,2) = l_udd_212
- 
+
     l_udd_ijk(2,1,3) = l_udd_213
- 
+
     l_udd_ijk(2,2,1) = l_udd_221
- 
+
     l_udd_ijk(2,2,2) = l_udd_222
- 
+
     l_udd_ijk(2,2,3) = l_udd_223
- 
+
     l_udd_ijk(2,3,1) = l_udd_231
- 
+
     l_udd_ijk(2,3,2) = l_udd_232
- 
+
     l_udd_ijk(2,3,3) = l_udd_233
- 
+
     l_udd_ijk(3,1,1) = l_udd_311
- 
+
     l_udd_ijk(3,1,2) = l_udd_312
- 
+
     l_udd_ijk(3,1,3) = l_udd_313
- 
+
     l_udd_ijk(3,2,1) = l_udd_321
- 
+
     l_udd_ijk(3,2,2) = l_udd_322
- 
+
     l_udd_ijk(3,2,3) = l_udd_323
- 
+
     l_udd_ijk(3,3,1) = l_udd_331
- 
+
     l_udd_ijk(3,3,2) = l_udd_332
- 
+
     l_udd_ijk(3,3,3) = l_udd_333
- 
+
 
   END SUBROUTINE ComputeHeatFluxTensorComponents_udd_Lagrangian
 
@@ -2138,7 +2139,7 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
     B_d_1 = Gm_dd_11 * B_u_1
@@ -2148,12 +2149,12 @@ CONTAINS
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-    
+
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_ij )
@@ -2180,7 +2181,7 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
     B_d_1 = Gm_dd_11 * B_u_1
@@ -2190,9 +2191,9 @@ CONTAINS
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -2226,7 +2227,7 @@ CONTAINS
 
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_22 * V_u_2 * V_u_2 &
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
     B_d_1 = Gm_dd_11 * B_u_1
@@ -2236,9 +2237,9 @@ CONTAINS
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
-          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
-          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 )
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
@@ -2288,15 +2289,15 @@ CONTAINS
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_munurho )
 
-    B_d_1 = Gm_dd_11 * B_u_1 
-    B_d_2 = Gm_dd_22 * B_u_2 
-    B_d_3 = Gm_dd_33 * B_u_3 
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
 
-    V_d_1 = Gm_dd_11 * V_u_1 
-    V_d_2 = Gm_dd_22 * V_u_2 
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
     V_d_3 = Gm_dd_33 * V_u_3
- 
-    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3   
+
+    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
 
     I(1) = I_u_1
     I(2) = I_u_2
@@ -2305,32 +2306,32 @@ CONTAINS
 
 
 
-    dU_dX(0,0) = dU_dX0(0) 
-    dU_dX(0,1) = dU_dX0(1) 
-    dU_dX(0,2) = dU_dX0(2) 
-    dU_dX(0,3) = dU_dX0(3) 
+    dU_dX(0,0) = dU_dX0(0)
+    dU_dX(0,1) = dU_dX0(1)
+    dU_dX(0,2) = dU_dX0(2)
+    dU_dX(0,3) = dU_dX0(3)
 
-    dU_dX(1,0) = dU_dX1(0) 
-    dU_dX(1,1) = dU_dX1(1) 
-    dU_dX(1,2) = dU_dX1(2) 
-    dU_dX(1,3) = dU_dX1(3) 
+    dU_dX(1,0) = dU_dX1(0)
+    dU_dX(1,1) = dU_dX1(1)
+    dU_dX(1,2) = dU_dX1(2)
+    dU_dX(1,3) = dU_dX1(3)
 
-    dU_dX(2,0) = dU_dX2(0) 
-    dU_dX(2,1) = dU_dX2(1) 
-    dU_dX(2,2) = dU_dX2(2) 
+    dU_dX(2,0) = dU_dX2(0)
+    dU_dX(2,1) = dU_dX2(1)
+    dU_dX(2,2) = dU_dX2(2)
     dU_dX(2,3) = dU_dX2(3)
- 
-    dU_dX(3,0) = dU_dX3(0) 
-    dU_dX(3,1) = dU_dX3(1) 
-    dU_dX(3,2) = dU_dX3(2) 
-    dU_dX(3,3) = dU_dX3(3) 
+
+    dU_dX(3,0) = dU_dX3(0)
+    dU_dX(3,1) = dU_dX3(1)
+    dU_dX(3,2) = dU_dX3(2)
+    dU_dX(3,3) = dU_dX3(3)
 
     Flux_E = 0.0_DP
-   
+
     DO mu = 0,3
     DO nu = 0,3
 
-      Flux_E(1) = Flux_E(1) + ( I(nu) * U(mu) + k_uu_munu(mu,nu) * D ) * dU_dX(mu,nu) 
+      Flux_E(1) = Flux_E(1) + ( I(nu) * U(mu) + k_uu_munu(mu,nu) * D ) * dU_dX(mu,nu)
       Flux_E(2) = Flux_E(2) + ( k_ud_munu(nu,1) * D * U(mu) + l_uud_munurho(mu,nu,1) * D ) * dU_dX(mu,nu)
       Flux_E(3) = Flux_E(3) + ( k_ud_munu(nu,2) * D * U(mu) + l_uud_munurho(mu,nu,2) * D ) * dU_dX(mu,nu)
       Flux_E(4) = Flux_E(4) + ( k_ud_munu(nu,3) * D * U(mu) + l_uud_munurho(mu,nu,3) * D ) * dU_dX(mu,nu)
@@ -2357,7 +2358,7 @@ CONTAINS
     REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in) :: alp, B_u_1, B_u_2, B_u_3
-    REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3) 
+    REAL(DP), INTENT(in) :: U_u(0:3), U_d(0:3)
     REAL(DP), INTENT(in) :: dU_dX0(0:3), dU_dX1(0:3), dU_dX2(0:3), dU_dX3(0:3)
     REAL(DP), INTENT(in) :: dU_dX0_COV(0:3), dU_dX1_COV(0:3), dU_dX2_COV(0:3), dU_dX3_COV(0:3)
     REAL(DP), INTENT(in) :: dG_dd_dX1(0:3,0:3), dG_dd_dX2(0:3,0:3), dG_dd_dX3(0:3,0:3)
@@ -2379,60 +2380,60 @@ CONTAINS
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, l_uud_munurho )
 
-    B_d_1 = Gm_dd_11 * B_u_1 
-    B_d_2 = Gm_dd_22 * B_u_2 
-    B_d_3 = Gm_dd_33 * B_u_3 
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
 
-    V_d_1 = Gm_dd_11 * V_u_1 
-    V_d_2 = Gm_dd_22 * V_u_2 
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
     V_d_3 = Gm_dd_33 * V_u_3
- 
-    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3   
+
+    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
 
     I(1) = I_u_1
     I(2) = I_u_2
     I(3) = I_u_3
     I(0) = 1.0_DP / ( 1.0_DP - V_0 / alp ) * ( V_d_1 * I(1) + V_d_2 * I(2) + V_d_3 * I(3) ) / alp
 
-    dU_dX(0,0) = dU_dX0(0) 
-    dU_dX(0,1) = dU_dX0(1) 
-    dU_dX(0,2) = dU_dX0(2) 
-    dU_dX(0,3) = dU_dX0(3) 
+    dU_dX(0,0) = dU_dX0(0)
+    dU_dX(0,1) = dU_dX0(1)
+    dU_dX(0,2) = dU_dX0(2)
+    dU_dX(0,3) = dU_dX0(3)
 
-    dU_dX(1,0) = dU_dX1(0) 
-    dU_dX(1,1) = dU_dX1(1) 
-    dU_dX(1,2) = dU_dX1(2) 
-    dU_dX(1,3) = dU_dX1(3) 
+    dU_dX(1,0) = dU_dX1(0)
+    dU_dX(1,1) = dU_dX1(1)
+    dU_dX(1,2) = dU_dX1(2)
+    dU_dX(1,3) = dU_dX1(3)
 
-    dU_dX(2,0) = dU_dX2(0) 
-    dU_dX(2,1) = dU_dX2(1) 
-    dU_dX(2,2) = dU_dX2(2) 
+    dU_dX(2,0) = dU_dX2(0)
+    dU_dX(2,1) = dU_dX2(1)
+    dU_dX(2,2) = dU_dX2(2)
     dU_dX(2,3) = dU_dX2(3)
- 
-    dU_dX(3,0) = dU_dX3(0) 
-    dU_dX(3,1) = dU_dX3(1) 
-    dU_dX(3,2) = dU_dX3(2) 
-    dU_dX(3,3) = dU_dX3(3) 
 
-    dU_dX_COV(0,0) = dU_dX0_COV(0) 
-    dU_dX_COV(0,1) = dU_dX0_COV(1) 
-    dU_dX_COV(0,2) = dU_dX0_COV(2) 
-    dU_dX_COV(0,3) = dU_dX0_COV(3) 
+    dU_dX(3,0) = dU_dX3(0)
+    dU_dX(3,1) = dU_dX3(1)
+    dU_dX(3,2) = dU_dX3(2)
+    dU_dX(3,3) = dU_dX3(3)
 
-    dU_dX_COV(1,0) = dU_dX1_COV(0) 
-    dU_dX_COV(1,1) = dU_dX1_COV(1) 
-    dU_dX_COV(1,2) = dU_dX1_COV(2) 
-    dU_dX_COV(1,3) = dU_dX1_COV(3) 
+    dU_dX_COV(0,0) = dU_dX0_COV(0)
+    dU_dX_COV(0,1) = dU_dX0_COV(1)
+    dU_dX_COV(0,2) = dU_dX0_COV(2)
+    dU_dX_COV(0,3) = dU_dX0_COV(3)
 
-    dU_dX_COV(2,0) = dU_dX2_COV(0) 
-    dU_dX_COV(2,1) = dU_dX2_COV(1) 
-    dU_dX_COV(2,2) = dU_dX2_COV(2) 
+    dU_dX_COV(1,0) = dU_dX1_COV(0)
+    dU_dX_COV(1,1) = dU_dX1_COV(1)
+    dU_dX_COV(1,2) = dU_dX1_COV(2)
+    dU_dX_COV(1,3) = dU_dX1_COV(3)
+
+    dU_dX_COV(2,0) = dU_dX2_COV(0)
+    dU_dX_COV(2,1) = dU_dX2_COV(1)
+    dU_dX_COV(2,2) = dU_dX2_COV(2)
     dU_dX_COV(2,3) = dU_dX2_COV(3)
- 
-    dU_dX_COV(3,0) = dU_dX3_COV(0) 
-    dU_dX_COV(3,1) = dU_dX3_COV(1) 
-    dU_dX_COV(3,2) = dU_dX3_COV(2) 
-    dU_dX_COV(3,3) = dU_dX3_COV(3) 
+
+    dU_dX_COV(3,0) = dU_dX3_COV(0)
+    dU_dX_COV(3,1) = dU_dX3_COV(1)
+    dU_dX_COV(3,2) = dU_dX3_COV(2)
+    dU_dX_COV(3,3) = dU_dX3_COV(3)
 
 
     dG_dd_dX(1,:,:) = dG_dd_dX1(:,:)
@@ -2488,7 +2489,7 @@ CONTAINS
 
   SUBROUTINE ComputeForFluid &
       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, E, S, S_i )
-    
+
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
@@ -2516,17 +2517,17 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
-    REAL(DP), INTENT(out) :: & 
+    REAL(DP), INTENT(out) :: &
       E (1:nDOFX, &
          iZ_B1(2):iZ_E1(2), &
          iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4) )
-    REAL(DP), INTENT(out) :: & 
+    REAL(DP), INTENT(out) :: &
       S (1:nDOFX, &
          iZ_B1(2):iZ_E1(2), &
          iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4) )
-    REAL(DP), INTENT(out) :: & 
+    REAL(DP), INTENT(out) :: &
       S_i (1:nDOFX,1:3, &
          iZ_B1(2):iZ_E1(2), &
          iZ_B1(3):iZ_E1(3), &
@@ -2549,9 +2550,9 @@ CONTAINS
          iZ_B1(4):iZ_E1(4), &
          1:nSpecies )
      REAL(DP) :: P_F(nDOFX, nPF)
-     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iNodeZ, iNodeX, iNodeE, iS     
-     REAL(DP) :: vG, V_d_1, V_d_2, V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, W 
-     REAL(DP) :: N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, Vsq 
+     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iNodeZ, iNodeX, iNodeE, iS
+     REAL(DP) :: vG, V_d_1, V_d_2, V_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, W
+     REAL(DP) :: N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, Vsq
      TYPE(MeshType) :: MeshE
 
      CALL CreateMesh &
@@ -2559,7 +2560,7 @@ CONTAINS
 
      ASSOCIATE &
       ( dZ1 => MeshE  % Width )
- 
+
      DO iZ2 = iZ_B1(2), iZ_E1(2)
      DO iZ3 = iZ_B1(3), iZ_E1(3)
      DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -2584,9 +2585,9 @@ CONTAINS
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
 
-     
+
        END DO
-       
+
        DO iS = 1, nSpecies
        DO iZ1 = iZ_B1(1), iZ_E1(1)
 
@@ -2603,13 +2604,13 @@ CONTAINS
            V_u_1 = P_F(iNodeX,iPF_V1)
            V_u_2 = P_F(iNodeX,iPF_V2)
            V_u_3 = P_F(iNodeX,iPF_V3)
-           
+
            V_d_1 = Gm_dd_11 * V_u_1
            V_d_2 = Gm_dd_22 * V_u_2
            V_d_3 = Gm_dd_33 * V_u_3
-           
 
-           Vsq = V_u_1 * V_d_1 + V_u_2 * V_d_2 + V_u_3 * V_d_3  
+
+           Vsq = V_u_1 * V_d_1 + V_u_2 * V_d_2 + V_u_3 * V_d_3
 
            W = 1.0_DP / SQRT( 1.0_DP - Vsq )
 
@@ -2620,22 +2621,22 @@ CONTAINS
            G_d_3 = U_R (iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
 
 
-           vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3 
+           vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3
 
 
            E_int(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) = W * N + vG
-           
+
            S_i_int(iNodeZ,1,iZ1,iZ2,iZ3,iZ4,iS) = W * V_d_1 * N + G_d_1
            S_i_int(iNodeZ,2,iZ1,iZ2,iZ3,iZ4,iS) = W * V_d_2 * N + G_d_2
            S_i_int(iNodeZ,3,iZ1,iZ2,iZ3,iZ4,iS) = W * V_d_3 * N + G_d_3
 
 
-     
+
          END DO
 
        END DO
        END DO
-     
+
      END DO
      END DO
      END DO
@@ -2648,7 +2649,7 @@ CONTAINS
      DO iZ4 = iZ_B0(4), iZ_E0(4)
      DO iZ3 = iZ_B0(3), iZ_E0(3)
      DO iZ2 = iZ_B0(2), iZ_E0(2)
-     DO iZ1 = iZ_B0(1), iZ_E0(1) 
+     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
 
       DO iNodeX = 1, nDOFX
@@ -2681,9 +2682,9 @@ CONTAINS
       END DO
       END DO
 
-    
-   
-       
+
+
+
     END DO
     END DO
     END DO

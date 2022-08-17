@@ -88,7 +88,8 @@
     NumericalFlux_LLF
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE MyAmrModule, ONLY: &
+  ! Get this from somewhere else?
+  USE InputParsingModule, ONLY: &
     Mass,     &
     nX,    &
     Direction, &
@@ -197,7 +198,7 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     END IF
-   
+
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
     ASSOCIATE &
@@ -782,7 +783,7 @@ CONTAINS
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
-             nIterations_L )     
+             nIterations_L )
 
     ! --- Right State Primitive ---
 
@@ -793,7 +794,7 @@ CONTAINS
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
-             nIterations_R )     
+             nIterations_R )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -959,7 +960,7 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              G_Alpha_K, G_Beta_1_K, G_Beta_2_K, G_Beta_3_K, &
              PositionIndexZ_K, &
-             nIterations_K )     
+             nIterations_K )
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_K, iNodeZ, iNodeX, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, Flux_K )
@@ -1564,7 +1565,7 @@ CONTAINS
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
-             nIterations_L )     
+             nIterations_L )
 
     ! --- Right State Primitive ---
 
@@ -1575,7 +1576,7 @@ CONTAINS
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
-             nIterations_R )     
+             nIterations_R )
 
 
 #if   defined( THORNADO_OMP_OL )
@@ -1746,7 +1747,7 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              G_Alpha_K, G_Beta_1_K, G_Beta_2_K, G_Beta_3_K, &
              PositionIndexZ_K, &
-             nIterations_K )     
+             nIterations_K )
 
 
 
@@ -2347,7 +2348,7 @@ CONTAINS
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
-             nIterations_L )     
+             nIterations_L )
 
     ! --- Right State Primitive ---
 
@@ -2358,7 +2359,7 @@ CONTAINS
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
-             nIterations_R )     
+             nIterations_R )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2529,7 +2530,7 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              G_Alpha_K, G_Beta_1_K, G_Beta_2_K, G_Beta_3_K, &
              PositionIndexZ_K, &
-             nIterations_K )    
+             nIterations_K )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2641,7 +2642,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_ObserverCorrections &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, & 
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
       iX_B0, iX_E0, iX_B1, iX_E1, &
       GE, GX, U_F, U_R, dU_R, Verbose_Option )
 
@@ -2755,7 +2756,7 @@ CONTAINS
 
     REAL(DP) :: &
       U_u(1:nDOFX,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       U_d(1:nDOFX,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
@@ -2810,23 +2811,23 @@ CONTAINS
     REAL(DP) :: &
       dG_dd_dX0 &
          (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       dG_dd_dX1 &
          (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       dG_dd_dX2 &
          (1:nDOFX,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       dG_dd_dX3 &
          (1:nDOFX,0:3,0:3, &
           iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: & 
+    REAL(DP) :: &
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
-          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) 
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
 
     ! --- Fluxes ---
@@ -2916,7 +2917,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX3, &
              Verbose_Option = Verbose )
 
- 
+
 
 
 
@@ -2930,7 +2931,7 @@ CONTAINS
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, &
              Verbose_Option = Verbose )
-    
+
     CALL ComputeWeakDerivatives_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd,  dU_d_dX2, dU_d_dX2_COV, &
              Verbose_Option = Verbose )
@@ -3131,7 +3132,7 @@ CONTAINS
              + ( iZ4 - iZ_B0(4) ) * nDOFX * nZ(2) * nZ(3)
 
 
-          CALL ComputeAlpha( uV1_K(iX_K), uV2_K(iX_K), uV3_K(iX_K), & 
+          CALL ComputeAlpha( uV1_K(iX_K), uV2_K(iX_K), uV3_K(iX_K), &
                              Gm_dd_11_K(iX_K), Gm_dd_22_K(iX_K), Gm_dd_33_K(iX_K), &
                              U_u(iNodeX,:,iZ2,iZ3,iZ4), &
                              dU_d_dX0(iNodeX,:,iZ2,iZ3,iZ4), &
@@ -3159,7 +3160,7 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              G_Alpha_K, G_Beta_1_K, G_Beta_2_K, G_Beta_3_K, &
              PositionIndexZ_F, &
-             nIterations_L )     
+             nIterations_L )
 
     ! --- Right State Primitive ---
 
@@ -3170,7 +3171,7 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              G_Alpha_K, G_Beta_1_K, G_Beta_2_K, G_Beta_3_K, &
              PositionIndexZ_F, &
-             nIterations_R )     
+             nIterations_R )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -3239,7 +3240,7 @@ CONTAINS
 
 
       W = 1.0_DP - ( Gm_dd_11_K(iX_F) * uV1_K(iX_F)**2 &
-                 +   Gm_dd_22_K(iX_F) * uV2_K(iX_F)**2 & 
+                 +   Gm_dd_22_K(iX_F) * uV2_K(iX_F)**2 &
                  +   Gm_dd_33_K(iX_F) * uV3_K(iX_F)**2 )
       W = 1.0_DP / SQRT(W)
 
@@ -3291,7 +3292,7 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              G_Alpha_K, G_Beta_1_K, G_Beta_2_K, G_Beta_3_K, &
              PositionIndexZ_K, &
-             nIterations_K )     
+             nIterations_K )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -3406,7 +3407,7 @@ CONTAINS
                   dU_d_dX0_COV(iNodeX,:,iZ2,iZ3,iZ4), &
                   dU_d_dX1_COV(iNodeX,:,iZ2,iZ3,iZ4), &
                   dU_d_dX2_COV(iNodeX,:,iZ2,iZ3,iZ4), &
-                  dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4), & 
+                  dU_d_dX3_COV(iNodeX,:,iZ2,iZ3,iZ4), &
                   dG_dd_dX1(iNodeX,:,:,iZ2,iZ3,iZ4), &
                   dG_dd_dX2(iNodeX,:,:,iZ2,iZ3,iZ4), &
                   dG_dd_dX3(iNodeX,:,:,iZ2,iZ3,iZ4))
@@ -3421,9 +3422,9 @@ CONTAINS
         dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
           = dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
             - Beta * S_E(1)
-      
+
       ! --- iCR_G2 ---
-      
+
         dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
           = dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
               - Beta * S_E(2)
@@ -3631,7 +3632,7 @@ CONTAINS
       uCF(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(out) :: &
       U_u(1:nDOFX,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
       U_d(1:nDOFX,0:3, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
@@ -3671,7 +3672,7 @@ CONTAINS
                  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
-        
+
         V1 = uPF(iNodeX,iPF_V1,iX1,iX2,iX3)
         V2 = uPF(iNodeX,iPF_V2,iX1,iX2,iX3)
         V3 = uPF(iNodeX,iPF_V3,iX1,iX2,iX3)
@@ -3680,9 +3681,9 @@ CONTAINS
 
         V_0 = GX (iNodeX,iX1,iX2,iX3,iGF_Beta_1) * GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 &
             + GX (iNodeX,iX1,iX2,iX3,iGF_Beta_2) * GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2 &
-            + GX (iNodeX,iX1,iX2,iX3,iGF_Beta_3) * GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3              
- 
-        U_u(iNodeX,0,iX1,iX2,iX3) = W * ( 1.0_DP / GX (iNodeX,iX1,iX2,iX3,iGF_Alpha) ) 
+            + GX (iNodeX,iX1,iX2,iX3,iGF_Beta_3) * GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3
+
+        U_u(iNodeX,0,iX1,iX2,iX3) = W * ( 1.0_DP / GX (iNodeX,iX1,iX2,iX3,iGF_Alpha) )
         U_u(iNodeX,1,iX1,iX2,iX3) = W * ( V1 - GX (iNodeX,iX1,iX2,iX3,iGF_Beta_1) / GX (iNodeX,iX1,iX2,iX3,iGF_Alpha) )
         U_u(iNodeX,2,iX1,iX2,iX3) = W * ( V2 - GX (iNodeX,iX1,iX2,iX3,iGF_Beta_2) / GX (iNodeX,iX1,iX2,iX3,iGF_Alpha) )
         U_u(iNodeX,3,iX1,iX2,iX3) = W * ( V3 - GX (iNodeX,iX1,iX2,iX3,iGF_Beta_3) / GX (iNodeX,iX1,iX2,iX3,iGF_Alpha) )
@@ -3720,18 +3721,18 @@ CONTAINS
       GX (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
     REAL(DP), INTENT(in)  :: &
       uCF(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
-    REAL(DP), INTENT(in) :: & 
+    REAL(DP), INTENT(in) :: &
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
       dU_d_dX0 &
          (1:nDOFX,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
       dU_d_dX0_COV &
          (1:nDOFX,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
 
@@ -3787,11 +3788,11 @@ CONTAINS
 
 
         V_u_K(1) = uPF_K(iPF_V1)
- 
-        V_u_K(2) = uPF_K(iPF_V2) 
+
+        V_u_K(2) = uPF_K(iPF_V2)
 
 
-        V_u_K(3) = uPF_K(iPF_V3) 
+        V_u_K(3) = uPF_K(iPF_V3)
 
 
         V_d_K(1) &
@@ -3820,15 +3821,15 @@ CONTAINS
         B_d_K(1) =  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * B_u_K(1)
         B_d_K(2) =  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * B_u_K(2)
         B_d_K(3) =  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * B_u_K(3)
-        
+
         Vsq_K = V_u_K(1) * V_d_K(1) &
                   + V_u_K(2) * V_d_K(2) &
                   + V_u_K(3) * V_d_K(3)
-     
+
         W_K = 1.0_DP / SQRT( 1.0_DP - Vsq_K )
 
 
-       
+
 
 
         U_d(iNodeX,1,iX1,iX2,iX3) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
@@ -3836,13 +3837,13 @@ CONTAINS
                                               +    B_d_K(3) * V_u_K(3)  )
 
 
-        U_d(iNodeX,2,iX1,iX2,iX3) = W_K * V_d_K(1) 
+        U_d(iNodeX,2,iX1,iX2,iX3) = W_K * V_d_K(1)
 
 
-        U_d(iNodeX,3,iX1,iX2,iX3) = W_K * V_d_K(2) 
+        U_d(iNodeX,3,iX1,iX2,iX3) = W_K * V_d_K(2)
 
 
-        U_d(iNodeX,4,iX1,iX2,iX3) = W_K * V_d_K(3) 
+        U_d(iNodeX,4,iX1,iX2,iX3) = W_K * V_d_K(3)
 
 
 
@@ -3872,11 +3873,11 @@ CONTAINS
         dU_d_dX0_COV(iNodeX,1,iX1,iX2,iX3)  &
         = dU_d_dX0_COV(iNodeX,1,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,0,1,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
-    
+
         dU_d_dX0_COV(iNodeX,2,iX1,iX2,iX3)  &
         = dU_d_dX0_COV(iNodeX,2,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,0,2,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
-    
+
         dU_d_dX0_COV(iNodeX,3,iX1,iX2,iX3)  &
         = dU_d_dX0_COV(iNodeX,3,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,0,3,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
@@ -3890,7 +3891,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE ComputeWeakDerivatives_X0 
+  END SUBROUTINE ComputeWeakDerivatives_X0
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GX, uCF, Gamma_udd, dU_d_dX1, dU_d_dX1_COV, Verbose_Option  )
@@ -3903,18 +3904,18 @@ CONTAINS
       GX (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
     REAL(DP), INTENT(in)  :: &
       uCF(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
-    REAL(DP), INTENT(in) :: & 
+    REAL(DP), INTENT(in) :: &
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
       dU_d_dX1 &
          (1:nDOFX,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(out) :: &
       dU_d_dX1_COV &
          (1:nDOFX,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: nK(3), nK_X1(3), nX, nX_X1
@@ -3947,7 +3948,7 @@ CONTAINS
     REAL(DP) :: &
       dU_d_dX1_Temp &
          (1:nDOFX,4, &
-          iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1):iX_E0(1)) 
+          iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1):iX_E0(1))
     LOGICAL :: Verbose
 
 
@@ -3969,7 +3970,7 @@ CONTAINS
     nK_X1 = nK + [1,0,0]    ! Number of X1 Faces per Phase Space Dimension
     nX    = PRODUCT( nK   (1:3) ) ! Number of Elements in Position Space
     nX_X1 = PRODUCT( nK_X1(1:3) ) ! Number of X1 Faces in Position Space
-    
+
     ! --- Permute Geometry Fields ---
 
     DO iGF = 1, nGF
@@ -4049,7 +4050,7 @@ CONTAINS
                uCF_R(1,iX_B0(2),iX_B0(3),iX_B0(1)  ,iCF), nDOFX_X1 )
 
     END DO
-  
+
 
     DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -4112,11 +4113,11 @@ CONTAINS
           = GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) &
               * V_u_X1(3)
 
-        Vsq_X1 = V_u_X1(1) * V_d_X1(1) &  
-                    + V_u_X1(2) * V_d_X1(2) &  
-                    + V_u_X1(3) * V_d_X1(3) 
-    
-        W_X1 = WeightsX_X1(iNodeX)  / SQRT(1.0_DP - Vsq_X1) 
+        Vsq_X1 = V_u_X1(1) * V_d_X1(1) &
+                    + V_u_X1(2) * V_d_X1(2) &
+                    + V_u_X1(3) * V_d_X1(3)
+
+        W_X1 = WeightsX_X1(iNodeX)  / SQRT(1.0_DP - Vsq_X1)
 
         A_X1 = GX_F(iNodeX,iGF_Alpha,iX2,iX3,iX1)
 
@@ -4132,10 +4133,10 @@ CONTAINS
 
         U_d_X1(iNodeX,1,iX2,iX3,iX1) = W_X1 * ( - A_X1 + B_d_X1(1) * V_u_X1(1) &
                                      + B_d_X1(2) * V_u_X1(2) + B_d_X1(3) * V_u_X1(3) )
-        
-        U_d_X1(iNodeX,2,iX2,iX3,iX1) = W_X1 * V_d_X1(1) 
 
-        U_d_X1(iNodeX,3,iX2,iX3,iX1) = W_X1 * V_d_X1(2) 
+        U_d_X1(iNodeX,2,iX2,iX3,iX1) = W_X1 * V_d_X1(1)
+
+        U_d_X1(iNodeX,3,iX2,iX3,iX1) = W_X1 * V_d_X1(2)
 
         U_d_X1(iNodeX,4,iX2,iX3,iX1) = W_X1 * V_d_X1(3)
 
@@ -4195,10 +4196,10 @@ CONTAINS
                  GX_K (iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
 
         V_u_K(1) = uPF_K(iPF_V1)
- 
-        V_u_K(2) = uPF_K(iPF_V2) 
 
-        V_u_K(3) = uPF_K(iPF_V3) 
+        V_u_K(2) = uPF_K(iPF_V2)
+
+        V_u_K(3) = uPF_K(iPF_V3)
 
         V_d_K(1) &
           = GX_K(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
@@ -4221,23 +4222,23 @@ CONTAINS
         B_d_K(1) =  GX_K(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) * B_u_K(1)
         B_d_K(2) =  GX_K(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) * B_u_K(2)
         B_d_K(3) =  GX_K(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) * B_u_K(3)
-        
+
         Vsq_K = V_u_K(1) * V_d_K(1) &
                   + V_u_K(2) * V_d_K(2) &
                   + V_u_K(3) * V_d_K(3)
-     
+
         W_K = 1.0_DP / SQRT( 1.0_DP - Vsq_K )
 
-       
+
         U_d(iNodeX,1,iX2,iX3,iX1) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
                                               +    B_d_K(2) * V_u_K(2) &
                                               +    B_d_K(3) * V_u_K(3)  )
 
-        U_d(iNodeX,2,iX2,iX3,iX1) = W_K * V_d_K(1) 
+        U_d(iNodeX,2,iX2,iX3,iX1) = W_K * V_d_K(1)
 
-        U_d(iNodeX,3,iX2,iX3,iX1) = W_K * V_d_K(2) 
+        U_d(iNodeX,3,iX2,iX3,iX1) = W_K * V_d_K(2)
 
-        U_d(iNodeX,4,iX2,iX3,iX1) = W_K * V_d_K(3) 
+        U_d(iNodeX,4,iX2,iX3,iX1) = W_K * V_d_K(3)
 
 
 
@@ -4363,7 +4364,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
       DO mu = 0,3
 
-    
+
         dU_d_dX1_COV(iNodeX,0,iX1,iX2,iX3)  &
         = dU_d_dX1_COV(iNodeX,0,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,1,0,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX2,iX3,iX1)
@@ -4371,11 +4372,11 @@ CONTAINS
         dU_d_dX1_COV(iNodeX,1,iX1,iX2,iX3)  &
         = dU_d_dX1_COV(iNodeX,1,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,1,1,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX2,iX3,iX1)
-    
+
         dU_d_dX1_COV(iNodeX,2,iX1,iX2,iX3)  &
         = dU_d_dX1_COV(iNodeX,2,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,1,2,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX2,iX3,iX1)
-    
+
         dU_d_dX1_COV(iNodeX,3,iX1,iX2,iX3)  &
         = dU_d_dX1_COV(iNodeX,3,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,1,3,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX2,iX3,iX1)
@@ -4410,7 +4411,7 @@ CONTAINS
           iX_B1(2):iX_E1(2), &
           iX_B1(3):iX_E1(3), &
           1:nCF)
-    REAL(DP), INTENT(in) :: & 
+    REAL(DP), INTENT(in) :: &
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
@@ -4466,7 +4467,7 @@ CONTAINS
     REAL(DP) :: &
       dU_d_dX2_Temp &
          (1:nDOFX,4, &
-          iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2)) 
+          iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2))
     LOGICAL :: Verbose
 
     IF( iX_E0(2) .EQ. iX_B0(2) )THEN
@@ -4644,11 +4645,11 @@ CONTAINS
           = GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) &
               * V_u_X2(3)
 
-        Vsq_X2 = V_u_X2(1) * V_d_X2(1) &  
-               + V_u_X2(2) * V_d_X2(2) &  
-               + V_u_X2(3) * V_d_X2(3) 
+        Vsq_X2 = V_u_X2(1) * V_d_X2(1) &
+               + V_u_X2(2) * V_d_X2(2) &
+               + V_u_X2(3) * V_d_X2(3)
 
-        W_X2 = WeightsX_X2(iNodeX)  / SQRT(1.0_DP - Vsq_X2) 
+        W_X2 = WeightsX_X2(iNodeX)  / SQRT(1.0_DP - Vsq_X2)
 
         A_X2 = GX_F(iNodeX,iGF_Alpha,iX1,iX3,iX2)
 
@@ -4665,10 +4666,10 @@ CONTAINS
 
         U_d_X2(iNodeX,1,iX1,iX3,iX2) = W_X2 * ( - A_X2 + B_d_X2(1) * V_u_X2(1) &
                                      + B_d_X2(2) * V_u_X2(2) + B_d_X2(3) * V_u_X2(3) )
-        
-        U_d_X2(iNodeX,2,iX1,iX3,iX2) = W_X2 * V_d_X2(1) 
 
-        U_d_X2(iNodeX,3,iX1,iX3,iX2) = W_X2 * V_d_X2(2) 
+        U_d_X2(iNodeX,2,iX1,iX3,iX2) = W_X2 * V_d_X2(1)
+
+        U_d_X2(iNodeX,3,iX1,iX3,iX2) = W_X2 * V_d_X2(2)
 
         U_d_X2(iNodeX,4,iX1,iX3,iX2) = W_X2 * V_d_X2(3)
 
@@ -4730,10 +4731,10 @@ CONTAINS
 
 
         V_u_K(1) = uPF_K(iPF_V1)
- 
-        V_u_K(2) = uPF_K(iPF_V2) 
 
-        V_u_K(3) = uPF_K(iPF_V3) 
+        V_u_K(2) = uPF_K(iPF_V2)
+
+        V_u_K(3) = uPF_K(iPF_V3)
 
         V_d_K(1) &
           = GX_K(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
@@ -4750,7 +4751,7 @@ CONTAINS
         Vsq_K = V_u_K(1) * V_d_K(1) &
                   + V_u_K(2) * V_d_K(2) &
                   + V_u_K(3) * V_d_K(3)
-    
+
         A_K = GX_K(iNodeX, iGF_Alpha, iX1,iX3,iX2)
 
         B_u_K(1) =  GX_K(iNodeX, iGF_Beta_1,iX1,iX3,iX2)
@@ -4762,18 +4763,18 @@ CONTAINS
         B_d_K(3) =  GX_K(iNodeX, iGF_Gm_dd_33,iX1,iX3,iX2) * B_u_K(3)
 
 
- 
+
         W_K = 1.0_DP / SQRT( 1.0_DP - Vsq_K )
 
-       
+
 
         U_d(iNodeX,1,iX1,iX3,iX2) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
                                               +    B_d_K(2) * V_u_K(2) &
                                               +    B_d_K(3) * V_u_K(3)  )
 
-        U_d(iNodeX,2,iX1,iX3,iX2) = W_K * V_d_K(1) 
+        U_d(iNodeX,2,iX1,iX3,iX2) = W_K * V_d_K(1)
 
-        U_d(iNodeX,3,iX1,iX3,iX2) = W_K * V_d_K(2) 
+        U_d(iNodeX,3,iX1,iX3,iX2) = W_K * V_d_K(2)
 
         U_d(iNodeX,4,iX1,iX3,iX2) = W_K * V_d_K(3)
 
@@ -4891,7 +4892,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
       DO mu = 0,3
 
-    
+
         dU_d_dX2_COV(iNodeX,0,iX1,iX2,iX3)  &
         = dU_d_dX2_COV(iNodeX,0,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,2,0,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX3,iX2)
@@ -4899,11 +4900,11 @@ CONTAINS
         dU_d_dX2_COV(iNodeX,1,iX1,iX2,iX3)  &
         = dU_d_dX2_COV(iNodeX,1,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,2,1,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX3,iX2)
-    
+
         dU_d_dX2_COV(iNodeX,2,iX1,iX2,iX3)  &
         = dU_d_dX2_COV(iNodeX,2,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,2,2,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX3,iX2)
-    
+
         dU_d_dX2_COV(iNodeX,3,iX1,iX2,iX3)  &
         = dU_d_dX2_COV(iNodeX,3,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,2,3,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX3,iX2)
@@ -4936,7 +4937,7 @@ CONTAINS
           iX_B1(2):iX_E1(2), &
           iX_B1(3):iX_E1(3), &
           1:nCF)
-    REAL(DP), INTENT(in) :: & 
+    REAL(DP), INTENT(in) :: &
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
@@ -4992,7 +4993,7 @@ CONTAINS
     REAL(DP) :: &
       dU_d_dX3_Temp &
          (1:nDOFX,4, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
     LOGICAL :: Verbose
 
@@ -5174,11 +5175,11 @@ CONTAINS
           = GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) &
               * V_u_X3(3)
 
-        Vsq_X3 = V_u_X3(1) * V_d_X3(1) &  
-                    + V_u_X3(2) * V_d_X3(2) &  
-                    + V_u_X3(3) * V_d_X3(3) 
-    
-        W_X3 = WeightsX_X3(iNodeX)  / SQRT(1.0_DP - Vsq_X3) 
+        Vsq_X3 = V_u_X3(1) * V_d_X3(1) &
+                    + V_u_X3(2) * V_d_X3(2) &
+                    + V_u_X3(3) * V_d_X3(3)
+
+        W_X3 = WeightsX_X3(iNodeX)  / SQRT(1.0_DP - Vsq_X3)
 
         A_X3 = GX_F(iNodeX,iGF_Alpha,iX1,iX2,iX3)
 
@@ -5196,10 +5197,10 @@ CONTAINS
 
         U_d_X3(iNodeX,1,iX1,iX2,iX3) = W_X3 * ( - A_X3 + B_d_X3(1) * V_u_X3(1) &
                                      + B_d_X3(2) * V_u_X3(2) + B_d_X3(3) * V_u_X3(3) )
-        
-        U_d_X3(iNodeX,2,iX1,iX2,iX3) = W_X3 * V_d_X3(1) 
 
-        U_d_X3(iNodeX,3,iX1,iX2,iX3) = W_X3 * V_d_X3(2) 
+        U_d_X3(iNodeX,2,iX1,iX2,iX3) = W_X3 * V_d_X3(1)
+
+        U_d_X3(iNodeX,3,iX1,iX2,iX3) = W_X3 * V_d_X3(2)
 
         U_d_X3(iNodeX,4,iX1,iX2,iX3) = W_X3 * V_d_X3(3)
 
@@ -5266,10 +5267,10 @@ CONTAINS
 
 
         V_u_K(1) = uPF_K(iPF_V1)
- 
-        V_u_K(2) = uPF_K(iPF_V2) 
 
-        V_u_K(3) = uPF_K(iPF_V3) 
+        V_u_K(2) = uPF_K(iPF_V2)
+
+        V_u_K(3) = uPF_K(iPF_V3)
 
         V_d_K(1) &
           = GX_K(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
@@ -5292,24 +5293,24 @@ CONTAINS
         B_d_K(1) =  GX_K(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) * B_u_K(1)
         B_d_K(2) =  GX_K(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) * B_u_K(2)
         B_d_K(3) =  GX_K(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) * B_u_K(3)
-        
+
         Vsq_K = V_u_K(1) * V_d_K(1) &
                   + V_u_K(2) * V_d_K(2) &
                   + V_u_K(3) * V_d_K(3)
-     
+
         W_K = 1.0_DP / SQRT( 1.0_DP - Vsq_K )
 
-       
+
 
         U_d(iNodeX,1,iX1,iX2,iX3) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
                                               +    B_d_K(2) * V_u_K(2) &
                                               +    B_d_K(3) * V_u_K(3)  )
 
-        U_d(iNodeX,2,iX1,iX2,iX3) = W_K * V_d_K(1) 
+        U_d(iNodeX,2,iX1,iX2,iX3) = W_K * V_d_K(1)
 
-        U_d(iNodeX,3,iX1,iX2,iX3) = W_K * V_d_K(2) 
+        U_d(iNodeX,3,iX1,iX2,iX3) = W_K * V_d_K(2)
 
-        U_d(iNodeX,4,iX1,iX2,iX3) = W_K * V_d_K(3) 
+        U_d(iNodeX,4,iX1,iX2,iX3) = W_K * V_d_K(3)
 
         U_d_K(iNodeX,1,iX1,iX2,iX3) = WeightsX_q(iNodeX) * U_d(iNodeX,1,iX1,iX2,iX3)
         U_d_K(iNodeX,2,iX1,iX2,iX3) = WeightsX_q(iNodeX) * U_d(iNodeX,2,iX1,iX2,iX3)
@@ -5423,7 +5424,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
       DO mu = 0,3
 
-    
+
         dU_d_dX3_COV(iNodeX,0,iX1,iX2,iX3)  &
         = dU_d_dX3_COV(iNodeX,0,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,3,0,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
@@ -5431,11 +5432,11 @@ CONTAINS
         dU_d_dX3_COV(iNodeX,1,iX1,iX2,iX3)  &
         = dU_d_dX3_COV(iNodeX,1,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,3,1,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
-    
+
         dU_d_dX3_COV(iNodeX,2,iX1,iX2,iX3)  &
         = dU_d_dX3_COV(iNodeX,2,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,3,2,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
-    
+
         dU_d_dX3_COV(iNodeX,3,iX1,iX2,iX3)  &
         = dU_d_dX3_COV(iNodeX,3,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,3,3,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
@@ -5464,11 +5465,11 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       dG_dd_dX0 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     dG_dd_dX0 = Zero
-  END SUBROUTINE ComputeGeometryDerivatives_X0 
+  END SUBROUTINE ComputeGeometryDerivatives_X0
 
   SUBROUTINE ComputeGeometryDerivatives_X1 &
    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, dG_dd_dX1, Verbose_Option  )
@@ -5483,7 +5484,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       dG_dd_dX1 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
 
@@ -5500,10 +5501,10 @@ CONTAINS
            iX_B0(1):iX_E0(1)), &
       H_munu_F(nDOFX_X1,7,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
            iX_B0(1):iX_E0(1)+1)
-    REAL(DP) :: & 
+    REAL(DP) :: &
       dG_dd_dX1_Temp &
          (1:nDOFX,7, &
-          iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1):iX_E0(1)) 
+          iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1):iX_E0(1))
     LOGICAL :: Verbose
 
 
@@ -5521,12 +5522,12 @@ CONTAINS
     IF (Verbose) THEN
     PRINT*, "      ComputeGeometryDerivatives_X1"
     END IF
- 
-    nK    = iX_E0 - iX_B0 + 1 
-    nK_X1 = nK + [1,0,0]      
-    nX    = PRODUCT( nK(1:3) ) 
-    nX_X1 = PRODUCT( nK_X1(1:3) ) 
-    
+
+    nK    = iX_E0 - iX_B0 + 1
+    nK_X1 = nK + [1,0,0]
+    nX    = PRODUCT( nK(1:3) )
+    nX_X1 = PRODUCT( nK_X1(1:3) )
+
     ! --- Permute Geometry Fields ---
 
 
@@ -5552,14 +5553,14 @@ CONTAINS
 
 
         G_munu_K(iNodeX,1,iX2,iX3,iX1) = -A_K**2 + B_d_K(1) * B_u_K(1) + B_d_K(2) * B_u_K(2) + B_d_K(3) * B_u_K(3)
-       
+
         G_munu_K(iNodeX,2,iX2,iX3,iX1) = B_d_K(1)
 
 
-        G_munu_K(iNodeX,3,iX2,iX3,iX1) = B_d_K(2) 
-        
-        G_munu_K(iNodeX,4,iX2,iX3,iX1) = B_d_K(3) 
-        
+        G_munu_K(iNodeX,3,iX2,iX3,iX1) = B_d_K(2)
+
+        G_munu_K(iNodeX,4,iX2,iX3,iX1) = B_d_K(3)
+
         G_munu_K(iNodeX,5,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11)
 
 
@@ -5607,7 +5608,7 @@ CONTAINS
     ! --- Interpolate Fluid Fields ---
 
 
-  
+
     DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -5618,11 +5619,11 @@ CONTAINS
 
 
         H_munu_F(iNodeX,1,iX2,iX3,iX1) = WeightsX_X1(iNodeX) * G_munu_F(iNodeX,1,iX2,iX3,iX1)
-        
+
         H_munu_F(iNodeX,2,iX2,iX3,iX1) = WeightsX_X1(iNodeX) * G_munu_F(iNodeX,2,iX2,iX3,iX1)
-        
+
         H_munu_F(iNodeX,3,iX2,iX3,iX1) = WeightsX_X1(iNodeX) * G_munu_F(iNodeX,3,iX2,iX3,iX1)
-        
+
         H_munu_F(iNodeX,4,iX2,iX3,iX1) = WeightsX_X1(iNodeX) * G_munu_F(iNodeX,4,iX2,iX3,iX1)
 
 
@@ -5780,40 +5781,40 @@ CONTAINS
 
 
 
-        dG_dd_dX1(iNodeX,0,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,1,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,0,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,1,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,0,1,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,2,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,0,1,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,2,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,0,2,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,3,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,0,2,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,3,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,0,3,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,4,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,0,3,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,4,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,1,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,2,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,1,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,2,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,2,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,3,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,2,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,3,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,3,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,4,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,3,0,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,4,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,1,1,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,5,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,1,1,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,5,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,2,2,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,6,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,2,2,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,6,iX2,iX3,iX1)
 
 
-        dG_dd_dX1(iNodeX,3,3,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,7,iX2,iX3,iX1) 
+        dG_dd_dX1(iNodeX,3,3,iX1,iX2,iX3) = dG_dd_dX1_Temp(iNodeX,7,iX2,iX3,iX1)
 
 
         dG_dd_dX1(iNodeX,1,2,iX1,iX2,iX3) = 0.0_DP
 
 
-        dG_dd_dX1(iNodeX,2,1,iX1,iX2,iX3) = 0.0_DP 
+        dG_dd_dX1(iNodeX,2,1,iX1,iX2,iX3) = 0.0_DP
 
 
         dG_dd_dX1(iNodeX,1,3,iX1,iX2,iX3) = 0.0_DP
@@ -5857,7 +5858,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       dG_dd_dX2 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeX
@@ -5873,10 +5874,10 @@ CONTAINS
       H_munu_F(nDOFX_X2,7,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3), &
            iX_B0(2):iX_E0(2)+1)
     REAL(DP) ::  B_u_K(3), B_d_K(3), A_K
-    REAL(DP) :: & 
+    REAL(DP) :: &
       dG_dd_dX2_Temp &
          (1:nDOFX,7, &
-          iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2)) 
+          iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2))
     LOGICAL :: Verbose
 
     IF( iX_E0(2) .EQ. iX_B0(2) )THEN
@@ -5922,10 +5923,10 @@ CONTAINS
 
         G_munu_K(iNodeX,2,iX1,iX3,iX2) = B_d_K(1)
 
-        G_munu_K(iNodeX,3,iX1,iX3,iX2) = B_d_K(2) 
-        
-        G_munu_K(iNodeX,4,iX1,iX3,iX2) = B_d_K(3) 
-        
+        G_munu_K(iNodeX,3,iX1,iX3,iX2) = B_d_K(2)
+
+        G_munu_K(iNodeX,4,iX1,iX3,iX2) = B_d_K(3)
+
         G_munu_K(iNodeX,5,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11)
 
         G_munu_K(iNodeX,6,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22)
@@ -5995,11 +5996,11 @@ CONTAINS
 
 
         H_munu_F(iNodeX,1,iX1,iX3,iX2) = WeightsX_X2(iNodeX) * G_munu_F(iNodeX,1,iX1,iX3,iX2)
-        
+
         H_munu_F(iNodeX,2,iX1,iX3,iX2) = WeightsX_X2(iNodeX) * G_munu_F(iNodeX,2,iX1,iX3,iX2)
-        
+
         H_munu_F(iNodeX,3,iX1,iX3,iX2) = WeightsX_X2(iNodeX) * G_munu_F(iNodeX,3,iX1,iX3,iX2)
-        
+
         H_munu_F(iNodeX,4,iX1,iX3,iX2) = WeightsX_X2(iNodeX) * G_munu_F(iNodeX,4,iX1,iX3,iX2)
 
         H_munu_F(iNodeX,5,iX1,iX3,iX2) = WeightsX_X2(iNodeX) * G_munu_F(iNodeX,5,iX1,iX3,iX2)
@@ -6155,29 +6156,29 @@ CONTAINS
 
 
 
-        dG_dd_dX2(iNodeX,0,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,1,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,0,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,1,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,0,1,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,2,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,0,1,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,2,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,0,2,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,3,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,0,2,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,3,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,0,3,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,4,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,0,3,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,4,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,1,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,2,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,1,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,2,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,2,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,3,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,2,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,3,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,3,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,4,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,3,0,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,4,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,1,1,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,5,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,1,1,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,5,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,2,2,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,6,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,2,2,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,6,iX1,iX3,iX2)
 
-        dG_dd_dX2(iNodeX,3,3,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,7,iX1,iX3,iX2) 
+        dG_dd_dX2(iNodeX,3,3,iX1,iX2,iX3) = dG_dd_dX2_Temp(iNodeX,7,iX1,iX3,iX2)
 
         dG_dd_dX2(iNodeX,1,2,iX1,iX2,iX3) = 0.0_DP
 
-        dG_dd_dX2(iNodeX,2,1,iX1,iX2,iX3) = 0.0_DP 
+        dG_dd_dX2(iNodeX,2,1,iX1,iX2,iX3) = 0.0_DP
 
         dG_dd_dX2(iNodeX,1,3,iX1,iX2,iX3) = 0.0_DP
 
@@ -6213,7 +6214,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       dG_dd_dX3 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
 
@@ -6230,7 +6231,7 @@ CONTAINS
            iX_B0(3):iX_E0(3)), &
       H_munu_F(nDOFX_X3,7,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
            iX_B0(3):iX_E0(3)+1)
-    REAL(DP) :: & 
+    REAL(DP) :: &
       dG_dd_dX3_Temp &
          (1:nDOFX,7, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
@@ -6295,10 +6296,10 @@ CONTAINS
         G_munu_K(iNodeX,2,iX1,iX2,iX3) = B_d_K(1)
 
 
-        G_munu_K(iNodeX,3,iX1,iX2,iX3) = B_d_K(2) 
-        
-        G_munu_K(iNodeX,4,iX1,iX2,iX3) = B_d_K(3) 
-        
+        G_munu_K(iNodeX,3,iX1,iX2,iX3) = B_d_K(2)
+
+        G_munu_K(iNodeX,4,iX1,iX2,iX3) = B_d_K(3)
+
         G_munu_K(iNodeX,5,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11)
 
 
@@ -6413,11 +6414,11 @@ CONTAINS
 
 
         H_munu_F(iNodeX,1,iX1,iX2,iX3) = WeightsX_X3(iNodeX) * G_munu_F(iNodeX,1,iX1,iX2,iX3)
-        
+
         H_munu_F(iNodeX,2,iX1,iX2,iX3) = WeightsX_X3(iNodeX) * G_munu_F(iNodeX,2,iX1,iX2,iX3)
-        
+
         H_munu_F(iNodeX,3,iX1,iX2,iX3) = WeightsX_X3(iNodeX) * G_munu_F(iNodeX,3,iX1,iX2,iX3)
-        
+
         H_munu_F(iNodeX,4,iX1,iX2,iX3) = WeightsX_X3(iNodeX) * G_munu_F(iNodeX,4,iX1,iX2,iX3)
 
 
@@ -6616,40 +6617,40 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
 
-        dG_dd_dX3(iNodeX,0,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,1,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,0,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,1,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,0,1,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,2,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,0,1,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,2,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,0,2,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,3,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,0,2,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,3,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,0,3,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,4,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,0,3,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,4,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,1,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,2,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,1,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,2,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,2,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,3,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,2,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,3,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,3,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,4,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,3,0,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,4,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,1,1,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,5,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,1,1,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,5,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,2,2,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,6,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,2,2,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,6,iX1,iX2,iX3)
 
 
-        dG_dd_dX3(iNodeX,3,3,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,7,iX1,iX2,iX3) 
+        dG_dd_dX3(iNodeX,3,3,iX1,iX2,iX3) = dG_dd_dX3_Temp(iNodeX,7,iX1,iX2,iX3)
 
 
         dG_dd_dX3(iNodeX,1,2,iX1,iX2,iX3) = 0.0_DP
 
 
-        dG_dd_dX3(iNodeX,2,3,iX1,iX2,iX3) = 0.0_DP 
+        dG_dd_dX3(iNodeX,2,3,iX1,iX2,iX3) = 0.0_DP
 
 
         dG_dd_dX3(iNodeX,2,1,iX1,iX2,iX3) = 0.0_DP
@@ -6692,10 +6693,10 @@ CONTAINS
 
 
     REAL(DP) :: dU_d_dX(4,4), G_uu_munu(4,4),  W, Vsq, Alpha_Eig, Alpha_A, A(4,4), Lambda(4), WORK(11)
-    INTEGER  :: mu, nu, rho, INFO  
- 
-    Vsq =  V_u_1**2 * Gm_dd_11 + V_u_2**2 * Gm_dd_22 + V_u_3**2 * Gm_dd_33 
- 
+    INTEGER  :: mu, nu, rho, INFO
+
+    Vsq =  V_u_1**2 * Gm_dd_11 + V_u_2**2 * Gm_dd_22 + V_u_3**2 * Gm_dd_33
+
     W = 1.0_DP / SQRT( 1.0_DP - Vsq )
 
     dU_d_dX(1,1) = dU_d_dX0(1)
@@ -6718,8 +6719,8 @@ CONTAINS
     dU_d_dX(4,3) = dU_d_dX3(3)
     dU_d_dX(4,4) = dU_d_dX3(4)
 
-    G_uu_munu = 0.0_DP 
-    
+    G_uu_munu = 0.0_DP
+
     G_uu_munu(1,1) = -1.0_DP / Alp**2
     G_uu_munu(2,1) = B_u_1 / Alp**2
     G_uu_munu(3,1) = B_u_2 / Alp**2
@@ -6752,7 +6753,7 @@ CONTAINS
     A(4,4) =  dU_d_dX(4,4) + dU_d_dX(4,4)
 
     A = 0.5_DP * A
-  
+
     CALL DSYEV( 'N', 'U', 4, A, 4, Lambda, WORK, 11, INFO )
 
     Alpha_Eig = MAXVAL( ABS( Lambda ) ) / W
@@ -6760,7 +6761,7 @@ CONTAINS
     Alpha_A = 0.0_DP
 
     DO rho = 1, 4
-    DO mu = 1, 4 
+    DO mu = 1, 4
     DO nu = 1, 4
 
       Alpha_A = Alpha_A + U_u(nu) * dU_d_dX(nu,mu) * U_u(nu) * dU_d_dX(nu,rho) * G_uu_munu(rho,mu)
@@ -6780,7 +6781,7 @@ CONTAINS
 
   SUBROUTINE ComputeChristoffel( iX_B0, iX_E0, iX_B1, iX_E1, GX, &
                                  dG_dd_dX0, dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, Gamma_udd )
-   
+
 
 
     INTEGER, INTENT(in) :: iX_B0(3), iX_E0(3)
@@ -6791,22 +6792,22 @@ CONTAINS
           iX_B1(2):iX_E1(2), &
           iX_B1(3):iX_E1(3), &
           1:nGF)
-    REAL(DP), INTENT(in) :: & 
+    REAL(DP), INTENT(in) :: &
       dG_dd_dX0 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), & 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
       dG_dd_dX1 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), & 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
       dG_dd_dX2 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), & 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
       dG_dd_dX3 &
          (1:nDOFX,0:3,0:3, &
-          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+          iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
 
-    REAL(DP), INTENT(out) :: & 
+    REAL(DP), INTENT(out) :: &
       Gamma_udd &
          (1:nDOFX,0:3,0:3,0:3, &
           iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
@@ -6854,7 +6855,7 @@ CONTAINS
         G_dd_11 = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11)
         G_dd_22 = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22)
         G_dd_33 = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33)
- 
+
 
 
         A = GX(iNodeX,iX1,iX2,iX3,iGF_Alpha)
@@ -6864,7 +6865,7 @@ CONTAINS
 
 
         G_uu_munu(iNodeX,:,:,iX1,iX2,iX3) = 0.0_DP
-          
+
         G_uu_munu(iNodeX,0,0,iX1,iX2,iX3) = -1.0_DP / A**2
         G_uu_munu(iNodeX,1,0,iX1,iX2,iX3) = B(1) / A**2
         G_uu_munu(iNodeX,2,0,iX1,iX2,iX3) = B(2) / A**2
