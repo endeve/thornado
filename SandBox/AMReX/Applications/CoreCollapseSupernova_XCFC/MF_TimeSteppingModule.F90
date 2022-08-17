@@ -116,6 +116,8 @@ CONTAINS
 
   SUBROUTINE Update_IMEX_RK_MF
 
+! add flags: EvolveEuler, EvolveTwoMoment
+
     TYPE(amrex_multifab) :: MF_R    (0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_F    (0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_DR_Im(0:nMaxLevels-1,1:nStages)
@@ -243,16 +245,14 @@ CONTAINS
 
       END DO ! jS = 1, iS-1
 
-! Why is this update not over jS?
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
         DO iLevel = 0, nLevels-1
 
-!!$          ! Should this be MF_F(:,iS) instead of MF_uCF?
-!!$          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
-!!$               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), &
-!!$                 MF_R(:,iS), MF_DR_Im(:,iS), &
-!!$                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
+               ( GEOM, MF_uGF, MF_F(:,iS), MF_DF_Im(:,iS), &
+                 MF_R(:,iS), MF_DR_Im(:,iS), &
+                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
           CALL MF_R(iLevel,iS) &
                  % LinComb &
@@ -423,13 +423,26 @@ CONTAINS
   END SUBROUTINE Finalize_IMEX_RK_MF
 
 
-  SUBROUTINE Initialize_IMEX_RK( Scheme, Verbose_Option )
+  SUBROUTINE Initialize_IMEX_RK &
+    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in) :: Scheme
-    LOGICAL,               INTENT(in), OPTIONAL :: Verbose_Option
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
+    LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
     LOGICAL :: Verbose
+    LOGICAL :: EvolveEuler
+    LOGICAL :: EvolveTwoMoment
+
+    EvolveEuler = .FALSE.
+    IF( PRESENT( EvolveEuler_Option ) ) &
+      EvolveEuler = EvolveEuler_Option
+
+    EvolveTwoMoment = .FALSE.
+    IF( PRESENT( EvolveTwoMoment_Option ) ) &
+      EvolveTwoMoment = EvolveTwoMoment_Option
 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &

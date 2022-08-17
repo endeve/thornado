@@ -24,8 +24,8 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_Neutrinos
+!!$  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+!!$    ComputeIncrement_TwoMoment_Implicit_Neutrinos
   USE MeshModule, ONLY: &
     MeshX
 
@@ -189,8 +189,11 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
 
-        CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, Verbose_Option = Verbose )
+!!$        CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos &
+!!$               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, &
+!!$                  Verbose_Option = Verbose )
+        dC = Zero
+        dU = Zero
 
         CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
 

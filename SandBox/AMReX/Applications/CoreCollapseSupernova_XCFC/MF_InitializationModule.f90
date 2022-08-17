@@ -287,14 +287,14 @@ CONTAINS
 
           ! --- Initialize radiation fields ---
 
-          DO iNZ = 1, nDOFZ
+          DO iS  = 1, nSpecies
+          DO iZ1 = 1, nE
 
-            DO iS = 1, nSpecies
-            DO iZ1 = 1, nE
+            DO iNZ = 1, nDOFZ
 
               iNX_Z = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
-              uPR_K(iNZ,iZ1,iPR_D ,iS) = Zero
+              uPR_K(iNZ,iZ1,iPR_D ,iS) = Zero ! 1.0e-40_DP
               uPR_K(iNZ,iZ1,iPR_I1,iS) = Zero
               uPR_K(iNZ,iZ1,iPR_I2,iS) = Zero
               uPR_K(iNZ,iZ1,iPR_I3,iS) = Zero
@@ -321,12 +321,12 @@ CONTAINS
                        uGF_K(iNX_Z,iGF_Beta_3) )
 
 
-            END DO ! iZ1 = 1, nE
-            END DO ! iS = 1, nSpecies
+            END DO ! iNZ = 1, nDOFZ
 
-          END DO ! iNX_Z = 1, nDOFZ
+          END DO ! iZ1 = 1, nE
+          END DO ! iS  = 1, nSpecies
 
-        END DO ! iNX
+        END DO ! iNX = 1, nDOFX
 
         uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
           = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )

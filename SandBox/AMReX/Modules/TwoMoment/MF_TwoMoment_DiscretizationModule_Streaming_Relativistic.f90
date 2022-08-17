@@ -172,9 +172,11 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
-        CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose, &
-               SuppressBC_Option = .TRUE.  )
+!!$        CALL ComputeIncrement_TwoMoment_Explicit &
+!!$               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
+!!$                 Verbose_Option = Verbose, &
+!!$                 SuppressBC_Option = .TRUE.  )
+        dU = Zero
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
