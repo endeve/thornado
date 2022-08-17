@@ -80,6 +80,17 @@ f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule.f90
 f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule.f90
 f90EXE_sources  += MF_TwoMoment_TallyModule.f90
 
+# THORNADO_DIR/SandBox/AMReX/TwoMoment
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
+f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
+f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
+f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule.f90
+f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule.f90
+
 ### Native thornado ###
 
 # THORNADO_DIR/Modules/Library
@@ -181,17 +192,6 @@ F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.f90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90
-
-# THORNADO_DIR/SandBox/AMReX/TwoMoment
-
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
-f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
-f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
-f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
-#f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
-f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
-f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule.f90
-f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule.f90
 
 # THORNADO_DIR/Modules/TwoMoment_Relativistic
 

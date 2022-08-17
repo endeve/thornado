@@ -44,8 +44,8 @@ MODULE MF_TimeSteppingModule
     nCR
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit_MF
-!!$  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-!!$    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
+  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
 
   ! --- Local Modules ---
 
