@@ -54,7 +54,7 @@ PROGRAM NeutrinoOpacities
 
   INTEGER, PARAMETER :: &
     nNodes   = 2, &
-    nE       = 2**4, &
+    nE       = 16, & !2**4, &
     nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
