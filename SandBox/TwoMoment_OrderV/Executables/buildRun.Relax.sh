@@ -14,9 +14,9 @@ function load_set_common(){
    module load oneapi/eng-compiler/2022.06.30.002
 
    export OP_LEVEL=O3
-   export LOG_FILE=sineWave.${OP_LEVEL}
+   export LOG_FILE=relax.${OP_LEVEL}
    rm $LOG_FILE
-   export APP_NAME=ApplicationDriver
+   export APP_NAME=ApplicationDriver_Neutrinos
    export EXASTAR_HOME=/localdisk/quanshao
    export HDF5_INC=${EXASTAR_HOME}/ExaStar/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/ExaStar/hdf57/lib64
@@ -40,7 +40,7 @@ function buildApp(){
    module list   |& tee -a $LOG_FILE
 
    make clean
-   ( time make $APP_NAME USE_OMP_OL=TRUE USE_GPU=TRUE USE_CUDA=FALSE USE_ONEMKL=TRUE ) |& tee -a $LOG_FILE
+   ( time make $APP_NAME MICROPHYSICS=WEAKLIB USE_OMP_OL=TRUE USE_GPU=TRUE USE_CUDA=FALSE USE_ONEMKL=TRUE ) |& tee -a $LOG_FILE
 }
 
 ###########################################################################################
@@ -69,7 +69,7 @@ function runApp(){
    ulimit -s unlimited
    #ulimit -n 20480
    ## The following seems working well for the SineWaveStream app.
-   export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,16,32
+   export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,32,64,2048
 
    module list |& tee -a $LOG_FILE
 
@@ -77,6 +77,7 @@ function runApp(){
    source /sharedjf/mjh/tools/Intel_VTune_Profiler_2022.3.0_nda/env/vars.sh
    VT_OUTPUT=vtune07June2022
    rm -rf $VT_OUTPUT
+
 
 # echo some env variables to $LOG_FILE   
 
@@ -88,11 +89,11 @@ function runApp(){
    ( time ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
    #( time iprof ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
 
-   #( time  gdb-oneapi ./${APP_NAME}_${THORNADO_MACHINE}) |& tee $LOG_FILE
-   #valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --track-fds=yes ./${APP_NAME}_${THORNADO_MACHINE}|& tee -a $LOG_FILE
-   #vtune -collect gpu-hotspots -knob characterization-mode=global-local-accesses -r vtune-06032022-02 ./${APP_NAME}_${THORNADO_MACHINE} |& tee -a $LOG_FILE
-   #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -ring-buffer 10 -r $VT_OUTPUT ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $LOG_FILE
-    #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -r $VT_OUTPUT ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $LOG_FILE
+   #( time  gdb-oneapi ./${APP_NAME}_${THORNADO_MACHINE}) |& tee $OUTPUT_LOG
+   #valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --track-fds=yes ./${APP_NAME}_${THORNADO_MACHINE}|& tee -a $OUTPUT_LOG
+   #vtune -collect gpu-hotspots -knob characterization-mode=global-local-accesses -r vtune-06032022-02 ./${APP_NAME}_${THORNADO_MACHINE} |& tee -a $OUTPUT_LOG
+   #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -ring-buffer 10 -r $VT_OUTPUT ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
+    #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -r $VT_OUTPUT ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
 
 }
 
