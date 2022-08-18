@@ -131,7 +131,7 @@ CONTAINS
     REAL(DP) :: dM_OffGrid_Euler    (1:nCF,0:nMaxLevels-1)
     REAL(DP) :: dM_OffGrid_TwoMoment(1:nCR,0:nMaxLevels-1)
 
-    LOGICAL, PARAMETER :: Verbose = .TRUE.
+    LOGICAL, PARAMETER :: Verbose = .FALSE.
 
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
