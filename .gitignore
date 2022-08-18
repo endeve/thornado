@@ -26,10 +26,11 @@
 pgipar*
 
 # AMReX
+*main*ex
 *ApplicationDriver*ex
 *tmp_build_dir
-*chk_*
-*plt_*
+*chk*
+*plt*
 *thornado_*
 *Backtrace.*
 
