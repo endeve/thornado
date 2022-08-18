@@ -47,7 +47,8 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nDR, iDR_PL_Theta_1, iDR_PL_Theta_2, iDR_PL_dEnergy
 
   IMPLICIT NONE
   PRIVATE
@@ -77,12 +78,10 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE &
-  !$OMP TARGET( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-  !$OMP         InterpMat_Z, InterpMat_X, PointZ2X )
+  !$OMP TARGET( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE &
-  !$ACC CREATE( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-  !$ACC         InterpMat_Z, InterpMat_X, PointZ2X )
+  !$ACC CREATE( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
 #endif
 
 CONTAINS
@@ -501,18 +500,32 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE &
-    !$OMP TO( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-    !$OMP     InterpMat_Z, InterpMat_X, PointZ2X )
+    !$OMP TO( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
+
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: InterpMat_Z, InterpMat_X, PointZ2X )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE &
-    !$ACC DEVICE( Min_1, Max_1, Min_2, W_Factor, nPT_Z, &
-    !$ACC         InterpMat_Z, InterpMat_X, PointZ2X )
+    !$ACC DEVICE( Min_1, Max_1, Min_2, W_Factor, nPT_Z )
+
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( InterpMat_Z, InterpMat_X, PointZ2X )
 #endif
+
+    dEnergyMomentum_PL_TwoMoment = Zero
 
   END SUBROUTINE InitializePositivityLimiter_TwoMoment
 
 
   SUBROUTINE FinalizePositivityLimiter_TwoMoment
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: InterpMat_Z, InterpMat_X, PointZ2X )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( InterpMat_Z, InterpMat_X, PointZ2X )
+#endif
 
     DEALLOCATE( InterpMat_Z )
     DEALLOCATE( InterpMat_X )
@@ -522,7 +535,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, uDR_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -552,6 +565,12 @@ CONTAINS
           iZ_B1(4):iZ_E1(4), &
           1:nCR, &
           1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      uDR_Option &
+         (iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nDR)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_Z, iP_X
     INTEGER  :: iNodeZ, iNodeE, iNodeX
@@ -580,6 +599,15 @@ CONTAINS
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4), &
          nSpecies)
+    REAL(DP) :: &
+      Theta_1_K &
+        (iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4)), &
+      Theta_2_K &
+        (iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
       Energy_K &
         (iZ_B0(1):iZ_E0(1), &
@@ -726,6 +754,17 @@ CONTAINS
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #endif
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      Theta_1_K(iZ2,iZ3,iZ4) = One
+      Theta_2_K(iZ2,iZ3,iZ4) = One
+
+    END DO
+    END DO
+    END DO
 
     CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_0 )
@@ -895,7 +934,7 @@ CONTAINS
           Theta_1 &
             = MIN( One, &
                    ABS( ( Min_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
-                      / ( Min_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ), &
+                      / ( Min_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)-SqrtTiny ) ), &
                    ABS( ( Max_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
                       / ( Max_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ) )
 
@@ -906,10 +945,13 @@ CONTAINS
                    N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           CALL ComputePointValuesZ_Single &
-                 ( N_Q(:,iZ1,iZ2,iZ3,iZ4,iS), &
+                 ( InterpMat_Z, &
+                   N_Q(:,iZ1,iZ2,iZ3,iZ4,iS), &
                    N_P(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
+
+          Theta_1_K(iZ2,iZ3,iZ4) = MIN( Theta_1, Theta_1_K(iZ2,iZ3,iZ4) )
 
         END IF
 
@@ -1020,6 +1062,8 @@ CONTAINS
 
           LimiterApplied(iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
+          Theta_2_K(iZ2,iZ3,iZ4) = MIN( Theta_2, Theta_2_K(iZ2,iZ3,iZ4) )
+
         END IF
 
       END IF
@@ -1051,7 +1095,8 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      ApplyEnergyLimiter(iZ2,iZ3,iZ4,iS) = ANY( LimiterApplied(:,iZ2,iZ3,iZ4,iS) )
+      ApplyEnergyLimiter(iZ2,iZ3,iZ4,iS) &
+        = ANY( LimiterApplied(:,iZ2,iZ3,iZ4,iS) )
 
     END DO
     END DO
@@ -1059,7 +1104,8 @@ CONTAINS
     END DO
 
     CALL ComputeLocalEnergy & ! --- For Energy Correction ---
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, ApplyEnergyLimiter, Energy_K )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, &
+             ApplyEnergyLimiter, Energy_K )
 
     CALL TimersStop( Timer_PL_EnergyLimiter )
 
@@ -1095,7 +1141,8 @@ CONTAINS
     CALL TimersStart( Timer_PL_EnergyLimiter )
 
     CALL ComputeLocalEnergy & ! --- For Energy Correction ---
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, ApplyEnergyLimiter, dEnergy_K )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, &
+             ApplyEnergyLimiter, dEnergy_K )
 
     ! --- Energy Change Due to Positivity Limiter ---
 
@@ -1134,6 +1181,42 @@ CONTAINS
 
     CALL ComputeGlobalEnergyMomentum & ! --- For Global Tally ---
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, EnergyMomentum_1 )
+
+    IF( PRESENT( uDR_Option ) )THEN
+
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+        uDR_Option(iZ2,iZ3,iZ4,iDR_PL_Theta_1) = Theta_1_K(iZ2,iZ3,iZ4)
+        uDR_Option(iZ2,iZ3,iZ4,iDR_PL_Theta_2) = Theta_2_K(iZ2,iZ3,iZ4)
+        uDR_Option(iZ2,iZ3,iZ4,iDR_PL_dEnergy) = Zero
+
+      END DO
+      END DO
+      END DO
+
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        IF( ApplyEnergyLimiter(iZ2,iZ3,iZ4,iS) )THEN
+
+          uDR_Option(iZ2,iZ3,iZ4,iDR_PL_dEnergy) &
+            = uDR_Option(iZ2,iZ3,iZ4,iDR_PL_dEnergy) &
+                + dEnergy_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1213,6 +1296,7 @@ CONTAINS
     INTEGER  :: iK1, iK2
     REAL(DP) :: N_K1, N_K2, E_K1, E_K2, ResidualE
     REAL(DP) :: Theta_K1, Theta_K2
+    REAL(DP) :: MinTheta_K1, MinTheta_K2
     REAL(DP) :: &
       V_u_1(1:nDOFX)
     REAL(DP) :: &
@@ -1222,7 +1306,7 @@ CONTAINS
     REAL(DP) :: &
       W2_K(1:nDOFZ, &
            iZ_B0(1):iZ_E0(1))
-    REAL(DP) :: & 
+    REAL(DP) :: &
       W3_K(1:nDOFZ, &
            iZ_B0(1):iZ_E0(1))
 
@@ -1238,18 +1322,21 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(4) &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$OMP          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+    !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
+    !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(4) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$ACC          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
+    !$ACC          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
+    !$ACC          V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, GE, GX, U_F, U_R, DeltaE, &
     !$ACC          Weights_Q, ApplyEnergyLimiter )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$OMP          Theta_K1, Theta_K2, V_u_1, V_u_2, V_u_3, W2_K, W3_K, &
+    !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
+    !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K, &
     !$OMP          iNodeX, iNodeE )
 #endif
     DO iS  = 1, nSpecies
@@ -1356,9 +1443,14 @@ CONTAINS
                   V_u_2, &
                   V_u_3 )
 
+          MinTheta_K1 = 1.2_DP*Min_1 / &
+                            MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
+          MinTheta_K2 = 1.2_DP*Min_1 / &
+                            MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
+
           CALL UpdateResidualEnergy &
               ( N_K1, N_K2, E_K1, E_K2, DeltaE(iK2,iZ2,iZ3,iZ4,iS), &
-                ResidualE, Theta_K1, Theta_K2 )
+                MinTheta_K1, MinTheta_K2, ResidualE, Theta_K1, Theta_K2 )
 
           CALL LimitEnergy( Theta_K1, U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS) )
           CALL LimitEnergy( Theta_K2, U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS) )
@@ -1410,9 +1502,14 @@ CONTAINS
                     V_u_2, &
                     V_u_3 )
 
+            MinTheta_K1 = 1.2_DP*Min_1 / &
+                              MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
+            MinTheta_K2 = 1.2_DP*Min_1 / &
+                              MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
+
             CALL UpdateResidualEnergy &
                 ( N_K1, N_K2, E_K1, E_K2, Zero, &
-                  ResidualE, Theta_K1, Theta_K2 )
+                MinTheta_K1, MinTheta_K2, ResidualE, Theta_K1, Theta_K2 )
 
             CALL LimitEnergy( Theta_K1, U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS) )
             CALL LimitEnergy( Theta_K2, U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS) )
@@ -1422,8 +1519,6 @@ CONTAINS
             CALL LimitEnergy( Theta_K2, U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS) )
             CALL LimitEnergy( Theta_K1, U_R(:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS) )
             CALL LimitEnergy( Theta_K2, U_R(:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS) )
-
-            !IF( ResidualE == Zero ) EXIT
 
           END DO
 
@@ -1473,7 +1568,7 @@ CONTAINS
   END SUBROUTINE ComputePointValuesZ
 
 
-  SUBROUTINE ComputePointValuesZ_Single( U_Q, U_P )
+  SUBROUTINE ComputePointValuesZ_Single( InterpMat_Z, U_Q, U_P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1481,6 +1576,8 @@ CONTAINS
     !$ACC ROUTINE VECTOR
 #endif
 
+    REAL(DP), INTENT(in)  :: &
+     InterpMat_Z(nPT_Z,nDOFZ)
     REAL(DP), INTENT(in)  :: &
       U_Q(nDOFZ)
     REAL(DP), INTENT(out) :: &
@@ -1560,7 +1657,8 @@ CONTAINS
     !$ACC PRIVATE( SUM1, SUM2 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, U_K, Weights_Q, Tau_Q, U_Q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( SUM1, SUM2 )
 #endif
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1998,7 +2096,8 @@ CONTAINS
 
 
   SUBROUTINE UpdateResidualEnergy &
-      ( N_K1, N_K2, E_K1, E_K2, DeltaE, ResidualE, Theta_K1, Theta_K2 )
+      ( N_K1, N_K2, E_K1, E_K2, DeltaE, MinTheta_K1, MinTheta_K2, &
+      ResidualE, Theta_K1, Theta_K2 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2007,14 +2106,17 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)    :: N_K1, N_K2, E_K1, E_K2, DeltaE
+    REAL(DP), INTENT(in)    :: MinTheta_K1, MinTheta_K2
     REAL(DP), INTENT(inout) :: ResidualE
     REAL(DP), INTENT(out)   :: Theta_K1, Theta_K2
 
-    REAL(DP), PARAMETER :: MinTheta_K = - 0.99_DP
-    REAL(DP), PARAMETER :: RedTheta_K =   0.90_DP ! --- Reduction Factor
+    REAL(DP), PARAMETER :: MinTheta_K = - 0.5_DP
+    REAL(DP), PARAMETER :: MaxTheta_K =   1.0_DP
 
     REAL(DP) :: Det
-    INTEGER  :: PowTheta
+    REAL(DP) :: MinTheta_K1_Both, MinTheta_K2_Both
+    REAL(DP) :: RedTheta_K
+
 
     Det = ( N_K1 * E_K2 - N_K2 * E_K1 )
 
@@ -2030,29 +2132,40 @@ CONTAINS
 
     END IF
 
-    IF( Theta_K1 < MinTheta_K .OR. Theta_K2 < MinTheta_K )THEN
+    MinTheta_K1_Both = MAX(MinTheta_K1, MinTheta_K)
+    MinTheta_K2_Both = MAX(MinTheta_K2, MinTheta_K)
 
-      PowTheta = 0
+    RedTheta_K = 1.0_DP
 
-      IF( Theta_K1 < MinTheta_K )THEN
+    IF( Theta_K1 < MinTheta_K1_Both )THEN
 
-        PowTheta &
-          = CEILING(LOG(MinTheta_K/Theta_K1)/LOG(RedTheta_K))
-
-      END IF
-
-      IF( Theta_K2 < MinTheta_K )THEN
-
-        PowTheta &
-          = MAX( CEILING(LOG(MinTheta_K/Theta_K2)/LOG(RedTheta_K)), &
-                 PowTheta )
-
-      END IF
-
-      Theta_K1 = RedTheta_K**PowTheta * Theta_K1
-      Theta_K2 = RedTheta_K**PowTheta * Theta_K2
+      RedTheta_K = MinTheta_K1_Both/Theta_K1
 
     END IF
+
+    IF( Theta_K2 < MinTheta_K2_Both )THEN
+
+      RedTheta_K &
+        = MIN( MinTheta_K2_Both/Theta_K2, RedTheta_K )
+
+    END IF
+
+    IF( Theta_K1 > MaxTheta_K )THEN
+
+      RedTheta_K &
+        = MIN( MaxTheta_K/Theta_K1, RedTheta_K )
+
+    END IF
+
+    IF( Theta_K2 > MaxTheta_K )THEN
+
+      RedTheta_K &
+        = MIN( MaxTheta_K/Theta_K2, RedTheta_K )
+
+    END IF
+
+    Theta_K1 = RedTheta_K * Theta_K1
+    Theta_K2 = RedTheta_K * Theta_K2
 
     ResidualE &
       = E_K1 * Theta_K1 + E_K2 * Theta_K2 &
@@ -2296,7 +2409,7 @@ CONTAINS
     SUM_G1 = Zero
     SUM_G2 = Zero
     SUM_G3 = Zero
-    
+
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )

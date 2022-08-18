@@ -120,7 +120,7 @@ contains
       SlopeLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
-      Verbose_Option )
+      OpacityTableName_Brem_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -142,6 +142,7 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
+    character(len=*), intent(in), optional :: OpacityTableName_Brem_Option
     logical,          intent(in), optional :: Verbose_Option
 
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
@@ -316,6 +317,8 @@ contains
                = OpacityTableName_NES_Option, &
              OpacityTableName_Pair_Option &
                = OpacityTableName_Pair_Option, &
+             OpacityTableName_Brem_Option &
+               = OpacityTableName_Brem_Option, &
              EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
              Verbose_Option = Verbose )

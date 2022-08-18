@@ -1,0 +1,39 @@
+## Makefile definitions for Wombat with NVIDIA HPC SDK (formerly PGI) compiler
+
+C       = mpic++ --c++11
+FORTRAN = mpifort -Mpreprocess
+FLINKER = mpifort
+
+DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
+OPTIMIZE = -g -O2 -tp=neoverse-n1
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -mp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -mp=gpu -gpu=cc80,ptxinfo -Minfo=accel
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -acc -gpu=cc80,ptxinfo -Minfo=accel
+endif
+
+INCLUDE_CUDA     = -I$(NVHPC_ROOT)/math_libs/include -I$(NVHPC_ROOT)/cuda/include
+INCLUDE_HDF5     = -I$(HDF5_ROOT)/include
+INCLUDE_LAPACK   =
+INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_POSEIDON =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     = -L$(NVHPC_ROOT)/math_libs/lib64 -lcusparse -lcusolver -lcublas -L$(NVHPC_ROOT)/cuda/lib64 -lcudart
+LIBRARIES_HDF5     = -L$(HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -llapack -lblas
+LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_POSEIDON =
+LIBRARIES_ROCM     =

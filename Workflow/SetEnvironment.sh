@@ -95,6 +95,11 @@ elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == kkadoogan* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == jrober* ]]; then
 
   echo
@@ -200,7 +205,7 @@ elif [[ $THORNADO_MACHINE == summit_xl ]]; then
 
   module load xl
   module load spectrum-mpi
-  module load hdf5/1.10.3
+  module load hdf5/1.10.7
   module load netlib-lapack/3.8.0
   module load essl
 
@@ -278,6 +283,10 @@ elif [[ $THORNADO_MACHINE == sjdunham ]]; then
 
   echo
 
+elif [[ $THORNADO_MACHINE == kkadoogan_gnu ]]; then
+
+  echo
+
 elif [[ $THORNADO_MACHINE == jrober ]]; then
 
   echo
@@ -290,9 +299,10 @@ elif [[ $THORNADO_MACHINE == accre_gnu ]]; then
 
   echo
 
-  module load GCC/6.4.0-2.28
-  module load OpenMPI/2.1.1
-  module load HDF5/1.10.1
+  module load GCC/10.2.0
+  module load OpenMPI/4.0.5
+  module load ScaLAPACK/2.1.0
+  module load HDF5/1.10.7
 
   export LAPACK_DIR=$EBROOTSCALAPACK
 

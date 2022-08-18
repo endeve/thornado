@@ -19,17 +19,17 @@ MODULE TwoMoment_ClosureModule
   INTERFACE FluxFactor
     MODULE PROCEDURE FluxFactor_Scalar
     MODULE PROCEDURE FluxFactor_Vector
-  END INTERFACE
+  END INTERFACE FluxFactor
 
   INTERFACE FluxFactor_Relativistic
     MODULE PROCEDURE FluxFactor_Relativistic_Scalar
     MODULE PROCEDURE FluxFactor_Relativistic_Vector
-  END INTERFACE
+  END INTERFACE FluxFactor_Relativistic
 
   INTERFACE EddingtonFactor
     MODULE PROCEDURE EddingtonFactor_Scalar
     MODULE PROCEDURE EddingtonFactor_Vector
-  END INTERFACE
+  END INTERFACE EddingtonFactor
 
   INTERFACE HeatFluxFactor
     MODULE PROCEDURE HeatFluxFactor_Scalar
@@ -39,32 +39,32 @@ MODULE TwoMoment_ClosureModule
   INTERFACE ClosurePolynomial_ME_CB
     MODULE PROCEDURE ClosurePolynomial_ME_CB_Scalar
     MODULE PROCEDURE ClosurePolynomial_ME_CB_Vector
-  END INTERFACE
+  END INTERFACE ClosurePolynomial_ME_CB
 
   INTERFACE ClosurePolynomial_ME_BL
     MODULE PROCEDURE ClosurePolynomial_ME_BL_Scalar
     MODULE PROCEDURE ClosurePolynomial_ME_BL_Vector
-  END INTERFACE
+  END INTERFACE ClosurePolynomial_ME_BL
 
   INTERFACE ClosurePolynomial_KE_BL
     MODULE PROCEDURE ClosurePolynomial_KE_BL_Scalar
     MODULE PROCEDURE ClosurePolynomial_KE_BL_Vector
-  END INTERFACE
+  END INTERFACE ClosurePolynomial_KE_BL
 
   INTERFACE ClosurePolynomialDerivative_ME_CB
     MODULE PROCEDURE ClosurePolynomialDerivative_ME_CB_Scalar
     MODULE PROCEDURE ClosurePolynomialDerivative_ME_CB_Vector
-  END INTERFACE
+  END INTERFACE ClosurePolynomialDerivative_ME_CB
 
   INTERFACE ClosurePolynomialDerivative_ME_BL
     MODULE PROCEDURE ClosurePolynomialDerivative_ME_BL_Scalar
     MODULE PROCEDURE ClosurePolynomialDerivative_ME_BL_Vector
-  END INTERFACE
+  END INTERFACE ClosurePolynomialDerivative_ME_BL
 
   INTERFACE ClosurePolynomialDerivative_KE_BL
     MODULE PROCEDURE ClosurePolynomialDerivative_KE_BL_Scalar
     MODULE PROCEDURE ClosurePolynomialDerivative_KE_BL_Vector
-  END INTERFACE
+  END INTERFACE ClosurePolynomialDerivative_KE_BL
 
 CONTAINS
 
@@ -114,6 +114,18 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A6,A)') &
         '', 'Two-Moment Closure: Maximum Entropy (Banach & Larecki)'
+
+    END IF
+
+#elif  MOMENT_CLOSURE_KERSHAW
+
+    ! --- Classical Kershaw Closure ---
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') &
+        '', 'Two-Moment Closure: Kershaw (Classical)'
 
     END IF
 
@@ -334,6 +346,12 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_ME_BL( FF / MAX( One - D, SqrtTiny ) )
 
+#elif  MOMENT_CLOSURE_KERSHAW
+
+    ! --- Classical Kershaw Closure ---
+
+    EddingtonFactor = Third * ( One + Two * FF**2 )
+
 #elif  MOMENT_CLOSURE_KERSHAW_BL
 
     ! --- Banach-Larecki Kershaw Closure ---
@@ -348,6 +366,10 @@ CONTAINS
   
     EddingtonFactor &
       = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
+
+#else
+
+    EddingtonFactor = 0.0_DP
 
 #endif
 
@@ -388,6 +410,12 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_ME_BL( FF / MAX( One - D, SqrtTiny ) )
 
+#elif  MOMENT_CLOSURE_KERSHAW
+
+    ! --- Classical Kershaw Closure ---
+
+    EddingtonFactor = Third * ( One + Two * FF**2 )
+
 #elif  MOMENT_CLOSURE_KERSHAW_BL
 
     ! --- Banach-Larecki Kershaw Closure ---
@@ -402,6 +430,10 @@ CONTAINS
 
     EddingtonFactor &
       = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
+
+#else
+
+    EddingtonFactor = 0.0_DP
 
 #endif
 
@@ -448,6 +480,12 @@ CONTAINS
 
     HeatFluxFactor = 0.0_DP
 
+#elif  MOMENT_CLOSURE_KERSHAW
+
+    ! --- Classical Kershaw Closure ---
+
+    HeatFluxFactor = FF * ( 4.0_DP * FF**2 + 5.0_DP ) / 9.0_DP
+
 #elif  MOMENT_CLOSURE_KERSHAW_BL
     
     HeatFluxFactor &
@@ -455,6 +493,10 @@ CONTAINS
     -((D*FF-(1.0_DP-D)**2)/(1.0_DP-D))**4)+((2.0_DP-D)/3)*(FF**3+D**2*FF)
 
 #elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#else
 
     HeatFluxFactor = 0.0_DP
 
@@ -496,12 +538,22 @@ CONTAINS
 
     HeatFluxFactor = 0.0_DP
 
+#elif  MOMENT_CLOSURE_KERSHAW
+
+    ! --- Classical Kershaw Closure ---
+
+    HeatFluxFactor = FF * ( 4.0_DP * FF**2 + 5.0_DP ) / 9.0_DP
+
 #elif  MOMENT_CLOSURE_KERSHAW_BL
     
     DO i = 1, SIZE( D )
         HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
     END DO
 #elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#else
 
     HeatFluxFactor = 0.0_DP
 
@@ -556,6 +608,14 @@ CONTAINS
     dEFdFF_D &
       = Two * Third * ( One - Two * D ) &
           * ClosurePolynomialDerivative_ME_BL( XX )
+
+#elif  MOMENT_CLOSURE_KERSHAW
+
+    ! --- Classical Kershaw Closure ---
+
+    dEFdD_FF = Zero
+
+    dEFdFF_D = Four * Third * FF
 
 #elif MOMENT_CLOSURE_KERSHAW_BL
 

@@ -3,10 +3,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   USE KindModule, ONLY: &
     DP
   USE UnitsModule, ONLY: &
-    Centimeter, &
-    Gram, &
-    MeV, &
-    SpeedOfLight
+    AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFE, &
@@ -28,7 +25,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nAF, iAF_T, iAF_E , iAF_Ye
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nDR, iDR_iter_outer, iDR_iter_inner
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic, &
     ComputeConserved_Euler_NonRelativistic
@@ -80,7 +78,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
+      uDR_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -126,13 +125,17 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      uDR_Option &
+          (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDR)
 
     INTEGER :: iN_X, iN_E, iS
+    INTEGER :: iNodeX, iX1, iX2, iX3
 
     CALL TimersStart( Timer_Collisions )
-
-    ! PRINT*, "--- In implicit solve ---"
-    ! PRINT*, "--- Initializing ---"
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
@@ -146,17 +149,7 @@ CONTAINS
     !$ACC CREATE( dU_F, dU_R )
 #endif
 
-    ! PRINT*, "--- Mapping data ---"
-
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
-
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! PRINT*, "CF_D = ", CF_N(:,iCF_D) / (Gram / Centimeter**3)
-    ! PRINT*, "CF_E = ", CF_N(:,iCF_E)
-    ! PRINT*, "CF_Ne = ", CF_N(:,iCF_Ne)
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-
-    ! PRINT*, "--- Computing primitive fluid ---"
 
     ! --- Compute Primitive Fluid ---
 
@@ -193,22 +186,7 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_PrimitiveFluid )
 
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! PRINT*, "G11 = ", GX_N(:,iGF_Gm_dd_11)
-    ! PRINT*, "G22 = ", GX_N(:,iGF_Gm_dd_22)
-    ! PRINT*, "G33 = ", GX_N(:,iGF_Gm_dd_33)
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! PRINT*, "PF_V1 = ", PF_N(:,iPF_V1) / SpeedOfLight
-    ! PRINT*, "PF_V2 = ", PF_N(:,iPF_V2) / SpeedOfLight
-    ! PRINT*, "PF_V3 = ", PF_N(:,iPF_V3) / SpeedOfLight
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! PRINT*, "PF_D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
-    ! PRINT*, "PF_E = ", PF_N(:,iPF_E)
-    ! PRINT*, "PF_Ne = ", PF_N(:,iPF_Ne)
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-
-    ! PRINT*, "--- Computing primitive moments ---"
+    ! --- Compute Primitive Moments ---
 
     CALL TimersStart( Timer_Collisions_PrimitiveTwoMoment )
 
@@ -226,30 +204,13 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_PrimitiveTwoMoment )
 
-            ! PRINT*, "N_P = ", N_P(:)
-            ! PRINT*, "G1_P = ", G1_P(:)
-            ! PRINT*, "G2_P = ", G2_P(:)
-            ! PRINT*, "G3_P = ", G3_P(:)
-            !
-            ! PRINT*, "J_P = ", J_P(:)
-            ! PRINT*, "H1_P = ", H1_P(:)
-            ! PRINT*, "H2_P = ", H2_P(:)
-            ! PRINT*, "H3_P = ", H3_P(:)
-
     ! --- EOS Table Lookup ---
 
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
-    ! PRINT*, "D = ", PF_N(:,iPF_D) / (Gram / Centimeter**3)
-    ! PRINT*, "T = ", AF_N(:,iAF_T) / (MeV)
-    ! PRINT*, "Y = ", AF_N(:,iAF_Ye)
-    ! PRINT*, "E = ", AF_N(:,iAF_E) / (MeV)
-    ! PRINT*, "PF_E = ", PF_N(:,iPF_E)
-    ! PRINT*, "Ne = ", PF_N(:,iPF_Ne)
-    ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
+    ! --- Neutrino-Matter Coupling Solve ---
 
     CALL TimersStart( Timer_Collisions_Solve )
 
@@ -273,6 +234,46 @@ CONTAINS
              nIterations_Outer )
 
     CALL TimersStop( Timer_Collisions_Solve )
+
+    ! --- Store Iteration Counts (If Requested) ---
+
+    IF( PRESENT( uDR_Option ) )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) = 1.0_DP
+        uDR_Option(iX1,iX2,iX3,iDR_iter_inner) = 1.0_DP
+
+      END DO
+      END DO
+      END DO
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1, nDOFX
+
+        iN_X = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
+          = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
+                 REAL( nIterations_Outer(iN_X) ) )
+
+        uDR_Option(iX1,iX2,iX3,iDR_iter_inner) &
+          = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_inner), &
+                 REAL( nIterations_Inner(iN_X) ) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -306,10 +307,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL ComputeThermodynamicStates_Primitive_TABLE &
-           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
-             PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
@@ -319,6 +316,9 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
+
+      PF_N(iN_X,iPF_E ) = AF_N(iN_X,iAF_E ) * PF_N(iN_X,iPF_D)
+      PF_N(iN_X,iPF_Ne) = AF_N(iN_X,iAF_Ye) * PF_N(iN_X,iPF_D) / AtomicMassUnit
 
       CALL ComputeConserved_Euler_NonRelativistic &
              ( PF_N(iN_X,iPF_D),  &
@@ -351,8 +351,6 @@ CONTAINS
     !$ACC COPYOUT( dU_F, dU_R ) &
     !$ACC DELETE( GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
-
-    ! PRINT*, "--- Finalizing implicit solve---"
 
     CALL FinalizeCollisions
 

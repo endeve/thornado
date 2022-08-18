@@ -8,6 +8,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     Half, &
     One, &
     SqrtTiny
+  USE UtilitiesModule, ONLY: &
+    IsCornerCell
   USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
@@ -274,7 +276,7 @@ CONTAINS
                                   iX_B0(2):iX_E0(2), &
                                   iX_B0(3):iX_E0(3))
 
-    IF( nDOFX == 1 ) RETURN
+    IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
@@ -309,7 +311,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( SqrtGm, h1Q, h2Q, h3Q, G )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -333,7 +335,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( U_Q, U )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -369,7 +371,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT(  iX_B0, iX_E0, g1P, g2P, g3P, h1P, h2P, h3P )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -391,12 +393,14 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( U_K, WeightsX_q, SqrtGm, U_Q )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
       U_K(iCF,iX1,iX2,iX3) &
         = SUM( WeightsX_q * SqrtGm(:,iX1,iX2,iX3) * U_Q(:,iCF,iX1,iX2,iX3) ) &
@@ -421,12 +425,14 @@ CONTAINS
     !$ACC PRESENT( U_K, U_Q, U_P, NegativeStates ) &
     !$ACC PRIVATE( Min_D, Min_K, Theta_D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( Min_D, Min_K, Theta_D )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
       Min_D = Min_1 * U_K(iCF_D,iX1,iX2,iX3)
 
@@ -486,7 +492,7 @@ CONTAINS
     !$ACC          iErr, NegativeStates ) &
     !$ACC PRIVATE( Min_ESq, Theta_P )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( Min_ESq, Theta_P )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -495,10 +501,11 @@ CONTAINS
 
       iErr(iX1,iX2,iX3) = 0
 
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
       IF( U_K(iCF_E,iX1,iX2,iX3) .LT. Zero ) iErr(iX1,iX2,iX3) = 01
 
       Min_ESq = Min_2 * U_K(iCF_E,iX1,iX2,iX3)**2
-      iErr(iX1,iX2,iX3) = 0
 
       Theta_q(iX1,iX2,iX3) = One
 
@@ -556,11 +563,13 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
       IF( NegativeStates(2,iX1,iX2,iX3) )THEN
 
@@ -618,7 +627,17 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( iErr(iX1,iX2,iX3) .NE. 0 ) &
-        CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
+        CALL DescribeError_Euler &
+          ( iErr(iX1,iX2,iX3), &
+            Int_Option  = [ iX1, iX2, iX3 ], &
+            Real_Option = [ U(1,iX1,iX2,iX3,iCF_D ), &
+                            U(1,iX1,iX2,iX3,iCF_S1), &
+                            U(1,iX1,iX2,iX3,iCF_S2), &
+                            U(1,iX1,iX2,iX3,iCF_S3), &
+                            U(1,iX1,iX2,iX3,iCF_E ), &
+                            G(1,iX1,iX2,iX3,iGF_h_1), &
+                            G(1,iX1,iX2,iX3,iGF_h_2), &
+                            G(1,iX1,iX2,iX3,iGF_h_3) ] )
 
     END DO
     END DO

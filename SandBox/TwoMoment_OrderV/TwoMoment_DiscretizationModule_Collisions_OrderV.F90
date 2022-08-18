@@ -17,13 +17,12 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nDR, iDR_iter_outer
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_Collisions, &
-    Timer_Collisions_Zero, &
-    Timer_Collisions_Permute, &
     Timer_Collisions_PrimitiveFluid, &
     Timer_Collisions_Solve
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
@@ -43,6 +42,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
   INTEGER :: iX_B0(3), iX_E0(3)
   INTEGER :: nZ(4), nE, nX(3), nE_G, nX_G
 
+  INTEGER , ALLOCATABLE :: nIterations(:,:,:)
   REAL(DP), ALLOCATABLE :: GX_N(:,:)
   REAL(DP), ALLOCATABLE :: PF_N(:,:)
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
@@ -54,7 +54,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
+      uDR_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -98,6 +99,12 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      uDR_Option &
+          (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDR)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iOP
     INTEGER :: iX1, iX2, iX3, iE
@@ -106,7 +113,6 @@ CONTAINS
     CALL TimersStart( Timer_Collisions )
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-
 
 #if defined(THORNADO_OMP_OL)
     !!$OMP TARGET ENTER DATA &
@@ -118,15 +124,6 @@ CONTAINS
     !$ACC CREATE( dU_F, dU_R )
 #endif
 
-
-
-!PRINT*
-!PRINT*, " BEFORE "
-!PRINT*, "  uOP = ", uOP(1,1,2,1,2,1,1)
-!PRINT*, "  OP_N = ", OP_N(:,1,1,1)
-!PRINT*, "  dU_F = ", dU_F(:,2,1,1,1)
-
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B1, iZ_E1 ) &
@@ -137,15 +134,13 @@ CONTAINS
     !$ACC CREATE( dU_F, dU_R )
 #endif
 
-    CALL TimersStart( Timer_Collisions_Zero )
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRESENT( dU_F, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(5)
 #endif
     DO iCF = 1, nCF
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -163,15 +158,13 @@ CONTAINS
     END DO
     END DO
 
-
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRESENT( dU_R, iZ_B1, iZ_E1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -193,11 +186,6 @@ CONTAINS
     END DO
     END DO
 
-
-    CALL TimersStop( Timer_Collisions_Zero )
-
-
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_F, dU_R ) &
@@ -207,7 +195,6 @@ CONTAINS
     !$ACC COPYOUT( dU_F, dU_R ) &
     !$ACC DELETE( iZ_B1, iZ_E1 )
 #endif
-
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -219,9 +206,6 @@ CONTAINS
     !$ACC CREATE( GX_N, CF_N, CR_N, OP_N )
 #endif
 
-
-    CALL TimersStart( Timer_Collisions_Permute )
-
     ! --- Arrange Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -232,7 +216,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
     !$ACC PRESENT( nX, iX_B0, GX_N, GX )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( iX1, iX2, iX3, iNodeX )
 #endif
     DO iN_X = 1, nX_G
@@ -258,7 +242,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
     !$ACC PRESENT( nX, iX_B0, CF_N, U_F )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( iX1, iX2, iX3, iNodeX )
 #endif
     DO iN_X = 1, nX_G
@@ -284,7 +268,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ, iNodeX, iNodeE, iX1, iX2, iX3, iE ) &
     !$ACC PRESENT( nZ, nX, iX_B0, CR_N, U_R )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( iE, iX1, iX2, iX3, iNodeE, iNodeX, iNodeZ )
 #endif
     DO iS   = 1, nSpecies
@@ -319,7 +303,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeZ, iNodeX, iNodeE, iX1, iX2, iX3, iE ) &
     !$ACC PRESENT( nZ, nX, iX_B0, OP_N, uOP )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( iE, iX1, iX2, iX3, iNodeE, iNodeX, iNodeZ )
 #endif
     DO iS   = 1, nSpecies
@@ -344,8 +328,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Collisions_Permute )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: GX_N, CF_N, CR_N, OP_N ) &
@@ -355,15 +337,6 @@ CONTAINS
     !$ACC COPYOUT( GX_N, CF_N, CR_N, OP_N ) &
     !$ACC DELETE( GX, U_F, U_R, uOP, iZ_B1, iZ_E1, iX_B0, nX )
 #endif
-
-
-
-!PRINT*
-!PRINT*, " AFTER "
-!PRINT*, "  uOP = ", uOP(1,1,2,1,2,1,1)
-!PRINT*, "  OP_N = ", OP_N(:,1,1,1)
-!PRINT*, "  dU_F = ", dU_F(:,2,1,1,1)
-
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -375,10 +348,7 @@ CONTAINS
     !$ACC CREATE( PF_N )
 #endif
 
-
     CALL TimersStart( Timer_Collisions_PrimitiveFluid )
-
-
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -386,7 +356,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRESENT( CF_N, PF_N, GX_N )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
 
@@ -421,9 +391,6 @@ CONTAINS
     !$ACC DELETE( CF_N, GX_N )
 #endif
 
-
-
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: CR_N, PF_N, GX_N, OP_N ) &
@@ -434,7 +401,6 @@ CONTAINS
     !$ACC CREATE( dCR_N )
 #endif
 
-
     CALL TimersStart( Timer_Collisions_Solve )
 
 #if   defined( THORNADO_OMP_OL )
@@ -443,7 +409,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( CR_N, PF_N, GX_N, OP_N, dCR_N )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
@@ -467,14 +433,14 @@ CONTAINS
                dCR_N(iCR_N       ,iS,iN_E,iN_X), &
                dCR_N(iCR_G1      ,iS,iN_E,iN_X), &
                dCR_N(iCR_G2      ,iS,iN_E,iN_X), &
-               dCR_N(iCR_G3      ,iS,iN_E,iN_X) )
+               dCR_N(iCR_G3      ,iS,iN_E,iN_X), &
+               nIterations(       iS,iN_E,iN_X) )
 
     END DO
     END DO
     END DO
 
     CALL TimersStop( Timer_Collisions_Solve )
-
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -486,7 +452,6 @@ CONTAINS
     !$ACC DELETE( CR_N, PF_N, GX_N, OP_N )
 #endif
 
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dCR_N, dU_R, nX, iX_B0, iX_E0 )
@@ -494,9 +459,6 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( dCR_N, dU_R, nX, iX_B0, iX_E0)
 #endif
-
-
-    CALL TimersStart( Timer_Collisions_Permute )
 
     ! --- Revert Radiation Increment ---
 
@@ -508,7 +470,7 @@ CONTAINS
     !$ACC PRIVATE( iNodeX, iNodeE, iN_X, iN_E ) &
     !$ACC PRESENT( nX, iX_B0, iX_E0, dU_R, dCR_N )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeE, iNodeX, iN_E, iN_X )
 #endif
     DO iS  = 1, nSpecies
@@ -542,7 +504,38 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Collisions_Permute )
+    IF( PRESENT( uDR_Option ) )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) = One
+
+      END DO
+      END DO
+      END DO
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1, nDOFX
+
+        iN_X = iNodeX &
+                 + (iX1-iX_B0(1)) * nDOFX &
+                 + (iX2-iX_B0(2)) * nDOFX * nX(1) &
+                 + (iX3-iX_B0(3)) * nDOFX * nX(1) * nX(2)
+
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
+          = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
+                 REAL( MAXVAL( nIterations(:,:,iN_X) ) ) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -554,8 +547,6 @@ CONTAINS
     !$ACC DELETE( dCR_N, nX, iX_B0 )
 #endif
 
-
-
     CALL FinalizeCollisions
 
     CALL TimersStop( Timer_Collisions )
@@ -566,7 +557,7 @@ CONTAINS
   SUBROUTINE ComputeIncrement_FixedPoint &
     ( dt, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, D_0, Chi, Sigma, &
-      dN, dG_d_1, dG_d_2, dG_d_3 )
+      dN, dG_d_1, dG_d_2, dG_d_3, nIterations )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -580,6 +571,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in)  :: D_0, Chi, Sigma
     REAL(DP), INTENT(out) :: dN, dG_d_1, dG_d_2, dG_d_3
+    INTEGER , INTENT(out) :: nIterations
 
     ! --- Parameters ---
 
@@ -703,7 +695,8 @@ CONTAINS
 
       IF( ALL( ABS( FVECm ) <= Rtol * ABS( CVEC ) ) )THEN
 
-        CONVERGED = .TRUE.
+        CONVERGED   = .TRUE.
+        nIterations = k
 
       END IF
 
@@ -760,10 +753,11 @@ CONTAINS
 
   END SUBROUTINE ComputeIncrement_FixedPoint
 
+
   SUBROUTINE ComputeIncrement_FixedPoint_Richardson &
     ( dt, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, D_0, Chi, Sigma, &
-      dN, dG_d_1, dG_d_2, dG_d_3 )
+      dN, dG_d_1, dG_d_2, dG_d_3, nIterations )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -777,10 +771,11 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), INTENT(in)  :: D_0, Chi, Sigma
     REAL(DP), INTENT(out) :: dN, dG_d_1, dG_d_2, dG_d_3
+    INTEGER , INTENT(out) :: nIterations
 
     ! --- Parameters ---
 
-    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: M = 1
     INTEGER,  PARAMETER :: LWORK = 2 * M
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
@@ -793,7 +788,6 @@ CONTAINS
     REAL(DP) ::    I_u_1, I_u_2, I_u_3
     REAL(DP) :: k_dd(3,3)
     ! REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
-    REAL(DP) :: D_00, D_ii
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
@@ -801,9 +795,6 @@ CONTAINS
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
 
     Kappa = Chi + Sigma
-
-    D_00 = One + dt * Chi
-    D_ii = One + dt * Kappa
 
     ! --- Constant Vector ---
 
@@ -829,30 +820,31 @@ CONTAINS
 
       UVEC = [ D, I_d_1, I_d_2, I_d_3 ]
 
-      ! CALL ComputeEddingtonTensorComponents_dd &
-      !        ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      !          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
       k_dd = EddingtonTensorComponents_dd &
                ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 
-      vMag = SQRT(V_u_1 * Gm_dd_11 * V_u_1 &
-                + V_u_2 * Gm_dd_22 * V_u_2 &
-                + V_u_3 * Gm_dd_33 * V_u_3)
+      vMag = SQRT(    V_u_1 * Gm_dd_11 * V_u_1 &
+                    + V_u_2 * Gm_dd_22 * V_u_2 &
+                    + V_u_3 * Gm_dd_33 * V_u_3 )
 
-      Omega = One / (One + vMag)
+      Omega = One / ( One + vMag )
 
       vI = V_u_1 * UVEC(2) + V_u_2 *  UVEC(3) + V_u_3 *  UVEC(4)
-      GVEC(1,mk) = (One - Omega) * UVEC(1) + &
-                   Omega / D_00 * (CVEC(1) + dt * Chi * D_0 - vI)
+      ! GVEC(1,mk) = (One - Omega) * UVEC(1) + &
+      !              Omega / (One + dt * Chi) * (CVEC(1) + dt * Chi * D_0 - vI)
+      GVEC(1,mk) = ((One - Omega) * UVEC(1) + &
+                   Omega * (CVEC(1) + dt * Chi * D_0 - vI)) / &
+                   (One + Omega * dt * Chi)
 
       DO j = 1, 3
         vK = V_u_1 * k_dd(j,1) + V_u_2 * k_dd(j,2) + V_u_3 * k_dd(j,3)
-        GVEC(j+1,mk) = (One - Omega) * UVEC(j+1) + &
-                     Omega / D_ii * (CVEC(j+1) - vK * UVEC(1))
+        ! GVEC(j+1,mk) = (One - Omega) * UVEC(j+1) + &
+        !              Omega / (One + dt * Kappa) * (CVEC(j+1) - vK * UVEC(1))
+        GVEC(j+1,mk) = ((One - Omega) * UVEC(j+1) + &
+                     Omega * (CVEC(j+1) - vK * UVEC(1))) / &
+                     (One + Omega * dt * Kappa)
       END DO
-
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
 
@@ -879,7 +871,8 @@ CONTAINS
 
       IF( ALL( ABS( FVECm ) <= Rtol * ABS( CVEC ) ) )THEN
 
-        CONVERGED = .TRUE.
+        CONVERGED   = .TRUE.
+        nIterations = k
 
       END IF
 
@@ -1230,6 +1223,7 @@ CONTAINS
     nE_G = nDOFE * nE
     nX_G = nDOFX * PRODUCT( nX )
 
+    ALLOCATE( nIterations(nSpecies,nE_G,nX_G) )
     ALLOCATE( GX_N(nGF,nX_G) )
     ALLOCATE( PF_N(nPF,nX_G) )
     ALLOCATE( CF_N(nCF,nX_G) )
@@ -1242,7 +1236,7 @@ CONTAINS
 
   SUBROUTINE FinalizeCollisions
 
-    DEALLOCATE( GX_N, PF_N, CF_N, CR_N, dCR_N, OP_N )
+    DEALLOCATE( nIterations, GX_N, PF_N, CF_N, CR_N, dCR_N, OP_N )
 
   END SUBROUTINE FinalizeCollisions
 

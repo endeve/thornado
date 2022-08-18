@@ -10,4 +10,7 @@ include $(THORNADO_DIR)/Modules/Opacities/Makefile_Opacities_Dependencies
 include $(THORNADO_DIR)/Modules/InputOutput/Makefile_InputOutput_Dependencies
 include $(THORNADO_DIR)/Modules/Euler/Makefile_Euler_Dependencies
 include $(THORNADO_DIR)/Modules/TwoMoment/Makefile_TwoMoment_Dependencies
+ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+include $(THORNADO_DIR)/SandBox/TwoMoment_OrderV/Makefile_TwoMoment_OrderV_Dependencies
+endif
 include $(THORNADO_DIR)/Modules/Runtime/Makefile_Runtime_Dependencies

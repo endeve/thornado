@@ -5,7 +5,7 @@ MODULE UtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nNodesE, nDimsX
 
-#if defined USE_AMREX_TRUE
+#ifdef THORNADO_USE_AMREX
 
     USE amrex_error_module, ONLY: &
       amrex_abort
@@ -473,7 +473,8 @@ CONTAINS
 
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
-    WRITE( FUNIT, * ) N, Vec(1:N)
+    WRITE( FUNIT, '(1X,I8.8)' ) N
+    WRITE( FUNIT, '(8ES23.15)' ) Vec(1:N)
 
     CLOSE( FUNIT )
 
@@ -490,7 +491,8 @@ CONTAINS
 
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
-    WRITE( FUNIT, * ) M, N, Mat(1:M,1:N)
+    WRITE( FUNIT, '(2(1X,I8.8))' ) M, N
+    WRITE( FUNIT, '(8ES23.15)' ) Mat(1:M,1:N)
 
     CLOSE( FUNIT )
 
@@ -508,7 +510,8 @@ CONTAINS
 
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
-    WRITE( FUNIT, * ) M, N, P, R3Tens(1:M,1:N,1:P)
+    WRITE( FUNIT, '(3(1X,I8.8))' ) M, N, P
+    WRITE( FUNIT, '(8ES23.15)' ) R3Tens(1:M,1:N,1:P)
 
     CLOSE( FUNIT )
 
@@ -601,7 +604,7 @@ CONTAINS
 
   SUBROUTINE thornado_abort
 
-#if defined USE_AMREX_TRUE
+#ifdef THORNADO_USE_AMREX
 
     CALL amrex_abort('')
 

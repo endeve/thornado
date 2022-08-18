@@ -110,6 +110,7 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 F90EXE_sources  += GeometryFieldsModule.F90
 F90EXE_sources  += GeometryComputationModule.F90
 f90EXE_sources  += GravitySolutionModule_Newtonian_PointMass.f90
+f90EXE_sources  += GeometryComputationModule_XCFC.f90
 
 # thornado/Modules/Fields
 

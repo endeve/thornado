@@ -316,7 +316,7 @@ CONTAINS
 
     ALLOCATE( OS_Brem(1:OPACITIES % Scat_Brem % nOpacities, &
                       1:OPACITIES % Scat_Brem % nMoments) )
-    OS_Brem(:,:) = OPACITIES % Scat_Brem % Offsets(:,:)
+    OS_Brem = OPACITIES % Scat_Brem % Offsets
 
     ALLOCATE( EmAb_T(1:OPACITIES % EmAb % nPoints(1), &
                      1:OPACITIES % EmAb % nPoints(2), &
@@ -426,6 +426,12 @@ CONTAINS
     Brem_AT = 0.0d0
 
 #if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP          NES_AT, Pair_AT, Brem_AT, C1, C2 )
+
     !$OMP TARGET UPDATE TO &
     !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
@@ -993,10 +999,10 @@ stop
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies
-      DO iM = 1, nMoments
-        DO iEta = 1, nPointsEta
-          DO iT = 1, nPointsT
+    DO iS = 1, OPACITIES % Scat_NES % nOpacities
+      DO iM = 1, OPACITIES % Scat_NES % nMoments
+        DO iEta = 1, OPACITIES % Scat_NES % nPoints(5)
+          DO iT = 1, OPACITIES % Scat_NES % nPoints(4)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -1023,13 +1029,6 @@ stop
       END DO
     END DO
 
-    END ASSOCIATE
-
-    ASSOCIATE ( nSpecies   => OPACITIES % Scat_Pair % nOpacities, &
-                nMoments   => OPACITIES % Scat_Pair % nMoments, &
-                nPointsEta => OPACITIES % Scat_Pair % nPoints(5), &
-                nPointsT   => OPACITIES % Scat_Pair % nPoints(4) )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -1041,10 +1040,10 @@ stop
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies
-      DO iM = 1, nMoments
-        DO iEta = 1, nPointsEta
-          DO iT = 1, nPointsT
+    DO iS = 1, OPACITIES % Scat_Pair % nOpacities
+      DO iM = 1, OPACITIES % Scat_Pair % nMoments
+        DO iEta = 1, OPACITIES % Scat_Pair % nPoints(5)
+          DO iT = 1, OPACITIES % Scat_Pair % nPoints(4)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -1071,13 +1070,6 @@ stop
       END DO
     END DO
 
-    END ASSOCIATE
-
-    ASSOCIATE ( nSpecies   => OPACITIES % Scat_Brem % nOpacities, &
-                nMoments   => OPACITIES % Scat_Brem % nMoments, &
-                nPointsD   => OPACITIES % Scat_Brem % nPoints(4), &
-                nPointsT   => OPACITIES % Scat_Brem % nPoints(5) )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -1089,10 +1081,10 @@ stop
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies
-      DO iM = 1, nMoments
-        DO iD = 1, nPointsD
-          DO iT = 1, nPointsT
+    DO iS = 1, OPACITIES % Scat_Brem % nOpacities
+      DO iM = 1, OPACITIES % Scat_Brem % nMoments
+        DO iD = 1, OPACITIES % Scat_Brem % nPoints(4)
+          DO iT = 1, OPACITIES % Scat_Brem % nPoints(5)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE 
 
@@ -1121,8 +1113,6 @@ stop
 
     END ASSOCIATE
 
-    END ASSOCIATE
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM &
     !$OMP ( NES_AT, Pair_AT, Brem_AT )
@@ -1139,6 +1129,14 @@ stop
   SUBROUTINE FinalizeOpacities_TABLE
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+#endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )

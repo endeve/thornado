@@ -11,18 +11,12 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     TimersStart, &
     TimersStop, &
     Timer_Streaming, &
-    Timer_Streaming_Permute, &
     Timer_Streaming_LinearAlgebra, &
-    Timer_Streaming_BCs, &
-    Timer_Streaming_Zero, &
-    Timer_Streaming_Divergence_X1, &
-    Timer_Streaming_Divergence_X2, &
-    Timer_Streaming_Divergence_X3, &
+    Timer_Streaming_Divergence, &
     Timer_Streaming_ObserverCorrections, &
-    Timer_Streaming_Derivatives_X1, &
-    Timer_Streaming_Derivatives_X2, &
-    Timer_Streaming_Derivatives_X3, &
-    Timer_Streaming_InverseMassMatrix, &
+    Timer_Streaming_Derivatives, &
+    Timer_Streaming_Eigenvalues, &
+    Timer_Streaming_PrimitiveTwoMoment, &
     Timer_Streaming_NumericalFlux, &
     Timer_Streaming_Sources
   USE LinearAlgebraModule, ONLY: &
@@ -210,20 +204,14 @@ CONTAINS
     !$ACC CREATE( dU_R )
 #endif
 
-    CALL TimersStart( Timer_Streaming_BCs )
-
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
-    CALL TimersStop( Timer_Streaming_BCs )
-
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-
-    CALL TimersStart( Timer_Streaming_Zero )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
@@ -255,28 +243,18 @@ CONTAINS
 
     OffGridFlux_TwoMoment = Zero
 
-    CALL TimersStop( Timer_Streaming_Zero )
-
-    CALL TimersStart( Timer_Streaming_Divergence_X1 )
+    CALL TimersStart( Timer_Streaming_Divergence )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
-    CALL TimersStop( Timer_Streaming_Divergence_X1 )
-
-    CALL TimersStart( Timer_Streaming_Divergence_X2 )
-
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
-
-    CALL TimersStop( Timer_Streaming_Divergence_X2 )
-
-    CALL TimersStart( Timer_Streaming_Divergence_X3 )
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
-    CALL TimersStop( Timer_Streaming_Divergence_X3 )
+    CALL TimersStop( Timer_Streaming_Divergence )
 
     CALL TimersStart( Timer_Streaming_ObserverCorrections )
 
@@ -286,8 +264,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
     ! --- Multiply Inverse Mass Matrix ---
-
-    CALL TimersStart( Timer_Streaming_InverseMassMatrix )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(8) &
@@ -327,8 +303,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_InverseMassMatrix )
 
     CALL FinalizeIncrement_TwoMoment_Explicit
 
@@ -530,8 +504,6 @@ CONTAINS
            ( iZP_B0, iZP_E0, nDOFX_X1, nDOF_X1, &
              GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -558,8 +530,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     !---------------------
     ! --- Surface Term ---
     !---------------------
@@ -585,8 +555,6 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Recompute Geometry from Scale Factors ---
 
@@ -621,10 +589,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Fluid Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -650,8 +614,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_Permute )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -714,8 +676,6 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Radiation Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -747,8 +707,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
@@ -773,9 +731,9 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
-
     ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
 
@@ -794,6 +752,10 @@ CONTAINS
              uV1_F, uV2_F, uV3_F, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              PositionIndexZ_F, nIterations_R )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1013,7 +975,7 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
@@ -1021,6 +983,10 @@ CONTAINS
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_K, nIterations_K )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1310,8 +1276,6 @@ CONTAINS
            ( iZP_B0, iZP_E0, nDOFX_X2, nDOF_X2, &
              GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -1338,8 +1302,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     !---------------------
     ! --- Surface Term ---
     !---------------------
@@ -1365,8 +1327,6 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Recompute Geometry from Scale Factors ---
 
@@ -1401,10 +1361,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Fluid Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -1430,8 +1386,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_Permute )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -1494,8 +1448,6 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Radiation Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -1527,8 +1479,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
@@ -1553,9 +1503,9 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
-
     ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
 
@@ -1574,6 +1524,10 @@ CONTAINS
              uV1_F, uV2_F, uV3_F, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              PositionIndexZ_F, nIterations_R )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -1793,7 +1747,7 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
@@ -1801,6 +1755,10 @@ CONTAINS
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_K, nIterations_K )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2088,8 +2046,6 @@ CONTAINS
            ( iZP_B0, iZP_E0, nDOFX_X3, nDOF_X3, &
              GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -2116,8 +2072,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     !---------------------
     ! --- Surface Term ---
     !---------------------
@@ -2143,8 +2097,6 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Recompute Geometry from Scale Factors ---
 
@@ -2179,10 +2131,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Fluid Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -2208,8 +2156,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_Permute )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -2272,8 +2218,6 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_Permute )
-
     ! --- Permute Radiation Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -2305,8 +2249,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Radiation Fields ---
@@ -2331,9 +2273,9 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
-
     ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
 
@@ -2352,6 +2294,10 @@ CONTAINS
              uV1_F, uV2_F, uV3_F, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              PositionIndexZ_F, nIterations_R )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2440,7 +2386,7 @@ CONTAINS
 
       NumericalFlux2(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
         = GE(iNodeE,iZ1,iGE_Ep1) &
-            * ( NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ4,iS,iZ4) &
+            * ( NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
                 + uV1_F(iX_F) &
                     * NumericalFlux(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
                 + uV2_F(iX_F) &
@@ -2571,7 +2517,7 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
@@ -2579,6 +2525,10 @@ CONTAINS
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_K, nIterations_K )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2865,6 +2815,8 @@ CONTAINS
 
     ! --- Calculate Weak Derivatives ---
 
+    CALL TimersStart( Timer_Streaming_Derivatives )
+
     CALL ComputeWeakDerivatives_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, &
              dV_u_dX1, dV_d_dX1, dGm_dd_dX1 )
@@ -2877,11 +2829,11 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, &
              dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 
+    CALL TimersStop( Timer_Streaming_Derivatives )
+
     CALL InitializeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, &
              uGF_K, uCF_K, uCR_K, uCR_L, uCR_R )
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
     ! --- Permute Geometry Fields ---
 
@@ -2966,8 +2918,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     ! --- Compute Primitive Fluid ---
 
 #if defined( THORNADO_OMP_OL )
@@ -3011,11 +2961,9 @@ CONTAINS
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
-
-    ! --- Numerical Flux ---
-
     ! --- Eigenvalues ---
+
+    CALL TimersStart( Timer_Streaming_Eigenvalues )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
@@ -3060,8 +3008,11 @@ CONTAINS
 
     END DO
     END DO
-
     END DO
+
+    CALL TimersStop( Timer_Streaming_Eigenvalues )
+
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
 
@@ -3080,6 +3031,12 @@ CONTAINS
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_F, nIterations_R )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -3304,7 +3261,7 @@ CONTAINS
     ! --- Volume Term ---
     !--------------------
 
-    CALL TimersStart( Timer_Streaming_NumericalFlux )
+    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
@@ -3312,6 +3269,10 @@ CONTAINS
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_K, nIterations_K )
+
+    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+
+    CALL TimersStart( Timer_Streaming_NumericalFlux )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -3716,8 +3677,6 @@ CONTAINS
       RETURN
     END IF
 
-    CALL TimersStart( Timer_Streaming_Derivatives_X1 )
-
     ASSOCIATE( dZ2 => MeshX(1) % Width )
 
 #if   defined( THORNADO_OMP_OL )
@@ -3735,8 +3694,6 @@ CONTAINS
 #endif
 
     ! --- Permute Geometry Fields ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -3762,8 +3719,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     !---------------------
     ! --- Surface Term ---
     !---------------------
@@ -3787,8 +3742,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Metric Components from Scale Factors ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -3828,8 +3781,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
@@ -3845,8 +3796,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Permute Fluid Fields ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -3871,8 +3820,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -4142,8 +4089,6 @@ CONTAINS
     !$ACC         dV_u_dX1, dV_d_dX1 )
 #endif
 
-    CALL TimersStop( Timer_Streaming_Derivatives_X1 )
-
     END ASSOCIATE
 
   END SUBROUTINE ComputeWeakDerivatives_X1
@@ -4303,8 +4248,6 @@ CONTAINS
       RETURN
     END IF
 
-    CALL TimersStart( Timer_Streaming_Derivatives_X2 )
-
     ASSOCIATE( dZ3 => MeshX(2) % Width )
 
 #if   defined( THORNADO_OMP_OL )
@@ -4322,8 +4265,6 @@ CONTAINS
 #endif
 
     ! --- Permute Geometry Fields ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -4349,8 +4290,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     !---------------------
     ! --- Surface Term ---
     !---------------------
@@ -4374,8 +4313,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Metric Components from Scale Factors ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -4415,8 +4352,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
@@ -4432,8 +4367,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Permute Fluid Fields ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -4458,8 +4391,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -4729,8 +4660,6 @@ CONTAINS
     !$ACC         dV_u_dX2, dV_d_dX2 )
 #endif
 
-    CALL TimersStop( Timer_Streaming_Derivatives_X2 )
-
     END ASSOCIATE
 
   END SUBROUTINE ComputeWeakDerivatives_X2
@@ -4890,8 +4819,6 @@ CONTAINS
       RETURN
     END IF
 
-    CALL TimersStart( Timer_Streaming_Derivatives_X3 )
-
     ASSOCIATE( dZ4 => MeshX(3) % Width )
 
 #if   defined( THORNADO_OMP_OL )
@@ -4909,8 +4836,6 @@ CONTAINS
 #endif
 
     ! --- Permute Geometry Fields ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -4936,8 +4861,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     !---------------------
     ! --- Surface Term ---
     !---------------------
@@ -4961,8 +4884,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Metric Components from Scale Factors ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -5002,8 +4923,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop( Timer_Streaming_Permute )
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     CALL MatrixMatrixMultiply &
@@ -5019,8 +4938,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Permute Fluid Fields ---
-
-    CALL TimersStart( Timer_Streaming_Permute )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -5045,8 +4962,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop( Timer_Streaming_Permute )
 
     ! --- Interpolate Fluid Fields ---
 
@@ -5315,8 +5230,6 @@ CONTAINS
     !$ACC         uCF_K, uCF_L, uCF_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
     !$ACC         dV_u_dX3, dV_d_dX3 )
 #endif
-
-    CALL TimersStop( Timer_Streaming_Derivatives_X3 )
 
     END ASSOCIATE
 

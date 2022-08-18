@@ -1,6 +1,9 @@
 #ifdef THORNADO_DEBUG
 #define THORNADO_DEBUG_LA
 #endif
+#if defined(THORNADO_LA_ONEMKL)
+include "mkl_omp_offload.f90"
+#endif
 MODULE LinearAlgebraModule
 
   USE, INTRINSIC :: ISO_C_BINDING
@@ -99,6 +102,8 @@ MODULE LinearAlgebraModule
     hipsparse_handle, &
     hipsparseDgthr, &
     HIPSPARSE_INDEX_BASE_ONE
+#elif defined(THORNADO_LA_ONEMKL)
+  USE onemkl_blas_omp_offload_lp64
 #elif defined(THORNADO_LA_MAGMA)
   USE MagmaModule, ONLY: &
     magma_queue, &
@@ -155,6 +160,7 @@ CONTAINS
       !itrans_from_char = rocblas_operation_none
       itrans_from_char = HIPBLAS_OP_N
     END IF
+#elif defined(THORNADO_LA_ONEMKL)
 #elif defined(THORNADO_LA_MAGMA)
     IF ( ctrans == 'T' ) THEN
       itrans_from_char = MagmaTrans
@@ -232,6 +238,11 @@ CONTAINS
       !       ( rocblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc ) )
       CALL hipblasCheck( hipblasDgeam &
              ( hipblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !!$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, c )
+      !CALL DGEAM &
+      !       ( transa, transb, m, n, alpha, a, lda, beta, b, ldb, c, ldc )
+      !!$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
         CALL magmablas_dlacpy &
@@ -412,6 +423,11 @@ CONTAINS
       !       ( rocblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc ) )
       CALL hipblasCheck( hipblasDgemm &
              ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, c )
+      CALL DGEMM &
+             ( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemm &
              ( itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc, magma_queue )
@@ -519,6 +535,11 @@ CONTAINS
       CALL hipblasCheck( hipblasDgemmStridedBatched &
              ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea_l, &
                db, ldb, strideb_l, beta, dc, ldc, stridec_l, batchcount ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, c )
+      CALL DGEMM_BATCH_STRIDED &
+             ( transa, transb, m, n, k, alpha, a, lda, stridea, b, ldb, strideb, beta, c, ldc, stridec, batchcount )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
              ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
@@ -564,7 +585,7 @@ CONTAINS
     INTEGER,  DIMENSION(*),     TARGET :: ipiv
     INTEGER,  DIMENSION(*),     TARGET :: info
 
-    INTEGER                                    :: ierr, i
+    INTEGER                                    :: ierr, i, stridea, strideb, strideipiv
     INTEGER(C_INT)                             :: itrans
     INTEGER(C_INT64_T)                         :: strideP_64
     INTEGER(C_SIZE_T)                          :: sizeof_a, sizeof_b, sizeof_ipiv, sizeof_info
@@ -581,6 +602,10 @@ CONTAINS
     sizeof_b    = n * nrhs * batchcount * c_sizeof(0.0_DP)
     sizeof_ipiv = n * batchcount * c_sizeof(0)
     sizeof_info = batchcount * c_sizeof(0)
+
+    stridea    = n * n
+    strideb    = n * nrhs
+    strideipiv = n
 
     pa => a(:,1:n*batchcount)
     pb => b(:,1:nrhs*batchcount)
@@ -647,6 +672,13 @@ CONTAINS
              ( hipblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount ) )
       CALL hipblasCheck( hipblasDgetrsBatched &
              ( hipblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, ipiv )
+      CALL DGETRF_BATCH_STRIDED &
+             ( n, n, a, lda, stridea, ipiv, strideipiv, batchcount, info )
+      CALL DGETRS_BATCH_STRIDED &
+             ( trans, n, nrhs, a, lda, stridea, ipiv, strideipiv, b, ldb, strideb, info )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
              ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
@@ -755,6 +787,11 @@ CONTAINS
       !       ( rocblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy ) )
       CALL hipblasCheck( hipblasDgemv &
              ( hipblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, x, y )
+      CALL DGEMV &
+             ( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
@@ -833,6 +870,11 @@ CONTAINS
       !       ( rocblas_handle, rocblas_side_left, m, n, da, lda, dx, incx, dc, ldc ) )
       CALL hipblasCheck( hipblasDdgmm &
              ( hipblas_handle, hipblas_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !!$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, x, c )
+      !CALL DDGMM &
+      !       ( 'L', m, n, a, lda, x, incx, c, ldc )
+      !!$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dlacpy &
              ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
@@ -920,6 +962,13 @@ CONTAINS
     ierr = cusolverDnDgeqrf_bufferSize &
            ( cusolver_handle, m, n, da, lda, lwork )
 #elif defined(THORNADO_LA_ROCM)
+#elif defined(THORNADO_LA_ONEMKL)
+    !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, work )
+    CALL DGELS &
+           ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
+    !$OMP END TARGET VARIANT DISPATCH
+    !$OMP TARGET UPDATE FROM( work(1) )
+    lwork = INT( work(1) )
 #elif defined(THORNADO_LA_MAGMA)
     CALL magma_dgels_gpu &
            ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -1046,6 +1095,11 @@ CONTAINS
                  n, nrhs, One, da, lda, db, ldb ) )
 
       END IF
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, work )
+      CALL DGELS &
+             ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -1127,6 +1181,7 @@ CONTAINS
       stridey_64 = stridey
       CALL rocblasCheck( rocblas_ddot_strided_batched &
              ( rocblas_handle, n, dx, incx, stridex_64, dy, incy, stridey_64, batchcount, hxy ) )
+#elif defined(THORNADO_LA_ONEMKL)
 #elif defined(THORNADO_LA_MAGMA)
       ! Currently unavailable
       !xnorm = magma_ddot( n, dx, incx, magma_queue )
@@ -1197,6 +1252,10 @@ CONTAINS
       ! Currently unavailable
       !CALL rocblasCheck( rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm ) )
       CALL hipblasCheck( hipblasDnrm2( hipblas_handle, n, dx, incx, hxnorm ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( x )
+      xnorm = DNRM2( n, x, incx )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
 #endif
@@ -1296,6 +1355,10 @@ CONTAINS
 #elif defined(THORNADO_LA_ROCM)
       !CALL rocblasCheck( rocblas_daxpy( rocblas_handle, n, alpha, dx, incx, dy, incy ) )
       CALL hipblasCheck( hipblasDaxpy( hipblas_handle, n, alpha, dx, incx, dy, incy ) )
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( x, y )
+      CALL DAXPY( n, alpha, x, incx, y, incy )
+      !$OMP END TARGET VARIANT DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
 #endif

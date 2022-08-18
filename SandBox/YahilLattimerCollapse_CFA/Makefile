@@ -1,4 +1,10 @@
-include ../../../Build/Makefile_Build
+THORNADO_DIR ?= ../../../
+include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
+
+#DEFINES += -DTHORNADO_DEBUG
+
+.DEFAULT_GOAL := all
 
 all: ApplicationDriver
 

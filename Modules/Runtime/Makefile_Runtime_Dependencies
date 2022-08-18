@@ -5,7 +5,9 @@ ProgramInitializationModule.o: \
   UtilitiesModule.o \
   QuadratureModule.o \
   ReferenceElementModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
   PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModuleX_Legendre.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
@@ -15,4 +17,5 @@ ProgramInitializationModule.o: \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \
   OpacityModule.o \
+  DeviceModule.o \
   ProgramInitializationModule.f90

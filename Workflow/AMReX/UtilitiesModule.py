@@ -328,9 +328,9 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     elif( Field == 'NonRelativisticSpecificEnthalpy' ):
 
-        e   = CoveringGrid['PF_D'].to_ndarray()
-        p   = CoveringGrid['PF_E'].to_ndarray()
-        rho = CoveringGrid['AF_P'].to_ndarray()
+        e   = CoveringGrid['PF_E'].to_ndarray()
+        p   = CoveringGrid['AF_P'].to_ndarray()
+        rho = CoveringGrid['PF_D'].to_ndarray()
 
         Data = ( e + p ) / rho
 
@@ -340,9 +340,9 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         c = 2.99792458e10
 
-        e   = CoveringGrid['PF_D'].to_ndarray()
-        p   = CoveringGrid['PF_E'].to_ndarray()
-        rho = CoveringGrid['AF_P'].to_ndarray()
+        e   = CoveringGrid['PF_E'].to_ndarray()
+        p   = CoveringGrid['AF_P'].to_ndarray()
+        rho = CoveringGrid['PF_D'].to_ndarray()
 
         Data = ( c**2 + ( e + p ) / rho ) / c**2
 

@@ -37,7 +37,8 @@ MODULE InputOutputModuleHDF
     nSpecies, &
     uCR, nCR, namesCR, unitsCR, &
     uPR, nPR, namesPR, unitsPR, &
-    uAR, nAR, namesAR, unitsAR
+    uAR, nAR, namesAR, unitsAR, &
+    uDR, nDR, namesDR, unitsDR
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, namesEQ, unitsEQ, &
     opEC, namesEC, unitsEC, &
@@ -195,7 +196,6 @@ CONTAINS
     CHARACTER(256) :: DatasetName
     INTEGER        :: iGF
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -379,14 +379,9 @@ CONTAINS
     CHARACTER(256) :: FileName
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: GroupName2
-    CHARACTER(256) :: GroupName_PL
     CHARACTER(256) :: DatasetName
-    CHARACTER(256) :: DatasetName1
-    CHARACTER(256) :: DatasetName2
-    CHARACTER(256) :: DatasetName3
     INTEGER        :: iFF
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -714,18 +709,6 @@ CONTAINS
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
                / U % LengthX3Unit, DatasetName, FILE_ID )
 
-    ! --- Write Energy Grid ---
-
-    GroupName = 'Energy Grid'
-
-    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/E'
-
-    CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshE,nE,nNodesE) &
-               / U % EnergyUnit, DatasetName, FILE_ID )
-
     ! --- Write Cell Center Coordinates ---
 
     DatasetName = TRIM( GroupName ) // '/X1_C'
@@ -744,12 +727,6 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
-             DatasetName, FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/E_C'
-
-    CALL WriteDataset1DHDF &
-           ( MeshE % Center(1:nE) / U % EnergyUnit, &
              DatasetName, FILE_ID )
 
     ! --- Write Cell Widths ---
@@ -771,6 +748,28 @@ CONTAINS
     CALL WriteDataset1DHDF &
            ( MeshX(3) % Width(1:nX(3)) / U % LengthX3Unit, &
              DatasetName, FILE_ID )
+
+    ! --- Write Energy Grid ---
+
+    GroupName = 'Energy Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/E'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshE,nE,nNodesE) &
+               / U % EnergyUnit, DatasetName, FILE_ID )
+
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/E_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshE % Center(1:nE) / U % EnergyUnit, &
+             DatasetName, FILE_ID )
+
+    ! --- Write Cell Widths ---
 
     DatasetName = TRIM( GroupName ) // '/dE'
 
@@ -850,6 +849,21 @@ CONTAINS
                      nDOF, NodeNumberTable ), DatasetName, FILE_ID )
 
       END DO
+
+    END DO
+
+    ! --- Diagnostic ---
+
+    GroupName = 'Radiation Fields/Diagnostic'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DO iRF = 1, nDR
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesDR(iRF) )
+
+      CALL WriteDataset3DHDF &
+             ( uDR(1:nX(1),1:nX(2),1:nX(3),iRF), DatasetName, FILE_ID )
 
     END DO
 
@@ -1087,7 +1101,6 @@ CONTAINS
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: DatasetName
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(I6.6)' ) FileNumber_AS
 
@@ -1153,7 +1166,6 @@ CONTAINS
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: DatasetName
     INTEGER(HID_T) :: FILE_ID
-    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
 
     WRITE( FileNumberString, FMT='(I6.6)' ) FileNumber_ST
 
@@ -1410,6 +1422,37 @@ CONTAINS
     CALL H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset3DHDF
+
+
+  SUBROUTINE WriteDataset3DHDF_INT( Dataset, DatasetName, FILE_ID )
+
+    INTEGER,          INTENT(in) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER(HSIZE_T) :: DATASIZE(3)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 3, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_INTEGER, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    CALL H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_INTEGER, Dataset, DATASIZE, HDFERR )
+
+    CALL H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset3DHDF_INT
 
 
   SUBROUTINE ReadDataset3DHDF( Dataset, DatasetName, FILE_ID )

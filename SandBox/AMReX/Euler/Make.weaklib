@@ -6,6 +6,7 @@ f90EXE_sources += wlKindModule.f90
 f90EXE_sources += wlThermoStateModule.f90
 f90EXE_sources += wlDependentVariablesModule.f90
 F90EXE_sources += wlInterpolationModule.F90
+F90EXE_sources += wlInterpolationUtilitiesModule.F90
 
 # In WEAKLIB_HOME/Distributions/Source
 
