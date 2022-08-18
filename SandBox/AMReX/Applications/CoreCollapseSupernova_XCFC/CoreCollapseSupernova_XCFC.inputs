@@ -17,7 +17,7 @@ thornado.UsePhysicalUnits = 1
 
 thornado.PlotFileBaseName = "CoreCollapseSupernova_XCFC.plt"
 thornado.t_end   = 3.0e+2
-thornado.iCycleD = 1
+thornado.iCycleD = 10
 
 thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
@@ -41,8 +41,8 @@ geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
 
 amr.n_cell                      = 512 01 01
 thornado.swX                    = 01  00 00
-amr.max_grid_size_x             = 128
-amr.blocking_factor_x           = 128
+#amr.max_grid_size_x             = 128
+#amr.blocking_factor_x           = 128
 amr.max_level                   = 0
 amr.UseFluxCorrection_Euler     = 0
 amr.UseFluxCorrection_TwoMoment = 0
