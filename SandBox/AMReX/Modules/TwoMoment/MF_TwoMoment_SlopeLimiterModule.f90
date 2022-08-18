@@ -96,22 +96,22 @@ CONTAINS
   SUBROUTINE ApplySlopeLimiter_TwoMoment_MF &
     ( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
 
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
     LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
 
-    REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: C (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: U (:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: C(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:,:,:)
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -141,9 +141,9 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
-        uCR  => MF_uCR(iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
