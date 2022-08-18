@@ -124,6 +124,20 @@ CONTAINS
 
     nSpecies = nS
 
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A29,I2.2)') &
+        '', 'Radiation Fields, nSpecies = ', nSpecies
+    END IF
+
+    LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( LeptonNumber )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( LeptonNumber )
+#endif
+
   END SUBROUTINE SetNumberOfSpecies
 
 
@@ -137,23 +151,17 @@ CONTAINS
 
     INTEGER :: nS
 
-    nS = 1
-    IF( PRESENT( nSpecies_Option ) ) &
-      nS = nSpecies_Option
-
-    CALL SetNumberOfSpecies( nS )
-
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
       Verbose = .TRUE.
     END IF
 
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A29,I2.2)') &
-        '', 'Radiation Fields, nSpecies = ', nSpecies
-    END IF
+    nS = 1
+    IF( PRESENT( nSpecies_Option ) ) &
+      nS = nSpecies_Option
+
+    CALL SetNumberOfSpecies( nS )
 
     CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
@@ -161,14 +169,6 @@ CONTAINS
     CALL CreateRadiationFields_Diagnostic( nX, swX )
 
     CALL SetUnitsRadiationFields
-
-    LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( LeptonNumber )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( LeptonNumber )
-#endif
 
   END SUBROUTINE CreateRadiationFields
 
