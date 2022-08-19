@@ -16,7 +16,7 @@ MODULE FillPatchModule
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
   USE amrex_amr_module, ONLY: &
     amrex_interp_dg
 #endif
@@ -265,7 +265,7 @@ CONTAINS
 
     ELSE
 
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
       CALL amrex_fillpatch( MF_dst, &
                             Time, MF_src(FineLevel-1), &
@@ -306,7 +306,7 @@ CONTAINS
 
     ELSE
 
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
       CALL amrex_fillpatch( MF(FineLevel), &
                             Time, MF(FineLevel-1), &
@@ -337,7 +337,7 @@ CONTAINS
 
     ! Assume t_old = t_new = t and MF_old = MF_new = MF
 
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_fillcoarsepatch &
            ( MF(FineLevel), &

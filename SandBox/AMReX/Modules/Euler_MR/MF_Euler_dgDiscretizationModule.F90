@@ -445,7 +445,7 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
     IF( UseFluxCorrection_Euler )THEN
 

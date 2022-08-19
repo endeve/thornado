@@ -11,7 +11,7 @@ MODULE AverageDownModule
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
   USE amrex_multifabutil_module, ONLY: &
     amrex_average_down_dg
 #endif
@@ -99,7 +99,7 @@ CONTAINS
     CALL MultiplyWithMetric( SqrtGm(CoarseLevel  ), MF(CoarseLevel  ), nF, +1 )
     CALL MultiplyWithMetric( SqrtGm(CoarseLevel+1), MF(CoarseLevel+1), nF, +1 )
 
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_average_down_dg &
            ( MF        (CoarseLevel+1), MF        (CoarseLevel), &

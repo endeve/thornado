@@ -90,7 +90,7 @@ CONTAINS
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-#if defined( REFINE_MESH )
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL FluxRegister_Euler( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
