@@ -386,7 +386,7 @@ CONTAINS
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
-#ifdef THORNADO_USE_AMREX
+#if defined( THORNADO_USE_AMREX ) && defined( REFINE_MESH )
 
     CALL amrex_FinalizeMeshRefinement_DG
 

@@ -11,8 +11,10 @@ MODULE AverageDownModule
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio
+#if defined( REFINE_MESH )
   USE amrex_multifabutil_module, ONLY: &
     amrex_average_down_dg
+#endif
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
@@ -97,10 +99,14 @@ CONTAINS
     CALL MultiplyWithMetric( SqrtGm(CoarseLevel  ), MF(CoarseLevel  ), nF, +1 )
     CALL MultiplyWithMetric( SqrtGm(CoarseLevel+1), MF(CoarseLevel+1), nF, +1 )
 
+#if defined( REFINE_MESH )
+
     CALL amrex_average_down_dg &
            ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
              amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
              1, nComp, amrex_ref_ratio(CoarseLevel))
+
+#endif
 
     CALL MultiplyWithMetric( SqrtGm(CoarseLevel+1), MF(CoarseLevel+1), nF, -1 )
     CALL MultiplyWithMetric( SqrtGm(CoarseLevel  ), MF(CoarseLevel  ), nF, -1 )

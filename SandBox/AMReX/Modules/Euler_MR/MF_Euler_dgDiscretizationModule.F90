@@ -445,6 +445,8 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
+#if defined( REFINE_MESH )
+
     IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
@@ -454,6 +456,8 @@ CONTAINS
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
 
     END IF ! UseFluxCorrection_Euler
+
+#endif
 
     DO iDimX = 1, nDimsX
 

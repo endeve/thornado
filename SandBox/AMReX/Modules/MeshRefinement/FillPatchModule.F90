@@ -15,8 +15,11 @@ MODULE FillPatchModule
     amrex_mfiter_destroy
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
-    amrex_ref_ratio, &
+    amrex_ref_ratio
+#if defined( REFINE_MESH )
+  USE amrex_amr_module, ONLY: &
     amrex_interp_dg
+#endif
   USE amrex_fillpatch_module, ONLY: &
     amrex_fillpatch, &
     amrex_fillcoarsepatch
@@ -262,6 +265,8 @@ CONTAINS
 
     ELSE
 
+#if defined( REFINE_MESH )
+
       CALL amrex_fillpatch( MF_dst, &
                             Time, MF_src(FineLevel-1), &
                             Time, MF_src(FineLevel-1), &
@@ -273,6 +278,8 @@ CONTAINS
                             amrex_ref_ratio(FineLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
+
+#endif
 
     END IF
 
@@ -299,6 +306,8 @@ CONTAINS
 
     ELSE
 
+#if defined( REFINE_MESH )
+
       CALL amrex_fillpatch( MF(FineLevel), &
                             Time, MF(FineLevel-1), &
                             Time, MF(FineLevel-1), &
@@ -310,6 +319,8 @@ CONTAINS
                             amrex_ref_ratio(FineLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
+
+#endif
 
     END IF
 
@@ -326,6 +337,8 @@ CONTAINS
 
     ! Assume t_old = t_new = t and MF_old = MF_new = MF
 
+#if defined( REFINE_MESH )
+
     CALL amrex_fillcoarsepatch &
            ( MF(FineLevel), &
              Time, MF(FineLevel-1), &
@@ -335,6 +348,8 @@ CONTAINS
              Time, sComp, dComp, MF(FineLevel) % nComp(), &
              amrex_ref_ratio(FineLevel-1), &
              amrex_interp_dg, lo_bc, hi_bc )
+
+#endif
 
   END SUBROUTINE FillCoarsePatch_Vector
 
