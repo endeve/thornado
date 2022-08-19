@@ -340,7 +340,8 @@ CONTAINS
              EquationOfStateTableName_Option = EosTableName, &
              Verbose_Option = amrex_parallel_ioprocessor())
 
-    CALL InitializeClosure_TwoMoment
+    CALL InitializeClosure_TwoMoment &
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL InitializePositivityLimiter_Euler_MF
 
