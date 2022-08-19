@@ -13,9 +13,6 @@ HDF5_LIB ?= $(HDF5_HOME)/lib
 LAPACK_INC ?= $(LAPACK_HOME)/include
 LAPACK_LIB ?= $(LAPACK_HOME)/lib
 
-# Must be true if using dunhamsj's fork of amrex on MeshRefinement_DG branch
-REFINE_MESH ?= TRUE
-
 DEBUG = TRUE
 
 USE_MPI = TRUE
@@ -39,7 +36,7 @@ include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 # Include basic AMReX framework
 include $(AMREX_HOME)/Src/Base/Make.package
 
-ifeq ($(REFINE_MESH),TRUE)
+ifneq ("$(wildcard $(AMREX_HOME)/Src/DG/Make.package)","")
   # Requires amrex fork from github.com:dunhamsj/amrex
   # Branch: MeshRefinement_DG
   include $(AMREX_HOME)/Src/DG/Make.package
