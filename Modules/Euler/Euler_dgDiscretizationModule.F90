@@ -821,7 +821,7 @@ CONTAINS
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX_X = 1, nNodesX_X1
 
@@ -1563,7 +1563,7 @@ CONTAINS
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX_X = 1, nNodesX_X2
 
@@ -2304,7 +2304,7 @@ CONTAINS
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX_X = 1, nNodesX_X3
 
@@ -4047,7 +4047,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)

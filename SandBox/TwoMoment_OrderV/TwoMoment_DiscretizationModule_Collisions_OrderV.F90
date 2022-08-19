@@ -788,7 +788,6 @@ CONTAINS
     REAL(DP) ::    I_u_1, I_u_2, I_u_3
     REAL(DP) :: k_dd(3,3)
     ! REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
-    REAL(DP) :: D_00, D_ii
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
@@ -796,9 +795,6 @@ CONTAINS
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
 
     Kappa = Chi + Sigma
-
-    D_00 = One + dt * Chi
-    D_ii = One + dt * Kappa
 
     ! --- Constant Vector ---
 
@@ -835,13 +831,19 @@ CONTAINS
       Omega = One / ( One + vMag )
 
       vI = V_u_1 * UVEC(2) + V_u_2 *  UVEC(3) + V_u_3 *  UVEC(4)
-      GVEC(1,mk) = (One - Omega) * UVEC(1) + &
-                   Omega / D_00 * (CVEC(1) + dt * Chi * D_0 - vI)
+      ! GVEC(1,mk) = (One - Omega) * UVEC(1) + &
+      !              Omega / (One + dt * Chi) * (CVEC(1) + dt * Chi * D_0 - vI)
+      GVEC(1,mk) = ((One - Omega) * UVEC(1) + &
+                   Omega * (CVEC(1) + dt * Chi * D_0 - vI)) / &
+                   (One + Omega * dt * Chi)
 
       DO j = 1, 3
         vK = V_u_1 * k_dd(j,1) + V_u_2 * k_dd(j,2) + V_u_3 * k_dd(j,3)
-        GVEC(j+1,mk) = (One - Omega) * UVEC(j+1) + &
-                     Omega / D_ii * (CVEC(j+1) - vK * UVEC(1))
+        ! GVEC(j+1,mk) = (One - Omega) * UVEC(j+1) + &
+        !              Omega / (One + dt * Kappa) * (CVEC(j+1) - vK * UVEC(1))
+        GVEC(j+1,mk) = ((One - Omega) * UVEC(j+1) + &
+                     Omega * (CVEC(j+1) - vK * UVEC(1))) / &
+                     (One + Omega * dt * Kappa)
       END DO
 
       FVEC(:,mk) = GVEC(:,mk) - UVEC
