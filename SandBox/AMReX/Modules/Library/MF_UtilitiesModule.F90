@@ -93,10 +93,12 @@ MODULE MF_UtilitiesModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeAuxiliary_Fluid_TABLE, &
     ApplyEquationOfState_TABLE
+#ifndef THORNADO_NOTRANSPORT
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment
+#endif
 
   ! --- Local Modules ---
 
@@ -117,10 +119,12 @@ MODULE MF_UtilitiesModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+#ifndef THORNADO_NOTRANSPORT
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
+#endif
   USE MF_Euler_TimersModule, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
@@ -599,6 +603,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in) :: MF_uCR(0:nLevels-1)
     CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
 
+#ifndef THORNADO_NOTRANSPORT
+
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3),     &
                           iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4),     &
                           iZ_B (4), iZ_E (4), iE_B, iE_E,             &
@@ -991,6 +997,9 @@ CONTAINS
     DEALLOCATE( G )
 
     print*, "Writing Nodal Values"
+
+#endif
+
   END SUBROUTINE WriteNodalDataToFile
 
 
@@ -999,6 +1008,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
     INTEGER, INTENT(in) :: n
+
+#ifndef THORNADO_NOTRANSPORT
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -1180,6 +1191,8 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
+
+#endif
 
   END SUBROUTINE WriteEulerToFile
 
