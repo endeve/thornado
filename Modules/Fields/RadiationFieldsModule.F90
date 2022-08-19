@@ -92,8 +92,8 @@ MODULE RadiationFieldsModule
   INTEGER, PUBLIC, PARAMETER :: nDR             = 5
 
   CHARACTER(32), DIMENSION(nDR), PUBLIC, PARAMETER :: &
-    namesDR = [ 'Outer Iterations                ', &
-                'Inner Iterations                ', &
+    namesDR = [ 'Inner Iterations                ', &
+                'Outer Iterations                ', &
                 'Positivity Limiter Theta 1      ', &
                 'Positivity Limiter Theta 2      ', &
                 'Positivity Limiter Energy Change' ]
@@ -104,6 +104,9 @@ MODULE RadiationFieldsModule
 
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
+  PUBLIC :: SetUnitsRadiationFields
+  PUBLIC :: DescribeRadiationFields_Conserved
+  PUBLIC :: DescribeRadiationFields_Primitive
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET( LeptonNumber )
@@ -193,6 +196,26 @@ CONTAINS
   END SUBROUTINE CreateRadiationFields_Conserved
 
 
+  SUBROUTINE DescribeRadiationFields_Conserved( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iCR
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
+      WRITE(*,*)
+      DO iCR = 1, nCR
+        WRITE(*,'(A5,A32)') '', TRIM( namesCR(iCR) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeRadiationFields_Conserved
+
+
   SUBROUTINE CreateRadiationFields_Primitive( nX, swX, nE, swE )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
@@ -226,6 +249,26 @@ CONTAINS
 #endif
 
   END SUBROUTINE CreateRadiationFields_Primitive
+
+
+  SUBROUTINE DescribeRadiationFields_Primitive( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iPR
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Radiation Fields (Primitive)'
+      WRITE(*,*)
+      DO iPR = 1, nPR
+        WRITE(*,'(A5,A32)') '', TRIM( namesPR(iPR) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeRadiationFields_Primitive
 
 
   SUBROUTINE CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
