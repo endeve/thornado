@@ -449,7 +449,10 @@ CONTAINS
                 WidthE  => MeshE % Width, &
                 NodesE  => MeshE % Nodes )
 
-    ASSOCIATE ( use_EC_table => OPACITIES % EmAb % nuclei_EC_table,    &
+    ASSOCIATE ( CenterE      => MeshE % Center,                        &
+                WidthE       => MeshE % Width,                         &
+                NodesE       => MeshE % Nodes,                         &
+                use_EC_table => OPACITIES % EmAb % nuclei_EC_table,    &
                 nPointsD     => OPACITIES % EmAb % nPoints(2),         &
                 nPointsT     => OPACITIES % EmAb % nPoints(3),         &
                 nPointsYe    => OPACITIES % EmAb % nPoints(4),         &
@@ -1110,6 +1113,8 @@ stop
         END DO
       END DO
     END DO
+
+    END ASSOCIATE
 
     END ASSOCIATE
 
