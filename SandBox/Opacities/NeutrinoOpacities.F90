@@ -41,10 +41,10 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
     ComputeNeutrinoOpacityRates_NES, &
-    ComputeNeutrinoOpacityRatesLinearCorections_NES, &
+    ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacities_Pair, &
     ComputeNeutrinoOpacityRates_Pair, &
-    ComputeNeutrinoOpacityRatesLinearCorections_Pair, &
+    ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
     ComputeNeutrinoOpacities_Brem, &
     ComputeNeutrinoOpacityRates_Brem
   USE DeviceModule, ONLY: &
@@ -386,7 +386,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStop( Timer_ComputeCorr_NES )
 
   CALL TimersStart( Timer_ComputeCorr_NES )
-  CALL ComputeNeutrinoOpacityRatesLinearCorections_NES &
+  CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, H_1, H_2, H_3, f0_DG, &
            H_I_1, H_II_1, A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
   CALL TimersStop( Timer_ComputeCorr_NES )
@@ -416,7 +416,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStop( Timer_ComputeCorr_Pair )
 
   CALL TimersStart( Timer_ComputeCorr_Pair )
-  CALL ComputeNeutrinoOpacityRatesLinearCorections_Pair &
+  CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, H_1, H_2, H_3, f0_DG, &
            J_I_1, J_II_1, A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
   CALL TimersStop( Timer_ComputeCorr_Pair )
