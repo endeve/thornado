@@ -57,7 +57,20 @@ include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 include Make.weaklib
 
 # Include directories and source files needed from thornado
-include Make.thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Opacities
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.TwoMoment
+include Make.TwoMoment_TABLE
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
