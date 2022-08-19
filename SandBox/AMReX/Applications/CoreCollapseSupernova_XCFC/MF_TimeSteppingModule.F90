@@ -116,8 +116,6 @@ CONTAINS
 
   SUBROUTINE Update_IMEX_RK_MF
 
-! add flags: EvolveEuler, EvolveTwoMoment
-
     TYPE(amrex_multifab) :: MF_R    (0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_F    (0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_DR_Im(0:nMaxLevels-1,1:nStages)
@@ -144,7 +142,9 @@ CONTAINS
       CALL amrex_multifab_build &
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX * nGS, 0 )
-      CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
+
+      IF( DEBUG ) &
+        CALL MF_uGS(iLevel) % SetVal( Zero )
 
     END DO
 
@@ -178,6 +178,17 @@ CONTAINS
         CALL amrex_multifab_build &
                ( MF_DR_Im(iLevel,iS), MF_uCR(iLevel) % BA, &
                  MF_uCR(iLevel) % DM, nCompCR, swX )
+
+        IF( DEBUG )THEN
+
+          CALL MF_F    (iLevel,iS) % SetVal( Zero )
+          CALL MF_DF_Ex(iLevel,iS) % SetVal( Zero )
+          CALL MF_DF_Im(iLevel,iS) % SetVal( Zero )
+          CALL MF_R    (iLevel,iS) % SetVal( Zero )
+          CALL MF_DR_Ex(iLevel,iS) % SetVal( Zero )
+          CALL MF_DR_Im(iLevel,iS) % SetVal( Zero )
+
+        END IF ! DEBUG
 
         CALL MF_F(iLevel,iS) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
         CALL MF_R(iLevel,iS) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
@@ -268,7 +279,7 @@ CONTAINS
 
         END DO ! iLevel = 0, nLevels-1
 
-      END IF
+      END IF ! ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero )
 
       IF( ANY( a_Ex(:,iS) .NE. Zero ) .OR. ( w_Ex(iS) .NE. Zero ) )THEN
 
@@ -309,11 +320,10 @@ CONTAINS
         CALL ComputeIncrement_Euler_MF &
                ( t_new, MF_uGF, MF_F(:,iS), MF_uDF, MF_DF_Ex(:,iS) )
 
-      END IF
+      END IF ! ANY( a_Ex(:,iS) .NE. Zero ) .OR. ( w_Ex(iS) .NE. Zero )
 
     END DO ! iS = 1, nStages
 
-! need to understand assembly step better
     ! --- Assembly Step ---
 
     DO iLevel = 0, nLevels-1
@@ -328,15 +338,15 @@ CONTAINS
 
           IF( w_IM(iS) .NE. Zero )THEN
 
-            CALL MF_R(iLevel,iS) &
+            CALL MF_uCR(iLevel) &
                    % LinComb &
-                       ( One                  , MF_R    (iLevel,iS), 1, &
+                       ( One                  , MF_uCR  (iLevel   ), 1, &
                          dt(iLevel) * w_IM(iS), MF_DR_Im(iLevel,iS), 1, &
                          1, nCompCR, swX )
 
-            CALL MF_F(iLevel,iS) &
+            CALL MF_uCF(iLevel) &
                    % LinComb &
-                       ( One                  , MF_F    (iLevel,iS), 1, &
+                       ( One                  , MF_uCF  (iLevel   ), 1, &
                          dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
                          1, nCompCF, swX )
 
@@ -344,15 +354,15 @@ CONTAINS
 
           IF( w_EX(iS) .NE. Zero )THEN
 
-            CALL MF_R(iLevel,iS) &
+            CALL MF_uCR(iLevel) &
                    % LinComb &
-                       ( One                  , MF_R    (iLevel,iS), 1, &
+                       ( One                  , MF_uCR  (iLevel   ), 1, &
                          dt(iLevel) * w_EX(iS), MF_DR_Ex(iLevel,iS), 1, &
                          1, nCompCR, swX )
 
-            CALL MF_F(iLevel,iS) &
+            CALL MF_uCF(iLevel) &
                    % LinComb &
-                       ( One                  , MF_F    (iLevel,iS), 1, &
+                       ( One                  , MF_uCF  (iLevel   ), 1, &
                          dt(iLevel) * w_EX(iS), MF_DF_Ex(iLevel,iS), 1, &
                          1, nCompCF, swX )
 
