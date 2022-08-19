@@ -93,7 +93,9 @@ CONTAINS
              MF_uCF_Option = MF_uCF, &
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
-             MF_uDF_Option = MF_uDF )
+             MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
+             MF_uCR_Option = MF_uCR)
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &

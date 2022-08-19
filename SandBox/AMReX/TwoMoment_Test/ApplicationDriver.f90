@@ -158,41 +158,12 @@ num = 1
 
   END DO
 
-  IF (nDOFZ .GT. 1) THEN
-
-!!$  CALL ShowVariableFromMultiFab_Vector &
-!!$    ( MF_uCR, 1, WriteToFile_Option = .TRUE., &
-!!$       FileName_Option = 'thornado_uCR_' )
-
-  END IF
 
   CALL ComputeFromConserved_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
-
-  CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t_new, &
-           MF_uGF % BA % P, &
-           iWriteFields_uGF = 1, &
-           iWriteFields_uCF = 0, &
-           iWriteFields_uCR = 1, &
-           pMF_uGF_Option = MF_uGF % P, &
-           pMF_uCR_Option = MF_uCR % P )
-
-  CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF, &
-             MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR, &
-             PlotFileNumber_Option = num )
 
   CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
 
-!!$  CALL WriteFieldsAMReX_PlotFile_Euler &
-!!$             ( t_new(0), StepNo, MF_uGF, &
-!!$               MF_uGF_Option = MF_uGF, &
-!!$               MF_uCF_Option = MF_uCF, &
-!!$               MF_uPF_Option = MF_uPF, &
-!!$               MF_uAF_Option = MF_uAF, &
-!!$               num_Option = num )
 
   CALL ComputeTally_Euler_MF &
          ( t_new, MF_uGF, MF_uCF, Verbose_Option = .FALSE. )
