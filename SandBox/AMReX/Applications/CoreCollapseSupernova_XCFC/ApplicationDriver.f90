@@ -229,7 +229,7 @@ PROGRAM main
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       IF( amrex_parallel_ioprocessor() ) &
-        WRITE(*,'(A)') 'CALL UpdateFluid_SSPRK_MF'
+        WRITE(*,'(A)') 'CALL UpdateFluid_IMEX_RK_MF'
 
     END IF
 
