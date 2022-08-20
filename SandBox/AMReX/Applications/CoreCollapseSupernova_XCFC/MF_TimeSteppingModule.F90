@@ -92,24 +92,15 @@ MODULE MF_TimeSteppingModule
   IMPLICIT NONE
   PRIVATE
 
-  TYPE :: StageDataType
-    REAL(DP), ALLOCATABLE :: dR_IM(:,:,:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: dR_EX(:,:,:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: dF_EX(:,:,:,:,:)
-  END TYPE StageDataType
-
   INTEGER                           :: nStages
   REAL(DP)            , ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP)            , ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
-  REAL(DP)            , ALLOCATABLE :: U0(:,:,:,:,:,:,:)
-  REAL(DP)            , ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
-  TYPE(StageDataType) , ALLOCATABLE :: StageData(:)
 
   PUBLIC :: Initialize_IMEX_RK_MF
   PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_IMEX_RK_MF
 
-  LOGICAL, PARAMETER :: DEBUG = .TRUE.
+  LOGICAL, PARAMETER :: DEBUG = .FALSE.
 
 CONTAINS
 
@@ -613,19 +604,6 @@ CONTAINS
       WRITE(*,'(A6,A14,4ES14.4E3)') '', '', w_EX(1:nStages)
     END IF
 
-    CALL AllocateArray7D( U0 )
-    CALL AllocateArray7D( Ui )
-
-    ALLOCATE( StageData(nStages) )
-
-    DO i = 1, nStages
-
-      CALL AllocateArray7D( StageData(i) % dR_IM )
-      CALL AllocateArray7D( StageData(i) % dR_EX )
-      CALL AllocateArray5D( StageData(i) % dF_EX )
-
-    END DO
-
   END SUBROUTINE Initialize_IMEX_RK
 
 
@@ -635,19 +613,6 @@ CONTAINS
 
     DEALLOCATE( c_IM, w_IM, a_IM )
     DEALLOCATE( c_EX, w_EX, a_EX )
-
-    CALL DeallocateArray7D( U0 )
-    CALL DeallocateArray7D( Ui )
-
-    DO i = 1, nStages
-
-      CALL DeallocateArray7D( StageData(i) % dR_IM )
-      CALL DeallocateArray7D( StageData(i) % dR_EX )
-      CALL DeallocateArray5D( StageData(i) % dF_EX )
-
-    END DO
-
-    DEALLOCATE( StageData )
 
   END SUBROUTINE Finalize_IMEX_RK
 
@@ -676,52 +641,5 @@ CONTAINS
 
   END SUBROUTINE AllocateButcherTables
 
-
-  SUBROUTINE AllocateArray7D( Array7D )
-
-    REAL(DP), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
-
-    ALLOCATE &
-      ( Array7D(nDOFZ, &
-                iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
-                nCR,nSpecies) )
-
-    Array7D = Zero
-
-  END SUBROUTINE AllocateArray7D
-
-
-  SUBROUTINE AllocateArray5D( Array5D )
-
-    REAL(DP), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
-
-    ALLOCATE &
-      ( Array5D(nDOFZ, &
-                iZ_B1(2):iZ_E1(2), &
-                iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
-                nCF) )
-
-    Array5D = Zero
-
-  END SUBROUTINE AllocateArray5D
-
-
-  SUBROUTINE DeallocateArray7D( Array7D )
-
-    REAL(DP), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
-
-    DEALLOCATE( Array7D )
-
-  END SUBROUTINE DeallocateArray7D
-
-
-  SUBROUTINE DeallocateArray5D( Array5D )
-
-    REAL(DP), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
-
-    DEALLOCATE( Array5D )
-
-  END SUBROUTINE DeallocateArray5D
 
 END MODULE MF_TimeSteppingModule
