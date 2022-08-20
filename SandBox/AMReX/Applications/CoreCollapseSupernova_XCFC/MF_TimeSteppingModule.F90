@@ -428,6 +428,23 @@ CONTAINS
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
 
+    DO iLevel = 0, nLevels - 1
+
+      CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+
+      DO iS = 1, nStages
+
+        CALL amrex_multifab_destroy( MF_DR_Im(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DR_Ex(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_R    (iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DF_Im(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DF_Ex(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_F    (iLevel,iS) )
+
+      END DO ! iS = 0, nStages
+
+    END DO ! iLevel = 0, nLevels - 1
+
     IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_IMEX_RK_MF'
 
   END SUBROUTINE Update_IMEX_RK_MF
