@@ -2,25 +2,10 @@ MODULE MF_TimeSteppingModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_box_module, ONLY: &
-    amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
-    amrex_multifab_destroy, &
-    amrex_mfiter, &
-    amrex_mfiter_build, &
-    amrex_mfiter_destroy
-  USE amrex_boxarray_module, ONLY: &
-    amrex_boxarray, &
-    amrex_boxarray_build, &
-    amrex_boxarray_destroy
-  USE amrex_distromap_module, ONLY: &
-    amrex_distromap, &
-    amrex_distromap_build, &
-    amrex_distromap_destroy
+    amrex_multifab_destroy
   USE amrex_amrcore_module, ONLY: &
     GEOM => amrex_geom
 
@@ -29,15 +14,7 @@ MODULE MF_TimeSteppingModule
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, &
     nDOFX, &
-    nDOFE, &
-    iZ_B0, &
-    iZ_B1, &
-    iZ_E0, &
-    iZ_E1, &
-    swX, &
-    nX
-  USE GeometryFieldsModuleE, ONLY: &
-    uGE
+    swX
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
@@ -59,18 +36,15 @@ MODULE MF_TimeSteppingModule
     MF_uGF
   USE MF_FieldsModule_Euler, ONLY: &
     MF_uCF, &
-    MF_uPF, &
     MF_uDF
   USE MF_FieldsModule_TwoMoment, ONLY: &
-    MF_uCR, &
-    MF_uPR
+    MF_uCR
   USE InputParsingModule, ONLY: &
     t_new, &
     dt, &
     nLevels, &
     nMaxLevels, &
 !    DEBUG, &
-    UseTiling, &
     nE, &
     nSpecies
   USE MF_Euler_PositivityLimiterModule, ONLY: &
