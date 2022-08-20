@@ -188,6 +188,42 @@ CONTAINS
         CALL MF_F(iLevel,iS) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
         CALL MF_R(iLevel,iS) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
 
+        DO jS = 1, iS-1
+
+          IF( a_IM(iS,jS) .NE. Zero )THEN
+
+            CALL MF_R(iLevel,iS) &
+                   % LinComb &
+                       ( One                     , MF_R    (iLevel,iS), 1, &
+                         dt(iLevel) * a_IM(iS,jS), MF_DR_IM(iLevel,jS), 1, &
+                         1, nCompCR, swX )
+
+            CALL MF_F(iLevel,iS) &
+                   % LinComb &
+                       ( One                     , MF_F    (iLevel,iS), 1, &
+                         dt(iLevel) * a_IM(iS,jS), MF_DF_IM(iLevel,jS), 1, &
+                         1, nCompCF, swX )
+
+          END IF ! a_IM(iS,jS) .NE. Zero
+
+          IF( a_EX(iS,jS) .NE. Zero )THEN
+
+            CALL MF_R(iLevel,iS) &
+                   % LinComb &
+                       ( One                     , MF_R    (iLevel,iS), 1, &
+                         dt(iLevel) * a_EX(iS,jS), MF_DR_Ex(iLevel,jS), 1, &
+                         1, nCompCR, swX )
+
+            CALL MF_F(iLevel,iS) &
+                   % LinComb &
+                       ( One                     , MF_F    (iLevel,iS), 1, &
+                         dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
+                         1, nCompCF, swX )
+
+          END IF ! a_EX(iS,jS) .NE. Zero
+
+        END DO ! jS = 1, iS-1
+
       END DO ! iLevel = 0, nLevels-1
 
       DO jS = 1, iS-1
