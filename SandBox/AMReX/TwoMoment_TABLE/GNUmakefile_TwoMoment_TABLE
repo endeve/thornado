@@ -9,12 +9,10 @@ LAPACK_HOME   ?= $(LAPACK_DIR)
 HDF5_INC ?= $(HDF5_HOME)/include
 HDF5_LIB ?= $(HDF5_HOME)/lib
 
-LAPACK_INC ?= $(LAPACK_HOME)/include
-LAPACK_LIB ?= $(LAPACK_HOME)/lib
-#LAPACK_INC ?= /usr/include
-#LAPACK_LIB ?= /usr/lib/x86_64-linux-gnu/lapack
-
-REFINE_MESH ?= TRUE
+#LAPACK_INC ?= $(LAPACK_HOME)/include
+#LAPACK_LIB ?= $(LAPACK_HOME)/lib
+LAPACK_INC ?= /usr/include
+LAPACK_LIB ?= /usr/lib/x86_64-linux-gnu/lapack
 
 DEBUG = FALSE
 
@@ -41,7 +39,7 @@ include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 # Include basic AMReX framework
 include $(AMREX_HOME)/Src/Base/Make.package
 
-ifeq ($(REFINE_MESH),TRUE)
+ifneq ("$(wildcard $(AMREX_HOME)/Src/DG/Make.package)","")
   # Requires amrex fork from github.com:dunhamsj/amrex
   # Branch: MeshRefinement_DG
   include $(AMREX_HOME)/Src/DG/Make.package
@@ -57,7 +55,20 @@ include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 include Make.weaklib
 
 # Include directories and source files needed from thornado
-include Make.thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Opacities
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.TwoMoment
+include Make.TwoMoment_TABLE
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

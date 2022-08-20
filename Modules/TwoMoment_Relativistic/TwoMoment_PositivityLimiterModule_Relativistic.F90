@@ -121,7 +121,7 @@ CONTAINS
       WRITE(*,'(A)') '  --------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)') &
-        '', 'Use Positivity Limiter: ', UsePositivityLimiter 
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter
       WRITE(*,*)
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Min_1: ', Min_1
       WRITE(*,'(A4,A32,ES11.3E3)') '', 'Max_1: ', Max_1
@@ -865,10 +865,10 @@ CONTAINS
     END DO
     END DO
 
-    CALL CheckCellAverageRealizability & 
+    CALL CheckCellAverageRealizability &
           (iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
            V1_P, V2_P, V3_P, G_11_P, G_22_P, G_33_P, &
-           A_P, B1_P, B2_P, B3_P, RealizableCellAverage) 
+           A_P, B1_P, B2_P, B3_P, RealizableCellAverage)
 
     ! --- Ensure Bounded Density ---
 
@@ -1018,7 +1018,7 @@ m=0
 
           n=n+1
 
-        END IF 
+        END IF
 
       END IF
 
@@ -1028,7 +1028,7 @@ m=0
     END DO
     END DO
 
-print*, n, m
+!print*, n, m
 
     IF( .NOT. ALL( RealizableCellAverage ) )THEN
 
@@ -1142,23 +1142,23 @@ print*, n, m
     REAL(DP) :: absG, G_uu(0:3,0:3), G(0:3), B(3)
     INTEGER :: i, j
 
-    B(1) = B1    
-    B(2) = B2    
-    B(3) = B3    
+    B(1) = B1
+    B(2) = B2
+    B(3) = B3
 
     G_uu(0,0) = - 1.0_DP / alp**2
     G_uu(1:3,0) = B(1:3) / alp**2
     G_uu(0,1:3) = B(1:3) / alp**2
-    G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)   
-    G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)   
-    G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)   
+    G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)
+    G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)
+    G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)
     G_uu(1,2) = - alp**2 * B(1) * B(2)
     G_uu(1,3) = - alp**2 * B(1) * B(3)
     G_uu(2,1) = - alp**2 * B(1) * B(2)
     G_uu(3,1) = - alp**2 * B(1) * B(3)
     G_uu(2,3) = - alp**2 * B(2) * B(3)
     G_uu(3,2) = - alp**2 * B(2) * B(3)
-  
+
     G(0) = ( V1 * G1 + V2 * G2 + V3 * G3 ) / alp
     G(1) = G1
     G(2) = G2
@@ -1169,14 +1169,14 @@ print*, n, m
     DO i = 0,3
     DO j = 0,3
 
-      absG = absG + G_uu(i,j) * G(i) * G(j)    
+      absG = absG + G_uu(i,j) * G(i) * G(j)
 
     END DO
     END DO
 
-    absG = SQRT(absG) 
- 
-    GammaFun = N - absG 
+    absG = SQRT(absG)
+
+    GammaFun = N - absG
 
 
     RETURN
@@ -1267,11 +1267,11 @@ print*, n, m
 !    INTEGER, INTENT(out) :: iPT_X
 !
 !    IF (nNodes .EQ. 2) THEN
-!      
+!
 !      IF(iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 10) THEN
 !        iPT_X = 1
 !      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 7) THEN
-!        iPT_X = 2      
+!        iPT_X = 2
 !      ELSE IF(iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 8) THEN
 !        iPT_X = 3
 !      ELSE IF(iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 12) THEN
@@ -1283,7 +1283,7 @@ print*, n, m
 !      IF(iPT_Z .EQ. 16 .OR. iPT_Z .EQ. 17 .OR. iPT_Z .EQ. 18) THEN
 !        iPT_X = 1
 !      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 10 .OR. iPT_Z .EQ. 13) THEN
-!        iPT_X = 2      
+!        iPT_X = 2
 !      ELSE IF(iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 14) THEN
 !        iPT_X = 3
 !      ELSE IF(iPT_Z .EQ. 7 .OR. iPT_Z .EQ. 8 .OR. iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 12 .OR. iPT_Z .EQ. 15) THEN
@@ -1409,11 +1409,11 @@ print*, n, m
                 V_3_P(iP_X,iZ2,iZ3,iZ4), &
                 G_11_P(iP_X,iZ2,iZ3,iZ4), &
                 G_22_P(iP_X,iZ2,iZ3,iZ4), &
-                G_33_P(iP_X,iZ2,iZ3,iZ4), & 
-                A_P(iP_X,iZ2,iZ3,iZ4), & 
-                B1_P(iP_X,iZ2,iZ3,iZ4), & 
-                B2_P(iP_X,iZ2,iZ3,iZ4), & 
-                B3_P(iP_X,iZ2,iZ3,iZ4) ) 
+                G_33_P(iP_X,iZ2,iZ3,iZ4), &
+                A_P(iP_X,iZ2,iZ3,iZ4), &
+                B1_P(iP_X,iZ2,iZ3,iZ4), &
+                B2_P(iP_X,iZ2,iZ3,iZ4), &
+                B3_P(iP_X,iZ2,iZ3,iZ4) )
 
         IF(  Gamma_K < Min_2 )THEN
 
@@ -1547,7 +1547,7 @@ print*, n, m
 
           DO iP_X = 1, nPT_X
 
-            
+
 
             Gm_dd_11 = G_11_P(iP_X,iZ2,iZ3,iZ4)
             Gm_dd_22 = G_22_P(iP_X,iZ2,iZ3,iZ4)
@@ -1558,27 +1558,27 @@ print*, n, m
             V3 = V_3_P(iP_X,iZ2,iZ3,iZ4)
 
             alp = A_P(iP_X,iZ2,iZ3,iZ4)
-            B(1) = B1_P(iP_X,iZ2,iZ3,iZ4)    
-            B(2) = B2_P(iP_X,iZ2,iZ3,iZ4)    
-            B(3) = B3_P(iP_X,iZ2,iZ3,iZ4)    
+            B(1) = B1_P(iP_X,iZ2,iZ3,iZ4)
+            B(2) = B2_P(iP_X,iZ2,iZ3,iZ4)
+            B(3) = B3_P(iP_X,iZ2,iZ3,iZ4)
 
-            
+
             G_uu(0,0) = - 1.0_DP / alp**2
             G_uu(1:3,0) = B(1:3) / alp**2
             G_uu(0,1:3) = B(1:3) / alp**2
-            G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)   
-            G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)   
-            G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)   
+            G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)
+            G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)
+            G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)
             G_uu(1,2) = - alp**2 * B(1) * B(2)
             G_uu(1,3) = - alp**2 * B(1) * B(3)
             G_uu(2,1) = - alp**2 * B(1) * B(2)
             G_uu(3,1) = - alp**2 * B(1) * B(3)
             G_uu(2,3) = - alp**2 * B(2) * B(3)
             G_uu(3,2) = - alp**2 * B(2) * B(3)
-  
-            G(1) = G1_K(iZ1,iZ2,iZ3,iZ4,iS) 
-            G(2) = G2_K(iZ1,iZ2,iZ3,iZ4,iS) 
-            G(3) = G3_K(iZ1,iZ2,iZ3,iZ4,iS) 
+
+            G(1) = G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+            G(2) = G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+            G(3) = G3_K(iZ1,iZ2,iZ3,iZ4,iS)
             G(0) = ( V1 * G(1) + V2 * G(2) + V3 * G(3) ) / alp
 
             absG = 0.0_DP
@@ -1586,17 +1586,17 @@ print*, n, m
             DO i = 0,3
             DO j = 0,3
 
-              absG = absG + G_uu(i,j) * G(i) * G(j)    
+              absG = absG + G_uu(i,j) * G(i) * G(j)
 
             END DO
             END DO
 
-            absG = SQRT(absG) 
+            absG = SQRT(absG)
 
             absG_K &
-              = MAX( absG_K, absG ) 
-                            
-                            
+              = MAX( absG_K, absG )
+
+
 
           END DO
 

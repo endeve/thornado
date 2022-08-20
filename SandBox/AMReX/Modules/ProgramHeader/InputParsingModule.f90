@@ -21,6 +21,8 @@ MODULE InputParsingModule
     UnitsDisplay
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
+  USE RadiationFieldsModule, ONLY: &
+    SetNumberOfSpecies
 
   ! --- Local modules ---
 
@@ -253,6 +255,8 @@ call amrex_parmparse_destroy( pp )
       CALL PP % query ( 'zoomE', &
                          zoomE )
     CALL amrex_parmparse_destroy( PP )
+
+    CALL SetNumberOfSpecies( nSpecies )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
       CALL DescribeError_MF &
