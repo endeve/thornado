@@ -67,7 +67,7 @@ MODULE MF_TimeSteppingModule
     dt, &
     nLevels, &
     nMaxLevels, &
-    DEBUG, &
+!    DEBUG, &
     UseTiling, &
     nE, &
     nSpecies
@@ -111,6 +111,8 @@ MODULE MF_TimeSteppingModule
   PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_IMEX_RK_MF
 
+  LOGICAL, PARAMETER :: DEBUG = .TRUE.
+
 CONTAINS
 
 
@@ -137,6 +139,8 @@ CONTAINS
     nCompCF = nDOFX * nCF
     nCompCR = nDOFZ * nCR * nE * nSpecies
 
+    IF( DEBUG ) WRITE(*,'(A)') 'Entering Update_IMEX_RK_MF'
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -152,6 +156,8 @@ CONTAINS
     !!$CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCR ) (needs mods for radiation)
 
     DO iS = 1, nStages
+
+      IF( DEBUG ) WRITE(*,'(2x,A,I2.2)') 'iS: ', iS
 
       DO iLevel = 0, nLevels-1
 
@@ -197,9 +203,14 @@ CONTAINS
 
       DO jS = 1, iS-1
 
+        IF( DEBUG ) WRITE(*,'(4x,A,I2.2)') 'jS: ', jS
+
         DO iLevel = 0, nLevels-1
 
           IF( a_EX(iS,jS) .NE. Zero )THEN
+
+            IF( DEBUG ) &
+              WRITE(*,'(6x,A)') 'Adding explicit increment to stage data'
 
             CALL MF_R(iLevel,iS) &
                    % LinComb &
@@ -216,6 +227,9 @@ CONTAINS
           END IF
 
           IF( a_IM(iS,jS) .NE. Zero )THEN
+
+            IF( DEBUG ) &
+              WRITE(*,'(6x,A)') 'Adding implicit increment to stage data'
 
             CALL MF_R(iLevel,iS) &
                  % LinComb &
@@ -256,7 +270,16 @@ CONTAINS
 
       END DO ! jS = 1, iS-1
 
+      IF( DEBUG ) WRITE(*,'(4x,A,I2.2)') 'jS: ', jS
+
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
+
+        IF( DEBUG )THEN
+
+          WRITE(*,'(6x,A)') 'Computing implicit increment'
+          WRITE(*,'(6x,A)') 'Adding implicit increment to stage data'
+
+        END IF
 
         DO iLevel = 0, nLevels-1
 
@@ -281,7 +304,10 @@ CONTAINS
 
       END IF ! ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero )
 
-      IF( ANY( a_Ex(:,iS) .NE. Zero ) .OR. ( w_Ex(iS) .NE. Zero ) )THEN
+      IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
+
+        IF( DEBUG ) &
+          WRITE(*,'(6x,A)') 'Computing explicit increment'
 
         CALL ComputeIncrement_TwoMoment_Explicit_MF &
                ( GEOM, MF_uGF, MF_F(:,iS), MF_R(:,iS), MF_DR_Ex(:,iS), &
@@ -320,11 +346,13 @@ CONTAINS
         CALL ComputeIncrement_Euler_MF &
                ( t_new, MF_uGF, MF_F(:,iS), MF_uDF, MF_DF_Ex(:,iS) )
 
-      END IF ! ANY( a_Ex(:,iS) .NE. Zero ) .OR. ( w_Ex(iS) .NE. Zero )
+      END IF ! ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero )
 
     END DO ! iS = 1, nStages
 
     ! --- Assembly Step ---
+
+    IF( DEBUG ) WRITE(*,*) 'Assembly Step'
 
     DO iLevel = 0, nLevels-1
 
@@ -337,6 +365,9 @@ CONTAINS
         DO iS = 1, nStages
 
           IF( w_IM(iS) .NE. Zero )THEN
+
+            IF( DEBUG ) &
+              WRITE(*,'(6x,A)') 'Adding implicit increment to original data'
 
             CALL MF_uCR(iLevel) &
                    % LinComb &
@@ -353,6 +384,9 @@ CONTAINS
           END IF
 
           IF( w_EX(iS) .NE. Zero )THEN
+
+            IF( DEBUG ) &
+              WRITE(*,'(6x,A)') 'Adding explicit increment to original data'
 
             CALL MF_uCR(iLevel) &
                    % LinComb &
@@ -410,18 +444,23 @@ CONTAINS
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
 
+    IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_IMEX_RK_MF'
+
   END SUBROUTINE Update_IMEX_RK_MF
 
 
-  SUBROUTINE Initialize_IMEX_RK_MF &
-    ( Scheme, BA, DM, Verbose_Option )
+  SUBROUTINE Initialize_IMEX_RK_MF( Scheme, Verbose_Option )
 
-    CHARACTER(LEN=*)     , INTENT(in) :: Scheme
-    TYPE(amrex_boxarray) , INTENT(in) :: BA(0:nLevels-1)
-    TYPE(amrex_distromap), INTENT(in) :: DM(0:nLevels-1)
-    LOGICAL              , INTENT(in), OPTIONAL :: Verbose_Option
+    CHARACTER(LEN=*), INTENT(in) :: Scheme
+    LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
-    CALL Initialize_IMEX_RK( Scheme, Verbose_Option )
+    LOGICAL :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    CALL Initialize_IMEX_RK( Scheme, Verbose )
 
   END SUBROUTINE Initialize_IMEX_RK_MF
 
@@ -434,15 +473,14 @@ CONTAINS
 
 
   SUBROUTINE Initialize_IMEX_RK &
-    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option, Verbose_Option )
+    ( Scheme, Verbose, EvolveEuler_Option, EvolveTwoMoment_Option )
 
     CHARACTER(LEN=*), INTENT(in) :: Scheme
+    LOGICAL         , INTENT(in) :: Verbose
     LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
     LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
-    LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
-    LOGICAL :: Verbose
     LOGICAL :: EvolveEuler
     LOGICAL :: EvolveTwoMoment
 
@@ -453,10 +491,6 @@ CONTAINS
     EvolveTwoMoment = .FALSE.
     IF( PRESENT( EvolveTwoMoment_Option ) ) &
       EvolveTwoMoment = EvolveTwoMoment_Option
-
-    Verbose = .FALSE.
-    IF( PRESENT( Verbose_Option ) ) &
-      Verbose = Verbose_Option
 
     IF (Verbose) THEN
       WRITE(*,*)
