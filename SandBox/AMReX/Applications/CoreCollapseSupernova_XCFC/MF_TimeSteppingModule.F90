@@ -105,8 +105,6 @@ MODULE MF_TimeSteppingModule
   REAL(DP)            , ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType) , ALLOCATABLE :: StageData(:)
 
-  PUBLIC :: Initialize_IMEX_RK
-  PUBLIC :: Finalize_IMEX_RK
   PUBLIC :: Initialize_IMEX_RK_MF
   PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_IMEX_RK_MF
