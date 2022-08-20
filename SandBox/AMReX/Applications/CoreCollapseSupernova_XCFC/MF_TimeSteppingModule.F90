@@ -53,6 +53,8 @@ MODULE MF_TimeSteppingModule
     DP, &
     Zero, &
     One
+  USE MF_ErrorModule, ONLY: &
+    DescribeError_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
   USE MF_FieldsModule_Euler, ONLY: &
@@ -92,9 +94,12 @@ MODULE MF_TimeSteppingModule
   IMPLICIT NONE
   PRIVATE
 
-  INTEGER                           :: nStages
-  REAL(DP)            , ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
-  REAL(DP)            , ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
+  INTEGER               :: nStages
+  REAL(DP), ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
+  REAL(DP), ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
+  LOGICAL               :: EvolveEuler
+  LOGICAL               :: EvolveTwoMoment
+  LOGICAL               :: Verbose
 
   PUBLIC :: Initialize_IMEX_RK_MF
   PUBLIC :: Finalize_IMEX_RK_MF
@@ -119,8 +124,6 @@ CONTAINS
 
     REAL(DP) :: dM_OffGrid_Euler    (1:nCF,0:nMaxLevels-1)
     REAL(DP) :: dM_OffGrid_TwoMoment(1:nCR,0:nMaxLevels-1)
-
-    LOGICAL, PARAMETER :: Verbose = .FALSE.
 
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
@@ -148,152 +151,101 @@ CONTAINS
 
       IF( DEBUG ) WRITE(*,'(2x,A,I2.2)') 'iS: ', iS
 
-      DO iLevel = 0, nLevels-1
+      iLevel = 0 ! temp. hack
 
-        CALL amrex_multifab_build &
-               ( MF_F(iLevel,iS), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nCompCF, swX )
+      CALL amrex_multifab_build &
+             ( MF_F(iLevel,iS), MF_uCF(iLevel) % BA, &
+               MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        CALL amrex_multifab_build &
-               ( MF_DF_Ex(iLevel,iS), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nCompCF, swX )
+      CALL amrex_multifab_build &
+             ( MF_DF_Ex(iLevel,iS), MF_uCF(iLevel) % BA, &
+               MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        CALL amrex_multifab_build &
-               ( MF_DF_Im(iLevel,iS), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nCompCF, swX )
+      CALL amrex_multifab_build &
+             ( MF_DF_Im(iLevel,iS), MF_uCF(iLevel) % BA, &
+               MF_uCF(iLevel) % DM, nCompCF, swX )
 
-        CALL amrex_multifab_build &
-               ( MF_R(iLevel,iS), MF_uCR(iLevel) % BA, &
-                 MF_uCR(iLevel) % DM, nCompCR, swX )
+      CALL amrex_multifab_build &
+             ( MF_R(iLevel,iS), MF_uCR(iLevel) % BA, &
+               MF_uCR(iLevel) % DM, nCompCR, swX )
 
-        CALL amrex_multifab_build &
-               ( MF_DR_Ex(iLevel,iS), MF_uCR(iLevel) % BA, &
-                 MF_uCR(iLevel) % DM, nCompCR, swX )
+      CALL amrex_multifab_build &
+             ( MF_DR_Ex(iLevel,iS), MF_uCR(iLevel) % BA, &
+               MF_uCR(iLevel) % DM, nCompCR, swX )
 
-        CALL amrex_multifab_build &
-               ( MF_DR_Im(iLevel,iS), MF_uCR(iLevel) % BA, &
-                 MF_uCR(iLevel) % DM, nCompCR, swX )
+      CALL amrex_multifab_build &
+             ( MF_DR_Im(iLevel,iS), MF_uCR(iLevel) % BA, &
+               MF_uCR(iLevel) % DM, nCompCR, swX )
 
-        IF( DEBUG )THEN
+      CALL MF_DF_Ex(iLevel,iS) % SetVal( Zero )
+      CALL MF_DF_Im(iLevel,iS) % SetVal( Zero )
+      CALL MF_DR_Ex(iLevel,iS) % SetVal( Zero )
+      CALL MF_DR_Im(iLevel,iS) % SetVal( Zero )
 
-          CALL MF_F    (iLevel,iS) % SetVal( Zero )
-          CALL MF_DF_Ex(iLevel,iS) % SetVal( Zero )
-          CALL MF_DF_Im(iLevel,iS) % SetVal( Zero )
-          CALL MF_R    (iLevel,iS) % SetVal( Zero )
-          CALL MF_DR_Ex(iLevel,iS) % SetVal( Zero )
-          CALL MF_DR_Im(iLevel,iS) % SetVal( Zero )
+      CALL MF_F(iLevel,iS) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
+      CALL MF_R(iLevel,iS) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
 
-        END IF ! DEBUG
+      DO jS = 1, iS - 1
 
-        CALL MF_F(iLevel,iS) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
-        CALL MF_R(iLevel,iS) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
+        IF( a_IM(iS,jS) .NE. Zero )THEN
 
-        DO jS = 1, iS-1
-
-          IF( a_IM(iS,jS) .NE. Zero )THEN
-
-            CALL MF_R(iLevel,iS) &
-                   % LinComb &
-                       ( One                     , MF_R    (iLevel,iS), 1, &
-                         dt(iLevel) * a_IM(iS,jS), MF_DR_IM(iLevel,jS), 1, &
-                         1, nCompCR, swX )
-
-            CALL MF_F(iLevel,iS) &
-                   % LinComb &
-                       ( One                     , MF_F    (iLevel,iS), 1, &
-                         dt(iLevel) * a_IM(iS,jS), MF_DF_IM(iLevel,jS), 1, &
-                         1, nCompCF, swX )
-
-          END IF ! a_IM(iS,jS) .NE. Zero
-
-          IF( a_EX(iS,jS) .NE. Zero )THEN
-
-            CALL MF_R(iLevel,iS) &
-                   % LinComb &
-                       ( One                     , MF_R    (iLevel,iS), 1, &
-                         dt(iLevel) * a_EX(iS,jS), MF_DR_Ex(iLevel,jS), 1, &
-                         1, nCompCR, swX )
-
-            CALL MF_F(iLevel,iS) &
-                   % LinComb &
-                       ( One                     , MF_F    (iLevel,iS), 1, &
-                         dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
-                         1, nCompCF, swX )
-
-          END IF ! a_EX(iS,jS) .NE. Zero
-
-        END DO ! jS = 1, iS-1
-
-      END DO ! iLevel = 0, nLevels-1
-
-      DO jS = 1, iS-1
-
-        IF( DEBUG ) WRITE(*,'(4x,A,I2.2)') 'jS: ', jS
-
-        DO iLevel = 0, nLevels-1
-
-          IF( a_EX(iS,jS) .NE. Zero )THEN
-
-            IF( DEBUG ) &
-              WRITE(*,'(6x,A)') 'Adding explicit increment to stage data'
-
-            CALL MF_R(iLevel,iS) &
-                   % LinComb &
-                       ( One                     , MF_R    (iLevel,iS), 1, &
-                         dt(iLevel) * a_EX(iS,jS), MF_DR_Ex(iLevel,jS), 1, &
-                         1, nCompCR, swX )
-
-            CALL MF_F(iLevel,iS) &
-                   % LinComb &
-                       ( One                     , MF_F    (iLevel,iS), 1, &
-                         dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
-                         1, nCompCF, swX )
-
-          END IF
-
-          IF( a_IM(iS,jS) .NE. Zero )THEN
-
-            IF( DEBUG ) &
-              WRITE(*,'(6x,A)') 'Adding implicit increment to stage data'
-
-            CALL MF_R(iLevel,iS) &
+          CALL MF_R(iLevel,iS) &
                  % LinComb &
                      ( One                     , MF_R    (iLevel,iS), 1, &
-                       dt(iLevel) * a_IM(iS,iS), MF_DR_Im(iLevel,jS), 1, &
+                       dt(iLevel) * a_IM(iS,jS), MF_DR_IM(iLevel,jS), 1, &
                        1, nCompCR, swX )
 
-            CALL MF_F(iLevel,iS) &
+          CALL MF_F(iLevel,iS) &
                  % LinComb &
                      ( One                     , MF_F    (iLevel,iS), 1, &
-                       dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
+                       dt(iLevel) * a_IM(iS,jS), MF_DF_IM(iLevel,jS), 1, &
                        1, nCompCF, swX )
 
-          END IF
+        END IF ! a_IM(iS,jS) .NE. Zero
 
-        END DO ! iLevel = 0, nLevels-1
+        IF( a_EX(iS,jS) .NE. Zero )THEN
 
-!!$        IF( a_SSPRK(iS,jS) .NE. Zero ) &
-!!$          CALL AverageDown( MF_uGF, MF_F(iS,:) )
+          CALL MF_R(iLevel,iS) &
+                 % LinComb &
+                     ( One                     , MF_R    (iLevel,iS), 1, &
+                       dt(iLevel) * a_EX(iS,jS), MF_DR_Ex(iLevel,jS), 1, &
+                       1, nCompCR, swX )
+
+          CALL MF_F(iLevel,iS) &
+                 % LinComb &
+                     ( One                     , MF_F    (iLevel,iS), 1, &
+                       dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
+                       1, nCompCF, swX )
+
+        END IF ! a_EX(iS,jS) .NE. Zero
 
         IF( jS .EQ. iS - 1 )THEN
 
-          CALL ApplySlopeLimiter_TwoMoment_MF &
-                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
-                   Verbose_Option = Verbose  )
+          IF( EvolveEuler )THEN
 
-          CALL ApplyPositivityLimiter_TwoMoment_MF &
-                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
-                   Verbose_Option = Verbose  )
+            CALL ApplySlopeLimiter_Euler_MF &
+                   ( t_new, MF_uGF, MF_F(:,jS), MF_uDF )
 
-          CALL ApplySlopeLimiter_Euler_MF &
-                 ( t_new, MF_uGF, MF_F(:,jS), MF_uDF )
+            CALL ApplyPositivityLimiter_Euler_MF &
+                   ( MF_uGF, MF_F(:,jS), MF_uDF )
 
-          CALL ApplyPositivityLimiter_Euler_MF &
-                 ( MF_uGF, MF_F(:,jS), MF_uDF )
+          END IF ! EvolveEuler
 
-        END IF
+          IF( EvolveTwoMoment )THEN
 
-      END DO ! jS = 1, iS-1
+            CALL ApplySlopeLimiter_TwoMoment_MF &
+                   ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                     Verbose_Option = Verbose  )
+
+            CALL ApplyPositivityLimiter_TwoMoment_MF &
+                   ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                     Verbose_Option = Verbose  )
+
+          END IF ! EvolveTwoMoment
+
+        END IF ! jS .EQ. iS - 1
+
+      END DO ! jS = 1, iS - 1
 
       IF( DEBUG ) WRITE(*,'(4x,A,I2.2)') 'jS: ', jS
 
@@ -306,26 +258,44 @@ CONTAINS
 
         END IF
 
-        DO iLevel = 0, nLevels-1
+        CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
+             ( GEOM, MF_uGF, MF_F(:,iS), MF_DF_Im(:,iS), &
+               MF_R(:,iS), MF_DR_Im(:,iS), &
+               dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
-          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
-               ( GEOM, MF_uGF, MF_F(:,iS), MF_DF_Im(:,iS), &
-                 MF_R(:,iS), MF_DR_Im(:,iS), &
-                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+        CALL MF_R(iLevel,iS) &
+               % LinComb &
+                   ( One                     , MF_R    (iLevel,iS), 1, &
+                     dt(iLevel) * a_IM(iS,iS), MF_DR_Im(iLevel,iS), 1, &
+                     1, nCompCR, swX )
 
-          CALL MF_R(iLevel,iS) &
-                 % LinComb &
-                     ( One                     , MF_R    (iLevel,iS), 1, &
-                       dt(iLevel) * a_IM(iS,iS), MF_DR_Im(iLevel,iS), 1, &
-                       1, nCompCR, swX )
+        CALL MF_F(iLevel,iS) &
+               % LinComb &
+                   ( One                     , MF_F    (iLevel,iS), 1, &
+                     dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
+                     1, nCompCF, swX )
 
-          CALL MF_F(iLevel,iS) &
-                 % LinComb &
-                     ( One                     , MF_F    (iLevel,iS), 1, &
-                       dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
-                       1, nCompCF, swX )
+        IF( EvolveEuler )THEN
 
-        END DO ! iLevel = 0, nLevels-1
+          CALL ApplySlopeLimiter_Euler_MF &
+                 ( t_new, MF_uGF, MF_F(:,iS), MF_uDF )
+
+          CALL ApplyPositivityLimiter_Euler_MF &
+                 ( MF_uGF, MF_F(:,iS), MF_uDF )
+
+        END IF ! EvolveEuler
+
+        IF( EvolveTwoMoment )THEN
+
+          CALL ApplySlopeLimiter_TwoMoment_MF &
+                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                   Verbose_Option = Verbose  )
+
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                   Verbose_Option = Verbose  )
+
+        END IF ! EvolveTwoMoment
 
       END IF ! ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero )
 
@@ -334,42 +304,51 @@ CONTAINS
         IF( DEBUG ) &
           WRITE(*,'(6x,A)') 'Computing explicit increment'
 
-        CALL ComputeIncrement_TwoMoment_Explicit_MF &
-               ( GEOM, MF_uGF, MF_F(:,iS), MF_R(:,iS), MF_DR_Ex(:,iS), &
-                 Verbose_Option = Verbose )
+        IF( EvolveEuler )THEN
 
-        IF( iS .NE. 1 )THEN
+          IF( iS .NE. 1 )THEN
 
-          CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-                 ( MF_uGF, MF_F(:,iS), MF_uGS )
+            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+                   ( MF_uGF, MF_F(:,iS), MF_uGS )
 
-          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+            CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F(:,iS) )
+
+            CALL ApplySlopeLimiter_Euler_MF &
+                   ( t_new, MF_uGF, MF_F(:,iS), MF_uDF )
+
+            CALL ApplyPositivityLimiter_Euler_MF &
+                   ( MF_uGF, MF_F(:,iS), MF_uDF )
+
+            CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_F(:,iS) )
+
+            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+                   ( MF_uGF, MF_F(:,iS), MF_uGS )
+
+            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+            CALL ComputePressureTensorTrace_XCFC_MF &
+                   ( MF_uGF, MF_F(:,iS), MF_uGS )
+
+            CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+          END IF ! iS .NE. 1
 
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F(:,iS) )
 
-          CALL ApplySlopeLimiter_Euler_MF &
-                 ( t_new, MF_uGF, MF_F(:,iS), MF_uDF )
+          CALL ComputeIncrement_Euler_MF &
+                 ( t_new, MF_uGF, MF_F(:,iS), MF_uDF, MF_DF_Ex(:,iS) )
 
-          CALL ApplyPositivityLimiter_Euler_MF &
-                 ( MF_uGF, MF_F(:,iS), MF_uDF )
+        END IF ! EvolveEuler
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_F(:,iS) )
+        IF( EvolveTwoMoment )THEN
 
-          CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-                 ( MF_uGF, MF_F(:,iS), MF_uGS )
+          CALL ComputeIncrement_TwoMoment_Explicit_MF &
+                 ( GEOM, MF_uGF, MF_F(:,iS), MF_R(:,iS), MF_DR_Ex(:,iS), &
+                   Verbose_Option = Verbose )
 
-          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
-
-          CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_F(:,iS), MF_uGS )
-
-          CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
-
-        END IF ! iS .NE. 1
-
-        CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F(:,iS) )
-
-        CALL ComputeIncrement_Euler_MF &
-               ( t_new, MF_uGF, MF_F(:,iS), MF_uDF, MF_DF_Ex(:,iS) )
+        END IF ! EvolveTwoMoment
 
       END IF ! ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero )
 
@@ -379,69 +358,75 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,*) 'Assembly Step'
 
-    DO iLevel = 0, nLevels-1
+    IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
+        ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-      IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
-          ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
+      DO iS = 1, nStages
 
-!!$        U = uCR
-!!$        F = uCF
+        IF( w_IM(iS) .NE. Zero )THEN
 
-        DO iS = 1, nStages
+          IF( DEBUG ) &
+            WRITE(*,'(6x,A)') 'Adding implicit increment to original data'
 
-          IF( w_IM(iS) .NE. Zero )THEN
+          CALL MF_uCR(iLevel) &
+                 % LinComb &
+                     ( One                  , MF_uCR  (iLevel   ), 1, &
+                       dt(iLevel) * w_IM(iS), MF_DR_Im(iLevel,iS), 1, &
+                       1, nCompCR, swX )
 
-            IF( DEBUG ) &
-              WRITE(*,'(6x,A)') 'Adding implicit increment to original data'
+          CALL MF_uCF(iLevel) &
+                 % LinComb &
+                     ( One                  , MF_uCF  (iLevel   ), 1, &
+                       dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
+                       1, nCompCF, swX )
 
-            CALL MF_uCR(iLevel) &
-                   % LinComb &
-                       ( One                  , MF_uCR  (iLevel   ), 1, &
-                         dt(iLevel) * w_IM(iS), MF_DR_Im(iLevel,iS), 1, &
-                         1, nCompCR, swX )
+        END IF
 
-            CALL MF_uCF(iLevel) &
-                   % LinComb &
-                       ( One                  , MF_uCF  (iLevel   ), 1, &
-                         dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
-                         1, nCompCF, swX )
+        IF( w_EX(iS) .NE. Zero )THEN
 
-          END IF
+          IF( DEBUG ) &
+            WRITE(*,'(6x,A)') 'Adding explicit increment to original data'
 
-          IF( w_EX(iS) .NE. Zero )THEN
+          CALL MF_uCR(iLevel) &
+                 % LinComb &
+                     ( One                  , MF_uCR  (iLevel   ), 1, &
+                       dt(iLevel) * w_EX(iS), MF_DR_Ex(iLevel,iS), 1, &
+                       1, nCompCR, swX )
 
-            IF( DEBUG ) &
-              WRITE(*,'(6x,A)') 'Adding explicit increment to original data'
+          CALL MF_uCF(iLevel) &
+                 % LinComb &
+                     ( One                  , MF_uCF  (iLevel   ), 1, &
+                       dt(iLevel) * w_EX(iS), MF_DF_Ex(iLevel,iS), 1, &
+                       1, nCompCF, swX )
 
-            CALL MF_uCR(iLevel) &
-                   % LinComb &
-                       ( One                  , MF_uCR  (iLevel   ), 1, &
-                         dt(iLevel) * w_EX(iS), MF_DR_Ex(iLevel,iS), 1, &
-                         1, nCompCR, swX )
+        END IF
 
-            CALL MF_uCF(iLevel) &
-                   % LinComb &
-                       ( One                  , MF_uCF  (iLevel   ), 1, &
-                         dt(iLevel) * w_EX(iS), MF_DF_Ex(iLevel,iS), 1, &
-                         1, nCompCF, swX )
+        IF( EvolveEuler )THEN
 
-          END IF
+          CALL ApplySlopeLimiter_Euler_MF &
+                 ( t_new, MF_uGF, MF_F(:,jS), MF_uDF )
 
-        END DO ! iS = 1, nStages
+          CALL ApplyPositivityLimiter_Euler_MF &
+                 ( MF_uGF, MF_F(:,jS), MF_uDF )
 
-      END IF ! ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
-             ! ANY( a_EX(nStages,:) .NE. w_EX(:) )
+        END IF ! EvolveEuler
 
-    END DO ! iLevel = 0, nLevels-1
+        IF( EvolveTwoMoment )THEN
 
-!!$    CALL ApplySlopeLimiter_TwoMoment_MF &
-!!$           ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
-!!$
-!!$    CALL ApplyPositivityLimiter_TwoMoment_MF &
-!!$           ( GEOM, MF_uGF, MF_F, MF_U, Verbose_Option = Verbose )
+          CALL ApplySlopeLimiter_TwoMoment_MF &
+                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                   Verbose_Option = Verbose )
 
-!!$    uCR = U
-!!$    uCF = F
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                 ( GEOM, MF_uGF, MF_F(:,jS), MF_R(:,jS), &
+                   Verbose_Option = Verbose )
+
+        END IF ! EvolveTwoMoment
+
+      END DO ! iS = 1, nStages
+
+    END IF ! ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
+           ! ANY( a_EX(nStages,:) .NE. w_EX(:) )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -474,18 +459,27 @@ CONTAINS
   END SUBROUTINE Update_IMEX_RK_MF
 
 
-  SUBROUTINE Initialize_IMEX_RK_MF( Scheme, Verbose_Option )
+  SUBROUTINE Initialize_IMEX_RK_MF &
+    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in) :: Scheme
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
+    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
     LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
-    LOGICAL :: Verbose
+    EvolveEuler = .FALSE.
+    IF( PRESENT( EvolveEuler_Option ) ) &
+      EvolveEuler = EvolveEuler_Option
+
+    EvolveTwoMoment = .FALSE.
+    IF( PRESENT( EvolveTwoMoment_Option ) ) &
+      EvolveTwoMoment = EvolveTwoMoment_Option
 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    CALL Initialize_IMEX_RK( Scheme, Verbose )
+    CALL Initialize_IMEX_RK( Scheme )
 
   END SUBROUTINE Initialize_IMEX_RK_MF
 
@@ -497,29 +491,20 @@ CONTAINS
   END SUBROUTINE Finalize_IMEX_RK_MF
 
 
-  SUBROUTINE Initialize_IMEX_RK &
-    ( Scheme, Verbose, EvolveEuler_Option, EvolveTwoMoment_Option )
+  SUBROUTINE Initialize_IMEX_RK( Scheme )
 
     CHARACTER(LEN=*), INTENT(in) :: Scheme
-    LOGICAL         , INTENT(in) :: Verbose
-    LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
-    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
 
     INTEGER :: i
-    LOGICAL :: EvolveEuler
-    LOGICAL :: EvolveTwoMoment
 
-    EvolveEuler = .FALSE.
-    IF( PRESENT( EvolveEuler_Option ) ) &
-      EvolveEuler = EvolveEuler_Option
+    IF( Verbose )THEN
 
-    EvolveTwoMoment = .FALSE.
-    IF( PRESENT( EvolveTwoMoment_Option ) ) &
-      EvolveTwoMoment = EvolveTwoMoment_Option
-
-    IF (Verbose) THEN
       WRITE(*,*)
-      WRITE(*,'(A6,A,A)') '', 'IMEX-RK Scheme: ', TRIM( Scheme )
+      WRITE(*,'(4x,A)')   'INFO: Time-stepper'
+      WRITE(*,'(4x,A)')   '------------------'
+      WRITE(*,*)
+      WRITE(*,'(6x,A,A)') 'IMEX-RK Scheme: ', TRIM( Scheme )
+
     END IF
 
     SELECT CASE ( TRIM( Scheme ) )
@@ -599,30 +584,19 @@ CONTAINS
 
       CASE DEFAULT
 
-        WRITE(*,*)
-        WRITE(*,'(A6,A,A)') &
-          '', 'Unknown Time Stepping Scheme: ', TRIM( Scheme )
-        WRITE(*,*)
-        WRITE(*,'(A6,A)') &
-          '', 'Available Options:'
-        WRITE(*,*)
-        WRITE(*,'(A6,A)') '', 'BackwardEuler'
-        WRITE(*,'(A6,A)') '', 'SSPRK1'
-        WRITE(*,'(A6,A)') '', 'SSPRK2'
-        WRITE(*,'(A6,A)') '', 'SSPRK3'
-        WRITE(*,'(A6,A)') '', 'IMEX_ARS_111'
-        WRITE(*,'(A6,A)') '', 'IMEX_PDARS'
-        WRITE(*,*)
-        STOP
+        CALL DescribeError_MF( 105, Char_Option = [ TRIM( Scheme ) ] )
 
     END SELECT
 
     DO i = 1, nStages
+
       c_IM(i) = SUM( a_IM(i,1:i) )
       c_EX(i) = SUM( a_EX(i,1:i-1) )
+
     END DO
 
-    IF (Verbose) THEN
+    IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A6,A)') '', 'Implicit Butcher Table:'
       WRITE(*,'(A6,A)') '', '-----------------------'
@@ -638,14 +612,13 @@ CONTAINS
         WRITE(*,'(A6,5ES14.4E3)') '', c_EX(i), a_EX(i,1:nStages)
       END DO
       WRITE(*,'(A6,A14,4ES14.4E3)') '', '', w_EX(1:nStages)
+
     END IF
 
   END SUBROUTINE Initialize_IMEX_RK
 
 
   SUBROUTINE Finalize_IMEX_RK
-
-    INTEGER :: i
 
     DEALLOCATE( c_IM, w_IM, a_IM )
     DEALLOCATE( c_EX, w_EX, a_EX )

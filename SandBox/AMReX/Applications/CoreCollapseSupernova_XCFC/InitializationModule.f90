@@ -371,6 +371,12 @@ CONTAINS
 
     CALL InitializeTally_TwoMoment_MF
 
+    CALL Initialize_IMEX_RK_MF &
+           ( Scheme, &
+             EvolveEuler_Option     = .TRUE., &
+             EvolveTwoMoment_Option = .TRUE., &
+             Verbose_Option         = amrex_parallel_ioprocessor() )
+
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( 0.0_DP )
@@ -416,10 +422,6 @@ CONTAINS
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
-
-    CALL Initialize_IMEX_RK_MF &
-           ( Scheme, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
 

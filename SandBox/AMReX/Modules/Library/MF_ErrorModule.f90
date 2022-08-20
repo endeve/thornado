@@ -19,12 +19,13 @@ CONTAINS
 
 
   SUBROUTINE DescribeError_MF &
-    ( iErr, Message_Option, Int_Option, Real_Option )
+    ( iErr, Message_Option, Int_Option, Real_Option, Char_Option )
 
     INTEGER,          INTENT(in)           :: iErr
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Message_Option
     INTEGER,          INTENT(in), OPTIONAL :: Int_Option(:)
     REAL(DP),         INTENT(in), OPTIONAL :: Real_Option(:)
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Char_Option(:)
 
     CHARACTER(LEN=128) :: Message
 
@@ -119,6 +120,34 @@ CONTAINS
         WRITE(*,'(2x,A,I2.2)') 'thornado: nDimsX: ', Int_Option(1)
         WRITE(*,'(2x,A,I2.2)') 'amrex:    nDimsX: ', Int_Option(2)
         WRITE(*,'(2x,A)') 'Check DIM parameter in GNUmakefile.'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 105 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+        WRITE(*,'(2x,A,A)') '-----------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') &
+          'MODULE: MF_TimeSteppingModule'
+        WRITE(*,'(2x,A)') &
+          'SUBROUTINE: Initialize_IMEX_RK'
+        WRITE(*,*)
+        WRITE(*,'(2x,A,A)') &
+          'Unknown Time Stepping Scheme: ', TRIM( Char_Option(1) )
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'Available Options'
+        WRITE(*,'(2x,A)') '-----------------'
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') '  BackwardEuler'
+        WRITE(*,'(2x,A)') '  SSPRK1'
+        WRITE(*,'(2x,A)') '  SSPRK2'
+        WRITE(*,'(2x,A)') '  SSPRK3'
+        WRITE(*,'(2x,A)') '  IMEX_ARS_111'
+        WRITE(*,'(2x,A)') '  IMEX_PDARS'
         WRITE(*,*)
 
         CALL thornado_abort
