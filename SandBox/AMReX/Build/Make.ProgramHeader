@@ -1,0 +1,9 @@
+# THORNADO_DIR/SandBox/AMReX/Modules/ProgramHeader
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/ProgramHeader
+f90EXE_sources  += InputParsingModule.f90
+
+# THORNADO_DIR/Modules/ProgramHeader
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/ProgramHeader
+F90EXE_sources  += ProgramHeaderModule.F90

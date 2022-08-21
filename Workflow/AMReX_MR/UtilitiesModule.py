@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import gc
 
 def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
 
@@ -12,10 +13,15 @@ def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
 
     if ( isfile( FileOrDirName ) or isdir( FileOrDirName ) ):
 
+        if ( isdir( FileOrDirName ) and FileOrDirName[-1] != '/' ):
+            FileOrDirName += '/'
+
         YN = input( '{:} exists. overwrite? (Y/N): '.format( FileOrDirName ) )
 
-        if not YN == 'Y':
-
+        if YN == 'Y' :
+            print( 'Overwriting' )
+            OW = True
+        else:
             print( 'Not overwriting' )
             OW = False
 
@@ -44,8 +50,10 @@ def GetFileArray( PlotFileDataDirectory, PlotFileBaseName ):
 
     if not FileArray.shape[0] > 0:
 
-        msg = 'No files found in {:s}\n'.format( PlotFileDataDirectory )
-        msg += 'Double check the path\n'
+        msg = 'No files found in path {:s}\n'.format( PlotFileDataDirectory )
+        msg += 'Double check the path.\n'
+        msg += 'PlotFileBaseName: {:s}\n'.format( PlotFileBaseName )
+        msg += 'Is it plt_ or just plt?\n'
 
         assert ( FileArray.shape[0] > 0 ), msg
 
@@ -84,7 +92,7 @@ def ChoosePlotFile \
         assert arg, msg
 
     # Remove "/" at end of filename, if present
-    if ( File[-1] == '/' ): File = File[:-1]
+    if File[-1] == '/' : File = np.copy( File[:-1] )
 
     if Verbose: print( File )
 
@@ -146,16 +154,16 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     # --- Get Mesh ---
 
-    xL = xL.to_ndarray()
-    xU = xU.to_ndarray()
+    xL = np.copy( xL.to_ndarray() )
+    xU = np.copy( xU.to_ndarray() )
 
-    X1 = CoveringGrid['X1_C'].to_ndarray()[:,0,0]
-    X2 = CoveringGrid['X2_C'].to_ndarray()[0,:,0]
-    X3 = CoveringGrid['X3_C'].to_ndarray()[0,0,:]
+    X1 = np.copy( CoveringGrid['X1_C'].to_ndarray()[:,0,0] )
+    X2 = np.copy( CoveringGrid['X2_C'].to_ndarray()[0,:,0] )
+    X3 = np.copy( CoveringGrid['X3_C'].to_ndarray()[0,0,:] )
 
-    dX1 = CoveringGrid['dX1'].to_ndarray()[:,0,0]
-    dX2 = CoveringGrid['dX2'].to_ndarray()[0,:,0]
-    dX3 = CoveringGrid['dX3'].to_ndarray()[0,0,:]
+    dX1 = np.copy( CoveringGrid['dX1'].to_ndarray()[:,0,0] )
+    dX2 = np.copy( CoveringGrid['dX2'].to_ndarray()[0,:,0] )
+    dX3 = np.copy( CoveringGrid['dX3'].to_ndarray()[0,0,:] )
 
     if nDimsX < 3:
         X3  = X3 [0] * np.ones( 1, np.float64 )
@@ -246,6 +254,21 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         Data = CoveringGrid[Field].to_ndarray()
         DataUnits = 'erg/cm**3'
 
+    elif Field == 'AF_Ye':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = ''
+
+    elif Field == 'AF_T':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = 'K'
+
+    elif Field == 'AF_S':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = 'kb/baryon'
+
     elif Field == 'AF_Cs':
 
         Data = CoveringGrid[Field].to_ndarray()
@@ -281,6 +304,11 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnits = ''
+
+    elif Field == 'GF_Beta_1':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = 'km/s'
 
     elif Field == 'DF_TCI':
 
@@ -565,6 +593,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  GF_Gm_33' )
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
+        print( '  GF_Beta1' )
         print( '  DF_TCI' )
         print( '  pr4' )
         print( '  RelativisticBernoulliConstant' )
@@ -581,17 +610,20 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     if not UsePhysicalUnits: DataUnits = '[]'
     else:                    DataUnits = '[' + DataUnits + ']'
 
+    del ds, CoveringGrid
+    gc.collect()
+
     if nDimsX == 1:
 
-        Data = Data[:,0,0]
+        Data = np.copy( Data[:,0,0] )
 
     elif nDimsX == 2:
 
-        Data = Data[:,:,0]
+        Data = np.copy( Data[:,:,0] )
 
     else:
 
-        Data = Data[:,:,iX3_CS]
+        Data = np.copy( Data[:,:,iX3_CS] )
 
     if ReturnTime and ReturnMesh:
 

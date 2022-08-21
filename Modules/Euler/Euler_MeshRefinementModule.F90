@@ -1,6 +1,6 @@
 MODULE Euler_MeshRefinementModule
 
-#if defined( THORNADO_USE_AMREX ) && defined( REFINE_MESH )
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
   USE amrex_DGInterfaceModule, ONLY: &
     amrex_InitializeMeshRefinement_DG, &
@@ -370,7 +370,7 @@ CONTAINS
 
     END IF ! nDimsX .GT. 2
 
-#if defined( THORNADO_USE_AMREX ) && defined( REFINE_MESH )
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_InitializeMeshRefinement_DG &
            ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
@@ -386,7 +386,7 @@ CONTAINS
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
-#ifdef THORNADO_USE_AMREX
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_FinalizeMeshRefinement_DG
 

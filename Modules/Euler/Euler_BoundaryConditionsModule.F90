@@ -706,12 +706,12 @@ CONTAINS
           DO iNX1 = 1, nNodesX(1)
 
             iNX   = NodeNumberX( iNX1, iNX2, iNX3 )
-            iNX_0 = NodeNumberX( 1,       iNX2, iNX3 )
+            iNX_0 = NodeNumberX( 1   , iNX2, iNX3 )
 
-            D_0 = U(iNX_0,1,iX2,iX3,iCF_D)
-            E_0 = U(iNX_0,1,iX2,iX3,iCF_E)
+            D_0 = U(iNX_0,iX_B0(1),iX2,iX3,iCF_D)
+            E_0 = U(iNX_0,iX_B0(1),iX2,iX3,iCF_E)
 
-            R_0 = X1_C(1) + dX1(1) * eta_q(1)
+            R_0 = X1_C(iX_B0(1)) + dX1(iX_B0(1)) * eta_q(1)
 
             R_q = NodeCoordinate &
                     ( X1_C( iX_B0(1) - iX1 ), dX1( iX_B0(1) - iX1 ), &

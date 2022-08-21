@@ -92,8 +92,8 @@ MODULE RadiationFieldsModule
   INTEGER, PUBLIC, PARAMETER :: nDR             = 5
 
   CHARACTER(32), DIMENSION(nDR), PUBLIC, PARAMETER :: &
-    namesDR = [ 'Outer Iterations                ', &
-                'Inner Iterations                ', &
+    namesDR = [ 'Inner Iterations                ', &
+                'Outer Iterations                ', &
                 'Positivity Limiter Theta 1      ', &
                 'Positivity Limiter Theta 2      ', &
                 'Positivity Limiter Energy Change' ]
@@ -104,6 +104,10 @@ MODULE RadiationFieldsModule
 
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
+  PUBLIC :: SetUnitsRadiationFields
+  PUBLIC :: DescribeRadiationFields_Conserved
+  PUBLIC :: DescribeRadiationFields_Primitive
+  PUBLIC :: SetNumberOfSpecies
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET( LeptonNumber )
@@ -114,38 +118,17 @@ MODULE RadiationFieldsModule
 CONTAINS
 
 
-  SUBROUTINE CreateRadiationFields &
-    ( nX, swX, nE, swE, nSpecies_Option, Verbose_Option )
+  SUBROUTINE SetNumberOfSpecies( nS )
 
-    INTEGER, INTENT(in) :: nX(3), swX(3)
-    INTEGER, INTENT(in) :: nE,    swE
-    INTEGER, INTENT(in), OPTIONAL :: nSpecies_Option
-    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+    INTEGER, INTENT(in) :: nS
 
-    IF( PRESENT( nSpecies_Option ) )THEN
-      nSpecies = nSpecies_Option
-    ELSE
-      nSpecies = 1
-    END IF
-
-    IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
-    ELSE
-      Verbose = .TRUE.
-    END IF
+    nSpecies = nS
 
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A5,A29,I2.2)') &
         '', 'Radiation Fields, nSpecies = ', nSpecies
     END IF
-
-    CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
-    CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
-    CALL CreateRadiationFields_Auxiliary ( nX, swX, nE, swE )
-    CALL CreateRadiationFields_Diagnostic( nX, swX )
-
-    CALL SetUnitsRadiationFields
 
     LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
 
@@ -155,6 +138,38 @@ CONTAINS
     !$ACC UPDATE DEVICE( LeptonNumber )
 #endif
 
+  END SUBROUTINE SetNumberOfSpecies
+
+
+  SUBROUTINE CreateRadiationFields &
+    ( nX, swX, nE, swE, nSpecies_Option, Verbose_Option )
+
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+    INTEGER, INTENT(in) :: nE,    swE
+    INTEGER, INTENT(in), OPTIONAL :: nSpecies_Option
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+
+    INTEGER :: nS
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    nS = 1
+    IF( PRESENT( nSpecies_Option ) ) &
+      nS = nSpecies_Option
+
+    CALL SetNumberOfSpecies( nS )
+
+    CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Auxiliary ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Diagnostic( nX, swX )
+
+    CALL SetUnitsRadiationFields
+
   END SUBROUTINE CreateRadiationFields
 
 
@@ -163,16 +178,7 @@ CONTAINS
     INTEGER, INTENT(in) :: nX(3), swX(3)
     INTEGER, INTENT(in) :: nE,    swE
 
-    INTEGER :: iCR
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
-      WRITE(*,*)
-      DO iCR = 1, nCR
-        WRITE(*,'(A5,A)') '', TRIM( namesCR(iCR) )
-      END DO
-    END IF
+    CALL DescribeRadiationFields_Conserved( Verbose )
 
     ALLOCATE &
       ( uCR(1:nDOF, &
@@ -193,21 +199,32 @@ CONTAINS
   END SUBROUTINE CreateRadiationFields_Conserved
 
 
+  SUBROUTINE DescribeRadiationFields_Conserved( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iCR
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
+      WRITE(*,*)
+      DO iCR = 1, nCR
+        WRITE(*,'(A5,A32)') '', TRIM( namesCR(iCR) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeRadiationFields_Conserved
+
+
   SUBROUTINE CreateRadiationFields_Primitive( nX, swX, nE, swE )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
     INTEGER, INTENT(in) :: nE,    swE
 
-    INTEGER :: iPR
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Primitive)'
-      WRITE(*,*)
-      DO iPR = 1, nPR
-        WRITE(*,'(A5,A)') '', TRIM( namesPR(iPR) )
-      END DO
-    END IF
+    CALL DescribeRadiationFields_Primitive( Verbose )
 
     ALLOCATE &
       ( uPR(1:nDOF, &
@@ -226,6 +243,26 @@ CONTAINS
 #endif
 
   END SUBROUTINE CreateRadiationFields_Primitive
+
+
+  SUBROUTINE DescribeRadiationFields_Primitive( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iPR
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Primitive)'
+      WRITE(*,*)
+      DO iPR = 1, nPR
+        WRITE(*,'(A5,A34)') '', TRIM( namesPR(iPR) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeRadiationFields_Primitive
 
 
   SUBROUTINE CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
