@@ -86,19 +86,24 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
-                 ConstantDensity_Option, Angle_Option, RiemannProblemName_Option )
+                 ConstantDensity_Option, Angle_Option, RiemannProblemName_Option, &
+                 MMBlastWaveB0_Option, MMBlastWavePhi_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWaveB0_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWavePhi_Option
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWaveX1'
     CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
     LOGICAL           :: SmoothProfile = .TRUE.
     LOGICAL           :: ConstantDensity = .TRUE.
     REAL(DP)          :: Angle = Pi / Four
+    REAL(DP)          :: MMBlastWaveB0 = 0.5_DP
+    REAL(DP)          :: MMBlastWavePhi = 0.0_DP
 
     uPM(:,:,:,:,iPM_Ne) = Zero
 
@@ -116,6 +121,12 @@ CONTAINS
 
     IF( PRESENT( RiemannProblemName_Option ) ) &
       RiemannProblemName = TRIM( RiemannProblemName_Option )
+
+    IF( PRESENT( MMBlastWaveB0_Option ) ) &
+      MMBlastWaveB0 = MMBlastWaveB0_Option
+
+    IF( PRESENT( MMBlastWavePhi_Option ) ) &
+      MMBlastWavePhi = MMBlastWavePhi_Option
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -146,6 +157,11 @@ CONTAINS
 
         CALL InitializeFields_Riemann1D &
                ( TRIM( RiemannProblemName ) )
+
+      CASE( 'MMBlastWave2D' )
+
+        CALL InitializeFields_MMBlastWave2D &
+               ( MMBlastWaveB0, MMBlastWavePhi )
 
       CASE DEFAULT
 
@@ -1488,6 +1504,91 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Riemann1D
+
+
+  SUBROUTINE InitializeFields_MMBlastWave2D &
+               ( MMBlastWaveB0, MMBlastWavePhi )
+
+    REAL(DP), INTENT(in) :: MMBlastWaveB0, MMBlastWavePhi
+
+    INTEGER iX1, iX2, iX3
+    INTEGER iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+    REAL(DP) :: B0, Phi
+
+    ! --- 2D cylindrical blast wave in Cartesian coordinates ---
+    ! --- from Section 4.4 of Mattia & Mignone, 2022, MRNAS, ---
+    ! --- 510, 481-499                                       ---
+
+    B0 = MMBlastWaveB0
+    Phi = MMBlastWavePhi
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        IF( SQRT( X1**2 + X2**2 ) .LE. 0.8_DP ) THEN
+
+          uPM(iNodeX,iX1,iX2,iX3,iPM_D   ) = 0.01_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ) = 0.0_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ) = 0.0_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ) = 0.0_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_E   ) = One / ( Gamma_IDEAL - One )
+
+        ELSE
+
+          uPM(iNodeX,iX1,iX2,iX3,iPM_D   ) = 1.0d-4
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ) = 0.0_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ) = 0.0_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ) = 0.0_DP
+          uPM(iNodeX,iX1,iX2,iX3,iPM_E   ) = 5.0d-3 / ( Gamma_IDEAL - One )
+
+        END IF
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = B0 * COS( Phi )
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = B0 * SIN( Phi )
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = 0.0_DP
+        uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_E ), &
+               uPM(:,iX1,iX2,iX3,iPM_Ne), uAM(:,iX1,iX2,iX3,iAM_P) )
+
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_MMBlastWave2D
 
 
 END MODULE InitializationModule

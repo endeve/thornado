@@ -81,7 +81,10 @@ PROGRAM ApplicationDriver
   REAL(DP) :: DampingParameter = 0.0_DP
   REAL(DP) :: Angle = 0.0_DP
 
-  ProgramName = 'Riemann1D'
+  REAL(DP) :: MMBlastWaveB0  = 0.5_DP
+  REAL(DP) :: MMBlastWavePhi = 0.0_DP
+
+  ProgramName = 'MMBlastWave2D'
   AdvectionProfile = 'MagneticSineWaveX1'
 
   swX               = [ 0, 0, 0 ]
@@ -382,7 +385,7 @@ PROGRAM ApplicationDriver
           Gamma = 5.0_DP / 3.0_DP
           t_end = One
 
-          nX  = [ 40, 1, 1 ]
+          nX  = [ 400, 1, 1 ]
 
         CASE( 'ShockTube1' )
 
@@ -428,6 +431,27 @@ PROGRAM ApplicationDriver
 
       END SELECT
 
+    CASE( 'MMBlastWave2D' )
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      UseDivergenceCleaning = .FALSE.
+      DampingParameter = 0.0_DP
+
+      MMBlastWaveB0  = 0.5_DP
+      MMBlastWavePhi = 0.0_DP
+
+      Gamma = 4.0_DP / 3.0_DP
+      t_end = 4.0_DP
+      bcX = [ 2, 2, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 200, 200, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ -6.0_DP, -6.0_DP, 0.0_DP ]
+      xR  = [  6.0_DP,  6.0_DP, 1.0_DP ]
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -438,6 +462,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  Cleaning1D'
       WRITE(*,'(A)')     '  Cleaning2D'
       WRITE(*,'(A)')     '  Riemann1D'
+      WRITE(*,'(A)')     '  MMBlastWave2D'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -515,7 +540,11 @@ PROGRAM ApplicationDriver
            ConstantDensity_Option &
              = ConstantDensity, &
            Angle_Option &
-             = Angle )
+             = Angle, &
+           MMBlastWaveB0_Option &
+             = MMBlastWaveB0, &
+           MMBlastWavePhi_Option &
+             = MMBlastWavePhi )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
