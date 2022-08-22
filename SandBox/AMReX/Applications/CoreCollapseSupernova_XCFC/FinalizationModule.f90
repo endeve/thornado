@@ -52,6 +52,7 @@ MODULE FinalizationModule
     DestroyFields_Euler_MF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
+    MF_uPR, &
     DestroyFields_TwoMoment_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     FinalizeSlopeLimiter_Euler_MF
@@ -65,6 +66,8 @@ MODULE FinalizationModule
     Finalize_IMEX_RK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
+  USE MF_TwoMoment_UtilitiesModule, ONLY: &
+    ComputeFromConserved_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -74,13 +77,11 @@ MODULE FinalizationModule
   USE MF_TwoMoment_TallyModule, ONLY: &
     ComputeTally_TwoMoment_MF, &
     FinalizeTally_TwoMoment_MF
-  USE MF_TwoMoment_TallyModule, ONLY: &
-    ComputeTally_TwoMoment_MF, &
-    FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
     dt, &
+    dt_TM, &
     t_old, &
     t_new, &
     lo_bc, &
@@ -109,22 +110,28 @@ CONTAINS
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
+    CALL ComputeFromConserved_TwoMoment_MF &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
              MF_uCF_Option = MF_uCF, &
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
-             MF_uDF_Option = MF_uDF )
+             MF_uDF_Option = MF_uDF, &
+             MF_uCR_Option = MF_uCR, &
+             MF_uPR_Option = MF_uPR )
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 0, &
+             iWriteFields_uCR = 1, &
              pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P )
+             pMF_uCF_Option = MF_uCF % P, &
+             pMF_uCR_Option = MF_uCR % P )
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
 
@@ -144,9 +151,10 @@ CONTAINS
 
     CALL FinalizeTally_Euler_MF
 
-    DEALLOCATE( t_new )
-    DEALLOCATE( t_old )
-    DEALLOCATE( dt )
+    DEALLOCATE( t_new  )
+    DEALLOCATE( t_old  )
+    DEALLOCATE( dt_TM  )
+    DEALLOCATE( dt     )
     DEALLOCATE( StepNo )
 
     CALL FinalizeSlopeLimiter_TwoMoment_MF

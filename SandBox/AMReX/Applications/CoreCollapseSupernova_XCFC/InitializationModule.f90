@@ -183,6 +183,7 @@ MODULE InitializationModule
     StepNo, &
     iRestart, &
     dt, &
+    dt_TM, &
     t_old, &
     t_new, &
     t_wrt, &
@@ -360,11 +361,13 @@ CONTAINS
 
     ALLOCATE( StepNo(0:nMaxLevels-1) )
     ALLOCATE( dt    (0:nMaxLevels-1) )
+    ALLOCATE( dt_TM (0:nMaxLevels-1) )
     ALLOCATE( t_old (0:nMaxLevels-1) )
     ALLOCATE( t_new (0:nMaxLevels-1) )
 
     StepNo = 0
     dt     = 0.0_DP
+    dt_TM  = 0.0_DP
     t_new  = 0.0_DP
 
     CALL InitializeTally_Euler_MF
@@ -375,7 +378,7 @@ CONTAINS
            ( Scheme, &
              EvolveEuler_Option     = .TRUE., &
              EvolveTwoMoment_Option = .TRUE., &
-             Verbose_Option         = amrex_parallel_ioprocessor() )
+             Verbose_Option         = .FALSE.)!amrex_parallel_ioprocessor() )
 
     IF( iRestart .LT. 0 )THEN
 
@@ -390,6 +393,9 @@ CONTAINS
 
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL ComputeFromConserved_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -410,6 +416,9 @@ CONTAINS
 
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL ComputeFromConserved_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 

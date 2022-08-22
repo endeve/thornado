@@ -126,7 +126,7 @@ MODULE InputParsingModule
   INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
   REAL(DP), ALLOCATABLE :: TagCriteria(:)
 
-  REAL(DP), ALLOCATABLE :: dt   (:)
+  REAL(DP), ALLOCATABLE :: dt   (:), dt_TM(:)
   REAL(DP), ALLOCATABLE :: t_old(:)
   REAL(DP), ALLOCATABLE :: t_new(:)
   CHARACTER(:), ALLOCATABLE :: PlotFileBaseName
