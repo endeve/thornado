@@ -335,7 +335,7 @@ CONTAINS
 
         IF( ErrorExists .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF'
+          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Fluid)'
           WRITE(*,*) 'iX_B0: ', iX_B0
           WRITE(*,*) 'iX_E0: ', iX_E0
 
@@ -420,7 +420,7 @@ CONTAINS
 
         IF( ErrorExists .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF'
+          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Radiation)'
           WRITE(*,*) 'iZ_B0: ', iZ_B0
           WRITE(*,*) 'iZ_E0: ', iZ_E0
 
@@ -438,12 +438,12 @@ CONTAINS
 
               iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
-              WRITE(*,*) ' PF_D: ', PF(iNX,iZ2,iZ3,iZ4,iPF_D )
-              WRITE(*,*) 'PF_V1: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V1)
-              WRITE(*,*) 'PF_V2: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V2)
-              WRITE(*,*) 'PF_V3: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V3)
-              WRITE(*,*) ' PF_E: ', PF(iNX,iZ2,iZ3,iZ4,iPF_E )
-              WRITE(*,*) 'PF_Ne: ', PF(iNX,iZ2,iZ3,iZ4,iPF_Ne)
+              WRITE(*,'(2x,A,ES24.16E3)') ' PF_D: ', PF(iNX,iZ2,iZ3,iZ4,iPF_D )
+              WRITE(*,'(2x,A,ES24.16E3)') 'PF_V1: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V1)
+              WRITE(*,'(2x,A,ES24.16E3)') 'PF_V2: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V2)
+              WRITE(*,'(2x,A,ES24.16E3)') 'PF_V3: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V3)
+              WRITE(*,'(2x,A,ES24.16E3)') ' PF_E: ', PF(iNX,iZ2,iZ3,iZ4,iPF_E )
+              WRITE(*,'(2x,A,ES24.16E3)') 'PF_Ne: ', PF(iNX,iZ2,iZ3,iZ4,iPF_Ne)
 
               CALL DescribeError_Euler &
                      ( iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS) )
