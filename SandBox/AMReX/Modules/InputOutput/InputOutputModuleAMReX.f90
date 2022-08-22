@@ -411,7 +411,7 @@ CONTAINS
         WRITE(iZ1C,'(I3.3)') iZ1
         WRITE(iSC ,'(I3.3)') iS
 
-        ShortNamesCR_Z = ShortNamesCR(iFd) // '_' // iZ1C // '_' // iSC
+        ShortNamesCR_Z = TRIM( ShortNamesCR(iFd) ) // '_' // iZ1C // '_' // iSC
 
         CALL amrex_string_build &
                ( VarNames( iFd + ( iZ1 - 1 ) * nCR &
@@ -434,7 +434,7 @@ CONTAINS
         WRITE(iZ1C,'(I3.3)') iZ1
         WRITE(iSC ,'(I3.3)') iS
 
-        ShortNamesPR_Z = ShortNamesPR(iFd) // '_' // iZ1C // '_' // iSC
+        ShortNamesPR_Z = TRIM( ShortNamesPR(iFd) ) // '_' // iZ1C // '_' // iSC
 
         CALL amrex_string_build &
                ( VarNames( iFd + ( iZ1 - 1 ) * nPR &
