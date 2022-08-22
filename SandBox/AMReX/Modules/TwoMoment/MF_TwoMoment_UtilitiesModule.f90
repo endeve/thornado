@@ -66,7 +66,7 @@ MODULE MF_TwoMoment_UtilitiesModule
     iGF_Beta_2, &
     iGF_Beta_3
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
-    ComputePrimitive_TwoMoment
+    ComputePrimitive_TwoMoment_Vector_Richardson
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
     ComputeFromConserved_Euler_Relativistic
@@ -219,6 +219,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: CR(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PR(:,:,:,:,:,:,:)
+    REAL(DP) :: PR_D(1), PR_I1(1), PR_I2(1), PR_I3(1)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLo_MF(4), iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -387,27 +388,33 @@ CONTAINS
 
           iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
-          CALL ComputePrimitive_TwoMoment &
-               ( CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
-                 CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-                 CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-                 CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                 PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
-                 PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
-                 PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
-                 PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
-                 PF(iNX    ,iZ2,iZ3,iZ4,iPF_V1), &
-                 PF(iNX    ,iZ2,iZ3,iZ4,iPF_V2), &
-                 PF(iNX    ,iZ2,iZ3,iZ4,iPF_V3), &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
-                 Zero, Zero, Zero, &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Alpha), &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_1), &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_2), &
-                 G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_3), &
-                 iErr = iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS) )
+          CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+               ( [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)], &
+                 [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)], &
+                 [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)], &
+                 [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)], &
+                 PR_D, PR_I1, PR_I2, PR_I3, &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)], &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)], &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS)], &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)], &
+                 [PF(iNX    ,iZ2,iZ3,iZ4,iPF_V1)], &
+                 [PF(iNX    ,iZ2,iZ3,iZ4,iPF_V2)], &
+                 [PF(iNX    ,iZ2,iZ3,iZ4,iPF_V3)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33)], &
+                 !Zero, Zero, Zero, &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Alpha )], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_1)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_2)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_3)], &
+                 [1] )
+
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = PR_D (1)
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = PR_I1(1)
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = PR_I2(1)
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = PR_I3(1)
 
           ErrorExists = ErrorExists + iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS)
 
