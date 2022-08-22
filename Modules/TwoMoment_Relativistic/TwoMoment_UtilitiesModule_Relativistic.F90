@@ -67,7 +67,8 @@ CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23, alp, B_u_1, B_u_2, B_u_3, nIterations_Option )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23, &
+      alp, B_u_1, B_u_2, B_u_3, nIterations_Option, iErr )
 
     REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(out) :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
@@ -75,6 +76,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23
     REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     INTEGER, INTENT(out), OPTIONAL :: nIterations_Option
+    INTEGER, INTENT(out), OPTIONAL :: iErr
 
     ! --- Parameters ---
 
@@ -258,6 +260,9 @@ CONTAINS
       PRINT*, "  I_u_2 = ", I_u_2
       PRINT*, "  I_u_3 = ", I_u_3
       PRINT*
+
+      IF( PRESENT( iErr ) ) iErr = 99
+
     END IF
 
   END SUBROUTINE ComputePrimitive_TwoMoment
