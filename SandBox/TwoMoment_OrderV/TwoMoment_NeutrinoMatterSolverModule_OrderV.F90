@@ -49,8 +49,18 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     iNuE_Bar, &
     LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+#if   defined( TWOMOMENT_ORDER_1 )
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE
+#elif   defined( TWOMOMENT_ORDER_V )
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeTemperatureFromSpecificInternalEnergy_TABLE
+#elif defined( TWOMOMENT_RELATIVISTIC )
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
+    ComputeSpecificInternalEnergy_TABLE, &
+    ComputePressure_TABLE
+#endif
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions_DG, &
     ComputeNeutrinoOpacities_EC, &
@@ -64,8 +74,16 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem
+#if   defined( TWOMOMENT_ORDER_1 )
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeEddingtonTensorComponents_dd
+#elif   defined( TWOMOMENT_ORDER_V )
+  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+    ComputeEddingtonTensorComponents_dd
+#elif defined( TWOMOMENT_RELATIVISTIC )
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+    ComputeEddingtonTensorComponents_dd
+#endif
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
@@ -1030,7 +1048,10 @@ CONTAINS
     REAL(DP), DIMENSION(       LWORK_inner,nX_G) :: WORK_inner
     REAL(DP), DIMENSION(n_FP_inner,        nX_G) :: TAU_inner
     REAL(DP), DIMENSION(           M_inner,nX_G) :: Alpha_inner
+#if   defined( TWOMOMENT_RELATIVISTIC )
+    REAL(DP) :: P(SIZE(D))
 
+#endif
     ITERATE_outer = .TRUE.
     ITERATE_inner = .TRUE.
 
@@ -1080,7 +1101,12 @@ CONTAINS
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
-    ! --- CALL InitializeRHS_Relativistic
+    CALL ComputePressure_TABLE & 
+           ( D, T, Y, P )
+
+    CALL InitializeRHS_Relativistic &
+           ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
 #endif
 
@@ -1163,7 +1189,11 @@ CONTAINS
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
-        ! --- CALL ComputeNeutrinoRHS_Relativistic
+        CALL ComputeNeutrinoRHS_Relativistic &
+               ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
 #endif
 
@@ -1198,7 +1228,11 @@ CONTAINS
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
-        ! --- CALL UpdateNeutrinoRHS_Relativistic
+        CALL UpdateNeutrinoRHS_Relativistic &
+               ( ITERATE_inner, FVECm_inner, GVECm_inner, &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
 #endif
 
@@ -1241,7 +1275,12 @@ CONTAINS
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
-      ! --- CALL ComputeMatterRHS_Relativistic
+      CALL ComputeMatterRHS_Relativistic &
+             ( ITERATE_outer, FVECm_outer, GVECm_outer, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, & 
+               D, E, P, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
 #endif
 
@@ -1276,7 +1315,10 @@ CONTAINS
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
-      ! --- CALL UpdateMatterRHS_Relativistic
+      CALL UpdateMatterRHS_Relativistic &
+             ( ITERATE_outer, FVECm_outer, GVECm_outer, &
+               D, Y, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #endif
 
@@ -1285,6 +1327,13 @@ CONTAINS
       CALL UpdateTemperature_Packed &
              ( D, E, Y, T, &
                ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+
+
+#if   defined( TWOMOMENT_RELATIVISTIC )
+
+      CALL ComputePressure_TABLE & 
+           ( D, T, Y, P )
+#endif
 
       ! --- Check Convergence (outer) ---
 
@@ -2091,6 +2140,19 @@ CONTAINS
   END SUBROUTINE InitializeRHS_OrderV
 
 
+  SUBROUTINE InitializeRHS_Relativistic &
+    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, P, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
+
+
+  END SUBROUTINE InitializeRHS_Relativistic 
+
+
   SUBROUTINE ComputeDnuNorm( MASK, Dnu )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
@@ -2298,6 +2360,22 @@ CONTAINS
 
   END SUBROUTINE ComputeMatterRHS_OrderV
 
+
+  SUBROUTINE ComputeMatterRHS_Relativistic &
+    ( MASK, Fm, Gm, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      D, E, P, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: D, E, P, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+  END SUBROUTINE ComputeMatterRHS_Relativistic 
 
   SUBROUTINE ComputeNeutrinoRHS_OrderV &
     ( MASK, Fm, Gm, dt, &
@@ -2518,6 +2596,23 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoRHS_OrderV
 
 
+  SUBROUTINE ComputeNeutrinoRHS_Relativistic &
+    ( MASK, Fm, Gm, dt, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3  )
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP),                   INTENT(in)    :: dt
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
+
+
+
+  END SUBROUTINE ComputeNeutrinoRHS_Relativistic
+
   SUBROUTINE UpdateMatterRHS_OrderV &
     ( MASK, Fm, Gm, Y, E, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -2586,6 +2681,17 @@ CONTAINS
   END SUBROUTINE UpdateMatterRHS_OrderV
 
 
+  SUBROUTINE UpdateMatterRHS_Relativistic &
+    ( MASK, Fm, Gm, D, Y, E, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: D, Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+  
+  END SUBROUTINE UpdateMatterRHS_Relativistic 
+
   SUBROUTINE UpdateNeutrinoRHS_OrderV &
     ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -2632,6 +2738,19 @@ CONTAINS
 
   END SUBROUTINE UpdateNeutrinoRHS_OrderV
 
+
+  SUBROUTINE UpdateNeutrinoRHS_Relativistic &
+    ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
+
+
+  END SUBROUTINE UpdateNeutrinoRHS_Relativistic 
 
   SUBROUTINE SolveLS_FP &
     ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha, TAU, LWORK, WORK )
