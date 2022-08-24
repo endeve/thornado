@@ -275,8 +275,7 @@ CONTAINS
     INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
     INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
 
-
-  ! --- Parameters ---
+    ! --- Parameters ---
 
     INTEGER,  PARAMETER :: M = 2
     INTEGER,  PARAMETER :: MaxIterations = 1000
@@ -303,7 +302,6 @@ CONTAINS
     INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
 
     nZ = SIZE( N, 1 )
-
 
     ALLOCATE( FVEC(4,M,nZ) )
     ALLOCATE( GVEC(4,M,nZ) )
@@ -359,13 +357,11 @@ CONTAINS
 
     END DO
 
-
     k = 0
     DO WHILE( ANY( ITERATE ) .AND. k < MaxIterations )
 
       k = k + 1
       Mk = MIN( M, k )
-
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -384,7 +380,8 @@ CONTAINS
       !$OMP          B_d_1, B_d_2, B_d_3, W, DT )
 #endif
       DO iZ = 1, nZ
-        IF ( ITERATE(iZ) ) THEN
+
+        IF( ITERATE(iZ) )THEN
 
           iX = PositionIndexZ(iZ)
 
@@ -392,26 +389,36 @@ CONTAINS
           B_d_2 = Gm_dd_22(iX) * B_u_2(iX)
           B_d_3 = Gm_dd_33(iX) * B_u_3(iX)
 
-          DT = 1.0_DP / ( B_d_1 * V_u_1(iX) + B_d_2 * V_u_2(iX) + B_d_3 * V_u_3(iX) - alp(iX) )
+          DT &
+            = 1.0_DP &
+                / ( B_d_1 * V_u_1(iX) + B_d_2 * V_u_2(iX) + B_d_3 * V_u_3(iX) &
+                    - alp(iX) )
 
+          I_d_1 =   DT * ( B_d_2 * V_u_2(iX) + B_d_3 * V_u_3(iX) - alp(iX) ) &
+                      * Gm_dd_11(iX) * I_u_1(iZ) &
+                  - DT * ( B_d_1 * V_u_2(iX) * Gm_dd_22(iX) ) * I_u_2(iZ) &
+                  - DT * ( B_d_1 * V_u_3(iX) * Gm_dd_33(iX) ) * I_u_3(iZ)
 
+          I_d_2 =   DT * ( B_d_1 * V_u_1(iX) + B_d_3 * V_u_3(iX) - alp(iX) ) &
+                      * Gm_dd_22(iX) * I_u_2(iZ) &
+                  - DT * B_d_2 * V_u_1(iX) * Gm_dd_11(iX) * I_u_1(iZ) &
+                  - DT * B_d_2 * V_u_3(iX) * Gm_dd_33(iX) * I_u_3(iZ)
 
-          I_d_1 = DT * ( B_d_2 * V_u_2(iX) + B_d_3 * V_u_3(iX) - alp(iX) ) * Gm_dd_11(iX) * I_u_1(iZ) &
-          - DT * ( B_d_1 * V_u_2(iX) *Gm_dd_22(iX) ) * I_u_2(iZ) - DT * ( B_d_1 * V_u_3(iX) * Gm_dd_33(iX) ) * I_u_3(iZ)
-          I_d_2 = DT * ( B_d_1 * V_u_1(iX) + B_d_3 * V_u_3(iX) - alp(iX) ) * Gm_dd_22(iX) * I_u_2(iZ) &
-          - DT * ( B_d_2 * V_u_1(iX) * Gm_dd_11(iX) ) * I_u_1(iZ) - DT * ( Gm_dd_33(iX) * I_u_3(iZ) * B_d_2 * V_u_3(iX) )
-          I_d_3 = DT * ( B_d_1 * V_u_1(iX) + B_d_2 * V_u_2(iX) - alp(iX) ) * Gm_dd_33(iX) * I_u_3(iZ) &
-          - DT * ( Gm_dd_11(iX) * I_u_1(iZ) * B_d_3 * V_u_1(iX) ) - DT * ( Gm_dd_22(iX) * I_u_2(iZ) * B_d_3 * V_u_2(iX) )
+          I_d_3 =   DT * ( B_d_1 * V_u_1(iX) + B_d_2 * V_u_2(iX) - alp(iX) ) &
+                      * Gm_dd_33(iX) * I_u_3(iZ) &
+                  - DT * Gm_dd_11(iX) * I_u_1(iZ) * B_d_3 * V_u_1(iX) &
+                  - DT * Gm_dd_22(iX) * I_u_2(iZ) * B_d_3 * V_u_2(iX)
 
-          UVEC(iPR_D ,iZ) = D    (iZ)
+          UVEC(iPR_D ,iZ) = D(iZ)
           UVEC(iPR_I1,iZ) = I_d_1
           UVEC(iPR_I2,iZ) = I_d_2
           UVEC(iPR_I3,iZ) = I_d_3
 
           CALL ComputeEddingtonTensorComponents_dd &
-             ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
-               alp(iX), B_u_1(iX), B_u_2(iX), B_u_3(iX), V_u_1(iX), V_u_2(iX), V_u_3(iX), k_dd   )
-
+                 ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
+                   Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
+                   alp(iX), B_u_1(iX), B_u_2(iX), B_u_3(iX), &
+                   V_u_1(iX), V_u_2(iX), V_u_3(iX), k_dd   )
 
           absV = SQRT(   Gm_dd_11(iX) * V_u_1(iX) * V_u_1(iX) &
                        + Gm_dd_22(iX) * V_u_2(iX) * V_u_2(iX) &
@@ -419,18 +426,13 @@ CONTAINS
 
           W = 1.0_DP / SQRT( 1.0_DP - absV**2)
 
-
-
-
           Omega = 1.0_DP / ( absV + W )
-
 
           vI =   V_u_1(iX) * UVEC(iPR_I1,iZ) &
                + V_u_2(iX) * UVEC(iPR_I2,iZ) &
                + V_u_3(iX) * UVEC(iPR_I3,iZ)
 
-
-          GVECm(1,iZ) = (One - W * Omega) * UVEC(iPR_D,iZ) &
+          GVECm(1,iZ) = ( One - W * Omega ) * UVEC(iPR_D,iZ) &
                         + Omega * ( CVEC(iCR_N,iZ) - vI )
 
           DO j = 1, 3
@@ -439,7 +441,7 @@ CONTAINS
                  + V_u_2(iX) * k_dd(j,2) &
                  + V_u_3(iX) * k_dd(j,3)
 
-            GVECm(j+1,iZ) = (One - W * Omega) * UVEC(j+1,iZ) &
+            GVECm(j+1,iZ) = ( One - W * Omega ) * UVEC(j+1,iZ) &
                             + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
 
           END DO
@@ -453,13 +455,11 @@ CONTAINS
 
           END DO
 
-
         END IF
-      END DO
 
+      END DO ! iZ = 1, nZ
 
-
-      IF ( Mk > 1 ) THEN
+      IF( Mk > 1 )THEN
 
         CALL Alpha_LS_Vector &
                ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
@@ -476,20 +476,27 @@ CONTAINS
         !$OMP PRIVATE( SUM1 )
 #endif
         DO iZ = 1, nZ
-          DO i = 1, 4
-            IF ( ITERATE(iZ) ) THEN
-              SUM1 = Zero
-              DO iM = 1, Mk
-                SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
-              END DO
-              GVECm(i,iZ) = SUM1
-              FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
-            END IF
-          END DO
-        END DO
-      END IF
+        DO i  = 1, 4
 
+          IF( ITERATE(iZ) )THEN
 
+            SUM1 = Zero
+
+            DO iM = 1, Mk
+
+              SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
+
+            END DO
+
+            GVECm(i,iZ) = SUM1
+            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+
+          END IF
+
+        END DO ! i  = 1, 4
+        END DO ! iZ = 1, nZ
+
+      END IF ! Mk > 1
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -499,13 +506,15 @@ CONTAINS
       !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP, B_d_1, B_d_2, B_d_3 ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
-      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, B_u_1, B_u_2, B_u_3, alp, nIterations )
+      !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, B_u_1, B_u_2, B_u_3, alp, &
+      !$ACC          nIterations )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
       !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP, B_d_1, B_d_2, B_d_3 )
 #endif
       DO iZ = 1, nZ
-        IF ( ITERATE(iZ) ) THEN
+
+        IF( ITERATE(iZ) )THEN
 
           iX = PositionIndexZ(iZ)
 
@@ -514,45 +523,68 @@ CONTAINS
           B_d_3 = Gm_dd_33(iX) * B_u_3(iX)
 
           D    (iZ) = GVECm(iPR_D ,iZ)
-          I_u_1(iZ) = ( 1.0_DP - B_d_1 * V_u_1(iX) / alp(iX) ) * GVECm(iPR_I1,iZ) / Gm_dd_11(iX)  &
-                    - GVECm(iPR_I2,iZ) * B_d_1 * V_u_2(iX) / ( alp(iX) *Gm_dd_11(iX) ) &
-                    - GVECm(iPR_I3,iZ) * B_d_1 * V_u_3(iX) / ( Gm_dd_11(iX) * alp(iX) )
+          I_u_1(iZ) = ( 1.0_DP - B_d_1 * V_u_1(iX) / alp(iX) ) &
+                        * GVECm(iPR_I1,iZ) / Gm_dd_11(iX)  &
+                        - GVECm(iPR_I2,iZ) * B_d_1 * V_u_2(iX) &
+                            / ( alp(iX) * Gm_dd_11(iX) ) &
+                        - GVECm(iPR_I3,iZ) * B_d_1 * V_u_3(iX) &
+                            / ( Gm_dd_11(iX) * alp(iX) )
 
-          I_u_2(iZ) =( 1.0_DP - B_d_2 * V_u_2(iX) / alp(iX) ) * GVECm(iPR_I2,iZ) / Gm_dd_22(iX)  &
-                    - GVECm(iPR_I1,iZ) * B_d_2 * V_u_1(iX) / ( alp(iX) *Gm_dd_22(iX) ) &
-                    - GVECm(iPR_I3,iZ) * B_d_2 * V_u_3(iX) / ( Gm_dd_22(iX) * alp(iX) )
+          I_u_2(iZ) = ( 1.0_DP - B_d_2 * V_u_2(iX) / alp(iX) ) &
+                        * GVECm(iPR_I2,iZ) / Gm_dd_22(iX)  &
+                        - GVECm(iPR_I1,iZ) * B_d_2 * V_u_1(iX) &
+                            / ( alp(iX) * Gm_dd_22(iX) ) &
+                        - GVECm(iPR_I3,iZ) * B_d_2 * V_u_3(iX) &
+                            / ( Gm_dd_22(iX) * alp(iX) )
 
-          I_u_3(iZ) =( 1.0_DP - B_d_3 * V_u_3(iX) / alp(iX) ) * GVECm(iPR_I3,iZ) / Gm_dd_33(iX)  &
-                    - GVECm(iPR_I1,iZ) * B_d_3 * V_u_1(iX) / ( alp(iX) *Gm_dd_33(iX) ) &
-                    - GVECm(iPR_I2,iZ) * B_d_3 * V_u_2(iX) / ( Gm_dd_33(iX) * alp(iX) )
+          I_u_3(iZ) = ( 1.0_DP - B_d_3 * V_u_3(iX) / alp(iX) ) &
+                        * GVECm(iPR_I3,iZ) / Gm_dd_33(iX)  &
+                        - GVECm(iPR_I1,iZ) * B_d_3 * V_u_1(iX) &
+                            / ( alp(iX) * Gm_dd_33(iX) ) &
+                        - GVECm(iPR_I2,iZ) * B_d_3 * V_u_2(iX) &
+                            / ( Gm_dd_33(iX) * alp(iX) )
 
+          CONVERGED &
+            = SQRT( SUM( FVECm(:,iZ)**2 ) ) &
+                <= Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
 
-          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
-                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+          nIterations(iZ) = k
 
+          !CONVERGED = ( k == MaxIterations )
 
+          IF( CONVERGED )THEN
 
-          !CONVERGED = (k==MaxIterations)
-
-          IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
-            nIterations(iZ) = k
-          ELSE IF ( Mk == M ) THEN
+
+          ELSE IF( Mk == M )THEN
+
             DO j = 1, Mk - 1
+
               DO i = 1, 4
+
                 FTMP(i,j) = FVEC(i,j+1,iZ)
                 GTMP(i,j) = GVEC(i,j+1,iZ)
+
               END DO
+
             END DO
+
             DO j = 1, Mk - 1
+
               DO i = 1, 4
+
                 FVEC(i,j,iZ) = FTMP(i,j)
                 GVEC(i,j,iZ) = GTMP(i,j)
+
               END DO
+
             END DO
-          END IF
-        END IF
-      END DO
+
+          END IF ! CONVERGED
+
+        END IF ! ITERATE(iZ)
+
+      END DO ! iZ = 1, nZ
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET UPDATE FROM( ITERATE )
 #elif defined( THORNADO_OACC   )
@@ -560,11 +592,10 @@ CONTAINS
       !$ACC WAIT
 #endif
 
-
-    END DO
-
+    END DO ! WHILE( ANY( ITERATE ) .AND. k < MaxIterations )
 
     IF( PRESENT( nIterations_Option ) ) THEN
+
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
@@ -574,10 +605,12 @@ CONTAINS
       !$OMP PARALLEL DO
 #endif
       DO iZ = 1, nZ
-        nIterations_Option(iZ) = nIterations(iZ)
-      END DO
-    END IF
 
+        nIterations_Option(iZ) = nIterations(iZ)
+
+      END DO
+
+    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
@@ -592,9 +625,6 @@ CONTAINS
     DEALLOCATE( FVEC, GVEC )
     DEALLOCATE( CVEC, UVEC, FVECm, GVECm, Alpha )
     DEALLOCATE( ITERATE, nIterations )
-
-
-
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
 
