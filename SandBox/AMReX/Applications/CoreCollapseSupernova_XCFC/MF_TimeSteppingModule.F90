@@ -218,11 +218,11 @@ CONTAINS
 
             CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_R, &
-                     Verbose_Option = Verbose  )
+                     Verbose_Option = .FALSE.  )
 
             CALL ApplyPositivityLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_R, &
-                     Verbose_Option = Verbose  )
+                     Verbose_Option = .FALSE.  )
 
           END IF ! EvolveTwoMoment
 
@@ -243,7 +243,7 @@ CONTAINS
 
         CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
              ( GEOM, MF_uGF, MF_F, MF_DF_Im(:,iS), MF_R, MF_DR_Im(:,iS), &
-               dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+               dt(iLevel) * a_IM(iS,iS), Verbose_Option = .FALSE. )
 
         CALL MF_R(iLevel) &
                % LinComb &
@@ -268,7 +268,7 @@ CONTAINS
 
           CALL ApplyPositivityLimiter_TwoMoment_MF &
                  ( GEOM, MF_uGF, MF_F, MF_R, &
-                   Verbose_Option = Verbose  )
+                   Verbose_Option = .FALSE.  )
 
         END IF ! EvolveTwoMoment
 
@@ -321,7 +321,7 @@ CONTAINS
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
                  ( GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
-                   Verbose_Option = Verbose )
+                   Verbose_Option = .FALSE. )
 
         END IF ! EvolveTwoMoment
 
@@ -337,7 +337,7 @@ CONTAINS
       IF( DEBUG ) WRITE(*,*) 'Assembly Step'
 
       CALL MF_F(iLevel) % COPY( MF_F0(iLevel), 1, 1, nCompCF, swX )
-      CALL MF_R(iLevel) % COPY( MF_R0(iLevel), 1, 1, nCompCF, swX )
+      CALL MF_R(iLevel) % COPY( MF_R0(iLevel), 1, 1, nCompCR, swX )
 
       DO iS = 1, nStages
 
@@ -395,11 +395,11 @@ CONTAINS
 
         CALL ApplySlopeLimiter_TwoMoment_MF &
                ( GEOM, MF_uGF, MF_F, MF_R, &
-                 Verbose_Option = Verbose )
+                 Verbose_Option = .FALSE. )
 
         CALL ApplyPositivityLimiter_TwoMoment_MF &
                ( GEOM, MF_uGF, MF_F, MF_R, &
-                 Verbose_Option = Verbose )
+                 Verbose_Option = .FALSE. )
 
       END IF ! EvolveTwoMoment
 

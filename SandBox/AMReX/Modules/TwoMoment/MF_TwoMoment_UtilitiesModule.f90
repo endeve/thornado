@@ -226,9 +226,9 @@ CONTAINS
     INTEGER :: iNX, iX1, iX2, iX3
     INTEGER :: iNZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER :: ErrorExists
+    INTEGER :: nIter(1)
 
-    INTEGER, ALLOCATABLE :: iErr_Euler    (:,:,:,:)
-    INTEGER, ALLOCATABLE :: iErr_TwoMoment(:,:,:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr_Euler(:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
@@ -371,20 +371,12 @@ CONTAINS
 
         END IF
 
-        ALLOCATE( iErr_TwoMoment(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                                         iZ_B0(2):iZ_E0(2), &
-                                         iZ_B0(3):iZ_E0(3), &
-                                         iZ_B0(4):iZ_E0(4),1:nSpecies) )
-        ErrorExists = 0
-
         DO iS  = 1       , nSpecies
         DO iZ4 = iZ_B0(4), iZ_E0(4)
         DO iZ3 = iZ_B0(3), iZ_E0(3)
         DO iZ2 = iZ_B0(2), iZ_E0(2)
         DO iZ1 = iZ_B0(1), iZ_E0(1)
         DO iNZ = 1       , nDOFZ
-
-          iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS) = 0
 
           iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
@@ -409,14 +401,59 @@ CONTAINS
                  [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_1)], &
                  [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_2)], &
                  [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_3)], &
-                 [1] )
+                 [1], &
+                 nIterations_Option = nIter )
 
           PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = PR_D (1)
           PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = PR_I1(1)
           PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = PR_I2(1)
           PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = PR_I3(1)
 
-          ErrorExists = ErrorExists + iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS)
+          IF( nIter(1) .GT. 990 )THEN
+
+            WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Radiation)'
+            WRITE(*,*) 'iZ_B0: ', iZ_B0
+            WRITE(*,*) 'iZ_E0: ', iZ_E0
+
+            WRITE(*,*) 'iNZ, iZ1, iZ2, iZ3, iZ4, iS: ', &
+                        iNZ, iZ1, iZ2, iZ3, iZ4, iS
+
+            iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
+
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              ' CR_N: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'CR_G1: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'CR_G2: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'CR_G3: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+            WRITE(*,*)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'PF_V1: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V1)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'PF_V2: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V2)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'PF_V3: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V3)
+            WRITE(*,*)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_g1: ', G (iNX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_g2: ', G (iNX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_g3: ', G (iNX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_Al: ', G (iNX,iZ2,iZ3,iZ4,iGF_Alpha)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_b1: ', G (iNX,iZ2,iZ3,iZ4,iGF_Beta_1)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_b2: ', G (iNX,iZ2,iZ3,iZ4,iGF_Beta_2)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_b3: ', G (iNX,iZ2,iZ3,iZ4,iGF_Beta_3)
+
+            CALL DescribeError_Euler( 99 )
+
+          END IF
 
         END DO
         END DO
@@ -424,53 +461,11 @@ CONTAINS
         END DO
         END DO
         END DO
-
-        IF( ErrorExists .NE. 0 )THEN
-
-          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Radiation)'
-          WRITE(*,*) 'iZ_B0: ', iZ_B0
-          WRITE(*,*) 'iZ_E0: ', iZ_E0
-
-          DO iS  = 1       , nSpecies
-          DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-          DO iZ2 = iZ_B0(2), iZ_E0(2)
-          DO iZ1 = iZ_B0(1), iZ_E0(1)
-          DO iNZ = 1       , nDOFZ
-
-            IF( iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS) .NE. 0 )THEN
-
-              WRITE(*,*) 'iNZ, iZ1, iZ2, iZ3, iZ4, iS = ', &
-                          iNZ, iZ1, iZ2, iZ3, iZ4, iS
-
-              iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
-
-              WRITE(*,'(2x,A,ES24.16E3)') ' PF_D: ', PF(iNX,iZ2,iZ3,iZ4,iPF_D )
-              WRITE(*,'(2x,A,ES24.16E3)') 'PF_V1: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V1)
-              WRITE(*,'(2x,A,ES24.16E3)') 'PF_V2: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V2)
-              WRITE(*,'(2x,A,ES24.16E3)') 'PF_V3: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V3)
-              WRITE(*,'(2x,A,ES24.16E3)') ' PF_E: ', PF(iNX,iZ2,iZ3,iZ4,iPF_E )
-              WRITE(*,'(2x,A,ES24.16E3)') 'PF_Ne: ', PF(iNX,iZ2,iZ3,iZ4,iPF_Ne)
-
-              CALL DescribeError_Euler &
-                     ( iErr_TwoMoment(iNZ,iZ1,iZ2,iZ3,iZ4,iS) )
-
-            END IF
-
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
-
-        END IF
 
         CALL thornado2amrex_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        DEALLOCATE( iErr_TwoMoment )
         DEALLOCATE( iErr_Euler     )
         DEALLOCATE( G )
         DEALLOCATE( CF )
