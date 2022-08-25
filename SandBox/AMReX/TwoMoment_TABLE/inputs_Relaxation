@@ -34,8 +34,8 @@ geometry.prob_lo     = 0.0 0.0 0.0         # Lower spatial domain size
 geometry.prob_hi     = 1.0 1.0 1.0 # High spatial domain size
 geometry.is_periodic = 1   1   1
 
-amr.n_cell            = 01 01 01 # Number of cells in each dimension
-amr.max_grid_size_x   = 01
+amr.n_cell            = 02 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 02
 amr.max_grid_size_y   = 1
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
