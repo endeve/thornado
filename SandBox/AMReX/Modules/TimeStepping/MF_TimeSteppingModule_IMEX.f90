@@ -12,8 +12,11 @@ MODULE MF_TimeSteppingModule_IMEX
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, &
     nDOFX, &
+    nDOFE, &
+    nDOFZ, &
+    iE_B0, &
+    iE_E0, &
     swX
   USE FluidFieldsModule, ONLY: &
     nCF
@@ -119,8 +122,9 @@ CONTAINS
     IF( DEBUG ) &
       CALL MF_uGS(iLevel) % SetVal( Zero )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
-    !!$CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCR ) (needs mods for radiation)
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, +1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
 
     CALL amrex_multifab_build &
            ( MF_F0(iLevel), MF_uCF(iLevel) % BA, &
@@ -288,7 +292,7 @@ CONTAINS
 
             CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F )
+            CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
 
             CALL ApplySlopeLimiter_Euler_MF &
                    ( t_new, MF_uGF, MF_F, MF_uDF )
@@ -296,7 +300,7 @@ CONTAINS
             CALL ApplyPositivityLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_F )
+            CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_F )
 
             CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                    ( MF_uGF, MF_F, MF_uGS )
@@ -310,7 +314,7 @@ CONTAINS
 
           END IF ! iS .NE. 1
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F )
+          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
 
           CALL ComputeIncrement_Euler_MF &
                  ( t_new, MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
@@ -414,7 +418,7 @@ CONTAINS
 
     CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -422,7 +426,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -433,7 +437,9 @@ CONTAINS
 
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, -1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
 
     DO iS = 1, nStages
 
