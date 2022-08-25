@@ -23,6 +23,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
+    nDOFZ, &
+    nDOFE, &
     nNodesX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
@@ -674,19 +676,21 @@ CONTAINS
   END SUBROUTINE ComputePressureTensorTrace_XCFC_MF
 
 
-  SUBROUTINE MultiplyWithPsi6_MF( MF_uGF, Power, MF_uCF )
+  SUBROUTINE MultiplyWithPsi6_MF( nVars, MF_uGF, Power, iE_B0, iE_E0, MF_U )
 
+    INTEGER             , INTENT(in)    :: nVars
     INTEGER             , INTENT(in)    :: Power
+    INTEGER             , INTENT(in)    :: iE_B0, iE_E0
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_U  (0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U  (:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iCF
+    INTEGER  :: iLevel, iNX, iNZ, iE, iX1, iX2, iX3, iVar, iD 
     INTEGER  :: iX_B0(3), iX_E0(3)
 
     INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
@@ -707,29 +711,44 @@ CONTAINS
           Mask => iMF_Mask % DataPtr( MFI )
 
           uGF => MF_uGF(iLevel) % DataPtr( MFI )
-          uCF => MF_uCF(iLevel) % DataPtr( MFI )
+          U   => MF_U(iLevel)   % DataPtr( MFI )
 
           BX = MFI % tilebox()
 
           iX_B0 = BX % lo
           iX_E0 = BX % hi
 
+          DO iS  = 1, nSpecies
+          DO iE  = iE_B0   , iE_E0
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
-          DO iNX = 1       , nDOFX
+          DO iNZ = 1       , nDOFZ
 
             IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
+
+            iNX  = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
+
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-            DO iCF = 1, nCF
+            iD   = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iZ1 - 1 ) * nDOFZ + iNZ
 
-              uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) &
-                = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) * Psi6**( Power )
+
+            DO iVar = 1, nVars
+              ! saving this here if Sam wants to do it differently 
+              !uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) &
+              !  = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) * Psi6**( Power )
+
+              U(iX1,iX2,iX3,iD) &
+                = U(iX1,iX2,iX3,iD) * Psi6**( Power )
 
             END DO
 
+          END DO
+          END DO
           END DO
           END DO
           END DO
