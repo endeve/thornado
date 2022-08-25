@@ -1256,6 +1256,7 @@ CONTAINS
         CALL UpdateNeutrinoRHS_Relativistic &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, &
                  Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 V_u_1, V_u_2, V_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                  Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
@@ -2181,7 +2182,7 @@ CONTAINS
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3
     REAL(DP) :: V_d_1, V_d_2, V_d_3
-    REAL(DP) :: SUM_rho, SUM_Y, SUM_Eps, SUM_V1, SUM_V2, SUM_V3
+    REAL(DP) :: SUM_Y, SUM_Eps, SUM_V1, SUM_V2, SUM_V3
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( vDotV )
@@ -2237,7 +2238,6 @@ CONTAINS
       U_V_d_2(iN_X) = V_d_2 / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3 / SpeedOfLight
 
-      SUM_rho   = Zero
       SUM_Y     = Zero
       SUM_Eps   = Zero
       SUM_V1    = Zero
@@ -2632,6 +2632,175 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
+
+    INTEGER  :: iN_E, iN_X, iS
+    REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, W, h
+    REAL(DP) :: DT, B_d_1, B_d_2, B_d_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
+    REAL(DP) :: Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, Nnu
+    REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, vDotInu
+    REAL(DP) :: SUM_Eps, SUM_V1, SUM_V2, SUM_V3, SUM_Y
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+#endif
+
+    DO iN_X = 1, nX_G
+
+      IF ( MASK(iN_X) ) THEN
+
+        V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
+        V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
+        V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
+
+        vDotV = V_u_1(iN_X) * V_d_1 &
+              + V_u_2(iN_X) * V_d_2 &
+              + V_u_3(iN_X) * V_d_3 
+
+        W = 1.0_DP / SQRT(1.0_DP - vDotV)
+
+
+        B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
+        B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
+        B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
+
+        DT = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) )
+     
+        SUM_Y   = Zero
+        SUM_Eps = Zero
+        SUM_V1  = Zero
+        SUM_V2  = Zero
+        SUM_V3  = Zero
+
+        DO iS   = 1, nSpecies
+        DO iN_E = 1, nE_G
+
+
+
+          Inu_d_1 = DT * ( B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) ) & 
+                  * Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) &
+                  - DT * ( B_d_1 * V_u_2(iN_X) * Gm_dd_22(iN_X) ) * Inu_u_2(iN_E,iS,iN_X)   &
+                  - DT * ( B_d_1 * V_u_3(iN_X) * Gm_dd_33(iN_X) ) * Inu_u_3(iN_E,iS,iN_X) 
+
+          Inu_d_2 = DT * ( B_d_1 * V_u_1(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) ) &
+                  * Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) &
+                  - DT * ( B_d_2 * V_u_1(iN_X) * Gm_dd_11(iN_X) ) * Inu_u_1(iN_E,iS,iN_X) &
+                  - DT * ( Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X) * B_d_2 * V_u_3(iN_X) ) 
+
+          Inu_d_3 = DT * ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) - Alpha(iN_X) ) &
+                  * Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X) &
+                  - DT * ( Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) * B_d_3 * V_u_1(iN_X) ) &
+                  - DT * ( Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) * B_d_3 * V_u_2(iN_X) )
+
+
+   
+          vDotInu = V_u_1(iN_X) * Inu_d_1 &
+                  + V_u_2(iN_X) * Inu_d_2 &
+                  + V_u_3(iN_X) * Inu_d_3
+
+          CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
+                 Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 Alpha(iN_X),Beta_u_1(iN_X),Beta_u_2(iN_X),Beta_u_3(iN_X), & 
+                 V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
+
+          vDotK_d_1 &
+            = ( V_u_1(iN_X) * k_dd(1,1) &
+            + V_u_2(iN_X) * k_dd(2,1) &
+            + V_u_3(iN_X) * k_dd(3,1) ) * Dnu(iN_E,iS,iN_X)
+          vDotK_d_2 &                                                  
+            = ( V_u_1(iN_X) * k_dd(1,2) &                 
+            + V_u_2(iN_X) * k_dd(2,2) &                 
+            + V_u_3(iN_X) * k_dd(3,2) ) * Dnu(iN_E,iS,iN_X)
+          vDotK_d_3 &                                                  
+            = ( V_u_1(iN_X) * k_dd(1,3) &                 
+            + V_u_2(iN_X) * k_dd(2,3) &                 
+            + V_u_3(iN_X) * k_dd(3,3) ) * Dnu(iN_E,iS,iN_X)
+
+
+          vvDotK = V_u_1(iN_X) * vDotK_d_1 &
+                 + V_u_2(iN_X) * vDotK_d_2 & 
+                 + V_u_3(iN_X) * vDotK_d_3 
+
+
+
+          Nnu = W * Dnu(iN_E,iS,iN_X) + vDotInu
+
+      ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
+
+          Enu = W**2 * Dnu(iN_E,iS,iN_X) +  W * Two * vDotInu + vvDotK 
+
+      ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
+
+          Fnu_d_1 &
+            = W * Inu_d_1 + W**2 * V_d_1 * Dnu(iN_E,iS,iN_X) &
+            + W * vDotInu * V_d_1  + vDotK_d_1
+
+          Fnu_d_2 &
+            = W * Inu_d_2 + W**2 * V_d_2 * Dnu(iN_E,iS,iN_X) &
+            + W * vDotInu * V_d_2   + vDotK_d_2
+
+          Fnu_d_3 &
+            = W * Inu_d_3 + W**2 * V_d_3 * Dnu(iN_E,iS,iN_X) &
+            + W * vDotInu * V_d_3  + vDotK_d_3
+
+
+          IF ( iS <= iNuE_Bar ) THEN
+            SUM_Y  = SUM_Y  + Nnu     * W2_S(iN_E) * LeptonNumber(iS)
+          END IF
+
+          SUM_Eps = SUM_Eps + Enu     * W3_S(iN_E)
+          SUM_V1  = SUM_V1  + Fnu_d_1 * W3_S(iN_E)
+          SUM_V2  = SUM_V2  + Fnu_d_2 * W3_S(iN_E)
+          SUM_V3  = SUM_V3  + Fnu_d_3 * W3_S(iN_E)
+
+      END DO
+      END DO
+
+        h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) 
+
+        G_rho  (iN_X)  = ( 1.0_DP / W ) * C_rho  (iN_X) 
+        G_Y    (iN_X)  = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
+        G_Eps  (iN_X)  = ( 1.0_DP / W ) * ( C_Eps(iN_X) - SUM_Eps * S_Eps(iN_X) / cD_old(iN_X) ) &
+                       + S_Eps(iN_X)    * ( P(iN_X) / ( W * cD_old(iN_X) ) - ( 1.0_DP + P(iN_X) / D(iN_X) ))
+      
+        G_V_d_1(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
+        G_V_d_2(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
+        G_V_d_3(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+        
+
+
+
+        Gm(iD ,iN_X) = G_rho  (iN_X)
+        Gm(iY ,iN_X) = G_Y    (iN_X)
+        Gm(iEf,iN_X) = G_Eps  (iN_X)
+        Gm(iV1,iN_X) = G_V_d_1(iN_X)
+        Gm(iV2,iN_X) = G_V_d_2(iN_X)
+        Gm(iV3,iN_X) = G_V_d_3(iN_X)
+
+        Fm(iD ,iN_X) = G_rho  (iN_X) - U_rho  (iN_X)
+        Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
+        Fm(iEf ,iN_X)= G_Eps  (iN_X) - U_Eps  (iN_X)
+        Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
+        Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
+        Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
+
+
+      END IF
+
+    END DO
+
+
+
+
   END SUBROUTINE ComputeMatterRHS_Relativistic 
 
   SUBROUTINE ComputeNeutrinoRHS_OrderV &
@@ -2867,6 +3036,166 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
 
 
+    INTEGER  :: iN_E, iN_X, iS, iOS
+    REAL(DP) :: k_dd(3,3), vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vDotV 
+    REAL(DP) :: Eta_T, Chi_T, Kappa
+    REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, V_d_1, V_d_2, V_d_3, B_d_1, B_d_2, B_d_3, Det
+
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$ACC          Eta_T, Chi_T, Kappa, iOS )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+#endif
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+
+      IF( MASK(iN_X) )THEN
+
+
+        V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
+        V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
+        V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
+
+        vDotV = V_u_1(iN_X) * V_d_1 &
+              + V_u_2(iN_X) * V_d_2 &
+              + V_u_3(iN_X) * V_d_3
+
+
+        W = 1.0_DP / SQRT( 1.0_DP - vDotV)
+
+
+
+        B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
+        B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
+        B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
+
+        Det = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) )
+
+        Inu_d_1 = Det * ( B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) ) & 
+                * Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) &
+                - Det * ( B_d_1 * V_u_2(iN_X) *Gm_dd_22(iN_X) ) * Inu_u_2(iN_E,iS,iN_X)   &
+                - Det * ( B_d_1 * V_u_3(iN_X) * Gm_dd_33(iN_X) ) * Inu_u_3(iN_E,iS,iN_X) 
+
+        Inu_d_2 = Det * ( B_d_1 * V_u_1(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) ) &
+                * Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) &
+                - Det * ( B_d_2 * V_u_1(iN_X) * Gm_dd_11(iN_X) ) * Inu_u_1(iN_E,iS,iN_X) &
+                - Det * ( Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X) * B_d_2 * V_u_3(iN_X) ) 
+
+        Inu_d_3 = Det * ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) - Alpha(iN_X) )& 
+                * Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X) &
+                - Det * ( Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) * B_d_3 * V_u_1(iN_X) ) &
+                - Det * ( Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) * B_d_3 * V_u_2(iN_X) )
+
+        vDotInu = V_u_1(iN_X) * Inu_d_1 &
+                + V_u_2(iN_X) * Inu_d_2 &
+                + V_u_3(iN_X) * Inu_d_3
+
+
+       CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu(iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
+                 Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 Alpha(iN_X), Beta_u_1(iN_X), Beta_u_2(iN_X), Beta_u_3(iN_X), & 
+                 V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
+
+        vDotK_d_1 &
+          = ( V_u_1(iN_X) * k_dd(1,1) &
+            + V_u_2(iN_X) * k_dd(2,1) &
+            + V_u_3(iN_X) * k_dd(3,1) ) * Dnu(iN_E,iS,iN_X)
+        vDotK_d_2 &                                                  
+          = ( V_u_1(iN_X) * k_dd(1,2) &
+            + V_u_2(iN_X) * k_dd(2,2) &
+            + V_u_3(iN_X) * k_dd(3,2) ) * Dnu(iN_E,iS,iN_X)
+        vDotK_d_3 &                                                  
+          = ( V_u_1(iN_X) * k_dd(1,3) &
+            + V_u_2(iN_X) * k_dd(2,3) &
+            + V_u_3(iN_X) * k_dd(3,3) ) * Dnu(iN_E,iS,iN_X)
+
+        vDotV =   V_u_1(iN_X) * V_u_1(iN_X) * Gm_dd_11(iN_X) &
+                + V_u_2(iN_X) * V_u_2(iN_X) * Gm_dd_22(iN_X) &
+                + V_u_3(iN_X) * V_u_3(iN_X) * Gm_dd_33(iN_X)
+
+        W = 1.0_DP / SQRT(1.0_DP - vDotV) 
+        ! --- Emissivity ---
+
+        Eta_T =   Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
+                + Eta_NES (iN_E,iS,iN_X) &
+                + Eta_Pair(iN_E,iS,iN_X) &
+                + Eta_Brem(iN_E,iS,iN_X)
+
+        ! --- Number Opacity ---
+
+        Chi_T =   Chi_EmAb(iN_E,iS,iN_X) &
+                + Chi_NES (iN_E,iS,iN_X) &
+                + Chi_Pair(iN_E,iS,iN_X) &
+                + Chi_Brem(iN_E,iS,iN_X)
+
+        ! --- Number Flux Opacity ---
+
+        Kappa = Chi_T + Sigma_Iso(iN_E,iN_X)
+
+        iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
+
+        ! --- Number Equation ---
+
+        Gm(iOS+iCR_N,iN_X) &
+          = ( One - Omega(iN_X) ) *     Dnu(iN_E,iS,iN_X) &
+           + Omega(iN_X)   *  ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * Eta_T ) &
+              / ( W + dt * Chi_T )
+
+        Fm(iOS+iCR_N,iN_X) &
+          = Gm(iOS+iCR_N,iN_X) - Dnu(iN_E,iS,iN_X)
+
+        ! --- Number Flux 1 Equation ---
+
+        Gm(iOS+iCR_G1,iN_X) &
+          = ( One - Omega(iN_X) ) *     Inu_d_1 &
+            +       Omega(iN_X)   * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 ) &
+                                    / ( W + dt * Kappa )
+
+        Fm(iOS+iCR_G1,iN_X) &
+          = Gm(iOS+iCR_G1,iN_X) - Inu_d_1
+
+        ! --- Number Flux 2 Equation ---
+
+        Gm(iOS+iCR_G2,iN_X) &
+          = ( One - Omega(iN_X) ) *     Inu_d_2 &
+            +       Omega(iN_X)   * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 ) &
+                                    / ( W + dt * Kappa )
+
+        Fm(iOS+iCR_G2,iN_X) &
+          = Gm(iOS+iCR_G2,iN_X) - Inu_d_2
+
+        ! --- Number Flux 3 Equation ---
+
+        Gm(iOS+iCR_G3,iN_X) &
+          = ( One - Omega(iN_X) ) *     Inu_d_3 &
+            +       Omega(iN_X)   * ( C_Inu_d_3(iN_E,iS,iN_x) - vDotK_d_3 ) &
+                                    / ( W + dt * Kappa )
+
+        Fm(iOS+iCR_G3,iN_X) &
+          = Gm(iOS+iCR_G3,iN_X) - Inu_d_3
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+
+
+
+
 
   END SUBROUTINE ComputeNeutrinoRHS_Relativistic
 
@@ -2946,6 +3275,64 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(inout) :: D, Y, E, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
+
+
+    INTEGER  :: iN_X
+    REAL(DP) :: vDotV, W, V_d_1, V_d_2, V_d_3
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( vDotV )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( vDotV )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( vDotV )
+#endif
+    DO iN_X = 1, nX_G
+
+      IF ( MASK(iN_X) ) THEN
+
+        Fm(iD ,iN_X) = Gm(iD ,iN_X) - U_rho  (iN_X)
+        Fm(iY ,iN_X) = Gm(iY ,iN_X) - U_Y    (iN_X)
+        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Eps  (iN_X)
+        Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
+        Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
+        Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
+        
+        U_rho  (iN_X) = Gm(iD ,iN_X)
+        U_Y    (iN_X) = Gm(iY ,iN_X)
+        U_Eps  (iN_X) = Gm(iEf ,iN_X)
+        U_V_d_1(iN_X) = Gm(iV1,iN_X)
+        U_V_d_2(iN_X) = Gm(iV2,iN_X)
+        U_V_d_3(iN_X) = Gm(iV3,iN_X)
+
+        D    (iN_X) = U_rho  (iN_X) * rho_old(iN_X)
+        Y    (iN_X) = U_Y    (iN_X) * Y_old  (iN_X)
+        E    (iN_X) = U_Eps  (iN_X) * Eps_old(iN_X)
+        V_d_1       = U_V_d_1(iN_X) * SpeedOfLight
+        V_d_2       = U_V_d_2(iN_X) * SpeedOfLight
+        V_d_3       = U_V_d_3(iN_X) * SpeedOfLight
+
+        ! --- Update Three-Velocity (Index Up) ---
+
+        V_u_1(iN_X) = V_d_1 / Gm_dd_11(iN_X)
+        V_u_2(iN_X) = V_d_2 / Gm_dd_22(iN_X)
+        V_u_3(iN_X) = V_d_3 / Gm_dd_33(iN_X)
+
+
+        vDotV =   V_u_1(iN_X) * V_d_1 &
+                + V_u_2(iN_X) * V_d_2 &
+                + V_u_3(iN_X) * V_d_3
+        W = 1.0_DP / SQRT( 1.0_DP - vDotV)
+
+        ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
+
+        Omega(iN_X) = One / ( W + SQRT( vDotV ) )
+      END IF
+
+    END DO
   
   END SUBROUTINE UpdateMatterRHS_Relativistic 
 
@@ -2997,14 +3384,100 @@ CONTAINS
 
 
   SUBROUTINE UpdateNeutrinoRHS_Relativistic &
-    ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
+
+
+    INTEGER  :: iN_E, iN_X, iS, iOS
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, DT
+
+ 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iOS )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iOS )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iOS )
+#endif
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+
+      IF( MASK(iN_X) )THEN
+
+        iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
+
+
+        B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
+        B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
+        B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
+
+        DT = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) )
+
+        Inu_d_1 = DT * ( B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) ) & 
+                * Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) &
+                - DT * ( B_d_1 * V_u_2(iN_X) *Gm_dd_22(iN_X) ) * Inu_u_2(iN_E,iS,iN_X)   &
+                - DT * ( B_d_1 * V_u_3(iN_X) * Gm_dd_33(iN_X) ) * Inu_u_3(iN_E,iS,iN_X) 
+
+        Inu_d_2 = DT * ( B_d_1 * V_u_1(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) ) &
+                * Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) &
+                - DT * ( B_d_2 * V_u_1(iN_X) * Gm_dd_11(iN_X) ) * Inu_u_1(iN_E,iS,iN_X) &
+                - DT * ( Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X) * B_d_2 * V_u_3(iN_X) ) 
+
+        Inu_d_3 = DT * ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) - Alpha(iN_X) ) &
+                * Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X) &
+                - DT * ( Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) * B_d_3 * V_u_1(iN_X) ) &
+                - DT * ( Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) * B_d_3 * V_u_2(iN_X) )
+
+
+
+
+        Fm(iOS+iCR_N ,iN_X) = Gm(iOS+iCR_N ,iN_X) - Dnu    (iN_E,iS,iN_X)
+        Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - Inu_d_1
+        Fm(iOS+iCR_G2,iN_X) = Gm(iOS+iCR_G2,iN_X) - Inu_d_2
+        Fm(iOS+iCR_G3,iN_X) = Gm(iOS+iCR_G3,iN_X) - Inu_d_3
+
+        Dnu(iN_E,iS,iN_X) = Gm(iOS+iCR_N ,iN_X)
+        Inu_d_1           = Gm(iOS+iCR_G1,iN_X)
+        Inu_d_2           = Gm(iOS+iCR_G2,iN_X)
+        Inu_d_3           = Gm(iOS+iCR_G3,iN_X)
+
+
+        Inu_u_1(iN_E,iS,iN_X) = ( 1.0_DP - B_d_1 * V_u_1(iN_X) / Alpha(iN_X) ) * Inu_d_1 / Gm_dd_11(iN_X)  &
+                              - Inu_d_2 * B_d_1 * V_u_2(iN_X) / ( Alpha(iN_X) *Gm_dd_11(iN_X) ) &
+                              - Inu_d_3 * B_d_1 * V_u_3(iN_X) / ( Gm_dd_11(iN_X) * Alpha(iN_X) )
+
+        Inu_u_2(iN_E,iS,iN_X) =( 1.0_DP -   B_d_2 * V_u_2(iN_X) / Alpha(iN_X) ) * Inu_d_2 / Gm_dd_22(iN_X)  &
+                              - Inu_d_1 * B_d_2 * V_u_1(iN_X) / ( Alpha(iN_X) *Gm_dd_22(iN_X) ) &
+                              - Inu_d_3 * B_d_2 * V_u_3(iN_X) / ( Gm_dd_22(iN_X) * Alpha(iN_X) )
+
+        Inu_u_3(iN_E,iS,iN_X) =( 1.0_DP - B_d_3 * V_u_3(iN_X) / Alpha(iN_X) ) * Inu_d_3 / Gm_dd_33(iN_X)  &
+                              - Inu_d_1 * B_d_3 * V_u_1(iN_X) / ( Alpha(iN_X) *Gm_dd_33(iN_X) ) &
+                              - Inu_d_2 * B_d_3 * V_u_2(iN_X) / ( Gm_dd_33(iN_X) * Alpha(iN_X) )
+
+
+
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+
 
 
   END SUBROUTINE UpdateNeutrinoRHS_Relativistic 
@@ -3402,6 +3875,10 @@ CONTAINS
     INTEGER  :: iN_X
     REAL(DP) :: Fnorm_Y, Fnorm_Ef, Fnorm_V
 
+#if defined( TWOMOMENT_RELATIVISTIC )
+    REAL(DP) :: Fnorm_D
+#endif
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
@@ -3415,6 +3892,7 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN
 
+
         Fnorm_Y  =      ABS( Fm(iY ,iN_X) )
         Fnorm_Ef =      ABS( Fm(iEf,iN_X) )
         Fnorm_V  = MAX( ABS( Fm(iV1,iN_X) ), &
@@ -3425,6 +3903,13 @@ CONTAINS
                     Fnorm_Ef <= Rtol_outer .AND. &
                     Fnorm_V  <= Rtol_outer
 
+#if defined( TWOMOMENT_RELATIVISTIC )
+        Fnorm_D  =      ABS( Fm(iD ,iN_X) )
+        CONVERGED = Fnorm_Y  <= Rtol_outer .AND. &
+                    Fnorm_Ef <= Rtol_outer .AND. &
+                    Fnorm_V  <= Rtol_outer .AND. &
+                    Fnorm_D  <= Rtol_outer
+#endif
         IF( CONVERGED )THEN
           MASK_OUTER(iN_X) = .FALSE.
           nIterations_Outer(iN_X) = k_outer
