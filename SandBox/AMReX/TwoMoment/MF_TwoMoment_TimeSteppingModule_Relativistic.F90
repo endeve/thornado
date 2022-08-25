@@ -37,8 +37,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     MF_TwoMoment_ComputeIncrement_Explicit
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     MF_TwoMoment_ComputeIncrement_Implicit
-!  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-!    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
+  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+    MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos
   USE MF_TwoMoment_PositivityLimiter, ONLY: &
     MF_TwoMoment_ApplyPositivityLimiter
   USE MF_TwoMoment_SlopeLimiter, ONLY: &
@@ -184,7 +184,7 @@ CONTAINS
 
             CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
+                            dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 
             CALL MF_F(iLevel) &
@@ -225,7 +225,7 @@ CONTAINS
 #if defined(MICROPHYSICS_WEAKLIB)  
           CALL MF_TwoMoment_ComputeIncrement_Implicit_Neutrinos &
                ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
-                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+                 dt(iLevel) * a_IM(iS,iS) )
 
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &

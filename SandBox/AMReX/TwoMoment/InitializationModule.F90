@@ -118,7 +118,7 @@ MODULE InitializationModule
     InitializeSlopeLimiter_TwoMoment
   USE InputOutputEuler,           ONLY: &
     WriteFieldsAMReX_PlotFile_Euler
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
     InitializeTimers
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
