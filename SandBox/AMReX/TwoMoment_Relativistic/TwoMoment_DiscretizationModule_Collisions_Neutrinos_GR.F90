@@ -31,7 +31,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
     ComputePressureFromPrimitive_TABLE
-  USE TwoMoment_NeutrinoMatterSolverModule_Relativistic, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
