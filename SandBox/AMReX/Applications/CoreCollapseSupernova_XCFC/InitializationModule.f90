@@ -168,7 +168,7 @@ MODULE InitializationModule
   USE MF_TwoMoment_TallyModule, ONLY: &
     InitializeTally_TwoMoment_MF, &
     ComputeTally_TwoMoment_MF
-  USE MF_TimeSteppingModule, ONLY: &
+  USE MF_TimeSteppingModule_IMEX, ONLY: &
     Initialize_IMEX_RK_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &

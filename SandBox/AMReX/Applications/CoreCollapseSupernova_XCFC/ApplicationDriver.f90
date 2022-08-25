@@ -49,7 +49,7 @@ PROGRAM main
     ComputeFromConserved_TwoMoment_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule, ONLY: &
+  USE MF_TimeSteppingModule_IMEX, ONLY: &
     Update_IMEX_RK_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &

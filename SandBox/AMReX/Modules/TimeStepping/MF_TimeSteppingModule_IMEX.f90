@@ -1,4 +1,4 @@
-MODULE MF_TimeSteppingModule
+MODULE MF_TimeSteppingModule_IMEX
 
   ! --- AMReX Modules ---
 
@@ -647,4 +647,4 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables
 
 
-END MODULE MF_TimeSteppingModule
+END MODULE MF_TimeSteppingModule_IMEX

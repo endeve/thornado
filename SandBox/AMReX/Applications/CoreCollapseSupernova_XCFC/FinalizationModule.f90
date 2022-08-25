@@ -62,7 +62,7 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_TwoMoment_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     FinalizePositivityLimiter_TwoMoment_MF
-  USE MF_TimeSteppingModule, ONLY: &
+  USE MF_TimeSteppingModule_IMEX, ONLY: &
     Finalize_IMEX_RK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
