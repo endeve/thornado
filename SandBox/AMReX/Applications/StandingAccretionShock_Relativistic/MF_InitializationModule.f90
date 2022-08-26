@@ -13,7 +13,6 @@ MODULE MF_InitializationModule
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator, amrex_parallel_myproc, &
     amrex_parallel_reduce_min
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
@@ -35,8 +34,6 @@ MODULE MF_InitializationModule
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_Alpha, &
-    iGF_Psi, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
@@ -78,10 +75,7 @@ MODULE MF_InitializationModule
     GravitationalConstant, &
     Millisecond
   USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
     Locate
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   ! --- Local Modules ---
 
@@ -93,30 +87,14 @@ MODULE MF_InitializationModule
     One, &
     Two, &
     Three, &
-    Four, &
     Five, &
-    Pi, &
-    TwoPi, &
     FourPi
   USE InputParsingModule, ONLY: &
-    nLevels, &
-    xL, &
-    xR, &
     Gamma_IDEAL, &
     UseTiling, &
-    t_end, &
-    StepNo, &
-    iOS_CPP
+    t_end
 !!$  USE MF_AccretionShockUtilitiesModule, ONLY: &
 !!$    FileName_Nodal1DIC_SAS
-  USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
-  USE MF_FieldsModule_Euler, ONLY: &
-    MF_uPF, &
-    MF_uAF, &
-    MF_uDF
-  USE MF_Euler_UtilitiesModule, ONLY: &
-    ComputeFromConserved_Euler_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -604,6 +582,8 @@ CONTAINS
       END DO
 
     END DO
+
+    CALL amrex_mfiter_destroy( MFI )
 
     DEALLOCATE( Field   )
     DEALLOCATE( P )
