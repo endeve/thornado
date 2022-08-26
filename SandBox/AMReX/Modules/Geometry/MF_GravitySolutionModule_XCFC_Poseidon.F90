@@ -705,8 +705,6 @@ CONTAINS
 
       nFd = MF_U(0) % nComp() / ( nDOF * nS * nE )
 
-      print*,'nFd: ', nFd
-
       DO iLevel = 0, nLevels-1
 
         CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
