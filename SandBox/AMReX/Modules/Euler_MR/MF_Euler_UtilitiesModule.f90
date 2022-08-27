@@ -86,10 +86,13 @@ MODULE MF_Euler_UtilitiesModule
 CONTAINS
 
 
-  SUBROUTINE ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+  SUBROUTINE ComputeFromConserved_Euler_MF &
+    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, &
+      swXX_Option )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uPF(0:), MF_uAF(0:)
+    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -105,6 +108,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iX_B(3), iX_E(3), swXX(3)
 
     DO iLevel = 0, nLevels-1
 
@@ -146,20 +150,27 @@ CONTAINS
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+        swXX = 0
+        IF( PRESENT( swXX_Option ) ) &
+          swXX = swXX_Option
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+        iX_B = iX_B0 - swXX
+        iX_E = iX_E0 + swXX
 
-        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, P )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
 
-        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAF, A )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, U )
+
+        CALL amrex2thornado_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uPF, P )
+
+        CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uAF, A )
 
         CALL ComputeFromConserved_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A )
 
-        CALL thornado2amrex_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, P )
+        CALL thornado2amrex_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uPF, P )
 
-        CALL thornado2amrex_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAF, A )
+        CALL thornado2amrex_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uAF, A )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
