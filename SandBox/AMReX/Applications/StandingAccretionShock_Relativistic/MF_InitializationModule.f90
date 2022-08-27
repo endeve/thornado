@@ -90,11 +90,13 @@ MODULE MF_InitializationModule
     Five, &
     FourPi
   USE InputParsingModule, ONLY: &
+    nLevels, &
     Gamma_IDEAL, &
     UseTiling, &
     t_end
-!!$  USE MF_AccretionShockUtilitiesModule, ONLY: &
-!!$    FileName_Nodal1DIC_SAS
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    FileName_Nodal1DIC_SAS, &
+    WriteNodal1DIC_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -168,6 +170,7 @@ CONTAINS
     rCenter               = Zero
     sigma                 = SqrtTiny
     PerturbationType      = 'StepFunction'
+    WriteNodal1DIC_SAS    = .FALSE.
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass', &
                         MassPNS )
@@ -195,6 +198,8 @@ CONTAINS
                         ResetEndTime )
       CALL PP % query( 'PerturbationType', &
                         PerturbationType )
+      CALL PP % query( 'WriteNodal1DIC_SAS', &
+                        WriteNodal1DIC_SAS )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -298,7 +303,7 @@ CONTAINS
 
     IF( InitializeFromFile )THEN
 
-!!$      CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+      CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
 
     ELSE
 
@@ -716,31 +721,45 @@ CONTAINS
   END SUBROUTINE ComputeExtrapolationExponents
 
 
-!!$  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
-!!$
-!!$    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
-!!$    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
-!!$
-!!$    CHARACTER(LEN=16) :: FMT
-!!$    INTEGER           :: iX1
-!!$
-!!$    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
-!!$
-!!$    READ(101,*) ExpD
-!!$    READ(101,*) ExpE
-!!$    READ(101,*) FMT
-!!$
-!!$    DO iX1 = iX_B1(1), iX_E1(1)
-!!$
-!!$      READ(101,TRIM(FMT)) D(:,iX1)
-!!$      READ(101,TRIM(FMT)) V(:,iX1)
-!!$      READ(101,TRIM(FMT)) P(:,iX1)
-!!$
-!!$    END DO
-!!$
-!!$    CLOSE( 101 )
-!!$
-!!$  END SUBROUTINE ReadFluidFieldsFromFile
+  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+
+    CHARACTER(LEN=16)     :: FMT
+    INTEGER               :: iX1
+    TYPE(amrex_parmparse) :: PP
+
+    IF( nLevels .GT. 1 )THEN
+
+      IF( amrex_parallel_ioprocessor() ) &
+        WRITE(*,*) &
+          'WARNING: ReadFluidFieldsFromFile untested with multi-level mesh'
+
+    END IF
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
+                        FileName_Nodal1DIC_SAS )
+    CALL amrex_parmparse_destroy( PP )
+
+    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
+
+    READ(101,*) ExpD
+    READ(101,*) ExpE
+    READ(101,*) FMT
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      READ(101,TRIM(FMT)) D(:,iX1)
+      READ(101,TRIM(FMT)) V(:,iX1)
+      READ(101,TRIM(FMT)) P(:,iX1)
+
+    END DO
+
+    CLOSE( 101 )
+
+  END SUBROUTINE ReadFluidFieldsFromFile
 
 
   SUBROUTINE NewtonRaphson_SAS &

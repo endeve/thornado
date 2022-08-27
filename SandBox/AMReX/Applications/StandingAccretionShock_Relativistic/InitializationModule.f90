@@ -164,9 +164,6 @@ MODULE InitializationModule
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_Initialize, &
     Timer_AMReX_Euler_InputOutput
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon_MF, &
-    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -279,34 +276,12 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      CALL CreateMesh_MF( 0, MeshX )
-
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
-
-      CALL DestroyMesh_MF( MeshX )
-
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
     ELSE
 
       CALL amrex_init_from_scratch( 0.0_DP )
       ! nLevels read from checkpoint file
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
-
-      CALL CreateMesh_MF( 0, MeshX )
-
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
-
-      CALL DestroyMesh_MF( MeshX )
-
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     END IF
 

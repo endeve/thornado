@@ -57,8 +57,8 @@ MODULE FinalizationModule
     Timer_AMReX_Euler_Finalize, &
     Timer_AMReX_Euler_InputOutput, &
     FinalizeTimers_AMReX_Euler
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    FinalizeGravitySolver_XCFC_Poseidon_MF
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    WriteNodal1DICToFile_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -69,6 +69,8 @@ CONTAINS
 
 
   SUBROUTINE FinalizeProgram
+
+    CALL WriteNodal1DICToFile_SAS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -99,8 +101,6 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL FinalizeFluid_SSPRK_MF
-
-    CALL FinalizeGravitySolver_XCFC_Poseidon_MF
 
     CALL FinalizeTally_Euler_MF
 
