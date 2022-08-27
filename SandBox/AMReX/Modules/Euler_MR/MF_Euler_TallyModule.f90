@@ -127,7 +127,7 @@ CONTAINS
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
-        = TRIM( BaseFileName ) // '_Tally_BaryonicMass.dat'
+        = TRIM( BaseFileName ) // '.Tally_BaryonicMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -151,7 +151,7 @@ CONTAINS
       ! --- Energy ---
 
       Energy_FileName &
-        = TRIM( BaseFileName ) // '_Tally_Energy.dat'
+        = TRIM( BaseFileName ) // '.Tally_Energy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'

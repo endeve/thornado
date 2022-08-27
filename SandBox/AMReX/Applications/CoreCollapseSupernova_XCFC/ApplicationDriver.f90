@@ -12,6 +12,8 @@ PROGRAM main
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nNodes
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
   USE UnitsModule, ONLY: &
@@ -42,9 +44,12 @@ PROGRAM main
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeTimeStep_Euler_MF, &
     ComputeFromConserved_Euler_MF
+  USE MF_TwoMoment_UtilitiesModule, ONLY: &
+    ComputeTimeStep_TwoMoment_Fancy_MF, &
+    ComputeFromConserved_TwoMoment_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule, ONLY: &
+  USE MF_TimeSteppingModule_IMEX, ONLY: &
     Update_IMEX_RK_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -62,6 +67,7 @@ PROGRAM main
     t_new, &
     t_old, &
     dt, &
+    dt_TM, &
     CFL, &
     iCycleD, &
     iCycleW, &
@@ -71,7 +77,10 @@ PROGRAM main
     dt_wrt, &
     dt_chk, &
     UseAMR, &
-    DEBUG
+    DEBUG, &
+    nX, &
+    xL, &
+    xR
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler, &
     FinalizeTimers_AMReX_Euler, &
@@ -209,8 +218,10 @@ PROGRAM main
     END IF
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
+    CALL ComputeTimeStep_TwoMoment_Fancy_MF &
+           ( MF_uGF, nX, nNodes, xR, xL, CFL, dt_TM )
 
-    dt = MINVAL( dt )
+    dt = MIN( MINVAL( dt ), MINVAL( dt_TM ) )
 
     IF( MAXVAL( t_old + dt ) .LT. t_end )THEN
 
@@ -229,7 +240,7 @@ PROGRAM main
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       IF( amrex_parallel_ioprocessor() ) &
-        WRITE(*,'(A)') 'CALL UpdateFluid_SSPRK_MF'
+        WRITE(*,'(A)') 'CALL UpdateFluid_IMEX_RK_MF'
 
     END IF
 
@@ -323,6 +334,9 @@ CONTAINS
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
+      CALL ComputeFromConserved_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
       CALL WriteFieldsAMReX_PlotFile &
              ( t_new(0), StepNo, MF_uGF, &
                MF_uGF_Option = MF_uGF, &
@@ -385,6 +399,9 @@ CONTAINS
 
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL ComputeFromConserved_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &

@@ -155,7 +155,7 @@ CONTAINS
 
     END DO
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     DO iS = 1, nStages
 
@@ -217,7 +217,7 @@ CONTAINS
 
           CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
           CALL ApplySlopeLimiter_Euler_MF &
                  ( t_new, MF_uGF, MF_U(iS,:), MF_uDF )
@@ -225,7 +225,7 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_U(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_U(iS,:) )
 
           CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uGS )
@@ -238,7 +238,7 @@ CONTAINS
 
         END IF
 
-        CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
+        CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
                ( t_new, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
@@ -294,7 +294,7 @@ CONTAINS
 
     CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -302,7 +302,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -313,7 +313,7 @@ CONTAINS
 
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 

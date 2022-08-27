@@ -173,7 +173,7 @@ CONTAINS
       ! --- Neutrino ---
 
       Neutrino_FileName &
-        = TRIM( BaseFileName ) // '_Tally_Neutrino.dat'
+        = TRIM( BaseFileName ) // '.Tally_Neutrino.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -193,7 +193,7 @@ CONTAINS
       ! --- Momentum ---
 
       Momentum_FileName &
-        = TRIM( BaseFileName ) // '_Tally_Momentum.dat'
+        = TRIM( BaseFileName ) // '.Tally_Momentum.dat'
       Momentum1Label &
         = 'Momentum_1'
       Momentum2Label &

@@ -91,8 +91,6 @@ CONTAINS
     INTEGER :: i, k, iN1, iN2, iN3, kk, &
                iNX_X_Crse, iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
                iNX_X_Fine, iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
-    REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
-
 
     nFineX      = 1
     VolumeRatio = One
@@ -393,6 +391,7 @@ CONTAINS
 #endif
 
     DEALLOCATE( ProjectionMatrix_T )
+    DEALLOCATE( ProjectionMatrix_c )
     DEALLOCATE( ProjectionMatrix )
 
     DEALLOCATE( xiX3 )

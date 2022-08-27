@@ -168,7 +168,7 @@ MODULE InitializationModule
   USE MF_TwoMoment_TallyModule, ONLY: &
     InitializeTally_TwoMoment_MF, &
     ComputeTally_TwoMoment_MF
-  USE MF_TimeSteppingModule, ONLY: &
+  USE MF_TimeSteppingModule_IMEX, ONLY: &
     Initialize_IMEX_RK_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
@@ -183,6 +183,7 @@ MODULE InitializationModule
     StepNo, &
     iRestart, &
     dt, &
+    dt_TM, &
     t_old, &
     t_new, &
     t_wrt, &
@@ -360,16 +361,24 @@ CONTAINS
 
     ALLOCATE( StepNo(0:nMaxLevels-1) )
     ALLOCATE( dt    (0:nMaxLevels-1) )
+    ALLOCATE( dt_TM (0:nMaxLevels-1) )
     ALLOCATE( t_old (0:nMaxLevels-1) )
     ALLOCATE( t_new (0:nMaxLevels-1) )
 
     StepNo = 0
     dt     = 0.0_DP
+    dt_TM  = 0.0_DP
     t_new  = 0.0_DP
 
     CALL InitializeTally_Euler_MF
 
     CALL InitializeTally_TwoMoment_MF
+
+    CALL Initialize_IMEX_RK_MF &
+           ( Scheme, &
+             EvolveEuler_Option     = .TRUE., &
+             EvolveTwoMoment_Option = .TRUE., &
+             Verbose_Option         = amrex_parallel_ioprocessor() )
 
     IF( iRestart .LT. 0 )THEN
 
@@ -384,6 +393,9 @@ CONTAINS
 
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL ComputeFromConserved_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -405,6 +417,9 @@ CONTAINS
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
+      CALL ComputeFromConserved_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
       CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     END IF
@@ -416,10 +431,6 @@ CONTAINS
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
-
-    CALL Initialize_IMEX_RK_MF &
-           ( Scheme, MF_uGF % BA, MF_uGF % DM, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
 

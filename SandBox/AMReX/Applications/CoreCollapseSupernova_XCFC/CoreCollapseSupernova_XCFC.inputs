@@ -17,7 +17,7 @@ thornado.UsePhysicalUnits = 1
 
 thornado.PlotFileBaseName = "CoreCollapseSupernova_XCFC.plt"
 thornado.t_end   = 3.0e+2
-thornado.iCycleD = 10
+thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
@@ -41,14 +41,9 @@ geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
 
 amr.n_cell                      = 512 01 01
 thornado.swX                    = 01  00 00
-#amr.max_grid_size_x             = 128
-#amr.blocking_factor_x           = 128
+#amr.max_grid_size_x             = 512
+#amr.blocking_factor_x           = 512
 amr.max_level                   = 0
-amr.UseFluxCorrection_Euler     = 0
-amr.UseFluxCorrection_TwoMoment = 0
-amr.UseAMR                      = 0
-amr.TagCriteria                 = 0.0
-amr.n_error_buf                 = 0
 amr.ref_ratio                   = 2
 
 # Poseidon parameters
@@ -58,12 +53,10 @@ poseidon.max_fp_iters      = 20
 poseidon.anderson_m        = 3
 poseidon.converge_criteria = 1.0e-08
 
-# Slope limiter parameters
+# Slope limiter parameters (Euler)
 SL.UseSlopeLimiter_Euler           = 1
-SL.UseSlopeLimiter_TwoMoment       = 1
 SL.SlopeLimiterMethod_Euler        = "TVD"
 SL.BetaTVD_Euler                   = 1.75e+0
-SL.BetaTVD_TwoMoment               = 1.75e+0
 SL.BetaTVB_Euler                   = 0.00e+0
 SL.SlopeTolerance_Euler            = 1.00e-6
 SL.UseCharacteristicLimiting_Euler = 0
@@ -71,13 +64,19 @@ SL.UseTroubledCellIndicator_Euler  = 0
 SL.LimiterThresholdParameter_Euler = 5.00e-3
 SL.UseConservativeCorrection_Euler = 1
 
-# Positivity limiter parameters
-PL.UsePositivityLimiter_Euler     = 1
+# Positivity limiter parameters (Euler)
+PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
+
+# Slope limiter parameters (TwoMoment)
+SL.UseSlopeLimiter_TwoMoment = 1
+SL.BetaTVD_TwoMoment         = 1.75e+0
+
+# Positivity limiter parameters (TwoMoment)
 PL.UsePositivityLimiter_TwoMoment = 1
-PL.Min_1_Euler                    = 1.0e-13
-PL.Min_1_TwoMoment                = 1.0e-13
-PL.Min_2_Euler                    = 1.0e-13
-PL.Min_2_TwoMoment                = 1.0e-13
+PL.Min_1_TwoMoment                = 1.0e-50
+PL.Min_2_TwoMoment                = 1.0e-50
 
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"
