@@ -62,12 +62,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputeConformalFactor_Poseidon_MF, &
     ComputePressureTensorTrace_XCFC_MF, &
     ComputeGeometry_Poseidon_MF
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_UpdateFluid, &
-    Timer_AMReX_Euler_InteriorBC, &
-    Timer_AMReX_Euler_CopyMultiFab
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_UpdateFluid
 
   IMPLICIT NONE
   PRIVATE
@@ -140,7 +138,7 @@ CONTAINS
 
     REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nMaxLevels-1)
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+    CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
     dM_OffGrid_Euler = Zero
 
@@ -323,7 +321,7 @@ CONTAINS
 
     END DO
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+    CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK_MF
 

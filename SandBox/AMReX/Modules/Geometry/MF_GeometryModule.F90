@@ -47,16 +47,14 @@ MODULE MF_GeometryModule
     Zero, &
     One
   USE MF_UtilitiesModule, ONLY: &
-    thornado2amrex_X
+    thornado2amrex_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
     UseTiling, &
     ProgramName
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
@@ -120,14 +118,10 @@ CONTAINS
       iLo_G = iX_B1
       iHi_G = iX_E1
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-      ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3), &
-                  1:nGF) )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(3), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(3), iX_E1(3), nGF ], &
+               G )
 
       G = Zero ! Uninitialized variables cause crash in IO in DEBUG mode
 
@@ -147,11 +141,10 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-      DEALLOCATE( G )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(3), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(3), iX_E1(3), nGF ], &
+               G )
 
     END DO
 

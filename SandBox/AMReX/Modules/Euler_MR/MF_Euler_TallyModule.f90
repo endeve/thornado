@@ -48,14 +48,15 @@ MODULE MF_Euler_TallyModule
     DestroyMesh_MF
 !  USE TimersModule_AMReX_Euler, ONLY: &
 !    TimersStart_AMReX_Euler, &
-!    TimersStop_AMReX_Euler, &
-!    Timer_AMReX_Euler_Allocate
+!    TimersStop_AMReX_Euler
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
-    amrex2thornado_X
+    amrex2thornado_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
 
   IMPLICIT NONE
   PRIVATE
@@ -243,29 +244,31 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-!        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
+                 G )
 
-        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nGF) )
-
-        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
-
-!        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
+                 U )
 
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
         CALL ComputeTally_Euler( iX_B0, iX_E0, G, U, Mask, iLevel )
 
-!        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
+                 U )
 
-        DEALLOCATE( U )
-        DEALLOCATE( G )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
+                 G )
 
-!        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 

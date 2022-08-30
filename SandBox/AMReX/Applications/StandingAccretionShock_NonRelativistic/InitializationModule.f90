@@ -158,12 +158,11 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_Euler_TimersModule, ONLY: &
-    InitializeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Initialize, &
-    Timer_AMReX_Euler_InputOutput
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    InitializeTimers_AMReX, &
+    Timer_AMReX_Initialize
 
   IMPLICIT NONE
   PRIVATE
@@ -179,9 +178,9 @@ CONTAINS
 
     CALL amrex_amrcore_init()
 
-    CALL InitializeTimers_AMReX_Euler
+    CALL InitializeTimers_AMReX
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+    CALL TimersStart_AMReX( Timer_AMReX_Initialize )
 
     CALL InitializeParameters
 
@@ -303,10 +302,6 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -322,7 +317,7 @@ CONTAINS
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX( Timer_AMReX_Initialize )
 
   END SUBROUTINE InitializeProgram
 

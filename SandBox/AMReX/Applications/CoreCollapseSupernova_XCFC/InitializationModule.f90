@@ -223,15 +223,14 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_Euler_TimersModule, ONLY: &
-    InitializeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Initialize, &
-    Timer_AMReX_Euler_InputOutput
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     InitializeGravitySolver_XCFC_Poseidon_MF, &
     InitializeMetric_MF
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    InitializeTimers_AMReX, &
+    Timer_AMReX_Initialize
 
   IMPLICIT NONE
   PRIVATE
@@ -247,11 +246,9 @@ CONTAINS
 
     CALL amrex_amrcore_init()
 
-    CALL InitializeTimers_AMReX_Euler
+    CALL InitializeTimers_AMReX
 
-    CALL InitializeTimers
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+    CALL TimersStart_AMReX( Timer_AMReX_Initialize )
 
     CALL InitializeParameters
 
@@ -446,10 +443,6 @@ CONTAINS
     CALL ApplyPositivityLimiter_TwoMoment_MF &
            ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -475,7 +468,7 @@ CONTAINS
            ( amrex_geom, MF_uGF, MF_uCF, MF_uCR, t_new(0), &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX( Timer_AMReX_Initialize )
 
   END SUBROUTINE InitializeProgram
 
