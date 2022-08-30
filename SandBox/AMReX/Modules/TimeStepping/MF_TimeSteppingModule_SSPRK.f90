@@ -65,7 +65,8 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
-    Timer_AMReX_UpdateFluid
+    Timer_AMReX_UpdateFluid, &
+    Timer_AMReX_GravitySolve
 
   IMPLICIT NONE
   PRIVATE
@@ -210,6 +211,8 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN
 
+          CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
           CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uGS )
 
@@ -217,11 +220,15 @@ CONTAINS
 
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
+          CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
           CALL ApplySlopeLimiter_Euler_MF &
                  ( t_new, MF_uGF, MF_U(iS,:), MF_uDF )
 
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
+
+          CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
           CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_U(iS,:) )
 
@@ -233,6 +240,8 @@ CONTAINS
           CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_U(iS,:), MF_uGS )
 
           CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+          CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
         END IF
 
@@ -287,6 +296,8 @@ CONTAINS
 
     END DO ! iLevel
 
+    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
@@ -294,11 +305,15 @@ CONTAINS
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
+    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
+
+    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
@@ -312,6 +327,8 @@ CONTAINS
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+
+    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 
