@@ -47,7 +47,9 @@ MODULE MF_TimersModule
   REAL(DP), PUBLIC :: Timer_AMReX_PermuteData_Z;         INTEGER :: iT_PDZ = 11
   REAL(DP), PUBLIC :: Timer_AMReX_FillPatch;             INTEGER :: iT_FP  = 12
 
-  INTEGER, PARAMETER :: nTimers = 12
+  REAL(DP), PUBLIC :: Timer_AMReX_GravitySolve;          INTEGER :: iT_GS  = 13
+
+  INTEGER, PARAMETER :: nTimers = 13
 
   LOGICAL :: WriteMMS
 
@@ -82,6 +84,8 @@ CONTAINS
     Timer_AMReX_PermuteData_X = Zero
     Timer_AMReX_PermuteData_Z = Zero
     Timer_AMReX_FillPatch     = Zero
+
+    Timer_AMReX_GravitySolve  = Zero
 
     IF( TimeIt_AMReX_Euler ) &
       CALL InitializeTimers_AMReX_Euler &
@@ -131,6 +135,8 @@ CONTAINS
     Timer(iT_PDZ) = Timer_AMReX_PermuteData_Z
     Timer(iT_FP ) = Timer_AMReX_FillPatch
 
+    Timer(iT_GS ) = Timer_AMReX_GravitySolve
+
     DO iT = 1, nTimers
 
       CALL SumMinMaxAve( Timer(iT), TimerSum(iT), &
@@ -170,6 +176,8 @@ CONTAINS
       Label(iT_PDX) = 'Permute Data (X)'
       Label(iT_PDZ) = 'Permute Data (Z)'
       Label(iT_FP ) = 'Fill Patch'
+
+      Label(iT_GS ) = 'Gravity Solve'
 
       WRITE(*,*)
       WRITE(*,'(6x,A)') 'AMReX-specific'
