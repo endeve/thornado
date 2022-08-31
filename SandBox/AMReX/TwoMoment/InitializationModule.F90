@@ -339,20 +339,20 @@ CONTAINS
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
                                 Verbose_Option = amrex_parallel_ioprocessor()  )
 
-!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-!                              Verbose_Option = amrex_parallel_ioprocessor()  )
-
-!    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-!                               Verbose_Option = amrex_parallel_ioprocessor()  )
-    
-    
-
-
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
+   
+    
+
+
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+
+ !   CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+  !                             Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -374,8 +374,8 @@ CONTAINS
       CALL InitializeOpacities_TABLE &
         ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
           OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
-          OpacityTableName_NES_Option  = OpacityTableName_NES,  &
-          OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          !OpacityTableName_NES_Option  = OpacityTableName_NES,  &
+          !OpacityTableName_Pair_Option = OpacityTableName_Pair, &
           EquationOfStateTableName_Option = EosTableName, &
           Verbose_Option =  amrex_parallel_ioprocessor())
 

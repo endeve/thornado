@@ -79,6 +79,7 @@ PROGRAM main
   
 num = 1
   DO WHILE( ALL( t .LT. t_end ) )
+  !DO WHILE( StepNo(0) .LT. 1 )
     
     StepNo = StepNo + 1
     IF ( dt_rel .NE. 0.0_amrex_real ) THEN
