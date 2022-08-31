@@ -118,6 +118,9 @@ CONTAINS
 
     IF( .NOT. TimeIt_AMReX ) RETURN
 
+    IF( RestartProgramTimer ) &
+      CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
+
     CALL TimersStop_AMReX( Timer_AMReX_Program )
 
     Timer(iT_P  ) = Timer_AMReX_Program
@@ -209,8 +212,12 @@ CONTAINS
     IF( TimeIt_AMReX_Euler ) &
       CALL FinalizeTimers_AMReX_Euler( TimerAve(iT_P) )
 
-    IF( RestartProgramTimer ) &
+    IF( RestartProgramTimer )THEN
+
       CALL TimersStart_AMReX( Timer_AMReX_Program )
+      CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
+
+    END IF
 
   END SUBROUTINE FinalizeTimers_AMReX
 
