@@ -9,14 +9,15 @@ thornado.ProgramName = "Relaxation"
 thornado.Scheme = "BackwardEuler"
 
 thornado.t_end     = 10.0     # Final time
-thornado.dt_wrt    = 100.0      # Write time interval
+thornado.dt_wrt    = 0.1      # Write time interval
 thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
+thornado.dt_rel    = 0.0001
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
 thornado.CFL       = 0.5     # CFL number
 thornado.bcX       = 30 1 1 # Boundary conditions
 thornado.swX       = 00 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.V_0       = 0.0 0.0 0.0  # three velocity
-thornado.nE        = 64       # Number of Energy Cells
+thornado.nE        = 16      # Number of Energy Cells
 thornado.swE       = 01
 thornado.bcE       = 0
 thornado.eL        = 0.0           #  MeV Lower energy domain size
@@ -29,7 +30,7 @@ thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1  
 
-geometry.coord_sys   = 1             # Cartesian
+geometry.coord_sys   = 0             # Cartesian
 geometry.prob_lo     = 0.0 0.0 0.0         # Lower spatial domain size
 geometry.prob_hi     = 1.0 1.0 1.0 # High spatial domain size
 geometry.is_periodic = 1   1   1
@@ -52,11 +53,11 @@ SL.UseSlopeLimiter           = 0
 SL.BetaTVD                   = 1.75e0
 
 # Equation of State parameters
-EoS.EosTableName = 'wl-EOS-SFHo-15-25-50.h5'
+EoS.EosTableName = "wl-EOS-SFHo-15-25-50.h5"
 EoS.EquationOfState = "TABLE"
 
 #Opacity parameters
-OP.OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
-OP.OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
-OP.OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
-OP.OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
+OP.OpacityTableName_AbEm = "wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5"
+OP.OpacityTableName_Iso  = "wl-Op-SFHo-15-25-50-E40-B85-Iso.h5"
+OP.OpacityTableName_NES  = "wl-Op-SFHo-15-25-50-E40-B85-NES.h5"
+OP.OpacityTableName_Pair = "wl-Op-SFHo-15-25-50-E40-B85-Pair.h5"
