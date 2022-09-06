@@ -12,12 +12,13 @@ MODULE MF_InitializationModule
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_min
+    amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_reduce_min
 
   ! --- thornado Modules ---
 
@@ -37,9 +38,6 @@ MODULE MF_InitializationModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
-  USE GeometryComputationModule, ONLY: &
-    LapseFunction, &
-    ConformalFactor
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -57,9 +55,6 @@ MODULE MF_InitializationModule
     iCF_Ne, &
     nAF, &
     iAF_P
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
   USE EquationOfStateModule, ONLY: &
@@ -76,6 +71,12 @@ MODULE MF_InitializationModule
     Millisecond
   USE UtilitiesModule, ONLY: &
     Locate
+  USE GeometryComputationModule, ONLY: &
+    LapseFunction, &
+    ConformalFactor
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ExpD, &
+    ExpE
 
   ! --- Local Modules ---
 
@@ -145,10 +146,9 @@ CONTAINS
     INTEGER  :: iX1_1, iX1_2, iNX1_1, iNX1_2, indC
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
     REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, uPert
+    REAL(DP) :: BernoulliConstant
     REAL(DP) :: D0, V0, P0
     REAL(DP) :: K_1, K_2, Mdot, AdvectionTime, rCenter, sigma
-    REAL(DP) :: Alpha
-    REAL(DP) :: Psi
     REAL(DP), ALLOCATABLE :: D    (:,:)
     REAL(DP), ALLOCATABLE :: V    (:,:)
     REAL(DP), ALLOCATABLE :: P    (:,:)
@@ -213,8 +213,9 @@ CONTAINS
                            * ( Erg / Centimeter**3 &
                            / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
 
-    Mdot = AccretionRate
-    K_1  = PolytropicConstant
+    Mdot              = AccretionRate
+    K_1               = PolytropicConstant
+    BernoulliConstant = SpeedOfLight**2
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -334,12 +335,9 @@ CONTAINS
 
             IF( X1 .LE. ShockRadius ) CYCLE
 
-            Alpha = LapseFunction  ( X1, MassPNS )
-            Psi   = ConformalFactor( X1, MassPNS )
-
             CALL NewtonRaphson_SAS &
-                   ( X1, MassPNS, Mdot, K_1, &
-                     Alpha, Psi, D0, V0, P0, &
+                   ( X1, MassPNS, Mdot, BernoulliConstant, K_1, &
+                     D0, V0, P0, &
                      D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
 
             D0 = D(iNX1,iX1)
@@ -420,12 +418,9 @@ CONTAINS
 
             IF( X1 .GT. ShockRadius ) CYCLE
 
-            Alpha = LapseFunction  ( X1, MassPNS )
-            Psi   = ConformalFactor( X1, MassPNS )
-
             CALL NewtonRaphson_SAS &
-                   ( X1, MassPNS, Mdot, K_2, &
-                     Alpha, Psi, D0, V0, P0, &
+                   ( X1, MassPNS, Mdot, BernoulliConstant, K_2, &
+                     D0, V0, P0, &
                      D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
 
             D0 = D(iNX1,iX1)
@@ -621,6 +616,347 @@ CONTAINS
   ! --- Auxiliary utilities for SAS problem ---
 
 
+  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
+  FUNCTION Inv3x3( A ) RESULT( invA )
+
+    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
+
+    REAL(DP), INTENT(in) :: A   (3,3)
+    REAL(DP)             :: invA(3,3)
+    REAL(DP)             :: InvDet
+
+    ! --- Calculate the inverse of the determinant of the matrix ---
+
+    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
+                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
+                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
+
+    ! --- Calculate the inverse of the matrix ---
+
+    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
+    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
+    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
+    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
+    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
+    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
+    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
+    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
+    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
+
+    RETURN
+  END FUNCTION Inv3x3
+
+
+  SUBROUTINE LocateFirstUnShockedElement &
+    ( iX_B1, iX_E1, ShockRadius, &
+      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
+      FirstPreShockElement, AllPreShockElements, AllPostShockElements )
+
+    INTEGER , INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: ShockRadius
+    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
+    REAL(DP), INTENT(out) :: X1_1, X1_2
+    LOGICAL , INTENT(out) :: FirstPreShockElement, &
+                             AllPreShockElements, &
+                             AllPostShockElements
+
+    REAL(DP) :: X1, dX1
+    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements
+
+    FirstPreShockElement  = .FALSE.
+    nPreShockElements     = 0
+    nPostShockElements    = 0
+
+    X1 = Zero
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNX1 = 1, nNodesX(1)
+
+        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
+        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        IF( X1 .LE. ShockRadius )THEN
+
+          nPreShockElements = nPreShockElements + 1
+
+          CYCLE
+
+        END IF
+
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+
+          nPostShockElements = nPostShockElements + 1
+
+          iX1_1  = iX1
+          iNX1_1 = iNX1
+          X1_1   = X1
+          X1_2   = X1 - dX1
+
+          IF( iNX1_1 .EQ. 1 )THEN
+
+            iX1_2  = iX1_1 - 1
+            iNX1_2 = nNodesX(1)
+
+          ELSE
+
+            iX1_2  = iX1_1
+            iNX1_2 = iNX1_1 - 1
+
+          END IF
+
+          FirstPreShockElement = .TRUE.
+
+        END IF
+
+      END DO
+
+    END DO
+
+    IF( nPostShockElements .EQ. 0 )THEN
+
+      AllPostShockElements = .FALSE.
+      AllPreShockElements  = .TRUE.
+
+    ELSE IF( nPreShockElements .EQ. 0 )THEN
+
+      AllPostShockElements = .TRUE.
+      AllPreShockElements  = .FALSE.
+
+    ELSE
+
+      AllPostShockElements = .FALSE.
+      AllPreShockElements  = .FALSE.
+
+    END IF
+
+  END SUBROUTINE LocateFirstUnShockedElement
+
+
+  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+
+    CHARACTER(LEN=16)     :: FMT
+    INTEGER               :: iX1
+    TYPE(amrex_parmparse) :: PP
+
+    IF( nLevels .GT. 1 )THEN
+
+      IF( amrex_parallel_ioprocessor() ) &
+        WRITE(*,*) &
+          'WARNING: ReadFluidFieldsFromFile untested with multi-level mesh'
+
+    END IF
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
+                        FileName_Nodal1DIC_SAS )
+    CALL amrex_parmparse_destroy( PP )
+
+    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
+
+    READ(101,*) ExpD
+    READ(101,*) ExpE
+    READ(101,*) FMT
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      READ(101,TRIM(FMT)) D(:,iX1)
+      READ(101,TRIM(FMT)) V(:,iX1)
+      READ(101,TRIM(FMT)) P(:,iX1)
+
+    END DO
+
+    CLOSE( 101 )
+
+  END SUBROUTINE ReadFluidFieldsFromFile
+
+
+  SUBROUTINE NewtonRaphson_SAS &
+    ( X1, MassPNS, Mdot, BernoulliConstant, K, D0, V0, P0, D, V, P )
+
+    REAL(DP), INTENT(in)  :: X1, MassPNS, Mdot, BernoulliConstant, K, &
+                             D0, V0, P0
+    REAL(DP), INTENT(out) :: D , V , P
+
+    REAL(DP) :: Alpha, Psi, W
+    REAL(DP) :: Jac(3,3), invJac(3,3)
+    REAL(DP) :: f(3), uO(3), uN(3), du(3)
+
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITER
+    REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
+    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
+
+    REAL(DP) :: a1, b1, b2, c1
+
+    Alpha = LapseFunction  ( X1, MassPNS )
+    Psi   = ConformalFactor( X1, MassPNS )
+
+    a1 = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0
+    b1 = Alpha * SpeedOfLight**2 / BernoulliConstant
+    b2 = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+           * P0 /( D0 * BernoulliConstant )
+    c1 = P0 / ( K * D0**( Gamma_IDEAL ) )
+
+    uO(1) = One
+    uO(2) = One
+    uO(3) = One
+
+    CONVERGED = .FALSE.
+    ITER      = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
+
+      ITER = ITER + 1
+
+      W = LorentzFactor( Psi, V0 * uO(2) )
+
+      f(1) = a1 * uO(1) * W * uO(2) + One
+      f(2) = b1 * W + b2 / uO(1) * W * uO(3) - One
+      f(3) = c1 * uO(3) - uO(1)**( Gamma_IDEAL )
+
+      Jac(1,1) = a1 * W * uO(2)
+      Jac(1,2) = a1 * uO(1) * W**3
+      Jac(1,3) = Zero
+      Jac(2,1) = -b2 / uO(1)**2 * W * uO(3)
+      Jac(2,2) = ( b1 + b2 / uO(1) * uO(3) ) &
+                   * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
+      Jac(2,3) = b2 / uO(1) * W
+      Jac(3,1) = -Gamma_IDEAL * uO(1)**( Gamma_IDEAL - One )
+      Jac(3,2) = Zero
+      Jac(3,3) = c1
+
+      InvJac = Inv3x3( Jac )
+
+      uN = uO - MATMUL( InvJac, f )
+
+      du = uN - uO
+
+      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
+
+      uO = uN
+
+    END DO
+
+    D = uN(1) * D0
+    V = uN(2) * V0
+    P = uN(3) * P0
+
+  END SUBROUTINE NewtonRaphson_SAS
+
+
+  SUBROUTINE ApplyJumpConditions_SAS &
+    ( MassPNS, AccretionRate, ShockRadius, &
+      Alpha_1, Psi_1, D_1, V_1, P_1, Alpha_2, Psi_2, D_2, V_2, P_2 )
+
+    REAL(DP), INTENT(in)  :: MassPNS, AccretionRate, ShockRadius, &
+                             Alpha_1, Psi_1, D_1, V_1, P_1, Alpha_2, Psi_2
+    REAL(DP), INTENT(out) :: D_2, V_2, P_2
+
+    REAL(DP) :: D1, D2, D3
+
+    REAL(DP) :: W_1, h_1, W_2
+    REAL(DP) :: Jac(3,3), invJac(3,3)
+    REAL(DP) :: f(3), uO(3), uN(3), du(3)
+
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITER
+    REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
+    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
+
+    REAL(DP) :: a1, b1, b2, b3, c1, c2
+    REAL(DP) :: D20, V20, P20
+
+    W_1 = LorentzFactor( Psi_1, V_1 )
+    h_1 = SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) * P_1 / D_1
+
+    D1 = D_1 * W_1 * V_1
+    D2 = D_1 * h_1 / SpeedOfLight**2 * W_1**2 * V_1**2 + Psi_1**( -4 ) * P_1
+    D3 = D_1 * h_1 / Alpha_1 * W_1**2 * V_1
+
+    D20 &
+      = ( Gamma_IDEAL + One ) / ( Gamma_IDEAL - One ) &
+          * ( AccretionRate / FourPi ) &
+          * ( Two * GravitationalConstant * MassPNS )**( -Half ) &
+          * ShockRadius**( -Three / Two )
+
+    V20 &
+      = - ( Gamma_IDEAL - One ) / ( Gamma_IDEAL + One ) &
+          * ( Two * GravitationalConstant * MassPNS )**( Half ) &
+          * ShockRadius**( -Half )
+
+    P20 &
+      = Two / ( Gamma_IDEAL + One ) &
+          * ( AccretionRate / FourPi ) &
+          * ( Two * GravitationalConstant * MassPNS )**( Half ) &
+          * ShockRadius**( -Five / Two )
+
+    a1 = D20 * V20 / D1
+    b1 = D20 * V20**2 / D2
+    b2 = SpeedOfLight**( -2 ) * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+           * P20 * V20**2 / D2
+    b3 = Psi_2**( -4 ) * P20 / D2
+    c1 = D20 * SpeedOfLight**2 * V20 * Alpha_2**( -1 ) / D3
+    c2 = Gamma_IDEAL / ( Gamma_IDEAL - One ) * P20 * V20 * Alpha_2**( -1 ) / D3
+
+    uO(1) = One
+    uO(2) = One
+    uO(3) = One
+
+    CONVERGED = .FALSE.
+    ITER      = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
+
+      ITER = ITER + 1
+
+      W_2 = LorentzFactor( Psi_2, V20 * uO(2) )
+
+      f(1) = a1 * uO(1) * W_2 * uO(2) - One
+      f(2) = b1 * uO(1) * W_2**2 * uO(2)**2 + b2 * W_2**2 * uO(2)**2 * uO(3) &
+               + b3 * uO(3) - One
+      f(3) = c1 * uO(1) * W_2**2 * uO(2) + c2 * W_2**2 * uO(2) * uO(3) - One
+
+      Jac(1,1) = a1 * W_2 * uO(2)
+      Jac(1,2) = a1 * uO(1) * W_2**3
+      Jac(1,3) = Zero
+      Jac(2,1) = b1 * W_2**2 * uO(2)**2
+      Jac(2,2) = Two * ( b1 * uO(1) + b2 * uO(3) ) * W_2**4 * uO(2)
+      Jac(2,3) = b2 * W_2**2 * uO(2)**2 + b3
+      Jac(3,1) = c1 * W_2**2 * uO(2)
+      Jac(3,2) = ( c1 * uO(1) + c2 * uO(3) ) * ( Two * W_2**2 - One ) * W_2**2
+      Jac(3,3) = c2 * W_2**2 * uO(2)
+
+      InvJac = Inv3x3( Jac )
+
+      uN = uO - MATMUL( InvJac, f )
+
+      du = uN - uO
+
+      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
+
+      uO = uN
+
+    END DO
+
+    D_2 = uN(1) * D20
+    V_2 = uN(2) * V20
+    P_2 = uN(3) * P20
+
+  END SUBROUTINE ApplyJumpConditions_SAS
+
+
+  REAL(DP) FUNCTION LorentzFactor( Psi, V )
+
+    REAL(DP), INTENT(in) :: Psi, V
+
+    LorentzFactor = One / SQRT( One - Psi**4 * ( V / SpeedOfLight )**2 )
+
+    RETURN
+  END FUNCTION LorentzFactor
+
+
   SUBROUTINE ComputeExtrapolationExponents &
     ( MF_uCF, iLevel, iLo, iHi, nX_LeastSquares )
 
@@ -719,347 +1055,6 @@ CONTAINS
              / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
 
   END SUBROUTINE ComputeExtrapolationExponents
-
-
-  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
-
-    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
-
-    CHARACTER(LEN=16)     :: FMT
-    INTEGER               :: iX1
-    TYPE(amrex_parmparse) :: PP
-
-    IF( nLevels .GT. 1 )THEN
-
-      IF( amrex_parallel_ioprocessor() ) &
-        WRITE(*,*) &
-          'WARNING: ReadFluidFieldsFromFile untested with multi-level mesh'
-
-    END IF
-
-    CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
-                        FileName_Nodal1DIC_SAS )
-    CALL amrex_parmparse_destroy( PP )
-
-    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
-
-    READ(101,*) ExpD
-    READ(101,*) ExpE
-    READ(101,*) FMT
-
-    DO iX1 = iX_B1(1), iX_E1(1)
-
-      READ(101,TRIM(FMT)) D(:,iX1)
-      READ(101,TRIM(FMT)) V(:,iX1)
-      READ(101,TRIM(FMT)) P(:,iX1)
-
-    END DO
-
-    CLOSE( 101 )
-
-  END SUBROUTINE ReadFluidFieldsFromFile
-
-
-  SUBROUTINE NewtonRaphson_SAS &
-    ( X1, MassPNS, Mdot, K, Alpha, Psi, D0, V0, P0, D, V, P )
-
-    REAL(DP), INTENT(in)  :: X1, MassPNS, Mdot, K, &
-                             Alpha, Psi, D0, V0, P0
-    REAL(DP), INTENT(out) :: D ,V ,P
-
-    REAL(DP) :: W
-    REAL(DP) :: Jac(3,3), invJac(3,3)
-    REAL(DP) :: f(3), uO(3), uN(3), du(3)
-
-    LOGICAL             :: CONVERGED
-    INTEGER             :: ITER
-    REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
-    REAL(DP), PARAMETER :: Tolf = 1.0e-16_DP
-    REAL(DP), PARAMETER :: BernoulliConstant = SpeedOfLight**2
-    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
-
-    REAL(DP) :: a1, b1, b2, c1
-
-    a1 = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0
-    b1 = Alpha * SpeedOfLight**2 / BernoulliConstant
-    b2 = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-           * P0 /( D0 * BernoulliConstant )
-    c1 = P0 / ( K * D0**( Gamma_IDEAL ) )
-
-    uO(1) = One
-    uO(2) = One
-    uO(3) = One
-
-    CONVERGED = .FALSE.
-    ITER      = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
-
-      ITER = ITER + 1
-
-      W = LorentzFactor( Psi, V0 * uO(2) )
-
-      f(1) = a1 * uO(1) * W * uO(2) + One
-      f(2) = b1 * W + b2 / uO(1) * W * uO(3) - One
-      f(3) = c1 * uO(3) - uO(1)**( Gamma_IDEAL )
-
-      Jac(1,1) = a1 * W * uO(2)
-      Jac(1,2) = a1 * uO(1) * W**3
-      Jac(1,3) = Zero
-      Jac(2,1) = -b2 / uO(1)**2 * W * uO(3)
-      Jac(2,2) = ( b1 + b2 / uO(1) * uO(3) ) &
-                   * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
-      Jac(2,3) = b2 / uO(1) * W
-      Jac(3,1) = -Gamma_IDEAL * uO(1)**( Gamma_IDEAL - One )
-      Jac(3,2) = Zero
-      Jac(3,3) = c1
-
-      InvJac = Inv3x3( Jac )
-
-      uN = uO - MATMUL( InvJac, f )
-
-      du = uN - uO
-
-      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
-
-      uO = uN
-
-    END DO
-
-    D = uN(1) * D0
-    V = uN(2) * V0
-    P = uN(3) * P0
-
-  END SUBROUTINE NewtonRaphson_SAS
-
-
-  SUBROUTINE ApplyJumpConditions_SAS &
-    ( MassPNS, AccretionRate, ShockRadius, &
-      Alpha_1, Psi_1, D_1, V_1, P_1, Alpha_2, Psi_2, D_2, V_2, P_2 )
-
-    REAL(DP), INTENT(in)  :: MassPNS, AccretionRate, ShockRadius, &
-                             Alpha_1, Psi_1, D_1, V_1, P_1, Alpha_2, Psi_2
-    REAL(DP), INTENT(out) :: D_2, V_2, P_2
-
-    REAL(DP) :: D1, D2, D3
-
-    REAL(DP) :: W_1, h_1, W_2
-    REAL(DP) :: Jac(3,3), invJac(3,3)
-    REAL(DP) :: f(3), uO(3), uN(3), du(3)
-
-    LOGICAL             :: CONVERGED
-    INTEGER             :: ITER
-    REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
-    REAL(DP), PARAMETER :: Tolf = 1.0e-16_DP
-    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
-
-    REAL(DP) :: a1, b1, b2, b3, c1, c2
-    REAL(DP) :: D20, V20, P20
-
-    W_1 = LorentzFactor( Psi_1, V_1 )
-    h_1 = SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) * P_1 / D_1
-
-    D1 = D_1 * W_1 * V_1
-    D2 = D_1 * h_1 / SpeedOfLight**2 * W_1**2 * V_1**2 + Psi_1**( -4 ) * P_1
-    D3 = D_1 * h_1 / Alpha_1 * W_1**2 * V_1
-
-    D20 &
-      = ( Gamma_IDEAL + One ) / ( Gamma_IDEAL - One ) &
-          * ( AccretionRate / FourPi ) &
-          * ( Two * GravitationalConstant * MassPNS )**( -Half ) &
-          * ShockRadius**( -Three / Two )
-
-    V20 &
-      = - ( Gamma_IDEAL - One ) / ( Gamma_IDEAL + One ) &
-          * ( Two * GravitationalConstant * MassPNS )**( Half ) &
-          * ShockRadius**( -Half )
-
-    P20 &
-      = Two / ( Gamma_IDEAL + One ) &
-          * ( AccretionRate / FourPi ) &
-          * ( Two * GravitationalConstant * MassPNS )**( Half ) &
-          * ShockRadius**( -Five / Two )
-
-    a1 = D20 * V20 / D1
-    b1 = D20 * V20**2 / D2
-    b2 = SpeedOfLight**( -2 ) * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-           * P20 * V20**2 / D2
-    b3 = Psi_2**( -4 ) * P20 / D2
-    c1 = D20 * SpeedOfLight**2 * V20 * Alpha_2**( -1 ) / D3
-    c2 = Gamma_IDEAL / ( Gamma_IDEAL - One ) * P20 * V20 * Alpha_2**( -1 ) / D3
-
-    uO(1) = One
-    uO(2) = One
-    uO(3) = One
-
-    CONVERGED = .FALSE.
-    ITER      = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
-
-      ITER = ITER + 1
-
-      W_2 = LorentzFactor( Psi_2, V20 * uO(2) )
-
-      f(1) = a1 * uO(1) * W_2 * uO(2) - One
-      f(2) = b1 * uO(1) * W_2**2 * uO(2)**2 + b2 * W_2**2 * uO(2)**2 * uO(3) &
-               + b3 * uO(3) - One
-      f(3) = c1 * uO(1) * W_2**2 * uO(2) + c2 * W_2**2 * uO(2) * uO(3) - One
-
-      Jac(1,1) = a1 * W_2 * uO(2)
-      Jac(1,2) = a1 * uO(1) * W_2**3
-      Jac(1,3) = Zero
-      Jac(2,1) = b1 * W_2**2 * uO(2)**2
-      Jac(2,2) = Two * ( b1 * uO(1) + b2 * uO(3) ) * W_2**4 * uO(2)
-      Jac(2,3) = b2 * W_2**2 * uO(2)**2 + b3
-      Jac(3,1) = c1 * W_2**2 * uO(2)
-      Jac(3,2) = ( c1 * uO(1) + c2 * uO(3) ) * ( Two * W_2**2 - One ) * W_2**2
-      Jac(3,3) = c2 * W_2**2 * uO(2)
-
-      InvJac = Inv3x3( Jac )
-
-      uN = uO - MATMUL( InvJac, f )
-
-      du = uN - uO
-
-      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
-
-      uO = uN
-
-    END DO
-
-    D_2 = uN(1) * D20
-    V_2 = uN(2) * V20
-    P_2 = uN(3) * P20
-
-  END SUBROUTINE ApplyJumpConditions_SAS
-
-
-  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
-  FUNCTION Inv3x3( A ) RESULT( invA )
-
-    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
-
-    REAL(DP), INTENT(in) :: A   (3,3)
-    REAL(DP)             :: invA(3,3)
-    REAL(DP)             :: InvDet
-
-    ! --- Calculate the inverse of the determinant of the matrix ---
-
-    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
-                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
-                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
-
-    ! --- Calculate the inverse of the matrix ---
-
-    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
-    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
-    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
-    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
-    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
-    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
-    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
-    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
-    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
-
-    RETURN
-  END FUNCTION Inv3x3
-
-
-  REAL(DP) FUNCTION LorentzFactor( Psi, V )
-
-    REAL(DP), INTENT(in) :: Psi, V
-
-    LorentzFactor = One / SQRT( One - Psi**4 * ( V / SpeedOfLight )**2 )
-
-    RETURN
-  END FUNCTION LorentzFactor
-
-
-  SUBROUTINE LocateFirstUnShockedElement &
-    ( iX_B1, iX_E1, ShockRadius, &
-      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
-      FirstPreShockElement, AllPreShockElements, AllPostShockElements )
-
-    INTEGER , INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: ShockRadius
-    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
-    REAL(DP), INTENT(out) :: X1_1, X1_2
-    LOGICAL , INTENT(out) :: FirstPreShockElement, &
-                             AllPreShockElements, &
-                             AllPostShockElements
-
-    REAL(DP) :: X1, dX1
-    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements
-
-    FirstPreShockElement  = .FALSE.
-    nPreShockElements     = 0
-    nPostShockElements    = 0
-
-    X1 = Zero
-
-    DO iX1 = iX_B1(1), iX_E1(1)
-
-      DO iNX1 = 1, nNodesX(1)
-
-        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
-        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
-
-        IF( X1 .LE. ShockRadius )THEN
-
-          nPreShockElements = nPreShockElements + 1
-
-          CYCLE
-
-        END IF
-
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
-
-          nPostShockElements = nPostShockElements + 1
-
-          iX1_1  = iX1
-          iNX1_1 = iNX1
-          X1_1   = X1
-          X1_2   = X1 - dX1
-
-          IF( iNX1_1 .EQ. 1 )THEN
-
-            iX1_2  = iX1_1 - 1
-            iNX1_2 = nNodesX(1)
-
-          ELSE
-
-            iX1_2  = iX1_1
-            iNX1_2 = iNX1_1 - 1
-
-          END IF
-
-          FirstPreShockElement = .TRUE.
-
-        END IF
-
-      END DO
-
-    END DO
-
-    IF( nPostShockElements .EQ. 0 )THEN
-
-      AllPostShockElements = .FALSE.
-      AllPreShockElements  = .TRUE.
-
-    ELSE IF( nPreShockElements .EQ. 0 )THEN
-
-      AllPostShockElements = .TRUE.
-      AllPreShockElements  = .FALSE.
-
-    ELSE
-
-      AllPostShockElements = .FALSE.
-      AllPreShockElements  = .FALSE.
-
-    END IF
-
-  END SUBROUTINE LocateFirstUnShockedElement
 
 
 END MODULE MF_InitializationModule
