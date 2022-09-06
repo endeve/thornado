@@ -30,9 +30,6 @@ MODULE MF_AccretionShockUtilitiesModule
     iPF_V1, &
     nAF, &
     iAF_P
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
 
   ! --- Local Modules ---
 
@@ -179,8 +176,8 @@ CONTAINS
 
       WRITE(FMT,'(A3,I3.3,A10)') '(SP', nNodesX(1), 'ES25.16E3)'
 
-      WRITE(101,'(ES24.16E3)') ExpD
-      WRITE(101,'(ES24.16E3)') ExpE
+      WRITE(101,'(ES24.16E3)') Zero
+      WRITE(101,'(ES24.16E3)') Zero
       WRITE(101,'(A)') FMT
 
       DO iX3 = iLo(3), iHi(3)
