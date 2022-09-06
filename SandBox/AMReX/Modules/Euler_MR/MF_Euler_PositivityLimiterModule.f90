@@ -18,6 +18,8 @@ MODULE MF_Euler_PositivityLimiterModule
   USE ProgramHeaderModule, ONLY: &
     swX, &
     nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nDF
@@ -53,6 +55,13 @@ MODULE MF_Euler_PositivityLimiterModule
     nLevels, &
     UseTiling, &
     DEBUG
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap, &
+    ApplyBoundaryConditions_Euler_MF
 !!$  USE AverageDownModule, ONLY: &
 !!$    AverageDown
 !!$  USE FillPatchModule, ONLY: &
@@ -172,11 +181,15 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                     iLo_MF(4), iApplyBC(3)
+    TYPE(EdgeMap) :: Edge_Map
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter_Euler ) RETURN
+
+    CALL CreateMesh_MF( iLevel, MeshX )
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -216,6 +229,16 @@ CONTAINS
 
       CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
+      ! --- Apply boundary conditions to physical boundaries
+      !     (needed for AMR) ---
+
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+      CALL Edge_Map % Euler_GetBC( iApplyBC )
+
       CALL ApplyPositivityLimiter_Euler( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
@@ -240,6 +263,8 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel
 

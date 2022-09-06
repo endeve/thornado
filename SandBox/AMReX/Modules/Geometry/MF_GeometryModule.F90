@@ -37,6 +37,8 @@ MODULE MF_GeometryModule
     iGF_Beta_1
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
+    ComputeGravitationalPotential
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
 
@@ -54,7 +56,8 @@ MODULE MF_GeometryModule
     nLevels, &
     swX, &
     UseTiling, &
-    ProgramName
+    ProgramName, &
+    SolveGravity_NR
 
   IMPLICIT NONE
   PRIVATE
@@ -84,7 +87,10 @@ CONTAINS
 
     Mass = Zero
 
-    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
+    IF(    ( TRIM( ProgramName ) &
+               .EQ. 'StandingAccretionShock_Relativistic' ) &
+      .OR. ( TRIM( ProgramName ) &
+               .EQ. 'StandingAccretionShock_NonRelativistic' ) )THEN
 
       CALL amrex_parmparse_build( PP, 'SAS' )
         CALL PP % query( 'Mass', Mass )
@@ -134,6 +140,10 @@ CONTAINS
 
       CALL ComputeGeometryX &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+      IF( SolveGravity_NR ) &
+        CALL ComputeGravitationalPotential &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
 #endif
 

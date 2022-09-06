@@ -68,10 +68,7 @@ MODULE MF_InitializationModule
     GravitationalConstant, &
     Millisecond
   USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
     Locate
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   ! --- Local Modules ---
 
@@ -83,30 +80,16 @@ MODULE MF_InitializationModule
     One, &
     Two, &
     Three, &
-    Four, &
     Five, &
-    Pi, &
-    TwoPi, &
     FourPi
   USE InputParsingModule, ONLY: &
     nLevels, &
-    xL, &
-    xR, &
     Gamma_IDEAL, &
     UseTiling, &
-    t_end, &
-    StepNo, &
-    iOS_CPP
-  USE InputOutputModuleAMReX, ONLY: &
-    WriteFieldsAMReX_PlotFile
-  USE MF_FieldsModule_Euler, ONLY: &
-    MF_uPF, &
-    MF_uAF, &
-    MF_uDF
-  USE MF_Euler_UtilitiesModule, ONLY: &
-    ComputeFromConserved_Euler_MF
-!!$  USE MF_AccretionShockUtilitiesModule, ONLY: &
-!!$    FileName_Nodal1DIC_SAS
+    t_end
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    FileName_Nodal1DIC_SAS, &
+    WriteNodal1DIC_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -179,6 +162,7 @@ CONTAINS
     rCenter               = Zero
     sigma                 = SqrtTiny
     PerturbationType      = 'StepFunction'
+    WriteNodal1DIC_SAS    = .FALSE.
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass', &
                         MassPNS )
@@ -206,6 +190,8 @@ CONTAINS
                         ResetEndTime )
       CALL PP % query( 'PerturbationType', &
                         PerturbationType )
+      CALL PP % query( 'WriteNodal1DIC_SAS', &
+                        WriteNodal1DIC_SAS )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -310,7 +296,7 @@ CONTAINS
 
     IF( InitializeFromFile )THEN
 
-!!$      CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+      CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
 
     ELSE
 
@@ -608,40 +594,170 @@ CONTAINS
   ! --- Auxiliary utilities for SAS problem ---
 
 
-!!$  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
-!!$
-!!$    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
-!!$    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
-!!$
-!!$    CHARACTER(LEN=16) :: FMT
-!!$    INTEGER           :: iX1
-!!$
-!!$    REAL(DP) :: Dummy
-!!$
-!!$    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
-!!$
-!!$    READ(101,*) Dummy
-!!$    READ(101,*) Dummy
-!!$    READ(101,*) FMT
-!!$
-!!$    DO iX1 = iX_B1(1), iX_E1(1)
-!!$
-!!$      READ(101,TRIM(FMT)) D(:,iX1)
-!!$      READ(101,TRIM(FMT)) V(:,iX1)
-!!$      READ(101,TRIM(FMT)) P(:,iX1)
-!!$
-!!$    END DO
-!!$
-!!$    CLOSE( 101 )
-!!$
-!!$  END SUBROUTINE ReadFluidFieldsFromFile
+  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
+  FUNCTION Inv3x3( A ) RESULT( invA )
+
+    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
+
+    REAL(DP), INTENT(in) :: A   (3,3)
+    REAL(DP)             :: invA(3,3)
+    REAL(DP)             :: InvDet
+
+    ! --- Calculate the inverse of the determinant of the matrix ---
+
+    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
+                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
+                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
+
+    ! --- Calculate the inverse of the matrix ---
+
+    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
+    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
+    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
+    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
+    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
+    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
+    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
+    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
+    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
+
+    RETURN
+  END FUNCTION Inv3x3
+
+
+  SUBROUTINE LocateFirstUnShockedElement &
+    ( iX_B1, iX_E1, ShockRadius, &
+      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
+      FirstPreShockElement, AllPreShockElements, AllPostShockElements )
+
+    INTEGER , INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: ShockRadius
+    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
+    REAL(DP), INTENT(out) :: X1_1, X1_2
+    LOGICAL , INTENT(out) :: FirstPreShockElement, &
+                             AllPreShockElements, &
+                             AllPostShockElements
+
+    REAL(DP) :: X1, dX1
+    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements
+
+    FirstPreShockElement  = .FALSE.
+    nPreShockElements     = 0
+    nPostShockElements    = 0
+
+    X1 = Zero
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNX1 = 1, nNodesX(1)
+
+        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
+        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+        IF( X1 .LE. ShockRadius )THEN
+
+          nPreShockElements = nPreShockElements + 1
+
+          CYCLE
+
+        END IF
+
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+
+          nPostShockElements = nPostShockElements + 1
+
+          iX1_1  = iX1
+          iNX1_1 = iNX1
+          X1_1   = X1
+          X1_2   = X1 - dX1
+
+          IF( iNX1_1 .EQ. 1 )THEN
+
+            iX1_2  = iX1_1 - 1
+            iNX1_2 = nNodesX(1)
+
+          ELSE
+
+            iX1_2  = iX1_1
+            iNX1_2 = iNX1_1 - 1
+
+          END IF
+
+          FirstPreShockElement = .TRUE.
+
+        END IF
+
+      END DO
+
+    END DO
+
+    IF( nPostShockElements .EQ. 0 )THEN
+
+      AllPostShockElements = .FALSE.
+      AllPreShockElements  = .TRUE.
+
+    ELSE IF( nPreShockElements .EQ. 0 )THEN
+
+      AllPostShockElements = .TRUE.
+      AllPreShockElements  = .FALSE.
+
+    ELSE
+
+      AllPostShockElements = .FALSE.
+      AllPreShockElements  = .FALSE.
+
+    END IF
+
+  END SUBROUTINE LocateFirstUnShockedElement
+
+
+  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+
+    CHARACTER(LEN=16)     :: FMT
+    INTEGER               :: iX1
+    TYPE(amrex_parmparse) :: PP
+
+    IF( nLevels .GT. 1 )THEN
+
+      IF( amrex_parallel_ioprocessor() ) &
+        WRITE(*,*) &
+          'WARNING: ReadFluidFieldsFromFile untested with multi-level mesh'
+
+    END IF
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
+                        FileName_Nodal1DIC_SAS )
+    CALL amrex_parmparse_destroy( PP )
+
+    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
+
+    READ(101,*)
+    READ(101,*)
+    READ(101,*) FMT
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      READ(101,TRIM(FMT)) D(:,iX1)
+      READ(101,TRIM(FMT)) V(:,iX1)
+      READ(101,TRIM(FMT)) P(:,iX1)
+
+    END DO
+
+    CLOSE( 101 )
+
+  END SUBROUTINE ReadFluidFieldsFromFile
 
 
   SUBROUTINE NewtonRaphson_SAS &
-    ( X1, MassPNS, Mdot, B, K, D0, V0, P0, D, V, P )
+    ( X1, MassPNS, Mdot, BernoulliConstant, K, D0, V0, P0, D, V, P )
 
-    REAL(DP), INTENT(in)  :: X1, MassPNS, Mdot, B, K, D0, V0, P0
-    REAL(DP), INTENT(out) :: D ,V ,P
+    REAL(DP), INTENT(in)  :: X1, MassPNS, Mdot, BernoulliConstant, K, &
+                             D0, V0, P0
+    REAL(DP), INTENT(out) :: D , V , P
 
     REAL(DP) :: Jac(3,3), invJac(3,3)
     REAL(DP) :: f(3), uO(3), uN(3), du(3)
@@ -662,7 +778,7 @@ CONTAINS
     a1 = FourPi * X1**2 * D0 * V0 / Mdot
     b1 = Half * V0**2 / Phi
     b2 = tau * p0 / ( D0 * Phi )
-    b3 = B / Phi
+    b3 = BernoulliConstant / Phi
     c1 = P0 / ( K * D0**( Gamma_IDEAL ) )
 
     uO(1) = One
@@ -798,123 +914,6 @@ CONTAINS
     P_2 = uN(3) * P20
 
   END SUBROUTINE ApplyJumpConditions_SAS
-
-
-  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
-  FUNCTION Inv3x3( A ) RESULT( invA )
-
-    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
-
-    REAL(DP), INTENT(in) :: A   (3,3)
-    REAL(DP)             :: invA(3,3)
-    REAL(DP)             :: InvDet
-
-    ! --- Calculate the inverse of the determinant of the matrix ---
-
-    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
-                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
-                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
-
-    ! --- Calculate the inverse of the matrix ---
-
-    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
-    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
-    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
-    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
-    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
-    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
-    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
-    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
-    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
-
-    RETURN
-  END FUNCTION Inv3x3
-
-
-  SUBROUTINE LocateFirstUnShockedElement &
-    ( iX_B1, iX_E1, ShockRadius, &
-      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
-      FirstPreShockElement, AllPreShockElements, AllPostShockElements )
-
-    INTEGER , INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: ShockRadius
-    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
-    REAL(DP), INTENT(out) :: X1_1, X1_2
-    LOGICAL , INTENT(out) :: FirstPreShockElement, &
-                             AllPreShockElements, &
-                             AllPostShockElements
-
-    REAL(DP) :: X1, dX1
-    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements
-
-    FirstPreShockElement  = .FALSE.
-    nPreShockElements     = 0
-    nPostShockElements    = 0
-
-    X1 = Zero
-
-    DO iX1 = iX_B1(1), iX_E1(1)
-
-      DO iNX1 = 1, nNodesX(1)
-
-        dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
-        X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
-
-        IF( X1 .LE. ShockRadius )THEN
-
-          nPreShockElements = nPreShockElements + 1
-
-          CYCLE
-
-        END IF
-
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
-
-          nPostShockElements = nPostShockElements + 1
-
-          iX1_1  = iX1
-          iNX1_1 = iNX1
-          X1_1   = X1
-          X1_2   = X1 - dX1
-
-          IF( iNX1_1 .EQ. 1 )THEN
-
-            iX1_2  = iX1_1 - 1
-            iNX1_2 = nNodesX(1)
-
-          ELSE
-
-            iX1_2  = iX1_1
-            iNX1_2 = iNX1_1 - 1
-
-          END IF
-
-          FirstPreShockElement = .TRUE.
-
-        END IF
-
-      END DO
-
-    END DO
-
-    IF( nPostShockElements .EQ. 0 )THEN
-
-      AllPostShockElements = .FALSE.
-      AllPreShockElements  = .TRUE.
-
-    ELSE IF( nPreShockElements .EQ. 0 )THEN
-
-      AllPostShockElements = .TRUE.
-      AllPreShockElements  = .FALSE.
-
-    ELSE
-
-      AllPostShockElements = .FALSE.
-      AllPreShockElements  = .FALSE.
-
-    END IF
-
-  END SUBROUTINE LocateFirstUnShockedElement
 
 
 END MODULE MF_InitializationModule
