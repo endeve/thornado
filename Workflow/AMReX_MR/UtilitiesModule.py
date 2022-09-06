@@ -2,6 +2,7 @@
 
 import numpy as np
 import gc
+from charade import detect
 
 def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
 
@@ -40,7 +41,7 @@ def GetFileArray( PlotFileDataDirectory, PlotFileBaseName ):
 
     for iFile in range( FileArray.shape[0] ):
 
-        sFile = FileArray[iFile]
+        sFile = convert( FileArray[iFile] )
 
         if( sFile[0:len(PlotFileBaseName)] == PlotFileBaseName \
               and sFile[len(PlotFileBaseName)+1].isdigit() ):
@@ -59,6 +60,19 @@ def GetFileArray( PlotFileDataDirectory, PlotFileBaseName ):
 
     return FileArray
 
+def convert( s ):
+
+    """from https://www.geeksforgeeks.org/python-character-encoding/"""
+
+    if( isinstance( s, str ) ):
+        s = s.encode()
+
+    encoding = detect(s)['encoding']
+
+    if( encoding == 'utf-8' ):
+        return s.decode()
+    else:
+        return s.decode(encoding)
 
 def ChoosePlotFile \
       ( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ], Verbose = False ):
