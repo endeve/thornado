@@ -51,13 +51,13 @@ MODULE FinalizationModule
     t_new, &
     lo_bc, &
     hi_bc
-  USE MF_AccretionShockUtilitiesModule, ONLY: &
-    WriteNodal1DICToFile_SAS
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_Finalize, &
     FinalizeTimers_AMReX
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    WriteNodal1DICToFile_SAS
 
   IMPLICIT NONE
   PRIVATE
