@@ -62,10 +62,8 @@ MODULE MF_Euler_PositivityLimiterModule
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
-!!$  USE AverageDownModule, ONLY: &
-!!$    AverageDown
-!!$  USE FillPatchModule, ONLY: &
-!!$    FillPatch
+  USE FillPatchModule, ONLY: &
+    FillPatch
 
   IMPLICIT NONE
   PRIVATE
@@ -145,17 +143,15 @@ CONTAINS
 
         END IF ! DEBUG
 
+        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+
         CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
                ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-
-!!$        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
 
       END DO ! iLevel
 
       ! --- Ensure underlying coarse cells are consistent with
       !     cells on refined level ---
-
-!!$      CALL AverageDown( MF_uGF, MF_uCF )
 
     END DO ! iCycle
 
