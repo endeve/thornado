@@ -273,8 +273,8 @@ CONTAINS
     IF( ( .NOT. UsePositivityLimiter_Euler ) .OR. ( nDOFX .EQ. 1 ) )THEN
 
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uDF )
 
     END IF
 
