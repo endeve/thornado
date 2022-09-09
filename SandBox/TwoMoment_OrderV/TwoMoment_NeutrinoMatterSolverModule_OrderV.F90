@@ -3031,13 +3031,13 @@ CONTAINS
 !!$
 !!$#if   defined( THORNADO_OMP_OL )
 !!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-!!$    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$    !$OMP PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 !!$#elif defined( THORNADO_OACC   )
 !!$    !$ACC PARALLEL LOOP GANG VECTOR &
-!!$    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$    !$ACC PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 !!$#elif defined( THORNADO_OMP    )
 !!$    !$OMP PARALLEL DO &
-!!$    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$    !$OMP PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 !!$#endif
 !!$    DO iX = 1, nX_G / nDOFX
 !!$      iOS = (iX-1) * nDOFX
