@@ -39,7 +39,9 @@ MODULE MF_Euler_SlopeLimiterModule
     DP
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X
+    thornado2amrex_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
   USE InputParsingModule, ONLY: &
     BetaTVD_Euler, &
     BetaTVB_Euler, &
@@ -65,11 +67,6 @@ MODULE MF_Euler_SlopeLimiterModule
     FillPatch
 !!$  USE AverageDownModule, ONLY: &
 !!$    AverageDown
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_InteriorBC, &
-    Timer_AMReX_Euler_Allocate
 
   IMPLICIT NONE
   PRIVATE
@@ -189,13 +186,9 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
-
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -216,21 +209,20 @@ CONTAINS
       iX_B1 = BX % lo - swX
       iX_E1 = BX % hi + swX
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
-      ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nCF) )
-
-      ALLOCATE( D(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nDF) )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
+               D )
 
       CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
@@ -255,15 +247,20 @@ CONTAINS
 
       CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
+               D )
 
-      DEALLOCATE( D )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
-      DEALLOCATE( U )
-
-      DEALLOCATE( G )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 

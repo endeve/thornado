@@ -71,6 +71,7 @@ Euler_CharacteristicDecompositionModule.o: \
 
 Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o: \
   KindModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \

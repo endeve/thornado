@@ -95,16 +95,17 @@ CONTAINS
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF, &
              MF_uPR_Option = MF_uPR, &
-             MF_uCR_Option = MF_uCR)
+             MF_uCR_Option = MF_uCR )
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 0, &
+             iWriteFields_uCR = 1, &
              pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P )
+             pMF_uCF_Option = MF_uCF % P, &
+             pMF_uCR_Option = MF_uCR % P )
 
     CALL Finalize_IMEX_RK_MF
 

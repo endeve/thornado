@@ -1,43 +1,58 @@
 MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
   ! --- AMReX Modules ---
-  USE amrex_fort_module,     ONLY: &
-    amrex_real
-  USE amrex_box_module,      ONLY: &
+
+  USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_geometry_module, ONLY: &
     amrex_geometry
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
-    amrex_mfiter,   &
+    amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
 
   ! --- thornado Modules ---
-  USE ProgramHeaderModule,      ONLY: &
-    swX, nDOFX, nDOFZ, swE, nDOFE, iE_B0, iE_E0, iE_B1, iE_E1
-  USE GeometryFieldsModule,     ONLY: &
+
+  USE ProgramHeaderModule, ONLY: &
+    swX, &
+    swE, &
+    nDOFX, &
+    nDOFE, &
+    nDOFZ, &
+    iE_B0, &
+    iE_E0, &
+    iE_B1, &
+    iE_E1
+  USE MeshModule, ONLY: &
+    MeshX
+  USE GeometryFieldsModule, ONLY: &
     nGF
-  USE GeometryFieldsModuleE,     ONLY: &
-    nGE, uGE
-  USE RadiationFieldsModule,            ONLY: &
+  USE GeometryFieldsModuleE, ONLY: &
+    nGE, &
+    uGE
+  USE RadiationFieldsModule, ONLY: &
     nCR
-  USE FluidFieldsModule,            ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF
 !!$  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
 !!$    ComputeIncrement_TwoMoment_Implicit_Neutrinos
-  USE MeshModule, ONLY: &
-    MeshX
-
-
 
   ! --- Local Modules ---
-  USE MF_UtilitiesModule,                ONLY: &
+
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero
+  USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z, &
-    thornado2amrex_X
-  USE InputParsingModule,                       ONLY: &
+    thornado2amrex_X, &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z
+  USE InputParsingModule,ONLY: &
     nLevels, &
     nSpecies, &
     UseTiling, &
@@ -46,10 +61,9 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
-    EdgeMap,          &
+    EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
-
 
   IMPLICIT NONE
   PRIVATE
@@ -59,54 +73,55 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
 
 CONTAINS
 
-  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF( GEOM, MF_uGF, MF_uCF, MF_duCF, &
-                                                     MF_uCR, MF_duCR, dt, Verbose_Option )
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
+    ( GEOM, MF_uGF, MF_uCF, MF_duCF, MF_uCR, MF_duCR, dt, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
-    REAL(amrex_real),     INTENT(in)    :: dt
+    REAL(DP)            , INTENT(in)    :: dt
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
-    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+    LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: duCF(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: duCR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: duCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: duCR(:,:,:,:)
 
-    REAL(amrex_real), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: C (:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: dC(:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: U (:,:,:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: C (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dC(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U (:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: dU(:,:,:,:,:,:,:)
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     LOGICAL :: Verbose
-
 
     TYPE(EdgeMap) :: Edge_Map
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
+      CALL MF_duCF(iLevel) % setval( 0.0_DP )
+
+      CALL MF_duCR(iLevel) % setval( 0.0_DP )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -129,55 +144,73 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        i=1
+        iZ_B0(1) = iE_B0
+        iZ_B1(1) = iE_B1
+        iZ_E0(1) = iE_E0
+        iZ_E1(1) = iE_E1
 
-        DO WHILE (i<=4)
+        iZ_B0(2:4) = iX_B0
+        iZ_B1(2:4) = iX_B1
+        iZ_E0(2:4) = iX_E0
+        iZ_E1(2:4) = iX_E1
 
-          IF (i==1) THEN
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-            iZ_B0(i)=iE_B0
-            iZ_E0(i)=iE_E0
-            iZ_B1(i)=iE_B1
-            iZ_E1(i)=iE_E1
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 C )
 
-          ELSE
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 dC )
 
-            iZ_B0(i)=iX_B0(i-1)
-            iZ_E0(i)=iX_E0(i-1)
-            iZ_B1(i)=iX_B1(i-1)
-            iZ_E1(i)=iX_E1(i-1)
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
 
-          END IF
-          i = i + 1
-        END DO
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 dU )
 
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
 
-        ALLOCATE( C (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF) )
-
-        ALLOCATE( dC (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF) )
-
-        ALLOCATE( U (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
-
-        ALLOCATE( dU (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
-
-
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
-
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
+        CALL amrex2thornado_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -188,26 +221,76 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
-
 !!$        CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos &
 !!$               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, &
 !!$                  Verbose_Option = Verbose )
+
         dC = Zero
         dU = Zero
 
-        CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
+        CALL thornado2amrex_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
 
-      END DO
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 dU )
+
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 dC )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 C )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+
+      END DO ! DO WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
       CALL DestroyMesh_MF( MeshX )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
 

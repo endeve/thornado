@@ -172,9 +172,10 @@ num = 1
          ( StepNo, nLevels, dt, t_new, &
            MF_uGF % BA % P, &
            iWriteFields_uGF = 1, &
-           iWriteFields_uCF = 0, &
+           iWriteFields_uCF = 1, &
            iWriteFields_uCR = 1, &
            pMF_uGF_Option = MF_uGF % P, &
+           pMF_uCF_Option = MF_uCF % P, &
            pMF_uCR_Option = MF_uCR % P )
 
   CALL WriteFieldsAMReX_PlotFile &

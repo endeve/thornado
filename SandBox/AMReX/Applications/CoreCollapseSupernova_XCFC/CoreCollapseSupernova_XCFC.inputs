@@ -26,6 +26,7 @@ thornado.CheckpointFileBaseName = "CoreCollapseSupernova_XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 
+thornado.Scheme  = "IMEX_PDARS"
 thornado.nNodes  = 2
 thornado.nStages = 2
 
@@ -38,16 +39,12 @@ geometry.coord_sys = 2
 geometry.prob_lo   = 000.0 0.0               0.0
 geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
 
-amr.n_cell                  = 512 01 01
-thornado.swX                = 01  00 00
-amr.max_grid_size_x         = 128
-amr.blocking_factor_x       = 128
-amr.max_level               = 0
-amr.UseFluxCorrection_Euler = 0
-amr.UseAMR                  = 0
-amr.TagCriteria             = 0.0
-amr.n_error_buf             = 0
-amr.ref_ratio               = 2
+amr.n_cell                      = 512 01 01
+thornado.swX                    = 01  00 00
+#amr.max_grid_size_x             = 512
+#amr.blocking_factor_x           = 512
+amr.max_level                   = 0
+amr.ref_ratio                   = 2
 
 # Poseidon parameters
 poseidon.fem_degree        = 1
@@ -56,7 +53,7 @@ poseidon.max_fp_iters      = 20
 poseidon.anderson_m        = 3
 poseidon.converge_criteria = 1.0e-08
 
-# Slope limiter parameters
+# Slope limiter parameters (Euler)
 SL.UseSlopeLimiter_Euler           = 1
 SL.SlopeLimiterMethod_Euler        = "TVD"
 SL.BetaTVD_Euler                   = 1.75e+0
@@ -67,13 +64,26 @@ SL.UseTroubledCellIndicator_Euler  = 0
 SL.LimiterThresholdParameter_Euler = 5.00e-3
 SL.UseConservativeCorrection_Euler = 1
 
-# Positivity limiter parameters
+# Positivity limiter parameters (Euler)
 PL.UsePositivityLimiter_Euler = 1
 PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13
+
+# Slope limiter parameters (TwoMoment)
+SL.UseSlopeLimiter_TwoMoment = 1
+SL.BetaTVD_TwoMoment         = 1.75e+0
+
+# Positivity limiter parameters (TwoMoment)
+PL.UsePositivityLimiter_TwoMoment = 1
+PL.Min_1_TwoMoment                = 1.0e-50
+PL.Min_2_TwoMoment                = 1.0e-50
 
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"
 EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-25-50-100.h5"
 
-# Read in opacity tables
+# Opacity tables
+OP.OpacityTableName_AbEm = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5"
+OP.OpacityTableName_Iso  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Iso.h5"
+OP.OpacityTableName_NES  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-NES.h5"
+OP.OpacityTableName_Pair = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Pair.h5"

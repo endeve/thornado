@@ -1,0 +1,3 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/InputOutput
+f90EXE_sources  += InputOutputModuleAMReX.f90
+CEXE_sources    += Restart.cpp

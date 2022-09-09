@@ -21,6 +21,8 @@ MODULE InputParsingModule
     UnitsDisplay
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
+  USE RadiationFieldsModule, ONLY: &
+    SetNumberOfSpecies
 
   ! --- Local modules ---
 
@@ -45,6 +47,7 @@ MODULE InputParsingModule
   REAL(DP)                  :: t_end
   LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
   LOGICAL     , SAVE        :: DEBUG
+  LOGICAL     , SAVE        :: SolveGravity_NR
 
   ! --- TimeStepping ---
 
@@ -124,7 +127,7 @@ MODULE InputParsingModule
   INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
   REAL(DP), ALLOCATABLE :: TagCriteria(:)
 
-  REAL(DP), ALLOCATABLE :: dt   (:)
+  REAL(DP), ALLOCATABLE :: dt   (:), dt_TM(:)
   REAL(DP), ALLOCATABLE :: t_old(:)
   REAL(DP), ALLOCATABLE :: t_new(:)
   CHARACTER(:), ALLOCATABLE :: PlotFileBaseName
@@ -193,6 +196,7 @@ call amrex_parmparse_destroy( pp )
     dt_chk           = -1.0_DP
     dt_rel           = 0.0_DP
     UseXCFC          = .FALSE.
+    SolveGravity_NR  = .FALSE.
     Scheme           = ''
     nE               = 1
     nSpecies         = 1
@@ -238,6 +242,8 @@ call amrex_parmparse_destroy( pp )
                          UsePhysicalUnits )
       CALL PP % query ( 'UseXCFC', &
                          UseXCFC )
+      CALL PP % query ( 'SolveGravity_NR', &
+                         SolveGravity_NR )
       CALL PP % query ( 'nE', &
                          nE )
       CALL PP % query ( 'nSpecies', &
@@ -253,6 +259,8 @@ call amrex_parmparse_destroy( pp )
       CALL PP % query ( 'zoomE', &
                          zoomE )
     CALL amrex_parmparse_destroy( PP )
+
+    CALL SetNumberOfSpecies( nSpecies )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
       CALL DescribeError_MF &

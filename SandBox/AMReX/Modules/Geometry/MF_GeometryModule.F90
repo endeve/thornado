@@ -37,6 +37,8 @@ MODULE MF_GeometryModule
     iGF_Beta_1
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
+    ComputeGravitationalPotential
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
 
@@ -47,16 +49,15 @@ MODULE MF_GeometryModule
     Zero, &
     One
   USE MF_UtilitiesModule, ONLY: &
-    thornado2amrex_X
+    thornado2amrex_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
     UseTiling, &
-    ProgramName
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Allocate
+    ProgramName, &
+    SolveGravity_NR
 
   IMPLICIT NONE
   PRIVATE
@@ -86,7 +87,10 @@ CONTAINS
 
     Mass = Zero
 
-    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
+    IF(    ( TRIM( ProgramName ) &
+               .EQ. 'StandingAccretionShock_Relativistic' ) &
+      .OR. ( TRIM( ProgramName ) &
+               .EQ. 'StandingAccretionShock_NonRelativistic' ) )THEN
 
       CALL amrex_parmparse_build( PP, 'SAS' )
         CALL PP % query( 'Mass', Mass )
@@ -120,19 +124,14 @@ CONTAINS
       iLo_G = iX_B1
       iHi_G = iX_E1
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-      ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3), &
-                  1:nGF) )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
       G = Zero ! Uninitialized variables cause crash in IO in DEBUG mode
 
 #if defined HYDRO_RELATIVISTIC
-
 
       CALL ComputeGeometryX &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
@@ -142,16 +141,19 @@ CONTAINS
       CALL ComputeGeometryX &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
+      IF( SolveGravity_NR ) &
+        CALL ComputeGravitationalPotential &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+
 #endif
 
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
-
-      DEALLOCATE( G )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 

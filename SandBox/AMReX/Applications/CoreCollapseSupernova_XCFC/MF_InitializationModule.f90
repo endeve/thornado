@@ -294,7 +294,7 @@ CONTAINS
 
               iNX_Z = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
-              uPR_K(iNZ,iZ1,iPR_D ,iS) = Zero ! 1.0e-40_DP
+              uPR_K(iNZ,iZ1,iPR_D ,iS) = 1.0e-40_DP
               uPR_K(iNZ,iZ1,iPR_I1,iS) = Zero
               uPR_K(iNZ,iZ1,iPR_I2,iS) = Zero
               uPR_K(iNZ,iZ1,iPR_I3,iS) = Zero
