@@ -77,7 +77,7 @@ PROGRAM main
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
-  TimeIt_AMReX       = .TRUE.
+  TimeIt_AMReX      = .TRUE.
   TimeIt_AMReX_Euler = .TRUE.
 
   wrt = .FALSE.

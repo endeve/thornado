@@ -125,10 +125,12 @@ MODULE MF_UtilitiesModule
     ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
 #endif
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_DataTransfer
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_Allocate_X, &
+    Timer_AMReX_Allocate_Z, &
+    Timer_AMReX_PermuteData_X
 
   IMPLICIT NONE
   PRIVATE
@@ -144,6 +146,10 @@ MODULE MF_UtilitiesModule
   PUBLIC :: amrex2thornado_X_F
   PUBLIC :: WriteNodalDataToFile
   PUBLIC :: WriteEulerToFile
+  PUBLIC :: AllocateArray_X
+  PUBLIC :: DeallocateArray_X
+  PUBLIC :: AllocateArray_Z
+  PUBLIC :: DeallocateArray_Z
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -393,7 +399,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iFd
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
@@ -408,7 +414,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStop_AMReX( Timer_AMReX_PermuteData_X )
 
   END SUBROUTINE amrex2thornado_X
 
@@ -425,7 +431,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iFd
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
@@ -440,7 +446,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStop_AMReX( Timer_AMReX_PermuteData_X )
 
   END SUBROUTINE thornado2amrex_X
 
@@ -542,7 +548,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iFd
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
@@ -557,7 +563,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStop_AMReX( Timer_AMReX_PermuteData_X )
 
   END SUBROUTINE thornado2amrex_X_F
 
@@ -575,7 +581,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iFd
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
@@ -590,7 +596,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+    CALL TimersStop_AMReX( Timer_AMReX_PermuteData_X )
 
   END SUBROUTINE amrex2thornado_X_F
 
@@ -630,26 +636,56 @@ CONTAINS
 
     REAL(DP) :: D, I1, I2, I3, N, G1, G2, G3
 
-    ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nGF) )
+    CALL AllocateArray_Z &
+           ( [ 1             , &
+               1 - swE       , &
+               1 - swX(1)    , &
+               1 - swX(2)    , &
+               1 - swX(3)    , &
+               1             , &
+               1        ]    , &
+             [ nDOFZ         , &
+               nE + swE      , &
+               nX(1) + swX(1), &
+               nX(2) + swX(2), &
+               nX(3) + swX(3), &
+               nCR           , &
+               nSpecies ]    , &
+             CR )
 
-    ALLOCATE( CF(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nCF) )
+    CALL AllocateArray_Z &
+           ( [ 1             , &
+               1 - swE       , &
+               1 - swX(1)    , &
+               1 - swX(2)    , &
+               1 - swX(3)    , &
+               1             , &
+               1        ]    , &
+             [ nDOFZ         , &
+               nE + swE      , &
+               nX(1) + swX(1), &
+               nX(2) + swX(2), &
+               nX(3) + swX(3), &
+               nPR           , &
+               nSpecies ]    , &
+             PR )
 
-    ALLOCATE( PF(1:nDOFX,1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nPF) )
-    ALLOCATE( CR(1:nDOFZ,1-swE:nE+swE, &
-                        1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nCR,1:nSpecies) )
-    ALLOCATE( PR(1:nDOFZ,1-swE:nE+swE, &
-                        1-swX(1):nX(1)+swX(1), &
-                        1-swX(2):nX(2)+swX(2), &
-                        1-swX(3):nX(3)+swX(3),1:nPR,1:nSpecies) )
-    G = 0.0_DP
+    CALL AllocateArray_X &
+           ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nGF ], &
+             G )
+
+    CALL AllocateArray_X &
+           ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nCF ], &
+             CF )
+
+    CALL AllocateArray_X &
+           ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nPF ], &
+             PF )
+
+    G  = 0.0_DP
     CF = 0.0_DP
     PF = 0.0_DP
     CR = 0.0_DP
@@ -990,11 +1026,55 @@ CONTAINS
       CLOSE( 100 )
 
     END IF
-    DEALLOCATE( CF )
-    DEALLOCATE( PF )
-    DEALLOCATE( CR )
-    DEALLOCATE( PR )
-    DEALLOCATE( G )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nPF ], &
+             PF )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nCF ], &
+             CF )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nGF ], &
+             G )
+
+    CALL DeallocateArray_Z &
+           ( [ 1             , &
+               1 - swE       , &
+               1 - swX(1)    , &
+               1 - swX(2)    , &
+               1 - swX(3)    , &
+               1             , &
+               1        ]    , &
+             [ nDOFZ         , &
+               nE + swE      , &
+               nX(1) + swX(1), &
+               nX(2) + swX(2), &
+               nX(3) + swX(3), &
+               nPR           , &
+               nSpecies ]    , &
+             PR )
+
+    CALL DeallocateArray_Z &
+           ( [ 1             , &
+               1 - swE       , &
+               1 - swX(1)    , &
+               1 - swX(2)    , &
+               1 - swX(3)    , &
+               1             , &
+               1        ]    , &
+             [ nDOFZ         , &
+               nE + swE      , &
+               nX(1) + swX(1), &
+               nX(2) + swX(2), &
+               nX(3) + swX(3), &
+               nCR           , &
+               nSpecies ]    , &
+             CR )
 
     print*, "Writing Nodal Values"
 
@@ -1050,22 +1130,25 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 U )
 
-        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
 
-        ALLOCATE( PF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nPF) )
-
-        ALLOCATE( AF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3),1:nAF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAF ], &
+                 AF )
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
@@ -1075,6 +1158,7 @@ CONTAINS
         DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
+
           CALL ComputePrimitive_Euler_Relativistic &
                ( U(:,iX1,iX2,iX3,iCF_D ),       &
                  U(:,iX1,iX2,iX3,iCF_S1),       &
@@ -1181,10 +1265,26 @@ CONTAINS
         END DO
         END DO
         END DO
-        DEALLOCATE( U )
-        DEALLOCATE( G )
-        DEALLOCATE( PF )
-        DEALLOCATE( AF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAF ], &
+                 AF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 U )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO
 
@@ -1195,6 +1295,72 @@ CONTAINS
 #endif
 
   END SUBROUTINE WriteEulerToFile
+
+
+  SUBROUTINE AllocateArray_X( iLo, iHi, A )
+
+    INTEGER ,              INTENT(in)    :: iLo(5), iHi(5)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:)
+
+    CALL TimersStart_AMReX( Timer_AMReX_Allocate_X )
+
+    ALLOCATE( A(iLo(1):iHi(1), &
+                iLo(2):iHi(2), &
+                iLo(3):iHi(3), &
+                iLo(4):iHi(4), &
+                iLo(5):iHi(5)) )
+
+    CALL TimersStop_AMReX( Timer_AMReX_Allocate_X )
+
+  END SUBROUTINE AllocateArray_X
+
+
+  SUBROUTINE DeallocateArray_X( iLo, iHi, A )
+
+    INTEGER ,              INTENT(in)    :: iLo(5), iHi(5)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:)
+
+    CALL TimersStart_AMReX( Timer_AMReX_Allocate_X )
+
+    DEALLOCATE( A )
+
+    CALL TimersStop_AMReX( Timer_AMReX_Allocate_X )
+
+  END SUBROUTINE DeallocateArray_X
+
+
+  SUBROUTINE AllocateArray_Z( iLo, iHi, A )
+
+    INTEGER ,              INTENT(in)    :: iLo(7), iHi(7)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:,:,:)
+
+    CALL TimersStart_AMReX( Timer_AMReX_Allocate_Z )
+
+    ALLOCATE( A(iLo(1):iHi(1), &
+                iLo(2):iHi(2), &
+                iLo(3):iHi(3), &
+                iLo(4):iHi(4), &
+                iLo(5):iHi(5), &
+                iLo(6):iHi(6), &
+                iLo(7):iHi(7)) )
+
+    CALL TimersStop_AMReX( Timer_AMReX_Allocate_Z )
+
+  END SUBROUTINE AllocateArray_Z
+
+
+  SUBROUTINE DeallocateArray_Z( iLo, iHi, A )
+
+    INTEGER ,              INTENT(in)    :: iLo(7), iHi(7)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:,:,:)
+
+    CALL TimersStart_AMReX( Timer_AMReX_Allocate_Z )
+
+    DEALLOCATE( A )
+
+    CALL TimersStop_AMReX( Timer_AMReX_Allocate_Z )
+
+  END SUBROUTINE DeallocateArray_Z
 
 
 END MODULE MF_UtilitiesModule

@@ -54,6 +54,10 @@ MODULE FillPatchModule
     hi_bc, &
     swX, &
     DEBUG
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_FillPatch
 
   IMPLICIT NONE
   PRIVATE
@@ -82,6 +86,8 @@ CONTAINS
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: nF, iErr
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
     nF = MF_dst % nComp() / nDOFX
 
@@ -133,6 +139,8 @@ CONTAINS
 
     END IF
 
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
   END SUBROUTINE FillPatch_WithMetric_Scalar
 
 
@@ -148,6 +156,8 @@ CONTAINS
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: nF, iErr
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
     nF = MF(0) % nComp() / nDOFX
 
@@ -190,6 +200,8 @@ CONTAINS
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
 
     END IF
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillPatch_WithMetric_Vector
 

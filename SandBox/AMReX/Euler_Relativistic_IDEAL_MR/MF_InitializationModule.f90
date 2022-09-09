@@ -63,7 +63,9 @@ MODULE MF_InitializationModule
     TwoPi
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X, &
-    amrex2thornado_X
+    amrex2thornado_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nX, &
     swX, &
@@ -251,15 +253,15 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nCF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
@@ -329,8 +331,15 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-      DEALLOCATE( U )
-      DEALLOCATE( G )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 
@@ -491,15 +500,15 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nCF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
@@ -599,8 +608,15 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-      DEALLOCATE( U )
-      DEALLOCATE( G )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 
@@ -729,15 +745,15 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nCF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
@@ -811,8 +827,15 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-      DEALLOCATE( U )
-      DEALLOCATE( G )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 
@@ -884,15 +907,15 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nCF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
@@ -986,8 +1009,15 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-      DEALLOCATE( U )
-      DEALLOCATE( G )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 
@@ -1120,15 +1150,15 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3), &
-                   1:nCF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
@@ -1206,8 +1236,15 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-      DEALLOCATE( U )
-      DEALLOCATE( G )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 

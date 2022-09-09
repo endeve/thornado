@@ -8,7 +8,7 @@ thornado.ProgramName = "SineWaveStreaming"
 thornado.Scheme = "SSPRK2"
 
 thornado.t_end     = 1.0     # Final time
-thornado.dt_wrt    = 1.0e-2      # Write time interval
+thornado.dt_wrt    = 1.0e+1      # Write time interval
 thornado.dt_chk    = 1.0e+1      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
 thornado.nStages    = 2        # Number of DG nodes in each active dimension
@@ -30,7 +30,7 @@ thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = -0100     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
-thornado.Direction  = Z
+thornado.Direction  = X
 
 
 geometry.coord_sys   = 0             # CARTESIAN
@@ -40,9 +40,9 @@ geometry.is_periodic = 1   1   1
 
 
 amr.n_cell            = 32 1 1 # Number of cells in each dimension
-#amr.max_grid_size_x   = 2
-#amr.max_grid_size_y   = 2
-#amr.max_grid_size_z   = 32
+#amr.max_grid_size_x   = 32
+#amr.max_grid_size_y   = 1
+#amr.max_grid_size_z   = 1
 #amr.blocking_factor_x = 1
 #amr.blocking_factor_y = 1
 #amr.blocking_factor_z = 1

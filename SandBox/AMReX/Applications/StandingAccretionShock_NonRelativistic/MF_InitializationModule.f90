@@ -17,8 +17,6 @@ MODULE MF_InitializationModule
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
-  USE amrex_parallel_module, ONLY: &
-    amrex_parallel_reduce_min
 
   ! --- thornado Modules ---
 
@@ -71,12 +69,6 @@ MODULE MF_InitializationModule
     Millisecond
   USE UtilitiesModule, ONLY: &
     Locate
-  USE GeometryComputationModule, ONLY: &
-    LapseFunction, &
-    ConformalFactor
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
 
   ! --- Local Modules ---
 
@@ -215,7 +207,7 @@ CONTAINS
 
     Mdot              = AccretionRate
     K_1               = PolytropicConstant
-    BernoulliConstant = SpeedOfLight**2
+    BernoulliConstant = Zero
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -359,11 +351,8 @@ CONTAINS
         P_1 = P(iNX1_1,iX1_1)
 
         CALL ApplyJumpConditions_SAS &
-               ( MassPNS, Mdot, ShockRadius, &
-                 LapseFunction  ( X1_1, MassPNS ), &
-                 ConformalFactor( X1_1, MassPNS ), D_1, V_1, P_1, &
-                 LapseFunction  ( X1_2, MassPNS ), &
-                 ConformalFactor( X1_2, MassPNS ), D_2, V_2, P_2 )
+               ( MassPNS, AccretionRate, ShockRadius, &
+                 D_1, V_1, P_1, D_2, V_2, P_2 )
 
         K_2 = P_2 / D_2**( Gamma_IDEAL )
 
@@ -590,23 +579,12 @@ CONTAINS
     DEALLOCATE( V )
     DEALLOCATE( D )
 
-    IF( .NOT. InitializeFromFile ) &
-      CALL ComputeExtrapolationExponents &
-             ( MF_uCF, iLevel, &
-               amrex_geom(iLevel) % domain % lo - swX, &
-               amrex_geom(iLevel) % domain % hi + swX, &
-               nX_LeastSquares )
-
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
       IF( .NOT. InitializeFromFile ) &
         WRITE(*,'(6x,A,ES13.6E3,A)') &
           'Advection time:  ', &
           AdvectionTime / Millisecond, ' ms'
-
-      WRITE(*,'(6x,A,I2.2)') &
-        'nX_LeastSquares: ', &
-        nX_LeastSquares
 
     END IF
 
@@ -757,8 +735,8 @@ CONTAINS
 
     OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
 
-    READ(101,*) ExpD
-    READ(101,*) ExpE
+    READ(101,*)
+    READ(101,*)
     READ(101,*) FMT
 
     DO iX1 = iX_B1(1), iX_E1(1)
@@ -781,7 +759,6 @@ CONTAINS
                              D0, V0, P0
     REAL(DP), INTENT(out) :: D , V , P
 
-    REAL(DP) :: Alpha, Psi, W
     REAL(DP) :: Jac(3,3), invJac(3,3)
     REAL(DP) :: f(3), uO(3), uN(3), du(3)
 
@@ -790,15 +767,18 @@ CONTAINS
     REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
     INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
 
-    REAL(DP) :: a1, b1, b2, c1
+    REAL(DP) :: Phi
+    REAL(DP) :: tau
 
-    Alpha = LapseFunction  ( X1, MassPNS )
-    Psi   = ConformalFactor( X1, MassPNS )
+    REAL(DP) :: a1, b1, b2, b3, c1
 
-    a1 = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0
-    b1 = Alpha * SpeedOfLight**2 / BernoulliConstant
-    b2 = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-           * P0 /( D0 * BernoulliConstant )
+    Phi = -MassPNS * GravitationalConstant / X1
+    tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
+
+    a1 = FourPi * X1**2 * D0 * V0 / Mdot
+    b1 = Half * V0**2 / Phi
+    b2 = tau * p0 / ( D0 * Phi )
+    b3 = BernoulliConstant / Phi
     c1 = P0 / ( K * D0**( Gamma_IDEAL ) )
 
     uO(1) = One
@@ -811,19 +791,18 @@ CONTAINS
 
       ITER = ITER + 1
 
-      W = LorentzFactor( Psi, V0 * uO(2) )
-
-      f(1) = a1 * uO(1) * W * uO(2) + One
-      f(2) = b1 * W + b2 / uO(1) * W * uO(3) - One
+      f(1) = a1 * uO(1) * uO(2) + One
+      f(2) = b1 * uO(2)**2 + b2 * uO(1)**( -1 ) * uO(3) + One - b3
       f(3) = c1 * uO(3) - uO(1)**( Gamma_IDEAL )
 
-      Jac(1,1) = a1 * W * uO(2)
-      Jac(1,2) = a1 * uO(1) * W**3
+      Jac(1,1) = a1 * uO(2)
+      Jac(1,2) = a1 * uO(1)
       Jac(1,3) = Zero
-      Jac(2,1) = -b2 / uO(1)**2 * W * uO(3)
-      Jac(2,2) = ( b1 + b2 / uO(1) * uO(3) ) &
-                   * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
-      Jac(2,3) = b2 / uO(1) * W
+
+      Jac(2,1) = -b2 * uO(1)**( -2 ) * uO(3)
+      Jac(2,2) = Two * b1 * uO(2)
+      Jac(2,3) = b2 * uO(1)**( -1 )
+
       Jac(3,1) = -Gamma_IDEAL * uO(1)**( Gamma_IDEAL - One )
       Jac(3,2) = Zero
       Jac(3,3) = c1
@@ -848,17 +827,13 @@ CONTAINS
 
 
   SUBROUTINE ApplyJumpConditions_SAS &
-    ( MassPNS, AccretionRate, ShockRadius, &
-      Alpha_1, Psi_1, D_1, V_1, P_1, Alpha_2, Psi_2, D_2, V_2, P_2 )
+    ( MassPNS, AccretionRate, ShockRadius, D_1, V_1, P_1, D_2, V_2, P_2 )
 
     REAL(DP), INTENT(in)  :: MassPNS, AccretionRate, ShockRadius, &
-                             Alpha_1, Psi_1, D_1, V_1, P_1, Alpha_2, Psi_2
+                             D_1, V_1, P_1
     REAL(DP), INTENT(out) :: D_2, V_2, P_2
 
-    REAL(DP) :: D1, D2, D3
-
-    REAL(DP) :: W_1, h_1, W_2
-    REAL(DP) :: Jac(3,3), invJac(3,3)
+    REAL(DP) :: Jac(3,3), InvJac(3,3)
     REAL(DP) :: f(3), uO(3), uN(3), du(3)
 
     LOGICAL             :: CONVERGED
@@ -866,15 +841,12 @@ CONTAINS
     REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
     INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
 
-    REAL(DP) :: a1, b1, b2, b3, c1, c2
-    REAL(DP) :: D20, V20, P20
+    REAL(DP) :: a1, b1, b2, c1, c2
+    REAL(DP) :: tau, D20, V20, P20
 
-    W_1 = LorentzFactor( Psi_1, V_1 )
-    h_1 = SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) * P_1 / D_1
+    tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
 
-    D1 = D_1 * W_1 * V_1
-    D2 = D_1 * h_1 / SpeedOfLight**2 * W_1**2 * V_1**2 + Psi_1**( -4 ) * P_1
-    D3 = D_1 * h_1 / Alpha_1 * W_1**2 * V_1
+    ! --- Use supersonic free-fall jump conditions as initial guess ---
 
     D20 &
       = ( Gamma_IDEAL + One ) / ( Gamma_IDEAL - One ) &
@@ -893,13 +865,11 @@ CONTAINS
           * ( Two * GravitationalConstant * MassPNS )**( Half ) &
           * ShockRadius**( -Five / Two )
 
-    a1 = D20 * V20 / D1
-    b1 = D20 * V20**2 / D2
-    b2 = SpeedOfLight**( -2 ) * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-           * P20 * V20**2 / D2
-    b3 = Psi_2**( -4 ) * P20 / D2
-    c1 = D20 * SpeedOfLight**2 * V20 * Alpha_2**( -1 ) / D3
-    c2 = Gamma_IDEAL / ( Gamma_IDEAL - One ) * P20 * V20 * Alpha_2**( -1 ) / D3
+    a1 = D20 * V20 / ( D_1 * V_1 )
+    b1 = D20 * V20**2 / ( D_1 * V_1**2 + P_1 )
+    b2 = P20          / ( D_1 * V_1**2 + P_1 )
+    c1 = tau * P20 * D20**( -1 ) / ( tau * P_1 * D_1**( -1 ) + Half * V_1**2 )
+    c2 = Half * V20**2           / ( tau * P_1 * D_1**( -1 ) + Half * V_1**2 )
 
     uO(1) = One
     uO(2) = One
@@ -911,22 +881,21 @@ CONTAINS
 
       ITER = ITER + 1
 
-      W_2 = LorentzFactor( Psi_2, V20 * uO(2) )
+      f(1) = a1 * uO(1) * uO(2) - One
+      f(2) = b1 * uO(1) * uO(2)**2 + b2 * uO(3) - One
+      f(3) = c1 * uO(1)**( -1 ) * uO(3) + c2 * uO(2)**2 - One
 
-      f(1) = a1 * uO(1) * W_2 * uO(2) - One
-      f(2) = b1 * uO(1) * W_2**2 * uO(2)**2 + b2 * W_2**2 * uO(2)**2 * uO(3) &
-               + b3 * uO(3) - One
-      f(3) = c1 * uO(1) * W_2**2 * uO(2) + c2 * W_2**2 * uO(2) * uO(3) - One
-
-      Jac(1,1) = a1 * W_2 * uO(2)
-      Jac(1,2) = a1 * uO(1) * W_2**3
+      Jac(1,1) = a1 * uO(2)
+      Jac(1,2) = a1 * uO(1)
       Jac(1,3) = Zero
-      Jac(2,1) = b1 * W_2**2 * uO(2)**2
-      Jac(2,2) = Two * ( b1 * uO(1) + b2 * uO(3) ) * W_2**4 * uO(2)
-      Jac(2,3) = b2 * W_2**2 * uO(2)**2 + b3
-      Jac(3,1) = c1 * W_2**2 * uO(2)
-      Jac(3,2) = ( c1 * uO(1) + c2 * uO(3) ) * ( Two * W_2**2 - One ) * W_2**2
-      Jac(3,3) = c2 * W_2**2 * uO(2)
+
+      Jac(2,1) = b1 * uO(2)**2
+      Jac(2,2) = Two * b1 * uO(1) * uO(2)
+      Jac(2,3) = b2
+
+      Jac(3,1) = -c1 * uO(1)**( -2 ) * uO(3)
+      Jac(3,2) = Two * c2 * uO(2)
+      Jac(3,3) = c1 * uO(1)**( -1 )
 
       InvJac = Inv3x3( Jac )
 
@@ -945,116 +914,6 @@ CONTAINS
     P_2 = uN(3) * P20
 
   END SUBROUTINE ApplyJumpConditions_SAS
-
-
-  REAL(DP) FUNCTION LorentzFactor( Psi, V )
-
-    REAL(DP), INTENT(in) :: Psi, V
-
-    LorentzFactor = One / SQRT( One - Psi**4 * ( V / SpeedOfLight )**2 )
-
-    RETURN
-  END FUNCTION LorentzFactor
-
-
-  SUBROUTINE ComputeExtrapolationExponents &
-    ( MF_uCF, iLevel, iLo, iHi, nX_LeastSquares )
-
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF
-    INTEGER             , INTENT(in) :: iLevel, iLo(3), iHi(3)
-    INTEGER             , INTENT(in) :: nX_LeastSquares
-
-    REAL(DP) :: lnR   (nNodesX(1),iLo(1):iHi(1))
-    REAL(DP) :: lnD   (nNodesX(1),iLo(1):iHi(1))
-    REAL(DP) :: lnE   (nNodesX(1),iLo(1):iHi(1))
-    REAL(DP) :: lnR_LS(nNodesX(1),nX_LeastSquares)
-    REAL(DP) :: lnD_LS(nNodesX(1),nX_LeastSquares)
-    REAL(DP) :: lnE_LS(nNodesX(1),nX_LeastSquares)
-
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
-    INTEGER  :: iX1, iNX1
-    REAL(DP) :: n
-
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
-    INTEGER            :: iX_B0(3), iX_B1(3)
-
-    LOGICAL :: FirstTime
-
-    lnR    = HUGE( One )
-    lnD    = HUGE( One )
-    lnE    = HUGE( One )
-    lnR_LS = HUGE( One )
-    lnD_LS = HUGE( One )
-    lnE_LS = HUGE( One )
-
-    ! --- Make local copies of X1, D, and tau ---
-
-    CALL amrex_mfiter_build( MFI, MF_uCF, tiling = UseTiling )
-
-    FirstTime = .TRUE.
-
-    DO WHILE( MFI % next() )
-
-      uCF => MF_uCF % DataPtr( MFI )
-      BX = MFI % tilebox()
-
-      iX_B0 = BX % lo
-      iX_B1 = iX_B0 - swX
-
-      IF( iX_B1(1) .EQ. iLo(1) .AND. FirstTime )THEN
-
-        DO iX1 = iLo(1), iLo(1)+nX_LeastSquares-1
-
-          DO iNX1 = 1, nNodesX(1)
-
-            lnR(iNX1,iX1) &
-              = LOG( NodeCoordinate( MeshX(1), iX1, iNX1 ) )
-
-            lnD(iNX1,iX1) &
-              = LOG( uCF(iX1,iX_B0(2),iX_B0(3),nDOFX*(iCF_D-1)+iNX1) )
-
-            lnE(iNX1,iX1) &
-              = LOG( uCF(iX1,iX_B0(2),iX_B0(3),nDOFX*(iCF_E-1)+iNX1) )
-
-          END DO ! iNX1 = 1, nNodesX(1)
-
-        END DO ! iX1 = iLo(1), iLo91)+nX_LeastSquares-1
-
-        FirstTime = .FALSE.
-
-      END IF
-
-    END DO
-
-    CALL amrex_mfiter_destroy( MFI )
-
-    lnR_LS = lnR(:,iLo(1):iLo(1)+nX_LeastSquares-1)
-    lnD_LS = lnD(:,iLo(1):iLo(1)+nX_LeastSquares-1)
-    lnE_LS = lnE(:,iLo(1):iLo(1)+nX_LeastSquares-1)
-
-
-    DO iX1 = 1, nX_LeastSquares
-
-      CALL amrex_parallel_reduce_min( lnR_LS(:,iX1), nNodesX(1) )
-      CALL amrex_parallel_reduce_min( lnD_LS(:,iX1), nNodesX(1) )
-      CALL amrex_parallel_reduce_min( lnE_LS(:,iX1), nNodesX(1) )
-
-    END DO
-
-    n = DBLE( nNodesX(1) ) * DBLE( nX_LeastSquares )
-
-    ! --- Expression for exponents from:
-    !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
-
-    ExpD = -( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
-             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
-
-    ExpE = -( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
-             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
-
-  END SUBROUTINE ComputeExtrapolationExponents
 
 
 END MODULE MF_InitializationModule
