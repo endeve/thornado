@@ -5,6 +5,18 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
+    Timer_Streaming_LinearAlgebra
+  USE ReferenceElementModuleX, ONLY: &
+    nDOFX_X1, nDOFX_X2, nDOFX_X3, &
+    WeightsX_q, &
+    WeightsX_X1, &
+    WeightsX_X2, &
+    WeightsX_X3
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    dLXdX1_q, LX_X1_Dn, LX_X1_Up, &
+    dLXdX2_q, LX_X2_Dn, LX_X2_Up, &
+    dLXdX3_q, LX_X3_Dn, LX_X3_Up
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
@@ -14,7 +26,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
@@ -36,7 +49,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     Timer_Streaming_NumericalFlux_LS, &
     Timer_Streaming_NumericalFlux_Update
   USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiplyBatched
+    MatrixMatrixMultiply
 
   IMPLICIT NONE
   PRIVATE
@@ -58,6 +71,12 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: ComputeHeatFluxTensorComponents_udd
   PUBLIC :: NumericalFlux_LLF
+  PUBLIC :: ComputeWeakDerivatives_X1
+  PUBLIC :: ComputeWeakDerivatives_X2
+  PUBLIC :: ComputeWeakDerivatives_X3
+  PUBLIC :: FaceVelocity_X1
+  PUBLIC :: FaceVelocity_X2
+  PUBLIC :: FaceVelocity_X3
 
   INTERFACE ComputePrimitive_TwoMoment
     MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar_Richardson
@@ -1062,15 +1081,10 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    INTEGER  :: nZ
-    INTEGER  :: iX, iZ
     INTEGER  :: k, Mk, iM, i, j
-    INTEGER  :: nIterations
-
     REAL(DP) :: SUM1, k_dd(3,3)
     REAL(DP) :: vMag, Omega, vI, vK
     REAL(DP) :: I_d_1, I_d_2, I_d_3
-
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
@@ -1451,7 +1465,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       TimeStep
 
-    INTEGER  :: iX1, iX2, iX3, iNodeX
+    INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: dt(3)
 
     TimeStep = HUGE( One )
@@ -2135,6 +2149,1797 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_LLF
+
+
+  SUBROUTINE ComputeWeakDerivatives_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX1_Out, dV_d_dX1_Out, &
+      dGm_dd_dX1_Out )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nCF)
+    REAL(DP), INTENT(out) :: &
+      dV_u_dX1_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dV_d_dX1_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dGm_dd_dX1_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3, i
+    INTEGER  :: iCF, iCF_S
+    INTEGER  :: iGF, iGF_h, iGF_Gm_dd
+    INTEGER  :: nX(3), nX_X1(3), nK_X, nX1_X
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+
+    ! --- Geometry Fields ---
+
+    REAL(DP) :: &
+      GX_K   (nDOFX,nGF, &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      GX_F   (nDOFX_X1,nGF, &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      h_d_F  (nDOFX_X1,3, &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      h_d_K  (nDOFX,3, &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dh_d_dX1(nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+
+    ! --- Conserved Fluid Fields ---
+
+    REAL(DP) :: &
+      U_F_K(nDOFX,nCF, &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      U_F_L(nDOFX_X1,nCF, &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      U_F_R(nDOFX_X1,nCF, &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(1)  :iX_E0(1)+1)
+
+    ! --- Velocities ---
+
+    REAL(DP) :: &
+      V_u_X1  (nDOFX_X1,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      V_d_X1  (nDOFX_X1,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      V_u_K   (nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      V_d_K   (nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dV_u_dX1(nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dV_d_dX1(nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+
+    IF( iX_E0(1) .EQ. iX_B0(1) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP MAP( to: iX_B0, iX_E0 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dV_u_dX1_Out, dV_d_dX1_Out, dGm_dd_dX1_Out )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_d_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dGm_dd_dX1_Out(iNodeX,i,iX1,iX2,iX3) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX    = iX_E0 - iX_B0 + 1 ! --- Number of Elements per Spatial Dimension
+    nX_X1 = nX + [ 1, 0, 0 ]  ! --- Number of X1 Faces per Spatial Dimension
+    nK_X  = PRODUCT( nX )     ! --- Number of Elements in Position Space
+    nX1_X = PRODUCT( nX_X1 )  ! --- Number of X1 Faces in Position Space
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dX1, iX_B0, iX_E0 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
+    !$OMP             U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
+    !$OMP             dV_u_dX1, dV_d_dX1 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX1, iX_B0, iX_E0 ) &
+    !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
+    !$ACC         U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
+    !$ACC         dV_u_dX1, dV_d_dX1 )
+#endif
+
+    ! --- Permute Geometry Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_K, GX, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX1 = iX_B0(1)-1, iX_E0(1)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iGF = 1, nGF
+      DO iNodeX = 1, nDOFX
+
+        GX_K(iNodeX,iGF,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX1_X*nGF, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             GX_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             GX_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX1_X*nGF, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             GX_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+             GX_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Compute Metric Components from Scale Factors ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1  = iX_B0(1), iX_E0(1)+1
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX_X1
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
+        h_d_F(iNodeX,1,iX2,iX3,iX1) &
+          = GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+        h_d_F(iNodeX,2,iX2,iX3,iX1) &
+          = GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+        h_d_F(iNodeX,3,iX2,iX3,iX1) &
+          = GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             h_d_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dh_d_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             h_d_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             dh_d_dX1, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Permute Fluid Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U_F_K, U_F, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX1 = iX_B0(1)-1, iX_E0(1)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iCF = 1, nCF
+      DO iNodeX = 1, nDOFX
+
+        U_F_K(iNodeX,iCF,iX2,iX3,iX1) = U_F(iNodeX,iX1,iX2,iX3,iCF)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Interpolate Fluid Fields ---
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+      ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX1_X*nCF, nDOFX, One, LX_X1_Up, nDOFX_X1, &
+             U_F_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             U_F_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX1_X*nCF, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
+             U_F_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
+             U_F_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_F_L, U_F_R, GX_F, &
+    !$ACC          V_u_X1, V_d_X1, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX_X1
+
+        DO i = 1, 3
+
+          iCF_S     = iCF_S1       + i - 1
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          ! --- Left States ---
+
+          uV_L(i) = U_F_L(iNodeX,iCF_S,iX2,iX3,iX1) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
+                      * U_F_L(iNodeX,iCF_D ,iX2,iX3,iX1) )
+
+          ! --- Right States ---
+
+          uV_R(i) = U_F_R(iNodeX,iCF_S,iX2,iX3,iX1) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
+                      * U_F_R(iNodeX,iCF_D ,iX2,iX3,iX1) )
+
+        END DO
+
+        CALL FaceVelocity_X1 &
+               ( uV_L(1), uV_L(2), uV_L(3), &
+                 uV_R(1), uV_R(2), uV_R(3), &
+                 uV_F(1), uV_F(2), uV_F(3) )
+
+        DO i = 1, 3
+
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          V_u_X1(iNodeX,i,iX2,iX3,iX1) &
+            = uV_F(i) * WeightsX_X1(iNodeX)
+
+          V_d_X1(iNodeX,i,iX2,iX3,iX1) &
+            = uV_F(i) * WeightsX_X1(iNodeX) * GX_F(iNodeX,iGF_Gm_dd,iX2,iX3,iX1)
+
+        END DO
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Surface Contributions ---
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             V_u_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dV_u_dX1, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             V_u_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             dV_u_dX1, nDOFX )
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             V_d_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dV_d_dX1, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             V_d_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             dV_d_dX1, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
+    !$ACC          V_u_K, V_d_K, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iCF       = iCF_S1       + i - 1
+        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+        iGF_h     = iGF_h_1      + i - 1
+
+        h_d_K(iNodeX,i,iX2,iX3,iX1) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iX2,iX3,iX1)
+
+        uV_K &
+          = U_F_K(iNodeX,iCF,iX2,iX3,iX1) &
+            / ( GX_K (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
+              * U_F_K(iNodeX,iCF_D ,iX2,iX3,iX1) )
+
+        V_u_K(iNodeX,i,iX2,iX3,iX1) &
+          = uV_K * WeightsX_q(iNodeX)
+
+        V_d_K(iNodeX,i,iX2,iX3,iX1) &
+          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX2,iX3,iX1)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Volume Contributions ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
+             h_d_K, nDOFX, One, dh_d_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
+             V_u_K, nDOFX, One, dV_u_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
+             V_d_K, nDOFX, One, dV_d_dX1, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B0, iX_E0, dX1, &
+    !$ACC          dh_d_dX1, dV_u_dX1, dV_d_dX1, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO i      = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        dh_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+          = dh_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+              / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+        dV_u_dX1(iNodeX,i,iX2,iX3,iX1) &
+         = dV_u_dX1(iNodeX,i,iX2,iX3,iX1) &
+             / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+        dV_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+         = dV_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+             / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iGF_h )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iGF_h ) &
+    !$ACC PRESENT( iX_B0, iX_E0, GX_K, dGm_dd_dX1_Out, dh_d_dX1, &
+    !$ACC          dV_u_dX1_Out, dV_u_dX1, dV_d_dX1_Out, dV_d_dX1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( iGF_h )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iGF_h = iGF_h_1 + i - 1
+
+        dGm_dd_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
+          = Two * GX_K(iNodeX,iGF_h,iX2,iX3,iX1) &
+              * dh_d_dX1(iNodeX,i,iX2,iX3,iX1)
+
+        dV_u_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_u_dX1(iNodeX,i,iX2,iX3,iX1)
+
+        dV_d_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_d_dX1(iNodeX,i,iX2,iX3,iX1)
+
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dX1, iX_B0, iX_E0, &
+    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
+    !$OMP               U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
+    !$OMP               dV_u_dX1, dV_d_dX1 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX1, iX_B0, iX_E0, &
+    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
+    !$ACC         U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
+    !$ACC         dV_u_dX1, dV_d_dX1 )
+#endif
+
+    END ASSOCIATE
+
+  END SUBROUTINE ComputeWeakDerivatives_X1
+
+
+  SUBROUTINE ComputeWeakDerivatives_X2 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX2_Out, dV_d_dX2_Out, &
+      dGm_dd_dX2_Out )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nCF)
+    REAL(DP), INTENT(out) :: &
+      dV_u_dX2_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dV_d_dX2_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dGm_dd_dX2_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3, i
+    INTEGER  :: iCF, iCF_S
+    INTEGER  :: iGF, iGF_h, iGF_Gm_dd
+    INTEGER  :: nX(3), nX_X2(3), nK_X, nX2_X
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+
+    ! --- Geometry Fields ---
+
+    REAL(DP) :: &
+      GX_K   (nDOFX,nGF, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(2)-1:iX_E0(2)+1)
+    REAL(DP) :: &
+      GX_F   (nDOFX_X2,nGF, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: &
+      h_d_F  (nDOFX_X2,3, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: &
+      h_d_K  (nDOFX,3, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(2)  :iX_E0(2)  )
+    REAL(DP) :: &
+      dh_d_dX2(nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)  )
+
+    ! --- Conserved Fluid Fields ---
+
+    REAL(DP) :: &
+      U_F_K(nDOFX,nCF, &
+            iX_B0(1)  :iX_E0(1)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(2)-1:iX_E0(2)+1)
+    REAL(DP) :: &
+      U_F_L(nDOFX_X2,nCF, &
+            iX_B0(1)  :iX_E0(1)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: &
+      U_F_R(nDOFX_X2,nCF, &
+            iX_B0(1)  :iX_E0(1)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(2)  :iX_E0(2)+1)
+
+    ! --- Velocities ---
+
+    REAL(DP) :: &
+      V_u_X2  (nDOFX_X2,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: &
+      V_d_X2  (nDOFX_X2,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP) :: &
+      V_u_K   (nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)  )
+    REAL(DP) :: &
+      V_d_K   (nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)  )
+    REAL(DP) :: &
+      dV_u_dX2(nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)  )
+    REAL(DP) :: &
+      dV_d_dX2(nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(2)  :iX_E0(2)  )
+
+    IF( iX_E0(2) .EQ. iX_B0(2) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP MAP( to: iX_B0, iX_E0 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dV_u_dX2_Out, dV_d_dX2_Out, dGm_dd_dX2_Out )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX2_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_d_dX2_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dGm_dd_dX2_Out(iNodeX,i,iX1,iX2,iX3) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX    = iX_E0 - iX_B0 + 1 ! --- Number of Elements per Spatial Dimension
+    nX_X2 = nX + [ 0, 1, 0 ]  ! --- Number of X2 Faces per Spatial Dimension
+    nK_X  = PRODUCT( nX )     ! --- Number of Elements in Position Space
+    nX2_X = PRODUCT( nX_X2 )  ! --- Number of X2 Faces in Position Space
+
+    ASSOCIATE( dX2 => MeshX(2) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dX2, iX_B0, iX_E0 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
+    !$OMP             U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
+    !$OMP             dV_u_dX2, dV_d_dX2 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX2, iX_B0, iX_E0 ) &
+    !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
+    !$ACC         U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
+    !$ACC         dV_u_dX2, dV_d_dX2 )
+#endif
+
+    ! --- Permute Geometry Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_K, GX, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX2 = iX_B0(2)-1, iX_E0(2)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iGF = 1, nGF
+      DO iNodeX = 1, nDOFX
+
+        GX_K(iNodeX,iGF,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X*nGF, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             GX_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+             GX_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X*nGF, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             GX_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
+             GX_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Compute Metric Components from Scale Factors ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX2  = iX_B0(2), iX_E0(2)+1
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX1  = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX_X2
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
+
+        h_d_F(iNodeX,1,iX1,iX3,iX2) &
+          = GX_F(iNodeX,iGF_h_1,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
+        h_d_F(iNodeX,2,iX1,iX3,iX2) &
+          = GX_F(iNodeX,iGF_h_2,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
+        h_d_F(iNodeX,3,iX1,iX3,iX2) &
+          = GX_F(iNodeX,iGF_h_3,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
+             h_d_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, Zero, &
+             dh_d_dX2, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
+             h_d_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
+             dh_d_dX2, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Permute Fluid Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U_F_K, U_F, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX2 = iX_B0(2)-1, iX_E0(2)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iCF = 1, nCF
+      DO iNodeX = 1, nDOFX
+
+        U_F_K(iNodeX,iCF,iX1,iX3,iX2) = U_F(iNodeX,iX1,iX2,iX3,iCF)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Interpolate Fluid Fields ---
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+      ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X*nCF, nDOFX, One, LX_X2_Up, nDOFX_X2, &
+             U_F_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+             U_F_L(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X*nCF, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
+             U_F_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
+             U_F_R(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_F_L, U_F_R, GX_F, &
+    !$ACC          V_u_X2, V_d_X2, WeightsX_X2 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX_X2
+
+        DO i = 1, 3
+
+          iCF_S     = iCF_S1       + i - 1
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          ! --- Left States ---
+
+          uV_L(i) = U_F_L(iNodeX,iCF_S,iX1,iX3,iX2) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX1,iX3,iX2) &
+                      * U_F_L(iNodeX,iCF_D ,iX1,iX3,iX2) )
+
+          ! --- Right States ---
+
+          uV_R(i) = U_F_R(iNodeX,iCF_S,iX1,iX3,iX2) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX1,iX3,iX2) &
+                      * U_F_R(iNodeX,iCF_D ,iX1,iX3,iX2) )
+
+        END DO
+
+        CALL FaceVelocity_X2 &
+               ( uV_L(1), uV_L(2), uV_L(3), &
+                 uV_R(1), uV_R(2), uV_R(3), &
+                 uV_F(1), uV_F(2), uV_F(3) )
+
+        DO i = 1, 3
+
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          V_u_X2(iNodeX,i,iX1,iX3,iX2) &
+            = uV_F(i) * WeightsX_X2(iNodeX)
+
+          V_d_X2(iNodeX,i,iX1,iX3,iX2) &
+            = uV_F(i) * WeightsX_X2(iNodeX) * GX_F(iNodeX,iGF_Gm_dd,iX1,iX3,iX2)
+
+        END DO
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Surface Contributions ---
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
+             V_u_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, Zero, &
+             dV_u_dX2, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
+             V_u_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
+             dV_u_dX2, nDOFX )
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
+             V_d_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, Zero, &
+             dV_d_dX2, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
+             V_d_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
+             dV_d_dX2, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
+    !$ACC          V_u_K, V_d_K, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iCF       = iCF_S1       + i - 1
+        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+        iGF_h     = iGF_h_1      + i - 1
+
+        h_d_K(iNodeX,i,iX1,iX3,iX2) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iX1,iX3,iX2)
+
+        uV_K &
+          = U_F_K(iNodeX,iCF,iX1,iX3,iX2) &
+            / ( GX_K (iNodeX,iGF_Gm_dd,iX1,iX3,iX2) &
+              * U_F_K(iNodeX,iCF_D ,iX1,iX3,iX2) )
+
+        V_u_K(iNodeX,i,iX1,iX3,iX2) &
+          = uV_K * WeightsX_q(iNodeX)
+
+        V_d_K(iNodeX,i,iX1,iX3,iX2) &
+          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX3,iX2)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Volume Contributions ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX2_q, nDOFX, &
+             h_d_K, nDOFX, One, dh_d_dX2, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX2_q, nDOFX, &
+             V_u_K, nDOFX, One, dV_u_dX2, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX2_q, nDOFX, &
+             V_d_K, nDOFX, One, dV_d_dX2, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B0, iX_E0, dX2, &
+    !$ACC          dh_d_dX2, dV_u_dX2, dV_d_dX2, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i      = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        dh_d_dX2(iNodeX,i,iX1,iX3,iX2) &
+          = dh_d_dX2(iNodeX,i,iX1,iX3,iX2) &
+              / ( WeightsX_q(iNodeX) * dX2(iX2) )
+
+        dV_u_dX2(iNodeX,i,iX1,iX3,iX2) &
+         = dV_u_dX2(iNodeX,i,iX1,iX3,iX2) &
+             / ( WeightsX_q(iNodeX) * dX2(iX2) )
+
+        dV_d_dX2(iNodeX,i,iX1,iX3,iX2) &
+         = dV_d_dX2(iNodeX,i,iX1,iX3,iX2) &
+             / ( WeightsX_q(iNodeX) * dX2(iX2) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iGF_h )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iGF_h ) &
+    !$ACC PRESENT( iX_B0, iX_E0, GX_K, dGm_dd_dX2_Out, dh_d_dX2, &
+    !$ACC          dV_u_dX2_Out, dV_u_dX2, dV_d_dX2_Out, dV_d_dX2 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( iGF_h )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iGF_h = iGF_h_1 + i - 1
+
+        dGm_dd_dX2_Out(iNodeX,i,iX1,iX2,iX3) &
+          = Two * GX_K(iNodeX,iGF_h,iX1,iX3,iX2) &
+              * dh_d_dX2(iNodeX,i,iX1,iX3,iX2)
+
+        dV_u_dX2_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_u_dX2(iNodeX,i,iX1,iX3,iX2)
+
+        dV_d_dX2_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_d_dX2(iNodeX,i,iX1,iX3,iX2)
+
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dX2, iX_B0, iX_E0, &
+    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
+    !$OMP               U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
+    !$OMP               dV_u_dX2, dV_d_dX2 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX2, iX_B0, iX_E0, &
+    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
+    !$ACC         U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
+    !$ACC         dV_u_dX2, dV_d_dX2 )
+#endif
+
+    END ASSOCIATE
+
+  END SUBROUTINE ComputeWeakDerivatives_X2
+
+
+  SUBROUTINE ComputeWeakDerivatives_X3 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX3_Out, dV_d_dX3_Out, &
+      dGm_dd_dX3_Out )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nCF)
+    REAL(DP), INTENT(out) :: &
+      dV_u_dX3_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dV_d_dX3_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dGm_dd_dX3_Out &
+        (1:nDOFX,1:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX2, iX3, iX1, i
+    INTEGER  :: iCF, iCF_S
+    INTEGER  :: iGF, iGF_h, iGF_Gm_dd
+    INTEGER  :: nX(3), nX_X3(3), nK_X, nX3_X
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+
+    ! --- Geometry Fields ---
+
+    REAL(DP) :: &
+      GX_K   (nDOFX,nGF, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)-1:iX_E0(3)+1)
+    REAL(DP) :: &
+      GX_F   (nDOFX_X3,nGF, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP) :: &
+      h_d_F  (nDOFX_X3,3, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP) :: &
+      h_d_K  (nDOFX,3, &
+              iX_B0(1)  :iX_E0(1)  , &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  )
+    REAL(DP) :: &
+      dh_d_dX3(nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  )
+
+    ! --- Conserved Fluid Fields ---
+
+    REAL(DP) :: &
+      U_F_K(nDOFX,nCF, &
+            iX_B0(1)  :iX_E0(1)  , &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)-1:iX_E0(3)+1)
+    REAL(DP) :: &
+      U_F_L(nDOFX_X3,nCF, &
+            iX_B0(1)  :iX_E0(1)  , &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP) :: &
+      U_F_R(nDOFX_X3,nCF, &
+            iX_B0(1)  :iX_E0(1)  , &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)+1)
+
+    ! --- Velocities ---
+
+    REAL(DP) :: &
+      V_u_X3  (nDOFX_X3,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP) :: &
+      V_d_X3  (nDOFX_X3,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP) :: &
+      V_u_K   (nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  )
+    REAL(DP) :: &
+      V_d_K   (nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  )
+    REAL(DP) :: &
+      dV_u_dX3(nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  )
+    REAL(DP) :: &
+      dV_d_dX3(nDOFX,3, &
+               iX_B0(1)  :iX_E0(1)  , &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  )
+
+    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP MAP( to: iX_B0, iX_E0 )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC COPYIN( iX_B0, iX_E0 ) &
+      !$ACC PRESENT( dV_u_dX3_Out, dV_d_dX3_Out, dGm_dd_dX3_Out )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX3_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_d_dX3_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dGm_dd_dX3_Out(iNodeX,i,iX1,iX2,iX3) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX    = iX_E0 - iX_B0 + 1 ! --- Number of Elements per Spatial Dimension
+    nX_X3 = nX + [ 0, 0, 1 ]  ! --- Number of X3 Faces per Spatial Dimension
+    nK_X  = PRODUCT( nX )     ! --- Number of Elements in Position Space
+    nX3_X = PRODUCT( nX_X3 )  ! --- Number of X3 Faces in Position Space
+
+    ASSOCIATE( dX3 => MeshX(3) % Width )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dX3, iX_B0, iX_E0 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
+    !$OMP             U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
+    !$OMP             dV_u_dX3, dV_d_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dX3, iX_B0, iX_E0 ) &
+    !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
+    !$ACC         U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
+    !$ACC         dV_u_dX3, dV_d_dX3 )
+#endif
+
+    ! --- Permute Geometry Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_K, GX, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX3 = iX_B0(3)-1, iX_E0(3)+1
+    DO iX2 = iX_B0(2)  , iX_E0(2)
+    DO iX1 = iX_B0(1)  , iX_E0(1)
+
+      DO iGF    = 1, nGF
+      DO iNodeX = 1, nDOFX
+
+        GX_K(iNodeX,iGF,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X3, nX3_X*nGF, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+             GX_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
+             GX_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X3, nX3_X*nGF, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+             GX_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
+             GX_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Compute Metric Components from Scale Factors ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3  = iX_B0(3), iX_E0(3)+1
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX_X3
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX1,iX2,iX3) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
+
+        h_d_F(iNodeX,1,iX1,iX2,iX3) &
+          = GX_F(iNodeX,iGF_h_1,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
+        h_d_F(iNodeX,2,iX1,iX2,iX3) &
+          = GX_F(iNodeX,iGF_h_2,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
+        h_d_F(iNodeX,3,iX1,iX2,iX3) &
+          = GX_F(iNodeX,iGF_h_3,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
+             h_d_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3, Zero, &
+             dh_d_dX3, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
+             h_d_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
+             dh_d_dX3, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! --- Permute Fluid Fields ---
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( U_F_K, U_F, iX_B0, iX_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX3 = iX_B0(3)-1, iX_E0(3)+1
+    DO iX2 = iX_B0(2)  , iX_E0(2)
+    DO iX1 = iX_B0(1)  , iX_E0(1)
+
+      DO iCF    = 1, nCF
+      DO iNodeX = 1, nDOFX
+
+        U_F_K(iNodeX,iCF,iX1,iX2,iX3) = U_F(iNodeX,iX1,iX2,iX3,iCF)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Interpolate Fluid Fields ---
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+      ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X3, nX3_X*nCF, nDOFX, One, LX_X3_Up, nDOFX_X3, &
+             U_F_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
+             U_F_L(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X3, nX3_X*nCF, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
+             U_F_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
+             U_F_R(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_F_L, U_F_R, GX_F, &
+    !$ACC          V_u_X3, V_d_X3, WeightsX_X3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV_L, uV_R, uV_F, iCF_S, iGF_Gm_dd )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)+1
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX_X3
+
+        DO i = 1, 3
+
+          iCF_S     = iCF_S1       + i - 1
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          ! --- Left States ---
+
+          uV_L(i) = U_F_L(iNodeX,iCF_S,iX1,iX2,iX3) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX1,iX2,iX3) &
+                         * U_F_L(iNodeX,iCF_D ,iX1,iX2,iX3) )
+
+          ! --- Right States ---
+
+          uV_R(i) = U_F_R(iNodeX,iCF_S,iX1,iX2,iX3) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX1,iX2,iX3) &
+                         * U_F_R(iNodeX,iCF_D ,iX1,iX2,iX3) )
+
+        END DO
+
+        CALL FaceVelocity_X3 &
+               ( uV_L(1), uV_L(2), uV_L(3), &
+                 uV_R(1), uV_R(2), uV_R(3), &
+                 uV_F(1), uV_F(2), uV_F(3) )
+
+        DO i = 1, 3
+
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          V_u_X3(iNodeX,i,iX1,iX2,iX3) &
+            = uV_F(i) * WeightsX_X3(iNodeX)
+
+          V_d_X3(iNodeX,i,iX1,iX2,iX3) &
+            = uV_F(i) * WeightsX_X3(iNodeX) &
+                * GX_F(iNodeX,iGF_Gm_dd,iX1,iX2,iX3)
+
+        END DO
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Surface Contributions ---
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
+             V_u_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3, Zero, &
+             dV_u_dX3, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
+             V_u_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
+             dV_u_dX3, nDOFX )
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
+             V_d_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3, Zero, &
+             dV_d_dX3, nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
+             V_d_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
+             dV_d_dX3, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
+    !$ACC          V_u_K, V_d_K, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iCF       = iCF_S1       + i - 1
+        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+        iGF_h     = iGF_h_1      + i - 1
+
+        h_d_K(iNodeX,i,iX1,iX2,iX3) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iX1,iX2,iX3)
+
+        uV_K &
+          = U_F_K(iNodeX,iCF,iX1,iX2,iX3) &
+            / ( GX_K (iNodeX,iGF_Gm_dd,iX1,iX2,iX3) &
+                 * U_F_K(iNodeX,iCF_D ,iX1,iX2,iX3) )
+
+        V_u_K(iNodeX,i,iX1,iX2,iX3) &
+          = uV_K * WeightsX_q(iNodeX)
+
+        V_d_K(iNodeX,i,iX1,iX2,iX3) &
+          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX2,iX3)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    ! --- Volume Contributions ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX3_q, nDOFX, &
+             h_d_K, nDOFX, One, dh_d_dX3, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX3_q, nDOFX, &
+             V_u_K, nDOFX, One, dV_u_dX3, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX3_q, nDOFX, &
+             V_d_K, nDOFX, One, dV_d_dX3, nDOFX )
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B0, iX_E0, dX3, &
+    !$ACC          dh_d_dX3, dV_u_dX3, dV_d_dX3, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i      = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        dh_d_dX3(iNodeX,i,iX1,iX2,iX3) &
+          = dh_d_dX3(iNodeX,i,iX1,iX2,iX3) &
+              / ( WeightsX_q(iNodeX) * dX3(iX3) )
+
+        dV_u_dX3(iNodeX,i,iX1,iX2,iX3) &
+         = dV_u_dX3(iNodeX,i,iX1,iX2,iX3) &
+             / ( WeightsX_q(iNodeX) * dX3(iX3) )
+
+        dV_d_dX3(iNodeX,i,iX1,iX2,iX3) &
+         = dV_d_dX3(iNodeX,i,iX1,iX2,iX3) &
+             / ( WeightsX_q(iNodeX) * dX3(iX3) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iGF_h )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iGF_h ) &
+    !$ACC PRESENT( iX_B0, iX_E0, GX_K, dGm_dd_dX3_Out, dh_d_dX3, &
+    !$ACC          dV_u_dX3_Out, dV_u_dX3, dV_d_dX3_Out, dV_d_dX3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( iGF_h )
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i      = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iGF_h = iGF_h_1 + i - 1
+
+        dGm_dd_dX3_Out(iNodeX,i,iX1,iX2,iX3) &
+          = Two * GX_K(iNodeX,iGF_h,iX1,iX2,iX3) &
+              * dh_d_dX3(iNodeX,i,iX1,iX2,iX3)
+
+        dV_u_dX3_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_u_dX3(iNodeX,i,iX1,iX2,iX3)
+
+        dV_d_dX3_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_d_dX3(iNodeX,i,iX1,iX2,iX3)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dX3, iX_B0, iX_E0, &
+    !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
+    !$OMP               U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
+    !$OMP               dV_u_dX3, dV_d_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dX3, iX_B0, iX_E0, &
+    !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
+    !$ACC         U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
+    !$ACC         dV_u_dX3, dV_d_dX3 )
+#endif
+
+    END ASSOCIATE
+
+  END SUBROUTINE ComputeWeakDerivatives_X3
+
+
+  SUBROUTINE FaceVelocity_X1 &
+    ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: V1_L, V2_L, V3_L
+    REAL(DP), INTENT(in)  :: V1_R, V2_R, V3_R
+    REAL(DP), INTENT(out) :: V1_F, V2_F, V3_F
+
+    ! --- Average Left and Right States ---
+
+    V1_F = Half * ( V1_L + V1_R )
+    V2_F = Half * ( V2_L + V2_R )
+    V3_F = Half * ( V3_L + V3_R )
+
+    RETURN
+  END SUBROUTINE FaceVelocity_X1
+
+
+  SUBROUTINE FaceVelocity_X2 &
+    ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: V1_L, V2_L, V3_L
+    REAL(DP), INTENT(in)  :: V1_R, V2_R, V3_R
+    REAL(DP), INTENT(out) :: V1_F, V2_F, V3_F
+
+    ! --- Average Left and Right States ---
+
+    V1_F = Half * ( V1_L + V1_R )
+    V2_F = Half * ( V2_L + V2_R )
+    V3_F = Half * ( V3_L + V3_R )
+
+    RETURN
+  END SUBROUTINE FaceVelocity_X2
+
+
+  SUBROUTINE FaceVelocity_X3 &
+    ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: V1_L, V2_L, V3_L
+    REAL(DP), INTENT(in)  :: V1_R, V2_R, V3_R
+    REAL(DP), INTENT(out) :: V1_F, V2_F, V3_F
+
+    ! --- Average Left and Right States ---
+
+    V1_F = Half * ( V1_L + V1_R )
+    V2_F = Half * ( V2_L + V2_R )
+    V3_F = Half * ( V3_L + V3_R )
+
+    RETURN
+  END SUBROUTINE FaceVelocity_X3
 
 
 END MODULE TwoMoment_UtilitiesModule_OrderV
