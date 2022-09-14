@@ -283,5 +283,6 @@ ThornadoInitializationModule.o: \
   InputOutputModuleHDF.o \
   Euler_dgDiscretizationModule.o \
   TwoMoment_MeshRefinementModule.o \
+  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
   ThornadoInitializationModule.F90
 endif
