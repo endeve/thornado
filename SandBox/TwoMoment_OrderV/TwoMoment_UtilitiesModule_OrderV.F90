@@ -8,8 +8,6 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE, &
     nNodes, nDimsX
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
-    Timer_Streaming_LinearAlgebra
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
     WeightsX_q, &
@@ -51,7 +49,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     Timer_Streaming_NumericalFlux_InOut, &
     Timer_Streaming_NumericalFlux_RHS, &
     Timer_Streaming_NumericalFlux_LS, &
-    Timer_Streaming_NumericalFlux_Update
+    Timer_Streaming_NumericalFlux_Update, &
+    Timer_Streaming_LinearAlgebra
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply, &
     EigenvaluesSymmetric3
