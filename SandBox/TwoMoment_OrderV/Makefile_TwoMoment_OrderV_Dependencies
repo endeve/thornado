@@ -60,6 +60,7 @@ TwoMoment_PositivityLimiterModule_OrderV.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  MeshModule.o \
   TwoMoment_PositivityLimiterModule_OrderV.F90
 
 TwoMoment_OpacityModule_OrderV.o: \
