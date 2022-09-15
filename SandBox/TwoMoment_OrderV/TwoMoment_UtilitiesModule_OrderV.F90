@@ -3,8 +3,11 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five, &
     SqrtTiny
+  USE QuadratureModule, ONLY: &
+    GetQuadrature
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, nDOFX, nDOFE
+    nDOFZ, nDOFX, nDOFE, &
+    nNodes, nDimsX
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     Timer_Streaming_LinearAlgebra
   USE ReferenceElementModuleX, ONLY: &
@@ -18,7 +21,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     dLXdX2_q, LX_X2_Dn, LX_X2_Up, &
     dLXdX3_q, LX_X3_Dn, LX_X3_Up
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    MeshE
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_h_1, &
@@ -49,7 +53,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     Timer_Streaming_NumericalFlux_LS, &
     Timer_Streaming_NumericalFlux_Update
   USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply
+    MatrixMatrixMultiply, &
+    EigenvaluesSymmetric3
 
   IMPLICIT NONE
   PRIVATE
@@ -61,6 +66,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: ComputeTimeStep_TwoMoment
+  PUBLIC :: ComputeTimeStep_TwoMoment_Realizability
   PUBLIC :: Flux_E
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
@@ -1500,11 +1506,177 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1, etc
+    END ASSOCIATE ! dX1, etc.
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment
+
+
+  SUBROUTINE ComputeTimeStep_TwoMoment_Realizability &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, CFL, TimeStep, Verbose_Option )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCF)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      Verbose_Option
+
+    REAL(DP), PARAMETER :: Gamma_X = Half
+    REAL(DP), PARAMETER :: Gamma_E = Half
+
+    LOGICAL  :: Verbose
+    INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iX_B1(3), iX_E1(3)
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iE
+    REAL(DP) :: xQ(nNodes), wQ(nNodes)
+    REAL(DP) :: TimeStep_X, dt_X(3)
+    REAL(DP) :: TimeStep_E, dt_E
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP) :: V_d_1, V_d_2, V_d_3, AbsV
+    REAL(DP) :: CFL_Eff_X, CFL_Eff_E
+    REAL(DP) :: dE_Min, A(3,3), Lambda(3), Alpha_E
+    REAL(DP), DIMENSION(nDOFX,3, &
+                        iZ_B0(2):iZ_E0(2), &
+                        iZ_B0(3):iZ_E0(3), &
+                        iZ_B0(4):iZ_E0(4)) :: &
+      dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+      dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+      dV_u_dX3, dV_d_dX3, dGm_dd_dX3
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
+    iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+    CALL ComputeWeakDerivatives_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+             dV_u_dX1, dV_d_dX1, dGm_dd_dX1 )
+
+    CALL ComputeWeakDerivatives_X2 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+             dV_u_dX2, dV_d_dX2, dGm_dd_dX2 )
+
+    CALL ComputeWeakDerivatives_X3 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+
+    TimeStep_X = HUGE( One )
+    TimeStep_E = HUGE( One )
+    dt_X       = HUGE( One )
+    dt_E       = HUGE( One )
+
+    CALL GetQuadrature( nNodes, xQ, wQ, 'Lobatto' )
+
+    CFL_Eff_X = Gamma_X * wQ(nNodes) / DBLE( nDimsX )
+    CFL_Eff_E = Gamma_E * wQ(nNodes)
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width, &
+        dE  => MeshE    % Width, &
+        E_C => MeshE    % Center )
+
+    dE_Min = HUGE( One ) ! --- Min of dE / E_H
+    DO iE = iZ_B0(1), iZ_E0(1)
+      dE_Min = MIN( dE_Min, dE(iE) / ( E_C(iE) + Half * dE(iE) ) )
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        h_d_1 = GX(iNodeX,iX1,iX2,iX3,iGF_h_1)
+        h_d_2 = GX(iNodeX,iX1,iX2,iX3,iGF_h_2)
+        h_d_3 = GX(iNodeX,iX1,iX2,iX3,iGF_h_3)
+
+        Gm_dd_11 = MAX( h_d_1**2, SqrtTiny )
+        Gm_dd_22 = MAX( h_d_2**2, SqrtTiny )
+        Gm_dd_33 = MAX( h_d_3**2, SqrtTiny )
+
+        V_d_1 = U_F(iNodeX,iX1,iX2,iX3,iCF_S1) / U_F(iNodeX,iX1,iX2,iX3,iCF_D)
+        V_d_2 = U_F(iNodeX,iX1,iX2,iX3,iCF_S2) / U_F(iNodeX,iX1,iX2,iX3,iCF_D)
+        V_d_3 = U_F(iNodeX,iX1,iX2,iX3,iCF_S3) / U_F(iNodeX,iX1,iX2,iX3,iCF_D)
+
+        AbsV = SQRT(   V_d_1**2 / Gm_dd_11 &
+                     + V_d_2**2 / Gm_dd_22 &
+                     + V_d_3**2 / Gm_dd_33 )
+
+        ! --- Time Step from Spatial Divergence ---
+
+        dt_X(1) = CFL_Eff_X * ( One - AbsV ) * dX1(iX1) * h_d_1
+        dt_X(2) = CFL_Eff_X * ( One - AbsV ) * dX2(iX2) * h_d_2
+        dt_X(3) = CFL_Eff_X * ( One - AbsV ) * dX3(iX3) * h_d_3
+
+        TimeStep_X = MIN( TimeStep_X, MINVAL( dt_X ) )
+
+        ! --- Eigenvalues of Quadratic Form Matrix ---
+
+        A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iX1,iX2,iX3), &
+                                dV_u_dX2(iNodeX,1,iX1,iX2,iX3)  &
+                              + dV_u_dX1(iNodeX,2,iX1,iX2,iX3), &
+                                dV_u_dX3(iNodeX,1,iX1,iX2,iX3)  &
+                              + dV_u_dX1(iNodeX,3,iX1,iX2,iX3) ]
+        A(:,2) = Half * [       dV_u_dX1(iNodeX,2,iX1,iX2,iX3)  &
+                              + dV_u_dX2(iNodeX,1,iX1,iX2,iX3), &
+                          Two * dV_u_dX2(iNodeX,2,iX1,iX2,iX3), &
+                                dV_u_dX3(iNodeX,2,iX1,iX2,iX3)  &
+                              + dV_u_dX2(iNodeX,3,iX1,iX2,iX3) ]
+        A(:,3) = Half * [       dV_u_dX1(iNodeX,3,iX1,iX2,iX3)  &
+                              + dV_u_dX3(iNodeX,1,iX1,iX2,iX3), &
+                                dV_u_dX2(iNodeX,3,iX1,iX2,iX3)  &
+                              + dV_u_dX3(iNodeX,2,iX1,iX2,iX3), &
+                          Two * dV_u_dX3(iNodeX,3,iX1,iX2,iX3) ]
+
+        CALL EigenvaluesSymmetric3( A, Lambda )
+
+        Alpha_E = MAX( MAXVAL( ABS( Lambda ) ), SqrtTiny )
+
+        ! --- Time Step from Energy Divergence ---
+
+        dt_E = CFL_Eff_E * ( One - AbsV ) * dE_Min / Alpha_E
+
+        TimeStep_E = MIN( TimeStep_E, dt_E )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc.
+
+    TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
+
+    IF( Verbose )THEN
+      WRITE(*,'(A8,A7,ES12.6E2,A8,ES12.6E2)') &
+        '', 'dt_X = ', TimeStep_X, ' dt_E = ', TimeStep_E
+    END IF
+
+  END SUBROUTINE ComputeTimeStep_TwoMoment_Realizability
 
 
   FUNCTION Flux_E &
@@ -2697,7 +2869,6 @@ CONTAINS
 
         dV_d_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
           = dV_d_dX1(iNodeX,i,iX2,iX3,iX1)
-
 
       END DO
       END DO
