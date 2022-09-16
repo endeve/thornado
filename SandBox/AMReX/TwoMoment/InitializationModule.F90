@@ -182,6 +182,7 @@ MODULE InitializationModule
     OpacityTableName_Iso,     &
     OpacityTableName_NES,     &
     OpacityTableName_Pair,     &
+    OpacityTableName_Brem,     &
     Min_1,                     &
     Min_2,                     &
     UsePositivityLimiter,      &
@@ -374,8 +375,9 @@ CONTAINS
       CALL InitializeOpacities_TABLE &
         ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
           OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
-          !OpacityTableName_NES_Option  = OpacityTableName_NES,  &
-          !OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          OpacityTableName_NES_Option  = OpacityTableName_NES,  &
+          OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          OpacityTableName_Brem_Option = OpacityTableName_Brem, &
           EquationOfStateTableName_Option = EosTableName, &
           Verbose_Option =  amrex_parallel_ioprocessor())
 
