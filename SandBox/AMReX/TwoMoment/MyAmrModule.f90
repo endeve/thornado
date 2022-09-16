@@ -84,6 +84,7 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Iso
   CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_NES
   CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Pair
+  CHARACTER(LEN=:), ALLOCATABLE :: OpacityTableName_Brem
 
   ! --- Positivity limiter ---
   LOGICAL  :: UsePositivityLimiter
@@ -246,11 +247,13 @@ CONTAINS
     OpacityTableName_Iso  = ''
     OpacityTableName_NES  = ''
     OpacityTableName_Pair  = ''
+    OpacityTableName_Brem  = ''
     CALL amrex_parmparse_build( PP, 'OP' )
       CALL PP % query( 'OpacityTableName_AbEm',OpacityTableName_AbEm )
       CALL PP % query( 'OpacityTableName_Iso', OpacityTableName_Iso )
       CALL PP % query( 'OpacityTableName_NES', OpacityTableName_NES )
       CALL PP % query( 'OpacityTableName_Pair', OpacityTableName_Pair )
+      CALL PP % query( 'OpacityTableName_Brem', OpacityTableName_Brem )
     CALL amrex_parmparse_destroy( PP )
 
     Gamma_IDEAL     = 5.0_AR / 3.0_AR
