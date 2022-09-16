@@ -1446,7 +1446,7 @@ CONTAINS
           MinTheta_K1 = 1.2_DP*Min_1 / &
                             MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
           MinTheta_K2 = 1.2_DP*Min_1 / &
-                            MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
+                            MINVAL(U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
 
           CALL UpdateResidualEnergy &
               ( N_K1, N_K2, E_K1, E_K2, DeltaE(iK2,iZ2,iZ3,iZ4,iS), &
@@ -1505,7 +1505,7 @@ CONTAINS
             MinTheta_K1 = 1.2_DP*Min_1 / &
                               MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
             MinTheta_K2 = 1.2_DP*Min_1 / &
-                              MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
+                              MINVAL(U_R(:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS)) - One
 
             CALL UpdateResidualEnergy &
                 ( N_K1, N_K2, E_K1, E_K2, Zero, &
