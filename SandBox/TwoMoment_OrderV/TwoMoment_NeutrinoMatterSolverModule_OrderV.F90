@@ -1054,7 +1054,7 @@ CONTAINS
     ! --- Local Variables ---
 
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
-    INTEGER  :: k_inner, Mk_inner, nX_P_inner
+    INTEGER  :: k_inner, Mk_inner, nX_P_inner, iN_E, iS
 
     LOGICAL,  DIMENSION(nX_G) :: ITERATE_outer, ITERATE_inner
     INTEGER,  DIMENSION(nX_G) :: PackIndex_outer, UnpackIndex_outer
@@ -1107,7 +1107,6 @@ CONTAINS
     !$ACC   BVEC_inner, GVECm_inner, FVECm_inner, &
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
-
     SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
 
     ! --- Initial RHS ---
@@ -1119,13 +1118,11 @@ CONTAINS
     ! --- CALL InitializeRHS_OrderOne
 
 #elif defined( TWOMOMENT_ORDER_V )
-
     CALL InitializeRHS_OrderV &
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
-
     CALL ComputePressure_TABLE & 
            ( D, T, Y, P )
 
@@ -1435,7 +1432,6 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
     INTEGER :: nX, nX0, iX, iE
-
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
@@ -2019,7 +2015,6 @@ CONTAINS
       Ef_old(iN_X) = Ef
 
       ! --- Scaling Factors ---
-
       S_Y    (iN_X) = One / ( D(iN_X) * Y (iN_X) / AtomicMassUnit )
       S_Ef   (iN_X) = One / ( D(iN_X) * Ef )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
@@ -2149,10 +2144,8 @@ CONTAINS
         SUM_V1 = SUM_V1 + Fnu_d_1 * W3_S(iN_E)
         SUM_V2 = SUM_V2 + Fnu_d_2 * W3_S(iN_E)
         SUM_V3 = SUM_V3 + Fnu_d_3 * W3_S(iN_E)
-
       END DO
       END DO
-
       ! --- Include Old Matter State in Constant (C) Terms ---
 
       C_Y    (iN_X) = U_Y    (iN_X) + wMatrRHS(iY ) * SUM_Y  * S_Y    (iN_X)
@@ -2160,12 +2153,12 @@ CONTAINS
       C_V_d_1(iN_X) = U_V_d_1(iN_X) + wMatrRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
       C_V_d_2(iN_X) = U_V_d_2(iN_X) + wMatrRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
       C_V_d_3(iN_X) = U_V_d_3(iN_X) + wMatrRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
-
     END DO
 
   END SUBROUTINE InitializeRHS_OrderV
 
 
+#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE InitializeRHS_Relativistic &
     ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
@@ -2194,6 +2187,11 @@ CONTAINS
     !$OMP PRIVATE( vDotV )
 #endif
     DO iN_X = 1, nX_G
+
+      B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
+      B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
+      B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
+
 
       V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
       V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
@@ -2258,16 +2256,8 @@ CONTAINS
     DO iS   = 1, nSpecies
     DO iN_E = 1, nE_G
 
-      vDotV =   V_u_1(iN_X) * V_d_1 &
-              + V_u_2(iN_X) * V_d_2 &
-              + V_u_3(iN_X) * V_d_3
-
-      W = 1.0_DP / SQRT(1.0_DP - vDotV)
 
 
-      B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
-      B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
-      B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
 
       DT = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) )
 
@@ -2323,6 +2313,7 @@ CONTAINS
 
       Enu = W**2 * Dnu(iN_E,iS,iN_X) +  W * Two * vDotInu + vvDotK 
 
+
       ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
       Fnu_d_1 &
@@ -2366,16 +2357,6 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
 
-      V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
-      V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
-      V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
-
-      vDotV =   V_u_1(iN_X) * V_d_1 &
-              + V_u_2(iN_X) * V_d_2 &
-              + V_u_3(iN_X) * V_d_3
-
-      W = 1.0_DP / SQRT(1.0_DP - vDotV)
- 
       SUM_Y = ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y
 
       SJ(1) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_1
@@ -2402,13 +2383,11 @@ CONTAINS
         = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
       C_V_d_3(iN_X) &
         = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
+
+
     END DO
-
-
-
-
   END SUBROUTINE InitializeRHS_Relativistic 
-
+#endif
 
   SUBROUTINE ComputeDnuNorm( MASK, Dnu )
 
@@ -2611,12 +2590,11 @@ CONTAINS
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
-
       END IF
     END DO
-
   END SUBROUTINE ComputeMatterRHS_OrderV
 
+#if   defined( TWOMOMENT_RELATIVISTIC )
 
   SUBROUTINE ComputeMatterRHS_Relativistic &
     ( MASK, Fm, Gm, &
@@ -2792,17 +2770,12 @@ CONTAINS
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
-
-
       END IF
 
     END DO
 
-
-
-
   END SUBROUTINE ComputeMatterRHS_Relativistic 
-
+#endif
   SUBROUTINE ComputeNeutrinoRHS_OrderV &
     ( MASK, Fm, Gm, dt, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
@@ -2845,6 +2818,7 @@ CONTAINS
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #endif
+
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
     DO iN_E = 1, nE_G
@@ -3012,16 +2986,15 @@ CONTAINS
         Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X)
         Fm(iOS+iCR_G2,iN_X) = Gm(iOS+iCR_G2,iN_X) - Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X)
         Fm(iOS+iCR_G3,iN_X) = Gm(iOS+iCR_G3,iN_X) - Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
-
       END IF
 
     END DO
     END DO
     END DO
-
   END SUBROUTINE ComputeNeutrinoRHS_OrderV
 
 
+#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE ComputeNeutrinoRHS_Relativistic &
     ( MASK, Fm, Gm, dt, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
@@ -3055,6 +3028,7 @@ CONTAINS
     !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          Eta_T, Chi_T, Kappa, iOS )
 #endif
+
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
@@ -3185,7 +3159,6 @@ CONTAINS
 
         Fm(iOS+iCR_G3,iN_X) &
           = Gm(iOS+iCR_G3,iN_X) - Inu_d_3
-
       END IF
 
     END DO
@@ -3194,11 +3167,8 @@ CONTAINS
 
 
 
-
-
-
   END SUBROUTINE ComputeNeutrinoRHS_Relativistic
-
+#endif
   SUBROUTINE UpdateMatterRHS_OrderV &
     ( MASK, Fm, Gm, Y, E, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -3259,7 +3229,6 @@ CONTAINS
         ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
 
         Omega(iN_X) = One / ( One + SQRT( vDotV ) )
-
       END IF
 
     END DO
@@ -3267,6 +3236,7 @@ CONTAINS
   END SUBROUTINE UpdateMatterRHS_OrderV
 
 
+#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE UpdateMatterRHS_Relativistic &
     ( MASK, Fm, Gm, D, Y, E, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -3333,9 +3303,8 @@ CONTAINS
       END IF
 
     END DO
-  
   END SUBROUTINE UpdateMatterRHS_Relativistic 
-
+#endif
   SUBROUTINE UpdateNeutrinoRHS_OrderV &
     ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -3345,7 +3314,6 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS, iOS
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iOS )
@@ -3373,16 +3341,15 @@ CONTAINS
         Inu_u_1(iN_E,iS,iN_X) = Gm(iOS+iCR_G1,iN_X) / Gm_dd_11(iN_X)
         Inu_u_2(iN_E,iS,iN_X) = Gm(iOS+iCR_G2,iN_X) / Gm_dd_22(iN_X)
         Inu_u_3(iN_E,iS,iN_X) = Gm(iOS+iCR_G3,iN_X) / Gm_dd_33(iN_X)
-
       END IF
 
     END DO
     END DO
     END DO
-
   END SUBROUTINE UpdateNeutrinoRHS_OrderV
 
 
+#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE UpdateNeutrinoRHS_Relativistic &
     ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       V_u_1, V_u_2, V_u_3, &
@@ -3469,8 +3436,6 @@ CONTAINS
                               - Inu_d_2 * B_d_3 * V_u_2(iN_X) / ( Gm_dd_33(iN_X) * Alpha(iN_X) )
 
 
-
-
       END IF
 
     END DO
@@ -3479,9 +3444,8 @@ CONTAINS
 
 
 
-
   END SUBROUTINE UpdateNeutrinoRHS_Relativistic 
-
+#endif
   SUBROUTINE SolveLS_FP &
     ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha, TAU, LWORK, WORK )
 
