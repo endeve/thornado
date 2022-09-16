@@ -302,8 +302,8 @@ CONTAINS
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-    DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
     DO iN_E = 1, nE_G
 
       CALL ComputeConserved_TwoMoment &
@@ -463,10 +463,7 @@ CONTAINS
     ! --- Neutrino-Matter Solver Parameter Initialization ---
     ! --- ( can be moved to the program init ) --------------
 
-    CALL InitializeNeutrinoMatterSolverParameters(Include_Pair_Option = .FALSE. , &
-                                                   Include_NES_Option = .FALSE. , &
-                                                   Include_Brem_Option = .FALSE., &
-                                                   Include_LinCorr_Option = .FALSE. )
+    CALL InitializeNeutrinoMatterSolverParameters(Include_LinCorr_Option = .FALSE. )
 
 
     CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
