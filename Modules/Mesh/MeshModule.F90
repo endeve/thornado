@@ -78,10 +78,10 @@ CONTAINS
 ! Requires deep copy (not supported on all compilers)
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: Mesh % Center, Mesh % Width, Mesh % Nodes)
+    !$OMP MAP( to: Mesh % Center, Mesh % Width, Mesh % Nodes )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes)
+    !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes )
 #endif
 
   END SUBROUTINE CreateMesh
@@ -153,7 +153,7 @@ CONTAINS
 
     LOGICAL  :: Verbose
     INTEGER  :: i
-    REAL(DP) :: xEQ, Zoom, dx0
+    REAL(DP) :: xEQ, Zoom
     REAL(DP) :: x_a, x_b, x_c
     REAL(DP) :: f_a, f_b, f_c
     REAL(DP) :: x_ab
@@ -265,6 +265,13 @@ CONTAINS
       WRITE(*,*)
 
     END IF
+
+! Requires deep copy (not supported on all compilers)
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( Mesh % Center, Mesh % Width, Mesh % Nodes )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( Mesh % Center, Mesh % Width, Mesh % Nodes )
+#endif
 
   END SUBROUTINE CreateMesh_Custom
 

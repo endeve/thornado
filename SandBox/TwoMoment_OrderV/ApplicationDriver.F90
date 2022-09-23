@@ -13,12 +13,15 @@ PROGRAM ApplicationDriver
     uGE
   USE FluidFieldsModule, ONLY: &
     uCF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE RadiationFieldsModule, ONLY: &
     uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
+    ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment_Realizability
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -46,6 +49,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: UseRealizabilityTimeStep
   INTEGER       :: nNodes
   INTEGER       :: nSpecies
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -53,7 +57,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, t_end, dt_CFL, dt_0, dt_grw, V_0(3)
-  REAL(DP)      :: D_0, Chi, Sigma, C_TCI
+  REAL(DP)      :: D_0, Chi, Sigma, C_TCI, C_CFL
   REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
@@ -64,6 +68,8 @@ PROGRAM ApplicationDriver
 
   C_TCI = 1.0_DP
   UseTroubledCellIndicator = .FALSE.
+
+  UseRealizabilityTimeStep = .FALSE.
 
   dt_0   = HUGE( One )
   dt_grw = One
@@ -110,7 +116,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'SineWaveDiffusion' )
 
-      nX  = [ 16, 1, 1 ]
+      nX  = [ 32, 1, 1 ]
       xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -124,16 +130,22 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 2.0d+1
-      iCycleD = 10
-      iCycleW = 10
+      !t_end   = 7.2951_DP !sig small old
+      !t_end   = 1459.02504445_DP !sig large old
+
+      !t_end   = 60.0_DP !sig small
+      t_end   = 1500.0_DP !sig large
+
+      iCycleD = 1000
+      iCycleW = 1000
       maxCycles = 1000000
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
-      Sigma = 1.0d+2
+      !Sigma = 2.6666666_DP 
+      Sigma = 533.33333333_DP
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .FALSE.
@@ -244,7 +256,7 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      nE    = 16
+      nE    = 32
       eL    = 0.0d0
       eR    = 5.0d1
       bcE   = 10
@@ -266,6 +278,8 @@ PROGRAM ApplicationDriver
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'TransparentTurbulence' )
 
@@ -478,9 +492,41 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
 
+    CASE( 'GaussianDiffusion1D' )
+
+      nX  = [ 96, 1, 1 ]
+      xL  = [ 0.0_DP, - 0.5_DP, - 0.5_DP ]
+      xR  = [ 3.0_DP, + 0.5_DP, + 0.5_DP ]
+      bcX = [ 1, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 5.0_DP
+      iCycleD = 10
+      iCycleW = 10
+      maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 3200.0_DP
+      !Sigma = 1.0d+2
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+
     CASE( 'GaussianDiffusion' )
 
-      nX  = [ 48, 32, 1 ]
+      nX  = [ 96, 64, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, - 0.5_DP ]
       xR  = [ 3.0_DP, 2.0_DP, + 0.5_DP ]
       bcX = [ 1, 1, 1 ]
@@ -490,20 +536,21 @@ PROGRAM ApplicationDriver
       eR  = 1.0d0
       bcE = 1
 
-      nNodes = 2
+      nNodes = 3
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 5.0d0
+      t_end   = 5.0_DP
       iCycleD = 10
       iCycleW = 10
       maxCycles = 1000000
 
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
-      Sigma = 1.0d+2
+      Sigma = 3200.0_DP
+      !Sigma = 1.0d+2
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
@@ -704,7 +751,21 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    dt_CFL = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
+    IF( UseRealizabilityTimeStep )THEN
+
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+      CALL ComputeTimeStep_TwoMoment_Realizability &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, One, dt_CFL )
+
+    ELSE
+
+      C_CFL  = 0.3_DP / ( Two * DBLE(nNodes-1) + One )
+
+      dt_CFL = C_CFL * MINVAL( ( xR - xL ) / DBLE( nX ) )
+
+    END IF
 
     IF( dt_grw > One )THEN
 

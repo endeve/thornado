@@ -145,15 +145,19 @@ PROGRAM ApplicationDriver_CCSN
   CFL      = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One )
 
   EvolveEuler                    = .TRUE.
-  UseSlopeLimiter_Euler          = .FALSE.
+  UseSlopeLimiter_Euler          = .TRUE.
   UsePositivityLimiter_Euler     = .TRUE.
 
-  EvolveTwoMoment                = .FALSE.
+  EvolveTwoMoment                = .TRUE.
   UseSlopeLimiter_TwoMoment      = .FALSE.
   UsePositivityLimiter_TwoMoment = .TRUE.
   UseEnergyLimiter_TwoMoment     = .TRUE.
 
-  TimeSteppingScheme = 'SSPRK2'!'IMEX_PDARS'
+  IF( EvolveEuler .AND. .NOT. EvolveTwoMoment )THEN
+    TimeSteppingScheme = 'SSPRK2'
+  ELSE
+    TimeSteppingScheme = 'IMEX_PDARS'
+  END IF
 
   ! --- Neutrino-Matter Solvers Parameters ---
 
@@ -232,9 +236,7 @@ PROGRAM ApplicationDriver_CCSN
     ! --- Solve for Gravitational Potential (To Fill Geometry Ghost Cells) ---
 
     CALL SolveGravity_Newtonian_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-             uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF(:,:,:,:,iCF_D) )
 
     CALL ComputeTally &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR, &

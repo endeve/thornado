@@ -333,7 +333,7 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Auxiliary)'
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Auxiliary)'
       WRITE(*,*)
       DO iAF = 1, nAF
         WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )

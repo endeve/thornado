@@ -9,7 +9,6 @@ EULER = \
   Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
   Euler_CharacteristicDecompositionModule.o \
-  Euler_MeshRefinementModule.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \

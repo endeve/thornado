@@ -1,40 +1,49 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import gc
+from charade import detect
 
-def OverwriteFile( FileName ):
+def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
 
-    from os.path import isfile
+    if ForceChoice: return OW
 
-    Overwrite = True
+    from os.path import isfile, isdir
 
-    if isfile( FileName ):
+    OW = True
 
-        YN = input( 'File: "{:s}" exists. overwrite? (Y/N): '.format \
-               ( FileName ) )
+    if ( isfile( FileOrDirName ) or isdir( FileOrDirName ) ):
 
-        if not YN == 'Y':
+        if ( isdir( FileOrDirName ) and FileOrDirName[-1] != '/' ):
+            FileOrDirName += '/'
 
-            print( 'Not overwriting file' )
-            Overwrite = False
+        YN = input( '{:} exists. overwrite? (Y/N): '.format( FileOrDirName ) )
 
-    return Overwrite
+        if YN == 'Y' :
+            print( 'Overwriting' )
+            OW = True
+        else:
+            print( 'Not overwriting' )
+            OW = False
+
+    return OW
 
 
-def GetFileArray( DataDirectory, PlotFileBaseName ):
+def GetFileArray( PlotFileDataDirectory, PlotFileBaseName ):
 
     from os import listdir
 
     FileArray \
-      = np.sort( np.array( [ file for file in listdir( DataDirectory ) ] ) )
+      = np.sort( np.array( \
+          [ file for file in listdir( PlotFileDataDirectory ) ] ) )
 
     FileList = []
 
     for iFile in range( FileArray.shape[0] ):
 
-        sFile = FileArray[iFile]
+        sFile = convert( FileArray[iFile] )
 
-        if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
+        if( sFile[0:len(PlotFileBaseName)] == PlotFileBaseName \
               and sFile[len(PlotFileBaseName)+1].isdigit() ):
             FileList.append( sFile )
 
@@ -42,15 +51,31 @@ def GetFileArray( DataDirectory, PlotFileBaseName ):
 
     if not FileArray.shape[0] > 0:
 
-        msg = 'No files found in DataDirectory:'
-        msg += ' {:s}\nDouble check the path\n'.format( DataDirectory )
+        msg = 'No files found in path {:s}\n'.format( PlotFileDataDirectory )
+        msg += 'Double check the path.\n'
+        msg += 'PlotFileBaseName: {:s}\n'.format( PlotFileBaseName )
+        msg += 'Is it plt_ or just plt?\n'
 
         assert ( FileArray.shape[0] > 0 ), msg
 
     return FileArray
 
+def convert( s ):
 
-def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
+    """from https://www.geeksforgeeks.org/python-character-encoding/"""
+
+    if( isinstance( s, str ) ):
+        s = s.encode()
+
+    encoding = detect(s)['encoding']
+
+    if( encoding == 'utf-8' ):
+        return s.decode()
+    else:
+        return s.decode(encoding)
+
+def ChoosePlotFile \
+      ( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ], Verbose = False ):
 
     if len( argv ) == 1:
 
@@ -66,7 +91,7 @@ def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
 
         else:
 
-            File = PlotFileBaseName + '_{:}'.format( argv[1].zfill(8) )
+            File = PlotFileBaseName + '{:}'.format( argv[1].zfill(8) )
 
         FileArray = np.array( File )
 
@@ -81,7 +106,9 @@ def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
         assert arg, msg
 
     # Remove "/" at end of filename, if present
-    if ( File[-1] == '/' ): File = File[:-1]
+    if File[-1] == '/' : File = np.copy( File[:-1] )
+
+    if Verbose: print( File )
 
     return File
 
@@ -89,7 +116,7 @@ def ChoosePlotFile( FileArray, PlotFileBaseName = 'plt', argv = [ 'a' ] ):
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
              MaxLevel = -1, iX3_CS = 0, \
-             ReturnTime = False, ReturnMesh = False ):
+             ReturnTime = False, ReturnMesh = False, Verbose = False ):
 
     import yt
     import numpy as np
@@ -110,7 +137,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
 
-    File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv )
+    File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv, \
+                           Verbose = Verbose )
 
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
@@ -140,139 +168,166 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     # --- Get Mesh ---
 
-    xL = xL.to_ndarray()
-    xU = xU.to_ndarray()
+    xL = np.copy( xL.to_ndarray() )
+    xU = np.copy( xU.to_ndarray() )
 
-    X1 = CoveringGrid['X1_C'].to_ndarray()[:,0,0]
-    X2 = CoveringGrid['X2_C'].to_ndarray()[0,:,0]
-    X3 = CoveringGrid['X3_C'].to_ndarray()[0,0,:]
+    X1 = np.copy( CoveringGrid['X1_C'].to_ndarray()[:,0,0] )
+    X2 = np.copy( CoveringGrid['X2_C'].to_ndarray()[0,:,0] )
+    X3 = np.copy( CoveringGrid['X3_C'].to_ndarray()[0,0,:] )
 
-    dX1 = CoveringGrid['dX1'].to_ndarray()[:,0,0]
-    dX2 = CoveringGrid['dX2'].to_ndarray()[0,:,0]
-    dX3 = CoveringGrid['dX3'].to_ndarray()[0,0,:]
+    dX1 = np.copy( CoveringGrid['dX1'].to_ndarray()[:,0,0] )
+    dX2 = np.copy( CoveringGrid['dX2'].to_ndarray()[0,:,0] )
+    dX3 = np.copy( CoveringGrid['dX3'].to_ndarray()[0,0,:] )
+
+    if nDimsX < 3:
+        X3  = X3 [0] * np.ones( 1, np.float64 )
+        dX3 = dX3[0] * np.ones( 1, np.float64 )
+    if nDimsX < 2:
+        X2  = X2 [0] * np.ones( 1 )
+        dX2 = dX2[0] * np.ones( 1 )
 
     if   Field == 'MPIProcess':
 
         Data = CoveringGrid['MPIProcess'].to_ndarray()
-        DataUnit = ''
+        DataUnits = ''
 
     if   Field == 'PF_D':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'g/cm**3'
+        DataUnits = 'g/cm**3'
 
     elif Field == 'PF_V1':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'km/s'
+        DataUnits = 'km/s'
 
     elif Field == 'PF_V2':
 
         Data = CoveringGrid[Field].to_ndarray()
 
-        if   CoordinateSystem == 'cartesian'  : DataUnit = 'km/s'
-        elif CoordinateSystem == 'cylindrical': DataUnit = 'km/s'
-        elif CoordinateSystem == 'spherical'  : DataUnit = '1/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'km/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = '1/s'
 
     elif Field == 'PF_V3':
 
         Data = CoveringGrid[Field].to_ndarray()
 
-        if   CoordinateSystem == 'cartesian'  : DataUnit = 'km/s'
-        elif CoordinateSystem == 'cylindrical': DataUnit = '1/s'
-        elif CoordinateSystem == 'spherical'  : DataUnit = '1/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'km/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = '1/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = '1/s'
 
     elif Field == 'PF_E':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'erg/cm**3'
+        DataUnits = 'erg/cm**3'
 
     elif Field == 'PF_Ne':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = '1/cm**3'
+        DataUnits = '1/cm**3'
 
     elif Field == 'CF_D':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'g/cm**3'
+        DataUnits = 'g/cm**3'
 
     elif Field == 'CF_S1':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'g/cm**2/s'
+        DataUnits = 'g/cm**2/s'
 
     elif Field == 'CF_S2':
 
         Data = CoveringGrid[Field].to_ndarray()
 
-        if   CoordinateSystem == 'cartesian'  : DataUnit = 'g/cm**2/s'
-        elif CoordinateSystem == 'cylindrical': DataUnit = 'g/cm**2/s'
-        elif CoordinateSystem == 'spherical'  : DataUnit = 'g/cm/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm**2/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm**2/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
 
     elif Field == 'CF_S3':
 
         Data = CoveringGrid[Field].to_ndarray()
 
-        if   CoordinateSystem == 'cartesian'  : DataUnit = 'g/cm**2/s'
-        elif CoordinateSystem == 'cylindrical': DataUnit = 'g/cm/s'
-        elif CoordinateSystem == 'spherical'  : DataUnit = 'g/cm/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm**2/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
 
     elif Field == 'CF_E':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'erg/cm**3'
+        DataUnits = 'erg/cm**3'
 
     elif Field == 'CF_Ne':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = '1/cm**3'
+        DataUnits = '1/cm**3'
 
     elif Field == 'AF_P':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'erg/cm**3'
+        DataUnits = 'erg/cm**3'
+
+    elif Field == 'AF_Ye':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = ''
+
+    elif Field == 'AF_T':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = 'K'
+
+    elif Field == 'AF_S':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = 'kb/baryon'
 
     elif Field == 'AF_Cs':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = 'km/s'
+        DataUnits = 'km/s'
 
     elif Field == 'GF_Gm_11':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = ''
+        DataUnits = ''
 
     elif Field == 'GF_Gm_22':
 
         Data = CoveringGrid[Field].to_ndarray()
 
-        if   CoordinateSystem == 'cartesian'  : DataUnit = ''
-        elif CoordinateSystem == 'cylindrical': DataUnit = ''
-        elif CoordinateSystem == 'spherical'  : DataUnit = 'km**2'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = ''
+        elif CoordinateSystem == 'cylindrical': DataUnits = ''
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km**2'
 
     elif Field == 'GF_Gm_33':
 
         Data = CoveringGrid[Field].to_ndarray()
 
-        if   CoordinateSystem == 'cartesian'  : DataUnit = ''
-        elif CoordinateSystem == 'cylindrical': DataUnit = 'km**2'
-        elif CoordinateSystem == 'spherical'  : DataUnit = 'km**2'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = ''
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km**2'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km**2'
 
     elif Field == 'GF_Psi':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = ''
+        DataUnits = ''
 
     elif Field == 'GF_Alpha':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = ''
+        DataUnits = ''
+
+    elif Field == 'GF_Beta_1':
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnits = 'km/s'
 
     elif Field == 'DF_TCI':
 
         Data = CoveringGrid[Field].to_ndarray()
-        DataUnit = ''
+        DataUnits = ''
 
     # --- Derived Fields ---
 
@@ -287,7 +342,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                 for iX3 in range( nX[2] ):
                     Data[iX1,iX2,iX3] = p[iX1,iX2,iX3] * ( X1[iX1] * 1.0e5 )**4
 
-        DataUnit = 'erg*cm'
+        DataUnits = 'erg*cm'
 
     elif Field == 'RelativisticBernoulliConstant':
 
@@ -311,7 +366,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = B
 
-        DataUnit = 'cm**2/s**2'
+        DataUnits = 'cm**2/s**2'
 
     elif Field == 'PolytropicConstant':
 
@@ -321,7 +376,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data  = AF_P / PF_D**AF_Gm
 
-        DataUnit = 'erg/cm**3/(g/cm**3)**(Gamma_IDEAL)'
+        DataUnits = 'erg/cm**3/(g/cm**3)**(Gamma_IDEAL)'
 
     elif Field == 'NonRelativisticSpecificEnthalpy':
 
@@ -331,7 +386,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = ( e + p ) / rho
 
-        DataUnit = 'cm**2/s**2'
+        DataUnits = 'cm**2/s**2'
 
     elif Field == 'RelativisticSpecificEnthalpy':
 
@@ -343,7 +398,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = ( c**2 + ( e + p ) / rho ) / c**2
 
-        DataUnit = ''
+        DataUnits = ''
 
     elif Field == 'LorentzFactor':
 
@@ -361,7 +416,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = 1.0 / np.sqrt( 1.0 - VSq / c**2 )
 
-        DataUnit = ''
+        DataUnits = ''
 
     elif Field == 'TurbulentVelocity':
 
@@ -411,7 +466,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                             + Gm22[iX1,iX2,iX3] * V2[iX1,iX2,iX3]**2 \
                             + Gm33[iX1,iX2,iX3] * V3[iX1,iX2,iX3]**2 )
 
-        DataUnit = 'km/s'
+        DataUnits = 'km/s'
 
     elif Field == 'TurbulentEnergyDensity':
 
@@ -472,7 +527,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                       = rho[iX1,iX2,iX3] * ( c * 1.0e5 )**2 \
                           * W**2 * BetaSq / ( W + 1.0 )
 
-        DataUnit = 'erg/cm**3'
+        DataUnits = 'erg/cm**3'
 
     elif Field == 'Vorticity':
 
@@ -525,7 +580,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                           - h1A[i,j-1,k]**2 * V1A[i,j-1,k] ) \
                           / ( 2.0 * X2[j-1] ) )
 
-        DataUnit = '1/s'
+        DataUnits = '1/s'
 
     else:
 
@@ -552,6 +607,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  GF_Gm_33' )
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
+        print( '  GF_Beta1' )
         print( '  DF_TCI' )
         print( '  pr4' )
         print( '  RelativisticBernoulliConstant' )
@@ -565,45 +621,39 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         assert 0, 'Invalid choice of field'
 
-    if not UsePhysicalUnits: DataUnit = ''
+    if not UsePhysicalUnits: DataUnits = '[]'
+    else:                    DataUnits = '[' + DataUnits + ']'
+
+    del ds, CoveringGrid
+    gc.collect()
 
     if nDimsX == 1:
 
-        Data = Data[:,0,0]
+        Data = np.copy( Data[:,0,0] )
 
     elif nDimsX == 2:
 
-        X2v, X1v = np.meshgrid( X2, X1 )
-
-        X1 = X1v
-        X2 = X2v
-
-        Data = Data[:,:,0]
+        Data = np.copy( Data[:,:,0] )
 
     else:
 
-        X2v, X1v = np.meshgrid( X2, X1 )
-
-        X1 = X1v
-        X2 = X2v
-
-        Data = Data[:,:,iX3_CS]
+        Data = np.copy( Data[:,:,iX3_CS] )
 
     if ReturnTime and ReturnMesh:
 
-        return Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time
+        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time
 
     elif ReturnTime:
 
-        return Data, DataUnit, Time
+        return Data, DataUnits, Time
 
     elif ReturnMesh:
 
-        return Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX
+        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX
 
     else:
 
-        return Data, DataUnit
+        return Data, DataUnits
 
 
 def GetNorm( UseLogScale, Data, vmin = +1.0e100, vmax = -1.0e100 ):

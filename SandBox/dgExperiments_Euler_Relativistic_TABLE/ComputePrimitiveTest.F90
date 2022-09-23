@@ -118,7 +118,7 @@ PROGRAM ComputePrimitiveTest
   CHARACTER(64) :: EosTableName
   CHARACTER(5)  :: EOS
 
-  REAL(DP) :: Timer_old, Timer_new, Timer_new_new
+  REAL(DP) :: Timer_old, Timer_new
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler

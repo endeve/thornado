@@ -1,6 +1,6 @@
 MODULE Euler_MeshRefinementModule
 
-#ifdef THORNADO_USE_AMREX
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
   USE amrex_DGInterfaceModule, ONLY: &
     amrex_InitializeMeshRefinement_DG, &
@@ -91,8 +91,6 @@ CONTAINS
     INTEGER :: i, k, iN1, iN2, iN3, kk, &
                iNX_X_Crse, iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
                iNX_X_Fine, iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
-    REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
-
 
     nFineX      = 1
     VolumeRatio = One
@@ -370,7 +368,7 @@ CONTAINS
 
     END IF ! nDimsX .GT. 2
 
-#ifdef THORNADO_USE_AMREX
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_InitializeMeshRefinement_DG &
            ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
@@ -386,13 +384,14 @@ CONTAINS
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
-#ifdef THORNADO_USE_AMREX
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_FinalizeMeshRefinement_DG
 
 #endif
 
     DEALLOCATE( ProjectionMatrix_T )
+    DEALLOCATE( ProjectionMatrix_c )
     DEALLOCATE( ProjectionMatrix )
 
     DEALLOCATE( xiX3 )

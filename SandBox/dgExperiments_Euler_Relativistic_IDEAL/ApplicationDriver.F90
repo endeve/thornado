@@ -105,7 +105,6 @@ PROGRAM ApplicationDriver
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
   INTEGER  :: nDetCells
-  REAL(DP) :: Vmax, LorentzFactor
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.

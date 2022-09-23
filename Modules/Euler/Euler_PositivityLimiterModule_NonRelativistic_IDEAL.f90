@@ -5,6 +5,8 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
     Zero, &
     Half, &
     One
+  USE UtilitiesModule, ONLY: &
+    IsCornerCell
   USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
@@ -165,6 +167,8 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
       G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
