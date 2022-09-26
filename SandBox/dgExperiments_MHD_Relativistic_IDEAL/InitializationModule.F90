@@ -1309,7 +1309,7 @@ CONTAINS
 
         CB1_R =  10.0_DP
         CB2_R = -7.0_DP
-        CB3_R =  7.0_DP ! Typo?
+        CB3_R = -7.0_DP ! Typo (7.0_DP instead of -7.0_DP) in Mattia & Mignone (2022).
 
         VSq_R = RightState(iPM_V1)**2 + RightState(iPM_V2)**2 + RightState(iPM_V3)**2
 
