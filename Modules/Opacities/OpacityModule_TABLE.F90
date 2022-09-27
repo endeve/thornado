@@ -53,7 +53,7 @@ MODULE OpacityModule_TABLE
   REAL(DP) :: &
     dE1, dE2
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
-    Es_T, Ds_T, Ts_T, Ys_T, Etas_T, &
+    Es_T, dEs_T, Ds_T, Ts_T, Ys_T, Etas_T, &
     LogEs_T, LogDs_T, LogTs_T, LogEtas_T
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     OS_EmAb
@@ -62,6 +62,7 @@ MODULE OpacityModule_TABLE
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     EmAb_T
 !EC table spectrum, integrated onto thornados energy elements
+  INTEGER, PUBLIC :: use_EC_table
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     OS_EmAb_EC_spec
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
@@ -72,6 +73,7 @@ MODULE OpacityModule_TABLE
     EmAb_EC_rate_T
   REAL(dp), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: &
     EmAb_EC_spec_AT
+  REAL(dp), PUBLIC :: OS_EmAb_EC_spec_AT
 ! Process_T(able), Process_A(ligned)T(able)
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, Brem_T, Brem_AT
@@ -106,16 +108,16 @@ MODULE OpacityModule_TABLE
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  &
-  !$OMP   Brem_T, Brem_AT, C1, C2,                        &
-  !$OMP   OS_EmAb_EC_spec, OS_EmAb_EC_rate,               &
+  !$OMP   Brem_T, Brem_AT, C1, C2, OS_EmAb_EC_spec,       &
+  !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec_AT,            &
   !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )   
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  & 
-  !$ACC   Brem_T, Brem_AT, C1, C2,                        &
-  !$ACC   OS_EmAb_EC_spec, OS_EmAb_EC_rate,               &
+  !$ACC   Brem_T, Brem_AT, C1, C2, OS_EmAb_EC_spec,       &
+  !$ACC   OS_EmAb_EC_rate, OS_EmAb_EC_spec_AT,            &
   !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
 #endif
 
@@ -288,6 +290,9 @@ CONTAINS
     ALLOCATE( Es_T(OPACITIES % EnergyGrid % nPoints) )
     Es_T = OPACITIES % EnergyGrid  % Cell_centers
 
+    ALLOCATE( dEs_T(OPACITIES % EnergyGrid % nPoints) )
+    dEs_T = OPACITIES % EnergyGrid  % dE
+
     ALLOCATE( LogEs_T(SIZE( Es_T )) )
     LogEs_T = LOG10( Es_T )
 
@@ -388,17 +393,18 @@ CONTAINS
       EmAb_EC_spec_T(:,:,:,:) = OPACITIES % EmAB &
                               % EC_table_spec(1) % Values(:,:,:,:)      
 
-      ALLOCATE( EmAb_EC_rate_T(1:OPACITIES % EmAb % nPoints(2), &
+      ALLOCATE( EmAb_EC_rate_T (1:OPACITIES % EmAb % nPoints(2), &
                                 1:OPACITIES % EmAb % nPoints(3), &
                                 1:OPACITIES % EmAb % nPoints(4)) )
       EmAb_EC_rate_T(:,:,:)  = OPACITIES % EmAb &
                               % EC_table_rate(1) % Values(:,:,:)
  
-      ALLOCATE( EmAb_EC_spec_AT(1:nPointsE,                      &
-                                1:OPACITIES % EmAb % nPoints(2), &
+      ALLOCATE( EmAb_EC_spec_AT(1:OPACITIES % EmAb % nPoints(2), &
                                 1:OPACITIES % EmAb % nPoints(3), &
-                                1:OPACITIES % EmAb % nPoints(4)) )
+                                1:OPACITIES % EmAb % nPoints(4), &
+                                1:nPointsE) )
       EmAb_EC_spec_AT = 0.0d0
+
     ENDIF
 
     ALLOCATE( NES_AT(1:nPointsE, &
@@ -426,13 +432,13 @@ CONTAINS
     Brem_AT = 0.0d0
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP          NES_AT, Pair_AT, Brem_AT, C1, C2 )
-
-    !$OMP TARGET UPDATE TO &
+    !$OMP TARGET ENTER DATA MAP                         &
+    !$OMP ( to:                                         &
+    !$OMP   LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
+    !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
+    !$OMP   NES_AT, Pair_AT, Brem_AT, C1, C2 )
+    !$OMP TARGET UPDATE TO                              &
     !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
     !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
@@ -445,32 +451,45 @@ CONTAINS
     !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2            )
 #endif
 
-    ASSOCIATE ( CenterE => MeshE % Center, &
-                WidthE  => MeshE % Width, &
-                NodesE  => MeshE % Nodes )
+    Energy_Grid: BLOCK
+    REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nPointsE)
 
-    ASSOCIATE ( CenterE      => MeshE % Center,                        &
-                WidthE       => MeshE % Width,                         &
-                NodesE       => MeshE % Nodes,                         &
-                use_EC_table => OPACITIES % EmAb % nuclei_EC_table,    &
-                nPointsD     => OPACITIES % EmAb % nPoints(2),         &
-                nPointsT     => OPACITIES % EmAb % nPoints(3),         &
-                nPointsYe    => OPACITIES % EmAb % nPoints(4),         &
-                wl_E_cells   => OPACITIES % EnergyGrid % Cell_centers, &
-                wl_E_faces   => OPACITIES % EnergyGrid % Cell_faces,   &
-                wl_dE        => OPACITIES % EnergyGrid % dE,           &
-                wl_nE        => OPACITIES % EnergyGrid % nPoints )
+    CenterE(:) = MeshE % Center(:)
+    WidthE(:)  = MeshE % Width(:)
+    NodesE(:)  = MeshE % Nodes(:)
+
+    EC_TABLE: BLOCK
+
+    INTEGER  :: nPointsD, nPointsT, nPointsYe, wl_nE
+    REAL(dp) :: wl_E_cells(size(OPACITIES % EnergyGrid % Cell_centers))
+    REAL(dp) :: wl_E_faces(size(OPACITIES % EnergyGrid % Cell_faces))
+    REAL(dp) :: wl_dE     (size(OPACITIES % EnergyGrid % dE))
+
+    use_EC_table = OPACITIES % EmAb % nuclei_EC_table
+
+    nPointsD  = OPACITIES % EmAb % nPoints(2)
+    nPointsT  = OPACITIES % EmAb % nPoints(3)
+    nPointsYe = OPACITIES % EmAb % nPoints(4)
+    wl_nE     = OPACITIES % EnergyGrid % nPoints
+
+    wl_E_cells(:) = OPACITIES % EnergyGrid % Cell_centers(:)
+    wl_E_faces(:) = OPACITIES % EnergyGrid % Cell_faces(:)
+    wl_dE(:)      = OPACITIES % EnergyGrid % dE(:)
 
     IF( use_EC_table .gt. 0 ) THEN
 write(*,*) 'lol EC table'
 
 #if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP                             & 
+    !$OMP ( to:                                             &
+    !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,OS_EmAb_EC_spec_AT, &
+    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
     !$OMP TARGET UPDATE TO &
-    !$OMP ( OS_EmAb_EC_spec, OS_EmAb_EC_rate,               &
+    !$OMP ( OS_EmAb_EC_rate, OS_EmAb_EC_spec, OS_EmAb_EC_spec_AT, &
     !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
-    !$ACC ( OS_EmAb_EC_spec, OS_EmAb_EC_rate,               &
+    !$ACC ( OS_EmAb_EC_rate, OS_EmAb_EC_spec, OS_EmAb_EC_spec_AT, &
     !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
 #endif
 
@@ -693,40 +712,51 @@ write(*,*) 'lol EC table'
           k01_nodes(kk,2) = k1
 
         ENDDO
+              
+        BLOCK
+              
+          INTEGER  :: k, kk
+          INTEGER  :: k0, k1
+          INTEGER  :: iE1, iNodeE1
+          REAL(dp) :: x, x0, x1, y0, y1
+          !REAL(dp) :: dX1, ddX1
+          REAL(dp) :: a, b, f_a, f_b
+          REAL(dp) :: spec_interp
+          REAL(dp) :: loctot
+          REAL(dp), DIMENSION(nE)       :: cell_integral, cell_integral_nodes
+          REAL(dp), DIMENSION(nPointsE) :: spec_nodes
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iD, iT, iYe                               ) &
+    !$OMP PRIVATE( iD, iT, iYe, k, kk, k0, k1, iE1, iNodeE1,   &                            
+    !$OMP          x, x0, x1, y0, y1, a, b, f_a, f_b,          &
+    !$OMP          spec_interp, loctot, cell_integral,         &
+    !$OMP          cell_integral_nodes, spec_nodes           ) &
     !$OMP MAP    ( to: E_cells, dE_cells, E_faces,             &
     !$OMP          kfmin, kfmax,                               &
-    !$OMP          wl_E_cells, wl_E_faces, wl_dE, wl_nE        &
-    !$OMP          k01_1bin, k01_2bins, k01_3bins, k01_nodes )  
+    !$OMP          wl_E_cells, wl_E_faces, wl_dE, wl_nE,       &
+    !$OMP          k01_1bin, k01_2bins, k01_3bins, k01_nodes ) 
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)                &
-    !$ACC PRIVATE( iD, iT, iYe                               ) &
+    !$ACC PRIVATE( iD, iT, iYe, k, kk, k0, k1, iE1, iNodeE1,   &                            
+    !$ACC          x, x0, x1, y0, y1, a, b, f_a, f_b,          &
+    !$ACC          spec_interp, loctot, cell_integral,         &
+    !$ACC          cell_integral_nodes, spec_nodes           ) &
     !$ACC PRESENT( OS_EmAb_EC_spec, EmAb_EC_spec_T,            &
     !$ACC          EmAb_EC_spec_AT                           ) &
     !$ACC COPYIN ( E_cells, dE_cells, E_faces, kfmin, kfmax,   &
-    !$ACC          wl_E_cells, wl_E_faces, wl_dE, wl_nE        &
+    !$ACC          wl_E_cells, wl_E_faces, wl_dE, wl_nE,       &
     !$ACC          k01_1bin, k01_2bins, k01_3bins, k01_nodes )  
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iD, iT, iYe )
+    !$OMP PRIVATE( iD, iT, iYe, k, kk, k0, k1, iE1, iNodeE1,   &                            
+    !$OMP          x, x0, x1, y0, y1, a, b, f_a, f_b,          &
+    !$OMP          spec_interp, loctot, cell_integral,         &
+    !$OMP          cell_integral_nodes, spec_nodes           ) 
 #endif
-        DO iYe = 45, 46!nPointsYe
-          DO iT = 25, 26!nPointsT
-            DO iD = 75, 76!nPointsD
-
-              BLOCK
-              INTEGER  :: k, kk
-              INTEGER  :: k0, k1
-              INTEGER  :: iE1, iNodeE1
-              REAL(dp) :: x, x0, x1, y0, y1
-              REAL(dp) :: a, b, f_a, f_b
-              REAL(dp) :: spec_interp
-              REAL(dp) :: loctot
-              REAL(dp), DIMENSION(nE)       :: cell_integral, cell_integral_nodes
-              REAL(dp), DIMENSION(nPointsE) :: spec_nodes
+        DO iYe = 1, nPointsYe
+          DO iT = 1, nPointsT
+            DO iD = 1, nPointsD
     
               cell_integral       = 0.0d0
               cell_integral_nodes = 0.0d0
@@ -734,7 +764,6 @@ write(*,*) 'lol EC table'
 
  
               DO k = 1, nE
-    
                 !we have at least one full wl energy bin contained in the 
                 !thornado bin
                 IF(kfmin(k)+1 < kfmax(k)) THEN
@@ -742,24 +771,33 @@ write(*,*) 'lol EC table'
                   k0 = k01_3bins(k,1,1)
                   k1 = k01_3bins(k,1,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  if(E_faces(k) == 0.0d0) then
+                    x0 = wl_E_cells(k0)
+                    x1 = wl_E_cells(k1)
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
   
-                  a = E_faces(k)
+                    a = E_faces(k)
+                  else
+                    x0 = log10(wl_E_cells(k0))
+                    x1 = log10(wl_E_cells(k1))
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+  
+                    a = log10(E_faces(k))
+                  endif
                   spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
                   k0 = k01_3bins(k,2,1)
                   k1 = k01_3bins(k,2,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
+                  x0 = log10(wl_E_cells(k0))
+                  x1 = log10(wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = wl_E_faces(kfmin(k)+1)
+                  b = log10(wl_E_faces(kfmin(k)+1))
                   spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
                   f_b = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
                   cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
@@ -774,24 +812,35 @@ write(*,*) 'lol EC table'
                   k0 = k01_3bins(k,3,1)
                   k1 = k01_3bins(k,3,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  if(wl_E_faces(kfmax(k)) == 0.0d0) then
+                    x0 = wl_E_cells(k0)
+                    x1 = wl_E_cells(k1)
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
   
-                  a = wl_E_faces(kfmax(k))
+                    a = wl_E_faces(kfmax(k))
+
+                  else
+
+                    x0 = log10(wl_E_cells(k0))
+                    x1 = log10(wl_E_cells(k1))
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+  
+                    a = log10(wl_E_faces(kfmax(k)))
+                  endif
                   spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
                   k0 = k01_3bins(k,4,1)
                   k1 = k01_3bins(k,4,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
+                  x0 = log10(wl_E_cells(k0))
+                  x1 = log10(wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = E_faces(k+1)
+                  b = log10(E_faces(k+1))
                   spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
                   f_b = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
@@ -803,24 +852,34 @@ write(*,*) 'lol EC table'
                   k0 = k01_2bins(k,1,1)
                   k1 = k01_2bins(k,1,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  if(E_faces(k) == 0.0d0) then
+                    x0 = wl_E_cells(k0)
+                    x1 = wl_E_cells(k1)
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  a = E_faces(k)
+                    a = E_faces(k)
+
+                  else
+                    x0 = log10(wl_E_cells(k0))
+                    x1 = log10(wl_E_cells(k1))
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+
+                    a = log10(E_faces(k))
+                  endif
                   spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
                   k0 = k01_2bins(k,2,1)
                   k1 = k01_2bins(k,2,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
+                  x0 = log10(wl_E_cells(k0))
+                  x1 = log10(wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = wl_E_faces(kfmin(k)+1)
+                  b = log10(wl_E_faces(kfmin(k)+1))
                   spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
                   f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
@@ -832,12 +891,12 @@ write(*,*) 'lol EC table'
                   k0 = k01_2bins(k,3,1)
                   k1 = k01_2bins(k,3,2)
  
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
+                  x0 = log10(wl_E_cells(k0))
+                  x1 = log10(wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = E_faces(k+1)
+                  b = log10(E_faces(k+1))
                   spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
                   f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
@@ -848,25 +907,36 @@ write(*,*) 'lol EC table'
 
                   k0 = k01_1bin(k,1,1)
                   k1 = k01_1bin(k,1,2)
- 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  a = E_faces(k)  
+                  if(E_faces(k) == 0.0d0) then
+                    x0 = wl_E_cells(k0)
+                    x1 = wl_E_cells(k1)
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+
+                    a = E_faces(k)  
+
+                  else
+ 
+                    x0 = log10(wl_E_cells(k0))
+                    x1 = log10(wl_E_cells(k1))
+                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+
+                    a = log10(E_faces(k))  
+                  endif
                   spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
                   k0 = k01_1bin(k,2,1)
                   k1 = k01_1bin(k,2,2)
 
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
+                  x0 = log10(wl_E_cells(k0))
+                  x1 = log10(wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = E_faces(k+1)
+                  b = log10(E_faces(k+1))
                   spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
                   f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
@@ -881,19 +951,20 @@ write(*,*) 'lol EC table'
                 loctot = loctot + (10.d0**EmAb_EC_spec_T(k,iD,iT,iYe) &
                                 -  OS_EmAb_EC_spec(1)) * wl_dE(k)
               ENDDO
-write(*,*) 'loctot WL = ', loctot
+
+!write(*,*) 'loctot WL = ', loctot
               loctot = 0.0d0
               DO k = 1, nE
                 loctot = loctot + cell_integral(k)
               ENDDO
-write(*,*) 'loctot thornado = ', loctot
+!write(*,*) 'loctot thornado = ', loctot
 
               !renormalize 
               cell_integral = cell_integral / loctot
 
-write(*,*) 'now get onto nodes and then renormalize the nodal &
-           values within each element with the integrated value &
-           from the wl table'
+!write(*,*) 'now get onto nodes and then renormalize the nodal &
+!           & values within each element with the integrated value &
+!           & from the wl table'
 
               !now we are going to interpolate the spectrum onto
               !the energy nodes and use the integrated spectrum
@@ -901,7 +972,7 @@ write(*,*) 'now get onto nodes and then renormalize the nodal &
               !so that when we later integrate the spectrum
               !over the energy cells, it integrates to 1 
               !(or rather the accuracy the spectrum was integrated onto 
-              !the energy cells, rather) 
+              !the energy cells) 
 
               cell_integral_nodes = 0.0d0
 
@@ -914,12 +985,20 @@ write(*,*) 'now get onto nodes and then renormalize the nodal &
                 k0 = k01_nodes(kk,1)
                 k1 = k01_nodes(kk,2)
 
-                x0 = wl_E_cells(k0)
-                x1 = wl_E_cells(k1)
+                !if(iD==1 .and. iT==1 .and. iYe==1) then
+                !print *, kk, k0, k1
+                !print *, wl_E_cells(k0), x, wl_E_cells(k1)
+                !endif
+
+                x0 = log10(wl_E_cells(k0))
+                x1 = log10(wl_E_cells(k1))
+                !x0 = (wl_E_cells(k0))
+                !x1 = (wl_E_cells(k1))
                 y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                 y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                spec_interp = y0 + (x - x0) * (y1-y0) / (x1-x0)
+                spec_interp = y0 + (log10(x) - x0) * (y1-y0) / (x1-x0)
+                !spec_interp = y0 + ((x) - x0) * (y1-y0) / (x1-x0)
 
                 spec_nodes(kk) = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
@@ -949,47 +1028,129 @@ write(*,*) 'now get onto nodes and then renormalize the nodal &
                                          + dE_cells(iE1) * WeightsE(iNodeE1) &
                                          * spec_nodes(kk)
               ENDDO
-              cell_integral_nodes = cell_integral_nodes
   
               loctot = 0.0d0
               DO k=1,nE
                 loctot = loctot + cell_integral_nodes(k) 
               ENDDO
-write(*,*) 'loctot nodes', loctot
+!write(*,*) 'loctot nodes', loctot
 
               !update aligned table
               DO kk = 1, nPointsE
-                iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
-                EmAb_EC_spec_AT(kk,iD,iT,iYe) = spec_nodes(kk) / dE_cells(iE1)
+                EmAb_EC_spec_AT(iD,iT,iYe,kk) = spec_nodes(kk)
               ENDDO
-
-stop
               
-              END BLOCK 
+            ENDDO
+          ENDDO
+        ENDDO
+        END BLOCK 
+
+        OS_Calc: BLOCK
+        REAL(dp) :: min_val
+
+        min_val = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP REDUCTION(min:min_val)                               &
+    !$OMP DEFAULTMAP(tofrom:min_val)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC COPY(min_val) REDUCTION(min:min_val)              
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP REDUCTION(min:min_val)
+#endif
+        DO k = 1, nPointsE
+          DO iYe = 1, nPointsYe
+            DO iT = 1, nPointsT
+              DO iD = 1, nPointsD
+                min_val = MIN(min_val,EmAb_EC_spec_AT(iD,iT,iYe,k))
+              ENDDO
             ENDDO
           ENDDO
         ENDDO
 
-      END BLOCK
+        OS_EmAb_EC_spec_AT = -2.d0 * MIN( 0.d0, min_val )
+        write(*,*) 'OS EC table AT', OS_EmAb_EC_spec_AT
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( EmAb_EC_spec_AT )
+    !$OMP TARGET UPDATE TO &
+    !$OMP ( OS_EmAb_EC_spec_AT )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( EmAb_EC_spec_AT )
+    !$ACC UPDATE DEVICE &
+    !$ACC ( OS_EmAb_EC_spec_AT )
 #endif
 
-    ENDIF
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+        DO k = 1, nPointsE
+          DO iYe = 1, nPointsYe
+            DO iT = 1, nPointsT
+              DO iD = 1, nPointsD
+                EmAb_EC_spec_AT(iD,iT,iYe,k) = &
+                  LOG10(EmAb_EC_spec_AT(iD,iT,iYe,k) + OS_EmAb_EC_spec_AT + 1.0d-300)
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+
+        END BLOCK OS_calc
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( EmAb_EC_spec_AT, OS_EmAb_EC_spec_AT )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( EmAb_EC_spec_AT, OS_EmAb_EC_spec_AT )
+#endif
+
+write(*,*) 'testing integration routine after aligned table building'
+         block
+             
+            INTEGER  :: k, kk
+            INTEGER  :: iE1, iNodeE1
+            REAL(dp) :: spec_interp
+            REAL(dp) :: loctot
+            REAL(dp), DIMENSION(nE)       :: cell_integral, cell_integral_nodes
+            REAL(dp), DIMENSION(nPointsE) :: spec_nodes
+
+            cell_integral_nodes = 0.0d0
+              
+            DO kk = 1, nPointsE
+              iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
+              iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
+
+              cell_integral_nodes(iE1) = cell_integral_nodes(iE1)          &
+                                       + dE_cells(iE1) * WeightsE(iNodeE1) &
+                                       * (10.0d0**EmAb_EC_spec_AT(81,28,41,kk) - OS_EmAb_EC_spec_AT)
+           ENDDO
+              loctot = 0.0d0
+              DO k=1,nE
+                loctot = loctot + cell_integral_nodes(k)
+              ENDDO
+write(*,*) 'loctot from nodes 81,28,41', loctot
+         end block
 
 
-    END ASSOCIATE
+       END BLOCK
 
+     ENDIF
+!stop
 
-    ASSOCIATE ( nSpecies   => OPACITIES % Scat_NES % nOpacities, &
-                nMoments   => OPACITIES % Scat_NES % nMoments, &
-                nPointsEta => OPACITIES % Scat_NES % nPoints(5), &
-                nPointsT   => OPACITIES % Scat_NES % nPoints(4) )
+    END BLOCK EC_TABLE
+
+    NES: BLOCK
+
+    INTEGER :: nSpecies, nMoments, nPointsEta, nPointsT
+
+    nSpecies   = OPACITIES % Scat_NES % nOpacities
+    nMoments   = OPACITIES % Scat_NES % nMoments
+    nPointsEta = OPACITIES % Scat_NES % nPoints(5)
+    nPointsT   = OPACITIES % Scat_NES % nPoints(4)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1002,10 +1163,10 @@ stop
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, OPACITIES % Scat_NES % nOpacities
-      DO iM = 1, OPACITIES % Scat_NES % nMoments
-        DO iEta = 1, OPACITIES % Scat_NES % nPoints(5)
-          DO iT = 1, OPACITIES % Scat_NES % nPoints(4)
+    DO iS = 1, nSpecies !OPACITIES % Scat_NES % nOpacities
+      DO iM = 1, nMoments !OPACITIES % Scat_NES % nMoments
+        DO iEta = 1, nPointsEta !OPACITIES % Scat_NES % nPoints(5)
+          DO iT = 1, nPointsT !OPACITIES % Scat_NES % nPoints(4)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -1032,6 +1193,17 @@ stop
       END DO
     END DO
 
+    END BLOCK NES
+
+    Pair: BLOCK
+
+    INTEGER :: nSpecies, nMoments, nPointsEta, nPointsT
+
+    nSpecies   = OPACITIES % Scat_Pair % nOpacities
+    nMoments   = OPACITIES % Scat_Pair % nMoments
+    nPointsEta = OPACITIES % Scat_Pair % nPoints(5)
+    nPointsT   = OPACITIES % Scat_Pair % nPoints(4)
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -1043,10 +1215,10 @@ stop
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, OPACITIES % Scat_Pair % nOpacities
-      DO iM = 1, OPACITIES % Scat_Pair % nMoments
-        DO iEta = 1, OPACITIES % Scat_Pair % nPoints(5)
-          DO iT = 1, OPACITIES % Scat_Pair % nPoints(4)
+    DO iS = 1, nSpecies !OPACITIES % Scat_Pair % nOpacities
+      DO iM = 1, nMoments !OPACITIES % Scat_Pair % nMoments
+        DO iEta = 1, nPointsEta !OPACITIES % Scat_Pair % nPoints(5)
+          DO iT = 1, nPointsT !OPACITIES % Scat_Pair % nPoints(4)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -1073,6 +1245,17 @@ stop
       END DO
     END DO
 
+    END BLOCK Pair
+
+    Brem: BLOCK
+
+    INTEGER :: nSpecies, nMoments, nPointsD, nPointsT
+
+    nSpecies = OPACITIES % Scat_Brem % nOpacities
+    nMoments = OPACITIES % Scat_Brem % nMoments
+    nPointsD = OPACITIES % Scat_Brem % nPoints(4)
+    nPointsT = OPACITIES % Scat_Brem % nPoints(5)
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -1084,10 +1267,10 @@ stop
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, OPACITIES % Scat_Brem % nOpacities
-      DO iM = 1, OPACITIES % Scat_Brem % nMoments
-        DO iD = 1, OPACITIES % Scat_Brem % nPoints(4)
-          DO iT = 1, OPACITIES % Scat_Brem % nPoints(5)
+    DO iS = 1, nSpecies !OPACITIES % Scat_Brem % nOpacities
+      DO iM = 1, nMoments !OPACITIES % Scat_Brem % nMoments
+        DO iD = 1, nPointsD !OPACITIES % Scat_Brem % nPoints(4)
+          DO iT = 1, nPointsT !OPACITIES % Scat_Brem % nPoints(5)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE 
 
@@ -1114,9 +1297,9 @@ stop
       END DO
     END DO
 
-    END ASSOCIATE
+    END BLOCK Brem
 
-    END ASSOCIATE
+    END BLOCK Energy_Grid
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM &
@@ -1143,7 +1326,7 @@ stop
     !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #endif
 
-    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
+    DEALLOCATE( Es_T, dEs_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
     DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )

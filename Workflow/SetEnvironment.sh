@@ -183,17 +183,17 @@ elif [[ $THORNADO_MACHINE == summit_pgi ]]; then
 
   echo
 
-  module load pgi/19.4
+  module load pgi/20.4
   module load spectrum-mpi
-  module load hdf5/1.10.3
-  module load netlib-lapack/3.8.0
+  module load hdf5
+  module load netlib-lapack
   module load essl
 
 elif [[ $THORNADO_MACHINE == summit_nvhpc ]]; then
 
   echo
 
-  module load nvhpc
+  module load nvhpc/22.5
   module load spectrum-mpi
   module load hdf5
   module load netlib-lapack
@@ -208,6 +208,15 @@ elif [[ $THORNADO_MACHINE == summit_xl ]]; then
   module load hdf5/1.10.7
   module load netlib-lapack/3.8.0
   module load essl
+
+elif [[ $THORNADO_MACHINE == summit_gcc ]]; then
+
+  echo
+
+  module load gcc
+  module load spectrum-mpi
+  module load hdf5
+  module load netlib-lapack
 
 elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
 

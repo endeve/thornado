@@ -2,6 +2,8 @@ PROGRAM NeutrinoOpacities
 
   USE KindModule, ONLY: &
     DP, FourPi
+  USE PhysicalConstantsModule, ONLY: &
+    SpeedOfLightCGS
   USE UnitsModule, ONLY: &
     BoltzmannConstant, &
     Gram, &
@@ -54,6 +56,34 @@ PROGRAM NeutrinoOpacities
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop
+  USE OpacityModule_TABLE, ONLY: &
+#ifdef MICROPHYSICS_WEAKLIB
+    EmAb_EC_spec_T, Es_T, dEs_T, Ds_T, Ts_T, Ys_T, &
+    OS_EmAb_EC_rate, EmAb_EC_rate_T
+#endif
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+  ! --- weaklib modules ---
+
+  USE wlOpacityTableModule, ONLY: &
+    OpacityTableType
+  USE wlInterpolationModule, ONLY: &
+    LogInterpolateSingleVariable_3D_Custom,           &
+    LogInterpolateSingleVariable_3D_Custom_Point,     &
+    LogInterpolateSingleVariable_4D_Custom,           &
+    LogInterpolateSingleVariable_4D_Custom_Point,     &
+    LogInterpolateSingleVariable_1D3D_Custom,         &
+    LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
+    SumLogInterpolateSingleVariable_2D2D_Custom_Aligned
+
+  USE wlInterpolationUtilitiesModule, ONLY: &
+    GetIndexAndDelta_Lin, &
+    GetIndexAndDelta_Log
+
+  ! ----------------------------------------------
+
+#endif
 
   IMPLICIT NONE
 
@@ -80,7 +110,8 @@ PROGRAM NeutrinoOpacities
     Unit_Edot  = 1.0_DP / ( BaryonMass * Second ), &
     eL         = 0.0e0_DP * Unit_E, &
     eR         = 3.0e2_DP * Unit_E, &
-    ZoomE      = 1.183081754893913_DP
+    !ZoomE      = 1.183081754893913_DP
+    ZoomE      = 1.266038160710160d0
 
   INTEGER :: &
     mpierr, iE, iX, iS, iNodeE, iN_E, iE1, iE2
@@ -108,6 +139,7 @@ PROGRAM NeutrinoOpacities
     D, T, Y
   REAL(DP), DIMENSION(nE) :: &
     dE
+  REAL(DP), DIMENSION(nE,nPointsX) :: Chi_EmAb_element, Edot_EmAb_element
   REAL(DP), DIMENSION(nPointsE) :: &
     E, W2
   REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
@@ -154,6 +186,8 @@ PROGRAM NeutrinoOpacities
     J_I_1, J_II_1, &  ! --- Pair Scattering Functions (1st moment)
     S_sigma       ! --- Brem Scattering Kernel
 
+  REAL(dp) :: loctot
+
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'NeutrinoOpacities', &
@@ -198,9 +232,22 @@ PROGRAM NeutrinoOpacities
 !  D = 5.6d13 * Unit_D
 !  T = 3.0d11 * Unit_T
 !  Y = 2.9d-1 * Unit_Y
-  D = 1.0d10 * Unit_D
-  T = 10444070263.062922d0 * Unit_T !3.481d10 * Unit_T
-  Y = 0.46d0 * Unit_Y
+!  D = 1.0d10 * Unit_D
+!  T = 10444070263.062922d0 * Unit_T !3.481d10 * Unit_T
+!  Y = 0.46d0 * Unit_Y
+!  D = 10.0d0**10.2000000001d0 * Unit_D !2.0d10 * Unit_D
+!  T = 0.861733d0 / 8.61733d-11 * Unit_T !0.9d0 / 8.61733d-11 * Unit_T
+!  Y = 0.46d0 * Unit_Y
+
+   !D = 2.0d10 * Unit_D
+   !T = 0.9d0 / 8.61733d-11 * Unit_T
+   !Y = 0.455 * Unit_Y
+   !D = 2.0d10 * Unit_D
+   !T = 0.95d0 / 8.61733d-11 * Unit_T
+   !Y = 0.465 * Unit_Y
+   D = 1.0d12 * Unit_D
+   T = 2.0d0 / 8.61733d-11 * Unit_T
+   Y = 0.33 * Unit_Y
 
   ! --- Energy Grid ---
 
@@ -326,14 +373,14 @@ PROGRAM NeutrinoOpacities
 
   CALL TimersStart( Timer_Compute_EC )
   CALL ComputeNeutrinoOpacities_EC &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, Chi_EmAb )
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0, Chi_EmAb )
   CALL TimersStop( Timer_Compute_EC )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
   !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-  !$ACC PRESENT( Eta_EmAb, Chi_EmAb, f0_DG )
+  !$ACC PRESENT( Eta_EmAb, Chi_EmAb, f0_DG ) 
 #endif
   DO iX = 1, nPointsX
   DO iS = 1, nSpecies
@@ -470,7 +517,8 @@ PROGRAM NeutrinoOpacities
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
+    !Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
+    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * Unit_E**3
     Edot_Iso(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
     Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
     Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
@@ -480,8 +528,97 @@ PROGRAM NeutrinoOpacities
   END DO
   END DO
 
+  Chi_EmAb_element = 0.0d0
+
+  DO iX = 1, nPointsX
+  DO iN_E = 1, nPointsE
+
+    iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
+    iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
+
+    Chi_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
+                             + dE(iE) / Unit_E * WeightsE(iNodeE) * Chi_EmAb(iN_E,1,iX) &
+                             * (E(iN_E)/Unit_E)**2
+  END DO
+  END DO
+
+
+  DO iX = 1, nPointsX
+  DO iN_E = 1, nPointsE
+
+    iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
+    iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
+
+    Edot_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
+                             * FourPi / PlanckConstant**3 / D(iX)
+  END DO
+  END DO
+
+  DO iN_E = 1, nPointsE
+  iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
+  !write(*,*) iE, (MeshE % Center(iE) - 0.5d0 * MeshE % Width(iE)) / Unit_E, &
+  !               MeshE % Center(iE)/Unit_E, &
+  !               (MeshE % Center(iE) + 0.5d0 * MeshE % Width(iE))/Unit_E
+  ENDDO
+
+  loctot = 0.0d0
+
+  DO iE = 1, nE
+    !loctot = loctot + Edot_EmAb_element(iE,1) * MeshE % Center(iE)**3 !* (MeshE % Center(iE)/Unit_E)**2
+    !loctot = loctot + Edot_EmAb_element(iE,1) * Unit_E**3 !* (MeshE % Center(iE))**2
+    loctot = loctot + Edot_EmAb_element(iE,1) * Unit_E**3 !* (MeshE % Center(iE))**2
+    write(*,*) MeshE % Center(iE)/Unit_E, MeshE % Width(iE)/Unit_E, Edot_EmAb_element(iE,1) * Unit_E**3 & 
+            / Unit_Edot / (dE(iE) / Unit_E)
+  ENDDO
+
+  write(*,*) 'loctot later', loctot / Unit_Edot
+
+  block
+  integer :: wl_nE
+
+  real(dp) :: wl_E(size(EmAb_EC_spec_T(:,1,1,1)))
+  real(dp) :: wl_dE(size(EmAb_EC_spec_T(:,1,1,1)))
+  real(dp) :: wl_jec(size(EmAb_EC_spec_T(:,1,1,1)))
+
+  real(dp) :: D_P, T_P, Y_P
+
+  real(dp) :: EC_rate
+
+
+  wl_nE = size(EmAb_EC_spec_T(:,1,1,1))
+
+  D_P     = D(1) / Unit_D
+  T_P     = T(1) / Unit_T
+  Y_P     = Y(1) / Unit_Y
+
+  CALL LogInterpolateSingleVariable_3D_Custom_Point &
+       ( D_P,  T_P,  Y_P,  &
+         Ds_T, Ts_T, Ys_T, &
+         OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate)
+
+  do iE = 1, wl_nE
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+         ( D_P,  T_P,  Y_P,  &
+           Ds_T, Ts_T, Ys_T, &
+           0.0d0, EmAb_EC_spec_T(iE,:,:,:), wl_jec(iE))
+
+   !write(*,*) Es_T(iE), dEs_T(iE), wl_jec(iE) * EC_rate * 324936944.84933436d0 / (D_P)
+   write(*,*) Es_T(iE), dEs_T(iE), wl_jec(iE) * EC_rate * 8963170213.4612865 / (D_P)
+
+  enddo
+
+  write(*,*) 'EC_rate', EC_rate
+
+
+  end block
+
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
+
+  CALL WriteVector &
+         ( nE, MeshE % Center / Unit_E, 'EC.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nE, Edot_EmAb_element(:,1) / Unit_Edot, 'Edot_EmAb_NuE_element.dat'     )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, f0   (:,iNuE    ,1), 'f0_NuE.dat'        )

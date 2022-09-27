@@ -5,24 +5,26 @@
 MODULE NeutrinoOpacitiesComputationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, One, SqrtTiny, TwoPi
+    DP, Zero, One, SqrtTiny, Pi, TwoPi, FourPi
   USE PhysicalConstantsModule, ONLY: &
     AvogadroConstantMKS, &
-    SpeedOfLightCGS
+    SpeedOfLightCGS, &
+    hbarMeVs
   USE UnitsModule, ONLY: &
     BoltzmannConstant, &
+    PlanckConstant, &
     Centimeter, &
     Gram, &
     Kelvin, &
     MeV
-  USE PhysicalConstantsModule, ONLY: &
-    AvogadroConstantMKS, &
-    SpeedOfLightCGS, &
-    hbarMeVs 
   USE ProgramHeaderModule, ONLY: &
-    nDOF, nDOFE, nDOFX
+    nDOF, nDOFE, nDOFX, &
+    nE, nNodesE
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
+  USE MeshModule, ONLY: &
+    MeshE, &
+    NodeCoordinate
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModule, ONLY: &
@@ -37,14 +39,20 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeNeutronChemicalPotential_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeProtonMassFraction_TABLE, &
-    ComputeNeutronMassFraction_TABLE
+    ComputeNeutronMassFraction_TABLE, &
+    ComputeHeavyMassFraction_TABLE, &
+    ComputeHeavyMassNumber_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
     NES_AT, Pair_AT, Brem_AT, &
+    use_EC_table,             &
+    OS_EmAb_EC_spec_AT, EmAb_EC_spec_AT, &
+    OS_EmAb_EC_rate, EmAb_EC_rate_T, & 
 #endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    Ds_T, Ts_T, Ys_T, &
     C1, C2
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, LeptonNumber
@@ -56,11 +64,17 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable_4D_Custom, &
-    LogInterpolateSingleVariable_4D_Custom_Point, &
-    LogInterpolateSingleVariable_1D3D_Custom, &
+    LogInterpolateSingleVariable_3D_Custom,           &
+    LogInterpolateSingleVariable_3D_Custom_Point,     &
+    LogInterpolateSingleVariable_4D_Custom,           &
+    LogInterpolateSingleVariable_4D_Custom_Point,     &
+    LogInterpolateSingleVariable_1D3D_Custom,         &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     SumLogInterpolateSingleVariable_2D2D_Custom_Aligned
+
+  USE wlInterpolationUtilitiesModule, ONLY: &
+    GetIndexAndDelta_Lin, &
+    GetIndexAndDelta_Log
 
   ! ----------------------------------------------
 
@@ -95,6 +109,9 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitT    = Kelvin
   REAL(DP), PARAMETER :: UnitY    = One
   REAL(DP), PARAMETER :: UnitE    = MeV
+  REAL(DP), PARAMETER :: UnitMn   = MeV
+  REAL(DP), PARAMETER :: UnitMp   = MeV
+  REAL(DP), PARAMETER :: UnitMe   = MeV
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
   REAL(DP), PARAMETER :: UnitES   = One / ( Centimeter * MeV**2 )
@@ -719,7 +736,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, opEC )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, opEC )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -730,24 +747,33 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
     REAL(DP) :: LogE_P
-    REAL(DP) :: LogD_P, LogT_P, Y_P
+    REAL(DP) :: LogD_P, LogT_P
+    REAL(DP) :: D_P, T_P, Y_P
     INTEGER  :: iE, iS, iX
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA       &
+    !$OMP MAP( to:    E, D, T, Y ) &
+    !$OMP MAP( alloc: opEC )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA              &
+    !$ACC COPYIN  ( E, D, T, Y )  &
+    !$ACC CREATE  ( opEC )
+#endif
+
+!do EmAb on nucleons first
+#if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) &
-    !$OMP MAP( to: E, D, T, Y ) &
-    !$OMP MAP( from: opEC )
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) 
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) &
-    !$ACC COPYIN( E, D, T, Y ) &
-    !$ACC COPYOUT( opEC )
+    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) 
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P )
@@ -780,6 +806,300 @@ CONTAINS
     END DO
     END DO
     END DO
+
+!now add contribution from EC on heavy nuclei
+  IF(use_EC_table .gt. 0) THEN
+
+  EC_Table: BLOCK
+
+  INTEGER :: iE1, iNodeE1
+
+  REAL(dp) :: rate, loctot
+  REAL(dp) :: tmev
+  REAL(dp) :: spec_nodes(iE_B:iE_E)
+
+  REAL(dp) :: Xnuc
+  REAL(dp), PARAMETER :: coeff = 2.0d0 * (Pi*SpeedOfLightCGS)**2 &
+                               * hbarMeVs**3
+  REAL(dp), PARAMETER :: dmnp  = 1.29333d+00   ! mn - mp
+  REAL(dp), PARAMETER :: kmev  = 8.61733d-11   ! Boltzmann's constant [MeV K^{-1}]
+  REAL(dp) :: Me(iX_B:iX_E), Mn(iX_B:iX_E), Mp(iX_B:iX_E)
+  REAL(dp) :: Xh(iX_B:iX_E), Ah(iX_B:iX_E)
+  REAL(dp) :: EC_rate(iX_B:iX_E)
+  REAL(dp) :: opECT(iE_B:iE_E,iX_B:iX_E)
+
+  REAL(dp) :: E_node
+  REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nE * nNodesE)
+
+  INTEGER  :: iD, iT, iY
+  REAL(dp) :: dD, dT, dY
+
+  CenterE(:) = MeshE % Center(:)
+  WidthE(:)  = MeshE % Width(:)
+  NodesE(:)  = MeshE % Nodes(:)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Me, Mn, Mp, Xh, Ah, EC_rate, opECT, spec_nodes )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( Me, Mn, Mp, Xh, Ah, EC_rate, opECT, spec_nodes )
+#endif
+
+    ! --- Compute Chemical Potentials ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mp )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mn )
+
+    ! --- Compute heavy mass fraction and number ---
+
+    CALL ComputeHeavyMassFraction_TABLE &
+           ( D, T, Y, Xh )
+
+    CALL ComputeHeavyMassNumber_TABLE &
+           ( D, T, Y, Ah )
+
+    ! --- Interpolate EC rate
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( LogD_P, LogT_P, D_P, T_P, Y_P ) 
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR                &
+    !$ACC PRIVATE( LogD_P, LogT_P, D_P, T_P, Y_P ) 
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO                              &
+    !$OMP PRIVATE( D_P, T_P, Y_P )
+#endif
+    DO iX = iX_B, iX_E
+
+        !LogD_P = LOG10( D(iX) / UnitD )
+        !LogT_P = LOG10( T(iX) / UnitT )
+        !Y_P    =        Y(iX) / UnitY
+        D_P = D(iX) / UnitD
+        T_P = T(iX) / UnitT
+        Y_P = Y(iX) / UnitY
+
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P,  T_P,  Y_P,  &
+                 Ds_T, Ts_T, Ys_T, &
+                 OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate(iX)) 
+
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE                                 &
+    !$OMP PRIVATE( D_P, T_P, Y_P,                 &
+    !$OMP          loctot, spec_nodes, tmev, Xnuc )               &
+    !$OMP MAP    ( to: CenterE, WidthE, NodesE )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG                                      &
+    !$ACC PRIVATE( iE, iX, D_P, T_P, Y_P,         &
+    !$ACC          loctot, spec_nodes, tmev, Xnuc )               &
+    !$ACC COPYIN ( CenterE, WidthE, NodesE, iD, iT, iY)           &
+    !$ACC PRESENT( Me, Mn, Mp, Xh, Ah, EC_rate, OS_EmAb_EC_rate,  &
+    !$ACC          OS_EmAb_EC_spec_AT, EmAb_EC_spec_AT, WeightsE, &
+    !$ACC          f0) 
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO                                             &
+    !$OMP PRIVATE( D_P, T_P, Y_P, tmev, E_node,   &
+    !$OMP          loctot, spec_nodes, iE1, iNodeE1, Xnuc )
+#endif
+    DO iX = iX_B, iX_E
+
+      IF((D(iX) / UnitD) > 1.0d13 .or. Ah(iX) < 40.0d0 ) THEN
+
+        DO iE = iE_B, iE_E
+          opECT(iE,iX) = 0.0d0
+        END DO
+
+      ELSE
+
+        spec_nodes = 0.0d0
+        loctot     = 0.0d0
+
+        !LogD_P     = LOG10( D(iX) / UnitD )
+        !LogT_P     = LOG10( T(iX) / UnitT )
+        D_P     = D(iX) / UnitD
+        T_P     = T(iX) / UnitT
+        Y_P     = Y(iX) / UnitY
+
+        tmev    = T(iX) / UnitT * kmev
+        Xnuc    = Xh(iX) / (Ah(iX) / AvogadroConstantMKS) * D(iX) / UnitD 
+
+        if(iX == 1) then
+          !CALL GetIndexAndDelta_Log( LogD_P, LogDs_T, iD, dD )
+          !CALL GetIndexAndDelta_Log( LogT_P, LogTs_T, iT, dT )
+          CALL GetIndexAndDelta_Log( D_P, Ds_T, iD, dD )
+          CALL GetIndexAndDelta_Log( T_P, Ts_T, iT, dT )
+          CALL GetIndexAndDelta_Lin( Y_P, Ys_T, iY, dY )
+          print *, iD, iT, iY
+          print *, 'rho(81)', Ds_T(iD) !D(iX) / UnitD
+          print *, 'T(28)',   Ts_T(iT) !T(iX) / UnitT
+          print *, 'T(29)',   Ts_T(iT+1) !T(iX) / UnitT
+          print *, 'T input', T(iX) / UnitT
+          print *, 'Ye(41)',  Ys_T(iY) !!Y(iX) / UnitY
+          print *, 'tmev', tmev
+          print *, 'Xnuc', Xnuc
+          print *, 'Xh', Xh(iX)
+          print *, 'Ah', Ah(iX)
+          print *, 'Mn', Mn(iX) / UnitMn
+          print *, 'Mp', Mp(iX) / UnitMp
+          print *, 'Me', Me(iX) / UnitMe
+          print *, 'coeff', coeff
+          print *, 'EC_rate', EC_rate(iX)
+          print *, 'EC_rate_T', 10.0d0**EmAb_EC_rate_T(iD,iT+1,iY)
+          print *, 'OS_EmAb_EC_rate', OS_EmAb_EC_rate(1)
+          print *, 'rho(76)', LogDs_T(iD)
+          print *, 'log10(rho)', log10(D(iX) / UnitD)
+          print *, 'rho(77)', LogDs_T(iD+1)
+          print *, 'T(30)', LogTs_T(iT)
+          print *, 'log10(T)', log10(T(iX) / UnitT)
+          print *, 'T(31)', LogTs_T(iT+1)
+          print *, 'Ye(40)', Ys_T(iY)
+          print *, 'Ye', Y(iX) / UnitY
+          print *, 'Ye(41)', Ys_T(iY+1)
+        endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD            &
+    !$OMP REDUCTION(+:loctot)         &
+    !$OMP PRIVATE( iE1, iNodeE1 )
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                 &
+    !$ACC REDUCTION(+:loctot)         &
+    !$ACC PRIVATE( iE1, iNodeE1 ) 
+#endif
+        DO iE = iE_B, iE_E
+
+          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
+          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
+
+          !CALL LogInterpolateSingleVariable_3D_Custom_Point &
+          !       ( LogD_P,  LogT_P,  Y_P,  &
+          !         LogDs_T, LogTs_T, Ys_T, &
+          !         OS_EmAb_EC_spec_AT, EmAb_EC_spec_AT(:,:,:,iE), spec_nodes(iE)) 
+          CALL LogInterpolateSingleVariable_3D_Custom_Point &
+                 ( D_P,  T_P,  Y_P,  &
+                   Ds_T, Ts_T, Ys_T, &
+                   OS_EmAb_EC_spec_AT, EmAb_EC_spec_AT(:,:,:,iE), spec_nodes(iE)) 
+
+          if(spec_nodes(iE) < 1.0d-80) spec_nodes(iE) = Zero
+
+          loctot = loctot + WidthE(iE1)/UnitE * WeightsE(iNodeE1) &
+                          * spec_nodes(iE)
+
+          if(iX==1) then
+            if(iE==1) print *, 'EmAb_EC_spec_AT(81,29,41)'
+            print *, iE, 10.0d0**EmAb_EC_spec_AT(81,28,41,iE) * EC_rate(iX)
+          endif
+          if(iX==1) then
+            if(iE==1) print *, 'EmAb_EC_spec_AT(81+1,29+1,41+1)'
+            print *, iE, 10.0d0**EmAb_EC_spec_AT(81+1,28+1,41+1,iE) * EC_rate(iX)
+          endif
+          if(iX==1) then
+            if(iE==1) print *, 'spec_rate_nodes'
+            print *, iE, spec_nodes(iE) * EC_rate(iX)
+          endif
+
+        END DO
+
+        if(ix==1) then
+        print *, 'loctot thornado', loctot, loctot * EC_rate(iX) * 262481508.18084475d0 / (D(iX) / UnitD)
+        print *, 'coeff', Xnuc * coeff, 262481508.18084475d0
+
+        endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD                    &
+    !$OMP PRIVATE( iE1, iNodeE1, E_node )
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                         &
+    !$ACC PRIVATE( iE1, iNodeE1, E_node ) 
+#endif
+        DO iE = iE_B, iE_E
+          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
+          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
+          E_node  = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
+
+          spec_nodes(iE) = spec_nodes(iE) / loctot * EC_rate(iX) / (E_node)**2
+          !spec_nodes(iE) = spec_nodes(iE) * EC_rate(iX) / (E_node)**2
+          !spec_nodes(iE) = spec_nodes(iE) / loctot / (E_node)**2
+
+          !opECT(iE,iX) = Xnuc * coeff * spec_nodes(iE) * (1.0d0 + &
+          !EXP((E_node + dmnp + Mn(iX)/UnitMn - Mp(iX)/UnitMp - Me(iX)/UnitMe)/tmev))
+
+          !opECT(iE,iX) = Xnuc * coeff * spec_nodes(iE) * (1.0d0 - f0(iE,1,iX)) / f0(iE,1,iX)
+          !opECT(iE,iX) = Xnuc * coeff * spec_nodes(iE) / f0(iE,1,iX)
+          opECT(iE,iX) = Xnuc * coeff * spec_nodes(iE) !* SpeedOfLightCGS !* 4.0d0 / (PlanckConstant*SpeedOfLightCGS)**3
+
+          !opECT(iE,iX) = Xnuc * coeff * (10.0d0**EmAb_EC_spec_AT(95,33,40,iE) - OS_EmAb_EC_spec_AT) / f0(iE,1,iX)
+
+          if(iX==1) then
+          if(iE==1) print *, 'E_node, spec_nodes'
+          print *, iE, E_node, spec_nodes(iE)
+          endif
+          if(iX==1) then
+          if(iE==1) print *, 'E, opECT'
+          print *, iE, E_node, opECT(iE,iX) !, f0(iE,1,iX)
+          endif
+          if(iX==1) then
+          if(iE==1) print *, '(1-f0)/f0, 1+exp((enu+dmnp+mn-mp-me)/tmev)'
+          print *, iE, (1.0d0 - f0(iE,1,iX)) / f0(iE,1,iX), ( &
+          EXP((E_node + dmnp + Mn(iX)/UnitMn - Mp(iX)/UnitMp - Me(iX)/UnitMe)/tmev))
+   if(iE==1) print *, 'loctot', loctot 
+   if(iE==1) print *, 'EC_rate', EC_rate(iX)
+          endif
+        END DO
+
+      ENDIF
+    END DO
+
+!now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) 
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) 
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) 
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+
+        !opEC(iE,1,iX) = opEC(iE,1,iX) + opECT(iE,iX)
+        opEC(iE,1,iX) = opECT(iE,iX) * UnitEC
+
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA                                          &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P,                &
+    !$OMP               Me, Mn, Mp, Xh, Ah, EC_rate, opECT, spec_nodes )     
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA                                                 &
+    !$ACC DELETE  ( LogE_P, LogD_P, LogT_P, Y_P,                    &
+    !$ACC           Me, Mn, Mp, Xh, Ah, EC_rate, opECT, spec_nodes) 
+#endif
+
+  END BLOCK EC_Table
+
+  ENDIF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA          &
+    !$OMP MAP (release: E, D. T, Y) &
+    !$OMP MAP (from: opEC )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA                 &
+    !$ACC DELETE (E, D, T, Y )      &
+    !$ACC COPYOUT ( opEC )
+#endif
 
 #else
 
