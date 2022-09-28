@@ -15,6 +15,7 @@ MODULE Euler_dgDiscretizationModule
     Three, &
     Four
   USE ProgramHeaderModule, ONLY: &
+    nNodesX, &
     nDOFX, &
     nDimsX
   USE LinearAlgebraModule, ONLY: &
@@ -3293,8 +3294,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER :: iX1, iX2, iX3, iNX, iCF, iGF, ErrorExists
-    INTEGER :: nK(3), nGF_K
+    INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
 
     REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)
@@ -3303,44 +3303,15 @@ CONTAINS
                                          iX_B0(2):iX_E0(2), &
                                          iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: G_K_X1 (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: G_Dn_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)  :iX_E0(1))
-    REAL(DP) :: G_Up_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)  :iX_E0(1))
-    REAL(DP) :: dGdX1  (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)  :iX_E0(1))
-
-    REAL(DP) :: G_K_X2 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: G_Dn_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)  :iX_E0(2))
-    REAL(DP) :: G_Up_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)  :iX_E0(2))
-    REAL(DP) :: dGdX2  (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)  :iX_E0(2))
-
-    REAL(DP) :: G_K_X3 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: G_Dn_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3))
-    REAL(DP) :: G_Up_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3))
-    REAL(DP) :: dGdX3  (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3))
+    REAL(DP) :: dGdX1(nDOFX,nGF,iX_B0(2):iX_E0(2), &
+                                iX_B0(3):iX_E0(3), &
+                                iX_B0(1):iX_E0(1))
+    REAL(DP) :: dGdX2(nDOFX,nGF,iX_B0(1):iX_E0(1), &
+                                iX_B0(3):iX_E0(3), &
+                                iX_B0(2):iX_E0(2))
+    REAL(DP) :: dGdX3(nDOFX,nGF,iX_B0(1):iX_E0(1), &
+                                iX_B0(2):iX_E0(2), &
+                                iX_B0(3):iX_E0(3))
 
     REAL(DP) :: Christoffel3D_X1(3,3,nDOFX,iX_B0(1):iX_E0(1), &
                                            iX_B0(2):iX_E0(2), &
@@ -3358,680 +3329,38 @@ CONTAINS
 
     REAL(DP) :: GradPsiF(nDOFX)
 
-    ASSOCIATE( dX1 => MeshX(1) % Width, &
-               dX2 => MeshX(2) % Width, &
-               dX3 => MeshX(3) % Width )
-
-    ErrorExists = 0
-    nK = iX_E0 - iX_B0 + 1
-    nGF_K = nGF * PRODUCT( nK )
-
     CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, dX1, dX2, dX3, tau ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, tau ) &
     !$OMP MAP( alloc: PressureTensor, &
-    !$OMP             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
-    !$OMP             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
-    !$OMP             G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
+    !$OMP             dGdX1, dGdX2, dGdX3, &
     !$OMP             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$OMP             iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, dX1, dX2, dX3, tau ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, tau ) &
     !$ACC CREATE(     PressureTensor, &
-    !$ACC             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
-    !$ACC             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
-    !$ACC             G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
+    !$ACC             dGdX1, dGdX2, dGdX3, &
     !$ACC             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$ACC             iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
 
-    ! --- Permute data ---
+    CALL ComputeDerivatives_Geometry_Relativistic_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
 
-    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+    CALL ComputeDerivatives_Geometry_Relativistic_X2 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, G_K_X1, G )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
-    DO iX3 = iX_B0(3)    , iX_E0(3)
-    DO iX2 = iX_B0(2)    , iX_E0(2)
-    DO iGF = 1           , nGF
-    DO iNX = 1           , nDOFX
-
-      G_K_X1(iNX,iGF,iX2,iX3,iX1) = G(iNX,iX1,iX2,iX3,iGF)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    IF( nDimsX .GT. 1 )THEN
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_K_X2, G )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
-      DO iX3 = iX_B0(3)    , iX_E0(3)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X2(iNX,iGF,iX1,iX3,iX2) = G(iNX,iX1,iX2,iX3,iGF)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    IF( nDimsX .GT. 2 )THEN
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_K_X3, G )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
-      DO iX2 = iX_B0(2)    , iX_E0(2)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X3(iNX,iGF,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-    ! --- Interpolate to faces ---
-
-    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
-
-    ! --- X1 ---
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
-             G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX, Half, &
-             G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
-             G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
-             G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-      ! --- Compute metric on faces from scale factors ---
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, G_Up_X1, G_Dn_X1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNX = 1       , nDOFX_X1
-
-      G_Up_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = MAX( G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Up_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = MAX( G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Up_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
-
-      G_Up_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
-        = MAX( G_Up_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
-                 * G_Up_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
-                 * G_Up_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
-
-      G_Dn_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Dn_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Dn_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
-
-      G_Dn_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
-                 * G_Dn_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
-                 * G_Dn_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    IF( nDimsX .GT. 1 )THEN
-
-      ! --- X2 ---
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
-               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX, Half, &
-               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
-               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
-               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X2, G_Dn_X2 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1       , nDOFX_X2
-
-        G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
-
-        G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-          = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
-                   * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
-                   * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
-
-        G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
-
-        G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
-                   * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
-                   * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    IF( nDimsX .GT. 2 )THEN
-
-      ! --- X3 ---
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
-               G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX, Half, &
-               G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
-               G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
-               G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X3, G_Dn_X3 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1       , nDOFX_X3
-
-        G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
-
-        G_Up_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-          = MAX( G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
-                   * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
-                   * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
-
-        G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
-
-        G_Dn_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
-                   * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
-                   * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
-
-    ! --- Compute derivatives (X1) ---
-
-    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, G_Dn_X1, G_Up_X1, WeightsX_X1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX_X1
-
-      G_Dn_X1(iNX,iGF,iX2,iX3,iX1) &
-        = G_Dn_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
-
-      G_Up_X1(iNX,iGF,iX2,iX3,iX1) &
-        = G_Up_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, G_K_X1, WeightsX_q )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX
-
-      G_K_X1(iNX,iGF,iX2,iX3,iX1) &
-        = G_K_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_q(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-    CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
-
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, +One, LX_X1_Up, nDOFX_X1, &
-             G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, Zero, &
-             dGdX1, nDOFX )
-
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, -One, LX_X1_Dn, nDOFX_X1, &
-             G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, One,  &
-             dGdX1, nDOFX )
-
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX1_q, nDOFX   , &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX   , One , &
-             dGdX1, nDOFX )
-
-    CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
-
-    CALL TimersStart_Euler( Timer_Euler_DG_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, dGdX1, WeightsX_q, dX1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX
-
-      dGdX1(iNX,iGF,iX2,iX3,iX1) &
-        = dGdX1(iNX,iGF,iX2,iX3,iX1) / ( WeightsX_q(iNX) * dX1(iX1) )
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-    IF( nDimsX .GT. 1 )THEN
-
-      ! --- Compute derivatives (X2) ---
-
-      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_Dn_X2, G_Up_X2, WeightsX_X2 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX_X2
-
-        G_Dn_X2(iNX,iGF,iX1,iX3,iX2) &
-          = G_Dn_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
-
-        G_Up_X2(iNX,iGF,iX1,iX3,iX2) &
-          = G_Up_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_K_X2, WeightsX_q )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
-      DO iX3 = iX_B0(3)    , iX_E0(3)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X2(iNX,iGF,iX1,iX3,iX2) &
-          = G_K_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_q(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-      CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, +One, LX_X2_Up, nDOFX_X2, &
-               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, Zero, &
-               dGdX2, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, -One, LX_X2_Dn, nDOFX_X2, &
-               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, One,  &
-               dGdX2, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX2_q, nDOFX   , &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX   , One , &
-               dGdX2, nDOFX )
-
-      CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
-
-      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, dGdX2, WeightsX_q, dX2 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX2(iNX,iGF,iX1,iX3,iX2) &
-          = dGdX2(iNX,iGF,iX1,iX3,iX2) / ( WeightsX_q(iNX) * dX2(iX2) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-    ELSE
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, dGdX2 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    IF( nDimsX .GT. 2 )THEN
-
-      ! --- Compute derivatives (X3) ---
-
-      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_Dn_X3, G_Up_X3, WeightsX_X3 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX_X3
-
-        G_Dn_X3(iNX,iGF,iX1,iX2,iX3) &
-          = G_Dn_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
-
-        G_Up_X3(iNX,iGF,iX1,iX2,iX3) &
-          = G_Up_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_K_X3, WeightsX_q )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
-      DO iX2 = iX_B0(2)    , iX_E0(2)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X3(iNX,iGF,iX1,iX2,iX3) &
-          = G_K_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_q(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-      CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, +One, LX_X3_Up, nDOFX_X3, &
-               G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, Zero, &
-               dGdX3, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, -One, LX_X3_Dn, nDOFX_X3, &
-               G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, One,  &
-               dGdX3, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX3_q, nDOFX   , &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX   , One , &
-               dGdX3, nDOFX )
-
-      CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
-
-      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, dGdX3, WeightsX_q, dX3 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX3(iNX,iGF,iX1,iX2,iX3) &
-          = dGdX3(iNX,iGF,iX1,iX2,iX3) / ( WeightsX_q(iNX) * dX3(iX3) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
-
-    ELSE
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-      !$ACC PRESENT( iX_B0, iX_E0, dGdX3 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
+    CALL ComputeDerivatives_Geometry_Relativistic_X3 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
 
     ! --- Contributions from time-independent metric ---
+
+    ErrorExists = 0
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
@@ -4223,9 +3552,10 @@ CONTAINS
 
     ! --- Contributions from time-dependent metric ---
 
-    CALL ComputeChristoffelSymbols_3D_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
-             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    IF( .NOT. UseXCFC ) &
+      CALL ComputeChristoffelSymbols_3D_XCFC &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
+               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
@@ -4245,23 +3575,6 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      DivGridVolume &
-        =   dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
-          + dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
-          + dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
-          + (   Christoffel3D_X1(1,1,iNX,iX1,iX2,iX3) &
-              + Christoffel3D_X2(2,1,iNX,iX1,iX3,iX2) &
-              + Christoffel3D_X3(3,1,iNX,iX1,iX2,iX3) ) &
-            * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-          + (   Christoffel3D_X1(1,2,iNX,iX1,iX2,iX3) &
-              + Christoffel3D_X2(2,2,iNX,iX1,iX3,iX2) &
-              + Christoffel3D_X3(3,2,iNX,iX1,iX2,iX3) ) &
-            * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-          + (   Christoffel3D_X1(1,3,iNX,iX1,iX2,iX3) &
-              + Christoffel3D_X2(2,3,iNX,iX1,iX3,iX2) &
-              + Christoffel3D_X3(3,3,iNX,iX1,iX2,iX3) ) &
-            * G(iNX,iX1,iX2,iX3,iGF_Beta_3)
-
       dU(iNX,iX1,iX2,iX3,iCF_E) &
         = dU(iNX,iX1,iX2,iX3,iCF_E) &
             + tau(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
@@ -4279,6 +3592,23 @@ CONTAINS
                          * G(iNX,iX1,iX2,iX3,iGF_K_dd_23) )
 
       IF( .NOT. UseXCFC )THEN
+
+        DivGridVolume &
+          =   dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
+            + dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
+            + dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
+            + (   Christoffel3D_X1(1,1,iNX,iX1,iX2,iX3) &
+                + Christoffel3D_X2(2,1,iNX,iX1,iX3,iX2) &
+                + Christoffel3D_X3(3,1,iNX,iX1,iX2,iX3) ) &
+              * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
+            + (   Christoffel3D_X1(1,2,iNX,iX1,iX2,iX3) &
+                + Christoffel3D_X2(2,2,iNX,iX1,iX3,iX2) &
+                + Christoffel3D_X3(3,2,iNX,iX1,iX2,iX3) ) &
+              * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
+            + (   Christoffel3D_X1(1,3,iNX,iX1,iX2,iX3) &
+                + Christoffel3D_X2(2,3,iNX,iX1,iX3,iX2) &
+                + Christoffel3D_X3(3,3,iNX,iX1,iX2,iX3) ) &
+              * G(iNX,iX1,iX2,iX3,iGF_Beta_3)
 
         DO iCF = 1, nCF
 
@@ -4310,26 +3640,20 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr, ErrorExists ) &
-    !$OMP MAP( release: iX_B0, iX_E0, dX1, dX2, dX3, tau, &
+    !$OMP MAP( release: iX_B0, iX_E0, tau, &
     !$OMP               PressureTensor, &
-    !$OMP               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
-    !$OMP               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
-    !$OMP               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
+    !$OMP               dGdX1, dGdX2, dGdX3, &
     !$OMP               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr, ErrorExists ) &
-    !$ACC DELETE(       iX_B0, iX_E0, dX1, dX2, dX3, tau, &
+    !$ACC DELETE(       iX_B0, iX_E0, tau, &
     !$ACC               PressureTensor, &
-    !$ACC               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
-    !$ACC               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
-    !$ACC               G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
+    !$ACC               dGdX1, dGdX2, dGdX3, &
     !$ACC               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
-
-    END ASSOCIATE ! dX1, dX2, dX3
 
     CALL TimersStart_Euler( Timer_Euler_DG_ErrorCheck )
 
@@ -4931,5 +4255,1090 @@ CONTAINS
 
   END SUBROUTINE FinalizeIncrement_Divergence
 
+
+  SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(out) :: &
+      dGdX1(1:nDOFX,1:nGF,iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3), &
+                          iX_B0(1):iX_E0(1))
+
+    INTEGER :: jNX, iNX, iX1, iX2, iX3, iGF
+    INTEGER :: nK(3), nGF_K
+
+    REAL(DP) :: G_K_X1 (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: G_Dn_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
+    REAL(DP) :: G_Up_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+    IF( nNodesX(1) .GT. 1 )THEN
+
+      CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( to:    iX_B0, iX_E0, G, dGdX1, dX1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC ENTER DATA &
+      !$ACC COPYIN(     iX_B0, iX_E0, G, dGdX1, dX1 )
+#endif
+
+      CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, dGdX1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX1(iNX,iGF,iX2,iX3,iX1) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRESENT( iX_B0, iX_E0, dGdX1, G, dX1, dLXdX1_q )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+      DO jNX = 1       , nDOFX
+
+        dGdX1(iNX,iGF,iX2,iX3,iX1) &
+          = dGdX1(iNX,iGF,iX2,iX3,iX1) &
+              + G(jNX,iX1,iX2,iX3,iGF) * dLXdX1_q(iNX,jNX) / dX1(iX1)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from:    dGdX1 ) &
+      !$OMP MAP( release: iX_B0, iX_E0, G, dX1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(      dGdX1 ) &
+      !$ACC DELETE(       iX_B0, iX_E0, G, dX1 )
+#endif
+
+      CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    ELSE ! nNodesX(1) .EQ. 1
+
+      nK    = iX_E0 - iX_B0 + 1
+      nGF_K = nGF * PRODUCT( nK )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( to:    iX_B0, iX_E0, G, dGdX1, dX1 ) &
+      !$OMP MAP( alloc: G_K_X1, G_Dn_X1, G_Up_X1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC ENTER DATA &
+      !$ACC COPYIN(     iX_B0, iX_E0, G, dGdX1, dX1 ) &
+      !$ACC CREATE(     G_K_X1, G_Dn_X1, G_Up_X1 )
+#endif
+
+      CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_K_X1, G )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
+      DO iX3 = iX_B0(3)    , iX_E0(3)
+      DO iX2 = iX_B0(2)    , iX_E0(2)
+      DO iGF = 1           , nGF
+      DO iNX = 1           , nDOFX
+
+        G_K_X1(iNX,iGF,iX2,iX3,iX1) = G(iNX,iX1,iX2,iX3,iGF)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
+               G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX, Half, &
+               G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+               G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+               G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+      ! --- Compute metric on faces from scale factors ---
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X1, G_Dn_X1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iNX = 1       , nDOFX_X1
+
+        G_Up_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Up_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Up_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
+
+        G_Up_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = MAX( G_Up_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
+                   * G_Up_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
+                   * G_Up_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
+
+        G_Dn_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Dn_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Dn_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
+
+        G_Dn_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
+                   * G_Dn_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
+                   * G_Dn_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
+
+      ! --- Compute derivatives ---
+
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_Dn_X1, G_Up_X1, WeightsX_X1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX_X1
+
+        G_Dn_X1(iNX,iGF,iX2,iX3,iX1) &
+          = G_Dn_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
+
+        G_Up_X1(iNX,iGF,iX2,iX3,iX1) &
+          = G_Up_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, G_K_X1, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        G_K_X1(iNX,iGF,iX2,iX3,iX1) &
+          = G_K_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_q(iNX)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, +One, LX_X1_Up, nDOFX_X1, &
+               G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, Zero, &
+               dGdX1, nDOFX )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, -One, LX_X1_Dn, nDOFX_X1, &
+               G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, One,  &
+               dGdX1, nDOFX )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX1_q, nDOFX   , &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX   , One , &
+               dGdX1, nDOFX )
+
+      CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, dGdX1, WeightsX_q, dX1 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX1(iNX,iGF,iX2,iX3,iX1) &
+          = dGdX1(iNX,iGF,iX2,iX3,iX1) / ( WeightsX_q(iNX) * dX1(iX1) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+      CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from:    dGdX1 ) &
+      !$OMP MAP( release: iX_B0, iX_E0, G, dX1, &
+      !$OMP               G_K_X1, G_Dn_X1, G_Up_X1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(      dGdX1 ) &
+      !$ACC DELETE(       iX_B0, iX_E0, G, dX1, &
+      !$ACC               G_K_X1, G_Dn_X1, G_Up_X1 )
+#endif
+
+      CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+    END IF ! nNodesX(1) .GT. 1
+
+    END ASSOCIATE ! dX1
+
+  END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(out) :: &
+      dGdX2(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
+                          iX_B0(3):iX_E0(3), &
+                          iX_B0(2):iX_E0(2))
+
+    INTEGER :: jNX, iNX, iX1, iX2, iX3, iGF
+    INTEGER :: nK(3), nGF_K
+
+    REAL(DP) :: G_K_X2 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)-1:iX_E0(2)+1)
+    REAL(DP) :: G_Dn_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
+    REAL(DP) :: G_Up_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
+
+    ASSOCIATE( dX2 => MeshX(2) % Width )
+
+    IF( nDimsX .LT. 2 )THEN
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( to:    iX_B0, iX_E0, dGdX2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC ENTER DATA &
+      !$ACC COPYIN(     iX_B0, iX_E0, dGdX2 )
+#endif
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, dGdX2 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from:    dGdX2 ) &
+      !$OMP MAP( release: iX_B0, iX_E0 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(      dGdX2 ) &
+      !$ACC DELETE(       iX_B0, iX_E0 )
+#endif
+
+    ELSE
+
+      IF( nNodesX(2) .GT. 1 )THEN
+
+        CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET ENTER DATA &
+        !$OMP MAP( to:    iX_B0, iX_E0, G, dGdX2, dX2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC ENTER DATA &
+        !$ACC COPYIN(     iX_B0, iX_E0, G, dGdX2, dX2 )
+#endif
+
+        CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, dGdX2 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRESENT( iX_B0, iX_E0, dGdX2, G, dX2, dLXdX2_q )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+        DO jNX = 1       , nDOFX
+
+          dGdX2(iNX,iGF,iX1,iX3,iX2) &
+            = dGdX2(iNX,iGF,iX1,iX3,iX2) &
+                + G(jNX,iX1,iX2,iX3,iGF) * dLXdX2_q(iNX,jNX) / dX2(iX2)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET EXIT DATA &
+        !$OMP MAP( from:    dGdX2 ) &
+        !$OMP MAP( release: iX_B0, iX_E0, G, dX2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC EXIT DATA &
+        !$ACC COPYOUT(      dGdX2 ) &
+        !$ACC DELETE(       iX_B0, iX_E0, G, dX2 )
+#endif
+
+        CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+      ELSE ! nNodesX(2) .EQ. 1
+
+        nK    = iX_E0 - iX_B0 + 1
+        nGF_K = nGF * PRODUCT( nK )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_K_X2, G )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+        DO iX3 = iX_B0(3)    , iX_E0(3)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X2(iNX,iGF,iX1,iX3,iX2) = G(iNX,iX1,iX2,iX3,iGF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
+                 G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX, Half, &
+                 G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+                 G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
+                 G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_Up_X2, G_Dn_X2 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX_X2
+
+          G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+            = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+            = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+            = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+
+          G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+            = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+                     * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+                     * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+
+          G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+
+          G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+                     * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+                     * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
+
+        ! --- Compute derivatives ---
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_Dn_X2, G_Up_X2, WeightsX_X2 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX_X2
+
+          G_Dn_X2(iNX,iGF,iX1,iX3,iX2) &
+            = G_Dn_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
+
+          G_Up_X2(iNX,iGF,iX1,iX3,iX2) &
+            = G_Up_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_K_X2, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+        DO iX3 = iX_B0(3)    , iX_E0(3)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X2(iNX,iGF,iX1,iX3,iX2) &
+            = G_K_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_q(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, +One, LX_X2_Up, nDOFX_X2, &
+                 G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, Zero, &
+                 dGdX2, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, -One, LX_X2_Dn, nDOFX_X2, &
+                 G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, One,  &
+                 dGdX2, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX2_q, nDOFX   , &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX   , One , &
+                 dGdX2, nDOFX )
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, dGdX2, WeightsX_q, dX2 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX2(iNX,iGF,iX1,iX3,iX2) &
+            = dGdX2(iNX,iGF,iX1,iX3,iX2) / ( WeightsX_q(iNX) * dX2(iX2) )
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET EXIT DATA &
+        !$OMP MAP( from:    dGdX2 ) &
+        !$OMP MAP( release: iX_B0, iX_E0, G, dX2, &
+        !$OMP               G_K_X2, G_Dn_X2, G_Up_X2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC EXIT DATA &
+        !$ACC COPYOUT(      dGdX2 ) &
+        !$ACC DELETE(       iX_B0, iX_E0, G, dX2, &
+        !$ACC               G_K_X2, G_Dn_X2, G_Up_X2 )
+#endif
+
+        CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+      END IF ! nNodesX(2) .GT. 1
+
+    END IF ! nDimsX .LT. 2
+
+    END ASSOCIATE ! dX2
+
+  END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(out) :: &
+      dGdX3(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3))
+
+    INTEGER :: jNX, iNX, iX1, iX2, iX3, iGF
+    INTEGER :: nK(3), nGF_K
+
+    REAL(DP) :: G_K_X3 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)-1:iX_E0(3)+1)
+    REAL(DP) :: G_Dn_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
+    REAL(DP) :: G_Up_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
+
+    ASSOCIATE( dX3 => MeshX(3) % Width )
+
+    IF( nDimsX .LT. 3 )THEN
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( to:    iX_B0, iX_E0, dGdX3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC ENTER DATA &
+      !$ACC COPYIN(     iX_B0, iX_E0, dGdX3 )
+#endif
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( iX_B0, iX_E0, dGdX3 )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from:    dGdX3 ) &
+      !$OMP MAP( release: iX_B0, iX_E0 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(      dGdX3 ) &
+      !$ACC DELETE(       iX_B0, iX_E0 )
+#endif
+
+    ELSE
+
+      IF( nNodesX(3) .GT. 1 )THEN
+
+        CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET ENTER DATA &
+        !$OMP MAP( to:    iX_B0, iX_E0, G, dGdX3, dX3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC ENTER DATA &
+        !$ACC COPYIN(     iX_B0, iX_E0, G, dGdX3, dX3 )
+#endif
+
+        CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, dGdX3 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRESENT( iX_B0, iX_E0, dGdX3, G, dX3, dLXdX3_q )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+        DO jNX = 1       , nDOFX
+
+          dGdX3(iNX,iGF,iX1,iX2,iX3) &
+            = dGdX3(iNX,iGF,iX1,iX2,iX3) &
+                + G(jNX,iX1,iX2,iX3,iGF) * dLXdX3_q(iNX,jNX) / dX3(iX3)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET EXIT DATA &
+        !$OMP MAP( from:    dGdX3 ) &
+        !$OMP MAP( release: iX_B0, iX_E0, G, dX3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC EXIT DATA &
+        !$ACC COPYOUT(      dGdX3 ) &
+        !$ACC DELETE(       iX_B0, iX_E0, G, dX3 )
+#endif
+
+        CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+      ELSE ! nNodesX(3) .EQ. 1
+
+        nK    = iX_E0 - iX_B0 + 1
+        nGF_K = nGF * PRODUCT( nK )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_K_X3, G )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+        DO iX2 = iX_B0(2)    , iX_E0(2)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X3(iNX,iGF,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
+                 G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX, Half, &
+                 G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
+                 G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
+                 G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_Up_X3, G_Dn_X3 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX_X3
+
+          G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+            = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+            = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+            = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+
+          G_Up_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+            = MAX( G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+                     * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+                     * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
+
+          G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+
+          G_Dn_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+                     * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+                     * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
+
+        ! --- Compute derivatives ---
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_Dn_X3, G_Up_X3, WeightsX_X3 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX_X3
+
+          G_Dn_X3(iNX,iGF,iX1,iX2,iX3) &
+            = G_Dn_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
+
+          G_Up_X3(iNX,iGF,iX1,iX2,iX3) &
+            = G_Up_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, G_K_X3, WeightsX_q )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+        DO iX2 = iX_B0(2)    , iX_E0(2)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X3(iNX,iGF,iX1,iX2,iX3) &
+            = G_K_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_q(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, +One, LX_X3_Up, nDOFX_X3, &
+                 G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, Zero, &
+                 dGdX3, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, -One, LX_X3_Dn, nDOFX_X3, &
+                 G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, One,  &
+                 dGdX3, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX3_q, nDOFX   , &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX   , One , &
+                 dGdX3, nDOFX )
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_Permute )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( iX_B0, iX_E0, dGdX3, WeightsX_q, dX3 )
+#elif defined( THORNADO_OMP    )
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX3(iNX,iGF,iX1,iX2,iX3) &
+            = dGdX3(iNX,iGF,iX1,iX2,iX3) / ( WeightsX_q(iNX) * dX3(iX3) )
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL TimersStop_Euler( Timer_Euler_DG_Permute )
+
+        CALL TimersStart_Euler( Timer_Euler_DG_CopyOut )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+        !$OMP TARGET EXIT DATA &
+        !$OMP MAP( from:    dGdX3 ) &
+        !$OMP MAP( release: iX_B0, iX_E0, G, dX3, &
+        !$OMP               G_K_X3, G_Dn_X3, G_Up_X3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+        !$ACC EXIT DATA &
+        !$ACC COPYOUT(      dGdX3 ) &
+        !$ACC DELETE(       iX_B0, iX_E0, G, dX3, &
+        !$ACC               G_K_X3, G_Dn_X3, G_Up_X3 )
+#endif
+
+        CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
+
+      END IF ! nNodesX(3) .GT. 1
+
+    END IF ! nDimsX .LT. 3
+
+    END ASSOCIATE ! dX3
+
+  END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3
 
 END MODULE Euler_dgDiscretizationModule
