@@ -19,3 +19,4 @@ More information on the external packages, please visit: https://gitlab.devtools
    
 5. `buildRun.sineWave.sh` inside `$HOME/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables` is the script to build and/or run the sineWaveStreaming case. `buildRun.sineWave.sh -r(or -R)` only runs the case if the executable exist. `buildRun.sineWave.sh -b(or -B)` only compiles the code. To build and run the case, no argument is needed. Be sure to make modifications to reflect the path of your source code and change the module to your favorite one
 6. The script to run the Relaxation case is `buildRun.Relax.sh`. It is located at the same place as `buildRun.sineWave.sh` and one can run it in the same way. 
+7. Overwrite the original $WEAKLIB_HOME/Distributions/Library/wlInterpolationModule.F90 with wlInterpolationModule.F90 in the root directory of ms69-lab branch. 
