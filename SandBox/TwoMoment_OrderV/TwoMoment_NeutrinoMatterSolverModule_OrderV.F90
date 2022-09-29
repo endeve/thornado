@@ -408,7 +408,7 @@ CONTAINS
     !$OMP             L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
-    !$OMP             D_T, T_T, Y_T, E_T, SqrtGm_T, &
+    !$OMP             D_T, T_T, Y_T, E_T, &
     !$OMP             J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
     !$OMP             SqrtGm_T, &
     !$OMP             J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
