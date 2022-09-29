@@ -74,11 +74,13 @@ PROGRAM ApplicationDriver_Neutrinos
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
+  INTEGER       :: nEquidistantX
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   INTEGER       :: M_outer, MaxIter_outer
   INTEGER       :: M_inner, MaxIter_inner
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
+  REAL(DP)      :: dEquidistantX
   REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
@@ -98,7 +100,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   RestartFileNumber = - 1
 
-  M_outer         = 3
+  M_outer         = 2
   MaxIter_outer   = 100
   Rtol_outer      = 1.0d-8
   M_inner         = 2
@@ -110,6 +112,9 @@ PROGRAM ApplicationDriver_Neutrinos
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One ]
 
+  nEquidistantX = 1
+  dEquidistantX = 1.0_DP * Kilometer
+
   SELECT CASE( TRIM( ProgramName ) )
 
     CASE( 'Relaxation' )
@@ -117,7 +122,7 @@ PROGRAM ApplicationDriver_Neutrinos
       nSpecies = 6
       nNodes   = 2
 
-      nX  = [ 1, 1, 1 ]
+      nX  = [ 8, 8, 8 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
       bcX = [ 0, 0, 0 ]
@@ -137,6 +142,7 @@ PROGRAM ApplicationDriver_Neutrinos
       dt_MAX             = 1.0d+1 * Millisecond
       dt_RATE            = 1.04_DP
       iCycleD            = 1
+!!      iCycleW            = 100
       iCycleW            = 1
       maxCycles          = 100000
 
@@ -151,14 +157,17 @@ PROGRAM ApplicationDriver_Neutrinos
 
       CoordinateSystem = 'SPHERICAL'
 
-      nSpecies = 6
+      nSpecies = 2
       nNodes   = 2
 
-      nX    = [ 128, 1, 1 ]
+      nX    = [ 200, 1, 1 ]
       xL    = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
-      xR    = [ 3.0d2 * Kilometer, Pi    , TwoPi  ]
+      xR    = [ 5.0d2 * Kilometer, Pi    , TwoPi  ]
       bcX   = [ 31, 1, 1 ]
-      ZoomX = [ 1.011986923647337_DP, 1.0_DP, 1.0_DP ]
+      ZoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      nEquidistantX = 50
+      dEquidistantX = 1.0_DP * Kilometer
 
       nE    = 16
       eL    = 0.0d0 * MeV
@@ -378,6 +387,9 @@ CONTAINS
       InitializeTimers_Euler
     USE ProgramInitializationModule, ONLY: &
       InitializeProgram
+    USE MeshModule, ONLY: &
+      MeshX, &
+      CreateMesh_Custom
     USE ReferenceElementModuleX, ONLY: &
       InitializeReferenceElementX
     USE ReferenceElementModuleX_Lagrange, ONLY: &
@@ -459,6 +471,14 @@ CONTAINS
                = nSpecies, &
              BasicInitialization_Option &
                = .TRUE. )
+
+    IF( nEquidistantX > 1 )THEN
+
+      CALL CreateMesh_Custom &
+             ( MeshX(1), nX(1), nNodes, 1, xL(1), xR(1), &
+               nEquidistantX, dEquidistantX, Verbose_Option = .TRUE. )
+
+    END IF
 
     ! --- Position Space Reference Element and Geometry ---
 

@@ -254,7 +254,10 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE TO( InterpMat )
+!! Shaoping: Need to use "TARGET ENTER DATA MAP(always" clause, otherwise the allocatable array will not be mapped/updated correctly.
+!!    !$OMP TARGET UPDATE TO( InterpMat )
+    !$OMP TARGET ENTER DATA MAP (always, to: InterpMat )
+
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE DEVICE( InterpMat )
 #endif
@@ -267,6 +270,11 @@ CONTAINS
 
 
   SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+
+#if   defined( THORNADO_OMP_OL )
+!! Shaoping: need exit data construct 
+     !$OMP TARGET EXIT DATA MAP (release: InterpMat )
+#endif
 
     IF( ALLOCATED( InterpMat ) )THEN
 

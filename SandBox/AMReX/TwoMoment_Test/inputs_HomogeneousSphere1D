@@ -46,11 +46,11 @@ amr.max_level         = 0
 
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 1
-PL.Min_1                = 1.0e-26
-PL.Min_2                = 1.0e-26
+PL.UsePositivityLimiter_TwoMoment = 1
+PL.Min_1_TwoMoment                = 1.0e-26
+PL.Min_2_TwoMoment                = 1.0e-26
 
 # Slope limiter parameters
-SL.UseSlopeLimiter           = 1
-SL.BetaTVD                   = 1.75e0
+SL.UseSlopeLimiter_TwoMoment           = 1
+SL.BetaTVD_TwoMoment                   = 1.75e0
 

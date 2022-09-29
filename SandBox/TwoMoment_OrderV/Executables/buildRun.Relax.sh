@@ -20,7 +20,7 @@ function load_set_common(){
    export EXASTAR_HOME=/localdisk/quanshao
    export HDF5_INC=${EXASTAR_HOME}/ExaStar/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/ExaStar/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/ExaStar/thornado
+   export THORNADO_DIR=${EXASTAR_HOME}/ExaStar/thornado-lab
    export WEAKLIB_DIR=${EXASTAR_HOME}/ExaStar/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/ExaStar/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
@@ -59,7 +59,7 @@ function runApp(){
    ##export LIBOMPTARGET_PLUGIN=OPENCL
    export LIBOMPTARGET_DEBUG=0
    export EnableImplicitScaling=1
-   export ZE_AFFINITY_MASK=0
+   export ZE_AFFINITY_MASK=0.0
    #export LIBOMPTARGET_PLUGIN_PROFILE=T
    #export OMP_TARGET_OFFLOAD=DISABLED
    export OMP_TARGET_OFFLOAD=MANDATORY
@@ -69,14 +69,9 @@ function runApp(){
    ulimit -s unlimited
    #ulimit -n 20480
    ## The following seems working well for the SineWaveStream app.
-   export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,32,64,2048
+   export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,16,32
 
    module list |& tee -a $LOG_FILE
-
-# For vtune
-   source /sharedjf/mjh/tools/Intel_VTune_Profiler_2022.3.0_nda/env/vars.sh
-   VT_OUTPUT=vtune07June2022
-   rm -rf $VT_OUTPUT
 
 
 # echo some env variables to $LOG_FILE   

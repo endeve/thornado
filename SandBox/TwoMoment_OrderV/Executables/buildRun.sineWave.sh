@@ -20,7 +20,7 @@ function load_set_common(){
    export EXASTAR_HOME=/localdisk/quanshao
    export HDF5_INC=${EXASTAR_HOME}/ExaStar/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/ExaStar/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/ExaStar/thornado
+   export THORNADO_DIR=${EXASTAR_HOME}/ExaStar/thornado-lab
    export WEAKLIB_DIR=${EXASTAR_HOME}/ExaStar/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/ExaStar/weaklib-tables
    export THORNADO_MACHINE=beacon_intel

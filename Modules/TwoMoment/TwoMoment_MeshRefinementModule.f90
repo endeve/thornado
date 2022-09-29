@@ -22,7 +22,9 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: InitializeMeshRefinement_TwoMoment
   PUBLIC :: FinalizeMeshRefinement_TwoMoment
   PUBLIC :: Refine_TwoMoment
+  PUBLIC :: RefineX_TwoMoment
   PUBLIC :: Coarsen_TwoMoment
+  PUBLIC :: CoarsenX_TwoMoment
 
   INTEGER  :: nFine, nFineX(3)
   REAL(DP), PUBLIC :: VolumeRatio
@@ -164,6 +166,17 @@ CONTAINS
   END SUBROUTINE Refine_TwoMoment
 
 
+  FUNCTION RefineX_TwoMoment( iFine, U_Crs ) RESULT( U_Fin )
+
+    INTEGER,  INTENT(in)  :: iFine
+    REAL(DP), INTENT(in)  :: U_Crs(1:nDOFX)
+    REAL(DP)              :: U_Fin(1:nDOFX)
+
+    U_Fin = MATMUL( ProjectionMatrix(:,:,iFine), U_Crs ) / WeightsX_q
+
+  END FUNCTION RefineX_TwoMoment
+
+
   SUBROUTINE Coarsen_TwoMoment( nE, nX, U_Crs, U_Fin )
 
     INTEGER,  INTENT(in)  :: nE, nX(3)
@@ -200,6 +213,17 @@ CONTAINS
     END DO
 
   END SUBROUTINE Coarsen_TwoMoment
+
+
+  FUNCTION CoarsenX_TwoMoment( iFine, U_Fin ) RESULT( U_Crs )
+
+    INTEGER,  INTENT(in)    :: iFine
+    REAL(DP), INTENT(in)    :: U_Fin(1:nDOFX)
+    REAL(DP)                :: U_Crs(1:nDOFX)
+
+    U_Crs = VolumeRatio * MATMUL( ProjectionMatrix_T(:,:,iFine), U_Fin ) / WeightsX_q
+
+  END FUNCTION CoarsenX_TwoMoment
 
 
   FUNCTION Pack_TwoMoment( nE, U ) RESULT( U_P )

@@ -118,7 +118,8 @@ CONTAINS
 
     CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: LogE1, LogE2
-    INTEGER :: iS, iM, iEta, iD, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
+    INTEGER :: iS, iM, iEta, iD, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2
+    INTEGER :: nOpacities, nMoments, nPointsEta, nPointsD, nPointsT, nPointsE
     LOGICAL :: Include_EmAb
     LOGICAL :: Include_Iso
     LOGICAL :: Include_NES
@@ -376,7 +377,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
     !$OMP          NES_AT, Pair_AT, Brem_AT, C1, C2 )
@@ -398,6 +399,11 @@ CONTAINS
                 WidthE  => MeshE % Width, &
                 NodesE  => MeshE % Nodes )
 
+    nOpacities = OPACITIES % Scat_NES % nOpacities
+    nMoments   = OPACITIES % Scat_NES % nMoments
+    nPointsT   = OPACITIES % Scat_NES % nPoints(4)
+    nPointsEta = OPACITIES % Scat_NES % nPoints(5)
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -409,10 +415,10 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, OPACITIES % Scat_NES % nOpacities
-      DO iM = 1, OPACITIES % Scat_NES % nMoments
-        DO iEta = 1, OPACITIES % Scat_NES % nPoints(5)
-          DO iT = 1, OPACITIES % Scat_NES % nPoints(4)
+    DO iS = 1, nOpacities
+      DO iM = 1, nMoments
+        DO iEta = 1, nPointsEta
+          DO iT = 1, nPointsT
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -439,6 +445,11 @@ CONTAINS
       END DO
     END DO
 
+    nOpacities = OPACITIES % Scat_Pair % nOpacities
+    nMoments   = OPACITIES % Scat_Pair % nMoments
+    nPointsT   = OPACITIES % Scat_Pair % nPoints(4)
+    nPointsEta = OPACITIES % Scat_Pair % nPoints(5)
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -450,10 +461,10 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, OPACITIES % Scat_Pair % nOpacities
-      DO iM = 1, OPACITIES % Scat_Pair % nMoments
-        DO iEta = 1, OPACITIES % Scat_Pair % nPoints(5)
-          DO iT = 1, OPACITIES % Scat_Pair % nPoints(4)
+    DO iS = 1, nOpacities
+      DO iM = 1, nMoments
+        DO iEta = 1, nPointsEta
+          DO iT = 1, nPointsT
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -480,6 +491,11 @@ CONTAINS
       END DO
     END DO
 
+    nOpacities = OPACITIES % Scat_Brem % nOpacities
+    nMoments   = OPACITIES % Scat_Brem % nMoments
+    nPointsD   = OPACITIES % Scat_Brem % nPoints(4)
+    nPointsT   = OPACITIES % Scat_Brem % nPoints(5)
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
@@ -491,10 +507,10 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, OPACITIES % Scat_Brem % nOpacities
-      DO iM = 1, OPACITIES % Scat_Brem % nMoments
-        DO iD = 1, OPACITIES % Scat_Brem % nPoints(4)
-          DO iT = 1, OPACITIES % Scat_Brem % nPoints(5)
+    DO iS = 1, nOpacities
+      DO iM = 1, nMoments
+        DO iD = 1, nPointsD
+          DO iT = 1, nPointsT
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE 
 

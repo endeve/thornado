@@ -25,7 +25,7 @@ ifeq ($(USE_OMP),TRUE)
 else ifeq ($(USE_OMP_OL),TRUE)
   OPENMP = -fiopenmp -fopenmp-targets=spir64
 #PVC rev B AOT 
-# _gen -Xopenmp-target-backend "-device 12.60.5"
+# _gen -Xopenmp-target-backend "-device 12.60.7"
 #ATS AOT  
 #  _gen -Xopenmp-target-backend "-device xehp -revision_id 4"
 #OLD:: NOT ALWAYS WORKING::PVC reb b AOT 

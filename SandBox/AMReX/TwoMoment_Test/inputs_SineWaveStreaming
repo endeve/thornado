@@ -8,13 +8,14 @@ thornado.ProgramName = "SineWaveStreaming"
 thornado.Scheme = "SSPRK2"
 
 thornado.t_end     = 1.0     # Final time
-thornado.dt_wrt    = 100.0      # Write time interval
-thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
+thornado.dt_wrt    = 1.0e+1      # Write time interval
+thornado.dt_chk    = 1.0e+1      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
+thornado.nStages    = 2        # Number of DG nodes in each active dimension
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 00 00 00 # Boundary conditions
-thornado.swX       = 01 01 01 # Stencil width (nGhostCells) in each dimension remember to change this
-thornado.V_0       = 0.0 0.0 0.5  # three velocity
+thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension remember to change this
+thornado.V_0       = 0.5 0.0 0.0  # three velocity
 thornado.nE        = 1       # Number of Energy Cells
 thornado.swE       = 01
 thornado.bcE       = 1
@@ -26,10 +27,10 @@ thornado.Sigma     = 0.0
 thornado.zoomE     = 1.0
 thornado.nSpecies  = 1
 thornado.iCycleD   = 0010     # MOD this number to display info
-thornado.iCycleW   = 0100     # MOD this number to write plotfile
-thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iCycleW   = -0100     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
-thornado.Direction  = Z
+thornado.Direction  = X
 
 
 geometry.coord_sys   = 0             # CARTESIAN
@@ -38,12 +39,13 @@ geometry.prob_hi     = 1.0 1.0 1.0         # High energy domain size
 geometry.is_periodic = 1   1   1
 
 
-amr.n_cell            = 2 2 32 # Number of cells in each dimension
-amr.max_grid_size_x   = 2
-amr.max_grid_size_y   = 2
-amr.max_grid_size_z   = 32
-amr.blocking_factor_x = 1
-amr.blocking_factor_y = 1
-amr.blocking_factor_z = 1
+amr.n_cell            = 32 1 1 # Number of cells in each dimension
+#amr.max_grid_size_x   = 32
+#amr.max_grid_size_y   = 1
+#amr.max_grid_size_z   = 1
+#amr.blocking_factor_x = 1
+#amr.blocking_factor_y = 1
+#amr.blocking_factor_z = 1
+amr.ref_ratio          = 2
 amr.max_level         = 0
 amr.UseTiling         = 0

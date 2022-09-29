@@ -14,7 +14,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
-    nDOFE
+    nDOFE, nDOFX
   USE TwoMoment_TimersModule_OrderV, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -109,6 +109,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
 
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J0
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso
@@ -173,6 +174,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   ! --- Temporary arrays for scatter/gather (packing)
 
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: D_T, T_T, Y_T, E_T
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_u_1_T
@@ -280,6 +282,7 @@ CONTAINS
     ALLOCATE( G_V_d_3(nX_G) )
     ALLOCATE( U_V_d_3(nX_G) )
 
+    ALLOCATE(         SqrtGm(              nX_G) )
     ALLOCATE(             J0(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso(nE_G,         nX_G) )
     ALLOCATE(      Phi_0_Iso(nE_G,         nX_G) )
@@ -325,6 +328,8 @@ CONTAINS
     ALLOCATE( T_T(nX_G) )
     ALLOCATE( Y_T(nX_G) )
     ALLOCATE( E_T(nX_G) )
+
+    ALLOCATE( SqrtGm_T(nX_G) )
 
     ALLOCATE(     J_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( H_u_1_T(nE_G,nSpecies,nX_G) )
@@ -389,6 +394,7 @@ CONTAINS
     !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP             C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$OMP             SqrtGm, &
     !$OMP             J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
@@ -404,6 +410,7 @@ CONTAINS
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, &
     !$OMP             J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
+    !$OMP             SqrtGm_T, &
     !$OMP             J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
@@ -432,6 +439,7 @@ CONTAINS
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$ACC         SqrtGm, &
     !$ACC         J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -447,6 +455,7 @@ CONTAINS
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
     !$ACC         J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
+    !$ACC         SqrtGm_T, &
     !$ACC         J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
@@ -826,6 +835,7 @@ CONTAINS
     !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP               C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$OMP               SqrtGm, &
     !$OMP               J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
@@ -840,6 +850,7 @@ CONTAINS
     !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, &
+    !$OMP               SqrtGm_T, &
     !$OMP               J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
     !$OMP               J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
@@ -869,6 +880,7 @@ CONTAINS
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$ACC         SqrtGm, &
     !$ACC         J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -883,6 +895,7 @@ CONTAINS
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
+    !$ACC         SqrtGm_T, &
     !$ACC         J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
     !$ACC         J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
@@ -912,6 +925,7 @@ CONTAINS
     DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
     DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
     DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
+    DEALLOCATE( SqrtGm )
     DEALLOCATE( J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NES, Eta_NES )
@@ -925,7 +939,7 @@ CONTAINS
     DEALLOCATE( L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3 )
     DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
-    DEALLOCATE( D_T, T_T, Y_T, E_T )
+    DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T )
     DEALLOCATE( J_T, H_u_1_T, H_u_2_T, H_u_3_T )
     DEALLOCATE( J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
@@ -1047,7 +1061,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
-    CALL ComputeOpacities_Packed( D, T, Y )
+    CALL ComputeOpacities_Packed( D, T, Y, SqrtGm )
 
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1075,7 +1089,7 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
-               ( D, T, Y, &
+               ( D, T, Y, SqrtGm, &
                  ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeOpacity )
@@ -1092,7 +1106,8 @@ CONTAINS
         k_inner  = k_inner + 1
         Mk_inner = MIN( M_inner, k_inner )
 
-        print*,"Inner loop =", k_inner
+        print*,"    Inner loop =", k_inner
+
         CALL CreatePackIndex &
                ( ITERATE_inner, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
@@ -1220,10 +1235,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_OuterLoop )
 
-!!Shaoping: added the following update from, otherwise they are all zero and caused floating point errors and of course wrong results.    
-
-    !$OMP TARGET UPDATE FROM (nIterations_Inner, nIterations_Outer)
-
     nIterations_Inner &
       = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
 
@@ -1255,15 +1266,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeOpacities_Packed &
-    ( D, T, Y, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, T, Y, SqrtGm, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y, SqrtGm
     LOGICAL,  DIMENSION(:), INTENT(in), OPTIONAL :: MASK
     INTEGER,                INTENT(in), OPTIONAL :: nX_P
     INTEGER,  DIMENSION(:), INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
 
-    REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P, SqrtGm_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J0_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Sigma_Iso_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_0_Iso_P
@@ -1297,7 +1308,10 @@ CONTAINS
       T_P => T_T(1:nX)
       Y_P => Y_T(1:nX)
 
-      CALL ArrayPack( nX, UnpackIndex, D, T, Y, D_P, T_P, Y_P )
+      SqrtGm_P => SqrtGm_T(1:nX)
+
+      CALL ArrayPack &
+             ( nX, UnpackIndex, D, T, Y, SqrtGm, D_P, T_P, Y_P, SqrtGm_P )
 
       J0_P        => J0_T       (:,:,1:nX)
       Sigma_Iso_P => Sigma_Iso_T(  :,1:nX)
@@ -1323,6 +1337,8 @@ CONTAINS
       T_P => T(:)
       Y_P => Y(:)
 
+      SqrtGm_P => SqrtGm(:)
+
       J0_P        => J0       (:,:,:)
       Sigma_Iso_P => Sigma_Iso(  :,:)
       Phi_0_Iso_P => Phi_0_Iso(  :,:)
@@ -1347,6 +1363,9 @@ CONTAINS
 
     CALL ComputeEquilibriumDistributions_DG &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, J0_P )
+
+!!$    CALL ComputeEquilibriumDistributions_DG &
+!!$           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, SqrtGm_P, J0_P )
 
     ! --- EmAb ---
 
@@ -1828,6 +1847,8 @@ CONTAINS
     !$OMP          vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
+
+      SqrtGm(iN_X) = SQRT( Gm_dd_11(iN_X) * Gm_dd_22(iN_X) * Gm_dd_33(iN_X) )
 
       V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
       V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
@@ -2388,37 +2409,69 @@ CONTAINS
 
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
+        ! ! --- Number Equation ---
+        !
+        ! Gm(iOS+iCR_N,iN_X) &
+        !   = ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) &
+        !         / ( One + dt * Chi_T )
+        !
+        ! ! --- Number Flux 1 Equation ---
+        !
+        ! Gm(iOS+iCR_G1,iN_X) &
+        !   = ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) &
+        !         / ( One + dt * Kappa )
+        !
+        ! ! --- Number Flux 2 Equation ---
+        !
+        ! Gm(iOS+iCR_G2,iN_X) &
+        !   = ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) &
+        !         / ( One + dt * Kappa )
+        !
+        ! ! --- Number Flux 3 Equation ---
+        !
+        ! Gm(iOS+iCR_G3,iN_X) &
+        !   = ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+        !     + Omega(iN_X) &
+        !         * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) &
+        !         / ( One + dt * Kappa )
+
         ! --- Number Equation ---
 
         Gm(iOS+iCR_N,iN_X) &
-          = ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
+          = ( ( One - Omega(iN_X) ) * J(iN_E,iS,iN_X) &
             + Omega(iN_X) &
-                * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) &
-                / ( One + dt * Chi_T )
+                * ( C_J(iN_E,iS,iN_X) - vDotH + dt * ( Eta_T + L_N ) ) ) &
+                / ( One + Omega(iN_X) * dt * Chi_T )
 
         ! --- Number Flux 1 Equation ---
 
         Gm(iOS+iCR_G1,iN_X) &
-          = ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+          = ( ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
             + Omega(iN_X) &
-                * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) &
-                                    / ( One + dt * Kappa )
+                * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) ) &
+                / ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 2 Equation ---
 
         Gm(iOS+iCR_G2,iN_X) &
-          = ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+          = ( ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
             + Omega(iN_X) &
-                * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) &
-                / ( One + dt * Kappa )
+                * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) ) &
+                / ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 3 Equation ---
 
         Gm(iOS+iCR_G3,iN_X) &
-          = ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+          = ( ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
             + Omega(iN_X) &
-                * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) &
-                / ( One + dt * Kappa )
+                * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) ) &
+                / ( One + Omega(iN_X) * dt * Kappa )
 
         Fm(iOS+iCR_N ,iN_X) = Gm(iOS+iCR_N ,iN_X) - J    (iN_E,iS,iN_X)
         Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X)
@@ -2803,7 +2856,49 @@ CONTAINS
   END SUBROUTINE SolveLS_FP
 
 
+!! Shaoping : The use of private temporary arrays for teams tends out to be giving random and wrong values, and is also slower than this one
+!without temporary arrays
+
   SUBROUTINE ShiftRHS_FP( MASK, n_FP, M, Mk, F, G )
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
+
+    INTEGER  :: iN_X, iFP, iM
+
+    IF ( Mk == M ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE 
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG 
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO
+#endif
+      DO iN_X = 1, nX_G
+        IF( MASK(iN_X) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+          !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#elif defined( THORNADO_OACC   )
+          !$ACC LOOP VECTOR COLLAPSE(2)
+#endif
+          DO iM  = 1, Mk-1
+          DO iFP = 1, n_FP
+            F(iFP,iM,iN_X) = F(iFP,iM+1,iN_X) 
+            G(iFP,iM,iN_X) = G(iFP,iM+1,iN_X)
+          END DO
+          END DO
+
+        END IF
+      END DO
+
+    END IF
+
+  END SUBROUTINE ShiftRHS_FP
+
+  SUBROUTINE ShiftRHS_FP_org( MASK, n_FP, M, Mk, F, G )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     INTEGER,                    INTENT(in)    :: n_FP, M, Mk
@@ -2857,7 +2952,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ShiftRHS_FP
+  END SUBROUTINE ShiftRHS_FP_org
 
 
   SUBROUTINE CheckConvergence_Inner &
@@ -2926,9 +3021,9 @@ CONTAINS
       END IF
 
     END DO
-
+!! Shaoping Added nIterations_Inner to the update from otherwise it has wrong values on cpu. 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK )
+    !$OMP TARGET UPDATE FROM( MASK , nIterations_Inner)
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( MASK )
 #endif
@@ -2981,8 +3076,9 @@ CONTAINS
       END IF
     END DO
 
+!! Shaoping Added nIterations_Outer to the update from otherwise it has wrong values on cpu. 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER )
+    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER, nIterations_Outer)
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
 #endif
@@ -2990,7 +3086,62 @@ CONTAINS
   END SUBROUTINE CheckConvergence_Outer
 
 
-  FUNCTION ENORM( X )
+!!$  SUBROUTINE CheckConvergence_Outer &
+!!$    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, nIterations_Outer, Fm )
+!!$
+!!$    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER, MASK_INNER
+!!$    INTEGER,                    INTENT(in)    :: n_FP, k_outer
+!!$    INTEGER,  DIMENSION(:)    , INTENT(inout) :: nIterations_Outer
+!!$    REAL(DP), DIMENSION(:,:)  , INTENT(in)    :: Fm
+!!$
+!!$    LOGICAL  :: CONVERGED
+!!$    INTEGER  :: iX, iOS
+!!$    REAL(DP) :: Fnorm_Y(nDOFX), Fnorm_Ef(nDOFX), Fnorm_V(nDOFX)
+!!$
+!!$#if   defined( THORNADO_OMP_OL )
+!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!!$    !$OMP PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$#elif defined( THORNADO_OACC   )
+!!$    !$ACC PARALLEL LOOP GANG VECTOR &
+!!$    !$ACC PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$#elif defined( THORNADO_OMP    )
+!!$    !$OMP PARALLEL DO &
+!!$    !$OMP PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$#endif
+!!$    DO iX = 1, nX_G / nDOFX
+!!$      iOS = (iX-1) * nDOFX
+!!$      IF( ANY( MASK_OUTER(iOS+1:iOS+nDOFX) ) )THEN
+!!$
+!!$        Fnorm_Y  =      ABS( Fm(iY ,iOS+1:iOS+nDOFX) )
+!!$        Fnorm_Ef =      ABS( Fm(iEf,iOS+1:iOS+nDOFX) )
+!!$        Fnorm_V  = MAX( ABS( Fm(iV1,iOS+1:iOS+nDOFX) ), &
+!!$                        ABS( Fm(iV2,iOS+1:iOS+nDOFX) ), &
+!!$                        ABS( Fm(iV3,iOS+1:iOS+nDOFX) ) )
+!!$
+!!$        CONVERGED = ALL( Fnorm_Y  <= Rtol_outer ) .AND. &
+!!$                    ALL( Fnorm_Ef <= Rtol_outer ) .AND. &
+!!$                    ALL( Fnorm_V  <= Rtol_outer )
+!!$
+!!$        IF( CONVERGED )THEN
+!!$          MASK_OUTER       (iOS+1:iOS+nDOFX) = .FALSE.
+!!$          nIterations_Outer(iOS+1:iOS+nDOFX) = k_outer
+!!$        END IF
+!!$
+!!$        MASK_INNER(iOS+1:iOS+nDOFX) = MASK_OUTER(iOS+1:iOS+nDOFX)
+!!$
+!!$      END IF
+!!$    END DO
+!!$
+!!$#if   defined( THORNADO_OMP_OL )
+!!$    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER )
+!!$#elif defined( THORNADO_OACC   )
+!!$    !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
+!!$#endif
+!!$
+!!$  END SUBROUTINE CheckConvergence_Outer
+
+
+  FUNCTION ENORM( X ) ! Delete Me?
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
 #elif defined( THORNADO_OACC   )
