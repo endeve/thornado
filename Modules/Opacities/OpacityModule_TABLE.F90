@@ -522,14 +522,14 @@ write(*,*) 'lol EC table'
  
         DO k = 1, nE
           DO kk = 1, wl_nE
-            IF(E_faces(k) .gt. wl_E_faces(kk)) THEN
+            IF(E_faces(k) .ge. wl_E_faces(kk)) THEN
               kfmin(k) = kk
             ELSE
               EXIT
             ENDIF
           ENDDO
           DO kk = wl_nE+1, 1, -1
-            IF(E_faces(k+1) .lt. wl_E_faces(kk)) THEN
+            IF(E_faces(k+1) .le. wl_E_faces(kk)) THEN
               kfmax(k) = kk-1
             ELSE
               EXIT
@@ -695,6 +695,8 @@ write(*,*) 'lol EC table'
           iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
 
           x = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV
+          if(kk==1) write(*,*) 'nodal e problems?'
+          write(*,*) kk, x
 
           k0 = kfmax(iE1)
           DO k = kfmax(iE1), kfmin(iE1), -1
@@ -719,7 +721,6 @@ write(*,*) 'lol EC table'
           INTEGER  :: k0, k1
           INTEGER  :: iE1, iNodeE1
           REAL(dp) :: x, x0, x1, y0, y1
-          !REAL(dp) :: dX1, ddX1
           REAL(dp) :: a, b, f_a, f_b
           REAL(dp) :: spec_interp
           REAL(dp) :: loctot
@@ -762,6 +763,28 @@ write(*,*) 'lol EC table'
               cell_integral_nodes = 0.0d0
               spec_nodes          = 0.0d0
 
+              if(iD==1 .and. iT==1 .and. iYe==1) then
+              print *, 'E', E_faces(1), E_cells(1), E_faces(2)
+              print *, 'k01_3bins(k,1,1)', k01_3bins(1,1,1)
+              print *, 'k01_3bins(k,1,2)', k01_3bins(1,1,2)
+              print *, 'k01_3bins(k,2,1)', k01_3bins(1,2,1)
+              print *, 'k01_3bins(k,2,2)', k01_3bins(1,2,2)
+              print *, 'k01_3bins(k,3,1)', k01_3bins(1,3,1)
+              print *, 'k01_3bins(k,3,2)', k01_3bins(1,3,2)
+              print *, 'k01_3bins(k,4,1)', k01_3bins(1,4,1)
+              print *, 'k01_3bins(k,4,2)', k01_3bins(1,4,2)
+              print *, 'k01_2bins(k,1,1)', k01_2bins(1,1,1)
+              print *, 'k01_2bins(k,1,2)', k01_2bins(1,1,2)
+              print *, 'k01_2bins(k,2,1)', k01_2bins(1,2,1)
+              print *, 'k01_2bins(k,2,2)', k01_2bins(1,2,2)
+              print *, 'k01_2bins(k,3,1)', k01_2bins(1,3,1)
+              print *, 'k01_2bins(k,3,2)', k01_2bins(1,3,2)
+              print *, 'k01_1bin(k,1,1)', k01_1bin(1,1,1)
+              print *, 'k01_1bin(k,1,2)', k01_1bin(1,1,2)
+              print *, 'k01_1bin(k,2,1)', k01_1bin(1,2,1)
+              print *, 'k01_1bin(k,2,2)', k01_1bin(1,2,2)
+              endif
+
  
               DO k = 1, nE
                 !we have at least one full wl energy bin contained in the 
@@ -771,36 +794,41 @@ write(*,*) 'lol EC table'
                   k0 = k01_3bins(k,1,1)
                   k1 = k01_3bins(k,1,2)
 
-                  if(E_faces(k) == 0.0d0) then
-                    x0 = wl_E_cells(k0)
-                    x1 = wl_E_cells(k1)
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-  
-                    a = E_faces(k)
-                  else
-                    x0 = log10(wl_E_cells(k0))
-                    x1 = log10(wl_E_cells(k1))
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-  
-                    a = log10(E_faces(k))
-                  endif
-                  spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
+                  x0 = wl_E_cells(k0)
+                  x1 = wl_E_cells(k1)
+                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+
+                  a = E_faces(k)
+
+                  IF(a <= 0.0d0) THEN
+                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
+
                   f_a = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
                   k0 = k01_3bins(k,2,1)
                   k1 = k01_3bins(k,2,2)
 
-                  x0 = log10(wl_E_cells(k0))
-                  x1 = log10(wl_E_cells(k1))
+                  x0 = wl_E_cells(k0)
+                  x1 = wl_E_cells(k1)
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = log10(wl_E_faces(kfmin(k)+1))
-                  spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
+                  b = wl_E_faces(kfmin(k)+1)
+
+                  IF(b <= 0.0d0) THEN
+                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
+
                   f_b = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
                   cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
+
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '1', cell_integral(k)
 
                   !the fully contained wl energy bins can just be summed over
                   !as they have been integrated already in the table construction 
@@ -808,43 +836,46 @@ write(*,*) 'lol EC table'
                     cell_integral(k) = cell_integral(k) &
                     + (10.0d0**EmAb_EC_spec_T(kk,iD,iT,iYe) - OS_EmAb_EC_spec(1)) * wl_dE(kk)
                   ENDDO
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '2', cell_integral(k)
 
                   k0 = k01_3bins(k,3,1)
                   k1 = k01_3bins(k,3,2)
 
-                  if(wl_E_faces(kfmax(k)) == 0.0d0) then
-                    x0 = wl_E_cells(k0)
-                    x1 = wl_E_cells(k1)
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  x0 = wl_E_cells(k0)
+                  x1 = wl_E_cells(k1)
+                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
   
-                    a = wl_E_faces(kfmax(k))
+                  a = wl_E_faces(kfmax(k))
 
-                  else
+                  IF(a <= 0.0d0) THEN
+                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
 
-                    x0 = log10(wl_E_cells(k0))
-                    x1 = log10(wl_E_cells(k1))
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-  
-                    a = log10(wl_E_faces(kfmax(k)))
-                  endif
-                  spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
                   k0 = k01_3bins(k,4,1)
                   k1 = k01_3bins(k,4,2)
 
-                  x0 = log10(wl_E_cells(k0))
-                  x1 = log10(wl_E_cells(k1))
+                  x0 = (wl_E_cells(k0))
+                  x1 = (wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = log10(E_faces(k+1))
-                  spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
+                  b = (E_faces(k+1))
+
+                  IF(b <= 0.0d0) THEN
+                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
+
                   f_b = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
 
                   cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '3', cell_integral(k)
     
                 !thornado energy bin is contained within two wl energy bins
                 ELSE IF(kfmin(k)+1 == kfmax(k)) THEN
@@ -852,38 +883,41 @@ write(*,*) 'lol EC table'
                   k0 = k01_2bins(k,1,1)
                   k1 = k01_2bins(k,1,2)
 
-                  if(E_faces(k) == 0.0d0) then
-                    x0 = wl_E_cells(k0)
-                    x1 = wl_E_cells(k1)
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  x0 = wl_E_cells(k0)
+                  x1 = wl_E_cells(k1)
+                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                    a = E_faces(k)
+                  a = E_faces(k)
 
-                  else
-                    x0 = log10(wl_E_cells(k0))
-                    x1 = log10(wl_E_cells(k1))
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  IF(a <= 0.0d0) THEN
+                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
 
-                    a = log10(E_faces(k))
-                  endif
-                  spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
                   k0 = k01_2bins(k,2,1)
                   k1 = k01_2bins(k,2,2)
 
-                  x0 = log10(wl_E_cells(k0))
-                  x1 = log10(wl_E_cells(k1))
+                  x0 = (wl_E_cells(k0))
+                  x1 = (wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = log10(wl_E_faces(kfmin(k)+1))
-                  spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
+                  b = (wl_E_faces(kfmin(k)+1))
+
+                  IF(b <= 0.0d0) THEN
+                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
+
                   f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
                   cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '4', cell_integral(k)
 
                   a   = b 
                   f_a = f_b 
@@ -891,56 +925,73 @@ write(*,*) 'lol EC table'
                   k0 = k01_2bins(k,3,1)
                   k1 = k01_2bins(k,3,2)
  
-                  x0 = log10(wl_E_cells(k0))
-                  x1 = log10(wl_E_cells(k1))
+                  x0 = (wl_E_cells(k0))
+                  x1 = (wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                  b = log10(E_faces(k+1))
-                  spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
+                  b = (E_faces(k+1))
+
+                  IF(b <= 0.0d0) THEN
+                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
+
                   f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
                   cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '5', cell_integral(k)
   
                 !thornado energy bin is contained within a single wl energy bin
                 ELSE
 
                   k0 = k01_1bin(k,1,1)
                   k1 = k01_1bin(k,1,2)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', k0, k1
 
-                  if(E_faces(k) == 0.0d0) then
-                    x0 = wl_E_cells(k0)
-                    x1 = wl_E_cells(k1)
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  x0 = wl_E_cells(k0)
+                  x1 = wl_E_cells(k1)
+                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
+                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', x0,x1
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', y0,y1
 
-                    a = E_faces(k)  
+                  a = E_faces(k)  
 
-                  else
- 
-                    x0 = log10(wl_E_cells(k0))
-                    x1 = log10(wl_E_cells(k1))
-                    y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                    y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  IF(a <= 0.0d0) THEN
+                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
 
-                    a = log10(E_faces(k))  
-                  endif
-                  spec_interp = y0 + (a - x0) * (y1-y0) / (x1-x0)
                   f_a = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
 
                   k0 = k01_1bin(k,2,1)
                   k1 = k01_1bin(k,2,2)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6b', k0, k1
 
-                  x0 = log10(wl_E_cells(k0))
-                  x1 = log10(wl_E_cells(k1))
+                  x0 = (wl_E_cells(k0))
+                  x1 = (wl_E_cells(k1))
                   y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                   y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', x0,x1
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', y0,y1
 
-                  b = log10(E_faces(k+1))
-                  spec_interp = y0 + (b - x0) * (y1-y0) / (x1-x0)
+                  b = (E_faces(k+1))
+
+                  IF(b <= 0.0d0) THEN
+                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
+                  ELSE
+                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
+                  ENDIF
+
                   f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6ab', a,b
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6ab', f_a,f_b
 
                   cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
+                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6', cell_integral(k)
                 ENDIF
 
               ENDDO
@@ -985,22 +1036,18 @@ write(*,*) 'lol EC table'
                 k0 = k01_nodes(kk,1)
                 k1 = k01_nodes(kk,2)
 
-                !if(iD==1 .and. iT==1 .and. iYe==1) then
-                !print *, kk, k0, k1
-                !print *, wl_E_cells(k0), x, wl_E_cells(k1)
-                !endif
-
-                x0 = log10(wl_E_cells(k0))
-                x1 = log10(wl_E_cells(k1))
-                !x0 = (wl_E_cells(k0))
-                !x1 = (wl_E_cells(k1))
+                x0 = wl_E_cells(k0)
+                x1 = wl_E_cells(k1)
                 y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
                 y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
 
-                spec_interp = y0 + (log10(x) - x0) * (y1-y0) / (x1-x0)
-                !spec_interp = y0 + ((x) - x0) * (y1-y0) / (x1-x0)
+                spec_interp = y0 + LOG10(x/x0) * (y1-y0) / LOG10(x1/x0)
 
                 spec_nodes(kk) = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
+                if(iD==126 .and. iT==43 .and. iYe==28) then
+                  if(kk==1) print *, 'whats wrong first element'
+                  print*, kk, spec_nodes(kk)
+                endif
 
                 !thornado nodes and weights have already been divided by 2!
                 cell_integral_nodes(iE1) = cell_integral_nodes(iE1)          &
@@ -1015,6 +1062,10 @@ write(*,*) 'lol EC table'
               DO kk = 1, nPointsE
                 iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
                 spec_nodes(kk) = spec_nodes(kk) * cell_integral(iE1) / cell_integral_nodes(iE1)
+                if(iD==126 .and. iT==43 .and. iYe==28) then
+                  if(kk==1) print *, 'whats wrong first element normalisation'
+                  print*, kk, spec_nodes(kk), cell_integral(iE1)
+                endif
               ENDDO
 
               !check the normalized spectrum on the nodes actually integrates to 1

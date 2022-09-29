@@ -90,7 +90,7 @@ PROGRAM NeutrinoOpacities
   INCLUDE 'mpif.h'
 
   INTEGER, PARAMETER :: &
-    nNodes   = 2, &
+    nNodes   = 3, & !2, &
     nE       = 16, & !2**4, &
     nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
@@ -563,6 +563,7 @@ PROGRAM NeutrinoOpacities
 
   loctot = 0.0d0
 
+  write(*,*) 'elements'
   DO iE = 1, nE
     !loctot = loctot + Edot_EmAb_element(iE,1) * MeshE % Center(iE)**3 !* (MeshE % Center(iE)/Unit_E)**2
     !loctot = loctot + Edot_EmAb_element(iE,1) * Unit_E**3 !* (MeshE % Center(iE))**2
@@ -570,6 +571,17 @@ PROGRAM NeutrinoOpacities
     write(*,*) MeshE % Center(iE)/Unit_E, MeshE % Width(iE)/Unit_E, Edot_EmAb_element(iE,1) * Unit_E**3 & 
             / Unit_Edot / (dE(iE) / Unit_E)
   ENDDO
+
+  write(*,*) 'nodes'
+  DO iN_E = 1, nPointsE
+
+    iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
+    iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
+
+    write(*,*) E(iN_E)/Unit_E, Chi_EmAb(iN_E,1,1) * (E(iN_E)/Unit_E)**2 * FourPi / PlanckConstant**3 / D(1) * Unit_E**3 / Unit_Edot
+
+  END DO
+
 
   write(*,*) 'loctot later', loctot / Unit_Edot
 
@@ -596,6 +608,7 @@ PROGRAM NeutrinoOpacities
          Ds_T, Ts_T, Ys_T, &
          OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate)
 
+  write(*,*) 'weaklib'
   do iE = 1, wl_nE
     CALL LogInterpolateSingleVariable_3D_Custom_Point &
          ( D_P,  T_P,  Y_P,  &
@@ -608,6 +621,19 @@ PROGRAM NeutrinoOpacities
   enddo
 
   write(*,*) 'EC_rate', EC_rate
+
+  write(*,*) 'wl nD', size(Ds_T)
+  write(*,*) 'wl nT', size(Ts_T)
+  write(*,*) 'wl nY', size(Ys_T)
+
+  write(*,*) log10(minval(Ds_T))
+  write(*,*) log10(minval(Ts_T))
+  write(*,*) minval(Ys_T)
+  write(*,*) log10(maxval(Ds_T))
+  write(*,*) log10(maxval(Ts_T))
+  write(*,*) maxval(Ys_T)
+
+
 
 
   end block

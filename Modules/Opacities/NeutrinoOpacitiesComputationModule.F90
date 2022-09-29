@@ -995,12 +995,12 @@ CONTAINS
                           * spec_nodes(iE)
 
           if(iX==1) then
-            if(iE==1) print *, 'EmAb_EC_spec_AT(81,29,41)'
-            print *, iE, 10.0d0**EmAb_EC_spec_AT(81,28,41,iE) * EC_rate(iX)
+            if(iE==1) print *, 'EmAb_EC_spec_AT(iD,iT,iY)'
+            print *, iE, 10.0d0**EmAb_EC_spec_AT(iD,iT,iY,iE) * EC_rate(iX)
           endif
           if(iX==1) then
-            if(iE==1) print *, 'EmAb_EC_spec_AT(81+1,29+1,41+1)'
-            print *, iE, 10.0d0**EmAb_EC_spec_AT(81+1,28+1,41+1,iE) * EC_rate(iX)
+            if(iE==1) print *, 'EmAb_EC_spec_AT(iD+1,iT+1,iY+1)'
+            print *, iE, 10.0d0**EmAb_EC_spec_AT(iD+1,iT+1,iY+1,iE) * EC_rate(iX)
           endif
           if(iX==1) then
             if(iE==1) print *, 'spec_rate_nodes'
