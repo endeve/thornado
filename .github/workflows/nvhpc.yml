@@ -22,10 +22,13 @@ jobs:
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: |
           nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-          export PATH=${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/bin:$PATH
-          export MANPATH=${MANPATH}:${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/man
-      - run: export PATH=${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/bin:$PATH
-      - run: export MANPATH=${MANPATH}:${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/man
+      - run: |
+          export NVARCH=`uname -s`_`uname -m`
+          export NVCOMPILERS=/opt/nvidia/hpc_sdk
+          export MANPATH=${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man
+          export PATH=${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${PATH}
+          export PATH=${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin:$PATH
+          export MANPATH=${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
