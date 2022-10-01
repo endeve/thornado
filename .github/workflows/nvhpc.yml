@@ -31,6 +31,8 @@ jobs:
           export MANPATH=${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
 
       - run: |
+          printenv | grep NV
+          echo ${PATH}
           which nvcc || echo "nvcc not in PATH!"
           which nvc++ || echo "nvc++ not in PATH!"
           which nvc || echo "nvc not in PATH!"
