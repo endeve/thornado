@@ -13,16 +13,15 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
+      NVHPC_DIR: /opt/nvidia/hpc_sdk/Linux_x86_64/22.7
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get update -y
-      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
-      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-      - run: ls /opt/nvidia/hpc_sdk/Linux_x86_64/22.7/
-      - run: tree /opt/nvidia/hpc_sdk/Linux_x86_64/22.7/
-      - run: export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/comm_libs/mpi/bin:$PATH
-      - run: export MANPATH=$MANPATH:/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/comm_libs/mpi/man
-      - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-      - run: make
+        #      - run: sudo apt-get update -y
+        #      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
+        #      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+        #      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+        #      - run: nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
+        #      - run: export PATH=${NVHPC_DIR}/comm_libs/mpi/bin:$PATH
+        #      - run: export MANPATH=$MANPATH:${NVHPC_DIR}/comm_libs/mpi/man
+        #      - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
+      - run: printenv | grep THORNADO
