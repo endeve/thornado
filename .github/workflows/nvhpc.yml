@@ -17,18 +17,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get update -y
-      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev environment-modules
+      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
       - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: |
           nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
           export PATH=${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/bin:$PATH
           export MANPATH=${MANPATH}:${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/man
-      - run: |
-          source /etc/profile.d/modules.sh
-          module load ${NVHPC_DIR}/modulefiles/nvhpc/22.7
-          module load nvhpc/22.7
+      - run: export PATH=${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/bin:$PATH
+      - run: export MANPATH=${MANPATH}:${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/man
 
+      - run: |
           which nvcc || echo "nvcc not in PATH!"
           which nvc++ || echo "nvc++ not in PATH!"
           which nvc || echo "nvc not in PATH!"
