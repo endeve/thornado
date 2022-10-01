@@ -279,7 +279,6 @@ CONTAINS
       CALL ApplyPositivityLimiter_Euler_MF &
              ( iLevel, MF_uGF, MF_uCF, MF_uDF )
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uDF )
 
     END IF
 

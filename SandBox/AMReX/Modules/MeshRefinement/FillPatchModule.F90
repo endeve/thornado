@@ -54,8 +54,6 @@ MODULE FillPatchModule
     hi_bc, &
     swX, &
     DEBUG
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -69,7 +67,6 @@ MODULE FillPatchModule
   INTERFACE FillPatch
     MODULE PROCEDURE FillPatch_WithMetric_Scalar
     MODULE PROCEDURE FillPatch_WithMetric_Vector
-    MODULE PROCEDURE FillPatch_WithMetric_Vector_CF
   END INTERFACE FillPatch
 
 CONTAINS
@@ -207,73 +204,6 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillPatch_WithMetric_Vector
-
-
-  SUBROUTINE FillPatch_WithMetric_Vector_CF &
-    ( FineLevel, Time, MF_uGF, MF, MF_uDF )
-
-    INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
-
-    INTEGER :: nF, iErr
-
-    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    nF = MF(0) % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillPatch_WithMetric_Vector, FineLevel: ', FineLevel
-
-    END IF
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                 MF_uGF(FineLevel-1) % DM, nDOFX, swX )
-      CALL SqrtGm(FineLevel-1) % COPY &
-             ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                 MF_uGF(FineLevel  ) % DM, nDOFX, swX )
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric( SqrtGm(FineLevel-1), MF(FineLevel-1), nF, +1 )
-      CALL MultiplyWithMetric( SqrtGm(FineLevel  ), MF(FineLevel  ), nF, +1 )
-
-    END IF
-
-    CALL FillPatch_Vector( FineLevel, Time, MF )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric( SqrtGm(FineLevel-1), MF(FineLevel-1), nF, -1 )
-      CALL MultiplyWithMetric( SqrtGm(FineLevel  ), MF(FineLevel  ), nF, -1 )
-
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
-
-    END IF
-
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( FineLevel, MF_uGF, MF, MF_uDF )
-
-    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-  END SUBROUTINE FillPatch_WithMetric_Vector_CF
 
 
   SUBROUTINE FillCoarsePatch( FineLevel, Time, MF_uGF, MF )
