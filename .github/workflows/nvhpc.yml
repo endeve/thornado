@@ -13,26 +13,22 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
-      NVHPC_DIR: /opt/nvidia/hpc_sdk
+      NVARCH: `uname -s`_`uname -m`
+      NVCOMPILERS: /opt/nvidia/hpc_sdk
+      MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man
+      PATH: ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${PATH}
+      PATH: ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin:$PATH
+      MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get update -y
       - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
       - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+      - run: nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
+      - run: printenv | grep NV
+      - run: echo ${PATH}
       - run: |
-          nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-      - run: |
-          export NVARCH=`uname -s`_`uname -m`
-          export NVCOMPILERS=/opt/nvidia/hpc_sdk
-          export MANPATH=${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man
-          export PATH=${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${PATH}
-          export PATH=${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin:$PATH
-          export MANPATH=${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
-
-      - run: |
-          printenv | grep NV
-          echo ${PATH}
           which nvcc || echo "nvcc not in PATH!"
           which nvc++ || echo "nvc++ not in PATH!"
           which nvc || echo "nvc not in PATH!"
