@@ -1,0 +1,17 @@
+name: Compile with nvhpc compiler
+
+on:
+  push:
+    branches: [ InterfaceWithPoseidon ]
+  pull_request:
+    branches: [ InterfaceWithPosidon ]
+
+jobs:
+  compile-with-nvhpc:
+    name: Compile thornado with nvhpc on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+      - run: nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
