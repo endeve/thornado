@@ -15,10 +15,8 @@ jobs:
       THORNADO_DIR: .
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
-      MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man
-      PATH: ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${PATH}
-      PATH: ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin:$PATH
-      MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
+      MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
+      PATH: ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin:${PATH}
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get update -y
