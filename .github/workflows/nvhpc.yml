@@ -24,4 +24,6 @@ jobs:
         #      - run: export PATH=${NVHPC_DIR}/comm_libs/mpi/bin:$PATH
         #      - run: export MANPATH=$MANPATH:${NVHPC_DIR}/comm_libs/mpi/man
         #      - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
+      - run: pwd
+      - run: ls
       - run: printenv | grep THORNADO
