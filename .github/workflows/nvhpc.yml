@@ -22,7 +22,7 @@ jobs:
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: |
           nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-          export PATH=${NVHPC_DIR}/Linux_x86_64/22.7 /comm_libs/mpi/bin:$PATH
+          export PATH=${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/bin:$PATH
           export MANPATH=${MANPATH}:${NVHPC_DIR}/Linux_x86_64/22.7/comm_libs/mpi/man
       - run: |
           source /etc/profile.d/modules.sh
