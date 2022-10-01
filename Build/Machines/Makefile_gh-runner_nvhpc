@@ -22,17 +22,17 @@ ifeq ($(USE_OACC),TRUE)
   OPENACC = -acc -gpu=cc70,ptxinfo -Minfo=accel
 endif
 
-INCLUDE_CUDA     = -I/opt/nvidia/hpc_sdk/22.7/include
+INCLUDE_CUDA     = -I/opt/nvidia/hpc_sdk/22.7/cuda/targets/x86_64-linux/include
 INCLUDE_HDF5     = -I/usr/include/hdf5/serial
-INCLUDE_LAPACK   = -I/usr/include
+INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
-LIBRARIES_CUDA     = -cudalib=cusparse,cusolver,cublas
+LIBRARIES_CUDA     = -L/opt/nvidia/hpc_sdk/22.7/cuda/targets/x86_64-linux/lib -cudalib=cusparse,cusolver,cublas
 LIBRARIES_HDF5     = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
-LIBRARIES_LAPACK   = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
+LIBRARIES_LAPACK   = -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/REDIST/compilers/lib -llapack -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
