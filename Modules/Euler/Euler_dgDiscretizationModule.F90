@@ -802,13 +802,13 @@ CONTAINS
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$ACC REDUCE( +:ErrorExists ) &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS1_L, uE_L, &
     !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS1_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
@@ -1544,13 +1544,13 @@ CONTAINS
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$ACC REDUCE( +:ErrorExists ) &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS2_L, uE_L, &
     !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS2_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
@@ -2285,13 +2285,13 @@ CONTAINS
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$OMP          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$OMP          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
-    !$ACC REDUCE( +:ErrorExists ) &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS3_L, uE_L, &
     !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS3_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
@@ -4036,11 +4036,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure ) &
-    !$OMP REDUCE( +:ErrorExists )
+    !$OMP REDUCTION( +:ErrorExists )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( P, Pressure ) &
-    !$ACC REDUCE( +:ErrorExists ) &
+    !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, &
     !$ACC          PressureTensor, tau, &
     !$ACC          dGdX1, dGdX2, dGdX3, iErr )
