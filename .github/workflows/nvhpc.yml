@@ -13,7 +13,7 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
-      NVARCH: `uname -s`_`uname -m`
+      NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
       MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man
       PATH: ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${PATH}
