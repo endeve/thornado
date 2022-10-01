@@ -143,8 +143,10 @@ CONTAINS
 
         END IF ! DEBUG
 
-        ! --- FillPatch calls ApplyPositivityLimiter_Euler_MF_SingleLevel ---
-        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF, MF_uDF )
+        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+
+        CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
+               ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
       END DO ! iLevel
 

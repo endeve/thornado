@@ -414,6 +414,8 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
     REAL(DP), PARAMETER :: f0_Min = SqrtTiny
+    REAL(DP), PARAMETER :: EXPP   = EXP( + One )
+    REAL(DP), PARAMETER :: EXPM   = EXP( - One )
 
     INTEGER  :: nE, nX, nS
     INTEGER  :: iE, iX, iS, iP
@@ -542,8 +544,8 @@ CONTAINS
     DO iS = 1, nS
     DO iE = 1, nE
 
-      Max_K = f0_Max
-      Min_K = f0_Min
+      Max_K = MIN( f0_Max, f0_K(iE,iS,iX) * EXPP )
+      Min_K = MAX( f0_Min, f0_K(iE,iS,iX) * EXPM )
       DO iP = 1, SIZE( InterpMat, 1 )
         f0_P = Zero
         DO iNodeZ = 1, nDOFE * nDOFX
@@ -565,7 +567,7 @@ CONTAINS
         DO iNodeZ = 1, nDOFE * nDOFX
 
           f0_Q(iNodeZ,iE,iS,iX) &
-            = ( One - Theta ) * f0_K(iE,iS,iX) &
+            = ( One - Theta ) * f0_K(       iE,iS,iX) &
               +       Theta   * f0_Q(iNodeZ,iE,iS,iX)
 
         END DO

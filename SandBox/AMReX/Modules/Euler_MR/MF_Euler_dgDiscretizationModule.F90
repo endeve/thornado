@@ -80,6 +80,15 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_FieldsModule_Euler, ONLY: &
     FluxRegister_Euler, &
     OffGridFlux_Euler_MF
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap, &
+    ApplyBoundaryConditions_Euler_MF
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -88,13 +97,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     UsePositivityLimiter_Euler, &
     UseXCFC, &
     DEBUG
-  USE MF_MeshModule, ONLY: &
-    CreateMesh_MF, &
-    DestroyMesh_MF
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
-    ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
   USE AverageDownModule, ONLY: &
@@ -273,6 +275,9 @@ CONTAINS
     IF( ( .NOT. UsePositivityLimiter_Euler ) .OR. ( nDOFX .EQ. 1 ) )THEN
 
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
+      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
       CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uDF )
 
