@@ -61,4 +61,4 @@ jobs:
                   OPT_LEVEL=DEBUG \
                   USE_GPU=TRUE \
                   USE_OACC=TRUE \
-                  USE_CUBLAS=TRUE
+                  USE_CUBLAS=FALSE
