@@ -19,26 +19,25 @@ jobs:
       CUDA_MAJOR: 11
       CUDA_MINOR: 7
       UBUNTU_VERSION: 2004
+      LD_LIBRARY_PATH: /usr/local/lib
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get -qq update
+
       - run: sudo apt-get -qq install gcc
                                       libhdf5-dev
                                       liblapack-dev
                                       libopenmpi-dev
                                       linux-headers-$(uname -r)
 
-      - run: wget https://www.nvidia.com/content/DriverDownload-March2009/confirmation.php?url=/tesla/384.81/NVIDIA-Linux-${ARCH}-384.81.run&lang=us&type=Tesla
-
       # Install nvhpc
+      # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
       - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
       - run: tar xpzf nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
       - run: sudo nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
       - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
       - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
-
-
 
       - run: printenv | grep NV
       - run: |
@@ -52,9 +51,9 @@ jobs:
           nvfortran --version
 
       # Install cuda
+      # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
 
       # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04
-
       - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/${ARCH}/cuda-ubuntu${UBUNTU_VERSION}.pin
       - run: sudo mv cuda-ubuntu${UBUNTU_VERSION}.pin /etc/apt/preferences.d/cuda-repository-pin-600
       - run: wget https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
@@ -82,7 +81,7 @@ jobs:
 
       - run: echo ${GITHUB_ENV}
       - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/bin >> ${GITHUB_PATH}
-      - run: export /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/lib64=:${LD_LIBRARY_PATH}
+      - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/lib64 >> ${LD_LIBRARY_PATH}
       - run: echo ${PATH}
       - run: echo ${LD_LIBRARY_PATH}
 
