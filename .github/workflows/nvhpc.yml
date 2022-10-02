@@ -59,8 +59,8 @@ jobs:
       - run: wget https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
       - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
       - run: sudo cp /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/cuda-*-keyring.gpg /usr/share/keyrings/
-      - run: sudo apt-get -qq update
-      - run: sudo apt-get -qq install cuda
+#      - run: sudo apt-get -qq update
+#      - run: sudo apt-get -qq install cuda
 
 #      - run: sudo apt-key del 7fa2af80
 #      - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}_${CUDA_MAJOR}.${CUDA_MINOR}_${ARCH}.deb
@@ -68,16 +68,16 @@ jobs:
 
 #      - run: sudo apt-get -y update
 #      - run: sudo apt-get -y install cuda
-      - run: sudo reboot
+#      - run: sudo reboot
 
       - run: sudo apt-get -y install cuda-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-toolkit-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-tools-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-compiler-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-libraries-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-libraries-dev-${CUDA_MAJOR}-${CUDA_MINOR}
-      - run: sudo apt-get -y install cuda-drivers-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-toolkit-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-tools-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-compiler-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-libraries-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-libraries-dev-${CUDA_MAJOR}-${CUDA_MINOR}
+#      - run: sudo apt-get -y install cuda-drivers-${CUDA_MAJOR}-${CUDA_MINOR}
 
       - run: echo ${GITHUB_ENV}
       - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/bin >> ${GITHUB_PATH}
