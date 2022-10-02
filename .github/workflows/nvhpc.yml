@@ -15,12 +15,15 @@ jobs:
       THORNADO_DIR: .
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
+      NVHPC_SILENT: true
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get update -y
-      - run: sudo apt-get install -y libhdf5-dev liblapack-dev libopenmpi-dev
-      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+      - run: sudo apt-get -qq update
+      - run: sudo apt-get -qq install libhdf5-dev liblapack-dev libopenmpi-dev
+      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz \
+             1> /dev/null 2> /dev/null
+      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz \
+             1> /dev/null 2> /dev/null
       - run: nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
@@ -41,7 +44,7 @@ jobs:
       - run: make HYDRO=RELATIVISTIC \
                   HYDRO_RIEMANN_SOLVER=HLL \
                   OPT_LEVEL=DEBUG \
-                  FLAGS=-g -O0,-Mbounds,-Mnoopenmp,-Ktrap=fp \
+                  FLAGS=-g,-O0,-Mbounds,-Mnoopenmp,-Ktrap=fp \
                   USE_GPU=TRUE \
                   USE_OACC=TRUE \
                   USE_CUBLAS=TRUE
