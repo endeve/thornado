@@ -23,7 +23,7 @@ jobs:
                                       liblapack-dev
                                       libopenmpi-dev
 
-      name: Install nvhpc
+      - name: Install nvhpc
         - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
         - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
         - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
@@ -40,7 +40,7 @@ jobs:
             nvc --version
             nvfortran --version
 
-      name: Install cuda
+      - name: Install cuda
         - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
         - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
         - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
@@ -51,7 +51,7 @@ jobs:
         - run: echo /usr/local/cuda-11.7/bin >> ${GITHUB_PATH}
         - run: echo ${PATH}
 
-      name: Compile thornado
+      - name: Compile thornado
         - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
         - run: make HYDRO=RELATIVISTIC \
                     HYDRO_RIEMANN_SOLVER=HLL \
