@@ -15,8 +15,6 @@ jobs:
       THORNADO_DIR: .
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
-      MANPATH: ${MANPATH}:${NVCOMPILERS}/${NVARCH}/22.7/compilers/man:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/man
-      PATH: ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin:${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin:${PATH}
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get update -y
@@ -24,6 +22,8 @@ jobs:
       - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
       - run: nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
       - run: printenv | grep NV
       - run: echo ${PATH}
       - run: |
