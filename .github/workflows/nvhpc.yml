@@ -9,13 +9,16 @@ on:
 jobs:
   compile-with-nvhpc:
     name: Compile thornado with nvhpc on Ubuntu
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
       NVHPC_SILENT: true
+      CUDA_MAJOR: 11
+      CUDA_MINOR: 0
+      UBUNTU_VERSION: 2004
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get -qq update
@@ -25,11 +28,11 @@ jobs:
 
       # Install nvhpc
 
-      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
+      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_ENV}
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_ENV}
       - run: printenv | grep NV
       - run: |
           which nvcc || echo "nvcc not in PATH!"
@@ -42,15 +45,18 @@ jobs:
           nvfortran --version
 
       # Install cuda
+      # https://docs.vmware.com/en/VMware-vSphere-Bitfusion/3.0/Example-Guide/
+      # GUID-ABB4A0B1-F26E-422E-85C5-BA9F2454363A.html
 
-      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-      - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-      - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-      - run: sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-      - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
-      - run: sudo apt-get -qq update
-      - run: sudo apt-get -qq install cuda
-      - run: echo /usr/local/cuda-11.7/bin >> ${GITHUB_PATH}
+      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/x86_64/cuda-ubuntu${UBUNTU_VERSION}.pin
+      - run: sudo mv cuda-ubuntu${UBUNTU_VERSION}.pin /etc/apt/preferences.d/cuda-repository-pin-600
+      - run: wget https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.3/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.3-450.51.06-1_amd64.deb
+      - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.3-450.51.06-1_amd64.deb
+      - run: sudo apt-key add /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/7fa2af80.pub
+      - run: sudo apt-get update
+      - run: sudo apt-get install cuda
+      - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/bin >> ${GITHUB_ENV}
+
       - run: echo ${PATH}
 
       # Compile thornado
