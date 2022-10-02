@@ -9,50 +9,27 @@ on:
 jobs:
   compile-with-nvhpc:
     name: Compile thornado with nvhpc on Ubuntu
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
-      NVARCH: Linux_x86_64
-      NVCOMPILERS: /opt/nvidia/hpc_sdk
-      NVHPC_SILENT: true
     steps:
-      - uses: actions/checkout@v3
-      - run: sudo apt-get update
-      - run: sudo apt-get install libhdf5-dev
-                                  liblapack-dev
-                                  libopenmpi-dev
-      # Install nvhpc hpc_sdk
+    - uses: actions/checkout@v2
+    - name: Dependencies
+      run: .github/workflows/dependencies/dependencies_nvhpc21-11.sh
+    - name: Build & Install
+      run: |
+        source /etc/profile.d/modules.sh
+        module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/21.11
 
-      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-      - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
-      # Install cuda
-
-      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-      - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-      - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-      - run: sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-      - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
-      - run: sudo apt-get update
-      - run: sudo apt-get install cuda
-
-      # Check path and installation of nvhpc compilers
-
-      - run: printenv | grep NV
-      - run: echo ${PATH}
-      - run: echo ${GITHUB_PATH}
-      - run: |
-          which nvcc || echo "nvcc not in PATH!"
-          which nvc++ || echo "nvc++ not in PATH!"
-          which nvc || echo "nvc not in PATH!"
-          which nvfortran || echo "nvfortran not in PATH!"
-          nvcc --version
-          nvc++ --version
-          nvc --version
-          nvfortran --version
+        which nvcc || echo "nvcc not in PATH!"
+        which nvc++ || echo "nvc++ not in PATH!"
+        which nvc || echo "nvc not in PATH!"
+        which nvfortran || echo "nvfortran not in PATH!"
+        nvcc --version
+        nvc++ --version
+        nvc --version
+        nvfortran --version
 
       - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
       - run: make HYDRO=RELATIVISTIC \
