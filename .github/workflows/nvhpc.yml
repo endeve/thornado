@@ -14,6 +14,7 @@ jobs:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
       ARCH: x86_64
+      NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
       NVHPC_SILENT: true
       CUDA_MAJOR: 11
@@ -39,7 +40,6 @@ jobs:
       - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
       - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
 
-      - run: printenv | grep NV
       - run: |
           which nvcc || echo "nvcc not in PATH!"
           which nvc++ || echo "nvc++ not in PATH!"
@@ -59,15 +59,15 @@ jobs:
       - run: wget https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
       - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
       - run: sudo cp /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/cuda-*-keyring.gpg /usr/share/keyrings/
-      - run: sudo apt-get update
-      - run: sudo apt-get -y install cuda
+      - run: sudo apt-get -qq update
+      - run: sudo apt-get -qq install cuda
 
-      - run: sudo apt-key del 7fa2af80
-      - run: sudo dpkg -i cuda-repo-${UBUNTU_VERSION}_${CUDA_MAJOR}.${CUDA_MINOR}_${ARCH}.deb
-      - run: sudo cp /var/cuda-repo-${UBUNTU_VERSION}-X-Y-local/cuda-*-keyring.gpg /usr/share/keyrings/
+#      - run: sudo apt-key del 7fa2af80
+#      - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}_${CUDA_MAJOR}.${CUDA_MINOR}_${ARCH}.deb
+#      - run: sudo cp /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/cuda-*-keyring.gpg /usr/share/keyrings/
 
-      - run: sudo apt-get -y update
-      - run: sudo apt-get -y install cuda
+#      - run: sudo apt-get -y update
+#      - run: sudo apt-get -y install cuda
       - run: sudo reboot
 
       - run: sudo apt-get -y install cuda-${CUDA_MAJOR}-${CUDA_MINOR}
