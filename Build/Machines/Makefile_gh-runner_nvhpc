@@ -19,10 +19,10 @@ else ifeq ($(USE_OMP_OL),TRUE)
 endif
 
 ifeq ($(USE_OACC),TRUE)
-  OPENACC = -acc -gpu=cuda11.7,cc70,ptxinfo -Minfo=accel
+  OPENACC = -acc -gpu=cuda11.7,ptxinfo -Minfo=accel
 endif
 
-INCLUDE_CUDA     = -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/include
+INCLUDE_CUDA     = -I/usr/local/cuda-11.7/include
 INCLUDE_HDF5     = -I/usr/include/hdf5/serial
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
@@ -30,7 +30,7 @@ INCLUDE_PETSC    =
 INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
-LIBRARIES_CUDA     = -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_CUDA     = -L/usr/local/cuda11.7/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_HDF5     = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/REDIST/compilers/lib -llapack -lblas
 LIBRARIES_MAGMA    =

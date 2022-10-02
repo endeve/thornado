@@ -18,31 +18,27 @@ jobs:
       NVHPC_SILENT: true
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get -qq update
-      - run: sudo apt-get -qq install libhdf5-dev
-                                      liblapack-dev
-                                      libopenmpi-dev
-                                      1> /dev/null 2> /dev/null
-      # Install cuda
-
-      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin 1> /dev/null 2> /dev/null
-      - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-      - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-             1> /dev/null 2> /dev/null
-      - run: sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb 1> /dev/null 2> /dev/null
-      - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
-      - run: sudo apt-get -qq update
-      - run: sudo apt-get -qq install cuda
-
+      - run: sudo apt-get update
+      - run: sudo apt-get install libhdf5-dev
+                                  liblapack-dev
+                                  libopenmpi-dev
       # Install nvhpc hpc_sdk
 
       - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-             1> /dev/null 2> /dev/null
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-             1> /dev/null 2> /dev/null
       - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
+      # Install cuda
+
+      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+      - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+      - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
+      - run: sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
+      - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
+      - run: sudo apt-get update
+      - run: sudo apt-get install cuda
+
       # Check path and installation of nvhpc compilers
 
       - run: printenv | grep NV
