@@ -37,6 +37,11 @@ jobs:
           nvc --version
           nvfortran --version
 
-      - run:
-          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-          make HYDRO=RELATIVISTIC HYDRO_RIEMANN_SOLVER=HLL OPT_LEVEL=DEBUG FLAGS=$(FLAGS_DEBUG) USE_GPU=TRUE USE_OACC=TRUE USE_CUBLAS=TRUE
+      - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
+      - run: make HYDRO=RELATIVISTIC \
+                  HYDRO_RIEMANN_SOLVER=HLL \
+                  OPT_LEVEL=DEBUG \
+                  FLAGS=-g -O0,-Mbounds,-Mnoopenmp,-Ktrap=fp \
+                  USE_GPU=TRUE \
+                  USE_OACC=TRUE \
+                  USE_CUBLAS=TRUE
