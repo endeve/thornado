@@ -31,7 +31,6 @@ jobs:
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
       - run: printenv | grep NV
-      - run: echo ${PATH}
       - run: |
           which nvcc || echo "nvcc not in PATH!"
           which nvc++ || echo "nvc++ not in PATH!"
@@ -51,6 +50,8 @@ jobs:
       - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
       - run: sudo apt-get -qq update
       - run: sudo apt-get -qq install cuda
+      - run: echo /usr/local/cuda-11.7/bin >> ${GITHUB_PATH}
+      - run: echo ${PATH}
 
       # Compile thornado
 

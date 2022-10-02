@@ -15,11 +15,11 @@ PP    = -D
 ifeq ($(USE_OMP),TRUE)
   OPENMP = -mp=multicore
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -mp=gpu -gpu=cc70,ptxinfo -Minfo=accel
+  OPENMP = -mp=gpu -gpu=cuda11.7,cc70,ptxinfo -Minfo=accel
 endif
 
 ifeq ($(USE_OACC),TRUE)
-  OPENACC = -acc -gpu=cuda11.7,ptxinfo -Minfo=accel
+  OPENACC = -acc -gpu=cuda11.7,cc70,ptxinfo -Minfo=accel
 endif
 
 INCLUDE_CUDA     = -I/usr/local/cuda-11.7/include
