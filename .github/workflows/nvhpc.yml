@@ -14,22 +14,28 @@ jobs:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
     steps:
-    - uses: actions/checkout@v2
-    - name: Dependencies
+      - uses: actions/checkout@v3
+      - run: sudo apt-get update
+      - run: sudo apt-get install libhdf5-dev
+                                  liblapack-dev
+                                  libopenmpi-dev
+
       run: .github/workflows/dependencies/dependencies_nvhpc21-11.sh
-    - name: Build & Install
       run: |
         source /etc/profile.d/modules.sh
         module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/21.11
 
-        which nvcc || echo "nvcc not in PATH!"
-        which nvc++ || echo "nvc++ not in PATH!"
-        which nvc || echo "nvc not in PATH!"
-        which nvfortran || echo "nvfortran not in PATH!"
-        nvcc --version
-        nvc++ --version
-        nvc --version
-        nvfortran --version
+      # Check path and installation of nvhpc compilers
+
+      - run: |
+          which nvcc || echo "nvcc not in PATH!"
+          which nvc++ || echo "nvc++ not in PATH!"
+          which nvc || echo "nvc not in PATH!"
+          which nvfortran || echo "nvfortran not in PATH!"
+          nvcc --version
+          nvc++ --version
+          nvc --version
+          nvfortran --version
 
       - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
       - run: make HYDRO=RELATIVISTIC \
