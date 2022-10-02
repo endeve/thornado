@@ -26,6 +26,7 @@ jobs:
       - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
       - run: printenv | grep NV
       - run: echo ${PATH}
+      - run: echo ${GITHUB_PATH}
       - run: |
           which nvcc || echo "nvcc not in PATH!"
           which nvc++ || echo "nvc++ not in PATH!"
