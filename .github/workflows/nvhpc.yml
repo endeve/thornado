@@ -13,7 +13,7 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
-      NVARCH: Linux_x86_64
+      ARCH: x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
       NVHPC_SILENT: true
       CUDA_MAJOR: 11
@@ -28,15 +28,15 @@ jobs:
                                       libopenmpi-dev
                                       linux-headers-$(uname -r)
 
-      - run: wget https://www.nvidia.com/content/DriverDownload-March2009/confirmation.php?url=/tesla/384.81/NVIDIA-Linux-x86_64-384.81.run&lang=us&type=Tesla
+      - run: wget https://www.nvidia.com/content/DriverDownload-March2009/confirmation.php?url=/tesla/384.81/NVIDIA-Linux-${ARCH}-384.81.run&lang=us&type=Tesla
 
       # Install nvhpc
 
-      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-      - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
+      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: tar xpzf nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: sudo nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
+      - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
+      - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
 
 
 
@@ -51,15 +51,11 @@ jobs:
           nvc --version
           nvfortran --version
 
-      - run: echo ${LD_LIBRARY_PATH}
-      - run: echo hii >> ${LD_LIBRARY_PATH}
-      - run: echo ${LD_LIBRARY_PATH}
-
       # Install cuda
 
       # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04
 
-      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/x86_64/cuda-ubuntu${UBUNTU_VERSION}.pin
+      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/${ARCH}/cuda-ubuntu${UBUNTU_VERSION}.pin
       - run: sudo mv cuda-ubuntu${UBUNTU_VERSION}.pin /etc/apt/preferences.d/cuda-repository-pin-600
       - run: wget https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
       - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
@@ -68,7 +64,7 @@ jobs:
       - run: sudo apt-get -y install cuda
 
       - run: sudo apt-key del 7fa2af80
-      - run: sudo dpkg -i cuda-repo-${UBUNTU_VERSION}_${CUDA_MAJOR}.${CUDA_MINOR}_x86_64.deb
+      - run: sudo dpkg -i cuda-repo-${UBUNTU_VERSION}_${CUDA_MAJOR}.${CUDA_MINOR}_${ARCH}.deb
       - run: sudo cp /var/cuda-repo-${UBUNTU_VERSION}-X-Y-local/cuda-*-keyring.gpg /usr/share/keyrings/
 
       - run: sudo apt-get -y update
@@ -84,17 +80,18 @@ jobs:
       - run: sudo apt-get -y install cuda-libraries-dev-${CUDA_MAJOR}-${CUDA_MINOR}
       - run: sudo apt-get -y install cuda-drivers-${CUDA_MAJOR}-${CUDA_MINOR}
 
+      - run: echo ${GITHUB_ENV}
       - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/bin >> ${GITHUB_PATH}
-      - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/lib64 >> ${LD_LIBRARY_PATH}
+      - run: export /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/lib64=:${LD_LIBRARY_PATH}
       - run: echo ${PATH}
       - run: echo ${LD_LIBRARY_PATH}
 
       # Compile thornado
 
       - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-      - run: make HYDRO=RELATIVISTIC \
-                  HYDRO_RIEMANN_SOLVER=HLL \
-                  OPT_LEVEL=DEBUG \
-                  USE_GPU=TRUE \
-                  USE_OACC=TRUE \
-                  USE_CUBLAS=TRUE
+      - run: sudo make HYDRO=RELATIVISTIC \
+                       HYDRO_RIEMANN_SOLVER=HLL \
+                       OPT_LEVEL=DEBUG \
+                       USE_GPU=TRUE \
+                       USE_OACC=TRUE \
+                       USE_CUBLAS=TRUE
