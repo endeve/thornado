@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
-      THORNADO_DIR: .
     steps:
       - uses: actions/checkout@v2
       - run: sudo apt-get update
@@ -37,7 +36,7 @@ jobs:
           nvc --version
           nvfortran --version
 
-      - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
+      - run: cd SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
       - run: make HYDRO=RELATIVISTIC \
                   HYDRO_RIEMANN_SOLVER=HLL \
                   OPT_LEVEL=DEBUG \
