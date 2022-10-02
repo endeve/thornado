@@ -28,6 +28,7 @@ jobs:
 
       # Install nvhpc
 
+      - run: printenv
       - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
       - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
       - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
