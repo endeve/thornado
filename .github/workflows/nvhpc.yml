@@ -9,7 +9,7 @@ on:
 jobs:
   compile-with-nvhpc:
     name: Compile thornado with nvhpc on Ubuntu
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       THORNADO_MACHINE: gh-runner_nvhpc
       THORNADO_DIR: .
