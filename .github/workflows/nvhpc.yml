@@ -23,39 +23,42 @@ jobs:
                                       liblapack-dev
                                       libopenmpi-dev
 
-      - name: Install nvhpc
-        - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-        - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
-        - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
-        - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
-        - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
-        - run: printenv | grep NV
-        - run: |
-            which nvcc || echo "nvcc not in PATH!"
-            which nvc++ || echo "nvc++ not in PATH!"
-            which nvc || echo "nvc not in PATH!"
-            which nvfortran || echo "nvfortran not in PATH!"
-            nvcc --version
-            nvc++ --version
-            nvc --version
-            nvfortran --version
+      # Install nvhpc
 
-      - name: Install cuda
-        - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-        - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-        - run: sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
-        - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
-        - run: sudo apt-get -qq update
-        - run: sudo apt-get -qq install cuda
-        - run: echo /usr/local/cuda-11.7/bin >> ${GITHUB_PATH}
-        - run: echo ${PATH}
+      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+      - run: tar xpzf nvhpc_2022_227_Linux_x86_64_cuda_11.7.tar.gz
+      - run: sudo nvhpc_2022_227_Linux_x86_64_cuda_11.7/install
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
+      - run: printenv | grep NV
+      - run: |
+          which nvcc || echo "nvcc not in PATH!"
+          which nvc++ || echo "nvc++ not in PATH!"
+          which nvc || echo "nvc not in PATH!"
+          which nvfortran || echo "nvfortran not in PATH!"
+          nvcc --version
+          nvc++ --version
+          nvc --version
+          nvfortran --version
 
-      - name: Compile thornado
-        - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-        - run: make HYDRO=RELATIVISTIC \
-                    HYDRO_RIEMANN_SOLVER=HLL \
-                    OPT_LEVEL=DEBUG \
-                    USE_GPU=TRUE \
-                    USE_OACC=TRUE \
-                    USE_CUBLAS=TRUE
+      # Install cuda
+
+      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+      - run: sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+      - run: wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
+      - run: sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.1-515.65.01-1_amd64.deb
+      - run: sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
+      - run: sudo apt-get -qq update
+      - run: sudo apt-get -qq install cuda
+      - run: echo /usr/local/cuda-11.7/bin >> ${GITHUB_PATH}
+      - run: echo ${PATH}
+
+      # Compile thornado
+
+      - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
+      - run: make HYDRO=RELATIVISTIC \
+                  HYDRO_RIEMANN_SOLVER=HLL \
+                  OPT_LEVEL=DEBUG \
+                  USE_GPU=TRUE \
+                  USE_OACC=TRUE \
+                  USE_CUBLAS=TRUE
