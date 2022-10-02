@@ -1163,7 +1163,7 @@ CONTAINS
       CASE( 'ShockTube1' )
 
         ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
-        ! --- 510, 481-499, Table 1                               ---
+        ! --- 510, 481-499, Table 1                   ---
 
         XD = Half
 
@@ -1218,7 +1218,7 @@ CONTAINS
       CASE( 'ShockTube2' )
 
         ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
-        ! --- 510, 481-499, Table 1                               ---
+        ! --- 510, 481-499, Table 1                   ---
 
         XD = Half
 
@@ -1273,7 +1273,7 @@ CONTAINS
       CASE( 'ShockTube3' )
 
         ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
-        ! --- 510, 481-499, Table 1                               ---
+        ! --- 510, 481-499, Table 1                   ---
 
         XD = Half
 
@@ -1328,7 +1328,7 @@ CONTAINS
       CASE( 'ShockTube4' )
 
         ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
-        ! --- 510, 481-499, Table 1                               ---
+        ! --- 510, 481-499, Table 1                   ---
 
         XD = Half
 
@@ -1380,6 +1380,33 @@ CONTAINS
 
         RightState(iPM_Chi) = 0.0_DP
 
+      CASE( 'HydroMBProblem1' )
+
+        ! --- Problem 1 from Mignone & Bodo, 2005, MRNAS, ---
+        ! --- 364, 126                                    ---
+
+        XD = 0.5_DP
+
+        LeftState(iPM_D  ) = 1.0_DP
+        LeftState(iPM_V1 ) = 0.9_DP
+        LeftState(iPM_V2 ) = 0.0_DP
+        LeftState(iPM_V3 ) = 0.0_DP
+        LeftState(iPM_E  ) = 1.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPM_B1 ) = 0.0_DP
+        LeftState(iPM_B2 ) = 0.0_DP
+        LeftState(iPM_B3 ) = 0.0_DP
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D  ) = 1.0_DP
+        RightState(iPM_V1 ) = 0.0_DP
+        RightState(iPM_V2 ) = 0.0_DP
+        RightState(iPM_V3 ) = 0.0_DP
+        RightState(iPM_E  ) = 10.0_DP / ( Gamma_IDEAL - One )
+        RightState(iPM_B1 ) = 0.0_DP
+        RightState(iPM_B2 ) = 0.0_DP
+        RightState(iPM_B3 ) = 0.0_DP
+        RightState(iPM_Chi) = 0.0_DP
+
       CASE DEFAULT
 
         WRITE(*,*)
@@ -1404,6 +1431,9 @@ CONTAINS
         WRITE(*,'(A)') &
           "  'ShockTube4' - &
           4th shock tube problem (ST4) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
+        WRITE(*,'(A)') &
+          "  'HydroMBProblem1' - &
+          1st hydro shock tube problem from Mignone & Bodo, 2005, MRNAS, 364, 126"
         WRITE(*,'(A)') 'Stopping...'
         STOP
 
