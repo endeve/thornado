@@ -32,19 +32,13 @@ jobs:
                                       libopenmpi-dev
 
       # Install nvhpc
-      # https://developer.nvidia.com/nvidia-hpc-sdk-downloads
-      # Linux_x86_64 DEB
+      # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
-      - run: echo "deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /"
-               | sudo tee /etc/apt/sources.list.d/nvhpc.list
-      - run: sudo apt-get -qq update
-      - run: sudo apt-get -qq install
-               --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
-
-#      - run: source /etc/profile.d/modules.sh
-      - run:
-          module load
-            /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
+      - run: wget https://developer.download.nvidia.com/hpc-sdk/${NVHPC_MAJOR}.${NVHPC_MINOR}/nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: tar xpzf nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: sudo nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
+      - run: echo ${NVCOMPILERS}/${NVARCH}/${NVHPC_MAJOR}.${NVHPC_MINOR}/compilers/bin >> ${GITHUB_PATH}
+      - run: echo ${NVCOMPILERS}/${NVARCH}/${NVHPC_MAJOR}.${NVHPC_MINOR}/comm_libs/mpi/bin >> ${GITHUB_PATH}
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
@@ -59,9 +53,9 @@ jobs:
       # Compile thornado
 
       - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-      - run: make HYDRO=RELATIVISTIC \
-                  HYDRO_RIEMANN_SOLVER=HLL \
-                  OPT_LEVEL=DEBUG \
-                  USE_GPU=TRUE \
-                  USE_OACC=TRUE \
-                  USE_CUBLAS=TRUE
+      - run: sudo make HYDRO=RELATIVISTIC \
+                       HYDRO_RIEMANN_SOLVER=HLL \
+                       OPT_LEVEL=DEBUG \
+                       USE_GPU=TRUE \
+                       USE_OACC=TRUE \
+                       USE_CUBLAS=TRUE
