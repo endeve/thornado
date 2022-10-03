@@ -22,7 +22,6 @@ jobs:
       CUDA_MAJOR: 11
       CUDA_MINOR: 7
       UBUNTU_VERSION: 2004
-      LD_LIBRARY_PATH: /usr/local/lib
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get -qq update
@@ -53,9 +52,9 @@ jobs:
       # Compile thornado
 
       - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-      - run: sudo make HYDRO=RELATIVISTIC \
-                       HYDRO_RIEMANN_SOLVER=HLL \
-                       OPT_LEVEL=DEBUG \
-                       USE_GPU=TRUE \
-                       USE_OACC=TRUE \
-                       USE_CUBLAS=TRUE
+      - run: make HYDRO=RELATIVISTIC \
+                  HYDRO_RIEMANN_SOLVER=HLL \
+                  OPT_LEVEL=DEBUG \
+                  USE_GPU=TRUE \
+                  USE_OACC=TRUE \
+                  USE_CUBLAS=TRUE
