@@ -35,14 +35,16 @@ jobs:
       # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
       - run: |
-        echo 'deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /' | sudo tee /etc/apt/sources.list.d/nvhpc.list
+        echo "deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /" \
+          | sudo tee /etc/apt/sources.list.d/nvhpc.list
         sudo apt-get -qq update
         sudo apt-get -qq install \
           --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
 
       - run: |
         source /etc/profile.d/modules.sh
-        module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
+        module load \
+          /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
