@@ -38,9 +38,8 @@ jobs:
       - run: sudo apt-get -qq update
       - run: sudo apt-get -qq install --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
 
-      - run: |
-        source /etc/profile.d/modules.sh
-        module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
+      - run: source /etc/profile.d/modules.sh
+      - run: module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
