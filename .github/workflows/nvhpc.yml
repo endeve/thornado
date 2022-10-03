@@ -34,11 +34,11 @@ jobs:
       # Install nvhpc
       # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
-      - run: wget https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-      - run: tar xpzf nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-      - run: sudo nvhpc_2022_227_Linux_${ARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
-      - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
-      - run: echo ${NVCOMPILERS}/Linux_${ARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
+      - run: wget -q https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: tar xpzf nvhpc_2022_227_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+      - run: sudo nvhpc_2022_227_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
+      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
@@ -54,9 +54,9 @@ jobs:
           #      # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
           #
           #      # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04
-          #      - run: wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/${ARCH}/cuda-ubuntu${UBUNTU_VERSION}.pin
+          #      - run: wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/${ARCH}/cuda-ubuntu${UBUNTU_VERSION}.pin
           #      - run: sudo mv cuda-ubuntu${UBUNTU_VERSION}.pin /etc/apt/preferences.d/cuda-repository-pin-600
-          #      - run: wget https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
+          #      - run: wget -q https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
           #      - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
           #      - run: sudo cp /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/cuda-*-keyring.gpg /usr/share/keyrings/
           ##      - run: sudo apt-get -qq update
@@ -88,9 +88,9 @@ jobs:
       # Compile thornado
 
       - run: cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables_nvhpc/
-      - run: sudo make HYDRO=RELATIVISTIC \
-                       HYDRO_RIEMANN_SOLVER=HLL \
-                       OPT_LEVEL=DEBUG \
-                       USE_GPU=TRUE \
-                       USE_OACC=TRUE \
-                       USE_CUBLAS=TRUE
+      - run: make HYDRO=RELATIVISTIC \
+                  HYDRO_RIEMANN_SOLVER=HLL \
+                  OPT_LEVEL=DEBUG \
+                  USE_GPU=TRUE \
+                  USE_OACC=TRUE \
+                  USE_CUBLAS=TRUE
