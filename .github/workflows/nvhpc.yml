@@ -34,8 +34,8 @@ jobs:
       # Install nvhpc
       # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
+      - run: sudo echo "deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /" >> /etc/apt/sources.list.d/nvhpc.list
       - run: |
-        sudo cat "deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /" >> /etc/apt/sources.list.d/nvhpc.list
         sudo apt-get -qq update
         sudo apt-get -qq install --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
 
