@@ -31,6 +31,7 @@ jobs:
                                       libopenmpi-dev
                                       linux-headers-$(uname -r)
 
+      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
       # Install nvhpc
       # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
@@ -70,7 +71,7 @@ jobs:
 #      - run: sudo apt-get -y install cuda
 #      - run: sudo reboot
 
-      - run: sudo apt-get -y install cuda-${CUDA_MAJOR}-${CUDA_MINOR}
+      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
 #      - run: sudo apt-get -y install cuda-toolkit-${CUDA_MAJOR}-${CUDA_MINOR}
 #      - run: sudo apt-get -y install cuda-tools-${CUDA_MAJOR}-${CUDA_MINOR}
 #      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
