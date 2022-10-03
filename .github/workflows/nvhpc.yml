@@ -17,6 +17,8 @@ jobs:
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
       NVHPC_SILENT: true
+      NVHPC_MAJOR: 22
+      NVHPC_MINOR: 7
       CUDA_MAJOR: 11
       CUDA_MINOR: 7
       UBUNTU_VERSION: 2004
@@ -25,20 +27,23 @@ jobs:
       - uses: actions/checkout@v3
       - run: sudo apt-get -qq update
 
-      - run: sudo apt-get -qq install gcc
-                                      libhdf5-dev
+      - run: sudo apt-get -qq install libhdf5-dev
                                       liblapack-dev
                                       libopenmpi-dev
-                                      linux-headers-$(uname -r)
 
       # Install nvhpc
       # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
 
-      - run: wget -q https://developer.download.nvidia.com/hpc-sdk/22.7/nvhpc_2022_227_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-      - run: tar xpzf nvhpc_2022_227_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-      - run: sudo nvhpc_2022_227_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/compilers/bin >> ${GITHUB_PATH}
-      - run: echo ${NVCOMPILERS}/${NVARCH}/22.7/comm_libs/mpi/bin >> ${GITHUB_PATH}
+      - run: |
+        echo 'deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /' \
+        | sudo tee /etc/apt/sources.list.d/nvhpc.list
+        sudo apt-get -qq update
+        sudo apt-get -qq install \
+          --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
+
+      - run: |
+        source /etc/profile.d/modules.sh
+        module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
@@ -49,41 +54,6 @@ jobs:
           nvc++ --version
           nvc --version
           nvfortran --version
-
-          #      # Install cuda
-          #      # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
-          #
-          #      # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04
-          #      - run: wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/${ARCH}/cuda-ubuntu${UBUNTU_VERSION}.pin
-          #      - run: sudo mv cuda-ubuntu${UBUNTU_VERSION}.pin /etc/apt/preferences.d/cuda-repository-pin-600
-          #      - run: wget -q https://developer.download.nvidia.com/compute/cuda/${CUDA_MAJOR}.${CUDA_MINOR}.1/local_installers/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
-          #      - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local_${CUDA_MAJOR}.${CUDA_MINOR}.1-515.65.01-1_amd64.deb
-          #      - run: sudo cp /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/cuda-*-keyring.gpg /usr/share/keyrings/
-          ##      - run: sudo apt-get -qq update
-          ##      - run: sudo apt-get -qq install cuda
-          #
-          ##      - run: sudo apt-key del 7fa2af80
-          ##      - run: sudo dpkg -i cuda-repo-ubuntu${UBUNTU_VERSION}_${CUDA_MAJOR}.${CUDA_MINOR}_${ARCH}.deb
-          ##      - run: sudo cp /var/cuda-repo-ubuntu${UBUNTU_VERSION}-${CUDA_MAJOR}-${CUDA_MINOR}-local/cuda-*-keyring.gpg /usr/share/keyrings/
-          #
-          ##      - run: sudo apt-get -y update
-          ##      - run: sudo apt-get -y install cuda
-          ##      - run: sudo reboot
-          #
-          #      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-toolkit-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-tools-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-runtime-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-compiler-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-libraries-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-libraries-dev-${CUDA_MAJOR}-${CUDA_MINOR}
-          ##      - run: sudo apt-get -y install cuda-drivers-${CUDA_MAJOR}-${CUDA_MINOR}
-          #
-          #      - run: echo ${GITHUB_ENV}
-          #      - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/bin >> ${GITHUB_PATH}
-          #      - run: echo /usr/local/cuda-${CUDA_MAJOR}.${CUDA_MINOR}/lib64 >> ${LD_LIBRARY_PATH}
-          #      - run: echo ${PATH}
-          #      - run: echo ${LD_LIBRARY_PATH}
 
       # Compile thornado
 
