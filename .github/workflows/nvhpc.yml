@@ -32,14 +32,19 @@ jobs:
                                       libopenmpi-dev
 
       # Install nvhpc
-      # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
+      # https://developer.nvidia.com/nvidia-hpc-sdk-downloads
+      # Linux_x86_64 DEB
 
-      - run: echo "deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /" | sudo tee /etc/apt/sources.list.d/nvhpc.list
+      - run: echo "deb [trusted=yes] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /"
+               | sudo tee /etc/apt/sources.list.d/nvhpc.list
       - run: sudo apt-get -qq update
-      - run: sudo apt-get -qq install --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
+      - run: sudo apt-get -qq install
+               --no-install-recommends nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
 
-      - run: source /etc/profile.d/modules.sh
-      - run: module load /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
+#      - run: source /etc/profile.d/modules.sh
+      - run:
+          module load
+            /opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
 
       - run: |
           which nvcc || echo "nvcc not in PATH!"
