@@ -17,6 +17,9 @@ MODULE OpacityModule_TABLE
     LogInterpolateSingleVariable_2D_Custom_Point
   USE wlGridModule, ONLY: &
     MakeLogGrid
+  USE wlInterpolationUtilitiesModule, ONLY: &
+    GetIndexAndDelta_Lin, &
+    GetIndexAndDelta_Log
 
   ! ----------------------------------------------
 
@@ -54,7 +57,12 @@ MODULE OpacityModule_TABLE
     dE1, dE2
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     Es_T, dEs_T, Ds_T, Ts_T, Ys_T, Etas_T, &
-    LogEs_T, LogDs_T, LogTs_T, LogEtas_T
+    LogEs_T, LogDs_T, LogTs_T, LogEtas_T,  &
+    Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T
+  REAL(DP), PUBLIC :: EC_dE
+  INTEGER, PUBLIC :: EC_nE, EC_iE_max, EC_iNodeE_max
+  INTEGER, DIMENSION(:), ALLOCATABLE, PUBLIC :: &
+    EC_kfmin, EC_kfmax
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     OS_EmAb
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
@@ -71,9 +79,6 @@ MODULE OpacityModule_TABLE
     EmAb_EC_spec_T
   REAL(dp), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: &
     EmAb_EC_rate_T
-  REAL(dp), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: &
-    EmAb_EC_spec_AT
-  REAL(dp), PUBLIC :: OS_EmAb_EC_spec_AT
 ! Process_T(able), Process_A(ligned)T(able)
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, Brem_T, Brem_AT
@@ -106,19 +111,23 @@ MODULE OpacityModule_TABLE
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
+  !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  &
-  !$OMP   Brem_T, Brem_AT, C1, C2, OS_EmAb_EC_spec,       &
-  !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec_AT,            &
-  !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )   
+  !$OMP   Brem_T, Brem_AT, C1, C2,                        &
+  !$OMP   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+  !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+  !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax )   
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
+  !$ACC   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  & 
-  !$ACC   Brem_T, Brem_AT, C1, C2, OS_EmAb_EC_spec,       &
-  !$ACC   OS_EmAb_EC_rate, OS_EmAb_EC_spec_AT,            &
-  !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
+  !$ACC   Brem_T, Brem_AT, C1, C2,                        &
+  !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+  !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+  !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax )
 #endif
 
 CONTAINS
@@ -381,29 +390,42 @@ CONTAINS
     END DO
 
     IF(OPACITIES % EmAb % nuclei_EC_table .gt. 0) THEN
+
+      ALLOCATE( Ds_EC_T(OPACITIES % EmAb % EC_Table_nRho) )
+      Ds_EC_T = OPACITIES % EmAb % EC_table_rho 
+    
+      ALLOCATE( Ts_EC_T(OPACITIES % EmAb % EC_Table_nT) )
+      Ts_EC_T = OPACITIES % EmAb % EC_table_T 
+
+      ALLOCATE( Ys_EC_T(OPACITIES % EmAb % EC_Table_nYe) )
+      Ys_EC_T = OPACITIES % EmAb % EC_table_Ye 
+
+      ALLOCATE( Es_EC_T(OPACITIES % EmAb % EC_Table_nE) )
+      Es_EC_T = OPACITIES % EmAb % EC_table_E 
+
+      EC_nE   = SIZE(Es_EC_T)
+      EC_dE   = Es_EC_T(2) - Es_EC_T(1)
+
+      ALLOCATE(EC_kfmin(nE))
+      ALLOCATE(EC_kfmax(nE))
+
       ALLOCATE( OS_EmAb_EC_spec (OPACITIES % EmAb% EC_table_nOpacities) )
       OS_EmAb_EC_spec = OPACITIES % EmAb % EC_table_spec_Offsets(1)
       ALLOCATE( OS_EmAb_EC_rate (OPACITIES % EmAb% EC_table_nOpacities) )
       OS_EmAb_EC_rate = OPACITIES % EmAb % EC_table_rate_Offsets(1)
 
-      ALLOCATE( EmAb_EC_spec_T (1:OPACITIES % EmAb % nPoints(1), &
-                                1:OPACITIES % EmAb % nPoints(2), &
-                                1:OPACITIES % EmAb % nPoints(3), &
-                                1:OPACITIES % EmAb % nPoints(4)) )
+      ALLOCATE( EmAb_EC_spec_T (1:OPACITIES % EmAb % EC_Table_nRho, &
+                                1:OPACITIES % EmAb % EC_Table_nT,   &
+                                1:OPACITIES % EmAb % EC_Table_nYe,  &
+                                1:OPACITIES % EmAb % EC_Table_nE) )
       EmAb_EC_spec_T(:,:,:,:) = OPACITIES % EmAB &
                               % EC_table_spec(1) % Values(:,:,:,:)      
 
-      ALLOCATE( EmAb_EC_rate_T (1:OPACITIES % EmAb % nPoints(2), &
-                                1:OPACITIES % EmAb % nPoints(3), &
-                                1:OPACITIES % EmAb % nPoints(4)) )
+      ALLOCATE( EmAb_EC_rate_T (1:OPACITIES % EmAb % EC_Table_nRho, &
+                                1:OPACITIES % EmAb % EC_Table_nT,   &
+                                1:OPACITIES % EmAb % EC_Table_nYe) )
       EmAb_EC_rate_T(:,:,:)  = OPACITIES % EmAb &
                               % EC_table_rate(1) % Values(:,:,:)
- 
-      ALLOCATE( EmAb_EC_spec_AT(1:OPACITIES % EmAb % nPoints(2), &
-                                1:OPACITIES % EmAb % nPoints(3), &
-                                1:OPACITIES % EmAb % nPoints(4), &
-                                1:nPointsE) )
-      EmAb_EC_spec_AT = 0.0d0
 
     ENDIF
 
@@ -452,7 +474,7 @@ CONTAINS
 #endif
 
     Energy_Grid: BLOCK
-    REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nPointsE)
+    REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nNodesE)
 
     CenterE(:) = MeshE % Center(:)
     WidthE(:)  = MeshE % Width(:)
@@ -460,737 +482,96 @@ CONTAINS
 
     EC_TABLE: BLOCK
 
-    INTEGER  :: nPointsD, nPointsT, nPointsYe, wl_nE
-    REAL(dp) :: wl_E_cells(size(OPACITIES % EnergyGrid % Cell_centers))
-    REAL(dp) :: wl_E_faces(size(OPACITIES % EnergyGrid % Cell_faces))
-    REAL(dp) :: wl_dE     (size(OPACITIES % EnergyGrid % dE))
-
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
-
-    nPointsD  = OPACITIES % EmAb % nPoints(2)
-    nPointsT  = OPACITIES % EmAb % nPoints(3)
-    nPointsYe = OPACITIES % EmAb % nPoints(4)
-    wl_nE     = OPACITIES % EnergyGrid % nPoints
-
-    wl_E_cells(:) = OPACITIES % EnergyGrid % Cell_centers(:)
-    wl_E_faces(:) = OPACITIES % EnergyGrid % Cell_faces(:)
-    wl_dE(:)      = OPACITIES % EnergyGrid % dE(:)
 
     IF( use_EC_table .gt. 0 ) THEN
 write(*,*) 'lol EC table'
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP                             & 
-    !$OMP ( to:                                             &
-    !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,OS_EmAb_EC_spec_AT, &
-    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( OS_EmAb_EC_rate, OS_EmAb_EC_spec, OS_EmAb_EC_spec_AT, &
-    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC ( OS_EmAb_EC_rate, OS_EmAb_EC_spec, OS_EmAb_EC_spec_AT, &
-    !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EmAb_EC_spec_AT )
-#endif
+    build_kfmin_max: BLOCK
 
-      BLOCK
+      REAL(dp), DIMENSION(nE)   :: E_cells, dE_cells
+      REAL(dp), DIMENSION(nE+1) :: E_faces
+      INTEGER                   :: iE1, iNodeE1
+      INTEGER                   :: k, kk
 
-        REAL(dp), DIMENSION(nE)         :: E_cells, dE_cells
-        REAL(dp), DIMENSION(nE+1)       :: E_faces
-        INTEGER,  DIMENSION(nE)         :: kfmin, kfmax
-        INTEGER                         :: iD, iT, iYe 
-        INTEGER                         :: iE1, iNodeE1
-        INTEGER                         :: k, kk, k0, k1
+      INTEGER                   :: iE_interp
+      REAL(dp)                  :: dE_interp
 
-        INTEGER,  DIMENSION(nE,4,2)     :: k01_3bins !k0,k1 for a1,b1, a2,b2
-        INTEGER,  DIMENSION(nE,3,2)     :: k01_2bins !k0,k1 for a1,b1, b2 
-        INTEGER,  DIMENSION(nE,2,2)     :: k01_1bin  !k0,k1 for a,b           
+      REAL(dp)                  :: EC_E_max
 
-        INTEGER,  DIMENSION(nPointsE,2) :: k01_nodes !k0,k1 for interpolation 
-                                                     !of spec onto the energy nodal points
+      REAL(dp)                  :: x
 
-        REAL(dp), PARAMETER :: const = 5.0590369046782600d-42
+      EC_E_max = Es_EC_T(EC_nE)
 
-        REAL(dp) :: x
+      DO k = 1, nE
+        E_cells(k)  = CenterE(k) / MeV
+        dE_cells(k) = WidthE(k)  / MeV
+        E_faces(k)  = (CenterE(k) - 0.5d0*WidthE(k)) / MeV
+      ENDDO 
+      E_faces(nE+1)  = (CenterE(nE) + 0.5d0*WidthE(nE)) / MeV
 
-        DO k = 1, nE
-          E_cells(k)  = CenterE(k) / MeV
-          dE_cells(k) = WidthE(k)  / MeV
-          E_faces(k)  = (CenterE(k) - 0.5d0*WidthE(k)) / MeV
-        ENDDO 
-        E_faces(nE+1)  = (CenterE(nE) + 0.5d0*WidthE(nE)) / MeV
+      EC_iE_max     = 1
+      EC_iNodeE_max = 1
+      DO kk = 1, nPointsE
+        iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
+        iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
+        x = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV
+        if(E_faces(iE1)<=EC_E_max) EC_iE_max     = iE1
+        if(x <= EC_E_max)          EC_iNodeE_max = kk
+      ENDDO
+
+      EC_kfmin = 1
+      EC_kfmax = 1
  
-        DO k = 1, nE
-          DO kk = 1, wl_nE
-            IF(E_faces(k) .ge. wl_E_faces(kk)) THEN
-              kfmin(k) = kk
-            ELSE
-              EXIT
-            ENDIF
-          ENDDO
-          DO kk = wl_nE+1, 1, -1
-            IF(E_faces(k+1) .le. wl_E_faces(kk)) THEN
-              kfmax(k) = kk-1
-            ELSE
-              EXIT
-            ENDIF
-          ENDDO
-          IF (kfmax(k).gt.wl_nE) kfmax(k)=wl_nE
-          IF (kfmin(k).gt.wl_nE) kfmin(k)=wl_nE
-          IF (kfmax(k).lt.1)     kfmax(k)=1
-          IF (kfmin(k).lt.1)     kfmin(k)=1
-        ENDDO
-
-        !setup k0 and k1 (the interp indices) for each thornado energy cell, the indices
-        !to do the integration of the spectrum from the wl table to
-        !the thornado energy cells
-        
-        !there are three possible scenarios
-        !1: the k-th thornado energy cell is contained within a single wl energy bin
-        ! |    e(kfmin(k))    |   <- wl
-        !   |   x(k)   |          <- thornado
-        !   a          b
-        !  f_a        f_b
-        !spec(k) = 0.5 * (b-a) * (f_a+f_b) 
-        !2: the k-th thornado energy cell is contained within two wl energy bins
-        ! |    e(kfmin(k))     |       e(kfmax(k))        |   <- wl
-        !         |         x(k)          |                   <- thornado
-        !         a1           b1
-        !        f_a1         f_b1
-        !                      a2         b2
-        !                     f_a2       f_b2
-        !spec(k) = 0.5 * (b1-a1) * (f_a1+f_b1) + 0.5 * (b2-a2) * (f_a2+f_b2)
-        !3: the k-th thornado energy cell contains at least one full wl energy bin
-        !  |   e(kfmin(k))   |     e(kfmin(k)+1)     |    e(kfmax(k))     |  <- wl
-        !    |                      x(k)                      |              <- thornado
-        !    a1              b1                  
-        !   f_a1            f_b1
-        !                                            a2       b2
-        !                                           f_a1     f_b2
-        !spec(k) = 0.5 * (b1-a1) * (f_a1+f_b1) + 0.5 * (b2-a2) * (f_a2+f_b2) &
-        !        + sum over all fully contained wl bins 
-
-        !we setup anchor points for the interpolations of the spectrum at a,b, a1,b1, a2,b2
-        !for all possible cases, these also take into account where an interpolation point lies 
-        !within a given wl energy bin 
-        k01_3bins = -1
-        k01_2bins = -1
-        k01_1bin  = -1
-        DO k = 1, nE
-          !we have at least one full wl energy bin contained in the 
-          !thornado bin
-          IF(kfmin(k)+1 < kfmax(k)) THEN
-
-            !integrate over partial wl cell from lower end
-            IF(E_faces(k) <= wl_E_cells(kfmin(k))) THEN
-              k0 = kfmin(k) - 1
-              IF(k0 < 1) k0 = 1
-            ELSE
-              k0 = kfmin(k)
-              IF(k0 > wl_nE-1) k0 = wl_nE - 1
-            ENDIF
-            k1 = k0 + 1
-
-            k01_3bins(k,1,1) = k0
-            k01_3bins(k,1,2) = k1
-
-            k0 = kfmin(k)
-            IF(k0 > wl_nE-1) k0 = wl_nE - 1
-            k1 = k0 + 1
-
-            k01_3bins(k,2,1) = k0
-            k01_3bins(k,2,2) = k1
-
-            !integrate over partial wl cell from upper end
-            k0 = kfmax(k) - 1
-            k1 = k0 + 1
-
-            k01_3bins(k,3,1) = k0
-            k01_3bins(k,3,2) = k1
-
-            IF(E_faces(k+1) <= wl_E_cells(kfmax(k))) THEN
-              k0 = kfmax(k) - 1
-              IF(k0 < 1) k0 = 1
-            ELSE
-              k0 = kfmax(k)
-              IF(k0 > wl_nE-1) k0 = wl_nE - 1
-            ENDIF
-              k1 = k0 + 1
-                 
-              k01_3bins(k,4,1) = k0
-              k01_3bins(k,4,2) = k1
-    
-          !thornado energy bin is contained within two wl energy bins
-          ELSE IF(kfmin(k)+1 == kfmax(k)) THEN
-
-            !integrate over part of thornado cell that is contained in kfmin(k) wl bin 
-            IF(E_faces(k) <= wl_E_cells(kfmin(k))) THEN
-              k0 = kfmin(k) - 1
-              IF(k0 < 1) k0 = 1
-            ELSE
-              k0 = kfmin(k)
-            ENDIF
-            k1 = k0 + 1
-
-            k01_2bins(k,1,1) = k0
-            k01_2bins(k,1,2) = k1
-
-            k0 = kfmin(k)
-            k1 = k0 + 1
-  
-            k01_2bins(k,2,1) = k0
-            k01_2bins(k,2,2) = k1
-
-            IF(E_faces(k+1) >= wl_E_cells(kfmax(k))) THEN
-              k0 = kfmax(k)
-              IF(k0 > wl_nE - 1) k0 = wl_nE - 1
-            ELSE
-              k0 = kfmax(k) - 1
-            ENDIF
-            k1 = k0 + 1
-
-            k01_2bins(k,3,1) = k0
-            k01_2bins(k,3,2) = k1
-  
-          !thornado energy bin is contained within a single wl energy bin
+      DO k = 1, EC_iE_max
+        DO kk = 1, EC_nE
+          IF(E_faces(k) .ge. Es_EC_T(kk)) THEN
+            EC_kfmin(k) = kk
           ELSE
-
-            IF(E_faces(k) <= wl_E_cells(kfmin(k))) THEN
-              k0 = kfmin(k) - 1
-              IF(k0 < 1) k0 = 1
-            ELSE
-              k0 = kfmin(k)
-            ENDIF
-              k1 = k0 + 1
-            IF(k1 > wl_nE) THEN
-              k1 = wl_nE
-              k0 = k1 - 1
-            ENDIF
-
-            k01_1bin(k,1,1) = k0
-            k01_1bin(k,1,2) = k1
-
-            IF(E_faces(k+1) <= wl_E_cells(kfmin(k))) THEN
-              k0 = kfmin(k) - 1
-              IF(k0 < 1) k0 = 1
-            ELSE
-              k0 = kfmin(k)
-            ENDIF
-              k1 = k0 + 1
-
-            IF(k1 > wl_nE) THEN
-              k1 = wl_nE
-              k0 = k1 - 1
-            ENDIF
-
-            k01_1bin(k,2,1) = k0
-            k01_1bin(k,2,2) = k1
+            EXIT
           ENDIF
-
         ENDDO
-
-        k01_nodes = -1  
-        DO kk = 1, nPointsE
-          iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
-          iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
-
-          x = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV
-          if(kk==1) write(*,*) 'nodal e problems?'
-          write(*,*) kk, x
-
-          k0 = kfmax(iE1)
-          DO k = kfmax(iE1), kfmin(iE1), -1
-            IF(x <= wl_E_cells(k)) THEN
-              k0 = k0 - 1
-            ELSE
-              EXIT
-            ENDIF
-          ENDDO
-          IF(k0 > wl_nE-1) k0 = wl_nE-1
-          IF(k0 <  1)      k0 = 1
-          k1 = k0 + 1
- 
-          k01_nodes(kk,1) = k0
-          k01_nodes(kk,2) = k1
-
+        DO kk = EC_nE, 1, -1
+          IF(E_faces(k+1) .le. Es_EC_T(kk)) THEN
+            EC_kfmax(k) = kk-1
+          ELSE
+            EXIT
+          ENDIF
         ENDDO
-              
-        BLOCK
-              
-          INTEGER  :: k, kk
-          INTEGER  :: k0, k1
-          INTEGER  :: iE1, iNodeE1
-          REAL(dp) :: x, x0, x1, y0, y1
-          REAL(dp) :: a, b, f_a, f_b
-          REAL(dp) :: spec_interp
-          REAL(dp) :: loctot
-          REAL(dp), DIMENSION(nE)       :: cell_integral, cell_integral_nodes
-          REAL(dp), DIMENSION(nPointsE) :: spec_nodes
+        IF (EC_kfmax(k).gt.EC_nE) EC_kfmax(k)=EC_nE
+        IF (EC_kfmin(k).gt.EC_nE) EC_kfmin(k)=EC_nE
+        IF (EC_kfmax(k).lt.1)     EC_kfmax(k)=1
+        IF (EC_kfmin(k).lt.1)     EC_kfmin(k)=1
+      ENDDO
+
+      EC_kfmax(EC_iE_max) = EC_nE
+
+    END BLOCK build_kfmin_max
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iD, iT, iYe, k, kk, k0, k1, iE1, iNodeE1,   &                            
-    !$OMP          x, x0, x1, y0, y1, a, b, f_a, f_b,          &
-    !$OMP          spec_interp, loctot, cell_integral,         &
-    !$OMP          cell_integral_nodes, spec_nodes           ) &
-    !$OMP MAP    ( to: E_cells, dE_cells, E_faces,             &
-    !$OMP          kfmin, kfmax,                               &
-    !$OMP          wl_E_cells, wl_E_faces, wl_dE, wl_nE,       &
-    !$OMP          k01_1bin, k01_2bins, k01_3bins, k01_nodes ) 
+    !$OMP TARGET ENTER DATA MAP                       & 
+    !$OMP ( to:                                       &
+    !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       &
+    !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
+    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
+    !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   & 
+    !$OMP   EC_kfmin, EC_kfmax, use_EC_table )
+    !$OMP TARGET UPDATE TO                            &
+    !$OMP ( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       & 
+    !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
+    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
+    !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   &
+    !$OMP   EC_kfmin, EC_kfmax, use_EC_table )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)                &
-    !$ACC PRIVATE( iD, iT, iYe, k, kk, k0, k1, iE1, iNodeE1,   &                            
-    !$ACC          x, x0, x1, y0, y1, a, b, f_a, f_b,          &
-    !$ACC          spec_interp, loctot, cell_integral,         &
-    !$ACC          cell_integral_nodes, spec_nodes           ) &
-    !$ACC PRESENT( OS_EmAb_EC_spec, EmAb_EC_spec_T,            &
-    !$ACC          EmAb_EC_spec_AT                           ) &
-    !$ACC COPYIN ( E_cells, dE_cells, E_faces, kfmin, kfmax,   &
-    !$ACC          wl_E_cells, wl_E_faces, wl_dE, wl_nE,       &
-    !$ACC          k01_1bin, k01_2bins, k01_3bins, k01_nodes )  
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iD, iT, iYe, k, kk, k0, k1, iE1, iNodeE1,   &                            
-    !$OMP          x, x0, x1, y0, y1, a, b, f_a, f_b,          &
-    !$OMP          spec_interp, loctot, cell_integral,         &
-    !$OMP          cell_integral_nodes, spec_nodes           ) 
+    !$ACC UPDATE DEVICE                               &
+    !$ACC ( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       &
+    !$ACC   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
+    !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
+    !$ACC   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   &
+    !$ACC   EC_kfmin, EC_kfmax, use_EC_table )
 #endif
-        DO iYe = 1, nPointsYe
-          DO iT = 1, nPointsT
-            DO iD = 1, nPointsD
-    
-              cell_integral       = 0.0d0
-              cell_integral_nodes = 0.0d0
-              spec_nodes          = 0.0d0
-
-              if(iD==1 .and. iT==1 .and. iYe==1) then
-              print *, 'E', E_faces(1), E_cells(1), E_faces(2)
-              print *, 'k01_3bins(k,1,1)', k01_3bins(1,1,1)
-              print *, 'k01_3bins(k,1,2)', k01_3bins(1,1,2)
-              print *, 'k01_3bins(k,2,1)', k01_3bins(1,2,1)
-              print *, 'k01_3bins(k,2,2)', k01_3bins(1,2,2)
-              print *, 'k01_3bins(k,3,1)', k01_3bins(1,3,1)
-              print *, 'k01_3bins(k,3,2)', k01_3bins(1,3,2)
-              print *, 'k01_3bins(k,4,1)', k01_3bins(1,4,1)
-              print *, 'k01_3bins(k,4,2)', k01_3bins(1,4,2)
-              print *, 'k01_2bins(k,1,1)', k01_2bins(1,1,1)
-              print *, 'k01_2bins(k,1,2)', k01_2bins(1,1,2)
-              print *, 'k01_2bins(k,2,1)', k01_2bins(1,2,1)
-              print *, 'k01_2bins(k,2,2)', k01_2bins(1,2,2)
-              print *, 'k01_2bins(k,3,1)', k01_2bins(1,3,1)
-              print *, 'k01_2bins(k,3,2)', k01_2bins(1,3,2)
-              print *, 'k01_1bin(k,1,1)', k01_1bin(1,1,1)
-              print *, 'k01_1bin(k,1,2)', k01_1bin(1,1,2)
-              print *, 'k01_1bin(k,2,1)', k01_1bin(1,2,1)
-              print *, 'k01_1bin(k,2,2)', k01_1bin(1,2,2)
-              endif
-
- 
-              DO k = 1, nE
-                !we have at least one full wl energy bin contained in the 
-                !thornado bin
-                IF(kfmin(k)+1 < kfmax(k)) THEN
-
-                  k0 = k01_3bins(k,1,1)
-                  k1 = k01_3bins(k,1,2)
-
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                  a = E_faces(k)
-
-                  IF(a <= 0.0d0) THEN
-                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_a = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
-
-                  k0 = k01_3bins(k,2,1)
-                  k1 = k01_3bins(k,2,2)
-
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                  b = wl_E_faces(kfmin(k)+1)
-
-                  IF(b <= 0.0d0) THEN
-                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_b = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
-                  cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
-
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '1', cell_integral(k)
-
-                  !the fully contained wl energy bins can just be summed over
-                  !as they have been integrated already in the table construction 
-                  DO kk = kfmin(k)+1, kfmax(k)-1
-                    cell_integral(k) = cell_integral(k) &
-                    + (10.0d0**EmAb_EC_spec_T(kk,iD,iT,iYe) - OS_EmAb_EC_spec(1)) * wl_dE(kk)
-                  ENDDO
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '2', cell_integral(k)
-
-                  k0 = k01_3bins(k,3,1)
-                  k1 = k01_3bins(k,3,2)
-
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-  
-                  a = wl_E_faces(kfmax(k))
-
-                  IF(a <= 0.0d0) THEN
-                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_a = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
-
-                  k0 = k01_3bins(k,4,1)
-                  k1 = k01_3bins(k,4,2)
-
-                  x0 = (wl_E_cells(k0))
-                  x1 = (wl_E_cells(k1))
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                  b = (E_faces(k+1))
-
-                  IF(b <= 0.0d0) THEN
-                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_b = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
-
-                  cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '3', cell_integral(k)
-    
-                !thornado energy bin is contained within two wl energy bins
-                ELSE IF(kfmin(k)+1 == kfmax(k)) THEN
-
-                  k0 = k01_2bins(k,1,1)
-                  k1 = k01_2bins(k,1,2)
-
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                  a = E_faces(k)
-
-                  IF(a <= 0.0d0) THEN
-                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_a = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
-
-                  k0 = k01_2bins(k,2,1)
-                  k1 = k01_2bins(k,2,2)
-
-                  x0 = (wl_E_cells(k0))
-                  x1 = (wl_E_cells(k1))
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                  b = (wl_E_faces(kfmin(k)+1))
-
-                  IF(b <= 0.0d0) THEN
-                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
-
-                  cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '4', cell_integral(k)
-
-                  a   = b 
-                  f_a = f_b 
-
-                  k0 = k01_2bins(k,3,1)
-                  k1 = k01_2bins(k,3,2)
- 
-                  x0 = (wl_E_cells(k0))
-                  x1 = (wl_E_cells(k1))
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                  b = (E_faces(k+1))
-
-                  IF(b <= 0.0d0) THEN
-                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
-
-                  cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '5', cell_integral(k)
-  
-                !thornado energy bin is contained within a single wl energy bin
-                ELSE
-
-                  k0 = k01_1bin(k,1,1)
-                  k1 = k01_1bin(k,1,2)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', k0, k1
-
-                  x0 = wl_E_cells(k0)
-                  x1 = wl_E_cells(k1)
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', x0,x1
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', y0,y1
-
-                  a = E_faces(k)  
-
-                  IF(a <= 0.0d0) THEN
-                    spec_interp = y0 + (a - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(a/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_a = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
-
-                  k0 = k01_1bin(k,2,1)
-                  k1 = k01_1bin(k,2,2)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6b', k0, k1
-
-                  x0 = (wl_E_cells(k0))
-                  x1 = (wl_E_cells(k1))
-                  y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                  y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', x0,x1
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6a', y0,y1
-
-                  b = (E_faces(k+1))
-
-                  IF(b <= 0.0d0) THEN
-                    spec_interp = y0 + (b - x0)    * (y1-y0) / (x1-x0)
-                  ELSE
-                    spec_interp = y0 + LOG10(b/x0) * (y1-y0) / LOG10(x1/x0)
-                  ENDIF
-
-                  f_b = (10.0d0**spec_interp - OS_EmAb_EC_spec(1))
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6ab', a,b
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6ab', f_a,f_b
-
-                  cell_integral(k) = cell_integral(k) + 0.5d0 * (f_a+f_b) * (b-a)
-                  if(iD==126 .and. iT==43 .and. iYe==28 .and. k==1) print*, '6', cell_integral(k)
-                ENDIF
-
-              ENDDO
-
-              !check spectrum was integrated correctly onto the thornado energy cells
-              loctot = 0.0d0
-              DO k=1, wl_nE
-                loctot = loctot + (10.d0**EmAb_EC_spec_T(k,iD,iT,iYe) &
-                                -  OS_EmAb_EC_spec(1)) * wl_dE(k)
-              ENDDO
-
-!write(*,*) 'loctot WL = ', loctot
-              loctot = 0.0d0
-              DO k = 1, nE
-                loctot = loctot + cell_integral(k)
-              ENDDO
-!write(*,*) 'loctot thornado = ', loctot
-
-              !renormalize 
-              cell_integral = cell_integral / loctot
-
-!write(*,*) 'now get onto nodes and then renormalize the nodal &
-!           & values within each element with the integrated value &
-!           & from the wl table'
-
-              !now we are going to interpolate the spectrum onto
-              !the energy nodes and use the integrated spectrum
-              !in each thornado energy cell as a normalisation
-              !so that when we later integrate the spectrum
-              !over the energy cells, it integrates to 1 
-              !(or rather the accuracy the spectrum was integrated onto 
-              !the energy cells) 
-
-              cell_integral_nodes = 0.0d0
-
-              DO kk = 1, nPointsE
-                iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
-                iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
-
-                x = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV
-
-                k0 = k01_nodes(kk,1)
-                k1 = k01_nodes(kk,2)
-
-                x0 = wl_E_cells(k0)
-                x1 = wl_E_cells(k1)
-                y0 = EmAb_EC_spec_T(k0,iD,iT,iYe)
-                y1 = EmAb_EC_spec_T(k1,iD,iT,iYe)
-
-                spec_interp = y0 + LOG10(x/x0) * (y1-y0) / LOG10(x1/x0)
-
-                spec_nodes(kk) = 10.0d0**spec_interp - OS_EmAb_EC_spec(1)
-                if(iD==126 .and. iT==43 .and. iYe==28) then
-                  if(kk==1) print *, 'whats wrong first element'
-                  print*, kk, spec_nodes(kk)
-                endif
-
-                !thornado nodes and weights have already been divided by 2!
-                cell_integral_nodes(iE1) = cell_integral_nodes(iE1)          &
-                                         + dE_cells(iE1) * WeightsE(iNodeE1) &
-                                         * spec_nodes(kk)
-
-              ENDDO
-
-              !now renormalize the spectrum at the nodal points so that 
-              !when integrating over the all nodal points, the 
-              !integrated spectrum is 1 
-              DO kk = 1, nPointsE
-                iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
-                spec_nodes(kk) = spec_nodes(kk) * cell_integral(iE1) / cell_integral_nodes(iE1)
-                if(iD==126 .and. iT==43 .and. iYe==28) then
-                  if(kk==1) print *, 'whats wrong first element normalisation'
-                  print*, kk, spec_nodes(kk), cell_integral(iE1)
-                endif
-              ENDDO
-
-              !check the normalized spectrum on the nodes actually integrates to 1
-              cell_integral_nodes = 0.0d0
-
-              DO kk = 1, nPointsE
-                iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
-                iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
-
-                cell_integral_nodes(iE1) = cell_integral_nodes(iE1)          &
-                                         + dE_cells(iE1) * WeightsE(iNodeE1) &
-                                         * spec_nodes(kk)
-              ENDDO
-  
-              loctot = 0.0d0
-              DO k=1,nE
-                loctot = loctot + cell_integral_nodes(k) 
-              ENDDO
-!write(*,*) 'loctot nodes', loctot
-
-              !update aligned table
-              DO kk = 1, nPointsE
-                EmAb_EC_spec_AT(iD,iT,iYe,kk) = spec_nodes(kk)
-              ENDDO
-              
-            ENDDO
-          ENDDO
-        ENDDO
-        END BLOCK 
-
-        OS_Calc: BLOCK
-        REAL(dp) :: min_val
-
-        min_val = 0.0d0
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP REDUCTION(min:min_val)                               &
-    !$OMP DEFAULTMAP(tofrom:min_val)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC COPY(min_val) REDUCTION(min:min_val)              
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP REDUCTION(min:min_val)
-#endif
-        DO k = 1, nPointsE
-          DO iYe = 1, nPointsYe
-            DO iT = 1, nPointsT
-              DO iD = 1, nPointsD
-                min_val = MIN(min_val,EmAb_EC_spec_AT(iD,iT,iYe,k))
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-
-        OS_EmAb_EC_spec_AT = -2.d0 * MIN( 0.d0, min_val )
-        write(*,*) 'OS EC table AT', OS_EmAb_EC_spec_AT
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( OS_EmAb_EC_spec_AT )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC ( OS_EmAb_EC_spec_AT )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
-        DO k = 1, nPointsE
-          DO iYe = 1, nPointsYe
-            DO iT = 1, nPointsT
-              DO iD = 1, nPointsD
-                EmAb_EC_spec_AT(iD,iT,iYe,k) = &
-                  LOG10(EmAb_EC_spec_AT(iD,iT,iYe,k) + OS_EmAb_EC_spec_AT + 1.0d-300)
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-
-        END BLOCK OS_calc
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( EmAb_EC_spec_AT, OS_EmAb_EC_spec_AT )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( EmAb_EC_spec_AT, OS_EmAb_EC_spec_AT )
-#endif
-
-write(*,*) 'testing integration routine after aligned table building'
-         block
-             
-            INTEGER  :: k, kk
-            INTEGER  :: iE1, iNodeE1
-            REAL(dp) :: spec_interp
-            REAL(dp) :: loctot
-            REAL(dp), DIMENSION(nE)       :: cell_integral, cell_integral_nodes
-            REAL(dp), DIMENSION(nPointsE) :: spec_nodes
-
-            cell_integral_nodes = 0.0d0
-              
-            DO kk = 1, nPointsE
-              iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
-              iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
-
-              cell_integral_nodes(iE1) = cell_integral_nodes(iE1)          &
-                                       + dE_cells(iE1) * WeightsE(iNodeE1) &
-                                       * (10.0d0**EmAb_EC_spec_AT(81,28,41,kk) - OS_EmAb_EC_spec_AT)
-           ENDDO
-              loctot = 0.0d0
-              DO k=1,nE
-                loctot = loctot + cell_integral_nodes(k)
-              ENDDO
-write(*,*) 'loctot from nodes 81,28,41', loctot
-         end block
-
-
-       END BLOCK
 
      ENDIF
-!stop
 
     END BLOCK EC_TABLE
 
@@ -1387,8 +768,13 @@ write(*,*) 'loctot from nodes 81,28,41', loctot
     IF(ALLOCATED(OS_EmAb_EC_spec)) DEALLOCATE(OS_EmAb_EC_spec)
     IF(ALLOCATED(OS_EmAb_EC_rate)) DEALLOCATE(OS_EmAb_EC_rate)
     IF(ALLOCATED(EmAb_EC_rate_T )) DEALLOCATE(EmAb_EC_rate_T)
-    IF(ALLOCATED(EmAb_EC_spec_AT)) DEALLOCATE(EmAb_EC_spec_AT)
     IF(ALLOCATED(EmAb_EC_spec_T )) DEALLOCATE(EmAb_EC_spec_T )
+    IF(ALLOCATED(Ds_EC_T))         DEALLOCATE(Ds_EC_T)
+    IF(ALLOCATED(Ts_EC_T))         DEALLOCATE(Ts_EC_T)
+    IF(ALLOCATED(Ys_EC_T))         DEALLOCATE(Ys_EC_T)
+    IF(ALLOCATED(Es_EC_T))         DEALLOCATE(Es_EC_T)
+    IF(ALLOCATED(EC_kfmin))        DEALLOCATE(EC_kfmin)
+    IF(ALLOCATED(EC_kfmax))        DEALLOCATE(EC_kfmax)
 
 #endif
 

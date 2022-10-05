@@ -59,7 +59,8 @@ PROGRAM NeutrinoOpacities
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     EmAb_EC_spec_T, Es_T, dEs_T, Ds_T, Ts_T, Ys_T, &
-    OS_EmAb_EC_rate, EmAb_EC_rate_T
+    OS_EmAb_EC_rate, EmAb_EC_rate_T, &
+    Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T, EC_nE
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -92,10 +93,10 @@ PROGRAM NeutrinoOpacities
   INTEGER, PARAMETER :: &
     nNodes   = 3, & !2, &
     nE       = 16, & !2**4, &
-    nX1      = 2**6, &
+    nX1      = 1, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
-    nSpecies = 6
+    nSpecies = 2
   REAL(DP), PARAMETER :: &
     Unit_D     = Gram / Centimeter**3, &
     Unit_T     = Kelvin, &
@@ -588,35 +589,31 @@ PROGRAM NeutrinoOpacities
   block
   integer :: wl_nE
 
-  real(dp) :: wl_E(size(EmAb_EC_spec_T(:,1,1,1)))
-  real(dp) :: wl_dE(size(EmAb_EC_spec_T(:,1,1,1)))
-  real(dp) :: wl_jec(size(EmAb_EC_spec_T(:,1,1,1)))
+  real(dp) :: wl_E  (size(EmAb_EC_spec_T(1,1,1,:)))
+  real(dp) :: wl_jec(size(EmAb_EC_spec_T(1,1,1,:)))
 
   real(dp) :: D_P, T_P, Y_P
 
   real(dp) :: EC_rate
-
-
-  wl_nE = size(EmAb_EC_spec_T(:,1,1,1))
 
   D_P     = D(1) / Unit_D
   T_P     = T(1) / Unit_T
   Y_P     = Y(1) / Unit_Y
 
   CALL LogInterpolateSingleVariable_3D_Custom_Point &
-       ( D_P,  T_P,  Y_P,  &
-         Ds_T, Ts_T, Ys_T, &
+       ( D_P,     T_P,     Y_P,  &
+         Ds_EC_T, Ts_EC_T, Ys_EC_T, &
          OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate)
 
   write(*,*) 'weaklib'
-  do iE = 1, wl_nE
+  do iE = 1, EC_nE
     CALL LogInterpolateSingleVariable_3D_Custom_Point &
-         ( D_P,  T_P,  Y_P,  &
-           Ds_T, Ts_T, Ys_T, &
-           0.0d0, EmAb_EC_spec_T(iE,:,:,:), wl_jec(iE))
+         ( D_P,     T_P,     Y_P,  &
+           Ds_EC_T, Ts_EC_T, Ys_EC_T, &
+           0.0d0, EmAb_EC_spec_T(:,:,:,iE), wl_jec(iE))
 
    !write(*,*) Es_T(iE), dEs_T(iE), wl_jec(iE) * EC_rate * 324936944.84933436d0 / (D_P)
-   write(*,*) Es_T(iE), dEs_T(iE), wl_jec(iE) * EC_rate * 8963170213.4612865 / (D_P)
+   write(*,*) Es_EC_T(iE), wl_jec(iE) * EC_rate * 8963170213.4612865 / (D_P)
 
   enddo
 
