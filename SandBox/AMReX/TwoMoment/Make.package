@@ -22,6 +22,7 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
 F90EXE_sources += TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
 F90EXE_sources += TwoMoment_TimersModule_OrderV.F90
+F90EXE_sources += TwoMoment_UtilitiesModule_OrderV.F90
 
 # In THORNADO_DIR/Modules/Numbers:
 
