@@ -11,7 +11,7 @@ thornado.Scheme = "BackwardEuler"
 thornado.t_end     = 10.0     # Final time
 thornado.dt_wrt    = 0.1      # Write time interval
 thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
-thornado.dt_rel    = 0.0001
+thornado.dt_rel    = 0.001
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
 thornado.CFL       = 0.5     # CFL number
 thornado.bcX       = 30 1 1 # Boundary conditions
@@ -22,8 +22,8 @@ thornado.swE       = 01
 thornado.bcE       = 0
 thornado.eL        = 0.0           #  MeV Lower energy domain size
 thornado.eR        = 300.0         #  MeV Higher energy domain size
-thornado.zoomE     = 1.0
-thornado.nSpecies  = 2
+thornado.zoomE     = 1.266038160710160
+thornado.nSpecies  = 6
 thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = 0100     # MOD this number to write plotfile
 thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
@@ -44,7 +44,7 @@ amr.max_level         = 0
 
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 1
+PL.UsePositivityLimiter = 0
 PL.Min_1                = 1.0e-26
 PL.Min_2                = 1.0e-26
 
@@ -61,3 +61,4 @@ OP.OpacityTableName_AbEm = "wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5"
 OP.OpacityTableName_Iso  = "wl-Op-SFHo-15-25-50-E40-B85-Iso.h5"
 OP.OpacityTableName_NES  = "wl-Op-SFHo-15-25-50-E40-B85-NES.h5"
 OP.OpacityTableName_Pair = "wl-Op-SFHo-15-25-50-E40-B85-Pair.h5"
+OP.OpacityTableName_Brem = "wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5"
