@@ -58,9 +58,10 @@ PROGRAM NeutrinoOpacities
     TimersStop
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
-    EmAb_EC_spec_T, Es_T, dEs_T, Ds_T, Ts_T, Ys_T, &
+    EmAb_EC_spec_T, Es_T, Ds_T, Ts_T, Ys_T, &
     OS_EmAb_EC_rate, EmAb_EC_rate_T, &
-    Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T, EC_nE
+    Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T, EC_nE, &
+    use_EC_table
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -274,17 +275,29 @@ PROGRAM NeutrinoOpacities
   ! --- Initialize Opacities ---
 
   CALL TimersStart( Timer_ReadOpacities )
+  !CALL InitializeOpacities_TABLE &
+  !       ( OpacityTableName_EmAb_Option &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
+  !         OpacityTableName_Iso_Option  &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
+  !         OpacityTableName_NES_Option &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
+  !         OpacityTableName_Pair_Option &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
+  !         OpacityTableName_Brem_Option &
+  !           = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
+  !         Verbose_Option = .TRUE. ) 
   CALL InitializeOpacities_TABLE &
          ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
            OpacityTableName_Iso_Option  &
-             = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
            OpacityTableName_NES_Option &
-             = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
            OpacityTableName_Pair_Option &
-             = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
            OpacityTableName_Brem_Option &
-             = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
            Verbose_Option = .TRUE. ) 
   CALL TimersStop( Timer_ReadOpacities )
 
@@ -478,7 +491,6 @@ PROGRAM NeutrinoOpacities
   CALL TimersStop( Timer_Compute_Pair )
 
   ! --- Compute Brem Opacities ---
-
   CALL TimersStart( Timer_Compute_Brem )
 
   CALL TimersStart( Timer_ComputeKrnl_Brem )
@@ -558,6 +570,8 @@ PROGRAM NeutrinoOpacities
   END DO
   END DO
 
+  IF( use_EC_Table > 0 ) THEN
+
   loctot = 0.0d0
 
   write(*,*) 'elements'
@@ -630,6 +644,8 @@ PROGRAM NeutrinoOpacities
 
 
   end block
+
+  ENDIF
 
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
