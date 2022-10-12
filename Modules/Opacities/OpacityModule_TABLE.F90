@@ -56,7 +56,7 @@ MODULE OpacityModule_TABLE
   REAL(DP) :: &
     dE1, dE2
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
-    Es_T, dEs_T, Ds_T, Ts_T, Ys_T, Etas_T, &
+    Es_T, Ds_T, Ts_T, Ys_T, Etas_T, &
     LogEs_T, LogDs_T, LogTs_T, LogEtas_T,  &
     Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T
   REAL(DP), PUBLIC :: EC_dE
@@ -297,10 +297,7 @@ CONTAINS
     ! --- Energy Grid ---
 
     ALLOCATE( Es_T(OPACITIES % EnergyGrid % nPoints) )
-    Es_T = OPACITIES % EnergyGrid  % Cell_centers
-
-    ALLOCATE( dEs_T(OPACITIES % EnergyGrid % nPoints) )
-    dEs_T = OPACITIES % EnergyGrid  % dE
+    Es_T = OPACITIES % EnergyGrid  % Values
 
     ALLOCATE( LogEs_T(SIZE( Es_T )) )
     LogEs_T = LOG10( Es_T )
@@ -758,7 +755,7 @@ write(*,*) 'lol EC table'
     !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #endif
 
-    DEALLOCATE( Es_T, dEs_T, Ds_T, Ts_T, Ys_T, Etas_T )
+    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
     DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
