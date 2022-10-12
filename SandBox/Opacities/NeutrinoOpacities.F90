@@ -93,10 +93,10 @@ PROGRAM NeutrinoOpacities
   INTEGER, PARAMETER :: &
     nNodes   = 3, & !2, &
     nE       = 16, & !2**4, &
-    nX1      = 1, &
+    nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
-    nSpecies = 2
+    nSpecies = 6
   REAL(DP), PARAMETER :: &
     Unit_D     = Gram / Centimeter**3, &
     Unit_T     = Kelvin, &
@@ -140,7 +140,7 @@ PROGRAM NeutrinoOpacities
     D, T, Y
   REAL(DP), DIMENSION(nE) :: &
     dE
-  REAL(DP), DIMENSION(nE,nPointsX) :: Chi_EmAb_element, Edot_EmAb_element
+  REAL(DP), DIMENSION(nE,nPointsX) :: Chi_EmAb_element, Edot_EmAb_element, E_element
   REAL(DP), DIMENSION(nPointsE) :: &
     E, W2
   REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
@@ -374,7 +374,7 @@ PROGRAM NeutrinoOpacities
 
   CALL TimersStart( Timer_Compute_EC )
   CALL ComputeNeutrinoOpacities_EC &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0, Chi_EmAb )
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG, Chi_EmAb )
   CALL TimersStop( Timer_Compute_EC )
 
 #if defined(THORNADO_OMP_OL)
@@ -519,7 +519,7 @@ PROGRAM NeutrinoOpacities
   DO iE = 1, nPointsE
 
     !Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
-    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * Unit_E**3
+    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
     Edot_Iso(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
     Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
     Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
@@ -530,6 +530,7 @@ PROGRAM NeutrinoOpacities
   END DO
 
   Chi_EmAb_element = 0.0d0
+  E_element = 0.0d0
 
   DO iX = 1, nPointsX
   DO iN_E = 1, nPointsE
@@ -538,8 +539,10 @@ PROGRAM NeutrinoOpacities
     iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
 
     Chi_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
-                             + dE(iE) / Unit_E * WeightsE(iNodeE) * Chi_EmAb(iN_E,1,iX) &
-                             * (E(iN_E)/Unit_E)**2
+                             + dE(iE) / Unit_E * WeightsE(iNodeE) * Chi_EmAb(iN_E,1,iX) !&
+                             !* (E(iN_E)/Unit_E)**2
+    E_element(iE,iX) = E_element(iE,iX) &
+                             + dE(iE) / Unit_E * WeightsE(iNodeE)
   END DO
   END DO
 
@@ -551,16 +554,9 @@ PROGRAM NeutrinoOpacities
     iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
 
     Edot_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
-                             * FourPi / PlanckConstant**3 / D(iX)
+                             * FourPi / PlanckConstant**3 / D(iX) * E(iE)**3 / E_element(iE,iX)
   END DO
   END DO
-
-  DO iN_E = 1, nPointsE
-  iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
-  !write(*,*) iE, (MeshE % Center(iE) - 0.5d0 * MeshE % Width(iE)) / Unit_E, &
-  !               MeshE % Center(iE)/Unit_E, &
-  !               (MeshE % Center(iE) + 0.5d0 * MeshE % Width(iE))/Unit_E
-  ENDDO
 
   loctot = 0.0d0
 

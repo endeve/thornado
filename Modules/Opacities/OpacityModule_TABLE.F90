@@ -494,9 +494,6 @@ write(*,*) 'lol EC table'
       INTEGER                   :: iE1, iNodeE1
       INTEGER                   :: k, kk
 
-      INTEGER                   :: iE_interp
-      REAL(dp)                  :: dE_interp
-
       REAL(dp)                  :: EC_E_max
 
       REAL(dp)                  :: x
