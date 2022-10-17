@@ -142,6 +142,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
   PUBLIC :: thornado2amrex_Z
+  PUBLIC :: amrex2amrex_spatial_Z
+  PUBLIC :: amrex_spatial2amrex_Z
   PUBLIC :: thornado2amrex_X_F
   PUBLIC :: amrex2thornado_X_F
   PUBLIC :: WriteNodalDataToFile
@@ -150,6 +152,7 @@ MODULE MF_UtilitiesModule
   PUBLIC :: DeallocateArray_X
   PUBLIC :: AllocateArray_Z
   PUBLIC :: DeallocateArray_Z
+
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -1362,5 +1365,105 @@ CONTAINS
 
   END SUBROUTINE DeallocateArray_Z
 
+  SUBROUTINE amrex2amrex_spatial_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_amrex_spatial )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(DP), INTENT(in)  :: &
+      Data_amrex           (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(out) :: &
+      Data_amrex_spatial   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_spatial, iNodeX, iNodeE
+
+    iD_spatial = 0
+
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iS  = 1      , nS
+      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
+      DO iNodeE = 1    , nDOFE
+      DO iNodeX = 1    , nDOFX
+      DO iFd = 1      , nFields
+
+
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+        iD      = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+
+        iD_spatial = iD_Spatial + 1
+
+        Data_amrex_spatial(iZ2,iZ3,iZ4,iD_spatial) & 
+          = Data_amrex(iZ2,iZ3,iZ4,iD)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+iD_spatial = 0
+    END DO
+    END DO
+    END DO
+
+
+  END SUBROUTINE amrex2amrex_spatial_Z
+
+  SUBROUTINE amrex_spatial2amrex_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_amrex_spatial )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(DP), INTENT(in)  :: &
+      Data_amrex_spatial    (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(out) :: &
+      Data_amrex            (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_spatial, iNodeX, iNodeE
+
+    iD_spatial = 0
+
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iS  = 1      , nS
+      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
+      DO iNodeE = 1    , nDOFE
+      DO iNodeX = 1    , nDOFX
+      DO iFd = 1      , nFields
+
+
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+        iD      = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+
+        iD_spatial = iD_Spatial + 1
+        Data_amrex(iZ2,iZ3,iZ4,iD) & 
+          = Data_amrex_spatial(iZ2,iZ3,iZ4,iD_spatial)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+iD_spatial = 0
+    END DO
+    END DO
+    END DO
+
+
+  END SUBROUTINE amrex_spatial2amrex_Z
 
 END MODULE MF_UtilitiesModule
