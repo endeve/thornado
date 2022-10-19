@@ -15,8 +15,10 @@ MODULE MF_UtilitiesModule
     amrex_geometry
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator, &
     amrex_parallel_reduce_sum, &
-    amrex_parallel_myproc
+    amrex_parallel_myproc, &
+    amrex_parallel_nprocs
 
   ! --- thornado Modules ---
 
@@ -218,8 +220,8 @@ CONTAINS
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
-        WRITE(FileName,'(A,A,I3.3,A,I3.3,A,I8.8,A)') &
-          TRIM( FileNameBase ), '_level', iLevel, '_proc', &
+        WRITE(FileName,'(A,A5,I3.3,A1,I8.8,A4)') &
+          TRIM( FileNameBase ), '_proc', &
           amrex_parallel_myproc(), '_', StepNo(0), '.dat'
 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
@@ -314,9 +316,9 @@ CONTAINS
 
     INTEGER :: iLevel
 
-    INTEGER        :: swXX(3)
+    INTEGER        :: swXX(3), iProc, iFileNo, iErr
     LOGICAL        :: WriteToFile
-    CHARACTER(128) :: FileNameBase
+    CHARACTER(128) :: FileNameBase, FileName
 
     TYPE(amrex_imultifab) :: iMF_Mask
 
@@ -326,9 +328,38 @@ CONTAINS
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
-    FileNameBase = ''
+    FileNameBase = 'NodalData'
     IF( PRESENT( FileNameBase_Option ) ) &
       FileNameBase = TRIM( FileNameBase_Option )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( WriteToFile )THEN
+
+        DO iProc = 0, amrex_parallel_nprocs()-1
+
+          iFileNo = 100 + iProc
+
+          WRITE(FileName,'(A,A5,I3.3,A1,I8.8,A4)') &
+            TRIM( FileNameBase ), '_proc', &
+            iProc, '_', StepNo(0), '.dat'
+
+          OPEN( iFileNo, FILE = TRIM( FileName ) )
+
+            WRITE( iFileNo, '(A,A,A)' ) &
+              '# iLevel, iX1, iX2, iX3, dX1, dX2, dX3, ', &
+              'X1(1:nNodesX(1)), X2(1:nNodesX(2)), X3(1:nNodesX(3)), ', &
+              'NodalData(1:nDOFX)'
+
+          CLOSE( iFileNo )
+
+        END DO
+
+      END IF
+
+    END IF
+
+    CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
     DO iLevel = 0, nLevels-1
 
