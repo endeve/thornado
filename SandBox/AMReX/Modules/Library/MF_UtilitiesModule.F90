@@ -15,7 +15,8 @@ MODULE MF_UtilitiesModule
     amrex_geometry
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_sum
+    amrex_parallel_reduce_sum, &
+    amrex_parallel_myproc
 
   ! --- thornado Modules ---
 
@@ -115,7 +116,8 @@ MODULE MF_UtilitiesModule
     nE, &
     swX, &
     swE, &
-    nSpecies
+    nSpecies, &
+    StepNo
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -142,6 +144,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
   PUBLIC :: thornado2amrex_Z
+  PUBLIC :: amrex2amrex_spatial_Z
+  PUBLIC :: amrex_spatial2amrex_Z
   PUBLIC :: thornado2amrex_X_F
   PUBLIC :: amrex2thornado_X_F
   PUBLIC :: WriteNodalDataToFile
@@ -150,6 +154,7 @@ MODULE MF_UtilitiesModule
   PUBLIC :: DeallocateArray_X
   PUBLIC :: AllocateArray_Z
   PUBLIC :: DeallocateArray_Z
+
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -161,14 +166,14 @@ CONTAINS
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
     ( iLevel, MF, iField, iMF_Mask_Option, &
-      swXX_Option, WriteToFile_Option, FileName_Option )
+      swXX_Option, WriteToFile_Option, FileNameBase_Option )
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
     TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_Mask_Option
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
-    CHARACTER(*)         , INTENT(in), OPTIONAL :: FileName_Option
+    CHARACTER(*)         , INTENT(in), OPTIONAL :: FileNameBase_Option
 
     INTEGER                       :: iX1, iX2, iX3, iNX
     INTEGER                       :: lo(4), hi(4)
@@ -177,9 +182,10 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: F(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
     INTEGER                       :: swXX(3)
+    INTEGER                       :: iFileNo
     LOGICAL                       :: WriteToFile
     CHARACTER(128)                :: FMT
-    CHARACTER(128)                :: FileName
+    CHARACTER(128)                :: FileNameBase, FileName
 
     REAL(DP) :: NodesX1(nNodesX(1))
     REAL(DP) :: NodesX2(nNodesX(2))
@@ -191,23 +197,34 @@ CONTAINS
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
-    FileName = ''
-    IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
-
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
-      '(I2.2,3I5.3,3ES12.03E3,', &
-      nNodesX(1),  'ES12.03E3,', &
-      nNodesX(2),  'ES12.03E3,', &
-      nNodesX(3),  'ES12.03E3,', &
-      nDOFX     ,  'ES12.03E3)'
-
-    IF( WriteToFile ) OPEN( 100, FILE = TRIM( FileName ), POSITION = 'APPEND' )
+      '(I2.2,3I5.3,3ES25.16E3,', &
+      nNodesX(1),  'ES25.16E3,', &
+      nNodesX(2),  'ES25.16E3,', &
+      nNodesX(3),  'ES25.16E3,', &
+      nDOFX     ,  'ES25.16E3)'
 
     CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
     DO WHILE( MFI % next() )
+
+      IF( WriteToFile )THEN
+
+        iFileNo = 100 + amrex_parallel_myproc()
+
+        FileNameBase = 'NodalData'
+        IF( PRESENT( FileNameBase_Option ) ) &
+          FileNameBase = TRIM( FileNameBase_Option )
+
+        WRITE(FileName,'(A,A,I3.3,A,I3.3,A,I8.8,A)') &
+          TRIM( FileNameBase ), '_level', iLevel, '_proc', &
+          amrex_parallel_myproc(), '_', StepNo(0), '.dat'
+
+        OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
+
+      END IF
 
       IF( PRESENT( iMF_Mask_Option ) ) &
         Mask => iMF_Mask_Option % DataPtr( MFI )
@@ -249,7 +266,7 @@ CONTAINS
 
         IF( WriteToFile )THEN
 
-          WRITE(100,TRIM(FMT)) &
+          WRITE(iFileNo,TRIM(FMT)) &
             iLevel, iX1, iX2, iX3, &
             MeshX(1) % Width(iX1), &
             MeshX(2) % Width(iX2), &
@@ -273,39 +290,33 @@ CONTAINS
       END DO
       END DO
 
+      IF( WriteToFile ) CLOSE( iFileNo )
+
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
 
     CALL DestroyMesh_MF( MeshX )
 
-    IF( WriteToFile )THEN
-
-      CLOSE(100)
-
-    ELSE
-
-      WRITE(*,*)
-
-    END IF
+    IF( .NOT. WriteToFile ) WRITE(*,*)
 
   END SUBROUTINE ShowVariableFromMultiFab_Single
 
 
   SUBROUTINE ShowVariableFromMultiFab_Vector &
-    ( MF, iField, swXX_Option, WriteToFile_Option, FileName_Option )
+    ( MF, iField, swXX_Option, WriteToFile_Option, FileNameBase_Option )
 
     INTEGER             , INTENT(in) :: iField
     TYPE(amrex_multifab), INTENT(in) :: MF(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
-    CHARACTER(*)        , INTENT(in), OPTIONAL :: FileName_Option
+    CHARACTER(*)        , INTENT(in), OPTIONAL :: FileNameBase_Option
 
     INTEGER :: iLevel
 
     INTEGER        :: swXX(3)
     LOGICAL        :: WriteToFile
-    CHARACTER(128) :: FileName
+    CHARACTER(128) :: FileNameBase
 
     TYPE(amrex_imultifab) :: iMF_Mask
 
@@ -315,8 +326,9 @@ CONTAINS
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
-    FileName = ''
-    IF( PRESENT( FileName_Option ) ) FileName = TRIM( FileName_Option )
+    FileNameBase = ''
+    IF( PRESENT( FileNameBase_Option ) ) &
+      FileNameBase = TRIM( FileNameBase_Option )
 
     DO iLevel = 0, nLevels-1
 
@@ -327,7 +339,7 @@ CONTAINS
                iMF_Mask_Option = iMF_Mask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
-               FileName_Option = TRIM( FileName ) )
+               FileNameBase_Option = TRIM( FileNameBase ) )
 
       CALL DestroyFineMask( iLevel, iMF_Mask )
 
@@ -1362,5 +1374,105 @@ CONTAINS
 
   END SUBROUTINE DeallocateArray_Z
 
+  SUBROUTINE amrex2amrex_spatial_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_amrex_spatial )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(DP), INTENT(in)  :: &
+      Data_amrex           (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(out) :: &
+      Data_amrex_spatial   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_spatial, iNodeX, iNodeE
+
+    iD_spatial = 0
+
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iS  = 1      , nS
+      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
+      DO iNodeE = 1    , nDOFE
+      DO iNodeX = 1    , nDOFX
+      DO iFd = 1      , nFields
+
+
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+        iD      = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+
+        iD_spatial = iD_Spatial + 1
+
+        Data_amrex_spatial(iZ2,iZ3,iZ4,iD_spatial) &
+          = Data_amrex(iZ2,iZ3,iZ4,iD)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+iD_spatial = 0
+    END DO
+    END DO
+    END DO
+
+
+  END SUBROUTINE amrex2amrex_spatial_Z
+
+  SUBROUTINE amrex_spatial2amrex_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+      iZ_B, iZ_E, Data_amrex, Data_amrex_spatial )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
+                             iZ_B(4), iZ_E(4)
+    REAL(DP), INTENT(in)  :: &
+      Data_amrex_spatial    (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(out) :: &
+      Data_amrex            (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_spatial, iNodeX, iNodeE
+
+    iD_spatial = 0
+
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+
+      DO iS  = 1      , nS
+      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
+      DO iNodeE = 1    , nDOFE
+      DO iNodeX = 1    , nDOFX
+      DO iFd = 1      , nFields
+
+
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+        iD      = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+
+        iD_spatial = iD_Spatial + 1
+        Data_amrex(iZ2,iZ3,iZ4,iD) &
+          = Data_amrex_spatial(iZ2,iZ3,iZ4,iD_spatial)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+iD_spatial = 0
+    END DO
+    END DO
+    END DO
+
+
+  END SUBROUTINE amrex_spatial2amrex_Z
 
 END MODULE MF_UtilitiesModule
