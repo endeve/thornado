@@ -147,6 +147,7 @@ MODULE InitializationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     CreateFields_TwoMoment_MF, &
     MF_uCR, &
+    MF_uCR_Permute, &
     MF_uPR, &
     FluxRegister_TwoMoment
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -168,6 +169,12 @@ MODULE InitializationModule
     Initialize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment_MF
+  USE MF_UtilitiesModule, ONLY: &
+    amrex2amrex_permute_Z, &
+    amrex_permute2amrex_Z, &
+    MF_amrex2amrex_permute_Z, &
+    MF_amrex_permute2amrex_Z
+    
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -417,6 +424,13 @@ CONTAINS
     CALL AverageDown( MF_uGF, MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
 
+    CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
+   
+    CALL AverageDown( MF_uGF, MF_uCR_permute )
+
+    CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
@@ -457,6 +471,7 @@ CONTAINS
     USE MF_InitializationModule, ONLY: &
       InitializeFields_MF
 
+
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
@@ -464,6 +479,7 @@ CONTAINS
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
 
+    INTEGER :: iLo_MF(4)
     BA = pBA
     DM = pDM
 
@@ -512,7 +528,18 @@ CONTAINS
 
     CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
     CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+
+
+
+
+
+    CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
+   
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR_permute )
+
+    CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
 
     CALL DestroyMesh_MF( MeshX )
 
