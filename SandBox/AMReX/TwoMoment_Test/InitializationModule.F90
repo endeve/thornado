@@ -147,7 +147,7 @@ MODULE InitializationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     CreateFields_TwoMoment_MF, &
     MF_uCR, &
-    MF_uCR_Permute, &
+    MF_Permute, &
     MF_uPR, &
     FluxRegister_TwoMoment
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -425,12 +425,12 @@ CONTAINS
     CALL AverageDown( MF_uGF, MF_uCF )
 
     CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
    
-    CALL AverageDown( MF_uGF, MF_uCR_permute )
+    CALL AverageDown( MF_uGF, MF_Permute )
 
     CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
@@ -534,12 +534,12 @@ CONTAINS
 
 
     CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
    
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR_permute )
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
 
     CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_uCR_permute)
+                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
 
     CALL DestroyMesh_MF( MeshX )
 
