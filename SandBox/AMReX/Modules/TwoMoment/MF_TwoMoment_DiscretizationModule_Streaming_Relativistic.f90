@@ -72,8 +72,10 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( Time, GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
 
+
+    REAL(amrex_real),     INTENT(in)    :: Time(0:)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
@@ -223,7 +225,7 @@ CONTAINS
         CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
                                    iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
 
-        CALL FillPatch( iLevel, Time, MF_uGF, MF_uCR )
+        CALL FillPatch( iLevel, Time(iLevel), MF_uGF, MF_uCR )
 
         CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
                                    iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
