@@ -286,6 +286,14 @@ CONTAINS
 
         CALL thornado_abort
 
+      CASE( 901 )
+
+        WRITE(*,*)
+        WRITE(*,'(2x,A)') 'Boundary condition exponent < 0'
+        WRITE(*,'(2x,A)') TRIM( Message )
+
+        CALL thornado_abort
+
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
