@@ -46,7 +46,6 @@ amr.max_level               = 0
 amr.UseFluxCorrection_Euler = 0
 amr.UseAMR                  = 0
 amr.TagCriteria             = 0.0
-#amr.TagCriteria             = 4.0e3 2.0e3 1.0e3 5.0e2 1.0e2 5.0e1
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
