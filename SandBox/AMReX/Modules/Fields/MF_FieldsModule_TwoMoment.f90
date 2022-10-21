@@ -28,6 +28,8 @@ MODULE MF_FieldsModule_TwoMoment
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCR(:)
 
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_Permute(:)
+
   ! --- Primitive Radiation Fields ---
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPR(:)
@@ -35,6 +37,7 @@ MODULE MF_FieldsModule_TwoMoment
   TYPE(amrex_fluxregister), ALLOCATABLE, PUBLIC :: FluxRegister_TwoMoment(:)
 
   REAL(DP), ALLOCATABLE, PUBLIC :: OffGridFlux_TwoMoment_MF(:,:)
+
 
   PUBLIC :: CreateFields_TwoMoment_MF
   PUBLIC :: DestroyFields_TwoMoment_MF
@@ -45,6 +48,7 @@ CONTAINS
   SUBROUTINE CreateFields_TwoMoment_MF
 
     ALLOCATE( MF_uCR(0:nMaxLevels-1) )
+    ALLOCATE( MF_Permute(0:nMaxLevels-1) )
     ALLOCATE( MF_uPR(0:nMaxLevels-1) )
 
     ALLOCATE( FluxRegister_TwoMoment(0:nMaxLevels-1) )
@@ -66,6 +70,7 @@ CONTAINS
 
       CALL amrex_multifab_destroy( MF_uPR(iLevel) )
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
+      CALL amrex_multifab_destroy( MF_Permute(iLevel) )
 
     END DO
 
@@ -73,6 +78,7 @@ CONTAINS
 
     DEALLOCATE( MF_uPR )
     DEALLOCATE( MF_uCR )
+    DEALLOCATE( MF_Permute )
 
   END SUBROUTINE DestroyFields_TwoMoment_MF
 

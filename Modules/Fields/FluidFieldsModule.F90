@@ -455,9 +455,35 @@ CONTAINS
       ! --- Conserved ---
 
       unitsCF(iCF_D)  = Gram / Centimeter**3
-      unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
-      unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
-      unitsCF(iCF_S3) = Gram / Centimeter**2 / Second
+
+      SELECT CASE( TRIM( CoordinateSystem ) )
+
+        CASE( 'CARTESIAN' )
+
+          unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
+          unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
+          unitsCF(iCF_S3) = Gram / Centimeter**2 / Second
+
+        CASE( 'CYLINDRICAL' )
+
+          unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
+          unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
+          unitsCF(iCF_S3) = Gram / Centimeter / Second
+
+        CASE( 'SPHERICAL' )
+
+          unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
+          unitsCF(iCF_S2) = Gram / Centimeter / Second
+          unitsCF(iCF_S3) = Gram / Centimeter / Second
+
+        CASE DEFAULT
+
+          WRITE(*,*) 'Invalid choice of coordinate system: ', CoordinateSystem
+          WRITE(*,*) 'Stopping...'
+          STOP
+
+      END SELECT
+
       unitsCF(iCF_E)  = Erg / Centimeter**3
       unitsCF(iCF_Ne) = One / Centimeter**3
 

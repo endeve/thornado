@@ -394,6 +394,7 @@ CONTAINS
     !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP             C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$OMP             SqrtGm, &
     !$OMP             J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
@@ -409,6 +410,7 @@ CONTAINS
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, &
     !$OMP             J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
+    !$OMP             SqrtGm_T, &
     !$OMP             J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
@@ -437,6 +439,7 @@ CONTAINS
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$ACC         SqrtGm, &
     !$ACC         J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -452,6 +455,7 @@ CONTAINS
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
     !$ACC         J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
+    !$ACC         SqrtGm_T, &
     !$ACC         J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
@@ -831,6 +835,7 @@ CONTAINS
     !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP               C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$OMP               SqrtGm, &
     !$OMP               J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
@@ -845,6 +850,7 @@ CONTAINS
     !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, &
+    !$OMP               SqrtGm_T, &
     !$OMP               J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
     !$OMP               J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
@@ -874,6 +880,7 @@ CONTAINS
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$ACC         SqrtGm, &
     !$ACC         J0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -888,6 +895,7 @@ CONTAINS
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
+    !$ACC         SqrtGm_T, &
     !$ACC         J_T, H_u_1_T, H_u_2_T, H_u_3_T, &
     !$ACC         J0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
@@ -1038,8 +1046,6 @@ CONTAINS
     !$ACC   BVEC_inner, GVECm_inner, FVECm_inner, &
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
-
-    SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
 
     ! --- Initial RHS ---
 
@@ -1837,6 +1843,8 @@ CONTAINS
     !$OMP          vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
+
+      SqrtGm(iN_X) = SQRT( Gm_dd_11(iN_X) * Gm_dd_22(iN_X) * Gm_dd_33(iN_X) )
 
       V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
       V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
@@ -3031,13 +3039,13 @@ CONTAINS
 !!$
 !!$#if   defined( THORNADO_OMP_OL )
 !!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-!!$    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$    !$OMP PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 !!$#elif defined( THORNADO_OACC   )
 !!$    !$ACC PARALLEL LOOP GANG VECTOR &
-!!$    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$    !$ACC PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 !!$#elif defined( THORNADO_OMP    )
 !!$    !$OMP PARALLEL DO &
-!!$    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+!!$    !$OMP PRIVATE( iOS, CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
 !!$#endif
 !!$    DO iX = 1, nX_G / nDOFX
 !!$      iOS = (iX-1) * nDOFX
