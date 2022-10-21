@@ -158,7 +158,10 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-      Verbose_Option, SuppressBC_Option  )
+      Verbose_Option, SuppressBC_Option, &
+      SurfaceFlux_X1_Option, &
+      SurfaceFlux_X2_Option, &
+      SurfaceFlux_X3_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -182,6 +185,35 @@ CONTAINS
       Verbose_Option
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
+      SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
+      SurfaceFlux_X3_Option(:,:,:,:,:,:,:)
+
+    ! --- Surface flux for coarse/fine corrections ---
+
+    REAL(DP) :: &
+      SurfaceFlux_X1(nDOFX_X1, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2)+1, &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies, nCR)
+
+    REAL(DP) :: &
+      SurfaceFlux_X2(nDOFX_X2, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3)+1, &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies, nCR)
+    REAL(DP) :: &
+      SurfaceFlux_X3(nDOFX_X3, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4)+1, &
+          nSpecies, nCR)
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
@@ -242,14 +274,25 @@ CONTAINS
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-             Verbose_Option = Verbose )
+             SurfaceFlux_X1, Verbose_Option = Verbose )
    CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-             Verbose_Option = Verbose )
+             SurfaceFlux_X2, Verbose_Option = Verbose )
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-             Verbose_Option = Verbose )
+             SurfaceFlux_X3, Verbose_Option = Verbose )
+
+
+    IF( PRESENT( SurfaceFlux_X1_Option ) ) &
+      SurfaceFlux_X1_Option = SurfaceFlux_X1
+
+    IF( PRESENT( SurfaceFlux_X2_Option ) ) &
+      SurfaceFlux_X2_Option = SurfaceFlux_X2
+
+    IF( PRESENT( SurfaceFlux_X3_Option ) ) &
+      SurfaceFlux_X3_Option = SurfaceFlux_X3
+
 
    CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
@@ -299,7 +342,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X1, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -337,6 +380,13 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      SurfaceFlux_X1(nDOFX_X1, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2)+1, &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies, nCR)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X1, iNodeX_X1
@@ -698,7 +748,6 @@ CONTAINS
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
-!check to make sure this is right
 
       iX_F = iNodeX &
              + ( iZ3 - iZP_B0(2) ) * nDOFX_X1 &
@@ -877,6 +926,10 @@ CONTAINS
           = NumericalFlux_LLF &
               ( uCR_X1_L(iCR), uCR_X1_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
 
+        SurfaceFlux_X1(iNodeZ_X1,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
+          = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
+          * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
+        
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_X1(iNodeZ_X1) * GE(iNodeE,iZ1,iGE_Ep2) &
@@ -1070,7 +1123,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X2, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -1108,6 +1161,13 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      SurfaceFlux_X2(nDOFX_X2, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3)+1, &
+          iZ_B0(4):iZ_E0(4), &
+          nSpecies, nCR)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
 
@@ -1664,6 +1724,11 @@ CONTAINS
           = NumericalFlux_LLF &
               ( uCR_X2_L(iCR), uCR_X2_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
 
+        SurfaceFlux_X2(iNodeZ_X2,iZ1,iZ2,iZ3,iZ4,iS, iCR) &
+          = G_Alpha_F(iX_F) * SqrtGM_F(iX_F) &
+          * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3)
+
+
         NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ4(iZ4) &
               * Weights_X2(iNodeZ_X2) * GE(iNodeE,iZ1,iGE_Ep2) &
@@ -1861,7 +1926,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X3, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X3,X4} ---
 
@@ -1899,6 +1964,13 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      SurfaceFlux_X3(nDOFX_X3, &
+          iZ_B0(1):iZ_E0(1), &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4)+1, &
+          nSpecies, nCR)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
 
@@ -2444,6 +2516,10 @@ CONTAINS
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = NumericalFlux_LLF &
               ( uCR_X3_L(iCR), uCR_X3_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+
+        SurfaceFlux_X3(iNodeZ_X3,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
+          = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) & 
+          * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) 
 
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &

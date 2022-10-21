@@ -146,8 +146,10 @@ MODULE MF_UtilitiesModule
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
   PUBLIC :: thornado2amrex_Z
-  PUBLIC :: amrex2amrex_spatial_Z
-  PUBLIC :: amrex_spatial2amrex_Z
+  PUBLIC :: amrex2amrex_permute_Z
+  PUBLIC :: amrex_permute2amrex_Z
+  PUBLIC :: MF_amrex2amrex_permute_Z
+  PUBLIC :: MF_amrex_permute2amrex_Z
   PUBLIC :: thornado2amrex_X_F
   PUBLIC :: amrex2thornado_X_F
   PUBLIC :: WriteNodalDataToFile
@@ -1405,9 +1407,9 @@ CONTAINS
 
   END SUBROUTINE DeallocateArray_Z
 
-  SUBROUTINE amrex2amrex_spatial_Z &
+  SUBROUTINE amrex2amrex_permute_Z &
     ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
-      iZ_B, iZ_E, Data_amrex, Data_amrex_spatial )
+      iZ_B, iZ_E, Data_amrex, Data_amrex_permute )
 
     INTEGER,  INTENT(in)  :: nFields, nS, nE
     INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
@@ -1415,11 +1417,11 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       Data_amrex           (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(DP), INTENT(out) :: &
-      Data_amrex_spatial   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+      Data_amrex_permute   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_spatial, iNodeX, iNodeE
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_permute, iNodeX, iNodeE
 
-    iD_spatial = 0
+    iD_permute = 0
 
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
@@ -1438,9 +1440,9 @@ CONTAINS
                 + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                 + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
-        iD_spatial = iD_Spatial + 1
+        iD_permute = iD_permute + 1
 
-        Data_amrex_spatial(iZ2,iZ3,iZ4,iD_spatial) &
+        Data_amrex_permute(iZ2,iZ3,iZ4,iD_permute) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
 
       END DO
@@ -1448,29 +1450,29 @@ CONTAINS
       END DO
       END DO
       END DO
-iD_spatial = 0
+iD_permute = 0
     END DO
     END DO
     END DO
 
 
-  END SUBROUTINE amrex2amrex_spatial_Z
+  END SUBROUTINE amrex2amrex_permute_Z
 
-  SUBROUTINE amrex_spatial2amrex_Z &
+  SUBROUTINE amrex_permute2amrex_Z &
     ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
-      iZ_B, iZ_E, Data_amrex, Data_amrex_spatial )
+      iZ_B, iZ_E, Data_amrex, Data_amrex_permute )
 
     INTEGER,  INTENT(in)  :: nFields, nS, nE
     INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
                              iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)  :: &
-      Data_amrex_spatial    (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+      Data_amrex_permute    (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(DP), INTENT(out) :: &
       Data_amrex            (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_spatial, iNodeX, iNodeE
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_permute, iNodeX, iNodeE
 
-    iD_spatial = 0
+    iD_permute = 0
 
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
@@ -1489,21 +1491,118 @@ iD_spatial = 0
                 + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                 + ( iZ1 - 1 ) * nDOFZ + iNodeZ
 
-        iD_spatial = iD_Spatial + 1
+        iD_permute = iD_permute + 1
         Data_amrex(iZ2,iZ3,iZ4,iD) &
-          = Data_amrex_spatial(iZ2,iZ3,iZ4,iD_spatial)
+          = Data_amrex_permute(iZ2,iZ3,iZ4,iD_permute)
 
       END DO
       END DO
       END DO
       END DO
       END DO
-iD_spatial = 0
+iD_permute = 0
     END DO
     END DO
     END DO
 
 
-  END SUBROUTINE amrex_spatial2amrex_Z
+  END SUBROUTINE amrex_permute2amrex_Z
+
+  SUBROUTINE MF_amrex2amrex_permute_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, &
+      iZ_B, iZ_E, MF_uGF, MF_uCR, MF_uCR_permute )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), &
+                             iZ_B(4), iZ_E(4)
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(out)   :: MF_uCR_permute(0:nLevels-1)
+
+    TYPE(amrex_mfiter) :: MFI
+
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR_permute(:,:,:,:)
+
+    INTEGER :: iLevel, iLo_MF(4)
+
+    DO iLevel = 0, nLevels-1
+
+      DO WHILE( MFI % next() )
+
+        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
+        uCR  => MF_uCR (iLevel) % DataPtr( MFI )
+        uCR_permute => MF_uCR_permute(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+       CALL amrex2amrex_permute_Z &
+           ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+             iZ_B, iZ_E, uCR, uCR_permute )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+
+    END DO
+
+
+
+
+  END SUBROUTINE MF_amrex2amrex_permute_Z
+
+
+  SUBROUTINE MF_amrex_permute2amrex_Z &
+    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, &
+      iZ_B, iZ_E, MF_uGF, MF_uCR, MF_uCR_permute )
+
+    INTEGER,  INTENT(in)  :: nFields, nS, nE
+    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), &
+                             iZ_B(4), iZ_E(4)
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(out)   :: MF_uCR (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR_permute(0:nLevels-1)
+
+    TYPE(amrex_mfiter) :: MFI
+
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR_permute(:,:,:,:)
+
+    INTEGER :: iLevel, iLo_MF(4)
+
+    DO iLevel = 0, nLevels-1
+
+      DO WHILE( MFI % next() )
+
+        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
+        uCR  => MF_uCR (iLevel) % DataPtr( MFI )
+        uCR_permute => MF_uCR_permute(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+       CALL amrex_permute2amrex_Z &
+           ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+             iZ_B, iZ_E, uCR, uCR_permute )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+
+    END DO
+
+
+
+
+  END SUBROUTINE MF_amrex_permute2amrex_Z
+
+
 
 END MODULE MF_UtilitiesModule

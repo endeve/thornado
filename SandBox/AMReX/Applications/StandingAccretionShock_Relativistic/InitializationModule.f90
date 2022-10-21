@@ -84,6 +84,9 @@ MODULE InitializationModule
     SetUnitsFluidFields
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ExpD, &
+    ExpE
 
   ! --- Local Modules ---
 
@@ -117,6 +120,8 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule, ONLY: &
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
+  USE MF_ErrorModule, ONLY: &
+    DescribeError_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -173,6 +178,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeProgram
+
+    TYPE(amrex_parmparse) :: PP
 
     CALL amrex_init()
 
@@ -283,6 +290,23 @@ CONTAINS
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
     END IF
+
+    CALL amrex_parmparse_build( PP, "SAS" )
+      CALL PP % query( "ExpD", ExpD )
+      CALL PP % query( "ExpE", ExpE )
+    CALL amrex_parmparse_destroy( PP )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,ES24.16E3)') &
+        'ExpD: ', ExpD
+      WRITE(*,'(6x,A,ES24.16E3)') &
+        'ExpE: ', ExpE
+
+    END IF
+
+    IF( ExpD .LT. Zero .OR. ExpE .LT. Zero ) &
+      CALL DescribeError_MF( 901 )
 
     CALL AverageDown( MF_uGF, MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )

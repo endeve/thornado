@@ -52,7 +52,17 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     EdgeMap,          &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
-
+  USE FillPatchModule, ONLY: &
+    FillPatch
+  USE AverageDownModule, ONLY: &
+    AverageDown
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    MF_Permute
+  USE MF_UtilitiesModule, ONLY: &
+    amrex2amrex_permute_Z, &
+    amrex_permute2amrex_Z, &
+    MF_amrex2amrex_permute_Z, &
+    MF_amrex_permute2amrex_Z
   IMPLICIT NONE
   PRIVATE
 
@@ -62,8 +72,10 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( Time, GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
 
+
+    REAL(amrex_real),     INTENT(in)    :: Time(0:)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
@@ -130,7 +142,6 @@ CONTAINS
         iX_E0 = BX % hi
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
-
         i=1
 
         DO WHILE (i<=4)
@@ -197,6 +208,7 @@ CONTAINS
                    nSpecies ], &
                  dU )
 
+
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
@@ -209,6 +221,14 @@ CONTAINS
 
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
+
+        CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                   iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
+
+        CALL FillPatch( iLevel, Time(iLevel), MF_uGF, MF_uCR )
+
+        CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                   iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
 
 !!$        CALL ComputeIncrement_TwoMoment_Explicit &
 !!$               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
@@ -273,6 +293,13 @@ CONTAINS
     END DO
 
 
+    CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                   iZ_B1, iZ_E1,MF_uGF,MF_duCR,MF_Permute)
+
+    CALL AverageDown( MF_uGF, MF_Permute )
+
+    CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
+                                   iZ_B1, iZ_E1,MF_uGF,MF_duCR,MF_Permute)
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF
 
