@@ -202,7 +202,7 @@ CONTAINS
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
-      '(I2.2,3I5.3,SP3ES25.16E3,SP', &
+      '(I2.2,3I7.6,SP3ES25.16E3,SP', &
       nNodesX(1),  'ES25.16E3,SP', &
       nNodesX(2),  'ES25.16E3,SP', &
       nNodesX(3),  'ES25.16E3,SP', &
