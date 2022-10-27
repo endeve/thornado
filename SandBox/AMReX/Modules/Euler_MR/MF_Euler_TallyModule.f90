@@ -13,6 +13,10 @@ MODULE MF_Euler_TallyModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
@@ -83,16 +87,13 @@ MODULE MF_Euler_TallyModule
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_MF &
-    ( SuppressTally_Option, BaseFileName_Option )
+  SUBROUTINE InitializeTally_Euler_MF( SuppressTally_Option )
 
-    LOGICAL,  INTENT(in),         OPTIONAL :: &
-      SuppressTally_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
-      BaseFileName_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: SuppressTally_Option
 
-    CHARACTER(256) :: BaseFileName
-    INTEGER        :: FileUnit
+    CHARACTER(:), ALLOCATABLE :: FileNameBase
+    INTEGER                   :: FileUnit
+    TYPE(amrex_parmparse)     :: PP
 
     CHARACTER(256) :: TimeLabel
     CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
@@ -105,30 +106,25 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      IF( nMaxLevels .GT. 1 )THEN
+      IF( nMaxLevels .GT. 1 .AND. .NOT. UseFluxCorrection_Euler )THEN
 
-        IF( .NOT. UseFluxCorrection_Euler )THEN
-
-          WRITE(*,*)
-          WRITE(*,'(4x,A)') &
-            'WARNING: Euler tally not accurate when UseFluxCorrection is false'
-          WRITE(*,'(4x,A)') &
-            '-------'
-
-        END IF
+        WRITE(*,*)
+        WRITE(*,'(4x,A)') &
+          'WARNING: Euler tally not accurate when UseFluxCorrection is false'
+        WRITE(*,'(4x,A)') &
+          '-------'
 
       END IF
 
-      BaseFileName = ''
-      IF( PRESENT( BaseFileName_Option ) ) &
-        BaseFileName = TRIM( BaseFileName_Option )
-
-      BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
+      FileNameBase = TRIM( ProgramName )
+      CALL amrex_parmparse_build( PP, 'thornado' )
+        CALL PP % query( 'TallyFileNameBase_Euler', FileNameBase )
+      CALL amrex_parmparse_destroy( PP )
 
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
-        = TRIM( BaseFileName ) // '.Tally_BaryonicMass.dat'
+        = TRIM( FileNameBase ) // '.Tally_BaryonicMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -152,7 +148,7 @@ CONTAINS
       ! --- Energy ---
 
       Energy_FileName &
-        = TRIM( BaseFileName ) // '.Tally_Energy.dat'
+        = TRIM( FileNameBase ) // '.Tally_Energy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
