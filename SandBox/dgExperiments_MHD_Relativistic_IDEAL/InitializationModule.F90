@@ -1270,6 +1270,35 @@ CONTAINS
 
         RightState(iPM_Chi) = 0.0_DP
 
+      CASE( 'HydroShockTube3' )
+
+        ! --- Pure hydro version of ST3 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                                         ---
+
+        XD = Half
+
+        LeftState(iPM_D ) = One
+        LeftState(iPM_V1) = 0.999_DP
+        LeftState(iPM_V2) = 0.0_DP
+        LeftState(iPM_V3) = 0.0_DP
+        LeftState(iPM_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+        LeftState(iPM_B1) = 0.0_DP
+        LeftState(iPM_B2) = 0.0_DP
+        LeftState(iPM_B3) = 0.0_DP
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D ) = One
+        RightState(iPM_V1) = -0.999_DP
+        RightState(iPM_V2) =  0.0_DP
+        RightState(iPM_V3) =  0.0_DP
+        RightState(iPM_E ) =  0.1_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPM_B1) = 0.0_DP
+        RightState(iPM_B2) = 0.0_DP
+        RightState(iPM_B3) = 0.0_DP
+        RightState(iPM_Chi) = 0.0_DP
+
       CASE( 'ShockTube3' )
 
         ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
@@ -1425,6 +1454,9 @@ CONTAINS
         WRITE(*,'(A)') &
           "  'ShockTube2' - &
           2nd shock tube problem (ST2) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
+        WRITE(*,'(A)') &
+          "  'HydroShockTube3' - &
+          Pure hydro version of the 3rd shock tube problem (ST3) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
         WRITE(*,'(A)') &
           "  'ShockTube3' - &
           3rd shock tube problem (ST3) from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
