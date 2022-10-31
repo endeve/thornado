@@ -35,7 +35,9 @@ MODULE TimeSteppingModule_SSPRK
   INTERFACE
     SUBROUTINE MagnetofluidIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-        SuppressBC_Option, UseDivergenceCleaning_Option, &
+        SuppressBC_Option, &
+        EvolveOnlyMagnetic_Option, &
+        UseDivergenceCleaning_Option, &
         DampingParameter_Option )
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)     :: &
@@ -50,6 +52,8 @@ MODULE TimeSteppingModule_SSPRK
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
+      LOGICAL,  INTENT(in), OPTIONAL :: &
+        EvolveOnlyMagnetic_Option
       LOGICAL,  INTENT(in), OPTIONAL :: &
         UseDivergenceCleaning_Option
       REAL(DP), INTENT(in), OPTIONAL :: &
@@ -238,6 +242,7 @@ CONTAINS
         CALL ComputeIncrement_Magnetofluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
+                 EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &
                  DampingParameter_Option = DampingParameter )
 

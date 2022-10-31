@@ -40,7 +40,10 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi,            &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3 )
+      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)  :: &
       CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
@@ -58,7 +61,8 @@ CONTAINS
              PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
              PM_B1, PM_B2, PM_B3, PM_Chi,            &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3 )
+             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+             EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -69,8 +73,11 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi,            &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3 )
- 
+      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
     REAL(DP), INTENT(in)  :: &
       CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), CM_E(:), CM_Ne(:), &
       CM_B1(:), CM_B2(:), CM_B3(:), CM_Chi(:)
@@ -87,7 +94,8 @@ CONTAINS
              PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
              PM_B1, PM_B2, PM_B3, PM_Chi,            &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3 )
+             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+             EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputePrimitive_Vector
 
@@ -99,7 +107,9 @@ CONTAINS
       CM_B1, CM_B2, CM_B3, CM_Chi,            &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
       GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
-      AM_P )
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)  :: &
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
@@ -121,7 +131,7 @@ CONTAINS
              CM_B1, CM_B2, CM_B3, CM_Chi,            &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
              GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
-             AM_P )
+             AM_P, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeConserved_Scalar
 
@@ -133,7 +143,9 @@ CONTAINS
       CM_B1, CM_B2, CM_B3, CM_Chi,            &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
       GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
-      AM_P )
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)  :: &
       PM_D(:), PM_V1(:), PM_V2(:), PM_V3(:), PM_E(:), PM_Ne(:), &
@@ -155,13 +167,16 @@ CONTAINS
              CM_B1, CM_B2, CM_B3, CM_Chi,            &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
              GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
-             AM_P )
+             AM_P, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeConserved_Vector
 
 
   SUBROUTINE ComputeFromConserved_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -173,14 +188,17 @@ CONTAINS
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     CALL ComputeFromConserved_MHD_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, &
+             EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeFromConserved_MHD
 
 
   SUBROUTINE ComputeTimeStep_MHD &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
-      UseDivergenceCleaning )
+      UseDivergenceCleaning, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     LOGICAL,  INTENT(in)  :: &
       UseDivergenceCleaning
@@ -196,7 +214,7 @@ CONTAINS
 
     CALL ComputeTimeStep_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
-             UseDivergenceCleaning )
+             UseDivergenceCleaning, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeTimeStep_MHD
 

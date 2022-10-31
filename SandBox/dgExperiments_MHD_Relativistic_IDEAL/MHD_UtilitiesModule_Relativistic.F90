@@ -108,7 +108,10 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi, &
       GF_Gm11, GF_Gm22, GF_Gm33, &
-      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3 )
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)    :: &
       CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
@@ -134,15 +137,17 @@ CONTAINS
 
     REAL(DP) :: AM_P, Cs
 
-    LOGICAL :: MagnetofluidCoupling = .FALSE.
+    IF( .NOT. EvolveOnlyMagnetic )THEN
 
-    IF( MagnetofluidCoupling )THEN
+      PRINT*, 'Magnetofluid coupling on.'
 
       B1 = CM_B1
       B2 = CM_B2
       B3 = CM_B3
 
     ELSE
+
+      PRINT*, 'Magnetofluid coupling off.'
 
       B1 = 0.0_DP
       B2 = 0.0_DP
@@ -408,7 +413,10 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi, &
       GF_Gm11, GF_Gm22, GF_Gm33, &
-      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3 )
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)    :: &
       CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), CM_E(:), CM_Ne(:), &
@@ -451,7 +459,8 @@ CONTAINS
                GF_Alpha(iNX), &
                GF_Beta1(iNX), &
                GF_Beta2(iNX), &
-               GF_Beta3(iNX) )
+               GF_Beta3(iNX), &
+               EvolveOnlyMagnetic )
 
     END DO
 
@@ -466,7 +475,9 @@ CONTAINS
       CM_B1, CM_B2, CM_B3, CM_Chi, &
       GF_Gm11, GF_Gm22, GF_Gm33,  &
       GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
-      AM_P )
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)  :: PM_D, PM_V1, PM_V2, PM_V3, &
                              PM_E, PM_Ne, PM_B1, PM_B2, &
@@ -477,9 +488,7 @@ CONTAINS
                              CM_E, CM_Ne, CM_B1, CM_B2, &
                              CM_B3, CM_Chi
 
-    REAL(DP) :: VSq, W, B0u, B0d, BSq, h, hStar, p, pStar 
-
-    LOGICAL :: MagnetofluidCoupling = .FALSE.
+    REAL(DP) :: VSq, W, B0u, B0d, BSq, h, hStar, p, pStar
 
    !PRINT*
    !PRINT*, 'Computing conserved variables.'
@@ -537,7 +546,9 @@ CONTAINS
 
     CM_D   = W * PM_D
 
-    IF( MagnetofluidCoupling )THEN
+    IF( .NOT. EvolveOnlyMagnetic )THEN
+
+      PRINT*, 'Magnetofluid coupling on.'
 
       CM_S1  = hStar * W**2 * PM_D * GF_Gm11 * PM_V1 &
                - GF_Alpha * B0u**2 * ( GF_Gm11 * GF_Beta1 ) &
@@ -551,6 +562,8 @@ CONTAINS
       CM_E   = hStar * W**2 * PM_D - pStar - ( GF_Alpha * B0u )**2 - W * PM_D
 
     ELSE
+
+      PRINT*, 'Magnetofluid coupling off.'
 
       CM_S1  = h * W**2 * PM_D * GF_Gm11 * PM_V1
       CM_S2  = h * W**2 * PM_D * GF_Gm22 * PM_V2
@@ -589,7 +602,9 @@ CONTAINS
       CM_B1, CM_B2, CM_B3, CM_Chi, &
       GF_Gm11, GF_Gm22, GF_Gm33, &
       GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
-      AM_P )
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     REAL(DP), INTENT(in)  :: PM_D(:), PM_V1(:), PM_V2(:), PM_V3(:), &
                              PM_E(:), PM_Ne(:), PM_B1(:), PM_B2(:), &
@@ -632,7 +647,8 @@ CONTAINS
                GF_Beta1(iNX),  &
                GF_Beta2(iNX),  &
                GF_Beta3(iNX),  &
-               AM_P (iNX) )
+               AM_P (iNX), &
+               EvolveOnlyMagnetic )
 
     END DO
 
@@ -642,7 +658,10 @@ CONTAINS
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
   SUBROUTINE ComputeFromConserved_MHD_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -703,7 +722,8 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Alpha),     &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_1),    &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_2),    &
-               G   (iNX,iX1,iX2,iX3,iGF_Beta_3) )
+               G   (iNX,iX1,iX2,iX3,iGF_Beta_3), &
+               EvolveOnlyMagnetic )
 
       CALL ComputeAuxiliary_Fluid &
              ( P(iNX,iX1,iX2,iX3,iPM_D ), &
@@ -729,10 +749,11 @@ CONTAINS
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_MHD_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, &
-      UseDivergenceCleaning )
+      UseDivergenceCleaning, EvolveOnlyMagnetic )
 
     LOGICAL,  INTENT(in)  :: &
-      UseDivergenceCleaning
+      UseDivergenceCleaning, &
+      EvolveOnlyMagnetic
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
@@ -789,7 +810,8 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Alpha),    &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_1),   &
                G   (iNX,iX1,iX2,iX3,iGF_Beta_2),   &
-               G   (iNX,iX1,iX2,iX3,iGF_Beta_3) )
+               G   (iNX,iX1,iX2,iX3,iGF_Beta_3),   &
+               EvolveOnlyMagnetic )
 
      !PRINT*, 'Computing sound speed.'
 

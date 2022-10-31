@@ -87,10 +87,11 @@ CONTAINS
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
                  ConstantDensity_Option, Angle_Option, RiemannProblemName_Option, &
-                 MMBlastWaveB0_Option, MMBlastWavePhi_Option )
+                 MMBlastWaveB0_Option, MMBlastWavePhi_Option, EvolveOnlyMagnetic_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
@@ -104,6 +105,8 @@ CONTAINS
     REAL(DP)          :: Angle = Pi / Four
     REAL(DP)          :: MMBlastWaveB0 = 0.5_DP
     REAL(DP)          :: MMBlastWavePhi = 0.0_DP
+
+    LOGICAL           :: EvolveOnlyMagnetic = .FALSE.
 
     uPM(:,:,:,:,iPM_Ne) = Zero
 
@@ -128,6 +131,9 @@ CONTAINS
     IF( PRESENT( MMBlastWavePhi_Option ) ) &
       MMBlastWavePhi = MMBlastWavePhi_Option
 
+    IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
+      EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
+
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
 
@@ -136,32 +142,32 @@ CONTAINS
       CASE( 'Advection1D' )
 
         CALL InitializeFields_Advection1D &
-               ( TRIM( AdvectionProfile ) )
+               ( TRIM( AdvectionProfile ), EvolveOnlyMagnetic )
 
       CASE( 'Advection2D' )
 
         CALL InitializeFields_Advection2D &
-               ( TRIM( AdvectionProfile ), Angle )
+               ( TRIM( AdvectionProfile ), Angle, EvolveOnlyMagnetic )
 
       CASE( 'Cleaning1D' )
 
         CALL InitializeFields_Cleaning1D &
-               ( SmoothProfile )
+               ( SmoothProfile, EvolveOnlyMagnetic )
 
       CASE( 'Cleaning2D' )
 
         CALL InitializeFields_Cleaning2D &
-               ( ConstantDensity )
+               ( ConstantDensity, EvolveOnlyMagnetic )
 
       CASE( 'Riemann1D' )
 
         CALL InitializeFields_Riemann1D &
-               ( TRIM( RiemannProblemName ) )
+               ( TRIM( RiemannProblemName ), EvolveOnlyMagnetic )
 
       CASE( 'MMBlastWave2D' )
 
         CALL InitializeFields_MMBlastWave2D &
-               ( MMBlastWaveB0, MMBlastWavePhi )
+               ( MMBlastWaveB0, MMBlastWavePhi, EvolveOnlyMagnetic )
 
       CASE DEFAULT
 
@@ -175,9 +181,10 @@ CONTAINS
   END SUBROUTINE InitializeFields_Relativistic_MHD
 
 
-  SUBROUTINE InitializeFields_Advection1D( AdvectionProfile )
+  SUBROUTINE InitializeFields_Advection1D( AdvectionProfile, EvolveOnlyMagnetic )
 
     CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
@@ -387,7 +394,8 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P) )
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
@@ -398,9 +406,10 @@ CONTAINS
   END SUBROUTINE InitializeFields_Advection1D
 
 
-  SUBROUTINE InitializeFields_Advection2D( AdvectionProfile, Angle )
+  SUBROUTINE InitializeFields_Advection2D( AdvectionProfile, Angle, EvolveOnlyMagnetic )
 
     CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic
     REAL(DP), INTENT(in)         :: Angle
 
     INTEGER  :: iX1, iX2, iX3
@@ -831,7 +840,8 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P) )
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
@@ -842,9 +852,10 @@ CONTAINS
   END SUBROUTINE InitializeFields_Advection2D
 
 
-  SUBROUTINE InitializeFields_Cleaning1D( SmoothProfile )
+  SUBROUTINE InitializeFields_Cleaning1D( SmoothProfile, EvolveOnlyMagnetic )
 
     LOGICAL, INTENT(in) :: SmoothProfile
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     ! 1D divergence cleaning test from Section 5.1 of Derigs et al. (2018)
     ! with option to use only the smooth part of the initial condition.
@@ -919,7 +930,8 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P) )
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
@@ -930,13 +942,14 @@ CONTAINS
   END SUBROUTINE InitializeFields_Cleaning1D
 
 
-  SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity )
+  SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity, EvolveOnlyMagnetic )
 
     ! 2D divergence cleaning test from Section 5.2 of
     ! Derigs et al. (2018) with option to use
     ! constant density.
 
-    LOGICAL :: ConstantDensity
+    LOGICAL, INTENT(in) :: ConstantDensity
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
@@ -1017,7 +1030,8 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P) )
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
@@ -1029,9 +1043,10 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_Riemann1D &
-               ( RiemannProblemName )
+               ( RiemannProblemName, EvolveOnlyMagnetic )
 
     CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER iX1, iX2, iX3
     INTEGER iNodeX, iNodeX1
@@ -1559,7 +1574,8 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P) )
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
@@ -1569,8 +1585,9 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_MMBlastWave2D &
-               ( MMBlastWaveB0, MMBlastWavePhi )
+               ( MMBlastWaveB0, MMBlastWavePhi, EvolveOnlyMagnetic )
 
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic
     REAL(DP), INTENT(in) :: MMBlastWaveB0, MMBlastWavePhi
 
     INTEGER iX1, iX2, iX3
@@ -1644,7 +1661,8 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P) )
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO

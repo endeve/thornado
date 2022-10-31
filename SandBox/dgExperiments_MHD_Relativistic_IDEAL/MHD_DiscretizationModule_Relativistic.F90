@@ -98,6 +98,7 @@ MODULE MHD_DiscretizationModule_Relativistic
 
   PUBLIC :: ComputeIncrement_MHD_DG_Explicit
 
+  LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
   REAL(DP) :: DampingParameter
 
@@ -136,7 +137,9 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_MHD_DG_Explicit &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-      SuppressBC_Option, UseDivergenceCleaning_Option, &
+      SuppressBC_Option, &
+      EvolveOnlyMagnetic_Option, &
+      UseDivergenceCleaning_Option, &
       DampingParameter_Option )
     
     INTEGER,  INTENT(in)            :: &
@@ -146,6 +149,7 @@ CONTAINS
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
     LOGICAL,  INTENT(in),  OPTIONAL :: &
+      EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option
     REAL(DP), INTENT(in),  OPTIONAL :: &
       DampingParameter_Option
@@ -168,6 +172,10 @@ CONTAINS
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
+
+    EvolveOnlyMagnetic = .FALSE.
+    IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
+      EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
 
     UseDivergenceCleaning = .FALSE.
     IF( PRESENT( UseDivergenceCleaning_Option ) ) &
@@ -601,7 +609,8 @@ CONTAINS
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
              pB1_L, pB2_L, pB3_L, pChi_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F )
+             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
+             EvolveOnlyMagnetic )
 
     !PRINT*, 'Computing the primitive variables for the right state.'
 
@@ -611,7 +620,8 @@ CONTAINS
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
              pB1_R, pB2_R, pB3_R, pChi_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F )
+             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
+             EvolveOnlyMagnetic )
 
     DO iNX_X = 1, nNodesX_X1
 
@@ -831,7 +841,8 @@ CONTAINS
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
              pB1_K, pB2_K, pB3_K, pChi_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             Alpha_K, Beta_1_K, Beta_2_K, Beta_3_K )
+             Alpha_K, Beta_1_K, Beta_2_K, Beta_3_K, &
+             EvolveOnlyMagnetic )
 
     DO iNX_K = 1, nNodesX_K
 
@@ -1202,7 +1213,8 @@ CONTAINS
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
              pB1_L, pB2_L, pB3_L, pChi_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F )
+             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
+             EvolveOnlyMagnetic )
 
     !PRINT*, 'Computing the primitive variables for the right state.'
 
@@ -1212,7 +1224,8 @@ CONTAINS
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
              pB1_R, pB2_R, pB3_R, pChi_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F )
+             Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
+             EvolveOnlyMagnetic )
 
     DO iNX_X = 1, nNodesX_X2
 
@@ -1432,7 +1445,8 @@ CONTAINS
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
              pB1_K, pB2_K, pB3_K, pChi_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             Alpha_K, Beta_1_K, Beta_2_K, Beta_3_K )
+             Alpha_K, Beta_1_K, Beta_2_K, Beta_3_K, &
+             EvolveOnlyMagnetic )
 
     DO iNX_K = 1, nNodesX_K
 
@@ -1952,7 +1966,8 @@ CONTAINS
                G(   iNX,iX1,iX2,iX3,iGF_Alpha   ), &
                G(   iNX,iX1,iX2,iX3,iGF_Beta_1  ), &
                G(   iNX,iX1,iX2,iX3,iGF_Beta_2  ), &
-               G(   iNX,iX1,iX2,iX3,iGF_Beta_3  ) )
+               G(   iNX,iX1,iX2,iX3,iGF_Beta_3  ), &
+               EvolveOnlyMagnetic )
 
       CALL ComputePressureFromPrimitive &
              ( P(iPM_D), P(iPM_E), P(iPM_Ne), Pressure )
