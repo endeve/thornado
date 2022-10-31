@@ -84,8 +84,9 @@ PROGRAM ApplicationDriver
   REAL(DP) :: MMBlastWaveB0  = 0.5_DP
   REAL(DP) :: MMBlastWavePhi = 0.0_DP
 
-  ProgramName = 'MMBlastWave2D'
+  ProgramName = 'Riemann1D'
   AdvectionProfile = 'MagneticSineWaveX1'
+  RiemannProblemName = 'IsolatedContact'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -356,8 +357,6 @@ PROGRAM ApplicationDriver
 
     CASE( 'Riemann1D' )
 
-      RiemannProblemName = 'IsolatedContact'
-
       EvolveOnlyMagnetic = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
@@ -401,6 +400,13 @@ PROGRAM ApplicationDriver
 
           nX  = [ 800, 1, 1 ]
 
+        CASE( 'HydroShockTube3' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.4_DP
+
+          nX = [ 400, 1, 1 ]
+
         CASE( 'ShockTube3' )
 
           Gamma = 5.0_DP / 3.0_DP
@@ -415,6 +421,13 @@ PROGRAM ApplicationDriver
 
           nX  = [ 800, 1, 1 ]
 
+        CASE( 'HydroMBProblem1' )
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.4_DP
+
+          nX  = [ 128, 1, 1 ]
+
         CASE DEFAULT
 
           WRITE(*,*)
@@ -424,8 +437,10 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     '  RotationalWave'
           WRITE(*,'(A)')     '  ShockTube1'
           WRITE(*,'(A)')     '  ShockTube2'
+          WRITE(*,'(A)')     '  HydroShockTube3'
           WRITE(*,'(A)')     '  ShockTube3'
           WRITE(*,'(A)')     '  ShockTube4'
+          WRITE(*,'(A)')     '  HydroMBProblem1'
           WRITE(*,'(A)')     'Stopping...'
           STOP
 
@@ -549,7 +564,8 @@ PROGRAM ApplicationDriver
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ComputeFromConserved_MHD_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
+             EvolveOnlyMagnetic )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
@@ -585,7 +601,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCM, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt, UseDivergenceCleaning )
+             dt, UseDivergenceCleaning, EvolveOnlyMagnetic )
 
     IF( t + dt .LT. t_end )THEN
 
@@ -631,7 +647,7 @@ PROGRAM ApplicationDriver
     IF( wrt )THEN
 
       CALL ComputeFromConserved_MHD_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
@@ -649,7 +665,7 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   CALL ComputeFromConserved_MHD_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
