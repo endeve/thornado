@@ -12,6 +12,8 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE MagnetofluidFieldsModule, ONLY: &
     nCM
+  USE MHD_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
+    ApplySlopeLimiter_MHD_Relativistic_IDEAL
 
   IMPLICIT NONE
   PRIVATE
@@ -239,6 +241,9 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
+        CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+
         CALL ComputeIncrement_Magnetofluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
@@ -260,6 +265,9 @@ CONTAINS
       END IF
 
     END DO
+
+    CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
   END SUBROUTINE UpdateMagnetofluid_SSPRK
 
