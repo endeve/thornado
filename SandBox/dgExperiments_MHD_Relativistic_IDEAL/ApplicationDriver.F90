@@ -31,6 +31,10 @@ PROGRAM ApplicationDriver
     ComputeGeometryX
   USE InitializationModule, ONLY: &
     InitializeFields_Relativistic_MHD
+  USE MHD_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
+    InitializeSlopeLimiter_MHD_Relativistic_IDEAL, &
+    FinalizeSlopeLimiter_MHD_Relativistic_IDEAL, &
+    ApplySlopeLimiter_MHD_Relativistic_IDEAL
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_MHD_Relativistic, &
     ComputeTimeStep_MHD_Relativistic
@@ -63,12 +67,17 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: SmoothProfile, ConstantDensity
   LOGICAL       :: wrt
+  LOGICAL       :: UseSlopeLimiter
+  CHARACTER(4)  :: SlopeLimiterMethod
+  LOGICAL       :: UseConservativeCorrection
+  REAL(DP)      :: SlopeTolerance
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   INTEGER       :: RestartFileNumber
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
+  REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: ZoomX(3)
   REAL(DP)      :: Timer_Evolution
 
@@ -497,6 +506,15 @@ PROGRAM ApplicationDriver
 
   CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
 
+  ! --- Slope Limiter ---
+
+  UseSlopeLimiter           = .FALSE.
+  SlopeLimiterMethod        = 'TVD'
+  BetaTVD                   = 1.75_DP
+  BetaTVB                   = 0.0_DP
+  SlopeTolerance            = 1.0e-6_DP
+  UseConservativeCorrection = .FALSE.
+
   ! === End of User Input ===
 
   CALL InitializeProgram_Basic &
@@ -534,6 +552,20 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
+  CALL InitializeSlopeLimiter_MHD_Relativistic_IDEAL &
+         ( UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           SlopeLimiterMethod_Option &
+             = TRIM( SlopeLimiterMethod ), &
+           BetaTVD_Option &
+             = BetaTVD, &
+           BetaTVB_Option &
+             = BetaTVB, &
+           SlopeTolerance_Option &
+             = SlopeTolerance, &
+           UseConservativeCorrection_Option &
+             = UseConservativeCorrection )
+
   CALL InitializeMagnetofluid_SSPRK &
          ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
@@ -562,6 +594,9 @@ PROGRAM ApplicationDriver
              = MMBlastWavePhi )
 
   IF( RestartFileNumber .LT. 0 )THEN
+
+    CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
     CALL ComputeFromConserved_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
@@ -673,6 +708,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeMagnetofluid_SSPRK
 
   CALL FinalizeEquationOfState
+
+  CALL FinalizeSlopeLimiter_MHD_Relativistic_IDEAL
 
   CALL FinalizeReferenceElementX_Lagrange
 
