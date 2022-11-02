@@ -101,6 +101,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
   REAL(DP), PARAMETER :: Unit_T = MeV
 
+  INTEGER :: MoveLeft = 1
+
+
 #if   defined( TWOMOMENT_ORDER_1 )
   INTEGER, PARAMETER :: iD  = 0
   INTEGER, PARAMETER :: iY  = 1
@@ -153,7 +156,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
 #if defined( TWOMOMENT_RELATIVISTIC )
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: S_Eps, C_Eps, U_Eps, G_Eps, Eps_old
   REAL(DP), DIMENSION(:), ALLOCATABLE :: rho_old, cD_old, C_rho, S_rho, G_rho, U_rho
 #endif
 
@@ -325,11 +327,6 @@ CONTAINS
     ALLOCATE( U_V_d_3(nX_G) )
 
 #if defined( TWOMOMENT_RELATIVISTIC )
-    ALLOCATE( Eps_old   (nX_G) )
-    ALLOCATE( S_Eps     (nX_G) )
-    ALLOCATE( C_Eps     (nX_G) )
-    ALLOCATE( G_Eps     (nX_G) )
-    ALLOCATE( U_Eps     (nX_G) )
 
     ALLOCATE(   rho_old(nX_G) )
     ALLOCATE(   cD_old (nX_G) )
@@ -978,7 +975,6 @@ CONTAINS
     DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
 #if defined( TWOMOMENT_RELATIVISTIC )
     DEALLOCATE( cD_old, rho_old, C_rho, S_rho, G_rho, U_rho )
-    DEALLOCATE( Eps_old, C_Eps, S_Eps, U_Eps, G_Eps )
 #endif
     DEALLOCATE( SqrtGm )
     DEALLOCATE( Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
@@ -2259,11 +2255,11 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: k_dd(3,3), vDotV, vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vvDotK
-    REAL(DP) :: DT, B_d_1, B_d_2, B_d_3, cD, SJ(3), Ef
+    REAL(DP) :: DT, B_d_1, B_d_2, B_d_3, cD, SJ(3), Tau_f
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3
     REAL(DP) :: V_d_1, V_d_2, V_d_3
-    REAL(DP) :: SUM_Y, SUM_Eps, SUM_V1, SUM_V2, SUM_V3
+    REAL(DP) :: SUM_Y, SUM_V1, SUM_V2, SUM_V3, SUM_Ef
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2302,29 +2298,42 @@ CONTAINS
 
       rho_old(iN_X) = D(iN_X)
       Y_old  (iN_X) = Y(iN_X)
-      Eps_old(iN_X) = E(iN_X)
       cD_old (iN_X) = W * D(iN_X)
+      Ef_old(iN_X)  = E(iN_X)
 
       ! --- Scaling Factors ---
 
       S_rho  (iN_X) = One / ( D (iN_X) )
       S_Y    (iN_X) = One / ( Y (iN_X) )
-      S_Eps  (iN_X) = One / ( E(iN_X) )
+      S_Ef   (iN_X) = One / ( E(iN_X) )
       S_V_d_1(iN_X) = One / ( SpeedOfLight )
       S_V_d_2(iN_X) = One / ( SpeedOfLight )
       S_V_d_3(iN_X) = One / ( SpeedOfLight )
+
+
+      IF (MoveLeft .EQ. 1) THEN
+        
+        Ef_old(iN_X) = E(iN_X) &
+                     + ( W - 1.0_DP ) / W
+
+        S_Ef(iN_X)   = 1.0_DP / Ef_old(iN_X)
+
+      END IF
+
+
+
 
       ! --- Initial Guess for Matter State ---
 
       U_rho  (iN_X) = One
       U_Y    (iN_X) = One
-      U_Eps  (iN_X) = One
+      U_Ef  (iN_X) = One
       U_V_d_1(iN_X) = V_d_1 / SpeedOfLight
       U_V_d_2(iN_X) = V_d_2 / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3 / SpeedOfLight
 
       SUM_Y     = Zero
-      SUM_Eps   = Zero
+      SUM_Ef   = Zero
       SUM_V1    = Zero
       SUM_V2    = Zero
       SUM_V3    = Zero
@@ -2421,7 +2430,7 @@ CONTAINS
         SUM_Y  = SUM_Y  + Nnu     * W2_S(iN_E) * LeptonNumber(iS)
       END IF
 
-      SUM_Eps = SUM_Eps + Enu     * W3_S(iN_E)
+      SUM_Ef  = SUM_Ef  + Enu     * W3_S(iN_E)
       SUM_V1  = SUM_V1  + Fnu_d_1 * W3_S(iN_E)
       SUM_V2  = SUM_V2  + Fnu_d_2 * W3_S(iN_E)
       SUM_V3  = SUM_V3  + Fnu_d_3 * W3_S(iN_E)
@@ -2443,7 +2452,7 @@ CONTAINS
       SJ(2) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_2
       SJ(3) = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 * V_d_3
 
-      Ef = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 - P(iN_X)
+      Tau_f = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) * D(iN_X) * W**2 - P(iN_X) - cD_old(iN_X)
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
@@ -2451,8 +2460,8 @@ CONTAINS
         = W * U_rho  (iN_X) 
       C_Y    (iN_X) &
         = U_Y    (iN_X) + SUM_Y * S_Y    (iN_X)
-      C_Eps   (iN_X) &
-        = ( Ef + SUM_Eps ) * S_Eps  (iN_X) / cD_old(iN_X)
+      C_Ef   (iN_X) &
+        = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
       C_V_d_1(iN_X) &
         = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
       C_V_d_2(iN_X) &
@@ -2757,7 +2766,7 @@ CONTAINS
     REAL(DP) :: V_d_1, V_d_2, V_d_3
     REAL(DP) :: Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, Nnu
     REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, vDotInu
-    REAL(DP) :: SUM_Eps, SUM_V1, SUM_V2, SUM_V3, SUM_Y
+    REAL(DP) :: SUM_Ef, SUM_V1, SUM_V2, SUM_V3, SUM_Y
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -2792,7 +2801,7 @@ CONTAINS
         DT = 1.0_DP / ( B_d_1 * V_u_1(iN_X) + B_d_2 * V_u_2(iN_X) + B_d_3 * V_u_3(iN_X) - Alpha(iN_X) )
      
         SUM_Y   = Zero
-        SUM_Eps = Zero
+        SUM_Ef  = Zero
         SUM_V1  = Zero
         SUM_V2  = Zero
         SUM_V3  = Zero
@@ -2875,7 +2884,7 @@ CONTAINS
             SUM_Y  = SUM_Y  + Nnu     * W2_S(iN_E) * LeptonNumber(iS)
           END IF
 
-          SUM_Eps = SUM_Eps + Enu     * W3_S(iN_E)
+          SUM_Ef  = SUM_Ef  + Enu     * W3_S(iN_E)
           SUM_V1  = SUM_V1  + Fnu_d_1 * W3_S(iN_E)
           SUM_V2  = SUM_V2  + Fnu_d_2 * W3_S(iN_E)
           SUM_V3  = SUM_V3  + Fnu_d_3 * W3_S(iN_E)
@@ -2887,23 +2896,34 @@ CONTAINS
 
         G_rho  (iN_X)  = ( 1.0_DP / W ) * C_rho  (iN_X) 
         G_Y    (iN_X)  = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
-        G_Eps  (iN_X)  = ( 1.0_DP / W ) * ( C_Eps(iN_X) - SUM_Eps * S_Eps(iN_X) / cD_old(iN_X) ) &
-                       + S_Eps(iN_X)    * ( P(iN_X) / ( W * cD_old(iN_X) ) - ( 1.0_DP + P(iN_X) / D(iN_X) ))
-      
+
+!not sure if (W-1) or (1-W) originally (W-1)
+        G_Ef  (iN_X)   = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
+                       + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
         G_V_d_1(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
         G_V_d_2(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
         G_V_d_3(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
-        
+       
+!not sure if (W-1) or (1-W) originally (W-1)
+
+       IF( MoveLeft .EQ. 1) THEN
+
+         G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
+                    + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
+       END IF
+
+
+ 
         Gm(iD ,iN_X) = G_rho  (iN_X)
         Gm(iY ,iN_X) = G_Y    (iN_X)
-        Gm(iEf,iN_X) = G_Eps  (iN_X)
+        Gm(iEf,iN_X) = G_Ef  (iN_X)
         Gm(iV1,iN_X) = G_V_d_1(iN_X)
         Gm(iV2,iN_X) = G_V_d_2(iN_X)
         Gm(iV3,iN_X) = G_V_d_3(iN_X)
 
         Fm(iD ,iN_X) = G_rho  (iN_X) - U_rho  (iN_X)
         Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
-        Fm(iEf ,iN_X)= G_Eps  (iN_X) - U_Eps  (iN_X)
+        Fm(iEf ,iN_X)= G_Ef  (iN_X)  - U_Ef  (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
@@ -3623,8 +3643,8 @@ CONTAINS
 
 
     INTEGER  :: iN_X
-    REAL(DP) :: vDotV, W, V_d_1, V_d_2, V_d_3
-
+    REAL(DP) :: vDotV, W, V_d_1, V_d_2, V_d_3, Ef_temp, P
+    
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( vDotV )
@@ -3641,24 +3661,24 @@ CONTAINS
 
         Fm(iD ,iN_X) = Gm(iD ,iN_X) - U_rho  (iN_X)
         Fm(iY ,iN_X) = Gm(iY ,iN_X) - U_Y    (iN_X)
-        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Eps  (iN_X)
+        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Ef  (iN_X)
         Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
-        
+
         U_rho  (iN_X) = Gm(iD ,iN_X)
         U_Y    (iN_X) = Gm(iY ,iN_X)
-        U_Eps  (iN_X) = Gm(iEf,iN_X)
+        U_Ef   (iN_X) = Gm(iEf,iN_X)
         U_V_d_1(iN_X) = Gm(iV1,iN_X)
         U_V_d_2(iN_X) = Gm(iV2,iN_X)
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
-        D    (iN_X) = U_rho  (iN_X) * rho_old(iN_X)
-        Y    (iN_X) = U_Y    (iN_X) * Y_old  (iN_X)
-        E    (iN_X) = U_Eps  (iN_X) * Eps_old(iN_X)
-        V_d_1       = U_V_d_1(iN_X) * SpeedOfLight
-        V_d_2       = U_V_d_2(iN_X) * SpeedOfLight
-        V_d_3       = U_V_d_3(iN_X) * SpeedOfLight
+        D(iN_X) = U_rho  (iN_X) * rho_old(iN_X)
+        Y(iN_X) = U_Y    (iN_X) * Y_old  (iN_X)
+        Ef_temp = U_Ef  (iN_X)  * Ef_old(iN_X)
+        V_d_1   = U_V_d_1(iN_X) * SpeedOfLight
+        V_d_2   = U_V_d_2(iN_X) * SpeedOfLight
+        V_d_3   = U_V_d_3(iN_X) * SpeedOfLight
 
         ! --- Update Three-Velocity (Index Up) ---
 
@@ -3666,15 +3686,24 @@ CONTAINS
         V_u_2(iN_X) = V_d_2 / Gm_dd_22(iN_X)
         V_u_3(iN_X) = V_d_3 / Gm_dd_33(iN_X)
 
-
         vDotV =   V_u_1(iN_X) * V_d_1 &
                 + V_u_2(iN_X) * V_d_2 &
                 + V_u_3(iN_X) * V_d_3
+
         W = 1.0_DP / SQRT( 1.0_DP - vDotV)
 
         ! --- Compute Omega (Richardson damping coeff.) based on velocity ---
 
         Omega(iN_X) = One / ( W + SQRT( vDotV ) )
+
+        E(iN_X) = Ef_temp
+
+        IF ( MoveLeft .EQ. 1 ) THEN
+
+          E(iN_X) = Ef_temp - ( W - One ) / W
+
+        END IF
+
       END IF
 
     END DO
