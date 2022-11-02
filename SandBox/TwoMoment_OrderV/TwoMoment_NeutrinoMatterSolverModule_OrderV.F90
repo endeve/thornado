@@ -2793,7 +2793,6 @@ CONTAINS
 
         W = 1.0_DP / SQRT(1.0_DP - vDotV)
 
-
         B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
         B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
         B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
@@ -2857,8 +2856,6 @@ CONTAINS
                  + V_u_2(iN_X) * vDotK_d_2 & 
                  + V_u_3(iN_X) * vDotK_d_3 
 
-
-
           Nnu = W * Dnu(iN_E,iS,iN_X) + vDotInu
 
       ! --- Eulerian Neutrino Energy Density (Scaled by Neutrino Energy) ---
@@ -2911,17 +2908,15 @@ CONTAINS
          G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
                     + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
        END IF
-
-
  
-        Gm(iD ,iN_X) = G_rho  (iN_X)
-        Gm(iY ,iN_X) = G_Y    (iN_X)
-        Gm(iEf,iN_X) = G_Ef  (iN_X)
-        Gm(iV1,iN_X) = G_V_d_1(iN_X)
-        Gm(iV2,iN_X) = G_V_d_2(iN_X)
-        Gm(iV3,iN_X) = G_V_d_3(iN_X)
+       Gm(iD ,iN_X) = G_rho  (iN_X)
+       Gm(iY ,iN_X) = G_Y    (iN_X)
+       Gm(iEf,iN_X) = G_Ef  (iN_X)
+       Gm(iV1,iN_X) = G_V_d_1(iN_X)
+       Gm(iV2,iN_X) = G_V_d_2(iN_X)
+       Gm(iV3,iN_X) = G_V_d_3(iN_X)
 
-        Fm(iD ,iN_X) = G_rho  (iN_X) - U_rho  (iN_X)
+       Fm(iD ,iN_X) = G_rho  (iN_X) - U_rho  (iN_X)
         Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
         Fm(iEf ,iN_X)= G_Ef  (iN_X)  - U_Ef  (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
