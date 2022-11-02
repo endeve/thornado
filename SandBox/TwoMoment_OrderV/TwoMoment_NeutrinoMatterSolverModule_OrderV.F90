@@ -797,12 +797,12 @@ CONTAINS
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Brem: '   , Include_Brem
       WRITE(*,'(A4,A32,L1)')       '', 'Include_LinCorr: ', Include_LinCorr
       WRITE(*,*)
-      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iY ): '  , INT(wMatrRHS(iY ))
-      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iEf): '  , INT(wMatrRHS(iEf))
-      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV1): '  , INT(wMatrRHS(iV1))
-      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV2): '  , INT(wMatrRHS(iV2))
-      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV3): '  , INT(wMatrRHS(iV3))
-      WRITE(*,*)
+!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iY ): '  , INT(wMatrRHS(iY ))
+!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iEf): '  , INT(wMatrRHS(iEf))
+!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV1): '  , INT(wMatrRHS(iV1))
+!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV2): '  , INT(wMatrRHS(iV2))
+!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV3): '  , INT(wMatrRHS(iV3))
+!!$      WRITE(*,*)
 
     END IF
 
@@ -2251,11 +2251,11 @@ CONTAINS
     ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
 
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, P, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:)    , INTENT(in)  :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
-
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Y, E, P, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: Alpha
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: Beta_u_1, Beta_u_2, Beta_u_3
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: k_dd(3,3), vDotV, vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vvDotK
@@ -2281,12 +2281,11 @@ CONTAINS
       B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
       B_d_3 = Gm_dd_33(iN_X) * Beta_u_3(iN_X)
 
-
       V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
       V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
       V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
 
-      ! --- Specific Fluid Energy ---
+      ! --- Lorentz Factor ---
 
       vDotV =   V_u_1(iN_X) * V_d_1 &
               + V_u_2(iN_X) * V_d_2 &
@@ -2462,6 +2461,7 @@ CONTAINS
         = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
 
     END DO
+
   END SUBROUTINE InitializeRHS_Relativistic
 #endif
 
@@ -3648,7 +3648,7 @@ CONTAINS
         
         U_rho  (iN_X) = Gm(iD ,iN_X)
         U_Y    (iN_X) = Gm(iY ,iN_X)
-        U_Eps  (iN_X) = Gm(iEf ,iN_X)
+        U_Eps  (iN_X) = Gm(iEf,iN_X)
         U_V_d_1(iN_X) = Gm(iV1,iN_X)
         U_V_d_2(iN_X) = Gm(iV2,iN_X)
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
