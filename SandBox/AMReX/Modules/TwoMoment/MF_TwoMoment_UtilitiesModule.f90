@@ -177,7 +177,7 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
+    CALL amrex_parallel_reduce_min( TimeStepMin, SIZE(TimeStepMin) )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF
 
