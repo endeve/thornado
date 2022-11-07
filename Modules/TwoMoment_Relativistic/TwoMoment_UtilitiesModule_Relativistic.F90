@@ -61,7 +61,6 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: Flux_E
   PUBLIC :: Source_E
   PUBLIC :: NumericalFlux_LLF
-  PUBLIC :: ComputeForFluid
 
 CONTAINS
 
