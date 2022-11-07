@@ -49,18 +49,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     iNuE_Bar, &
     LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-#if   defined( TWOMOMENT_ORDER_1 )
-  USE EquationOfStateModule_TABLE, ONLY: &
-    ComputeTemperatureFromSpecificInternalEnergy_TABLE
-#elif   defined( TWOMOMENT_ORDER_V )
-  USE EquationOfStateModule_TABLE, ONLY: &
-    ComputeTemperatureFromSpecificInternalEnergy_TABLE
-#elif defined( TWOMOMENT_RELATIVISTIC )
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputePressure_TABLE
-#endif
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions_DG, &
     ComputeNeutrinoOpacities_EC, &
@@ -74,13 +66,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem
-#if   defined( TWOMOMENT_ORDER_1 )
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeEddingtonTensorComponents_dd
-#elif defined( TWOMOMENT_ORDER_V )
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeEddingtonTensorComponents_dd
-#elif defined( TWOMOMENT_RELATIVISTIC )
+#if defined( TWOMOMENT_RELATIVISTIC )
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputeEddingtonTensorComponents_dd
 #endif
@@ -105,15 +91,15 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
 
 
 #if   defined( TWOMOMENT_ORDER_1 )
-  INTEGER, PARAMETER :: iD  = 0
+  INTEGER, PARAMETER :: iD  = 1
   INTEGER, PARAMETER :: iY  = 1
   INTEGER, PARAMETER :: iEf = 2
-  INTEGER, PARAMETER :: iV1 = 0
-  INTEGER, PARAMETER :: iV2 = 0
-  INTEGER, PARAMETER :: iV3 = 0
+  INTEGER, PARAMETER :: iV1 = 1
+  INTEGER, PARAMETER :: iV2 = 1
+  INTEGER, PARAMETER :: iV3 = 1
   INTEGER, PARAMETER :: nMatterEquations = 2
 #elif defined( TWOMOMENT_ORDER_V )
-  INTEGER, PARAMETER :: iD  = 0
+  INTEGER, PARAMETER :: iD  = 1
   INTEGER, PARAMETER :: iY  = 1
   INTEGER, PARAMETER :: iEf = 2
   INTEGER, PARAMETER :: iV1 = 3
@@ -155,9 +141,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
   REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
-#if defined( TWOMOMENT_RELATIVISTIC )
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: rho_old, cD_old, C_rho, S_rho, G_rho, U_rho
-#endif
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: D_old, cD_old, C_D, S_D, G_D, U_D
 
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_0
@@ -213,7 +197,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   INTEGER  :: M_FP
   REAL(DP) :: Rtol_outer
   REAL(DP) :: Rtol_inner
-  REAL(DP) :: wMatrRHS(5)
+  REAL(DP) :: wMatrRHS(nMatterEquations)
 
   ! --- Temporary arrays for scatter/gather (packing)
 
@@ -326,17 +310,12 @@ CONTAINS
     ALLOCATE( G_V_d_3(nX_G) )
     ALLOCATE( U_V_d_3(nX_G) )
 
-#if defined( TWOMOMENT_RELATIVISTIC )
-
-    ALLOCATE(   rho_old(nX_G) )
-    ALLOCATE(   cD_old (nX_G) )
-    ALLOCATE( C_rho    (nX_G) )
-    ALLOCATE( S_rho    (nX_G) )
-    ALLOCATE( G_rho    (nX_G) )
-    ALLOCATE( U_rho    (nX_G) )
-#endif
-
-
+    ALLOCATE(   D_old(nX_G) )
+    ALLOCATE(  cD_old(nX_G) )
+    ALLOCATE( C_D    (nX_G) )
+    ALLOCATE( S_D    (nX_G) )
+    ALLOCATE( G_D    (nX_G) )
+    ALLOCATE( U_D    (nX_G) )
 
     ALLOCATE(         SqrtGm(              nX_G) )
     ALLOCATE(             Dnu_0(nE_G,nSpecies,nX_G) )
@@ -446,6 +425,7 @@ CONTAINS
     !$OMP             C_Inu_d_3, &
     !$OMP             Omega, &
     !$OMP             Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$OMP             D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$OMP             Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -491,6 +471,7 @@ CONTAINS
     !$ACC         C_Inu_d_3, &
     !$ACC         Omega, &
     !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$ACC         D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -697,7 +678,7 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: Include_Pair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Brem_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_LinCorr_Option
-    REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(5)
+    REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(nMatterEquations)
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
@@ -887,6 +868,7 @@ CONTAINS
     !$OMP               C_Inu_d_3, &
     !$OMP               Omega, &
     !$OMP               Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$OMP               D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$OMP               Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -932,6 +914,7 @@ CONTAINS
     !$ACC         C_Inu_d_3, &
     !$ACC         Omega, &
     !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$ACC         D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
     !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -981,9 +964,7 @@ CONTAINS
     DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
     DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
     DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
-#if defined( TWOMOMENT_RELATIVISTIC )
-    DEALLOCATE( cD_old, rho_old, C_rho, S_rho, G_rho, U_rho )
-#endif
+    DEALLOCATE( cD_old, D_old, C_D, S_D, G_D, U_D )
     DEALLOCATE( SqrtGm )
     DEALLOCATE( Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
@@ -1064,6 +1045,8 @@ CONTAINS
     INTEGER,  DIMENSION(nX_G) :: PackIndex_outer, UnpackIndex_outer
     INTEGER,  DIMENSION(nX_G) :: PackIndex_inner, UnpackIndex_inner
 
+    REAL(DP), DIMENSION(nX_G) :: P
+
     ! --- Least-squares scratch arrays ---
 
     REAL(DP), DIMENSION(n_FP_outer,M_outer,nX_G) :: AMAT_outer, GVEC_outer, FVEC_outer
@@ -1077,10 +1060,7 @@ CONTAINS
     REAL(DP), DIMENSION(       LWORK_inner,nX_G) :: WORK_inner
     REAL(DP), DIMENSION(n_FP_inner,        nX_G) :: TAU_inner
     REAL(DP), DIMENSION(           M_inner,nX_G) :: Alpha_inner
-#if   defined( TWOMOMENT_RELATIVISTIC )
-    REAL(DP) :: P(SIZE(D))
 
-#endif
     ITERATE_outer = .TRUE.
     ITERATE_inner = .TRUE.
 
@@ -2252,7 +2232,7 @@ CONTAINS
 
   END SUBROUTINE InitializeRHS_OrderV
 
-#if defined( TWOMOMENT_RELATIVISTIC )
+
   SUBROUTINE InitializeRHS_Relativistic &
     ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, P, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3 )
@@ -2306,20 +2286,19 @@ CONTAINS
       
       ! --- Store Initial Matter State ---
 
-      rho_old(iN_X) = D(iN_X)
-      Y_old  (iN_X) = Y(iN_X)
-      cD_old (iN_X) = W * D(iN_X)
-      Ef_old(iN_X)  = E(iN_X)
+      D_old (iN_X) = D(iN_X)
+      Y_old (iN_X) = Y(iN_X)
+      cD_old(iN_X) = W * D(iN_X)
+      Ef_old(iN_X) = E(iN_X)
 
       ! --- Scaling Factors ---
 
-      S_rho  (iN_X) = One / ( D (iN_X) )
+      S_D    (iN_X) = One / ( D (iN_X) )
       S_Y    (iN_X) = One / ( Y (iN_X) )
       S_Ef   (iN_X) = One / ( E(iN_X) )
       S_V_d_1(iN_X) = One / ( SpeedOfLight )
       S_V_d_2(iN_X) = One / ( SpeedOfLight )
       S_V_d_3(iN_X) = One / ( SpeedOfLight )
-
 
       IF (MoveLeft .EQ. 1) THEN
         
@@ -2330,23 +2309,20 @@ CONTAINS
 
       END IF
 
-
-
-
       ! --- Initial Guess for Matter State ---
 
-      U_rho  (iN_X) = One
+      U_D    (iN_X) = One
       U_Y    (iN_X) = One
-      U_Ef  (iN_X) = One
+      U_Ef   (iN_X) = One
       U_V_d_1(iN_X) = V_d_1 / SpeedOfLight
       U_V_d_2(iN_X) = V_d_2 / SpeedOfLight
       U_V_d_3(iN_X) = V_d_3 / SpeedOfLight
 
-      SUM_Y     = Zero
-      SUM_Ef   = Zero
-      SUM_V1    = Zero
-      SUM_V2    = Zero
-      SUM_V3    = Zero
+      SUM_Y  = Zero
+      SUM_Ef = Zero
+      SUM_V1 = Zero
+      SUM_V2 = Zero
+      SUM_V3 = Zero
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -2382,12 +2358,14 @@ CONTAINS
               + V_u_2(iN_X) * Inu_d_2 &
               + V_u_3(iN_X) * Inu_d_3
 
+#if defined( TWOMOMENT_RELATIVISTIC )
        CALL ComputeEddingtonTensorComponents_dd &
                ( Dnu(iN_E,iS,iN_X),     Inu_u_1(iN_E,iS,iN_X), &
                  Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                  Alpha(iN_X), Beta_u_1(iN_X), Beta_u_2(iN_X), Beta_u_3(iN_X), & 
                  V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
+#endif
 
       vDotK_d_1 &
         = ( V_u_1(iN_X) * k_dd(1,1) &
@@ -2466,10 +2444,10 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_rho      (iN_X) &
-        = W * U_rho  (iN_X) 
+      C_D    (iN_X) &
+        = W * U_D(iN_X) 
       C_Y    (iN_X) &
-        = U_Y    (iN_X) + SUM_Y * S_Y    (iN_X)
+        = U_Y(iN_X) + SUM_Y * S_Y(iN_X)
       C_Ef   (iN_X) &
         = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
       C_V_d_1(iN_X) &
@@ -2482,7 +2460,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeRHS_Relativistic
-#endif
+
 
   SUBROUTINE ComputeDnuNorm( MASK, Dnu )
 
@@ -2753,7 +2731,6 @@ CONTAINS
 
   END SUBROUTINE ComputeMatterRHS_OrderV
 
-#if   defined( TWOMOMENT_RELATIVISTIC )
 
   SUBROUTINE ComputeMatterRHS_Relativistic &
     ( MASK, Fm, Gm, &
@@ -2841,12 +2818,14 @@ CONTAINS
                   + V_u_2(iN_X) * Inu_d_2 &
                   + V_u_3(iN_X) * Inu_d_3
 
+#if defined( TWOMOMENT_RELATIVISTIC )
           CALL ComputeEddingtonTensorComponents_dd &
                ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
                  Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                  Alpha(iN_X),Beta_u_1(iN_X),Beta_u_2(iN_X),Beta_u_3(iN_X), & 
                  V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
+#endif
 
           vDotK_d_1 &
             = ( V_u_1(iN_X) * k_dd(1,1) &
@@ -2896,39 +2875,35 @@ CONTAINS
           SUM_V2  = SUM_V2  + Fnu_d_2 * W3_S(iN_E)
           SUM_V3  = SUM_V3  + Fnu_d_3 * W3_S(iN_E)
 
-      END DO
-      END DO
+        END DO
+        END DO
 
         h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) 
 
-        G_rho  (iN_X)  = ( 1.0_DP / W ) * C_rho  (iN_X) 
+        G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
         G_Y    (iN_X)  = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
-
-!not sure if (W-1) or (1-W) originally (W-1)
-        G_Ef  (iN_X)   = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
+        G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
                        + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
         G_V_d_1(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
         G_V_d_2(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
         G_V_d_3(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
-       
-!not sure if (W-1) or (1-W) originally (W-1)
 
-       IF( MoveLeft .EQ. 1) THEN
+        IF( MoveLeft .EQ. 1) THEN
 
-         G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
-                    + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
-       END IF
- 
-       Gm(iD ,iN_X) = G_rho  (iN_X)
-       Gm(iY ,iN_X) = G_Y    (iN_X)
-       Gm(iEf,iN_X) = G_Ef  (iN_X)
-       Gm(iV1,iN_X) = G_V_d_1(iN_X)
-       Gm(iV2,iN_X) = G_V_d_2(iN_X)
-       Gm(iV3,iN_X) = G_V_d_3(iN_X)
+          G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
+                     + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
+        END IF
 
-       Fm(iD ,iN_X) = G_rho  (iN_X) - U_rho  (iN_X)
+        Gm(iD ,iN_X) = G_D    (iN_X)
+        Gm(iY ,iN_X) = G_Y    (iN_X)
+        Gm(iEf,iN_X) = G_Ef   (iN_X)
+        Gm(iV1,iN_X) = G_V_d_1(iN_X)
+        Gm(iV2,iN_X) = G_V_d_2(iN_X)
+        Gm(iV3,iN_X) = G_V_d_3(iN_X)
+
+        Fm(iD ,iN_X) = G_D    (iN_X) - U_D  (iN_X)
         Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
-        Fm(iEf ,iN_X)= G_Ef  (iN_X)  - U_Ef  (iN_X)
+        Fm(iEf,iN_X) = G_Ef   (iN_X)  - U_Ef  (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
@@ -2938,7 +2913,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeMatterRHS_Relativistic 
-#endif
 
 
   SUBROUTINE ComputeNeutrinoRHS_OrderOne &
@@ -3388,7 +3362,6 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoRHS_OrderV
 
 
-#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE ComputeNeutrinoRHS_Relativistic &
     ( MASK, Fm, Gm, dt, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
@@ -3406,7 +3379,7 @@ CONTAINS
     INTEGER  :: iN_E, iN_X, iS, iOS
     REAL(DP) :: k_dd(3,3), vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vDotV 
     REAL(DP) :: Eta_T, Chi_T, Kappa
-    REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, V_d_1, V_d_2, V_d_3, B_d_1, B_d_2, B_d_3, Det
+    REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, B_d_1, B_d_2, B_d_3, Det
 
 
 #if   defined( THORNADO_OMP_OL )
@@ -3428,20 +3401,6 @@ CONTAINS
     DO iN_E = 1, nE_G
 
       IF( MASK(iN_X) )THEN
-
-
-        V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
-        V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
-        V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
-
-        vDotV = V_u_1(iN_X) * V_d_1 &
-              + V_u_2(iN_X) * V_d_2 &
-              + V_u_3(iN_X) * V_d_3
-
-
-        W = 1.0_DP / SQRT( 1.0_DP - vDotV)
-
-
 
         B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
         B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
@@ -3469,12 +3428,14 @@ CONTAINS
                 + V_u_3(iN_X) * Inu_d_3
 
 
+#if defined( TWOMOMENT_RELATIVISTIC )
        CALL ComputeEddingtonTensorComponents_dd &
                ( Dnu(iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
                  Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                  Alpha(iN_X), Beta_u_1(iN_X), Beta_u_2(iN_X), Beta_u_3(iN_X), & 
                  V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), k_dd  )
+#endif
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd(1,1) &
@@ -3494,6 +3455,7 @@ CONTAINS
                 + V_u_3(iN_X) * V_u_3(iN_X) * Gm_dd_33(iN_X)
 
         W = 1.0_DP / SQRT(1.0_DP - vDotV) 
+
         ! --- Emissivity ---
 
         Eta_T =   Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
@@ -3562,7 +3524,7 @@ CONTAINS
 
 
   END SUBROUTINE ComputeNeutrinoRHS_Relativistic
-#endif
+
 
   SUBROUTINE UpdateMatterRHS_OrderOne &
     ( MASK, Fm, Gm, Y, E, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -3668,7 +3630,6 @@ CONTAINS
   END SUBROUTINE UpdateMatterRHS_OrderV
 
 
-#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE UpdateMatterRHS_Relativistic &
     ( MASK, Fm, Gm, D, Y, E, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -3696,23 +3657,23 @@ CONTAINS
 
       IF ( MASK(iN_X) ) THEN
 
-        Fm(iD ,iN_X) = Gm(iD ,iN_X) - U_rho  (iN_X)
+        Fm(iD ,iN_X) = Gm(iD ,iN_X) - U_D    (iN_X)
         Fm(iY ,iN_X) = Gm(iY ,iN_X) - U_Y    (iN_X)
-        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Ef  (iN_X)
+        Fm(iEf,iN_X) = Gm(iEf,iN_X) - U_Ef   (iN_X)
         Fm(iV1,iN_X) = Gm(iV1,iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = Gm(iV2,iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = Gm(iV3,iN_X) - U_V_d_3(iN_X)
 
-        U_rho  (iN_X) = Gm(iD ,iN_X)
+        U_D    (iN_X) = Gm(iD ,iN_X)
         U_Y    (iN_X) = Gm(iY ,iN_X)
         U_Ef   (iN_X) = Gm(iEf,iN_X)
         U_V_d_1(iN_X) = Gm(iV1,iN_X)
         U_V_d_2(iN_X) = Gm(iV2,iN_X)
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
-        D(iN_X) = U_rho  (iN_X) * rho_old(iN_X)
-        Y(iN_X) = U_Y    (iN_X) * Y_old  (iN_X)
-        Ef_temp = U_Ef  (iN_X)  * Ef_old(iN_X)
+        D(iN_X) = U_D    (iN_X) * D_old (iN_X)
+        Y(iN_X) = U_Y    (iN_X) * Y_old (iN_X)
+        Ef_temp = U_Ef   (iN_X) * Ef_old(iN_X)
         V_d_1   = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2   = U_V_d_2(iN_X) * SpeedOfLight
         V_d_3   = U_V_d_3(iN_X) * SpeedOfLight
@@ -3745,7 +3706,7 @@ CONTAINS
 
     END DO
   END SUBROUTINE UpdateMatterRHS_Relativistic 
-#endif
+
 
   SUBROUTINE UpdateNeutrinoRHS_OrderOne &
     ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
@@ -3847,7 +3808,6 @@ CONTAINS
   END SUBROUTINE UpdateNeutrinoRHS_OrderV
 
 
-#if   defined( TWOMOMENT_RELATIVISTIC )
   SUBROUTINE UpdateNeutrinoRHS_Relativistic &
     ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       V_u_1, V_u_2, V_u_3, &
@@ -3941,7 +3901,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE UpdateNeutrinoRHS_Relativistic 
-#endif
+
 
   SUBROUTINE SolveLS_FP &
     ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha, TAU, LWORK, WORK )
@@ -4334,43 +4294,26 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: iN_X
-    REAL(DP) :: Fnorm_Y, Fnorm_Ef, Fnorm_V
-
-#if defined( TWOMOMENT_RELATIVISTIC )
-    REAL(DP) :: Fnorm_D
-#endif
+    REAL(DP) :: Fnorm
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+    !$OMP PRIVATE( CONVERGED, Fnorm )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+    !$ACC PRIVATE( CONVERGED, Fnorm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_Ef, Fnorm_V )
+    !$OMP PRIVATE( CONVERGED, Fnorm )
 #endif
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN
 
 
-        Fnorm_Y  =      ABS( Fm(iY ,iN_X) )
-        Fnorm_Ef =      ABS( Fm(iEf,iN_X) )
-        Fnorm_V  = MAX( ABS( Fm(iV1,iN_X) ), &
-                        ABS( Fm(iV2,iN_X) ), &
-                        ABS( Fm(iV3,iN_X) ) )
+        Fnorm = MAXVAL( ABS( Fm(:,iN_X) ) )
 
-        CONVERGED = Fnorm_Y  <= Rtol_outer .AND. &
-                    Fnorm_Ef <= Rtol_outer .AND. &
-                    Fnorm_V  <= Rtol_outer
+        CONVERGED = Fnorm <= Rtol_outer
 
-#if defined( TWOMOMENT_RELATIVISTIC )
-        Fnorm_D  =      ABS( Fm(iD ,iN_X) )
-        CONVERGED = Fnorm_Y  <= Rtol_outer .AND. &
-                    Fnorm_Ef <= Rtol_outer .AND. &
-                    Fnorm_V  <= Rtol_outer .AND. &
-                    Fnorm_D  <= Rtol_outer
-#endif
         IF( CONVERGED )THEN
           MASK_OUTER(iN_X) = .FALSE.
           nIterations_Outer(iN_X) = k_outer
