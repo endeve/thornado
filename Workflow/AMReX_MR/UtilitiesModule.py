@@ -191,7 +191,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         Data = CoveringGrid['MPIProcess'].to_ndarray()
         DataUnits = ''
 
-    if   Field == 'PF_D':
+    elif Field == 'PF_D':
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnits = 'g/cm**3'
