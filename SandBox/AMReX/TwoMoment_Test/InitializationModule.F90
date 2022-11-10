@@ -69,10 +69,9 @@ MODULE InitializationModule
     InitializePolynomialBasisX_Legendre
   USE PolynomialBasisMappingModule, ONLY: &
     InitializePolynomialBasisMapping
-  USE ReferenceElementModuleZ, ONLY: &
-    nDOFZ_Z2
   USE ReferenceElementModule, ONLY: &
-    InitializeReferenceElement
+    InitializeReferenceElement, &
+    nDOF_X1
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange
   USE ReferenceElementModuleX, ONLY: &
@@ -127,6 +126,9 @@ MODULE InitializationModule
     InitializeClosure_TwoMoment
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
     InitializeTimers
+  USE Euler_MeshRefinementModule, ONLY: &
+    InitializeMeshRefinement_Euler
+
 
   ! --- Local Modules ---
 
@@ -172,8 +174,8 @@ MODULE InitializationModule
   USE MF_UtilitiesModule, ONLY: &
     amrex2amrex_permute_Z, &
     amrex_permute2amrex_Z, &
-    MF_amrex2amrex_permute_Z, &
-    MF_amrex_permute2amrex_Z
+    MF_amrex2amrex_permute_Z_Level, &
+    MF_amrex_permute2amrex_Z_Level
     
   USE FillPatchModule, ONLY: &
     FillPatch, &
@@ -240,6 +242,8 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
+    INTEGER :: i
+
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
@@ -292,6 +296,10 @@ CONTAINS
     CALL InitializeReferenceElement
     CALL InitializeReferenceElement_Lagrange
 
+
+    CALL InitializeMeshRefinement_Euler
+
+
     CALL SetUnitsGeometryFields
 
     CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
@@ -342,7 +350,7 @@ CONTAINS
       CALL CreateOpacities &
              ( nX, [ 1, 1, 1 ], nE, 1, &
                Verbose_Option = amrex_parallel_ioprocessor() )
-
+!I think I need to define BX and calculate iZ_B and iZ_E from that instead
       CALL SetOpacities &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
@@ -374,10 +382,10 @@ CONTAINS
     StepNo = 0
     dt     = 0.0_DP
     t_new  = 0.0_DP
-
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( 0.0_DP )
+
       nLevels = amrex_get_numlevels()
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
@@ -424,13 +432,23 @@ CONTAINS
     CALL AverageDown( MF_uGF, MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
 
-    CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
+
+
+    DO i = 0, nLevels-1
+
+      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+    END DO
+
    
     CALL AverageDown( MF_uGF, MF_Permute )
 
-    CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
+    DO i = 0, nLevels-1
+
+      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+    END DO
+
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
@@ -479,7 +497,7 @@ CONTAINS
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
 
-    INTEGER :: iLo_MF(4)
+    INTEGER :: iLo_MF(4), i
     BA = pBA
     DM = pDM
 
@@ -505,19 +523,24 @@ CONTAINS
 
     CALL amrex_multifab_build &
            ( MF_uCR(iLevel), BA, DM, &
-             nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+             nDOFZ * nCR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
     CALL MF_uCR(iLevel) % SetVal( Zero )
 
     CALL amrex_multifab_build &
            ( MF_uPR(iLevel), BA, DM, &
-             nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
+             nDOFZ * nPR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
     CALL MF_uPR(iLevel) % SetVal( Zero )
 
-    ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
+    CALL amrex_multifab_build &
+           ( MF_Permute(iLevel), BA, DM, &
+             nDOFZ * nCR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
+    CALL MF_Permute(iLevel) % SetVal( Zero )
+
+    ! Assume nDOF_X1 = nDOF_X2 = nDOFX3
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister_TwoMoment(iLevel), BA, DM, &
-               amrex_ref_ratio(iLevel-1), iLevel, nDOFZ_Z2*nCR*nE*nSpecies )
+               amrex_ref_ratio(iLevel-1), iLevel, nDOF_X1*nCR*nE*nSpecies )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -530,17 +553,28 @@ CONTAINS
     CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
 
 
+    IF(iLevel .NE. 0) THEN
 
+      DO i = iLevel - 1, iLevel
 
+        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
-    CALL MF_amrex2amrex_permute_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
+      END DO
+
+       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
+    ELSE 
+       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+    END IF
    
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
 
-    CALL MF_amrex_permute2amrex_Z(nCR,nSpecies,nE,iE_B0,iE_E0,iZ_B1,iZ_E1, &
-                                  iZ_B1, iZ_E1,MF_uGF,MF_uCR,MF_Permute)
+    IF(iLevel .NE. 0) THEN
 
+      DO i = iLevel - 1, iLevel
+
+        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+    END IF
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
@@ -554,6 +588,7 @@ CONTAINS
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
+    INTEGER :: i 
 
     BA = pBA
     DM = pDM
@@ -572,18 +607,41 @@ CONTAINS
            ( MF_uCR(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
+    CALL amrex_multifab_build &
+           ( MF_Permute(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
 
-    IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
+    IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister_TwoMoment(iLevel), BA, DM, &
                amrex_ref_ratio(iLevel-1), &
-               iLevel, nDOFZ_Z2 * nCR * nE * nSpecies )
+               iLevel, nDOF_X1 * nCR * nE * nSpecies )
 
     CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
     CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
     CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCR )
 
+    IF(iLevel .NE. 0) THEN
+
+      DO i = iLevel - 1, iLevel
+
+        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+
+       CALL FillCoarsePatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
+    ELSE 
+       CALL FillCoarsePatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+    END IF
+   
+
+    IF(iLevel .NE. 0) THEN
+
+      DO i = iLevel - 1, iLevel
+
+        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+    END IF
   END SUBROUTINE MakeNewLevelFromCoarse
 
 
@@ -615,7 +673,7 @@ CONTAINS
     TYPE(amrex_distromap) :: DM
     TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uPF_tmp, &
                              MF_uAF_tmp, MF_uDF_tmp, MF_uCR_tmp, MF_uPR_tmp
-
+    INTEGER :: i
     BA = pBA
     DM = pDM
 
@@ -632,6 +690,24 @@ CONTAINS
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+
+
+    IF(iLevel .NE. 0) THEN
+
+      DO i = iLevel - 1, iLevel
+
+        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+
+       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute, MF_uCR_tmp )
+    ELSE 
+       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR, MF_uCR_tmp  )
+    END IF
+   
+
+
+
     CALL FillPatch( iLevel, Time, MF_uGF, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
@@ -650,12 +726,12 @@ CONTAINS
       CALL amrex_fluxregister_build &
              ( FluxRegister_TwoMoment(iLevel), BA, DM, &
                amrex_ref_ratio(iLevel-1), &
-               iLevel, nDOFZ_Z2 * nCR * nE * nSpecies )
+               iLevel, nDOF_X1 * nCR * nE * nSpecies )
 
     CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
     CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
     CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
-    CALL MF_uCF(iLevel) % COPY &
+    CALL MF_Permute(iLevel) % COPY &
            ( MF_uCR_tmp, 1, 1, nDOFZ * nCR * nE * nSpecies, swX )
 
     CALL amrex_multifab_destroy( MF_uPR_tmp )
@@ -666,112 +742,69 @@ CONTAINS
     CALL amrex_multifab_destroy( MF_uCF_tmp )
     CALL amrex_multifab_destroy( MF_uGF_tmp )
 
+    IF(iLevel .NE. 0) THEN
+
+      DO i = iLevel - 1, iLevel
+
+        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+    END IF
   END SUBROUTINE RemakeLevel
 
 
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
 
-!!$    USE TaggingModule, ONLY: &
-!!$      TagElements_Advection1D, &
-!!$      TagElements_RiemannProblem1D, &
-!!$      TagElements_Advection2D, &
-!!$      TagElements_KelvinHelmholtz2D, &
-!!$      TagElements_Advection3D, &
-!!$      TagElements_uCF
-!!$
+    USE TaggingModule, ONLY: &
+      TagElements
+
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp
     REAL(DP),               INTENT(in), VALUE :: Time
     CHARACTER(KIND=c_char), INTENT(in), VALUE :: SetTag, ClearTag
-!!$
-!!$    TYPE(amrex_parmparse)   :: PP
-!!$    TYPE(amrex_tagboxarray) :: Tag
-!!$    TYPE(amrex_mfiter)      :: MFI
-!!$    TYPE(amrex_box)         :: BX
-!!$    REAL(DP),               CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-!!$    CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
-!!$
-!!$    IF( .NOT. ALLOCATED( TagCriteria ) )THEN
-!!$
-!!$       CALL amrex_parmparse_build( PP, "amr" )
-!!$
-!!$         CALL PP % getarr( "TagCriteria", TagCriteria )
-!!$
-!!$       CALL amrex_parmparse_destroy( PP )
-!!$
-!!$    END IF
-!!$
-!!$    Tag = cp
-!!$
-!!$    CALL CreateMesh_MF( iLevel, MeshX )
-!!$
-!!$    !$OMP PARALLEL PRIVATE( MFI, BX, uCF, TagArr )
-!!$    CALL amrex_mfiter_build( MFI, MF_uCF( iLevel ), Tiling = UseTiling )
-!!$
-!!$    DO WHILE( MFI % next() )
-!!$
-!!$      BX = MFI % TileBox()
-!!$
-!!$      uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
-!!$      TagArr => Tag              % DataPtr( MFI )
-!!$
-!!$      ! TagCriteria(iLevel+1) because iLevel starts at 0 but
-!!$      ! TagCriteria starts with 1
-!!$
-!!$      SELECT CASE( TRIM( ProgramName ) )
-!!$
-!!$        CASE( 'Advection1D' )
-!!$
-!!$          CALL TagElements_Advection1D &
-!!$                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-!!$                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-!!$                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-!!$
-!!$        CASE( 'RiemannProblem1D' )
-!!$
-!!$          CALL TagElements_RiemannProblem1D &
-!!$                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-!!$                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-!!$                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-!!$
-!!$        CASE( 'Advection2D' )
-!!$
-!!$          CALL TagElements_Advection2D &
-!!$                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-!!$                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-!!$                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-!!$
-!!$        CASE( 'KelvinHelmholtz2D' )
-!!$
-!!$          CALL TagElements_KelvinHelmholtz2D &
-!!$                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-!!$                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-!!$                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-!!$
-!!$        CASE( 'Advection3D' )
-!!$
-!!$          CALL TagElements_Advection3D &
-!!$                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-!!$                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-!!$                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-!!$
-!!$        CASE DEFAULT
-!!$
-!!$          CALL TagElements_uCF &
-!!$                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-!!$                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-!!$                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
-!!$
-!!$      END SELECT
-!!$
-!!$    END DO
-!!$
-!!$    CALL amrex_mfiter_destroy( MFI )
-!!$    !$OMP END PARALLEL
-!!$
-!!$    CALL DestroyMesh_MF( MeshX )
+
+    TYPE(amrex_parmparse)   :: PP
+    TYPE(amrex_tagboxarray) :: Tag
+    TYPE(amrex_mfiter)      :: MFI
+    TYPE(amrex_box)         :: BX
+    CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
+    IF( .NOT. ALLOCATED( TagCriteria ) )THEN
+
+       CALL amrex_parmparse_build( PP, "amr" )
+
+         CALL PP % getarr( "TagCriteria", TagCriteria )
+
+       CALL amrex_parmparse_destroy( PP )
+
+    END IF
+
+    Tag = cp
+
+    CALL CreateMesh_MF( iLevel, MeshX )
+
+    CALL amrex_mfiter_build( MFI, MF_uCF( iLevel ), Tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      BX = MFI % TileBox()
+
+      TagArr => Tag              % DataPtr( MFI )
+
+      ! TagCriteria(iLevel+1) because iLevel starts at 0 but
+      ! TagCriteria starts with 1
+
+      CALL TagElements &
+             ( iLevel, BX % lo, BX % hi, &
+               TagCriteria(iLevel+1), SetTag, ClearTag, &
+               LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+    !$OMP END PARALLEL
+
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
-
 
 END MODULE InitializationModule

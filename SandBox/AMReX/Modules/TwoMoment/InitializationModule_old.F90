@@ -114,7 +114,7 @@ MODULE InitializationModule
     ReadCheckpointFile
   USE InputOutputEuler,           ONLY: &
     WriteFieldsAMReX_PlotFile_Euler
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule_OrderV, ONLY: &
     InitializeTimers
   ! --- Local modules ---
   USE MF_FieldsModule,                  ONLY: &
@@ -178,6 +178,12 @@ MODULE InitializationModule
     OpacityTableName_Iso,     &
     OpacityTableName_NES,     &
     OpacityTableName_Pair,     &
+    OpacityTableName_Brem,     &
+    Min_1,                     &
+    Min_2,                     &
+    UsePositivityLimiter,      &
+    UseSlopeLimiter,      &
+    BetaTVD,      &
     Direction,    &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
@@ -340,6 +346,15 @@ CONTAINS
 
     CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
+   
+    
+
+
+!    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+!                              Verbose_Option = amrex_parallel_ioprocessor()  )
+
+ !   CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
+  !                             Verbose_Option = amrex_parallel_ioprocessor()  )
 
 
 
@@ -372,6 +387,7 @@ CONTAINS
           OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
           OpacityTableName_NES_Option  = OpacityTableName_NES,  &
           OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+          OpacityTableName_Brem_Option = OpacityTableName_Brem, &
           EquationOfStateTableName_Option = EosTableName, &
           Verbose_Option =  amrex_parallel_ioprocessor())
 

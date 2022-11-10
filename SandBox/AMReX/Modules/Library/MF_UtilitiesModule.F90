@@ -15,10 +15,8 @@ MODULE MF_UtilitiesModule
     amrex_geometry
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator, &
     amrex_parallel_reduce_sum, &
-    amrex_parallel_myproc, &
-    amrex_parallel_nprocs
+    amrex_parallel_myproc
 
   ! --- thornado Modules ---
 
@@ -148,8 +146,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: thornado2amrex_Z
   PUBLIC :: amrex2amrex_permute_Z
   PUBLIC :: amrex_permute2amrex_Z
-  PUBLIC :: MF_amrex2amrex_permute_Z
-  PUBLIC :: MF_amrex_permute2amrex_Z
+  PUBLIC :: MF_amrex2amrex_permute_Z_Level
+  PUBLIC :: MF_amrex_permute2amrex_Z_Level
   PUBLIC :: thornado2amrex_X_F
   PUBLIC :: amrex2thornado_X_F
   PUBLIC :: WriteNodalDataToFile
@@ -222,8 +220,8 @@ CONTAINS
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
-        WRITE(FileName,'(A,A5,I3.3,A1,I8.8,A4)') &
-          TRIM( FileNameBase ), '_proc', &
+        WRITE(FileName,'(A,A,I3.3,A,I3.3,A,I8.8,A)') &
+          TRIM( FileNameBase ), '_level', iLevel, '_proc', &
           amrex_parallel_myproc(), '_', StepNo(0), '.dat'
 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
@@ -282,10 +280,6 @@ CONTAINS
 
           WRITE(*,TRIM(FMT)) &
             iLevel, iX1, iX2, iX3, &
-            MeshX(1) % Width(iX1), &
-            MeshX(2) % Width(iX2), &
-            MeshX(3) % Width(iX3), &
-            NodesX1, NodesX2, NodesX3, &
             F(iX1,iX2,iX3,1+nDOFX*(iField-1):nDOFX*iField)
 
         END IF
@@ -318,9 +312,9 @@ CONTAINS
 
     INTEGER :: iLevel
 
-    INTEGER        :: swXX(3), iProc, iFileNo, iErr
+    INTEGER        :: swXX(3)
     LOGICAL        :: WriteToFile
-    CHARACTER(128) :: FileNameBase, FileName
+    CHARACTER(128) :: FileNameBase
 
     TYPE(amrex_imultifab) :: iMF_Mask
 
@@ -330,38 +324,9 @@ CONTAINS
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
-    FileNameBase = 'NodalData'
+    FileNameBase = ''
     IF( PRESENT( FileNameBase_Option ) ) &
       FileNameBase = TRIM( FileNameBase_Option )
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      IF( WriteToFile )THEN
-
-        DO iProc = 0, amrex_parallel_nprocs()-1
-
-          iFileNo = 100 + iProc
-
-          WRITE(FileName,'(A,A5,I3.3,A1,I8.8,A4)') &
-            TRIM( FileNameBase ), '_proc', &
-            iProc, '_', StepNo(0), '.dat'
-
-          OPEN( iFileNo, FILE = TRIM( FileName ) )
-
-            WRITE( iFileNo, '(A,A,A)' ) &
-              '# iLevel, iX1, iX2, iX3, dX1, dX2, dX3, ', &
-              'X1(1:nNodesX(1)), X2(1:nNodesX(2)), X3(1:nNodesX(3)), ', &
-              'NodalData(1:nDOFX)'
-
-          CLOSE( iFileNo )
-
-        END DO
-
-      END IF
-
-    END IF
-
-    CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
     DO iLevel = 0, nLevels-1
 
@@ -485,7 +450,6 @@ CONTAINS
 
       Data_amrex(iX1,iX2,iX3,nDOFX*(iFd-1)+1:nDOFX*iFd) &
         = Data_thornado(1:nDOFX,iX1,iX2,iX3,iFd)
-
     END DO
     END DO
     END DO
@@ -1508,101 +1472,142 @@ iD_permute = 0
 
   END SUBROUTINE amrex_permute2amrex_Z
 
-  SUBROUTINE MF_amrex2amrex_permute_Z &
-    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, &
-      iZ_B, iZ_E, MF_uGF, MF_uCR, MF_uCR_permute )
 
-    INTEGER,  INTENT(in)  :: nFields, nS, nE
-    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), &
-                             iZ_B(4), iZ_E(4)
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(out)   :: MF_uCR_permute(0:nLevels-1)
+  SUBROUTINE MF_amrex2amrex_permute_Z_Level &
+    ( iLevel, nFields, MF_uGF, MF_uCR, MF_uCR_permute )
+
+    INTEGER,  INTENT(in)  :: iLevel, nFields
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF 
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR 
+    TYPE(amrex_multifab), INTENT(inout)   :: MF_uCR_permute
 
     TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
 
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR_permute(:,:,:,:)
 
-    INTEGER :: iLevel, iLo_MF(4)
+    INTEGER :: iLo_MF(4)
+    INTEGER :: iZ_E0(4), iZ_E1(4), iZ_B0(4), iZ_B1(4)
+    INTEGER :: iX_E0(3), iX_E1(3), iX_B0(3), iX_B1(3)
+    
 
-    DO iLevel = 0, nLevels-1
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
-      DO WHILE( MFI % next() )
+    DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-        uCR  => MF_uCR (iLevel) % DataPtr( MFI )
-        uCR_permute => MF_uCR_permute(iLevel) % DataPtr( MFI )
+      BX = MFI % tilebox()
 
-        iLo_MF = LBOUND( uGF )
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = BX % lo - swX
+      iX_E1 = BX % hi + swX
 
-       CALL amrex2amrex_permute_Z &
-           ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
-             iZ_B, iZ_E, uCR, uCR_permute )
 
-      END DO
 
-      CALL amrex_mfiter_destroy( MFI )
+      iZ_B0(1)=iE_B0
+      iZ_E0(1)=iE_E0
 
+      iZ_B0(2:4)=iX_B0(1:3)
+      iZ_E0(2:4)=iX_E0(1:3)
+
+      iZ_B1(1)=iE_B1
+      iZ_E1(1)=iE_E1
+
+      iZ_B1(2:4)=iX_B1(1:3)
+      iZ_E1(2:4)=iX_E1(1:3)
+
+      uGF  => MF_uGF % DataPtr( MFI )
+      uCR  => MF_uCR % DataPtr( MFI )
+      uCR_permute => MF_uCR_permute % DataPtr( MFI )
+      
+      iLo_MF = LBOUND( uGF )
+
+      CALL amrex2amrex_permute_Z &
+           ( nFields, nSpecies, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+             iZ_B1, iZ_E1, uCR, uCR_permute )
 
     END DO
 
+    CALL amrex_mfiter_destroy( MFI )
 
 
 
-  END SUBROUTINE MF_amrex2amrex_permute_Z
 
 
-  SUBROUTINE MF_amrex_permute2amrex_Z &
-    ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, &
-      iZ_B, iZ_E, MF_uGF, MF_uCR, MF_uCR_permute )
 
-    INTEGER,  INTENT(in)  :: nFields, nS, nE
-    INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), &
-                             iZ_B(4), iZ_E(4)
+  END SUBROUTINE MF_amrex2amrex_permute_Z_Level
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(out)   :: MF_uCR (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR_permute(0:nLevels-1)
+  SUBROUTINE MF_amrex_permute2amrex_Z_Level &
+    ( iLevel, nFields, MF_uGF, MF_uCR, MF_uCR_permute )
+
+    INTEGER,  INTENT(in)  :: iLevel, nFields
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF 
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR 
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR_permute
 
     TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
 
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR_permute(:,:,:,:)
 
-    INTEGER :: iLevel, iLo_MF(4)
+    INTEGER :: iLo_MF(4)
 
-    DO iLevel = 0, nLevels-1
+    INTEGER :: iZ_E0(4), iZ_E1(4), iZ_B0(4), iZ_B1(4)
+    INTEGER :: iX_E0(3), iX_E1(3), iX_B0(3), iX_B1(3)
 
-      DO WHILE( MFI % next() )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+    DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-        uCR  => MF_uCR (iLevel) % DataPtr( MFI )
-        uCR_permute => MF_uCR_permute(iLevel) % DataPtr( MFI )
+      BX = MFI % tilebox()
 
-        iLo_MF = LBOUND( uGF )
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = BX % lo - swX
+      iX_E1 = BX % hi + swX
 
-       CALL amrex_permute2amrex_Z &
-           ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
-             iZ_B, iZ_E, uCR, uCR_permute )
 
-      END DO
 
-      CALL amrex_mfiter_destroy( MFI )
+      iZ_B0(1)=iE_B0
+      iZ_E0(1)=iE_E0
 
+      iZ_B0(2:4)=iX_B0(1:3)
+      iZ_E0(2:4)=iX_E0(1:3)
+
+      iZ_B1(1)=iE_B1
+      iZ_E1(1)=iE_E1
+
+      iZ_B1(2:4)=iX_B1(1:3)
+      iZ_E1(2:4)=iX_E1(1:3)
+
+
+      uGF  => MF_uGF  % DataPtr( MFI )
+      uCR  => MF_uCR  % DataPtr( MFI )
+      uCR_permute => MF_uCR_permute % DataPtr( MFI )
+
+      iLo_MF = LBOUND( uGF )
+
+      CALL amrex_permute2amrex_Z &
+           ( nFields, nSpecies, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
+             iZ_B1, iZ_E1, uCR, uCR_permute )
 
     END DO
 
+    CALL amrex_mfiter_destroy( MFI )
 
 
 
-  END SUBROUTINE MF_amrex_permute2amrex_Z
 
 
+
+  END SUBROUTINE MF_amrex_permute2amrex_Z_Level
 
 END MODULE MF_UtilitiesModule
