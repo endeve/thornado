@@ -23,7 +23,12 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX
+    nNodesX, &
+    nDOFZ, &
+    iE_E0, &
+    iE_B0, &
+    nDOFE, &
+    nE
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE LinearAlgebraModule, ONLY: &
@@ -36,6 +41,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     LX_X1_Up
   USE MeshModule, ONLY: &
     MeshX, &
+    MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     iGF_h_1, &
@@ -57,6 +63,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iGF_K_dd_23, &
     iGF_K_dd_33, &
     nGF
+  USE GeometryFieldsModuleE, ONLY: &
+    uGE
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
     iCF_S1, &
@@ -72,12 +80,25 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iPF_E, &
     iPF_Ne, &
     nPF
+  USE GeometryFieldsModuleE,     ONLY: &
+    nGE, &
+    iGE_Ep3
+  USE RadiationFieldsModule, ONLY: &
+    nSpecies, &
+    nCR,    &  
+    iCR_N,  &
+    iCR_G1, &
+    iCR_G2, &
+    iCR_G3
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
+
 
   ! --- Local Modules ---
 
@@ -89,6 +110,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     Two, &
     Three, &
     Pi, &
+    FourPi, &
     SqrtTiny
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -338,10 +360,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF &
-    ( MF_uGF, MF_uCF, MF_uGS )
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1) 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -349,6 +372,7 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
@@ -360,8 +384,22 @@ CONTAINS
     TYPE(amrex_imultifab) :: iMF_Mask
 
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+    REAL(DP) :: E, S_i(3), E_int, S_i_int(3)
+    REAL(DP) :: N, G_d_1, G_d_2, G_d_3, vG
+    REAL(DP) :: V_u_1, V_u_2, V_u_3 
+    REAL(DP) :: V_d_1, V_d_2, V_d_3 
+    REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iN_X, iS, iN_Z
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ASSOCIATE &
+      ( dZ1 => MeshE  % Width )
+
+    E       = 0.0_DP
+    E_int   = 0.0_DP
+    S_i     = 0.0_DP
+    S_i_int = 0.0_DP
 
     DO iLevel = 0, nLevels-1
 
@@ -375,6 +413,7 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
         uGS => MF_uGS(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
@@ -387,6 +426,7 @@ CONTAINS
         ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3)) )
+
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -467,6 +507,87 @@ CONTAINS
                * uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha -1)+iNX) &
                * uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX)
 
+       
+
+
+
+          DO iS = 1, nSpecies
+          DO iE = 1, nE
+          DO iN_E = 1, nDOFE
+
+            iN_Z = (iN_X-1) * nDOFE + iN_E
+
+            iD_N = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_N - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+            iD_G1 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_G1 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+            iD_G2 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_G2 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+            iD_G3 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_G3 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+           
+            N     = uCR(iX1,iX2,iX3,iD_N)
+            G_d_1 = uCR(iX1,iX2,iX3,iD_G1)
+            G_d_2 = uCR(iX1,iX2,iX3,iD_G2)
+            G_d_3 = uCR(iX1,iX2,iX3,iD_G3)
+
+            V_u_1 = uPF (iPF_V1)
+            V_u_2 = uPF (iPF_V2)
+            V_u_3 = uPF (iPF_V3)
+            
+            Gm_dd_11 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
+            Gm_dd_22 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
+            Gm_dd_33 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
+
+            V_d_1 = V_u_1 * Gm_dd_11 
+            V_d_2 = V_u_2 * Gm_dd_22
+            V_d_3 = V_u_3 * Gm_dd_33 
+
+            vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3 
+
+            E_int      = LorentzFactor * N + vG
+            S_i_int(1) = LorentzFactor * V_d_1 * N + G_d_1
+            S_i_int(2) = LorentzFactor * V_d_2 * N + G_d_2
+            S_i_int(3) = LorentzFactor * V_d_3 * N + G_d_3
+
+            E = E &
+              + FourPi * dZ1(iE) * WeightsE(iN_E) &
+              * uGE(iN_E,iE,iGE_Ep3) * E_int
+            S_i(1) = S_i(1) &
+                   + FourPi * dZ1(iE) * WeightsE(iN_E) &
+                   * uGE(iN_E,iE,iGE_Ep3) * S_i_int(1)
+            S_i(2) = S_i(2) &
+                   + FourPi * dZ1(iE) * WeightsE(iN_E) &
+                   * uGE(iN_E,iE,iGE_Ep3) * S_i_int(2)
+            S_i(3) = S_i(3) &
+                   + FourPi * dZ1(iE) * WeightsE(iN_E) &
+                   * uGE(iN_E,iE,iGE_Ep3) * S_i_int(3)
+
+
+
+          END DO 
+          END DO 
+          END DO 
+
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
+            = uGS(iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) + E
+
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_S1-1)+iNX) &
+            = uGS(iX1,iX2,iX3,nDOFX*(iGS_S1-1)+iNX) + S_i(1)
+
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_S2-1)+iNX) &
+            = uGS(iX1,iX2,iX3,nDOFX*(iGS_S2-1)+iNX) + S_i(2)
+
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_S3-1)+iNX) &
+            = uGS(iX1,iX2,iX3,nDOFX*(iGS_S3-1)+iNX) + S_i(3)
+
+          E   = 0.0_DP
+          S_i = 0.0_DP
+
         END DO
         END DO
         END DO
@@ -511,15 +632,18 @@ CONTAINS
 
     END DO
 
+    END ASSOCIATE
+
 #endif
 
   END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF
 
 
-  SUBROUTINE ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+  SUBROUTINE ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -527,6 +651,7 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
@@ -539,9 +664,17 @@ CONTAINS
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
+    REAL(DP) :: S, S_int, N, G_d_1, G_d_2, G_d_3, vG
+    REAL(DP) :: LorentzFactor, V_u_1, V_u_2, V_u_3 
+    INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iN_X, iS, iN_Z
 !    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ASSOCIATE &
+      ( dZ1 => MeshE  % Width )
+
+    S = 0.0_DP
 
     DO iLevel = 0, nLevels-1
 
@@ -555,6 +688,7 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
         uGS => MF_uGS(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
@@ -609,6 +743,62 @@ CONTAINS
                  + uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6 * uPF(iPF_V2) &
                  + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6 * uPF(iPF_V3) &
                  + Three * Pressure ) * Psi6
+
+          LorentzFactor &
+            = One / SQRT( One                              &
+                - ( uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
+                      * uPF(iPF_V1)**2 &
+                  + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
+                      * uPF(iPF_V2)**2 &
+                  + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
+                      * uPF(iPF_V3)**2 ) )
+
+          DO iS = 1, nSpecies
+          DO iE = 1, nE
+          DO iN_E = 1, nDOFE
+
+            iN_Z = (iN_X-1) * nDOFE + iN_E
+
+            iD_N = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_N - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+            iD_G1 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_G1 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+            iD_G2 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_G2 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+            iD_G3 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iCR_G3 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                 + ( iE - 1 ) * nDOFZ + iN_Z
+           
+            N     = uCR(iX1,iX2,iX3,iD_N)
+            G_d_1 = uCR(iX1,iX2,iX3,iD_G1)
+            G_d_2 = uCR(iX1,iX2,iX3,iD_G2)
+            G_d_3 = uCR(iX1,iX2,iX3,iD_G3)
+
+            V_u_1 = uPF (iPF_V1)
+            V_u_2 = uPF (iPF_V2)
+            V_u_3 = uPF (iPF_V3)
+
+            vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3 
+
+            S_int      = LorentzFactor * N + vG
+
+            S = S &
+              + FourPi * dZ1(iE) * WeightsE(iN_E) &
+              * uGE(iN_E,iE,iGE_Ep3) * S_int
+
+
+          END DO 
+          END DO 
+          END DO 
+
+          uGS(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
+            = uGS(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) + S
+
+          S   = 0.0_DP
+
 
         END DO
         END DO
@@ -666,6 +856,8 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
+
+    END ASSOCIATE
 
 #endif
 
