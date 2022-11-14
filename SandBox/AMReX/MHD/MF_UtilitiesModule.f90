@@ -82,7 +82,9 @@ MODULE MF_UtilitiesModule
     nLevels, &
     nX, &
     swX, &
-    UseTiling
+    UseTiling, &
+    EvolveOnlyMagnetic, &
+    UseDivergenceCleaning
   USE MF_MHD_BoundaryConditionsModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap, &
@@ -395,7 +397,8 @@ CONTAINS
                  G   (:,iX1,iX2,iX3,iGF_Gm_dd_33), &
                  G   (:,iX1,iX2,iX3,iGF_Beta_1 ), &
                  G   (:,iX1,iX2,iX3,iGF_Beta_2 ), &
-                 G   (:,iX1,iX2,iX3,iGF_Beta_3 ) )
+                 G   (:,iX1,iX2,iX3,iGF_Beta_3 ), &
+                 EvolveOnlyMagnetic )
 
         CALL ComputePressureFromPrimitive &
                ( P(:,iPM_D ), P(:,iPM_E ), P(:,iPM_Ne), A(:,iAM_P) )

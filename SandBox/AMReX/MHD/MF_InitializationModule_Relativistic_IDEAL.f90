@@ -107,7 +107,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     xR,                 &
     Gamma_IDEAL,        &
     UseTiling,          &
-    t_end
+    t_end,              &
+    EvolveOnlyMagnetic
   USE MF_UtilitiesModule,      ONLY: &
     amrex2thornado_X_Global
 
@@ -313,7 +314,8 @@ CONTAINS
                    uGF_K(:,iGF_Beta_1  ), &
                    uGF_K(:,iGF_Beta_2  ), &
                    uGF_K(:,iGF_Beta_3  ), &
-                   uAM_K(:,iAM_P) )
+                   uAM_K(:,iAM_P), &
+                   EvolveOnlyMagnetic )
 
           uCM(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCM_K, [ hi_F(4) - lo_F(4) + 1 ] )

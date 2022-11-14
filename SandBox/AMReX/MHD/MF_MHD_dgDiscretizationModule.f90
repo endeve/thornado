@@ -38,7 +38,10 @@ MODULE  MF_MHD_dgDiscretizationModule
   USE InputParsingModule,                 ONLY: &
     nLevels, &
     UseTiling, &
-    DEBUG
+    DEBUG, &
+    EvolveOnlyMagnetic, &
+    UseDivergenceCleaning, &
+    DampingParameter
   USE MF_MHD_BoundaryConditionsModule,  ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -215,7 +218,10 @@ CONTAINS
 
         CALL ComputeIncrement_MHD_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-                 SuppressBC_Option = .TRUE. )
+                 SuppressBC_Option = .TRUE., &
+                 EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
+                 UseDivergenceCleaning_Option = UseDivergenceCleaning, &
+                 DampingParameter_Option = DampingParameter )
 
         CALL thornado2amrex_X &
                ( nCM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCM, dU )

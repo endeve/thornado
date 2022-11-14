@@ -42,7 +42,8 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE InputParsingModule,               ONLY: &
     nLevels, &
     UseTiling, &
-    DEBUG
+    DEBUG, &
+    EvolveOnlyMagnetic
 
   IMPLICIT NONE
   PRIVATE

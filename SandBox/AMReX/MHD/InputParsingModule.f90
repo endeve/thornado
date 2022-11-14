@@ -74,6 +74,13 @@ MODULE InputParsingModule
 
   REAL(DP)                      :: Gamma_IDEAL
   CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
+
+  ! --- MHD ---
+
+  LOGICAL  :: EvolveOnlyMagnetic
+  LOGICAL  :: UseDivergenceCleaning
+  REAL(DP) :: DampingParameter
+
   ! --- AMReX  ---
 
   INTEGER                                    :: MaxLevel, nLevels, coord_sys
@@ -223,6 +230,16 @@ CONTAINS
     CALL amrex_parmparse_build( PP, 'EoS' )
       CALL PP % query( 'Gamma'          , Gamma_IDEAL     )
       CALL PP % query( 'EquationOfState', EquationOfState )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- MHD parameters MHD.* ---
+    EvolveOnlyMagnetic    = .FALSE.
+    UseDivergenceCleaning = .FALSE.
+    DampingParameter      = 0.0_DP
+    CALL amrex_parmparse_build( PP, 'MHD' )
+      CALL PP % query( 'EvolveOnlyMagnetic'   , EvolveOnlyMagnetic    )
+      CALL PP % query( 'UseDivergenceCleaning', UseDivergenceCleaning )
+      CALL PP % query( 'DampingParameter'     , DampingParameter      )
     CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeProgramHeader &

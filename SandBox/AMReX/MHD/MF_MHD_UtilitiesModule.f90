@@ -38,7 +38,9 @@ MODULE MF_MHD_UtilitiesModule
     One
   USE InputParsingModule,       ONLY: &
     nLevels, &
-    UseTiling
+    UseTiling, &
+    EvolveOnlyMagnetic, &
+    UseDivergenceCleaning
   USE MF_UtilitiesModule,       ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X
@@ -120,7 +122,7 @@ CONTAINS
         CALL amrex2thornado_X( nAM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uAM, A )
 
         CALL ComputeFromConserved_MHD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
 
         CALL thornado2amrex_X( nPM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPM, P )
 
@@ -197,7 +199,8 @@ CONTAINS
         CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCM, U )
 
         CALL ComputeTimeStep_MHD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), .FALSE. )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), &
+                 UseDivergenceCleaning, EvolveOnlyMagnetic )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
