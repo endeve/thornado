@@ -99,6 +99,21 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_NES
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Pair
 
+
+  ! --- Non-Linear Solver Parameters ---
+  INTEGER  ::  M_outer        
+  INTEGER  ::  MaxIter_outer  
+  REAL(DP) ::  Rtol_outer     
+  INTEGER  ::  M_inner        
+  INTEGER  ::  MaxIter_inner  
+  REAL(DP) ::  Rtol_inner     
+  LOGICAL  ::  Include_NES    
+  LOGICAL  ::  Include_Pair   
+  LOGICAL  ::  Include_Brem   
+  LOGICAL  ::  Include_LinCorr
+  REAL(DP), ALLOCATABLE ::  wMatterRHS(:) 
+
+
   ! --- geometry ---
 
   INTEGER               :: coord_sys
@@ -413,6 +428,48 @@ call amrex_parmparse_destroy( pp )
       CALL PP % query( 'OpacityTableName_Pair', &
                         OpacityTableName_Pair )
     CALL amrex_parmparse_destroy( PP )
+
+    ! --- Non-Linear Solver parameters NL.* ---
+
+    M_outer         = 2
+    MaxIter_outer   = 100
+    Rtol_outer      = 1.0d-8
+    M_inner         = 2
+    MaxIter_inner   = 100
+    Rtol_inner      = 1.0d-8
+    Include_NES     = .FALSE.
+    Include_Pair    = .FALSE.
+    Include_Brem    = .FALSE.
+    Include_LinCorr = .FALSE.
+    wMatterRHS      = [ 1.0_DP, 1.0_DP, 1.0_DP, 1.0_DP, 1.0_DP, 1.0_DP ]
+    CALL amrex_parmparse_build( PP, 'NL' )
+      CALL PP % query( 'M_outer', &
+                        M_outer )
+      CALL PP % query( 'MaxIter_outer', &
+                        MaxIter_outer )
+      CALL PP % query( 'Rtol_outer', &
+                        Rtol_outer )
+      CALL PP % query( 'M_inner', &
+                        M_inner )
+      CALL PP % query( 'MaxIter_inner', &
+                        MaxIter_inner )
+      CALL PP % query( 'Rtol_inner', &
+                        Rtol_inner )
+      CALL PP % query( 'Include_NES', &
+                        Include_NES )
+      CALL PP % query( 'Include_Pair', &
+                        Include_Pair )
+      CALL PP % query( 'Include_Brem', &
+                        Include_Brem )
+      CALL PP % query( 'Include_LinCorr', &
+                        Include_LinCorr )
+      CALL PP % getarr  ( 'wMatterRHS', &
+                           wMatterRHS )
+    CALL amrex_parmparse_destroy( PP )
+
+
+
+
 
     ! --- Parameters amr.* ---
 

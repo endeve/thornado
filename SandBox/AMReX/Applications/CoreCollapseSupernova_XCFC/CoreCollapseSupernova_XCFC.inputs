@@ -35,10 +35,13 @@ thornado.CFL = 0.5
 thornado.bcX         = 30 00 00
 geometry.is_periodic = 0  1  1
 
-thornado.bcE = 0
-thornado.nE  = 1
+thornado.bcE = 01
+thornado.nE  = 16
 thornado.swE = 01
-
+thornado.eL  = 0.0
+thornado.eR  = 300.0
+thornado.zoomE = 1.0
+thornado.nSpecies = 2
 
 geometry.coord_sys = 2
 geometry.prob_lo   = 000.0 0.0               0.0

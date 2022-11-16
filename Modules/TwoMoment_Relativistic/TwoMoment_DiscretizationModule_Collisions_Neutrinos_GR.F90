@@ -463,7 +463,6 @@ CONTAINS
     ! --- Neutrino-Matter Solver Parameter Initialization ---
     ! --- ( can be moved to the program init ) --------------
 
-    CALL InitializeNeutrinoMatterSolverParameters(Include_LinCorr_Option = .FALSE. )
 
 
     CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
