@@ -99,20 +99,18 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_NES
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Pair
 
-
   ! --- Non-Linear Solver Parameters ---
-  INTEGER  ::  M_outer        
-  INTEGER  ::  MaxIter_outer  
-  REAL(DP) ::  Rtol_outer     
-  INTEGER  ::  M_inner        
-  INTEGER  ::  MaxIter_inner  
-  REAL(DP) ::  Rtol_inner     
-  LOGICAL  ::  Include_NES    
-  LOGICAL  ::  Include_Pair   
-  LOGICAL  ::  Include_Brem   
+  INTEGER  ::  M_outer
+  INTEGER  ::  MaxIter_outer
+  REAL(DP) ::  Rtol_outer
+  INTEGER  ::  M_inner
+  INTEGER  ::  MaxIter_inner
+  REAL(DP) ::  Rtol_inner
+  LOGICAL  ::  Include_NES
+  LOGICAL  ::  Include_Pair
+  LOGICAL  ::  Include_Brem
   LOGICAL  ::  Include_LinCorr
-  REAL(DP), ALLOCATABLE ::  wMatterRHS(:) 
-
+  REAL(DP), ALLOCATABLE ::  wMatterRHS(:)
 
   ! --- geometry ---
 
@@ -463,7 +461,7 @@ call amrex_parmparse_destroy( pp )
                         Include_Brem )
       CALL PP % query( 'Include_LinCorr', &
                         Include_LinCorr )
-      CALL PP % getarr  ( 'wMatterRHS', &
+      CALL PP % queryarr( 'wMatterRHS', &
                            wMatterRHS )
     CALL amrex_parmparse_destroy( PP )
 
