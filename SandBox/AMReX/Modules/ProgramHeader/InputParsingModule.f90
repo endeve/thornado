@@ -15,6 +15,7 @@ MODULE InputParsingModule
 
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader, &
+    bcZ, &
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
@@ -57,6 +58,7 @@ MODULE InputParsingModule
 
   ! --- Transport ---
 
+  INTEGER     , ALLOCATABLE :: bcZ_TwoMoment(:)
   INTEGER  :: nE, nSpecies, swE, bcE
   REAL(DP) :: eL, eR, zoomE
 
@@ -231,6 +233,8 @@ call amrex_parmparse_destroy( pp )
                          swX )
       CALL PP % getarr( 'bcX', &
                          bcX )
+      CALL PP % getarr( 'bcZ_TwoMoment', &
+                         bcZ_TwoMoment )
       CALL PP % get   ( 't_end', &
                          t_end )
       CALL PP % get   ( 'CFL', &
@@ -558,6 +562,8 @@ call amrex_parmparse_destroy( pp )
              bcX_Option         = bcX, &
              bcE_Option         = bcE, &
              Verbose_Option     = amrex_parallel_ioprocessor() )
+
+    bcZ = bcZ_TwoMoment    
 
     IF( nDimsX .NE. amrex_spacedim ) &
       CALL DescribeError_MF &
