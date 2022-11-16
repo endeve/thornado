@@ -1364,10 +1364,10 @@ END IF
 !    REAL(AR), PARAMETER :: Y_0   = 0.1421_AR
 
 
-    REAL(AR), PARAMETER :: V_u_1 = 0.1_AR * SpeedOfLight
+    REAL(AR), PARAMETER :: V_u_1 = 0.0_AR * SpeedOfLight
     REAL(AR), PARAMETER :: V_u_2 = 0.0_AR * SpeedOfLight
     REAL(AR), PARAMETER :: V_u_3 = 0.0_AR * SpeedOfLight
-    REAL(AR), PARAMETER :: Mu_0  = 0.0_AR ! \in [-1,1]
+    REAL(AR), PARAMETER :: Mu_0  = -1.0_AR ! \in [-1,1]
      
 
     uCR_K = Zero
@@ -1556,11 +1556,6 @@ END IF
 
 
 
-    DO iZ1 = 0, nE+1
-
-      E12 = ( MeshE % Center(iZ1) - Half * MeshE % Width(iZ1) )
-      print *, E12 / MeV
-    END DO
   END SUBROUTINE InitializeFields_Relaxation
 
 

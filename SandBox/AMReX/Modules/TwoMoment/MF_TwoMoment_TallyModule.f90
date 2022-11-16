@@ -81,7 +81,11 @@ MODULE MF_TwoMoment_TallyModule
     zoomE
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
-    amrex2thornado_Z
+    amrex2thornado_Z, &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -303,21 +307,32 @@ CONTAINS
         iZ_B0(2:4) = iX_B0
         iZ_E0(2:4) = iX_E0
 
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
+                 G )
 
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B0(1), &
+                   iZ_B0(2), &
+                   iZ_B0(3), &
+                   iZ_B0(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E0(1), &
+                   iZ_E0(2), &
+                   iZ_E0(3), &
+                   iZ_E0(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
 
-
-        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nGF) )
-
-
-        ALLOCATE( U (1:nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                             iZ_B0(3):iZ_E0(3), &
-                             iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies) )
-
-        ALLOCATE( UF (1:nDOFX,iZ_B0(2):iZ_E0(2), &
-                             iZ_B0(3):iZ_E0(3), &
-                             iZ_B0(4):iZ_E0(4),1:nCF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
+                 UF )
 
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
 
@@ -327,15 +342,34 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B0, iZ_E0, iLo_MF, iZ_B0, iZ_E0, uCR, U )
 
-
         CALL ComputeTally_TwoMoment( iZ_B0, iZ_E0, G, UF, U, iLevel )
 
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
+                 UF )
 
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B0(1), &
+                   iZ_B0(2), &
+                   iZ_B0(3), &
+                   iZ_B0(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E0(1), &
+                   iZ_E0(2), &
+                   iZ_E0(3), &
+                   iZ_E0(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
 
-        DEALLOCATE( U )
-        DEALLOCATE( UF)
-        DEALLOCATE( G )
-
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
+                 G )
 
       END DO
 

@@ -94,7 +94,11 @@ MODULE MF_TwoMoment_UtilitiesModule
     amrex2thornado_X, &
     thornado2amrex_X, &
     amrex2thornado_Z, &
-    thornado2amrex_Z
+    thornado2amrex_Z, &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z
 
   IMPLICIT NONE
   PRIVATE
@@ -147,9 +151,10 @@ CONTAINS
         iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
@@ -159,7 +164,10 @@ CONTAINS
 
         TimeStepMin( iLevel ) = MIN( TimeStepMin( iLevel ), TimeStep( iLevel ) )
 
-        DEALLOCATE( G )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO ! --- Loop over grids (boxes) ---
 
@@ -169,7 +177,7 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
+    CALL amrex_parallel_reduce_min( TimeStepMin, SIZE(TimeStepMin) )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF
 
@@ -260,27 +268,54 @@ CONTAINS
         iZ_B1(2:4) = iX_B1
         iZ_E1(2:4) = iX_E1
 
-        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nGF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-        ALLOCATE( CF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 CF )
 
-        ALLOCATE( PF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nPF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
 
-        ALLOCATE( CR(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
-                             iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 CR )
 
-        ALLOCATE( PR(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
-                             iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies) )
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nPR     , &
+                   nSpecies ], &
+                 PR )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
@@ -466,12 +501,56 @@ CONTAINS
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        DEALLOCATE( iErr_Euler     )
-        DEALLOCATE( G )
-        DEALLOCATE( CF )
-        DEALLOCATE( PF )
-        DEALLOCATE( CR )
-        DEALLOCATE( PR )
+        DEALLOCATE( iErr_Euler )
+
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nPR     , &
+                   nSpecies ], &
+                 PR )
+
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 CR )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 CF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO
 

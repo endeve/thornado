@@ -18,6 +18,8 @@ MODULE MF_Euler_PositivityLimiterModule
   USE ProgramHeaderModule, ONLY: &
     swX, &
     nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nDF
@@ -42,7 +44,9 @@ MODULE MF_Euler_PositivityLimiterModule
     One
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X
+    thornado2amrex_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
   USE InputParsingModule, ONLY: &
     UsePositivityLimiter_Euler, &
     Min_1_Euler, &
@@ -51,14 +55,15 @@ MODULE MF_Euler_PositivityLimiterModule
     nLevels, &
     UseTiling, &
     DEBUG
-!!$  USE AverageDownModule, ONLY: &
-!!$    AverageDown
-!!$  USE FillPatchModule, ONLY: &
-!!$    FillPatch
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Allocate
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap, &
+    ApplyBoundaryConditions_Euler_MF
+  USE FillPatchModule, ONLY: &
+    FillPatch
 
   IMPLICIT NONE
   PRIVATE
@@ -138,17 +143,15 @@ CONTAINS
 
         END IF ! DEBUG
 
+        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+
         CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
                ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-
-!!$        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
 
       END DO ! iLevel
 
       ! --- Ensure underlying coarse cells are consistent with
       !     cells on refined level ---
-
-!!$      CALL AverageDown( MF_uGF, MF_uCF )
 
     END DO ! iCycle
 
@@ -174,11 +177,15 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                     iLo_MF(4)
+    TYPE(EdgeMap) :: Edge_Map
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter_Euler ) RETURN
+
+    CALL CreateMesh_MF( iLevel, MeshX )
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -197,21 +204,20 @@ CONTAINS
       iX_B1 = BX % lo - swX
       iX_E1 = BX % hi + swX
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
-      ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nGF) )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
-      ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nCF) )
-
-      ALLOCATE( D(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nDF) )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
+               D )
 
       CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
@@ -219,25 +225,40 @@ CONTAINS
 
       CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
+      ! --- Apply boundary conditions to physical boundaries
+      !     (needed for AMR) ---
+
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
       CALL ApplyPositivityLimiter_Euler( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
       CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
+               D )
 
-      DEALLOCATE( D )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
 
-      DEALLOCATE( U )
-
-      DEALLOCATE( G )
-
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
 
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel
 

@@ -1,4 +1,4 @@
-MODULE MF_TimeSteppingModule
+MODULE MF_TimeSteppingModule_IMEX
 
   ! --- AMReX Modules ---
 
@@ -12,8 +12,11 @@ MODULE MF_TimeSteppingModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, &
     nDOFX, &
+    nDOFE, &
+    nDOFZ, &
+    iE_B0, &
+    iE_E0, &
     swX
   USE FluidFieldsModule, ONLY: &
     nCF
@@ -64,6 +67,11 @@ MODULE MF_TimeSteppingModule
     ComputeConformalFactor_Poseidon_MF, &
     ComputePressureTensorTrace_XCFC_MF, &
     ComputeGeometry_Poseidon_MF
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_UpdateFluid, &
+    Timer_AMReX_GravitySolve
 
   IMPLICIT NONE
   PRIVATE
@@ -102,8 +110,9 @@ CONTAINS
     REAL(DP) :: dM_OffGrid_Euler    (1:nCF,0:nMaxLevels-1)
     REAL(DP) :: dM_OffGrid_TwoMoment(1:nCR,0:nMaxLevels-1)
 
-    iLevel = 0 ! temporary hack
+    CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
+    iLevel = 0 ! temporary hack
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
 
@@ -119,8 +128,9 @@ CONTAINS
     IF( DEBUG ) &
       CALL MF_uGS(iLevel) % SetVal( Zero )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
-    !!$CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCR ) (needs mods for radiation)
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, +1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
 
     CALL amrex_multifab_build &
            ( MF_F0(iLevel), MF_uCF(iLevel) % BA, &
@@ -283,12 +293,16 @@ CONTAINS
 
           IF( iS .NE. 1 )THEN
 
+            CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
             CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                    ( MF_uGF, MF_F, MF_uGS )
 
             CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F )
+            CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
+
+            CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
             CALL ApplySlopeLimiter_Euler_MF &
                    ( t_new, MF_uGF, MF_F, MF_uDF )
@@ -296,7 +310,9 @@ CONTAINS
             CALL ApplyPositivityLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_F )
+            CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
+            CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_F )
 
             CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                    ( MF_uGF, MF_F, MF_uGS )
@@ -308,9 +324,11 @@ CONTAINS
 
             CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
+            CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
           END IF ! iS .NE. 1
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_F )
+          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
 
           CALL ComputeIncrement_Euler_MF &
                  ( t_new, MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
@@ -320,7 +338,7 @@ CONTAINS
         IF( EvolveTwoMoment )THEN
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
-                 ( GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
+                 ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
                    Verbose_Option = .FALSE. )
 
         END IF ! EvolveTwoMoment
@@ -409,12 +427,16 @@ CONTAINS
     CALL MF_uCF(iLevel) % COPY( MF_F(iLevel), 1, 1, nCompCF, swX )
     CALL MF_uCR(iLevel) % COPY( MF_R(iLevel), 1, 1, nCompCR, swX )
 
+    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+
+    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -422,7 +444,9 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -433,7 +457,11 @@ CONTAINS
 
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, -1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
+
+    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     DO iS = 1, nStages
 
@@ -451,6 +479,8 @@ CONTAINS
     CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
     IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_IMEX_RK_MF'
+
+    CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
 
   END SUBROUTINE Update_IMEX_RK_MF
 
@@ -647,4 +677,4 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables
 
 
-END MODULE MF_TimeSteppingModule
+END MODULE MF_TimeSteppingModule_IMEX

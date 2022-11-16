@@ -84,6 +84,9 @@ MODULE InitializationModule
     SetUnitsFluidFields
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ExpD, &
+    ExpE
 
   ! --- Local Modules ---
 
@@ -117,6 +120,8 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule, ONLY: &
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
+  USE MF_ErrorModule, ONLY: &
+    DescribeError_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -158,15 +163,11 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_Euler_TimersModule, ONLY: &
-    InitializeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Initialize, &
-    Timer_AMReX_Euler_InputOutput
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon_MF, &
-    InitializeMetric_MF
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    InitializeTimers_AMReX, &
+    Timer_AMReX_Initialize
 
   IMPLICIT NONE
   PRIVATE
@@ -178,13 +179,15 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
+    TYPE(amrex_parmparse) :: PP
+
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
 
-    CALL InitializeTimers_AMReX_Euler
+    CALL InitializeTimers_AMReX
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+    CALL TimersStart_AMReX( Timer_AMReX_Initialize )
 
     CALL InitializeParameters
 
@@ -279,17 +282,6 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      CALL CreateMesh_MF( 0, MeshX )
-
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
-
-      CALL DestroyMesh_MF( MeshX )
-
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
     ELSE
 
       CALL amrex_init_from_scratch( 0.0_DP )
@@ -297,18 +289,24 @@ CONTAINS
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
-      CALL CreateMesh_MF( 0, MeshX )
+    END IF
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+    CALL amrex_parmparse_build( PP, "SAS" )
+      CALL PP % query( "ExpD", ExpD )
+      CALL PP % query( "ExpE", ExpE )
+    CALL amrex_parmparse_destroy( PP )
 
-      CALL DestroyMesh_MF( MeshX )
+    IF( amrex_parallel_ioprocessor() )THEN
 
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      WRITE(*,'(6x,A,ES24.16E3)') &
+        'ExpD: ', ExpD
+      WRITE(*,'(6x,A,ES24.16E3)') &
+        'ExpE: ', ExpE
 
     END IF
+
+    IF( ExpD .LT. Zero .OR. ExpE .LT. Zero ) &
+      CALL DescribeError_MF( 901 )
 
     CALL AverageDown( MF_uGF, MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
@@ -328,10 +326,6 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -347,7 +341,7 @@ CONTAINS
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX( Timer_AMReX_Initialize )
 
   END SUBROUTINE InitializeProgram
 

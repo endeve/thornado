@@ -1,8 +1,8 @@
 ## Makefile definitions for jrober
 
-C       = /usr/local/openmpi/bin/mpic++ --c++11
-FORTRAN = /usr/local/openmpi/bin/mpif90 -cpp
-FLINKER = /usr/local/openmpi/bin/mpif90
+C       = $(MPI_DIR)/bin/mpic++ --c++11
+FORTRAN = $(MPI_DIR)/bin/mpif90 -cpp
+FLINKER = $(MPI_DIR)/bin/mpif90
 
 DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
 OPTIMIZE = -g -O2
@@ -23,17 +23,15 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = -I/usr/local/hdf5/include
+INCLUDE_HDF5     = -I$(HDF5_DIR)/include
 INCLUDE_LAPACK   = -framework Accelerate
 INCLUDE_MAGMA    =
-INCLUDE_PETSC    = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
 INCLUDE_POSEIDON = -I$(POSEIDON_DIR)/Obj
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = -L/usr/local/hdf5/lib  -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib  -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -framework Accelerate
 LIBRARIES_MAGMA    =
-LIBRARIES_PETSC    = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
 LIBRARIES_POSEIDON = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_ROCM     =

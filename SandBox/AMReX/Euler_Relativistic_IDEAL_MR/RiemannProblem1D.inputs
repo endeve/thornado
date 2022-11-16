@@ -39,7 +39,7 @@ amr.ref_ratio               = 2
 amr.UseTiling               = 0
 
 SL.UseSlopeLimiter_Euler           = 1
-SL.UseCharacteristicLimiting_Euler = 0
+SL.UseCharacteristicLimiting_Euler = 1
 SL.UseTroubledCellIndicator_Euler  = 0
 
 PL.UsePositivityLimiter_Euler = 1

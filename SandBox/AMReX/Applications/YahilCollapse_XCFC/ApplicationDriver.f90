@@ -15,9 +15,6 @@ PROGRAM main
     ApplyBoundaryConditions_Geometry_MF
   USE UnitsModule, ONLY: &
     UnitsDisplay
-  USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler, &
-    FinalizeTimers_Euler
 
   ! --- Local Modules ---
 
@@ -64,11 +61,13 @@ PROGRAM main
     UseAMR, &
     DEBUG
   USE MF_Euler_TimersModule, ONLY: &
-    TimeIt_AMReX_Euler, &
-    FinalizeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_InputOutput
+    TimeIt_AMReX_Euler
+  USE MF_TimersModule, ONLY: &
+    TimeIt_AMReX, &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_InputOutput, &
+    FinalizeTimers_AMReX
 
   IMPLICIT NONE
 
@@ -78,9 +77,8 @@ PROGRAM main
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
+  TimeIt_AMReX       = .TRUE.
   TimeIt_AMReX_Euler = .TRUE.
-
-  TimeIt_Euler = .TRUE.
 
   wrt = .FALSE.
   chk = .FALSE.
@@ -282,7 +280,7 @@ CONTAINS
 
   SUBROUTINE WritePlotFile
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
 
     IF( iCycleW .GT. 0 )THEN
 
@@ -329,14 +327,14 @@ CONTAINS
 
     END IF
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   END SUBROUTINE WritePlotFile
 
 
   SUBROUTINE WriteCheckpointFile
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
 
     IF( iCycleChk .GT. 0 )THEN
 
@@ -377,20 +375,14 @@ CONTAINS
                pMF_uGF_Option = MF_uGF % P, &
                pMF_uCF_Option = MF_uCF % P )
 
-      CALL FinalizeTimers_Euler &
-             !( Verbose_Option = amrex_parallel_ioprocessor(), &
-             ( Verbose_Option = .FALSE., &
-               SuppressApplicationDriver_Option = .TRUE., &
-               WriteAtIntermediateTime_Option = .FALSE. )
-
-      CALL FinalizeTimers_AMReX_Euler &
-             ( WriteAtIntermediateTime_Option = .FALSE. )
+      CALL FinalizeTimers_AMReX &
+             ( RestartProgramTimer_Option = .TRUE. )
 
       chk = .FALSE.
 
     END IF
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   END SUBROUTINE WriteCheckpointFile
 

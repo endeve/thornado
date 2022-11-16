@@ -35,7 +35,11 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
-    thornado2amrex_Z
+    thornado2amrex_Z, &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z
   USE InputParsingModule,                       ONLY: &
     nLevels, &
     nSpecies, &
@@ -48,7 +52,17 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     EdgeMap,          &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
-
+  USE FillPatchModule, ONLY: &
+    FillPatch
+  USE AverageDownModule, ONLY: &
+    AverageDown
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    MF_Permute
+  USE MF_UtilitiesModule, ONLY: &
+    amrex2amrex_permute_Z, &
+    amrex_permute2amrex_Z, &
+    MF_amrex2amrex_permute_Z_Level, &
+    MF_amrex_permute2amrex_Z_Level
   IMPLICIT NONE
   PRIVATE
 
@@ -58,8 +72,10 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( Time, GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
 
+
+    REAL(amrex_real),     INTENT(in)    :: Time(0:)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
@@ -82,7 +98,7 @@ CONTAINS
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, j
 
 
     LOGICAL :: Verbose
@@ -93,6 +109,34 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+
+    DO i = 0, nLevels-1
+
+      IF (i .NE. 0) THEN
+       
+        DO j = i - 1, i
+
+          !CALL MF_amrex2amrex_permute_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
+
+        END DO
+
+        CALL FillPatch( i, Time(i), MF_uGF, MF_Permute )
+      ELSE
+
+        CALL FillPatch( i, Time(i), MF_uGF, MF_uCR )
+
+      END IF
+
+      IF (i .NE. 0) THEN
+
+        DO j = i - 1, i
+
+          !CALL MF_amrex_permute2amrex_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
+
+        END DO
+
+      END IF
+    END DO
 
 
     DO iLevel = 0, nLevels-1
@@ -127,44 +171,64 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        i=1
-
-        DO WHILE (i<=4)
-
-          IF (i==1) THEN
-
-            iZ_B0(i)=iE_B0
-            iZ_E0(i)=iE_E0
-            iZ_B1(i)=iE_B1
-            iZ_E1(i)=iE_E1
-
-          ELSE
-
-            iZ_B0(i)=iX_B0(i-1)
-            iZ_E0(i)=iX_E0(i-1)
-            iZ_B1(i)=iX_B1(i-1)
-            iZ_E1(i)=iX_E1(i-1)
-
-          END IF
-          i = i + 1
-        END DO
 
 
-        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nGF) )
+        iZ_B0(1)=iE_B0
+        iZ_E0(1)=iE_E0
+        iZ_B1(1)=iE_B1
+        iZ_E1(1)=iE_E1
 
-        ALLOCATE( C (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF) )
 
-        ALLOCATE( U (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+        iZ_B0(2:4)=iX_B0(1:3)
+        iZ_E0(2:4)=iX_E0(1:3)
+        iZ_B1(2:4)=iX_B1(1:3)
+        iZ_E1(2:4)=iX_E1(1:3)
 
-        ALLOCATE( dU (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 C )
+
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
+
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 dU )
+
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
@@ -179,23 +243,59 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
-!!$        CALL ComputeIncrement_TwoMoment_Explicit &
-!!$               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
-!!$                 Verbose_Option = Verbose, &
-!!$                 SuppressBC_Option = .TRUE.  )
-        dU = Zero
 
+
+       CALL ComputeIncrement_TwoMoment_Explicit &
+              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
+                Verbose_Option = Verbose, &
+                SuppressBC_Option = .TRUE.  )
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
 
-        DEALLOCATE( G )
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 dU )
 
-        DEALLOCATE( C )
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
 
-        DEALLOCATE( U )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 C )
 
-        DEALLOCATE( dU )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO
 
@@ -205,6 +305,20 @@ CONTAINS
 
     END DO
 
+    DO i = 0, nLevels-1
+
+     ! CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+    END DO
+
+
+   ! CALL AverageDown( MF_uGF, MF_Permute )
+
+    DO i = 0, nLevels-1
+
+    !  CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+    END DO
 
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF

@@ -6,6 +6,7 @@ f90EXE_sources  += MF_ErrorModule.f90
 f90EXE_sources  += MakeFineMaskModule.f90
 CEXE_sources    += MakeFineMaskModule_fi.cpp
 F90EXE_sources  += MF_UtilitiesModule.F90
+f90EXE_sources  += MF_TimersModule.f90
 
 # THORNADO_DIR/Modules/Library
 
@@ -28,4 +29,4 @@ f90EXE_sources  += PolynomialBasisModule_Lagrange.f90
 f90EXE_sources  += PolynomialBasisModule_Legendre.f90
 f90EXE_sources  += PolynomialBasisMappingModule.f90
 F90EXE_sources  += LinearAlgebraModule.F90
-
+F90EXE_sources  += ArrayUtilitiesModule.F90

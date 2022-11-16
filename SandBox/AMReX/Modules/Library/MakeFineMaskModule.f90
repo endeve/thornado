@@ -19,7 +19,8 @@ MODULE MakeFineMaskModule
   ! --- Local Modules ---
 
   USE InputParsingModule, ONLY: &
-    nLevels
+    nLevels, &
+    swX
 
   IMPLICIT NONE
   PRIVATE
@@ -63,14 +64,14 @@ CONTAINS
 
       iMF_Mask % owner = .TRUE.
       iMF_Mask % nc    = 1
-      iMF_Mask % ng    = 0
+      iMF_Mask % ng    = swX
       CALL amrex_fi_makefinemask_thornado &
              ( iMF_Mask % p, BA(iLevel) % p, DM(iLevel) % p, BA(iLevel+1) % p, &
                iLeaf_MFM, iTrunk_MFM )
 
     ELSE
 
-      CALL amrex_imultifab_build( iMF_Mask, BA(iLevel), DM(iLevel), 1, 0 )
+      CALL amrex_imultifab_build( iMF_Mask, BA(iLevel), DM(iLevel), 1, swX )
       CALL iMF_Mask % SetVal( iLeaf_MFM )
 
     END IF

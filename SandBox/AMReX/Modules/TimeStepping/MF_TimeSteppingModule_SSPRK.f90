@@ -62,12 +62,11 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputeConformalFactor_Poseidon_MF, &
     ComputePressureTensorTrace_XCFC_MF, &
     ComputeGeometry_Poseidon_MF
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_UpdateFluid, &
-    Timer_AMReX_Euler_InteriorBC, &
-    Timer_AMReX_Euler_CopyMultiFab
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_UpdateFluid, &
+    Timer_AMReX_GravitySolve
 
   IMPLICIT NONE
   PRIVATE
@@ -140,7 +139,7 @@ CONTAINS
 
     REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nMaxLevels-1)
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+    CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
     dM_OffGrid_Euler = Zero
 
@@ -155,7 +154,7 @@ CONTAINS
 
     END DO
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     DO iS = 1, nStages
 
@@ -212,12 +211,16 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN
 
+          CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
           CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uGS )
 
           CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
+
+          CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
           CALL ApplySlopeLimiter_Euler_MF &
                  ( t_new, MF_uGF, MF_U(iS,:), MF_uDF )
@@ -225,7 +228,9 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_U(iS,:) )
+          CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
+          CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_U(iS,:) )
 
           CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uGS )
@@ -236,9 +241,11 @@ CONTAINS
 
           CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
+          CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
         END IF
 
-        CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_U(iS,:) )
+        CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
                ( t_new, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
@@ -289,12 +296,16 @@ CONTAINS
 
     END DO ! iLevel
 
+    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+
+    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, MF_uDF )
@@ -302,7 +313,9 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, MF_uCF )
+    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -313,7 +326,9 @@ CONTAINS
 
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+
+    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 
@@ -323,7 +338,7 @@ CONTAINS
 
     END DO
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+    CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
 
   END SUBROUTINE UpdateFluid_SSPRK_MF
 

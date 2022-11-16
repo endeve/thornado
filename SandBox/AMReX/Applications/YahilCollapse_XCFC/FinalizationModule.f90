@@ -51,14 +51,13 @@ MODULE FinalizationModule
     t_new, &
     lo_bc, &
     hi_bc
-  USE MF_Euler_TimersModule, ONLY: &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Finalize, &
-    Timer_AMReX_Euler_InputOutput, &
-    FinalizeTimers_AMReX_Euler
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     FinalizeGravitySolver_XCFC_Poseidon_MF
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    Timer_AMReX_Finalize, &
+    FinalizeTimers_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -70,7 +69,7 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStart_AMReX( Timer_AMReX_Finalize )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
@@ -93,10 +92,6 @@ CONTAINS
              pMF_uCF_Option = MF_uCF % P )
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL FinalizeFluid_SSPRK_MF
 
@@ -126,9 +121,9 @@ CONTAINS
     CALL DestroyFields_Euler_MF
     CALL DestroyFields_Geometry_MF
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+    CALL TimersStop_AMReX( Timer_AMReX_Finalize )
 
-    CALL FinalizeTimers_AMReX_Euler( WriteAtIntermediateTime_Option = .TRUE. )
+    CALL FinalizeTimers_AMReX
 
     CALL amrex_amrcore_finalize()
 

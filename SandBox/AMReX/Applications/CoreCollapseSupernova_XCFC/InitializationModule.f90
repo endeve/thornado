@@ -55,6 +55,8 @@ MODULE InitializationModule
     nNodesX, &
     nNodesE, &
     DescribeProgramHeaderX
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    InitializeNeutrinoMatterSolverParameters
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
   USE PolynomialBasisModule_Legendre, ONLY: &
@@ -168,7 +170,7 @@ MODULE InitializationModule
   USE MF_TwoMoment_TallyModule, ONLY: &
     InitializeTally_TwoMoment_MF, &
     ComputeTally_TwoMoment_MF
-  USE MF_TimeSteppingModule, ONLY: &
+  USE MF_TimeSteppingModule_IMEX, ONLY: &
     Initialize_IMEX_RK_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
@@ -204,6 +206,17 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
+    M_outer, & 
+    MaxIter_outer, &
+    Rtol_outer, &
+    M_inner, &
+    MaxIter_inner, &
+    Rtol_inner, &
+    Include_NES, &
+    Include_Pair, &
+    Include_Brem, &
+    Include_LinCorr, &
+    wMatterRHS, &
     Scheme, &
     nSpecies, &
     EquationOfState, &
@@ -223,15 +236,14 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_Euler_TimersModule, ONLY: &
-    InitializeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, &
-    TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_Initialize, &
-    Timer_AMReX_Euler_InputOutput
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     InitializeGravitySolver_XCFC_Poseidon_MF, &
     InitializeMetric_MF
+  USE MF_TimersModule, ONLY: &
+    TimersStart_AMReX, &
+    TimersStop_AMReX, &
+    InitializeTimers_AMReX, &
+    Timer_AMReX_Initialize
 
   IMPLICIT NONE
   PRIVATE
@@ -247,11 +259,9 @@ CONTAINS
 
     CALL amrex_amrcore_init()
 
-    CALL InitializeTimers_AMReX_Euler
+    CALL InitializeTimers_AMReX
 
-    CALL InitializeTimers
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+    CALL TimersStart_AMReX( Timer_AMReX_Initialize )
 
     CALL InitializeParameters
 
@@ -340,6 +350,33 @@ CONTAINS
              OpacityTableName_Pair_Option = OpacityTableName_Pair, &
              EquationOfStateTableName_Option = EosTableName, &
              Verbose_Option = amrex_parallel_ioprocessor())
+
+
+    CALL InitializeNeutrinoMatterSolverParameters &
+           ( M_outer_Option &
+               = M_outer, &
+             M_inner_Option &
+               = M_inner, &
+             MaxIter_outer_Option &
+               = MaxIter_outer, &
+             MaxIter_inner_Option &
+               = MaxIter_inner, &
+             Rtol_inner_Option &
+               = Rtol_inner, &
+             Rtol_outer_Option &
+               = Rtol_outer, &
+             Include_NES_Option &
+               = Include_NES, &
+             Include_Pair_Option &
+               = Include_Pair, &
+             Include_Brem_Option &
+               = Include_Brem, &
+             Include_LinCorr_Option &
+               = Include_LinCorr, &
+             wMatrRHS_Option &
+               = wMatterRHS, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
 
     CALL InitializeClosure_TwoMoment &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
@@ -446,10 +483,6 @@ CONTAINS
     CALL ApplyPositivityLimiter_TwoMoment_MF &
            ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -475,7 +508,7 @@ CONTAINS
            ( amrex_geom, MF_uGF, MF_uCF, MF_uCR, t_new(0), &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+    CALL TimersStop_AMReX( Timer_AMReX_Initialize )
 
   END SUBROUTINE InitializeProgram
 

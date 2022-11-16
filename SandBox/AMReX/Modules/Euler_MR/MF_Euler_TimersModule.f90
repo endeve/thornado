@@ -4,32 +4,33 @@ MODULE MF_Euler_TimersModule
 
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor,  &
-    amrex_parallel_reduce_min,   &
-    amrex_parallel_reduce_max,   &
-    amrex_parallel_reduce_sum,   &
+    amrex_parallel_reduce_min, &
+    amrex_parallel_reduce_max, &
+    amrex_parallel_reduce_sum, &
     amrex_parallel_nprocs
 
   ! --- Thornado Modules ---
 
-  USE TimersModule_Euler,    ONLY: &
-    InitializeTimers_Euler,             &
-    FinalizeTimers_Euler,               &
-    Timer_Euler_DG,                     &
-    Timer_Euler_Increment,              &
-    Timer_Euler_Divergence,             &
-    Timer_Euler_SurfaceTerm,            &
-    Timer_Euler_VolumeTerm,             &
-    Timer_Euler_Geometry,               &
-    Timer_Euler_DD_TCI,                 &
-    Timer_Euler_DD_SD,                  &
-    Timer_Euler_SlopeLimiter,           &
-    Timer_Euler_PositivityLimiter,      &
-    Timer_Euler_BoundaryConditions,     &
+  USE TimersModule_Euler, ONLY: &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    Timer_Euler_DG, &
+    Timer_Euler_Increment, &
+    Timer_Euler_Divergence, &
+    Timer_Euler_SurfaceTerm, &
+    Timer_Euler_VolumeTerm, &
+    Timer_Euler_Geometry, &
+    Timer_Euler_DD_TCI, &
+    Timer_Euler_DD_SD, &
+    Timer_Euler_SlopeLimiter, &
+    Timer_Euler_PositivityLimiter, &
+    Timer_Euler_BoundaryConditions, &
     Timer_Euler_SL_CharDecomp
 
   ! --- Local Modules ---
 
-  USE MF_KindModule,         ONLY: &
+  USE MF_KindModule, ONLY: &
     DP, &
     Zero
 
@@ -46,115 +47,68 @@ MODULE MF_Euler_TimersModule
 
   LOGICAL,  PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
 
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Program;          INTEGER :: iT_P   = 1
+  INTEGER :: iT_DG  = 1
+  INTEGER :: iT_INC = 2
+  INTEGER :: iT_DIV = 3
+  INTEGER :: iT_SUR = 4
+  INTEGER :: iT_VOL = 5
+  INTEGER :: iT_GEO = 6
+  INTEGER :: iT_TCI = 7
+  INTEGER :: iT_SD  = 8
+  INTEGER :: iT_SL  = 9
+  INTEGER :: iT_CD  = 10
+  INTEGER :: iT_PL  = 11
+  INTEGER :: iT_BC  = 12
 
-  ! --- ApplicationDriver ---
+  INTEGER :: nTimers = 12
 
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Initialize;       INTEGER :: iT_I   = 2
-  REAL(DP), PUBLIC :: Timer_AMReX_ComputeTimeStep_Euler;  INTEGER :: iT_CTS = 3
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_UpdateFluid;      INTEGER :: iT_UF  = 4
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_InputOutput;      INTEGER :: iT_IO  = 5
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Finalize;         INTEGER :: iT_F   = 6
+  LOGICAL :: WriteMMS
 
-  ! --- AMReX-specific ---
-
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_DataTransfer;     INTEGER :: iT_DT  = 7
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_Allocate;         INTEGER :: iT_AL  = 8
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_InteriorBC;       INTEGER :: iT_IBC = 9
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_CopyMultiFab;     INTEGER :: iT_CMF = 10
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap; INTEGER :: iT_CEM = 11
-  REAL(DP), PUBLIC :: Timer_AMReX_Euler_GetBC;            INTEGER :: iT_GBC = 12
-
-  ! --- Thornado Modules ---
-
-  INTEGER :: iT_DG  = 13
-  INTEGER :: iT_INC = 14
-  INTEGER :: iT_DIV = 15
-  INTEGER :: iT_SUR = 16
-  INTEGER :: iT_VOL = 17
-  INTEGER :: iT_GEO = 18
-  INTEGER :: iT_TCI = 19
-  INTEGER :: iT_SD  = 20
-  INTEGER :: iT_SL  = 21
-  INTEGER :: iT_PL  = 22
-  INTEGER :: iT_BC  = 23
-  INTEGER :: iT_CD  = 24
-
-  INTEGER :: nTimers = 24
-
-  REAL(DP), PARAMETER :: Hundred = 100.0_DP
+  INTEGER, PARAMETER :: nChar = 48
 
 CONTAINS
 
 
-  SUBROUTINE InitializeTimers_AMReX_Euler
+  SUBROUTINE InitializeTimers_AMReX_Euler( WriteMMS_Option )
+
+    LOGICAL, INTENT(in), OPTIONAL :: WriteMMS_Option
+
+    WriteMMS = .FALSE.
+    IF( PRESENT( WriteMMS_Option ) ) &
+      WriteMMS = WriteMMS_Option
+
+    TimeIt_Euler = .FALSE.
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
-    Timer_AMReX_Euler_Program          = Zero
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Program )
-
-    Timer_AMReX_Euler_Initialize       = Zero
-    Timer_AMReX_ComputeTimeStep_Euler  = Zero
-    Timer_AMReX_Euler_UpdateFluid      = Zero
-    Timer_AMReX_Euler_InputOutput      = Zero
-    Timer_AMReX_Euler_Finalize         = Zero
-
-    Timer_AMReX_Euler_DataTransfer     = Zero
-    Timer_AMReX_Euler_Allocate         = Zero
-    Timer_AMReX_Euler_InteriorBC       = Zero
-    Timer_AMReX_Euler_CopyMultiFab     = Zero
-    Timer_AMReX_Euler_ConstructEdgeMap = Zero
-    Timer_AMReX_Euler_GetBC            = Zero
+    TimeIt_Euler = .TRUE.
 
     CALL InitializeTimers_Euler
 
   END SUBROUTINE InitializeTimers_AMReX_Euler
 
 
-  SUBROUTINE FinalizeTimers_AMReX_Euler( WriteAtIntermediateTime_Option )
+  SUBROUTINE FinalizeTimers_AMReX_Euler( Timer_ProgramAve )
 
-    LOGICAL, INTENT(in), OPTIONAL :: WriteAtIntermediateTime_Option
+    REAL(DP), INTENT(in) :: Timer_ProgramAve
 
-    REAL(DP) :: Timer(nTimers), TotalTime
+    REAL(DP) :: Timer(nTimers)
     REAL(DP) :: TimerSum(nTimers), TimerMin(nTimers), &
                 TimerMax(nTimers), TimerAve(nTimers)
+    CHARACTER(nChar) :: Label(nTimers)
 
-    CHARACTER(32) :: &
-      OutFMT = '(8x,A,ES13.6E3,A,F7.3,A)'
-    CHARACTER(64) :: &
+    INTEGER :: iT
+
+    CHARACTER(128) :: &
+      OutFMT = '(8x,A32,A,ES11.3E3,A,ES11.3E3)'
+    CHARACTER(128) :: &
       OutMMS = '(10x,A,ES13.6E3,A,A,ES13.6E3,A,A,ES13.6E3,A)'
-    INTEGER       :: iT
-
-    LOGICAL :: WriteAtIntermediateTime
-
-    WriteAtIntermediateTime = .FALSE.
-    IF( PRESENT( WriteAtIntermediateTime_Option ) ) &
-      WriteAtIntermediateTime = WriteAtIntermediateTime_Option
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
     CALL FinalizeTimers_Euler &
            ( Verbose_Option = .FALSE., &
              SuppressApplicationDriver_Option = .TRUE. )
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Program )
-
-    Timer(iT_P  ) = Timer_AMReX_Euler_Program
-
-    Timer(iT_I  ) = Timer_AMReX_Euler_Initialize
-    Timer(iT_CTS) = Timer_AMReX_ComputeTimeStep_Euler
-    Timer(iT_UF ) = Timer_AMReX_Euler_UpdateFluid
-    Timer(iT_IO ) = Timer_AMReX_Euler_InputOutput
-    Timer(iT_F  ) = Timer_AMReX_Euler_Finalize
-
-    Timer(iT_DT ) = Timer_AMReX_Euler_DataTransfer
-    Timer(iT_AL ) = Timer_AMReX_Euler_Allocate
-    Timer(iT_IBC) = Timer_AMReX_Euler_InteriorBC
-    Timer(iT_CMF) = Timer_AMReX_Euler_CopyMultiFab
-    Timer(iT_CEM) = Timer_AMReX_Euler_ConstructEdgeMap
-    Timer(iT_GBC) = Timer_AMReX_Euler_GetBC
 
     Timer(iT_DG ) = Timer_Euler_DG
     Timer(iT_INC) = Timer_Euler_Increment
@@ -165,9 +119,9 @@ CONTAINS
     Timer(iT_TCI) = Timer_Euler_DD_TCI
     Timer(iT_SD ) = Timer_Euler_DD_SD
     Timer(iT_SL ) = Timer_Euler_SlopeLimiter
+    Timer(iT_CD ) = Timer_Euler_SL_CharDecomp
     Timer(iT_PL ) = Timer_Euler_PositivityLimiter
     Timer(iT_BC ) = Timer_Euler_BoundaryConditions
-    Timer(iT_CD ) = Timer_Euler_SL_CharDecomp
 
     DO iT = 1, nTimers
 
@@ -176,281 +130,40 @@ CONTAINS
 
     END DO
 
-    IF( amrex_parallel_ioprocessor() .AND. WriteAtIntermediateTime )THEN
+    IF( amrex_parallel_ioprocessor() )THEN
 
-      WRITE(*,*)
-      WRITE(*,'(6x,A28)') 'Timers (AMReX-Euler) Summary'
-      WRITE(*,'(6x,A28)') '----------------------------'
-      WRITE(*,*)
-
-      WRITE(*,'(8x,A23,ES13.6E3,A2)') &
-        'Total run-time (ave) = ', TimerAve(iT_P), ' s'
-      WRITE(*,'(8x,A23,ES13.6E3,A2)') &
-        'Total run-time (min) = ', TimerMin(iT_P), ' s'
-      WRITE(*,'(8x,A23,ES13.6E3,A2)') &
-        'Total run-time (max) = ', TimerMax(iT_P), ' s'
-      WRITE(*,'(8x,A23,ES13.6E3,A2)') &
-        'Total run-time (sum) = ', TimerSum(iT_P), ' s'
+      WRITE(*,'(4x,A)') 'Timers Summary (Euler)'
+      WRITE(*,'(4x,A)') '----------------------'
       WRITE(*,*)
 
-      TotalTime = Zero
-      DO iT = iT_I, iT_F
-        TotalTime = TotalTime + TimerAve(iT)
-      END DO
+      Label(iT_DG ) = 'DG Discretization'
+      Label(iT_INC) = '  Increment'
+      Label(iT_DIV) = '  Divergence'
+      Label(iT_SUR) = '  Surface Term'
+      Label(iT_VOL) = '  Volume Term'
+      Label(iT_GEO) = '  Geometry'
+      Label(iT_TCI) = 'Troubled-Cell Indicator'
+      Label(iT_SD ) = 'Shock Detector'
+      Label(iT_SL ) = 'Slope Limiter'
+      Label(iT_CD ) = '  Characteristic Decomposition'
+      Label(iT_PL ) = 'Positivity Limiter'
+      Label(iT_BC ) = 'Boundary Conditions'
 
-      WRITE(*,'(8x,A26,F7.3,A2)') &
-        'Timers / ProgramRunTime = ', &
-        Hundred * TotalTime / TimerAve(iT_P), ' %'
-
-      WRITE(*,*)
-      WRITE(*,'(6x,A5)') 'fmain'
-      WRITE(*,'(6x,A5)') '-----'
-      WRITE(*,*)
-
-      iT = iT_I
-      WRITE(*,TRIM(OutFMT)) &
-        'Initialize:        ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_CTS
-      WRITE(*,TRIM(OutFMT)) &
-        'Compute Time-Step: ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_UF
-      WRITE(*,TRIM(OutFMT)) &
-        'Update Fluid:      ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_IO
-      WRITE(*,TRIM(OutFMT)) &
-        'Input/Output:      ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_F
-      WRITE(*,TRIM(OutFMT)) &
-        'Finalize:          ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      WRITE(*,*)
       WRITE(*,'(6x,A)') 'Native thornado'
       WRITE(*,'(6x,A)') '---------------'
       WRITE(*,*)
 
-      iT = iT_DG
-      WRITE(*,TRIM(OutFMT)) &
-        'DG Discretization:      ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
+      DO iT = iT_DG, nTimers
 
-      iT = iT_INC
-      WRITE(*,TRIM(OutFMT)) &
-        'Increment:              ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
+        CALL WriteTimer &
+               ( OutFMT, OutMMS, Timer_ProgramAve, &
+                 Label(iT), &
+                 TimerAve(iT), TimerMin(iT), TimerMax(iT), TimerSum(iT) )
 
-      iT = iT_DIV
-      WRITE(*,TRIM(OutFMT)) &
-        'Divergence:             ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_SUR
-      WRITE(*,TRIM(OutFMT)) &
-        '  SurfaceTerm:          ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-          'Min = ', TimerMin(iT), ' s, ', &
-          'Max = ', TimerMax(iT), ' s, ', &
-          'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_VOL
-      WRITE(*,TRIM(OutFMT)) &
-        '  VolumeTerm:           ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-          'Min = ', TimerMin(iT), ' s, ', &
-          'Max = ', TimerMax(iT), ' s, ', &
-          'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_GEO
-      WRITE(*,TRIM(OutFMT)) &
-        'Geometry:               ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_TCI
-      WRITE(*,TRIM(OutFMT)) &
-        'Troubled-Cell Indicator:', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_SD
-      WRITE(*,TRIM(OutFMT)) &
-        'Shock Detector:         ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_SL
-      WRITE(*,TRIM(OutFMT)) &
-        'SlopeLimiter:           ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_PL
-      WRITE(*,TRIM(OutFMT)) &
-        'PositivityLimiter:      ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_BC
-      WRITE(*,TRIM(OutFMT)) &
-        'BoundaryConditions:     ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_CD
-      WRITE(*,TRIM(OutFMT)) &
-        'Characteristic Decomp:  ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      WRITE(*,*)
-      WRITE(*,'(6x,A)') 'AMReX-specific'
-      WRITE(*,'(6x,A)') '--------------'
-      WRITE(*,*)
-
-      iT = iT_DT
-      WRITE(*,TRIM(OutFMT)) &
-        'Data Transfer:                ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_AL
-      WRITE(*,TRIM(OutFMT)) &
-        'Allocate/Deallocate:          ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_IBC
-      WRITE(*,TRIM(OutFMT)) &
-        'Interior Boundary Conditions: ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_CMF
-      WRITE(*,TRIM(OutFMT)) &
-        'Copy MultiFab:                ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_CEM
-      WRITE(*,TRIM(OutFMT)) &
-        'Construct Edge-Map:           ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
-      WRITE(*,*)
-
-      iT = iT_GBC
-      WRITE(*,TRIM(OutFMT)) &
-        'Get Boundary-Conditions:      ', TimerAve(iT), ' s = ', &
-        Hundred * TimerAve(iT) / TimerAve(iT_P), ' %'
-      WRITE(*,TRIM(OutMMS)) &
-        'Min = ', TimerMin(iT), ' s, ', &
-        'Max = ', TimerMax(iT), ' s, ', &
-        'Sum = ', TimerSum(iT), ' s'
+      END DO
       WRITE(*,*)
 
     END IF
-
-    IF( WriteAtIntermediateTime ) &
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Program )
 
   END SUBROUTINE FinalizeTimers_AMReX_Euler
 
@@ -507,6 +220,30 @@ CONTAINS
     TimerAve = TimerAve / amrex_parallel_nprocs()
 
   END SUBROUTINE SumMinMaxAve
+
+
+  SUBROUTINE WriteTimer &
+    ( OutFMT, OutMMS, TimerAve_P, &
+      Label, &
+      TimerAve, TimerMin, TimerMax, TimerSum )
+
+    CHARACTER(nChar), INTENT(in) :: OutFMT, OutMMS, Label
+    REAL(DP), INTENT(in) :: TimerAve_P
+    REAL(DP), INTENT(in) :: TimerAve, TimerMin, TimerMax, TimerSum
+
+    WRITE(*,TRIM(OutFMT)) &
+      Label, ' : ', TimerAve, ' s = ', TimerAve / TimerAve_P
+
+    IF( WriteMMS )THEN
+
+      WRITE(*,TRIM(OutMMS)) &
+        'Min = ', TimerMin, ' s, ', &
+        'Max = ', TimerMax, ' s, ', &
+        'Sum = ', TimerSum, ' s'
+
+    END IF
+
+  END SUBROUTINE WriteTimer
 
 
 END MODULE MF_Euler_TimersModule
