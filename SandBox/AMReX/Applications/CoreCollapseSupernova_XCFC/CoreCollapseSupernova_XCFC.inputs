@@ -36,6 +36,7 @@ thornado.bcX         = 30 00 00
 geometry.is_periodic = 0  1  1
 
 thornado.bcE = 01
+thornado.bcZ_TwoMoment = 01 30 00 00
 thornado.nE  = 16
 thornado.swE = 01
 thornado.eL  = 0.0
