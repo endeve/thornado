@@ -63,9 +63,9 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     nGS, &
     MultiplyWithPsi6_MF, &
-    ComputeConformalFactorSourcesAndMg_XCFC_MF, &
+    ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
     ComputeConformalFactor_Poseidon_MF, &
-    ComputePressureTensorTrace_XCFC_MF, &
+    ComputePressureTensorTrace_XCFC_TwoMoment_MF, &
     ComputeGeometry_Poseidon_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
@@ -295,8 +295,8 @@ CONTAINS
 
             CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-                   ( MF_uGF, MF_F, MF_uGS )
+            CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
+                   ( MF_uGF, MF_F, MF_R, MF_uGS )
 
             CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
@@ -314,13 +314,13 @@ CONTAINS
 
             CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_F )
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-                   ( MF_uGF, MF_F, MF_uGS )
+            CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
+                   ( MF_uGF, MF_F, MF_R, MF_uGS )
 
             CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-            CALL ComputePressureTensorTrace_XCFC_MF &
-                   ( MF_uGF, MF_F, MF_uGS )
+            CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
+                   ( MF_uGF, MF_F, MF_R, MF_uGS )
 
             CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
@@ -429,8 +429,8 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uGS )
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
@@ -448,12 +448,12 @@ CONTAINS
 
     CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uGS )
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
-    CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+    CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
