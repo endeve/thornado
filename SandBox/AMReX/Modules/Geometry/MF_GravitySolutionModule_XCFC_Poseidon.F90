@@ -23,18 +23,12 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-<<<<<<< HEAD
-    nDOFZ, &
-    nDOFE, &
-    nNodesX
-=======
     nNodesX, &
     nDOFZ, &
     iE_E0, &
     iE_B0, &
     nDOFE, &
     nE
->>>>>>> 1b2bda02f501ccbf6750d684a073fc56eab7ce1c
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE LinearAlgebraModule, ONLY: &
@@ -168,8 +162,11 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: ComputeGeometry_Poseidon_MF
   PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_MF
   PUBLIC :: ComputePressureTensorTrace_XCFC_MF
+  PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF
+  PUBLIC :: ComputePressureTensorTrace_XCFC_TwoMoment_MF
   PUBLIC :: MultiplyWithPsi6_MF
   PUBLIC :: InitializeMetric_MF
+  PUBLIC :: InitializeMetric_TwoMoment_MF
 
   ! --- MF: Metric Fields ---
 
@@ -702,15 +699,6 @@ CONTAINS
   END SUBROUTINE ComputePressureTensorTrace_XCFC_MF
 
 
-<<<<<<< HEAD
-  SUBROUTINE MultiplyWithPsi6_MF( nVars, MF_uGF, Power, iE_B0, iE_E0, MF_U )
-
-    INTEGER             , INTENT(in)    :: nVars
-    INTEGER             , INTENT(in)    :: Power
-    INTEGER             , INTENT(in)    :: iE_B0, iE_E0
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_U  (0:nLevels-1)
-=======
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
     ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
@@ -718,24 +706,17 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
->>>>>>> 1b2bda02f501ccbf6750d684a073fc56eab7ce1c
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-<<<<<<< HEAD
-    REAL(DP), CONTIGUOUS, POINTER :: U  (:,:,:,:)
-
-    INTEGER  :: iLevel, iNX, iNZ, iE, iX1, iX2, iX3, iVar, iD 
-=======
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
->>>>>>> 1b2bda02f501ccbf6750d684a073fc56eab7ce1c
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
@@ -751,7 +732,6 @@ CONTAINS
     INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iN_X, iS, iN_Z
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
     ASSOCIATE &
       ( dZ1 => MeshE  % Width )
 
@@ -870,7 +850,7 @@ CONTAINS
           DO iE = 1, nE
           DO iN_E = 1, nDOFE
 
-            iN_Z = (iN_X-1) * nDOFE + iN_E
+            iN_Z = (iNX-1) * nDOFE + iN_E
 
             iD_N = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                  + ( iCR_N - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
@@ -1112,7 +1092,7 @@ CONTAINS
           DO iE = 1, nE
           DO iN_E = 1, nDOFE
 
-            iN_Z = (iN_X-1) * nDOFE + iN_E
+            iN_Z = (iNX-1) * nDOFE + iN_E
 
             iD_N = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                  + ( iCR_N - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
@@ -1263,45 +1243,13 @@ CONTAINS
           Mask => iMF_Mask % DataPtr( MFI )
 
           uGF => MF_uGF(iLevel) % DataPtr( MFI )
-<<<<<<< HEAD
-          U   => MF_U(iLevel)   % DataPtr( MFI )
-=======
           U   => MF_U  (iLevel) % DataPtr( MFI )
->>>>>>> 1b2bda02f501ccbf6750d684a073fc56eab7ce1c
 
           BX = MFI % tilebox()
 
           iX_B0 = BX % lo
           iX_E0 = BX % hi
 
-<<<<<<< HEAD
-          DO iS  = 1, nSpecies
-          DO iE  = iE_B0   , iE_E0
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
-          DO iNZ = 1       , nDOFZ
-
-            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
-
-
-            iNX  = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
-
-            Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
-
-            iD   = ( iS - 1 ) * nVars * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-                 + ( iVar - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-                 + ( iZ1 - 1 ) * nDOFZ + iNZ
-
-
-            DO iVar = 1, nVars
-              ! saving this here if Sam wants to do it differently 
-              !uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) &
-              !  = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) * Psi6**( Power )
-
-              U(iX1,iX2,iX3,iD) &
-                = U(iX1,iX2,iX3,iD) * Psi6**( Power )
-=======
           DO iS  = 1       , nS
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
@@ -1324,7 +1272,6 @@ CONTAINS
 
               U(iX1,iX2,iX3,iComp) &
                 = U(iX1,iX2,iX3,iComp) * Psi6**( Power )
->>>>>>> 1b2bda02f501ccbf6750d684a073fc56eab7ce1c
 
             END DO
 
@@ -1499,6 +1446,158 @@ CONTAINS
   END SUBROUTINE InitializeMetric_MF
 
 
+  SUBROUTINE InitializeMetric_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
+
+    TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab) :: LF1   (0:nLevels-1)
+    TYPE(amrex_multifab) :: LF2   (0:nLevels-1)
+    TYPE(amrex_multifab) :: dLF   (0:nLevels-1)
+    TYPE(amrex_multifab) :: CF1   (0:nLevels-1)
+    TYPE(amrex_multifab) :: CF2   (0:nLevels-1)
+    TYPE(amrex_multifab) :: dCF   (0:nLevels-1)
+
+    LOGICAL  :: CONVERGED
+    INTEGER  :: iLevel, ITER, iNX
+    REAL(DP) :: MinLF, MinCF
+
+    INTEGER, PARAMETER :: MAX_ITER = 10
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nGS, 0 )
+      CALL MF_uGS(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+      CALL LF1(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( LF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+      CALL LF2(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( dLF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+      CALL dLF(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( CF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+      CALL CF1(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( CF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+      CALL CF2(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( dCF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX, 0 )
+      CALL dCF(iLevel) % SetVal( Zero )
+
+    END DO
+
+    ! --- Iterate to incorporate gravity in initial conditions ---
+
+    CONVERGED = .FALSE.
+    ITER = 0
+
+    MinLF = HUGE( One )
+    MinCF = HUGE( One )
+
+    DO WHILE( .NOT. CONVERGED )
+
+      ITER = ITER + 1
+
+      DO iLevel = 0, nLevels - 1
+
+        CALL LF1(iLevel) % COPY &
+              ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
+
+        CALL CF1(iLevel) % COPY &
+              ( MF_uGF(iLevel), nDOFX*(iGF_Psi  -1)+1, 1, nDOFX, 0 )
+
+      END DO
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+
+      CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+
+      CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+
+      CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+
+      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+
+      DO iLevel = 0, nLevels - 1
+
+        CALL LF2(iLevel) % COPY &
+              ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
+
+        CALL CF2(iLevel) % COPY &
+              ( MF_uGF(iLevel), nDOFX*(iGF_Psi  -1)+1, 1, nDOFX, 0 )
+
+        CALL dLF(iLevel) &
+               % LinComb( +One, LF2(iLevel), 1, &
+                          -One, LF1(iLevel), 1, 1, &
+                          nDOFX, 0 )
+
+        CALL dCF(iLevel) &
+               % LinComb( +One, CF2(iLevel), 1, &
+                          -One, CF1(iLevel), 1, 1, &
+                          nDOFX, 0 )
+
+        DO iNX = 1, nDOFX
+
+          MinLF = MIN( MinLF, dLF(iLevel) % Norm0( iNX ) )
+          MinCF = MIN( MinCF, dCF(iLevel) % Norm0( iNX ) )
+
+        END DO
+
+      END DO
+
+      CALL amrex_parallel_reduce_max( MinLF )
+      CALL amrex_parallel_reduce_max( MinCF )
+
+      IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. MAX_ITER ) &
+        CALL DescribeError_MF &
+               ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
+
+    END DO ! WHILE( .NOT. CONVERGED )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_destroy( dCF   (iLevel) )
+      CALL amrex_multifab_destroy( CF2   (iLevel) )
+      CALL amrex_multifab_destroy( CF1   (iLevel) )
+      CALL amrex_multifab_destroy( dLF   (iLevel) )
+      CALL amrex_multifab_destroy( LF2   (iLevel) )
+      CALL amrex_multifab_destroy( LF1   (iLevel) )
+      CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+
+    END DO
+
+#endif
+
+  END SUBROUTINE InitializeMetric_TwoMoment_MF
   ! --- PRIVATE SUBROUTINES ---
 
 
