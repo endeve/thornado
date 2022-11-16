@@ -178,7 +178,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                     iLo_MF(4), iApplyBC(3)
+                     iLo_MF(4)
     TYPE(EdgeMap) :: Edge_Map
 
     IF( nDOFX .EQ. 1 ) RETURN
@@ -232,8 +232,6 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
-
-      CALL Edge_Map % Euler_GetBC( iApplyBC )
 
       CALL ApplyPositivityLimiter_Euler( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
 
