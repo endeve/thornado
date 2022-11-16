@@ -193,7 +193,7 @@ CONTAINS
     ! --- Surface flux for coarse/fine corrections ---
 
     REAL(DP) :: &
-      SurfaceFlux_X1(nDOFX_X1, &
+      SurfaceFlux_X1(nDOF_X1, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2)+1, &
           iZ_B0(3):iZ_E0(3), &
@@ -201,14 +201,14 @@ CONTAINS
           nSpecies, nCR)
 
     REAL(DP) :: &
-      SurfaceFlux_X2(nDOFX_X2, &
+      SurfaceFlux_X2(nDOF_X2, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3)+1, &
           iZ_B0(4):iZ_E0(4), &
           nSpecies, nCR)
     REAL(DP) :: &
-      SurfaceFlux_X3(nDOFX_X3, &
+      SurfaceFlux_X3(nDOF_X3, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3), &
@@ -241,7 +241,6 @@ CONTAINS
 
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-
 
     IF( .NOT. SuppressBC ) THEN
       CALL ApplyBoundaryConditions_TwoMoment &
@@ -329,8 +328,6 @@ CONTAINS
     END DO
     END DO
 
-
-
     CALL FinalizeIncrement_TwoMoment_Explicit
 
 
@@ -381,7 +378,7 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      SurfaceFlux_X1(nDOFX_X1, &
+      SurfaceFlux_X1(nDOF_X1, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2)+1, &
           iZ_B0(3):iZ_E0(3), &
@@ -500,6 +497,7 @@ CONTAINS
 
 
     Verbose = .TRUE.
+
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
@@ -863,7 +861,6 @@ CONTAINS
     !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R )
 #endif
 
-!the issue is here it might be an issue with the face value of Alpha
     DO iZ_F = 1, nNodesZ_X1
 
       iX_F = PositionIndexZ_F(iZ_F)
@@ -925,7 +922,6 @@ CONTAINS
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = NumericalFlux_LLF &
               ( uCR_X1_L(iCR), uCR_X1_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
-
         SurfaceFlux_X1(iNodeZ_X1,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
           = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
           * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
@@ -1162,7 +1158,7 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      SurfaceFlux_X2(nDOFX_X2, &
+      SurfaceFlux_X2(nDOF_X2, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3)+1, &
@@ -1965,7 +1961,7 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      SurfaceFlux_X3(nDOFX_X3, &
+      SurfaceFlux_X3(nDOF_X3, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3), &
@@ -3001,6 +2997,7 @@ CONTAINS
                              dG_dd_dX0, dG_dd_dX1, dG_dd_dX2, dG_dd_dX3, Gamma_udd )
 
 
+
     CALL ComputeWeakDerivatives_X0 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, Gamma_udd, dU_d_dX0, dU_d_dX0_COV,  &
              Verbose_Option = Verbose )
@@ -3088,6 +3085,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7)
 #endif
+
     DO iCR = 1, nCR
     DO iZ1 = iZ_B0(1)-1, iZ_E0(1)+1
     DO iS  = 1, nSpecies
@@ -3543,6 +3541,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
     CALL FinalizeIncrement_ObserverCorrections
 
 #if   defined( THORNADO_OMP_OL )
