@@ -85,7 +85,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iGE_Ep3
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR,    &  
+    nCR,    &
     iCR_N,  &
     iCR_G1, &
     iCR_G2, &
@@ -98,7 +98,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     DescribeError_Euler
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
-
 
   ! --- Local Modules ---
 
@@ -286,7 +285,6 @@ CONTAINS
     ! --- Set XCFC sources with current conformal factor ---
     CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
-
     ! --- Compute conformal factor ---
 
     CALL Poseidon_XCFC_Run_Part1()
@@ -386,7 +384,6 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-
     DO iLevel = 0, nLevels-1
 
       CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
@@ -411,7 +408,6 @@ CONTAINS
         ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3)) )
-
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -492,12 +488,6 @@ CONTAINS
                * uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha -1)+iNX) &
                * uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX)
 
-       
-
-
-
-
-
         END DO
         END DO
         END DO
@@ -542,7 +532,6 @@ CONTAINS
 
     END DO
 
-
 #endif
 
   END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF
@@ -575,8 +564,6 @@ CONTAINS
 !    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
-
 
     DO iLevel = 0, nLevels-1
 
@@ -645,10 +632,6 @@ CONTAINS
                  + uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6 * uPF(iPF_V3) &
                  + Three * Pressure ) * Psi6
 
-
-
-
-
         END DO
         END DO
         END DO
@@ -706,19 +689,19 @@ CONTAINS
 
     END DO
 
-
 #endif
 
 !    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
   END SUBROUTINE ComputePressureTensorTrace_XCFC_MF
 
+
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
     ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1) 
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
     TYPE(amrex_box)    :: BX
@@ -740,8 +723,8 @@ CONTAINS
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
     REAL(DP) :: E, S_i(3), E_int, S_i_int(3)
     REAL(DP) :: N, G_d_1, G_d_2, G_d_3, vG
-    REAL(DP) :: V_u_1, V_u_2, V_u_3 
-    REAL(DP) :: V_d_1, V_d_2, V_d_3 
+    REAL(DP) :: V_u_1, V_u_2, V_u_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iN_X, iS, iN_Z
 
@@ -861,10 +844,6 @@ CONTAINS
                * uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha -1)+iNX) &
                * uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX)
 
-       
-
-
-
           DO iS = 1, nSpecies
           DO iE = 1, nE
           DO iN_E = 1, nDOFE
@@ -883,7 +862,7 @@ CONTAINS
             iD_G3 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                  + ( iCR_G3 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                  + ( iE - 1 ) * nDOFZ + iN_Z
-           
+
             N     = uCR(iX1,iX2,iX3,iD_N)
             G_d_1 = uCR(iX1,iX2,iX3,iD_G1)
             G_d_2 = uCR(iX1,iX2,iX3,iD_G2)
@@ -892,16 +871,16 @@ CONTAINS
             V_u_1 = uPF (iPF_V1)
             V_u_2 = uPF (iPF_V2)
             V_u_3 = uPF (iPF_V3)
-            
+
             Gm_dd_11 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX)
             Gm_dd_22 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX)
             Gm_dd_33 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX)
 
-            V_d_1 = V_u_1 * Gm_dd_11 
+            V_d_1 = V_u_1 * Gm_dd_11
             V_d_2 = V_u_2 * Gm_dd_22
-            V_d_3 = V_u_3 * Gm_dd_33 
+            V_d_3 = V_u_3 * Gm_dd_33
 
-            vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3 
+            vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3
 
             E_int      = LorentzFactor * N + vG
             S_i_int(1) = LorentzFactor * V_d_1 * N + G_d_1
@@ -921,11 +900,9 @@ CONTAINS
                    + FourPi * dZ1(iE) * WeightsE(iN_E) &
                    * uGE(iN_E,iE,iGE_Ep3) * S_i_int(3)
 
-
-
-          END DO 
-          END DO 
-          END DO 
+          END DO
+          END DO
+          END DO
 
           uGS(iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             = uGS(iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) + E
@@ -993,7 +970,8 @@ CONTAINS
   END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF
 
 
-  SUBROUTINE ComputePressureTensorTrace_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+  SUBROUTINE ComputePressureTensorTrace_XCFC_TwoMoment_MF &
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
@@ -1019,8 +997,9 @@ CONTAINS
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
     REAL(DP) :: S, S_int, N, G_d_1, G_d_2, G_d_3, vG
-    REAL(DP) :: LorentzFactor, V_u_1, V_u_2, V_u_3 
+    REAL(DP) :: LorentzFactor, V_u_1, V_u_2, V_u_3
     INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iN_X, iS, iN_Z
+
 !    CALL TimersStart_Euler( Timer_GS_ComputeSourceTerms )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
@@ -1125,7 +1104,7 @@ CONTAINS
             iD_G3 = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                  + ( iCR_G3 - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
                  + ( iE - 1 ) * nDOFZ + iN_Z
-           
+
             N     = uCR(iX1,iX2,iX3,iD_N)
             G_d_1 = uCR(iX1,iX2,iX3,iD_G1)
             G_d_2 = uCR(iX1,iX2,iX3,iD_G2)
@@ -1135,7 +1114,7 @@ CONTAINS
             V_u_2 = uPF (iPF_V2)
             V_u_3 = uPF (iPF_V3)
 
-            vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3 
+            vG = V_u_1 * G_d_1 + V_u_2 * G_d_2 + V_u_3 * G_d_3
 
             S_int      = LorentzFactor * N + vG
 
@@ -1144,9 +1123,9 @@ CONTAINS
               * uGE(iN_E,iE,iGE_Ep3) * S_int
 
 
-          END DO 
-          END DO 
-          END DO 
+          END DO
+          END DO
+          END DO
 
           uGS(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) &
             = uGS(iX1,iX2,iX3,nDOFX*(iGS_S-1)+iNX) + S
@@ -1218,6 +1197,7 @@ CONTAINS
 !    CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
   END SUBROUTINE ComputePressureTensorTrace_XCFC_TwoMoment_MF
+
 
   SUBROUTINE MultiplyWithPsi6_MF &
     ( MF_uGF, Power, nDOFE, iE_B0, iE_E0, nS, MF_U )
