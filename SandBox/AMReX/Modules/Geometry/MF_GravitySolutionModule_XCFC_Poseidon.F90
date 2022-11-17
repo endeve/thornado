@@ -4,6 +4,10 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   USE amrex_box_module, ONLY: &
     amrex_box
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -120,6 +124,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     DescribeError_MF
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
+    DestroyFineMask, &
     iLeaf_MFM
   USE InputParsingModule, ONLY: &
     nLevels, &
@@ -129,6 +134,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     nNodes, &
     xL, &
     xR, &
+    swX, &
     UseXCFC
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
@@ -155,6 +161,9 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 
   IMPLICIT NONE
   PRIVATE
+
+  LOGICAL :: FillGhostCells
+  INTEGER :: swXX(3)
 
   PUBLIC :: InitializeGravitySolver_XCFC_Poseidon_MF
   PUBLIC :: FinalizeGravitySolver_XCFC_Poseidon_MF
@@ -200,6 +209,17 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
+    TYPE(amrex_parmparse) :: PP
+
+    swXX = [ 0, 0, 0 ]
+
+    FillGhostCells = .FALSE.
+    CALL amrex_parmparse_build( PP, 'poseidon' )
+      CALL PP % query( 'FillGhostCells', FillGhostCells )
+    CALL amrex_parmparse_destroy( PP )
+
+    IF( FillGhostCells ) swXX = swX
+
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -208,6 +228,7 @@ CONTAINS
       WRITE(*,'(4x,A)') &
         '-------------------------------------'
       WRITE(*,*)
+      WRITE(*,'(6x,A,L)') 'FillGhostCells: ', FillGhostCells
       WRITE(*,'(6x,A)') 'Only implemented for 1D spherical symmetry.'
       WRITE(*,*)
 
@@ -263,7 +284,7 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nMF, 0 )
+               nDOFX * nMF, swXX )
       CALL MF_uMF(iLevel) % SetVal( Zero )
 
     END DO
@@ -292,7 +313,8 @@ CONTAINS
 
     CALL Poseidon_XCFC_Run_Part1()
 
-    CALL Poseidon_Return_Conformal_Factor( MF_uMF )
+    CALL Poseidon_Return_Conformal_Factor &
+           ( MF_uMF, FillGhostCells_Option = FillGhostCells )
 
     CALL UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
@@ -326,7 +348,7 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nMF, 0 )
+               nDOFX * nMF, swXX )
       CALL MF_uMF(iLevel) % SetVal( Zero )
 
     END DO
@@ -339,7 +361,8 @@ CONTAINS
 
     CALL Poseidon_XCFC_Run_Part2()
 
-    CALL Poseidon_Return_ALL( MF_uMF )
+    CALL Poseidon_Return_ALL &
+           ( MF_uMF, FillGhostCells_Option = FillGhostCells )
 
     ! --- Copy data from Poseidon to thornado ---
 
@@ -533,6 +556,8 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+      CALL DestroyFineMask( iLevel, iMF_Mask )
+
     END DO
 
 #endif
@@ -689,6 +714,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
@@ -963,6 +990,8 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+      CALL DestroyFineMask( iLevel, iMF_Mask )
+
     END DO
 
     END ASSOCIATE
@@ -1190,6 +1219,8 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+      CALL DestroyFineMask( iLevel, iMF_Mask )
+
     END DO
 
     END ASSOCIATE
@@ -1286,6 +1317,8 @@ CONTAINS
 
         CALL amrex_mfiter_destroy( MFI )
 
+        CALL DestroyFineMask( iLevel, iMF_Mask )
+
       END DO ! iLevel
 
     END IF ! UseXCFC
@@ -1320,37 +1353,37 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nGS, 0 )
+               nDOFX * nGS, swXX )
       CALL MF_uGS(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, 0 )
+               nDOFX, swXX )
       CALL LF1(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, 0 )
+               nDOFX, swXX )
       CALL LF2(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( dLF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, 0 )
+               nDOFX, swXX )
       CALL dLF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( CF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, 0 )
+               nDOFX, swXX )
       CALL CF1(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( CF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, 0 )
+               nDOFX, swXX )
       CALL CF2(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( dCF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, 0 )
+               nDOFX, swXX )
       CALL dCF(iLevel) % SetVal( Zero )
 
     END DO
@@ -1679,6 +1712,8 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+      CALL DestroyFineMask( iLevel, iMF_Mask )
+
     END DO
 
   END SUBROUTINE UpdateConformalFactorAndMetric_MF
@@ -1757,6 +1792,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
@@ -1850,6 +1887,8 @@ CONTAINS
       CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
@@ -1973,6 +2012,8 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO
 
