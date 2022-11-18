@@ -15,14 +15,14 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.PlotFileBaseName = "CoreCollapseSupernova_XCFC.plt"
+thornado.PlotFileBaseName = "XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "CoreCollapseSupernova_XCFC.chk"
+thornado.CheckpointFileBaseName = "XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 
@@ -34,6 +34,14 @@ thornado.CFL = 0.5
 
 thornado.bcX         = 30 00 00
 geometry.is_periodic = 0  1  1
+
+thornado.bcE = 01
+thornado.nE  = 16
+thornado.swE = 01
+thornado.eL  = 0.0
+thornado.eR  = 300.0
+thornado.zoomE = 1.0
+thornado.nSpecies = 2
 
 geometry.coord_sys = 2
 geometry.prob_lo   = 000.0 0.0               0.0
@@ -85,5 +93,18 @@ EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-25-50-100.h5"
 # Opacity tables
 OP.OpacityTableName_AbEm = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5"
 OP.OpacityTableName_Iso  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Iso.h5"
-OP.OpacityTableName_NES  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-NES.h5"
-OP.OpacityTableName_Pair = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Pair.h5"
+#OP.OpacityTableName_NES  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-NES.h5"
+#OP.OpacityTableName_Pair = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Pair.h5"
+
+# Non-Linear Solve Parameters
+NL.M_outer         = 3
+NL.MaxIter_outer   = 100
+NL.Rtol_outer      = 1.0e-8
+NL.M_inner         = 2
+NL.MaxIter_inner   = 100
+NL.Rtol_inner      = 1.0e-8
+NL.Include_NES     = 0
+NL.Include_Pair    = 0
+NL.Include_Brem    = 0
+NL.Include_LinCorr = 0
+NL.wMatterRHS      = 1.0 1.0 1.0 1.0 1.0 1.0

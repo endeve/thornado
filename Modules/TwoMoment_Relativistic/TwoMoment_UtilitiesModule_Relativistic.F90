@@ -3,7 +3,11 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five, SqrtTiny, FourPi
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, nDOFX, nDOFE, swE, nNodesE
+    nDOFZ, nDOFX, nDOFE, swE, nNodesE, &
+    eL, &
+    eR, &
+    nE, &
+    zoomE
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
@@ -31,11 +35,6 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   ! Get these from somewhere else?
-  USE InputParsingModule, ONLY: &
-    eL, &
-    eR, &
-    nE, &
-    zoomE
   USE MeshModule, ONLY: &
     MeshType, &
     CreateMesh, &
@@ -61,7 +60,6 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: Flux_E
   PUBLIC :: Source_E
   PUBLIC :: NumericalFlux_LLF
-  PUBLIC :: ComputeForFluid
 
 CONTAINS
 

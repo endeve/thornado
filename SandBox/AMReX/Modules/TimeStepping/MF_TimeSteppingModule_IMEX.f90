@@ -113,7 +113,6 @@ CONTAINS
     CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
     iLevel = 0 ! temporary hack
-
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
 
@@ -339,7 +338,7 @@ CONTAINS
         IF( EvolveTwoMoment )THEN
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
-                 ( GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
+                 ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
                    Verbose_Option = .FALSE. )
 
         END IF ! EvolveTwoMoment

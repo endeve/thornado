@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import subprocess
 from sys import argv
 import matplotlib.pyplot as plt
-from matplotlib import animation
+plt.style.use( 'publication.sty' )
 
 from UtilitiesModule import GetData, GetNorm
 from MakeDataFile import MakeDataFile
@@ -19,30 +18,22 @@ Alernate usage, plot specific file in PlotFileDirectory:
 
   $ python3 PlotFieldsAMReX.py 10
 
-  will plot the *_00000010 plotfile
+  will plot the *00000010 plotfile
 
 """
-
-# --- Get user's HOME directory ---
-
-HOME = subprocess.check_output( ["echo $HOME"], shell = True )
-HOME = HOME[:-1].decode( "utf-8" ) + '/'
-
-# --- Get user's THORNADO_DIR directory ---
-
-THORNADO_DIR = subprocess.check_output( ["echo $THORNADO_DIR"], shell = True )
-THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'KelvinHelmholtz2D'
+ProblemName = 'AdiabaticCollapse_XCFC'
 
 # Specify title of figure
 FigTitle = ProblemName
 
-# Specify directory containing plotfiles
-PlotFileDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
+# Specify directory containing amrex plotfiles
+PlotFileDirectory \
+  = '/home/kkadoogan/Work/Codes/\
+thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
 
 # Specify plot file base name
 PlotFileBaseName = ProblemName + '.plt'
@@ -51,26 +42,28 @@ PlotFileBaseName = ProblemName + '.plt'
 Field = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale = False
+UseLogScale_X  = True
+UseLogScale_Y  = True
+UseLogScale_2D = False
 
 # Specify whether or not to use physical units
-UsePhysicalUnits = False
+UsePhysicalUnits = True
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical')
-CoordinateSystem = 'cartesian'
+CoordinateSystem = 'spherical'
 
-# Specify colormap
-cmap = 'jet'
+# Specify colormap (2D only)
+cmap = 'viridis'
 
 MaxLevel = -1
 
 Verbose = True
 
-UseCustomLimits = True
+UseCustomLimits = False
 vmin = 0.0
 vmax = 2.0
 
-SaveFig = True
+SaveFig = False
 
 #### ====== End of User Input =======
 
@@ -80,18 +73,12 @@ FigName = 'fig.{:s}.png'.format( ID )
 # Append "/" to PlotFileDirectory, if not present
 if( not PlotFileDirectory[-1] == '/' ): PlotFileDirectory += '/'
 
-TimeUnit   = ''
-LengthUnit = ''
+TimeUnit   = '[]'
+LengthUnit = '[]'
 if( UsePhysicalUnits ):
 
-    TimeUnit   = 'ms'
-    LengthUnit = 'km'
-
-Data0, DataUnit0, X10, X20, X30, dX10, dX20, dX30, xL0, xU0, nX0, Time0 \
-  = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
-             CoordinateSystem, UsePhysicalUnits, argv = ['l','0'], \
-             MaxLevel = MaxLevel, \
-             ReturnTime = True, ReturnMesh = True, Verbose = True )
+    TimeUnit   = '[ms]'
+    LengthUnit = '[km]'
 
 Data, DataUnit, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time \
   = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
@@ -105,20 +92,24 @@ if nX[2] > 1: nDims += 1
 
 if nDims == 1:
 
-    plt.plot( X10, Data0, 'r.' )
-    plt.plot( X1, Data, 'k.' )
-    if( UseLogScale ): plt.yscale( 'log' )
-    plt.xlim( xL[0], xU[0] )
-    plt.xlabel( 'X1' + ' ' + LengthUnit )
-    plt.ylabel( Field )
+    fig, ax = plt.subplots( 1, 1 )
+
+    ax.set_title( ProblemName )
+
+    ax.plot( X1, Data, 'k.' )
+    if( UseLogScale_X ): ax.set_xscale( 'log' )
+    if( UseLogScale_Y ): ax.set_yscale( 'log' )
+    ax.set_xlim( xL[0], xU[0] )
+    ax.set_xlabel( 'X1' + ' ' + LengthUnit )
+    ax.set_ylabel( Field + ' ' + DataUnit )
+    ax.grid()#( which = 'both' )
+
     if SaveFig:
-
         plt.savefig( FigName, dpi = 300 )
-
     else:
-
         plt.show()
-        plt.close()
+
+    plt.close()
 
 elif( nDims == 2 ):
 
@@ -131,7 +122,8 @@ elif( nDims == 2 ):
 
     plt.plot( X1, oray[Field] )
 
-    if( UseLogScale ): plt.yscale( 'log' )
+    if( UseLogScale_X ): plt.xscale( 'log' )
+    if( UseLogScale_Y ): plt.yscale( 'log' )
     plt.show()
     exit()
     '''
@@ -146,7 +138,7 @@ elif( nDims == 2 ):
         vmin = Data.min()
         vmax = Data.max()
 
-    Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
+    Norm = GetNorm( UseLogScale_2D, Data, vmin = vmin, vmax = vmax )
 
     if CoordinateSystem == 'spherical':
 
@@ -188,10 +180,6 @@ elif( nDims == 2 ):
     cbar = fig.colorbar( im )
     cbar.set_label( Field + DataUnit )
 
-    print( dX1.min() )
-    print( dX1.max() )
-    print( dX2.min() )
-    print( dX2.max() )
     if SaveFig:
 
         plt.savefig( FigName, dpi = 300 )
@@ -212,7 +200,8 @@ else:
 
     plt.plot( X1, oray[Field] )
 
-    if( UseLogScale ): plt.yscale( 'log' )
+    if( UseLogScale_X ): plt.xscale( 'log' )
+    if( UseLogScale_Y ): plt.yscale( 'log' )
     plt.show()
     exit()
     '''
@@ -225,7 +214,7 @@ else:
         vmin = Data.min()
         vmax = Data.max()
 
-    Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
+    Norm = GetNorm( UseLogScale_2D, Data, vmin = vmin, vmax = vmax )
 
     if CoordinateSystem == 'spherical':
 

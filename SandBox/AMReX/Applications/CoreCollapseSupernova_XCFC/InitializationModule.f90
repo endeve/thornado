@@ -55,6 +55,8 @@ MODULE InitializationModule
     nNodesX, &
     nNodesE, &
     DescribeProgramHeaderX
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    InitializeNeutrinoMatterSolverParameters
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
   USE PolynomialBasisModule_Legendre, ONLY: &
@@ -204,6 +206,17 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
+    M_outer, & 
+    MaxIter_outer, &
+    Rtol_outer, &
+    M_inner, &
+    MaxIter_inner, &
+    Rtol_inner, &
+    Include_NES, &
+    Include_Pair, &
+    Include_Brem, &
+    Include_LinCorr, &
+    wMatterRHS, &
     Scheme, &
     nSpecies, &
     EquationOfState, &
@@ -337,6 +350,33 @@ CONTAINS
              OpacityTableName_Pair_Option = OpacityTableName_Pair, &
              EquationOfStateTableName_Option = EosTableName, &
              Verbose_Option = amrex_parallel_ioprocessor())
+
+
+    CALL InitializeNeutrinoMatterSolverParameters &
+           ( M_outer_Option &
+               = M_outer, &
+             M_inner_Option &
+               = M_inner, &
+             MaxIter_outer_Option &
+               = MaxIter_outer, &
+             MaxIter_inner_Option &
+               = MaxIter_inner, &
+             Rtol_inner_Option &
+               = Rtol_inner, &
+             Rtol_outer_Option &
+               = Rtol_outer, &
+             Include_NES_Option &
+               = Include_NES, &
+             Include_Pair_Option &
+               = Include_Pair, &
+             Include_Brem_Option &
+               = Include_Brem, &
+             Include_LinCorr_Option &
+               = Include_LinCorr, &
+             wMatrRHS_Option &
+               = wMatterRHS, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
 
     CALL InitializeClosure_TwoMoment &
            ( Verbose_Option = amrex_parallel_ioprocessor() )

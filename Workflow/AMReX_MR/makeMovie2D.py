@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import subprocess
-from os.path import isdir
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
 from UtilitiesModule import GetData, GetNorm, GetFileArray
 from MakeDataFile import MakeDataFile, ReadHeader
-
-# --- Get user's HOME directory ---
-
-HOME = subprocess.check_output( ["echo $HOME"], shell = True )
-HOME = HOME[:-1].decode( "utf-8" ) + '/'
-
-# --- Get user's THORNADO_DIR directory ---
-
-THORNADO_DIR = subprocess.check_output( ["echo $THORNADO_DIR"], shell = True )
-THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 
 #### ========== User Input ==========
 
@@ -26,7 +14,7 @@ ID = 'KelvinHelmholtz2D'
 
 # Directory containing AMReX plotfiles
 PlotFileDirectory \
-  = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
+  = 'thornado/SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
 # PlotFile base name (e.g., Advection2D.plt######## -> Advection2D.plt )
 PlotFileBaseName = ID + '.plt'
@@ -82,20 +70,13 @@ MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
               UsePhysicalUnits = UsePhysicalUnits, \
               MaxLevel = MaxLevel, Verbose = Verbose )
 
-PlotFileArray = GetFileArray( PlotFileDirectory, PlotFileBaseName )
-
-if SSi < 0: SSi = 0
-if SSf < 0: SSf = PlotFileArray.shape[0] - 1
-if nSS < 0: nSS = PlotFileArray.shape[0]
-
-fig = plt.figure()
-ax  = fig.add_subplot( 111 )
+PlotFileArray \
+  = GetFileArray( PlotFileDirectory, PlotFileBaseName, \
+                  SSi = SSi, SSf = SSf, nSS = nSS )
 
 def f(t):
 
-    iSS = SSi + np.int64( ( SSf - SSi + 1 ) / nSS ) * t
-
-    DataFile = DataFileDirectory + PlotFileArray[iSS] + '.dat'
+    DataFile = DataFileDirectory + PlotFileArray[t] + '.dat'
 
     DataShape, DataUnits, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3 \
       = ReadHeader( DataFile )
@@ -103,7 +84,6 @@ def f(t):
     Data = np.loadtxt( DataFile ).reshape( np.int64( DataShape ) )
 
     return Data, DataUnits, X1_C, X2_C, dX1, dX2, Time
-
 
 Data, DataUnits, \
   X1_C, X2_C, X3_C, dX1, dX2, dX3, xL, xU, nX \
@@ -123,6 +103,9 @@ if not UseCustomLimits:
 Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
 
 X1v, X2v = np.meshgrid( X1_C, X2_C, indexing = 'ij' )
+
+fig = plt.figure()
+ax  = fig.add_subplot( 111 )
 
 im = ax.pcolormesh( X1v, X2v, Data, \
                     cmap = cmap, \
@@ -155,6 +138,8 @@ def UpdateFrame(t):
 
     ret = ( im, time_text )
     return ret
+
+if nSS < 0: nSS = PlotFileArray.shape[0]
 
 # Call the animator
 anim = animation.FuncAnimation \

@@ -116,7 +116,7 @@ CONTAINS
        
         DO j = i - 1, i
 
-          CALL MF_amrex2amrex_permute_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
+          !CALL MF_amrex2amrex_permute_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
 
         END DO
 
@@ -131,7 +131,7 @@ CONTAINS
 
         DO j = i - 1, i
 
-          CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+          !CALL MF_amrex_permute2amrex_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
 
         END DO
 
@@ -245,12 +245,10 @@ CONTAINS
 
 
 
-!!$        CALL ComputeIncrement_TwoMoment_Explicit &
-!!$               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
-!!$                 Verbose_Option = Verbose, &
-!!$                 SuppressBC_Option = .TRUE.  )
-        dU = Zero
-
+       CALL ComputeIncrement_TwoMoment_Explicit &
+              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
+                Verbose_Option = Verbose, &
+                SuppressBC_Option = .TRUE.  )
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
@@ -309,16 +307,16 @@ CONTAINS
 
     DO i = 0, nLevels-1
 
-      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+     ! CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
     END DO
 
 
-    CALL AverageDown( MF_uGF, MF_Permute )
+   ! CALL AverageDown( MF_uGF, MF_Permute )
 
     DO i = 0, nLevels-1
 
-      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+    !  CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
     END DO
 
