@@ -418,7 +418,7 @@ CONTAINS
 
     ! --- Parameters ---
 
-    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: M = 2   !! Mathi: What is the purpose of this parameter? maximum possible value?
     INTEGER,  PARAMETER :: MaxIterations = 100
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
 
@@ -469,7 +469,7 @@ CONTAINS
 #endif
 
     ! --- Initial Guess ---
-
+!! Mathi: Rich 1
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
@@ -497,10 +497,12 @@ CONTAINS
     DO WHILE( ANY( ITERATE ) .AND. k < MaxIterations )
 
       k = k + 1
-      Mk = MIN( M, k )
+      Mk = MIN( M, k )  !! Mathi: So possible max of Mk is M, 2
       CALL TimersStart( Timer_Streaming_NumericalFlux_RHS )
 
+!! Mathi: Rich 2
 #if   defined( THORNADO_OMP_OL )
+      !!$OMP NUM_TEAMS((4*nZ+1)/128) THREAD_LIMIT(128) &  
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
 #elif defined( THORNADO_OACC   )
@@ -539,9 +541,27 @@ CONTAINS
 
           GVECm(1,iZ) = (One - Omega) * UVEC(iPR_D,iZ) &
                         + Omega * ( CVEC(iCR_N,iZ) - vI )
+!! Mathi: Possible benifit of unrolling
+!#if   defined( THORNADO_OMP_OL )
+!      !$OMP UNROLL PARTIAL(3) 
+!#endif
+          !DO j = 1, 3
 
-          DO j = 1, 3
+            j = 1
+            vK =   V_u_1(iX) * k_dd(j,1) &
+                 + V_u_2(iX) * k_dd(j,2) &
+                 + V_u_3(iX) * k_dd(j,3)
 
+            GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
+                            + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
+            j =2
+            vK =   V_u_1(iX) * k_dd(j,1) &
+                 + V_u_2(iX) * k_dd(j,2) &
+                 + V_u_3(iX) * k_dd(j,3)
+
+            GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
+                            + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
+            j = 3
             vK =   V_u_1(iX) * k_dd(j,1) &
                  + V_u_2(iX) * k_dd(j,2) &
                  + V_u_3(iX) * k_dd(j,3)
@@ -549,16 +569,37 @@ CONTAINS
             GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
                             + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
 
-          END DO
+          !END DO
+!#if   defined( THORNADO_OMP_OL )
+!      !$OMP UNROLL PARTIAL(4)
+!#endif
+          !DO i = 1, 4
 
-          DO i = 1, 4
-
+            i = 1
             FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
 
             GVEC(i,Mk,iZ) = GVECm(i,iZ)
             FVEC(i,Mk,iZ) = FVECm(i,iZ)
 
-          END DO
+            i = 2
+            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+
+            GVEC(i,Mk,iZ) = GVECm(i,iZ)
+            FVEC(i,Mk,iZ) = FVECm(i,iZ)
+
+            i = 3
+            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+
+            GVEC(i,Mk,iZ) = GVECm(i,iZ)
+            FVEC(i,Mk,iZ) = FVECm(i,iZ)
+            
+            i = 4
+            FVECm(i,iZ) = GVECm(i,iZ) - UVEC(i,iZ)
+
+            GVEC(i,Mk,iZ) = GVECm(i,iZ)
+            FVEC(i,Mk,iZ) = FVECm(i,iZ)
+
+          !END DO
 
         END IF
       END DO
@@ -571,10 +612,13 @@ CONTAINS
 
         CALL Alpha_LS_Vector &
                ( ITERATE, nZ, M, Mk, FVECm, FVEC, Alpha )
+!! Mathi: Rich 3
+!! Mathi: Setting team size and num teams helps a lot
 !! Shaoping removed SIMD because the SUM1 result is wrong (needs reduction) with SIMD. Without it the result is correct.
 !! tested SIMDLEN(1/8/16) all produce NaN in the Two-Moment Tally at Cycle = 00000001
 #if   defined( THORNADO_OMP_OL )
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
+        !$OMP NUM_TEAMS((4*nZ*Mk+1)/128) THREAD_LIMIT(128) &  
         !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
@@ -585,10 +629,15 @@ CONTAINS
         !$OMP PRIVATE( SUM1 )
 #endif
         DO iZ = 1, nZ
+!#if   defined( THORNADO_OMP_OL )
+!        !$OMP PARALLEL DO&
+!        !$OMP REDUCTION( +: SUM1) 
+!#endif        
           DO i = 1, 4
             IF ( ITERATE(iZ) ) THEN
               SUM1 = Zero
 !! Shaoping This produces NaNs with SIMD          !DIR$ VECTOR NOVECREMAINDER              
+!! Mathi: possible values for Mk is 1,2 
               DO iM = 1, Mk
                 SUM1 = SUM1 + GVEC(i,iM,iZ) * Alpha(iM,iZ)
               END DO
@@ -603,8 +652,10 @@ CONTAINS
 
       CALL TimersStart( Timer_Streaming_NumericalFlux_Update )
 
+!! Mathi: Rich 4
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP NUM_TEAMS((4*nZ*(Mk-1)+1)/128) THREAD_LIMIT(128) &  
       !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
@@ -625,26 +676,51 @@ CONTAINS
           I_u_1(iZ) = GVECm(iPR_I1,iZ) / Gm_dd_11(iX)
           I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
           I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
-
-          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
-                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+ 
+          !! Mathi: Assume that SQRTs >=0 ?
+          !CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
+          !                       Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+          CONVERGED = SUM( FVECm(:,iZ)**2 )  <= &
+                                 Rtol**2 *  SUM( CVEC(:,iZ)**2 ) 
 
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
             nIterations(iZ) = k
           ELSE IF ( Mk == M ) THEN
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FTMP(i,j) = FVEC(i,j+1,iZ)
-                GTMP(i,j) = GVEC(i,j+1,iZ)
-              END DO
+                  DO j = 1, Mk - 1  !! Mathi: Do we really need a loop here? M is 2?
+!! Mathi: Unroll the loop
+!#if   defined( THORNADO_OMP_OL )
+!!$OMP UNROLL PARTIAL(4)
+!#endif
+              !DO i = 1, 4
+                !FTMP(i,j) = FVEC(i,j+1,iZ)
+                !GTMP(i,j) = GVEC(i,j+1,iZ)
+                i = 1
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
+
+                i = 2
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
+
+                i = 3
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
+               
+                i = 4
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
+              !END DO
             END DO
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FVEC(i,j,iZ) = FTMP(i,j)
-                GVEC(i,j,iZ) = GTMP(i,j)
-              END DO
-            END DO
+!            DO j = 1, Mk - 1
+!#if   defined( THORNADO_OMP_OL )
+!!$OMP UNROLL PARTIAL(4)
+!#endif
+!              DO i = 1, 4
+!                FVEC(i,j,iZ) = FTMP(i,j)
+!                GVEC(i,j,iZ) = GTMP(i,j)
+!              END DO
+!            END DO
           END IF
         END IF
       END DO
@@ -657,7 +733,7 @@ CONTAINS
 
       CALL TimersStop( Timer_Streaming_NumericalFlux_Update )
 
-    END DO
+      END DO  !! End while
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
 
@@ -791,7 +867,9 @@ CONTAINS
       IF ( Mk == 2 ) THEN
 
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+        !!$OMP NUM_TEAMS((4*nZ+1)/32) THREAD_LIMIT(32) &  
+        !!$OMP REDUCTION( +: AA11, AB1)&
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD&
         !$OMP PRIVATE( AA11, AB1, A1, B, iP )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
@@ -826,6 +904,8 @@ CONTAINS
       ELSE IF ( Mk == 3 ) THEN
 
 #if defined(THORNADO_OMP_OL)
+        !!$OMP NUM_TEAMS((4*nZ+1)/32) THREAD_LIMIT(32) &  
+        !!$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2)&
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
         !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA, A1, A2, B, iP )
 #elif defined(THORNADO_OACC)

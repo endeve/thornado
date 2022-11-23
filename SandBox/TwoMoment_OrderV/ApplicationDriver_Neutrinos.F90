@@ -122,7 +122,8 @@ PROGRAM ApplicationDriver_Neutrinos
       nSpecies = 6
       nNodes   = 2
 
-      nX  = [ 8, 8, 8 ]
+      nX  = [ 1, 1, 1 ]
+      !nX  = [ 8, 8, 8 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
       bcX = [ 0, 0, 0 ]

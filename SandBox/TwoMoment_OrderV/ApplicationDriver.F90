@@ -80,6 +80,7 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
+      !nX  = [ 16, 16, 16 ]
       nX  = [ 8, 8, 8 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
