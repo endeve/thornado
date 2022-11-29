@@ -17,6 +17,9 @@ ifeq ($(USE_MAGMA),TRUE)
 DeviceModule_prereqs += MagmaModule.o
 endif
 
+MemoryProfilingModule.o: \
+  MemoryProfilingModule.F90
+
 ArrayUtilitiesModule.o: \
   KindModule.o \
   ArrayUtilitiesModule.F90

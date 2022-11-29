@@ -4,7 +4,8 @@ PROGRAM main
 
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_communicator, &
+    amrex_parallel_myproc
   USE amrex_amrcore_module, ONLY: &
    amrex_regrid, &
    amrex_get_numlevels
@@ -15,6 +16,8 @@ PROGRAM main
     ApplyBoundaryConditions_Geometry_MF
   USE UnitsModule, ONLY: &
     UnitsDisplay
+  USE MemoryProfilingModule, ONLY: &
+    WriteMemoryUsage
 
   ! --- Local Modules ---
 
@@ -77,6 +80,9 @@ PROGRAM main
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
+  CHARACTER(128) :: MemFileName
+  INTEGER :: UnitNo
+
   TimeIt_AMReX       = .TRUE.
   TimeIt_AMReX_Euler = .TRUE.
 
@@ -84,6 +90,20 @@ PROGRAM main
   chk = .FALSE.
 
   CALL InitializeProgram
+
+  UnitNo = 100 + amrex_parallel_myproc()
+
+  WRITE( MemFileName, '(A,I2.2,A)' ) &
+    'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
+
+  OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ) )
+  CALL WriteMemoryUsage( UnitNo, 'Begin', StepNo(0) )
+
+  CALL WriteMemoryUsage( UnitNo, 'End', StepNo(0) )
+  CLOSE( UnitNo )
+
+call mpi_barrier( amrex_parallel_communicator(), ierr )
+stop
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
