@@ -1,7 +1,7 @@
-#include <AMReX_MultiFab.H>
+#include <cstddef> /* For NULL */
+
 #include <AMReX_iMultiFab.H>
 #include <AMReX_MultiFabUtil.H>
-#include <AMReX_Geometry.H>
 
 using namespace amrex;
 
@@ -17,5 +17,12 @@ extern "C"
         Mask
           = new iMultiFab( makeFineMask( CrseBA, CrseDM, FineBA,
                                          amrex::IntVect(2), iCoarse, iFine ) );
+    }
+
+    void amrex_fi_destroyfinemask_thornado
+      ( iMultiFab*& Mask )
+    {
+        delete Mask;
+        Mask = NULL;
     }
 }
