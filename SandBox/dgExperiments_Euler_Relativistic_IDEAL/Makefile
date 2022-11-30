@@ -122,7 +122,6 @@ ComputePrimitiveTest.o: \
   ComputePrimitiveTest.F90
 
 ComputePrimitiveTest_Single.o: \
-  MemoryProfilingModule.o \
   KindModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \

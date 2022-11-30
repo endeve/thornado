@@ -1,7 +1,5 @@
 PROGRAM ComputePrimitiveTest_Single
 
-  USE MemoryProfilingModule, ONLY: &
-    WriteMemoryUsage
   USE KindModule, ONLY: &
     DP, &
     One
@@ -63,9 +61,6 @@ PROGRAM ComputePrimitiveTest_Single
   REAL(DP) :: Gamma_IDEAL
   REAL(DP) :: G(nGF), U(nCF), P(nPF)
 
-  OPEN( 100, FILE = 'memusage.txt' )
-  CALL WriteMemoryUsage( 100, 'Start', 0 )
-
   iErr = 0
   Gamma_IDEAL = 4.0_DP / 3.0_DP
 
@@ -105,9 +100,6 @@ PROGRAM ComputePrimitiveTest_Single
   PRINT '(A,ES24.16E3)', 'PF_D : ', P(iPF_D ) / UnitsD
   PRINT '(A,ES24.16E3)', 'PF_V1: ', P(iPF_V1)
   PRINT '(A,ES24.16E3)', 'PF_E : ', P(iPF_E ) / UnitsE
-
-  CALL WriteMemoryUsage( 100, 'End', 1 )
-  CLOSE( 100 )
 
   CALL FinalizeEquationOfState
 
