@@ -91,20 +91,6 @@ PROGRAM main
 
   CALL InitializeProgram
 
-  UnitNo = 100 + amrex_parallel_myproc()
-
-  WRITE( MemFileName, '(A,I2.2,A)' ) &
-    'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
-
-  OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ) )
-  CALL WriteMemoryUsage( UnitNo, 'Begin', StepNo(0) )
-
-  CALL WriteMemoryUsage( UnitNo, 'End', StepNo(0) )
-  CLOSE( UnitNo )
-
-call mpi_barrier( amrex_parallel_communicator(), ierr )
-stop
-
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
 
@@ -113,6 +99,15 @@ stop
   DO WHILE( MAXVAL( t_new ) .LT. t_end )
 
     StepNo = StepNo + 1
+
+    UnitNo = 100 + amrex_parallel_myproc()
+    WRITE( MemFileName, '(A,I2.2,A)' ) &
+      'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
+    OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ), POSITION = 'APPEND' )
+    CALL WriteMemoryUsage( UnitNo, 'Before call', StepNo(0) )
+    ! CALL YourFavoriteSubroutine
+    CALL WriteMemoryUsage( UnitNo, 'After call', StepNo(0) )
+    CLOSE( UnitNo )
 
     t_old = t_new
 
