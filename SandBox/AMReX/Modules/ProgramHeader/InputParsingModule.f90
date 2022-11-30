@@ -217,6 +217,7 @@ call amrex_parmparse_destroy( pp )
     nSpecies         = 1
     swE              = 0
     bcE              = 0
+    bcZ_TwoMoment    = [ 0, 0, 0, 0 ]
     eL               = 0.0_DP
     eR               = 1.0_DP
     zoomE            = 1.0_DP
@@ -233,8 +234,8 @@ call amrex_parmparse_destroy( pp )
                          swX )
       CALL PP % getarr( 'bcX', &
                          bcX )
-      CALL PP % getarr( 'bcZ_TwoMoment', &
-                         bcZ_TwoMoment )
+      CALL PP % queryarr( 'bcZ_TwoMoment', &
+                           bcZ_TwoMoment )
       CALL PP % get   ( 't_end', &
                          t_end )
       CALL PP % get   ( 'CFL', &
@@ -469,10 +470,6 @@ call amrex_parmparse_destroy( pp )
                            wMatterRHS )
     CALL amrex_parmparse_destroy( PP )
 
-
-
-
-
     ! --- Parameters amr.* ---
 
     IF( amrex_spacedim .EQ. 1 )THEN
@@ -563,7 +560,7 @@ call amrex_parmparse_destroy( pp )
              bcE_Option         = bcE, &
              Verbose_Option     = amrex_parallel_ioprocessor() )
 
-    bcZ = bcZ_TwoMoment    
+    bcZ = bcZ_TwoMoment
 
     IF( nDimsX .NE. amrex_spacedim ) &
       CALL DescribeError_MF &
