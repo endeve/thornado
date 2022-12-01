@@ -15,6 +15,7 @@ MODULE InputParsingModule
 
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader, &
+    bcZ, &
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
@@ -57,6 +58,7 @@ MODULE InputParsingModule
 
   ! --- Transport ---
 
+  INTEGER     , ALLOCATABLE :: bcZ_TwoMoment(:)
   INTEGER  :: nE, nSpecies, swE, bcE
   REAL(DP) :: eL, eR, zoomE
 
@@ -99,20 +101,18 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_NES
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Pair
 
-
   ! --- Non-Linear Solver Parameters ---
-  INTEGER  ::  M_outer        
-  INTEGER  ::  MaxIter_outer  
-  REAL(DP) ::  Rtol_outer     
-  INTEGER  ::  M_inner        
-  INTEGER  ::  MaxIter_inner  
-  REAL(DP) ::  Rtol_inner     
-  LOGICAL  ::  Include_NES    
-  LOGICAL  ::  Include_Pair   
-  LOGICAL  ::  Include_Brem   
+  INTEGER  ::  M_outer
+  INTEGER  ::  MaxIter_outer
+  REAL(DP) ::  Rtol_outer
+  INTEGER  ::  M_inner
+  INTEGER  ::  MaxIter_inner
+  REAL(DP) ::  Rtol_inner
+  LOGICAL  ::  Include_NES
+  LOGICAL  ::  Include_Pair
+  LOGICAL  ::  Include_Brem
   LOGICAL  ::  Include_LinCorr
-  REAL(DP), ALLOCATABLE ::  wMatterRHS(:) 
-
+  REAL(DP), ALLOCATABLE ::  wMatterRHS(:)
 
   ! --- geometry ---
 
@@ -217,6 +217,7 @@ call amrex_parmparse_destroy( pp )
     nSpecies         = 1
     swE              = 0
     bcE              = 0
+    bcZ_TwoMoment    = [ 0, 0, 0, 0 ]
     eL               = 0.0_DP
     eR               = 1.0_DP
     zoomE            = 1.0_DP
@@ -233,6 +234,8 @@ call amrex_parmparse_destroy( pp )
                          swX )
       CALL PP % getarr( 'bcX', &
                          bcX )
+      CALL PP % queryarr( 'bcZ_TwoMoment', &
+                           bcZ_TwoMoment )
       CALL PP % get   ( 't_end', &
                          t_end )
       CALL PP % get   ( 'CFL', &
@@ -463,13 +466,9 @@ call amrex_parmparse_destroy( pp )
                         Include_Brem )
       CALL PP % query( 'Include_LinCorr', &
                         Include_LinCorr )
-      CALL PP % getarr  ( 'wMatterRHS', &
+      CALL PP % queryarr( 'wMatterRHS', &
                            wMatterRHS )
     CALL amrex_parmparse_destroy( PP )
-
-
-
-
 
     ! --- Parameters amr.* ---
 
@@ -560,6 +559,8 @@ call amrex_parmparse_destroy( pp )
              bcX_Option         = bcX, &
              bcE_Option         = bcE, &
              Verbose_Option     = amrex_parallel_ioprocessor() )
+
+    bcZ = bcZ_TwoMoment
 
     IF( nDimsX .NE. amrex_spacedim ) &
       CALL DescribeError_MF &

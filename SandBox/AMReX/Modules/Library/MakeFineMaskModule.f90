@@ -48,6 +48,16 @@ MODULE MakeFineMaskModule
 
     END SUBROUTINE amrex_fi_makefinemask_thornado
 
+
+    SUBROUTINE amrex_fi_destroyfinemask_thornado( iMF_Mask ) BIND(c)
+
+        IMPORT
+        IMPLICIT NONE
+
+        TYPE(c_ptr) :: iMF_Mask
+
+    END SUBROUTINE amrex_fi_destroyfinemask_thornado
+
   END INTERFACE
 
 CONTAINS
@@ -84,8 +94,14 @@ CONTAINS
     INTEGER              , INTENT(in)    :: iLevel
     TYPE(amrex_imultifab), INTENT(inout) :: iMF_Mask
 
-    IF( .NOT. ( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 ) )THEN
+    IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
+      CALL amrex_fi_destroyfinemask_thornado( iMF_Mask % p )
+      CALL amrex_imultifab_destroy( iMF_Mask )
+
+    ELSE
+
+      CALL amrex_fi_destroyfinemask_thornado( iMF_Mask % p )
       CALL amrex_imultifab_destroy( iMF_Mask )
 
     END IF

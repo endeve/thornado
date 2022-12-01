@@ -6,7 +6,10 @@ include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver #ComputePrimitiveTest SlopeLimiterDiagnostics
+all: ApplicationDriver \
+	ComputePrimitiveTest \
+	ComputePrimitiveTest_Single \
+	SlopeLimiterDiagnostics
 
 ApplicationDriver: \
 	$(thornado) \
@@ -28,6 +31,14 @@ ComputePrimitiveTest: \
 	ComputePrimitiveTest.o \
 	$(LIBRARIES)
 
+ComputePrimitiveTest_Single: \
+	$(thornado) \
+	ComputePrimitiveTest_Single.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_Single_$(MACHINE) \
+	$(thornado) \
+	ComputePrimitiveTest_Single.o \
+	$(LIBRARIES)
+
 SlopeLimiterDiagnostics: \
 	$(thornado) \
 	InitializationModule_Relativistic.o \
@@ -44,6 +55,7 @@ clean:
 clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -f  ComputePrimitiveTest_$(MACHINE)
+	rm -f  ComputePrimitiveTest_Single_$(MACHINE)
 	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
 	rm -rf *.dSYM
 
@@ -108,3 +120,13 @@ ComputePrimitiveTest.o: \
   Euler_ErrorModule.o \
   TimersModule_Euler.o \
   ComputePrimitiveTest.F90
+
+ComputePrimitiveTest_Single.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_ErrorModule.o \
+  UnitsModule.o \
+  ComputePrimitiveTest_Single.F90

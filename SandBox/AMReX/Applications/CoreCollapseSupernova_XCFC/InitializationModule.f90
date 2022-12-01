@@ -54,6 +54,7 @@ MODULE InitializationModule
     iE_E1, &
     nNodesX, &
     nNodesE, &
+    bcZ,     &
     DescribeProgramHeaderX
   USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
     InitializeNeutrinoMatterSolverParameters
@@ -238,7 +239,7 @@ MODULE InitializationModule
     InitializeMeshRefinement_Euler
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     InitializeGravitySolver_XCFC_Poseidon_MF, &
-    InitializeMetric_MF
+    InitializeMetric_TwoMoment_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -434,7 +435,7 @@ CONTAINS
       CALL ComputeFromConserved_TwoMoment_MF &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL InitializeMetric_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
 
     ELSE
 
@@ -457,7 +458,7 @@ CONTAINS
       CALL ComputeFromConserved_TwoMoment_MF &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL InitializeMetric_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
 
     END IF
 
