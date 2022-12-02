@@ -212,11 +212,6 @@ CONTAINS
 
           CASE( 'HydroSineWaveX1' )
 
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
-
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One + 0.1_DP * SIN ( TwoPi * X1 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
@@ -229,30 +224,7 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-            CALL ComputePressureFromPrimitive &
-                   ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
-                     uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
-                     0.0_DP, P )
-
-            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
-            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
-            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
-            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
-            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
-            !PRINT*
-
           CASE( 'MagneticSineWaveX1' )
-
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP
@@ -266,24 +238,6 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP * COS( TwoPi * X1 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-            !CALL ComputePressureFromPrimitive &
-            !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
-            !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
-            !         0.0_DP, P )
-
-            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
-            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
-            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
-            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
-            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
-           !PRINT*
-
           ! Variant of Top Hat advection problem from Evans and
           ! Hawley (1988).
 
@@ -294,26 +248,13 @@ CONTAINS
 
           CASE( 'CPAlfvenX1' )
 
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
-
             Eta = One
             k   = One
             h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
             VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
                         * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
 
-            !PRINT*, 'h: ', h
-
-            !PRINT*, 'VA: ', VA
-
-            !PRINT*, 'One Period: ', Two * Pi / VA
-
             W = One / SQRT( One - VA**2 * Eta**2 )
-
-            !PRINT*, 'Lorentz Factor: ', W
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
@@ -325,12 +266,6 @@ CONTAINS
 
             VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) * Eta * COS( k * X1 ) &
                       + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * Eta * SIN( k * X1 )
-
-            !PRINT*, 'VdotB: ', VdotB
-
-            !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
-            !PRINT*, 'Beta 2: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2)
-            !PRINT*, 'Beta 3: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3)
 
             V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
@@ -344,10 +279,6 @@ CONTAINS
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
                                / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
-            !PRINT*, 'V1_Transport: ', V1_Transport
-            !PRINT*, 'V2_Transport: ', V2_Transport
-            !PRINT*, 'V3_Transport: ', V3_Transport
-
             uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
               = W * VdotB * V1_Transport + ( One / W )
             uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
@@ -355,8 +286,6 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
               = W * VdotB * V3_Transport + Eta * SIN( k * X1 ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
-
-            !PRINT*
 
           CASE DEFAULT
 
@@ -401,8 +330,6 @@ CONTAINS
     END DO
     END DO
 
-    PRINT*, 'Finished initialization.'
-
   END SUBROUTINE InitializeFields_Advection1D
 
 
@@ -440,11 +367,6 @@ CONTAINS
 
          CASE( 'HydroSineWaveX2' )
 
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
-
             uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
               = One + 0.1_DP * SIN ( TwoPi * X2 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
@@ -463,27 +385,7 @@ CONTAINS
                      uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
                      0.0_DP, P )
 
-            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
-            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
-            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
-            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
-            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
-            !PRINT*
-
-          !PRINT*
-
           CASE( 'HydroSineWaveX1X2' )
-
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
               = One + 0.1_DP * SIN ( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
@@ -498,32 +400,7 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-            CALL ComputePressureFromPrimitive &
-                   ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
-                     uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
-                     0.0_DP, P )
-
-            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
-            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
-            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
-            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
-            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
-            !PRINT*
-
-          !PRINT*
-
          CASE( 'MagneticSineWaveX2' )
-
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
@@ -537,30 +414,7 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP * COS( TwoPi * X2 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-            !CALL ComputePressureFromPrimitive &
-            !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
-            !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
-            !         0.0_DP, P )
-
-            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
-            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
-            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
-            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
-            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
-           !PRINT*
-
           CASE( 'MagneticSineWaveX1X2' )
-
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.1_DP / SQRT( Two )
@@ -574,34 +428,11 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-            !CALL ComputePressureFromPrimitive &
-            !       ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
-            !         uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
-            !         0.0_DP, P )
-
-            !PRINT*, 'PM_D: ',  uPM(iNodeX,iX1,iX2,iX3,iPM_D)
-            !PRINT*, 'W: ', One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 )
-            !PRINT*, 'h: ', One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                     * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) )
-            !PRINT*, 'mu: ', One / ( ( One / SQRT( One - uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-            !                               - uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2 ) ) &
-            !                        * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-            !                                  * ( P / uPM(iNodeX,iX1,iX2,iX3,iPM_D) ) ) )
-           !PRINT*
-
           ! Circularly polarized Alfven wave based
           ! on the exact solution from, e.g.,
           ! Del Zanna et al. (2007) and Mattia and Mignone (2022).
 
           CASE( 'CPAlfvenX2' )
-
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X2: ', X2
 
             Eta = One
             k   = One
@@ -609,15 +440,7 @@ CONTAINS
             VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
                         * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
 
-            !PRINT*, 'h: ', h
-
-            !PRINT*, 'VA: ', VA
-
-            !PRINT*, 'One Period: ', Two * Pi / VA
-
             W = One / SQRT( One - VA**2 * Eta**2 )
-
-            !PRINT*, 'Lorentz Factor: ', W
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = -VA * Eta * COS( k * X2 )
@@ -629,12 +452,6 @@ CONTAINS
 
             VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) * Eta * COS( k * X2 ) &
                       + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * Eta * SIN( k * X2 )
-
-            !PRINT*, 'VdotB: ', VdotB
-
-            !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
-            !PRINT*, 'Beta 2: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2)
-            !PRINT*, 'Beta 3: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3)
 
             V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
@@ -648,10 +465,6 @@ CONTAINS
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
                                / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
-            !PRINT*, 'V1_Transport: ', V1_Transport
-            !PRINT*, 'V2_Transport: ', V2_Transport
-            !PRINT*, 'V3_Transport: ', V3_Transport
-
             uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
               = W * VdotB * V1_Transport + Eta * COS( k * X2 ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
@@ -660,17 +473,10 @@ CONTAINS
               = W * VdotB * V3_Transport + Eta * SIN( k * X2 ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-            !PRINT*
-
           ! See oblique case conditions from Londrillo
           ! and Del Zanna (2004) (with sin and cos switched).
 
           CASE( 'CPAlfvenOblique' )
-
-            !PRINT*
-            !PRINT*, 'In cell: ', iX1, iX2, iX3
-            !PRINT*, 'In node: ', iNodeX
-            !PRINT*, 'X1: ', X1
 
             Eta = One
             k   = One
@@ -678,15 +484,7 @@ CONTAINS
             VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
                         * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
 
-            !PRINT*, 'h: ', h
-
-            PRINT*, 'VA: ', VA
-
-            !PRINT*, 'One Period: ', Two * Pi / VA
-
             W = One / SQRT( One - VA**2 * Eta**2 )
-
-            !PRINT*, 'Lorentz Factor: ', W
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
@@ -709,10 +507,6 @@ CONTAINS
                 + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
                   * Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
 
-            !PRINT*, 'Alpha:  ', uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
-            !PRINT*, 'Beta 2: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2)
-            !PRINT*, 'Beta 3: ', uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3)
-
             V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
                                / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
@@ -724,10 +518,6 @@ CONTAINS
             V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
                            - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
                                / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-            !PRINT*, 'V1_Transport: ', V1_Transport
-            !PRINT*, 'V2_Transport: ', V2_Transport
-            !PRINT*, 'V3_Transport: ', V3_Transport
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
               = W * VdotB * V1_Transport &
@@ -741,8 +531,6 @@ CONTAINS
               = W * VdotB * V3_Transport &
                 + Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
-
-            !PRINT*
 
           ! Loop advection problem from Mosta et al. (2013)
 
@@ -847,8 +635,6 @@ CONTAINS
     END DO
     END DO
 
-    PRINT*, 'Finished initialization.'
-
   END SUBROUTINE InitializeFields_Advection2D
 
 
@@ -936,8 +722,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    PRINT*, 'Finished initialization.'
 
   END SUBROUTINE InitializeFields_Cleaning1D
 
@@ -1036,8 +820,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    PRINT*, 'Finished initialization.'
 
   END SUBROUTINE InitializeFields_Cleaning2D
 
