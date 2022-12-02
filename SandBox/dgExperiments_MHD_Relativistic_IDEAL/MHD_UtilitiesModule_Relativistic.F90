@@ -139,7 +139,7 @@ CONTAINS
 
     IF( .NOT. EvolveOnlyMagnetic )THEN
 
-      PRINT*, 'Magnetofluid coupling on.'
+     !PRINT*, 'Magnetofluid coupling on for conserved-to-primitive.'
 
       B1 = CM_B1
       B2 = CM_B2
@@ -147,7 +147,7 @@ CONTAINS
 
     ELSE
 
-      PRINT*, 'Magnetofluid coupling off.'
+     !PRINT*, 'Magnetofluid coupling off for conserved-to-primitive.'
 
       B1 = 0.0_DP
       B2 = 0.0_DP
@@ -548,7 +548,7 @@ CONTAINS
 
     IF( .NOT. EvolveOnlyMagnetic )THEN
 
-      PRINT*, 'Magnetofluid coupling on.'
+     !PRINT*, 'Magnetofluid coupling on for primitive-to-conserved.'
 
       CM_S1  = hStar * W**2 * PM_D * GF_Gm11 * PM_V1 &
                - GF_Alpha * B0u**2 * ( GF_Gm11 * GF_Beta1 ) &
@@ -563,7 +563,7 @@ CONTAINS
 
     ELSE
 
-      PRINT*, 'Magnetofluid coupling off.'
+     !PRINT*, 'Magnetofluid coupling off for primitive-to-conserved.'
 
       CM_S1  = h * W**2 * PM_D * GF_Gm11 * PM_V1
       CM_S2  = h * W**2 * PM_D * GF_Gm22 * PM_V2
