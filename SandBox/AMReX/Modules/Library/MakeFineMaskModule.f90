@@ -15,6 +15,8 @@ MODULE MakeFineMaskModule
     amrex_imultifab, &
     amrex_imultifab_build, &
     amrex_imultifab_destroy
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
 
   ! --- Local Modules ---
 
@@ -34,7 +36,7 @@ MODULE MakeFineMaskModule
   INTERFACE
 
     SUBROUTINE amrex_fi_makefinemask_thornado &
-      ( iMF_Mask, CrseBA, CrseDM, FineBA, iCoarse, iFine ) BIND(c)
+      ( iMF_Mask, CrseBA, CrseDM, FineBA, iCoarse, iFine, swXX, geom ) BIND(c)
 
         IMPORT
         IMPLICIT NONE
@@ -45,6 +47,8 @@ MODULE MakeFineMaskModule
         TYPE(c_ptr)   , VALUE :: FineBA
         INTEGER(c_int), VALUE :: iCoarse
         INTEGER(c_int), VALUE :: iFine
+        INTEGER(c_int), VALUE :: swXX
+        TYPE(c_ptr)   , VALUE :: geom
 
     END SUBROUTINE amrex_fi_makefinemask_thornado
 
@@ -72,12 +76,13 @@ CONTAINS
 
     IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
+      ! This uses swX(1) because amrex uses IntVect(int), which creates
+      ! a vector of dimension nDimsX and fills each value with `int`
       iMF_Mask % owner = .TRUE.
       iMF_Mask % nc    = 1
-      iMF_Mask % ng    = swX
       CALL amrex_fi_makefinemask_thornado &
              ( iMF_Mask % p, BA(iLevel) % p, DM(iLevel) % p, BA(iLevel+1) % p, &
-               iLeaf_MFM, iTrunk_MFM )
+               iLeaf_MFM, iTrunk_MFM, swX(1), amrex_geom(iLevel) % p )
 
     ELSE
 

@@ -1,5 +1,3 @@
-#include <cstddef> /* For NULL */
-
 #include <AMReX_iMultiFab.H>
 #include <AMReX_MultiFabUtil.H>
 
@@ -12,11 +10,18 @@ extern "C"
         const BoxArray& CrseBA,
         const DistributionMapping& CrseDM,
         const BoxArray& FineBA,
-        int iCoarse, int iFine )
+        const int iCoarse,
+        const int iFine,
+        const int swX,
+        const Geometry * geom )
     {
+
         Mask
-          = new iMultiFab( makeFineMask( CrseBA, CrseDM, FineBA,
-                                         amrex::IntVect(2), iCoarse, iFine ) );
+          = new iMultiFab
+                  ( makeFineMask
+                    ( CrseBA, CrseDM, amrex::IntVect(swX), FineBA,
+                      amrex::IntVect(2), geom -> periodicity(),
+                      iCoarse, iFine ) );
     }
 
     void amrex_fi_destroyfinemask_thornado
