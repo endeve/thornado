@@ -163,7 +163,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PRIVATE
 
   LOGICAL :: FillGhostCells
-  INTEGER :: swXX(3)
+  INTEGER, PUBLIC :: swXX(3) = [ 0, 0, 0 ]
 
   PUBLIC :: InitializeGravitySolver_XCFC_Poseidon_MF
   PUBLIC :: FinalizeGravitySolver_XCFC_Poseidon_MF
@@ -210,8 +210,6 @@ CONTAINS
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     TYPE(amrex_parmparse) :: PP
-
-    swXX = [ 0, 0, 0 ]
 
     FillGhostCells = .FALSE.
     CALL amrex_parmparse_build( PP, 'poseidon' )
