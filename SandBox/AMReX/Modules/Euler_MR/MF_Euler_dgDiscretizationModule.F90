@@ -270,17 +270,9 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    ! --- This conditions spoils conservation, but is needed for
-    !     mesh refinement ---
-    IF( ( .NOT. UsePositivityLimiter_Euler ) .OR. ( nDOFX .EQ. 1 ) )THEN
-
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
-
-    END IF
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
 
     CALL MF_duCF % SetVal( Zero )
 
