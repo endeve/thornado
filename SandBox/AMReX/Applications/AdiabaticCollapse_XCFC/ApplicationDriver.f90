@@ -100,14 +100,14 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
-    UnitNo = 100 + amrex_parallel_myproc()
-    WRITE( MemFileName, '(A,I2.2,A)' ) &
-      'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
-    OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ), POSITION = 'APPEND' )
-    CALL WriteMemoryUsage( UnitNo, 'Before call', StepNo(0) )
-    ! CALL YourFavoriteSubroutine
-    CALL WriteMemoryUsage( UnitNo, 'After call', StepNo(0) )
-    CLOSE( UnitNo )
+!    UnitNo = 100 + amrex_parallel_myproc()
+!    WRITE( MemFileName, '(A,I2.2,A)' ) &
+!      'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
+!    OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ), POSITION = 'APPEND' )
+!    CALL WriteMemoryUsage( UnitNo, 'Before call', StepNo(0) )
+!    ! CALL YourFavoriteSubroutine
+!    CALL WriteMemoryUsage( UnitNo, 'After call', StepNo(0) )
+!    CLOSE( UnitNo )
 
     t_old = t_new
 
