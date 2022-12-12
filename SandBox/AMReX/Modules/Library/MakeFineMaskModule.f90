@@ -77,7 +77,7 @@ CONTAINS
     IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
       ! This uses swX(1) because amrex uses IntVect(int), which creates
-      ! a vector of dimension nDimsX and fills each value with `int`
+      ! a vector of dimension `nDimsX` and fills each value with `int`
       iMF_Mask % owner = .TRUE.
       iMF_Mask % nc    = 1
       CALL amrex_fi_makefinemask_thornado &

@@ -15,7 +15,6 @@ extern "C"
         const int swX,
         const Geometry * geom )
     {
-
         Mask
           = new iMultiFab
                   ( makeFineMask
