@@ -128,7 +128,7 @@ extern "C"
       {
         BoxArray& BA1 = *BA[iLevel];
         BA1.writeOn(HeaderFile);
-        HeaderFile << '\n';
+        HeaderFile << "\n";
       }
 
     } // End of Header file writing

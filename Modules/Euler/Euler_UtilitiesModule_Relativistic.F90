@@ -24,31 +24,39 @@ MODULE Euler_UtilitiesModule_Relativistic
     iGF_Alpha, &
     iGF_Beta_1
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
+    nPF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
     iAF_S, &
     iAF_E, &
+    iAF_Me, &
+    iAF_Mp, &
+    iAF_Mn, &
+    iAF_Xp, &
+    iAF_Xn, &
+    iAF_Xa, &
+    iAF_Xh, &
     iAF_Gm, &
-    iAF_Cs
+    iAF_Cs, &
+    nAF
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid, &
+    ApplyEquationOfState, &
     ComputePressureFromSpecificInternalEnergy
   USE EquationOfStateModule_TABLE, ONLY: &
     Min_D, &
@@ -690,6 +698,28 @@ CONTAINS
                A(iNX,iX1,iX2,iX3,iAF_E ), &
                A(iNX,iX1,iX2,iX3,iAF_Gm), &
                A(iNX,iX1,iX2,iX3,iAF_Cs) )
+
+      CALL ApplyEquationOfState &
+             ( P(iNX,iX1,iX2,iX3,iPF_D ), &
+               A(iNX,iX1,iX2,iX3,iAF_T ), &
+               A(iNX,iX1,iX2,iX3,iAF_Ye), &
+               A(iNX,iX1,iX2,iX3,iAF_P ), &
+               A(iNX,iX1,iX2,iX3,iAF_S ), &
+               A(iNX,iX1,iX2,iX3,iAF_E ), &
+               A(iNX,iX1,iX2,iX3,iAF_Me), &
+               A(iNX,iX1,iX2,iX3,iAF_Mp), &
+               A(iNX,iX1,iX2,iX3,iAF_Mn), &
+               A(iNX,iX1,iX2,iX3,iAF_Xp), &
+               A(iNX,iX1,iX2,iX3,iAF_Xn), &
+               A(iNX,iX1,iX2,iX3,iAF_Xa), &
+               A(iNX,iX1,iX2,iX3,iAF_Xh), &
+               A(iNX,iX1,iX2,iX3,iAF_Gm) )
+
+      A(iNX,iX1,iX2,iX3,iAF_Cs) &
+        = SQRT( A(iNX,iX1,iX2,iX3,iAF_Gm) * A(iNX,iX1,iX2,iX3,iAF_P) &
+                  / (   P(iNX,iX1,iX2,iX3,iPF_D) &
+                      + P(iNX,iX1,iX2,iX3,iPF_E) &
+                      + A(iNX,iX1,iX2,iX3,iAF_P) ) )
 
     END DO
     END DO
