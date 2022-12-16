@@ -120,6 +120,7 @@ contains
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
       SlopeLimiter_Option, &
+      EnergyLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option, &
@@ -143,6 +144,7 @@ contains
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
     logical,          intent(in), optional :: PositivityLimiter_Option
     logical,          intent(in), optional :: SlopeLimiter_Option
+    logical,          intent(in), optional :: EnergyLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
@@ -179,12 +181,11 @@ contains
       SlopeLimiter = .FALSE.
     END IF
 
-    EnergyLimiter = .TRUE.
-!!    IF( PRESENT(EnergyLimiter_Option) )THEN
-!!      EnergyLimiter = EnergyLimiter_Option
-!!    ELSE
-!!      EnergyLimiter = .FALSE.
-!!    END IF
+    IF( PRESENT(EnergyLimiter_Option) )THEN
+      EnergyLimiter = EnergyLimiter_Option
+    ELSE
+      EnergyLimiter = .FALSE.
+    END IF
 
     IF( PRESENT(Verbose_Option) )THEN
       Verbose = Verbose_Option
