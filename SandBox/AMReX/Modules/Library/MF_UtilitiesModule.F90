@@ -178,7 +178,7 @@ CONTAINS
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileNameBase_Option
 
     INTEGER                       :: iX1, iX2, iX3, iNX
-    INTEGER                       :: lo(4), hi(4)
+    INTEGER                       :: lo(4), hi(4), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: F(:,:,:,:)
@@ -237,22 +237,16 @@ CONTAINS
 
       lo = LBOUND( F ); hi = UBOUND( F )
 
-      DO iX3 = BX % lo(3) - swXX(3), BX % hi(3) + swXX(3)
-      DO iX2 = BX % lo(2) - swXX(2), BX % hi(2) + swXX(2)
-      DO iX1 = BX % lo(1) - swXX(1), BX % hi(1) + swXX(1)
+      iX_B1 = BX % lo - swXX
+      iX_E1 = BX % hi + swXX
+
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
 
         IF( PRESENT( iMF_Mask_Option ) )THEN
 
-          IF( nLevels .GT. 1 )THEN
-
-            IF(       ALL( [ iX1, iX2, iX3 ] .LE. BX % hi ) &
-                .AND. ALL( [ iX1, iX2, iX3 ] .GE. BX % lo ) )THEN
-
-              IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
-
-            END IF
-
-          END IF
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         END IF
 
@@ -1479,8 +1473,8 @@ iD_permute = 0
 
     INTEGER,  INTENT(in)  :: iLevel, nFields
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR 
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCR
     TYPE(amrex_multifab), INTENT(inout)   :: MF_uCR_permute
 
     TYPE(amrex_mfiter) :: MFI
@@ -1494,7 +1488,7 @@ iD_permute = 0
     INTEGER :: iLo_MF(4)
     INTEGER :: iZ_E0(4), iZ_E1(4), iZ_B0(4), iZ_B1(4)
     INTEGER :: iX_E0(3), iX_E1(3), iX_B0(3), iX_B1(3)
-    
+
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -1524,7 +1518,7 @@ iD_permute = 0
       uGF  => MF_uGF % DataPtr( MFI )
       uCR  => MF_uCR % DataPtr( MFI )
       uCR_permute => MF_uCR_permute % DataPtr( MFI )
-      
+
       iLo_MF = LBOUND( uGF )
 
       CALL amrex2amrex_permute_Z &
@@ -1547,8 +1541,8 @@ iD_permute = 0
 
     INTEGER,  INTENT(in)  :: iLevel, nFields
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR 
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCR_permute
 
     TYPE(amrex_mfiter) :: MFI

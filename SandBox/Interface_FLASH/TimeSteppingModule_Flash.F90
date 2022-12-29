@@ -51,6 +51,8 @@ MODULE TimeSteppingModule_Flash
 
   PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Update_IMEX_PDARS
+  PUBLIC :: ApplyBoundaryConditions_Radiation
+  PUBLIC :: ApplyBoundaryConditions_Euler_FLASH
 
   LOGICAL :: DEBUG = .FALSE.
 

@@ -30,3 +30,4 @@ f90EXE_sources  += PolynomialBasisModule_Legendre.f90
 f90EXE_sources  += PolynomialBasisMappingModule.f90
 F90EXE_sources  += LinearAlgebraModule.F90
 F90EXE_sources  += ArrayUtilitiesModule.F90
+F90EXE_sources  += MemoryProfilingModule.F90
