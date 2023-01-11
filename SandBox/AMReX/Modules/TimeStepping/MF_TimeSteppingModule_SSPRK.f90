@@ -61,7 +61,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputeConformalFactor_Poseidon_MF, &
     ComputePressureTensorTrace_XCFC_MF, &
-    ComputeGeometry_Poseidon_MF
+    ComputeGeometry_Poseidon_MF, &
+    swXX
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -80,19 +81,25 @@ MODULE MF_TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
   LOGICAL :: Verbose
+  LOGICAL :: EvolveGravity
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFluid_SSPRK_MF( Verbose_Option )
+  SUBROUTINE InitializeFluid_SSPRK_MF( Verbose_Option, EvolveGravity_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+    LOGICAL, INTENT(in), OPTIONAL :: EvolveGravity_Option
 
     INTEGER :: iS
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    EvolveGravity = .TRUE.
+    IF( PRESENT( EvolveGravity_Option ) ) &
+      EvolveGravity = EvolveGravity_Option
 
     CALL InitializeSSPRK
 
@@ -106,7 +113,8 @@ CONTAINS
       WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
       WRITE(*,'(A5,A,ES10.3E3)') '', 'CFL:           ', &
         CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
-
+      WRITE(*,*)
+      WRITE(*,'(A5,A,L)') '', 'EvolveGravity: ', EvolveGravity
       WRITE(*,*)
       WRITE(*,'(A5,A)') '', 'Butcher Table:'
       WRITE(*,'(A5,A)') '', '--------------'
@@ -149,7 +157,7 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nGS, 0 )
+               nDOFX * nGS, swXX )
       CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
 
     END DO
@@ -216,7 +224,8 @@ CONTAINS
           CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uGS )
 
-          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+          IF( EvolveGravity ) &
+            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
@@ -235,11 +244,13 @@ CONTAINS
           CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uGS )
 
-          CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+          IF( EvolveGravity ) &
+            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
           CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_U(iS,:), MF_uGS )
 
-          CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+          IF( EvolveGravity ) &
+            CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
           CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -301,7 +312,8 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+    IF( EvolveGravity ) &
+      CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
@@ -320,11 +332,13 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+    IF( EvolveGravity ) &
+      CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
 
     CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+    IF( EvolveGravity ) &
+      CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
