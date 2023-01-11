@@ -18,7 +18,7 @@ DeviceModule_prereqs += MagmaModule.o
 endif
 
 MemoryProfilingModule.o: \
-  MemoryProfilingModule.F90
+  MemoryProfilingModule.f90
 
 ArrayUtilitiesModule.o: \
   KindModule.o \
