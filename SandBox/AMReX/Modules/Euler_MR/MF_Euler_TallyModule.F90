@@ -4,6 +4,8 @@ MODULE MF_Euler_TallyModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_imultifab, &
@@ -13,24 +15,27 @@ MODULE MF_Euler_TallyModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_parmparse_module, ONLY: &
-    amrex_parmparse, &
-    amrex_parmparse_build, &
-    amrex_parmparse_destroy
+  USE amrex_amr_module, ONLY: &
+    amrex_geom
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nNodesX, &
+    nDimsX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE MeshModule, ONLY: &
-    MeshType
+    MeshType, &
+    CreateMesh, &
+    DestroyMesh
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_SqrtGm
+    iGF_SqrtGm, &
+    CoordinateSystem
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -42,17 +47,15 @@ MODULE MF_Euler_TallyModule
     DP, &
     Zero
   USE InputParsingModule, ONLY: &
+    nX, &
     nLevels, &
-    nMaxLevels, &
     ProgramName, &
     UseTiling, &
-    UseFluxCorrection_Euler
+    xL, &
+    xR
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-!  USE TimersModule_AMReX_Euler, ONLY: &
-!    TimersStart_AMReX_Euler, &
-!    TimersStop_AMReX_Euler
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
     DestroyFineMask, &
@@ -61,6 +64,13 @@ MODULE MF_Euler_TallyModule
     amrex2thornado_X, &
     AllocateArray_X, &
     DeallocateArray_X
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+  USE ADM_Mass_Module, ONLY: &
+    Calc_ADM_Mass
+
+#endif
 
   IMPLICIT NONE
   PRIVATE
@@ -73,27 +83,40 @@ MODULE MF_Euler_TallyModule
   LOGICAL :: SuppressTally
 
   CHARACTER(256) :: BaryonicMass_FileName
-  REAL(DP) :: BaryonicMass_Interior
-  REAL(DP) :: BaryonicMass_Initial
-  REAL(DP) :: BaryonicMass_OffGrid
-  REAL(DP) :: BaryonicMass_Change
+  REAL(DP)       :: BaryonicMass_Interior
+  REAL(DP)       :: BaryonicMass_Initial
+  REAL(DP)       :: BaryonicMass_OffGrid
+  REAL(DP)       :: BaryonicMass_Change
 
   CHARACTER(256) :: Energy_FileName
-  REAL(DP) :: Energy_Interior
-  REAL(DP) :: Energy_Initial
-  REAL(DP) :: Energy_OffGrid
-  REAL(DP) :: Energy_Change
+  REAL(DP)       :: Energy_Interior
+  REAL(DP)       :: Energy_Initial
+  REAL(DP)       :: Energy_OffGrid
+  REAL(DP)       :: Energy_Change
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+  CHARACTER(256) :: ADMMass_FileName
+  REAL(DP)       :: ADMMass_Interior
+  REAL(DP)       :: ADMMass_Initial
+  REAL(DP)       :: ADMMass_OffGrid
+  REAL(DP)       :: ADMMass_Change
+
+#endif
 
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_MF( SuppressTally_Option )
+  SUBROUTINE InitializeTally_Euler_MF &
+    ( SuppressTally_Option, BaseFileName_Option )
 
-    LOGICAL,  INTENT(in), OPTIONAL :: SuppressTally_Option
+    LOGICAL,  INTENT(in),         OPTIONAL :: &
+      SuppressTally_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      BaseFileName_Option
 
-    CHARACTER(:), ALLOCATABLE :: FileNameBase
-    INTEGER                   :: FileUnit
-    TYPE(amrex_parmparse)     :: PP
+    CHARACTER(256) :: BaseFileName
+    INTEGER        :: FileUnit
 
     CHARACTER(256) :: TimeLabel
     CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
@@ -106,25 +129,16 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      IF( nMaxLevels .GT. 1 .AND. .NOT. UseFluxCorrection_Euler )THEN
+      BaseFileName = ''
+      IF( PRESENT( BaseFileName_Option ) ) &
+        BaseFileName = TRIM( BaseFileName_Option )
 
-        WRITE(*,*)
-        WRITE(*,'(4x,A)') &
-          'WARNING: Euler tally not accurate when UseFluxCorrection is false'
-        WRITE(*,'(4x,A)') &
-          '-------'
-
-      END IF
-
-      FileNameBase = TRIM( ProgramName )
-      CALL amrex_parmparse_build( PP, 'thornado' )
-        CALL PP % query( 'TallyFileNameBase_Euler', FileNameBase )
-      CALL amrex_parmparse_destroy( PP )
+      BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
 
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
-        = TRIM( FileNameBase ) // '.Tally_BaryonicMass.dat'
+        = TRIM( BaseFileName ) // '_Tally_BaryonicMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -148,7 +162,7 @@ CONTAINS
       ! --- Energy ---
 
       Energy_FileName &
-        = TRIM( FileNameBase ) // '.Tally_Energy.dat'
+        = TRIM( BaseFileName ) // '_Tally_Energy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -169,6 +183,34 @@ CONTAINS
 
       CLOSE( FileUnit )
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      ! --- ADM Mass ---
+
+      ADMMass_FileName &
+        = TRIM( BaseFileName ) // '_Tally_ADMMass.dat'
+
+      TimeLabel     &
+        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+      InteriorLabel &
+        = 'Interior [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+      OffGridLabel  &
+        = 'Off Grid [' // TRIM( UnitsDisplay % MassLabel ) // ']'
+      InitialLabel  &
+        = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
+      ChangeLabel   &
+        = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ) )
+
+      WRITE(FileUnit,'(5(A25,x))') &
+        TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+        TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+      CLOSE( FileUnit )
+
+#endif
+
     END IF
 
     BaryonicMass_Interior = Zero
@@ -180,6 +222,15 @@ CONTAINS
     Energy_Initial  = Zero
     Energy_OffGrid  = Zero
     Energy_Change   = Zero
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ADMMass_Interior = Zero
+    ADMMass_Initial  = Zero
+    ADMMass_OffGrid  = Zero
+    ADMMass_Change   = Zero
+
+#endif
 
   END SUBROUTINE InitializeTally_Euler_MF
 
@@ -220,6 +271,12 @@ CONTAINS
 
     BaryonicMass_Interior = Zero
     Energy_Interior       = Zero
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ADMMass_Interior = Zero
+
+#endif
 
     DO iLevel = 0, nLevels-1
 
@@ -265,7 +322,6 @@ CONTAINS
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
                  G )
 
-
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
@@ -274,6 +330,12 @@ CONTAINS
 
     END DO
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    CALL Calc_ADM_Mass( ADMMass_Interior )
+
+#endif
+
     CALL amrex_parallel_reduce_sum( BaryonicMass_Interior )
     CALL amrex_parallel_reduce_sum( Energy_Interior       )
 
@@ -281,6 +343,12 @@ CONTAINS
 
       BaryonicMass_Initial = BaryonicMass_Interior
       Energy_Initial       = Energy_Interior
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      ADMMass_Initial      = ADMMass_Interior
+
+#endif
 
     END IF
 
@@ -291,6 +359,14 @@ CONTAINS
     Energy_Change &
       = Energy_Interior &
           - ( Energy_Initial + Energy_OffGrid )
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    ADMMass_Change &
+      = ADMMass_Interior &
+          - ( ADMMass_Initial + ADMMass_OffGrid )
+
+#endif
 
     CALL WriteTally_Euler( Time(0) )
 
@@ -318,6 +394,13 @@ CONTAINS
 
       Energy_OffGrid &
         = Energy_OffGrid + dM(iCF_E,iLevel)
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      ADMMass_OffGrid &
+        = Zero
+
+#endif
 
     END DO
 
@@ -426,6 +509,24 @@ CONTAINS
 
       CLOSE( FileUnit )
 
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      ! --- ADM Mass ---
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ), &
+            POSITION = 'APPEND', ACTION = 'WRITE' )
+
+      WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+        Time / UnitsDisplay % TimeUnit, &
+        ADMMass_Interior / UnitsDisplay % MassUnit, &
+        ADMMass_OffGrid  / UnitsDisplay % MassUnit, &
+        ADMMass_Initial  / UnitsDisplay % MassUnit, &
+        ADMMass_Change   / UnitsDisplay % MassUnit
+
+      CLOSE( FileUnit )
+
+#endif
+
     END IF
 
   END SUBROUTINE WriteTally_Euler
@@ -481,6 +582,28 @@ CONTAINS
         'Energy Change...: ', &
         Energy_Change   / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+      WRITE(*,*)
+      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+        '', 'ADM Mass Interior.: ', &
+        ADMMass_Interior / UnitsDisplay % MassUnit, &
+        UnitsDisplay % MassLabel
+      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+        '', 'ADM Mass Initial..: ', &
+        ADMMass_Initial  / UnitsDisplay % MassUnit, &
+        UnitsDisplay % MassLabel
+      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+        '', 'ADM Mass Off Grid.: ', &
+        ADMMass_OffGrid  / UnitsDisplay % MassUnit, &
+        UnitsDisplay % MassLabel
+      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
+        '', 'ADM Mass Change...: ', &
+        ADMMass_Change   / UnitsDisplay % MassUnit, &
+        UnitsDisplay % MassLabel
+
+#endif
 
       WRITE(*,*)
 
