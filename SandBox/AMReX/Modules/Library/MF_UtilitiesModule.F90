@@ -17,6 +17,8 @@ MODULE MF_UtilitiesModule
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum, &
     amrex_parallel_myproc
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
 
   ! --- thornado Modules ---
 
@@ -200,7 +202,7 @@ CONTAINS
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
     WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
-      '(I2.2,3I7.6,SP3ES25.16E3,SP', &
+      '(I2.2,1x,3I7.6,SP3ES25.16E3,SP', &
       nNodesX(1),  'ES25.16E3,SP', &
       nNodesX(2),  'ES25.16E3,SP', &
       nNodesX(3),  'ES25.16E3,SP', &
@@ -220,8 +222,8 @@ CONTAINS
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
-        WRITE(FileName,'(A,A,I3.3,A,I3.3,A,I8.8,A)') &
-          TRIM( FileNameBase ), '_level', iLevel, '_proc', &
+        WRITE(FileName,'(A,A,I3.3,A,I8.8,A)') &
+          TRIM( FileNameBase ), '_proc', &
           amrex_parallel_myproc(), '_', StepNo(0), '.dat'
 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
@@ -239,6 +241,12 @@ CONTAINS
 
       iX_B1 = BX % lo - swXX
       iX_E1 = BX % hi + swXX
+
+!!$      IF( BX % LO(1) .EQ. amrex_geom(iLevel) % DOMAIN % LO(1) ) &
+!!$        iX_B1(1) = BX % lo(1)
+!!$
+!!$      IF( BX % HI(1) .EQ. amrex_geom(iLevel) % DOMAIN % HI(1) ) &
+!!$        iX_E1(1) = BX % hi(1)
 
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
