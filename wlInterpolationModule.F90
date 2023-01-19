@@ -352,6 +352,7 @@ CONTAINS
     INTEGER  :: async_flag
     INTEGER  :: i, j, k, ij, i0, j0, SizeE
     INTEGER  :: iT, iX
+    INTEGER  :: ijk, SizeIJ, SizeIJK
     REAL(dp) :: dT, dX
 
     IF( PRESENT( ASYNC_Option ) )THEN
@@ -365,10 +366,14 @@ CONTAINS
     END IF
 
     SizeE = SIZE( Interpolant, DIM = 1 )
-
+    SizeIJ = SizeE*(SizeE+1)/2
+    SizeIJK = SizeIJ*SIZE( LogT )
+!! Mathi: Remove hiearchical par (~2.7X speedup), and collapse (~3X speedup)
 #if defined(WEAKLIB_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE &
+!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)&
+!!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)&
     !$OMP PRIVATE( iT, dT, iX, dX ) &
+    !$OMP PRIVATE( i0, j0, i, j ) &
     !$OMP MAP( to: LogT, LogTs, LogX, LogXs, OS, Table ) &
     !$OMP MAP( from: Interpolant )
 #elif defined(WEAKLIB_OACC)
@@ -382,22 +387,27 @@ CONTAINS
     !$OMP          i0, j0, i, j )
 #endif
     DO k = 1, SIZE( LogT )
+    !DO ijk = 1, SizeIJK ! Collapsed loop
 
       !CALL GetIndexAndDelta_Lin( LogT(k), LogTs, iT, dT )
       !CALL GetIndexAndDelta_Lin( LogX(k), LogXs, iX, dX )
-      iT = Index1D_Lin( LogT(k), LogTs )
-      iX = Index1D_Lin( LogX(k), LogXs )
-      dT = ( LogT(k) - LogTs(iT) ) / ( LogTs(iT+1) - LogTs(iT) )
-      dX = ( LogX(k) - LogXs(iX) ) / ( LogXs(iX+1) - LogXs(iX) )
 
-#if defined(WEAKLIB_OMP_OL)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( i0, j0, i, j )
-#elif defined(WEAKLIB_OACC)
+!#if defined(WEAKLIB_OMP_OL)
+!      !$OMP PARALLEL DO SIMD &
+!      !$OMP PRIVATE( i0, j0, i, j )
+!#elif defined(WEAKLIB_OACC)
       !$ACC LOOP VECTOR &
       !$ACC PRIVATE( i0, j0, i, j )
-#endif
+!#endif
       DO ij = 1, SizeE*(SizeE+1)/2 ! Collapsed triangular loop: DO j = 1, SizeE ; DO i = 1, j
+      !  k  = ijk/SizeIJ
+      !  ij = MOD( ijk, SizeIJ)
+
+        iT = Index1D_Lin( LogT(k), LogTs )
+        iX = Index1D_Lin( LogX(k), LogXs )
+        dT = ( LogT(k) - LogTs(iT) ) / ( LogTs(iT+1) - LogTs(iT) )
+        dX = ( LogX(k) - LogXs(iX) ) / ( LogXs(iX+1) - LogXs(iX) )
+
         j0 = MOD( (ij-1) / ( SizeE + 1 ), SizeE + 1 ) + 1
         i0 = MOD( (ij-1)                , SizeE + 1 ) + 1
         IF ( i0 > j0 ) THEN
@@ -480,11 +490,17 @@ CONTAINS
 
     SizeE = SIZE( Interpolant, DIM = 1 )
 
+!! Mathi: Offload data first and decompse into two tasks - obtined ~10X speedup
 #if defined(WEAKLIB_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO & !! Shaoping This works for iD(SIZE(Alpha))
-    !$OMP PRIVATE( iT, dT, iD, dD ) &
-    !$OMP MAP( to: LogT, LogTs, LogD, LogDs, OS, Table, Alpha ) &
+    !$OMP TARGET DATA MAP( to: LogT, LogTs, LogD, LogDs, OS, Table, Alpha, iD, dD ) &
     !$OMP MAP( from: Interpolant )
+#endif
+
+#if defined(WEAKLIB_OMP_OL)
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) 
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) 
+    !! Shaoping This works for iD(SIZE(Alpha))
+    !!$OMP PRIVATE( iD, dD )
 #elif defined(WEAKLIB_OACC)
     !$ACC PARALLEL LOOP GANG ASYNC( async_flag ) &
     !$ACC PRIVATE( iT, dT, iD, dD ) &
@@ -499,20 +515,23 @@ CONTAINS
 
       !CALL GetIndexAndDelta_Lin( LogT(k), LogTs, iT, dT )
       !CALL GetIndexAndDelta_Lin( LogD(k), LogDs, iD, dD )
-      iT = Index1D_Lin( LogT(k), LogTs )
-      dT = ( LogT(k) - LogTs(iT) ) / ( LogTs(iT+1) - LogTs(iT) )
       DO l = 1, SIZE( Alpha )
         iD(l) = Index1D_Lin( LogD(l,k), LogDs )
         dD(l) = ( LogD(l,k) - LogDs(iD(l)) ) / ( LogDs(iD(l)+1) - LogDs(iD(l)) )
       END DO
+   END DO
 
+!! Mathi: 
 #if defined(WEAKLIB_OMP_OL)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( i0, j0, i, j, Interp, SumInterp )
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)& 
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)& 
+    !$OMP PRIVATE( iT, dT ) &
+    !$OMP PRIVATE( i0, j0, i, j, Interp, SumInterp )
 #elif defined(WEAKLIB_OACC)
       !$ACC LOOP VECTOR &
       !$ACC PRIVATE( i0, j0, i, j, Interp, SumInterp )
 #endif
+      DO k = 1, SIZE( LogT )
       DO ij = 1, SizeE*(SizeE+1)/2 ! Collapsed triangular loop: DO j = 1, SizeE ; DO i = 1, j
         j0 = MOD( (ij-1) / ( SizeE + 1 ), SizeE + 1 ) + 1
         i0 = MOD( (ij-1)                , SizeE + 1 ) + 1
@@ -523,6 +542,8 @@ CONTAINS
           j = j0
           i = i0
         END IF
+        iT = Index1D_Lin( LogT(k), LogTs )
+        dT = ( LogT(k) - LogTs(iT) ) / ( LogTs(iT+1) - LogTs(iT) )
 
         SumInterp = 0.0d0
         DO l = 1, SIZE( Alpha )
@@ -533,7 +554,11 @@ CONTAINS
         Interpolant(i,j,k) = SumInterp
 
       END DO
-    END DO
+      END DO
+
+#if defined(WEAKLIB_OMP_OL)
+     !$OMP END TARGET DATA
+#endif
 
   END SUBROUTINE SumLogInterpolateSingleVariable_2D2D_Custom_Aligned
 
