@@ -2034,7 +2034,7 @@ CONTAINS
     ElementNumber = Zero
 
 #if defined  ( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD &
+    !$OMP SIMD &
     !$OMP REDUCTION( +: ElementNumber )
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR &
