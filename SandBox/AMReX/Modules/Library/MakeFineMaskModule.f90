@@ -14,7 +14,10 @@ MODULE MakeFineMaskModule
     amrex_multifab, &
     amrex_imultifab, &
     amrex_imultifab_build, &
-    amrex_imultifab_destroy
+    amrex_imultifab_destroy, &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
 
@@ -22,7 +25,8 @@ MODULE MakeFineMaskModule
 
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX
+    swX, &
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -74,6 +78,13 @@ CONTAINS
     TYPE(amrex_boxarray) , INTENT(in)    :: BA(0:)
     TYPE(amrex_distromap), INTENT(in)    :: DM(0:)
 
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+    INTEGER, CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+
+    INTEGER :: iX2, iX3
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
     IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
 
       ! This uses swX(1) because amrex uses IntVect(int), which creates
@@ -83,6 +94,36 @@ CONTAINS
       CALL amrex_fi_makefinemask_thornado &
              ( iMF_Mask % p, BA(iLevel) % p, DM(iLevel) % p, BA(iLevel+1) % p, &
                iLeaf_MFM, iTrunk_MFM, swX(1), amrex_geom(iLevel) % p )
+
+      ! --- Fix physical boundary ghost cells ---
+
+      CALL amrex_mfiter_build( MFI, iMF_Mask, tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        Mask => iMF_Mask % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
+
+        ! --- X1 ---
+
+        DO iX3 = iX_B1(3), iX_E1(3)
+        DO iX2 = iX_B1(2), iX_E1(2)
+
+          Mask(iX_B1(1),iX2,iX3,1) = Mask(iX_B0(1),iX2,iX3,1)
+          Mask(iX_E1(1),iX2,iX3,1) = Mask(iX_E0(1),iX2,iX3,1)
+
+        END DO
+        END DO
+
+      END DO ! WHILE( MFI % next() )
+
+      CALL amrex_mfiter_destroy( MFI )
 
     ELSE
 
