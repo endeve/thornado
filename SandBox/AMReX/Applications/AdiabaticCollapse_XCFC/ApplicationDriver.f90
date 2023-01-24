@@ -7,8 +7,8 @@ PROGRAM main
     amrex_parallel_communicator, &
     amrex_parallel_myproc
   USE amrex_amrcore_module, ONLY: &
-   amrex_regrid, &
-   amrex_get_numlevels
+    amrex_regrid, &
+    amrex_get_numlevels
 
   ! --- thornado Modules ---
 
@@ -94,6 +94,15 @@ PROGRAM main
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
 
+!  UnitNo = 100 + amrex_parallel_myproc()
+!  WRITE( MemFileName, '(A,I2.2,A)' ) &
+!    'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
+!  OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ) )
+!  WRITE( UnitNo, '(A)' ) &
+!    '# StepNo, Current Time [ms], Current Memory Usage [kB], Maximum Memory Usage [kB]'
+!  CLOSE( UnitNo )
+!  CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
   ! --- Begin evolution ---
 
   DO WHILE( MAXVAL( t_new ) .LT. t_end )
@@ -104,9 +113,13 @@ PROGRAM main
 !    WRITE( MemFileName, '(A,I2.2,A)' ) &
 !      'MemoryUsage_iProc', amrex_parallel_myproc(), '.txt'
 !    OPEN( UNIT = UnitNo, FILE = TRIM( MemFileName ), POSITION = 'APPEND' )
-!    CALL WriteMemoryUsage( UnitNo, 'Before call', StepNo(0) )
+!    CALL WriteMemoryUsage &
+!           ( UnitNo, 'Before call', StepNo(0), &
+!             t_new(0) / UnitsDisplay % TimeUnit )
 !    ! CALL YourFavoriteSubroutine
-!    CALL WriteMemoryUsage( UnitNo, 'After call', StepNo(0) )
+!    CALL WriteMemoryUsage &
+!           ( UnitNo, 'Before call', StepNo(0), &
+!             t_new(0) / UnitsDisplay % TimeUnit )
 !    CLOSE( UnitNo )
 
     t_old = t_new
