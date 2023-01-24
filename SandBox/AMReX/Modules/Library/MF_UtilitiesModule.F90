@@ -356,6 +356,7 @@ CONTAINS
 
     INTEGER                       :: iX1, iX2, iX3, iNX, iFd
     INTEGER                       :: lo_F(4), hi_F(4)
+    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: SqrtGm(:,:,:,:)
@@ -373,9 +374,14 @@ CONTAINS
 
       lo_F = LBOUND( F ); hi_F = UBOUND( F )
 
-      DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
-      DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
-      DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
 
         F_K(1:nDOFX,1:nFd) &
           = RESHAPE( F(iX1,iX2,iX3,lo_F(4):hi_F(4)), [ nDOFX, nFd ] )
