@@ -16,6 +16,10 @@ MODULE MF_Euler_SlopeLimiterModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
@@ -43,15 +47,6 @@ MODULE MF_Euler_SlopeLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    BetaTVD_Euler, &
-    BetaTVB_Euler, &
-    SlopeTolerance_Euler, &
-    UseSlopeLimiter_Euler, &
-    UseCharacteristicLimiting_Euler, &
-    UseTroubledCellIndicator_Euler, &
-    SlopeLimiterMethod_Euler, &
-    LimiterThresholdParameter_Euler, &
-    UseConservativeCorrection_Euler, &
     nLevels, &
     swX, &
     UseTiling, &
@@ -80,30 +75,72 @@ MODULE MF_Euler_SlopeLimiterModule
     MODULE PROCEDURE ApplySlopeLimiter_Euler_MF_SingleLevel
   END INTERFACE ApplySlopeLimiter_Euler_MF
 
+  LOGICAL :: UseSlopeLimiter
+
 CONTAINS
 
 
   SUBROUTINE InitializeSlopeLimiter_Euler_MF
 
+    TYPE(amrex_parmparse) :: PP
+
+    CHARACTER(:), ALLOCATABLE :: SlopeLimiterMethod
+    REAL(DP)                  :: BetaTVD, BetaTVB
+    REAL(DP)                  :: SlopeTolerance
+    LOGICAL                   :: UseCharacteristicLimiting
+    LOGICAL                   :: UseTroubledCellIndicator
+    REAL(DP)                  :: LimiterThresholdParameter
+    LOGICAL                   :: UseConservativeCorrection
+
+    UseSlopeLimiter           = .TRUE.
+    SlopeLimiterMethod        = 'TVD'
+    BetaTVD                   = 1.75_DP
+    BetaTVB                   = 0.00_DP
+    SlopeTolerance            = 1.0e-6_DP
+    UseCharacteristicLimiting = .TRUE.
+    UseTroubledCellIndicator  = .TRUE.
+    LimiterThresholdParameter = 0.03_DP
+    UseConservativeCorrection = .TRUE.
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter_Euler', &
+                        UseSlopeLimiter )
+      CALL PP % query( 'SlopeLimiterMethod_Euler', &
+                        SlopeLimiterMethod )
+      CALL PP % query( 'BetaTVD_Euler', &
+                        BetaTVD )
+      CALL PP % query( 'BetaTVB_Euler', &
+                        BetaTVB )
+      CALL PP % query( 'SlopeTolerance_Euler', &
+                        SlopeTolerance )
+      CALL PP % query( 'UseCharacteristicLimiting_Euler', &
+                        UseCharacteristicLimiting )
+      CALL PP % query( 'UseTroubledCellIndicator_Euler', &
+                        UseTroubledCellIndicator )
+      CALL PP % query( 'LimiterThresholdParameter_Euler', &
+                        LimiterThresholdParameter )
+      CALL PP % query( 'UseConservativeCorrection_Euler', &
+                        UseConservativeCorrection )
+    CALL amrex_parmparse_destroy( PP )
+
     CALL InitializeSlopeLimiter_Euler &
            ( BetaTVD_Option &
-               = BetaTVD_Euler, &
+               = BetaTVD, &
              BetaTVB_Option &
-               = BetaTVB_Euler, &
+               = BetaTVB, &
              SlopeTolerance_Option &
-               = SlopeTolerance_Euler, &
+               = SlopeTolerance, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter_Euler, &
+               = UseSlopeLimiter, &
              UseCharacteristicLimiting_Option &
-               = UseCharacteristicLimiting_Euler, &
+               = UseCharacteristicLimiting, &
              UseTroubledCellIndicator_Option &
-               = UseTroubledCellIndicator_Euler, &
+               = UseTroubledCellIndicator, &
              SlopeLimiterMethod_Option &
-               = SlopeLimiterMethod_Euler, &
+               = SlopeLimiterMethod, &
              LimiterThresholdParameter_Option &
-               = LimiterThresholdParameter_Euler, &
+               = LimiterThresholdParameter, &
              UseConservativeCorrection_Option &
-               = UseConservativeCorrection_Euler, &
+               = UseConservativeCorrection, &
              Verbose_Option &
                = amrex_parallel_ioprocessor() )
 
@@ -182,7 +219,7 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
-    IF( .NOT. UseSlopeLimiter_Euler ) RETURN
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     ! --- Apply boundary conditions to interior domains ---
 
