@@ -94,7 +94,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     UseTiling, &
     swX, &
     UseFluxCorrection_Euler, &
-    UsePositivityLimiter_Euler, &
     UseXCFC, &
     DEBUG
   USE FillPatchModule, ONLY: &

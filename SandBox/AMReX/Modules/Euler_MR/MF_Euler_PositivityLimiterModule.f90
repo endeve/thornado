@@ -12,6 +12,10 @@ MODULE MF_Euler_PositivityLimiterModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
@@ -48,9 +52,6 @@ MODULE MF_Euler_PositivityLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    UsePositivityLimiter_Euler, &
-    Min_1_Euler, &
-    Min_2_Euler, &
     EquationOfState, &
     nLevels, &
     UseTiling, &
@@ -77,15 +78,28 @@ MODULE MF_Euler_PositivityLimiterModule
     MODULE PROCEDURE ApplyPositivityLimiter_Euler_MF_SingleLevel
   END INTERFACE ApplyPositivityLimiter_Euler_MF
 
+  LOGICAL  :: UsePositivityLimiter
+  REAL(DP) :: Min_1, Min_2
+
 CONTAINS
 
 
   SUBROUTINE InitializePositivityLimiter_Euler_MF
 
+    TYPE(amrex_parmparse) :: PP
+
+    UsePositivityLimiter = .TRUE.
+    Min_1                = 1.0e-12_DP
+    Min_2                = 1.0e-12_DP
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % query( 'UsePositivityLimiter_Euler', &
+                        UsePositivityLimiter )
+    CALL amrex_parmparse_destroy( PP )
+
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
       CALL InitializePositivityLimiter_Euler &
-             ( UsePositivityLimiter_Option = UsePositivityLimiter_Euler, &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
                Verbose_Option = amrex_parallel_ioprocessor(), &
                Min_1_Option = ( One + EPSILON(One) ) * Min_D, &
                Min_2_Option = ( One + EPSILON(One) ) * Min_T, &
@@ -97,10 +111,10 @@ CONTAINS
     ELSE
 
       CALL InitializePositivityLimiter_Euler &
-             ( UsePositivityLimiter_Option = UsePositivityLimiter_Euler, &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
                Verbose_Option = amrex_parallel_ioprocessor(), &
-               Min_1_Option = Min_1_Euler, &
-               Min_2_Option = Min_2_Euler )
+               Min_1_Option = Min_1, &
+               Min_2_Option = Min_2 )
 
     END IF
 
@@ -183,7 +197,7 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
-    IF( .NOT. UsePositivityLimiter_Euler ) RETURN
+    IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
