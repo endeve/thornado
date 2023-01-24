@@ -138,7 +138,7 @@ CONTAINS
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
-        = TRIM( BaseFileName ) // '_Tally_BaryonicMass.dat'
+        = TRIM( BaseFileName ) // '.Tally_BaryonicMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -162,7 +162,7 @@ CONTAINS
       ! --- Energy ---
 
       Energy_FileName &
-        = TRIM( BaseFileName ) // '_Tally_Energy.dat'
+        = TRIM( BaseFileName ) // '.Tally_Energy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -188,7 +188,7 @@ CONTAINS
       ! --- ADM Mass ---
 
       ADMMass_FileName &
-        = TRIM( BaseFileName ) // '_Tally_ADMMass.dat'
+        = TRIM( BaseFileName ) // '.Tally_ADMMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -332,7 +332,7 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-    CALL Calc_ADM_Mass( ADMMass_Interior )
+!!$    CALL Calc_ADM_Mass( ADMMass_Interior )
 
 #endif
 
