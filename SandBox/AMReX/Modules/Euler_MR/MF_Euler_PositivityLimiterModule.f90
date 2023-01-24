@@ -79,7 +79,6 @@ MODULE MF_Euler_PositivityLimiterModule
   END INTERFACE ApplyPositivityLimiter_Euler_MF
 
   LOGICAL  :: UsePositivityLimiter
-  REAL(DP) :: Min_1, Min_2
 
 CONTAINS
 
@@ -87,6 +86,8 @@ CONTAINS
   SUBROUTINE InitializePositivityLimiter_Euler_MF
 
     TYPE(amrex_parmparse) :: PP
+
+    REAL(DP) :: Min_1, Min_2
 
     UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_DP
