@@ -274,7 +274,7 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-    ADMMass_Interior = Zero
+    ADMMass_Interior      = Zero
 
 #endif
 
@@ -286,7 +286,7 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
+        Mask => iMF_Mask       % DataPtr( MFI )
         uGF  => MF_uGF(iLevel) % DataPtr( MFI )
         uCF  => MF_uCF(iLevel) % DataPtr( MFI )
 
@@ -322,17 +322,17 @@ CONTAINS
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
                  G )
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
       CALL DestroyFineMask( iLevel, iMF_Mask )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-!!$    CALL Calc_ADM_Mass( ADMMass_Interior )
+    CALL Calc_ADM_Mass( ADMMass_Interior )
 
 #endif
 
@@ -370,11 +370,7 @@ CONTAINS
 
     CALL WriteTally_Euler( Time(0) )
 
-    IF( Verbose )THEN
-
-      CALL DisplayTally( Time(0) )
-
-    END IF
+    IF( Verbose ) CALL DisplayTally( Time(0) )
 
   END SUBROUTINE ComputeTally_Euler_MF
 
@@ -443,13 +439,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
+    DO iNX = 1       , nDOFX
 
-      IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
-
-        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
-
-      END IF
+      IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
       BaryonicMass_Interior &
         = BaryonicMass_Interior &
