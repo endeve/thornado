@@ -82,7 +82,7 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     INTEGER, CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
-    INTEGER :: iX2, iX3
+    INTEGER :: iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     IF( nLevels .GT. 1 .AND. iLevel .LT. nLevels-1 )THEN
@@ -112,11 +112,33 @@ CONTAINS
 
         ! --- X1 ---
 
-        DO iX3 = iX_B1(3), iX_E1(3)
-        DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
 
           Mask(iX_B1(1),iX2,iX3,1) = Mask(iX_B0(1),iX2,iX3,1)
           Mask(iX_E1(1),iX2,iX3,1) = Mask(iX_E0(1),iX2,iX3,1)
+
+        END DO
+        END DO
+
+        ! --- X2 ---
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          Mask(iX1,iX_B1(2),iX3,1) = Mask(iX1,iX_B0(2),iX3,1)
+          Mask(iX1,iX_E1(2),iX3,1) = Mask(iX1,iX_E0(2),iX3,1)
+
+        END DO
+        END DO
+
+        ! --- X3 ---
+
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          Mask(iX1,iX2,iX_B1(3),1) = Mask(iX1,iX2,iX_B0(3),1)
+          Mask(iX1,iX2,iX_E1(3),1) = Mask(iX1,iX2,iX_E0(3),1)
 
         END DO
         END DO
