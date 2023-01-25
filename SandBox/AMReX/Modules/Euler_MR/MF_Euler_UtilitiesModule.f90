@@ -111,6 +111,10 @@ CONTAINS
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iX_B(3), iX_E(3), swXX(3)
 
+    swXX = 0
+    IF( PRESENT( swXX_Option ) ) &
+      swXX = swXX_Option
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -150,10 +154,6 @@ CONTAINS
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAF ], &
                  A )
-
-        swXX = 0
-        IF( PRESENT( swXX_Option ) ) &
-          swXX = swXX_Option
 
         iX_B = iX_B0 - swXX
         iX_E = iX_E0 + swXX
