@@ -33,12 +33,12 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     iGF_h_3, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E
+    iCF_E, &
+    nCF
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
@@ -216,7 +216,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER,  INTENT(in), OPTIONAL :: &
-      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(2):,1:)
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K
     REAL(DP) :: Min_D, Min_K, Min_ESq, Theta_D, Theta_P, q
@@ -278,7 +278,9 @@ CONTAINS
                                   iX_B0(2):iX_E0(2), &
                                   iX_B0(3):iX_E0(3))
 
-    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
+    INTEGER :: Mask(iX_B1(1):iX_E1(1), &
+                    iX_B1(2):iX_E1(2), &
+                    iX_B1(3):iX_E1(3),1:1)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -326,7 +328,7 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
+    DO iNX = 1       , nDOFX
 
       SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
@@ -350,8 +352,8 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iCF = 1, nCF
-    DO iNX = 1, nDOFX
+    DO iCF = 1       , nCF
+    DO iNX = 1       , nDOFX
 
       U_Q(iNX,iCF,iX1,iX2,iX3) = U(iNX,iX1,iX2,iX3,iCF)
 
@@ -386,7 +388,7 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iPT = 1, nPT
+    DO iPT = 1       , nPT
 
       g1P(iPT,iX1,iX2,iX3) = MAX( h1P(iPT,iX1,iX2,iX3)**2, SqrtTiny )
       g2P(iPT,iX1,iX2,iX3) = MAX( h2P(iPT,iX1,iX2,iX3)**2, SqrtTiny )
@@ -408,7 +410,7 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iCF = 1, nCF
+    DO iCF = 1       , nCF
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
