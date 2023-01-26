@@ -2252,14 +2252,20 @@ CONTAINS
     REAL(DP) :: SUM_Y, SUM_V1, SUM_V2, SUM_V3, SUM_Ef
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( vDotV )
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, vDotV, W, SJ, Tau_f, &
+    !$OMP          SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( vDotV )
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, vDotV, W, SJ, Tau_f, &
+    !$ACC          SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( vDotV )
+    !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, vDotV, W, SJ, Tau_f, &
+    !$OMP          SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          DT, Inu_d_1, Inu_d_2, Inu_d_3, VDotInu, &
+    !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
+    !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 )
 #endif
     DO iN_X = 1, nX_G
 
@@ -2325,14 +2331,17 @@ CONTAINS
       SUM_V3 = Zero
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( DT, Inu_d_1, Inu_d_2, Inu_d_3, VDotInu, &
+    !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
+    !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
+    !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$ACC LOOP VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( DT, Inu_d_1, Inu_d_2, Inu_d_3, VDotInu, &
+    !$ACC          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
+    !$ACC          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
+    !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #endif
     DO iS   = 1, nSpecies
     DO iN_E = 1, nE_G
@@ -2425,14 +2434,6 @@ CONTAINS
 
     END DO
     END DO
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
-#endif
 
       SUM_Y = ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y
 
@@ -2756,16 +2757,21 @@ CONTAINS
     REAL(DP) :: SUM_Ef, SUM_V1, SUM_V2, SUM_V3, SUM_Y
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$ACC          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h, &
+    !$OMP          Inu_d_1, Inu_d_2, Inu_d_3, k_dd, &
+    !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
+    !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 )
 #endif
-
     DO iN_X = 1, nX_G
 
       IF ( MASK(iN_X) ) THEN
@@ -2792,6 +2798,19 @@ CONTAINS
         SUM_V2  = Zero
         SUM_V3  = Zero
 
+#if   defined( THORNADO_OMP_OL )
+        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( Inu_d_1, Inu_d_2, Inu_d_3, k_dd, &
+        !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
+        !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
+        !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+#elif defined( THORNADO_OACC   )
+        !$ACC LOOP VECTOR COLLAPSE(2) &
+        !$ACC PRIVATE( Inu_d_1, Inu_d_2, Inu_d_3, k_dd, &
+        !$ACC          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
+        !$ACC          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
+        !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+#endif
         DO iS   = 1, nSpecies
         DO iN_E = 1, nE_G
 
@@ -2812,8 +2831,6 @@ CONTAINS
                   - DT * ( Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X) * B_d_3 * V_u_1(iN_X) ) &
                   - DT * ( Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X) * B_d_3 * V_u_2(iN_X) )
 
-
-   
           vDotInu = V_u_1(iN_X) * Inu_d_1 &
                   + V_u_2(iN_X) * Inu_d_2 &
                   + V_u_3(iN_X) * Inu_d_3
@@ -3384,18 +3401,20 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, Det, Inu_d_1, Inu_d_2, Inu_d_3, &
+    !$OMP          vDotInu, W, k_dd, vDotV, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          Eta_T, Chi_T, Kappa, iOS )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$ACC PRIVATE( B_d_1, B_d_2, B_d_3, Det, Inu_d_1, Inu_d_2, Inu_d_3, &
+    !$ACC          vDotInu, W, k_dd, vDotV, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$ACC          Eta_T, Chi_T, Kappa, iOS )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( k_dd, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
+    !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, Det, Inu_d_1, Inu_d_2, Inu_d_3, &
+    !$OMP          vDotInu, W, k_dd, vDotV, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          Eta_T, Chi_T, Kappa, iOS )
 #endif
-
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
     DO iN_E = 1, nE_G
@@ -3645,13 +3664,13 @@ CONTAINS
     
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( vDotV )
+    !$OMP PRIVATE( vDotV, W )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( vDotV )
+    !$ACC PRIVATE( vDotV, W )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( vDotV )
+    !$OMP PRIVATE( vDotV, W )
 #endif
     DO iN_X = 1, nX_G
 
@@ -3829,13 +3848,13 @@ CONTAINS
  
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iOS )
+    !$OMP PRIVATE( iOS, B_d_1, B_d_2, B_d_3, DT, Inu_d_1, Inu_d_2, Inu_d_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iOS )
+    !$ACC PRIVATE( iOS, B_d_1, B_d_2, B_d_3, DT, Inu_d_1, Inu_d_2, Inu_d_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iOS )
+    !$OMP PRIVATE( iOS, B_d_1, B_d_2, B_d_3, DT, Inu_d_1, Inu_d_2, Inu_d_3 )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
