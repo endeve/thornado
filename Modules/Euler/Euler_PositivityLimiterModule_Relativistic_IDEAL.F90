@@ -207,7 +207,7 @@ CONTAINS
   !>        and velocity
   !> @todo Modify to accomodate GR
   SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -215,6 +215,8 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(2):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K
     REAL(DP) :: Min_D, Min_K, Min_ESq, Theta_D, Theta_P, q
@@ -276,9 +278,17 @@ CONTAINS
                                   iX_B0(2):iX_E0(2), &
                                   iX_B0(3):iX_E0(3))
 
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
+
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    IF( PRESENT( Mask_Option ) )THEN
+      Mask = Mask_Option
+    ELSE
+      Mask = 0
+    END IF
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
@@ -289,13 +299,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, G, U ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, G, U, Mask ) &
     !$OMP MAP( alloc: iErr, NegativeStates, Theta_q, SqrtGm, &
     !$OMP             U_Q, U_P, U_K, &
     !$OMP             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, G, U ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, G, U, Mask ) &
     !$ACC CREATE(     iErr, NegativeStates, Theta_q, SqrtGm, &
     !$ACC             U_Q, U_P, U_K, &
     !$ACC             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
@@ -391,7 +401,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( U_K, WeightsX_q, SqrtGm, U_Q )
+    !$ACC PRESENT( U_K, WeightsX_q, SqrtGm, U_Q, Mask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -401,6 +411,8 @@ CONTAINS
     DO iCF = 1, nCF
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       U_K(iCF,iX1,iX2,iX3) &
         = SUM( WeightsX_q * SqrtGm(:,iX1,iX2,iX3) * U_Q(:,iCF,iX1,iX2,iX3) ) &
@@ -422,7 +434,7 @@ CONTAINS
     !$OMP PRIVATE( Min_D, Min_K, Theta_D )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( U_K, U_Q, U_P, NegativeStates ) &
+    !$ACC PRESENT( U_K, U_Q, U_P, NegativeStates, Mask ) &
     !$ACC PRIVATE( Min_D, Min_K, Theta_D )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
@@ -433,6 +445,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       Min_D = Min_1 * U_K(iCF_D,iX1,iX2,iX3)
 
@@ -489,7 +503,7 @@ CONTAINS
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U_K, U_Q, U_P, g1P, g2P, g3P, Theta_q, &
-    !$ACC          iErr, NegativeStates ) &
+    !$ACC          iErr, NegativeStates, Mask ) &
     !$ACC PRIVATE( Min_ESq, Theta_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
@@ -502,6 +516,8 @@ CONTAINS
       iErr(iX1,iX2,iX3) = 0
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       IF( U_K(iCF_E,iX1,iX2,iX3) .LT. Zero ) iErr(iX1,iX2,iX3) = 01
 
@@ -561,7 +577,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates )
+    !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates, Mask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -570,6 +586,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       IF( NegativeStates(2,iX1,iX2,iX3) )THEN
 
@@ -606,13 +624,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U, iErr ) &
+    !$OMP MAP( from:    U, iErr, Mask ) &
     !$OMP MAP( release: NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
     !$OMP               G, U_Q, U_P, U_K, &
     !$OMP               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U, iErr ) &
+    !$ACC COPYOUT(      U, iErr, Mask ) &
     !$ACC DELETE(       NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
     !$ACC               G, U_Q, U_P, U_K, &
     !$ACC               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
@@ -625,6 +643,8 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       IF( iErr(iX1,iX2,iX3) .NE. 0 ) &
         CALL DescribeError_Euler &
