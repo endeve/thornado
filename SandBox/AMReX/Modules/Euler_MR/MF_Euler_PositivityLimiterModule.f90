@@ -186,8 +186,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_Mask
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
@@ -201,8 +202,6 @@ CONTAINS
     INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
                      iLo_MF(4)
     TYPE(EdgeMap) :: Edge_Map
-
-    TYPE(amrex_imultifab) :: iMF_Mask
 
     IF( nDOFX .EQ. 1 ) RETURN
 
