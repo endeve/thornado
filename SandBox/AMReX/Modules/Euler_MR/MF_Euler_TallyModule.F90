@@ -56,7 +56,7 @@ MODULE MF_Euler_TallyModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MakeFineMaskModule, ONLY: &
+  USE FineMaskModule, ONLY: &
     MakeFineMask, &
     DestroyFineMask, &
     iLeaf_MFM

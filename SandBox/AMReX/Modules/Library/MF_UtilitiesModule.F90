@@ -107,7 +107,7 @@ MODULE MF_UtilitiesModule
 
   USE MF_KindModule, ONLY: &
     DP
-  USE MakeFineMaskModule, ONLY: &
+  USE FineMaskModule, ONLY: &
     MakeFineMask, &
     DestroyFineMask, &
     iLeaf_MFM

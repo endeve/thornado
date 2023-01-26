@@ -1,4 +1,4 @@
-MODULE MakeFineMaskModule
+MODULE FineMaskModule
 
   USE ISO_C_BINDING
 
@@ -176,4 +176,4 @@ CONTAINS
 
   END SUBROUTINE DestroyFineMask
 
-END MODULE MakeFineMaskModule
+END MODULE FineMaskModule

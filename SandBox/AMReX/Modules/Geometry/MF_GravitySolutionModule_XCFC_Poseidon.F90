@@ -122,7 +122,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     ComputeConserved_Euler_MF
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
-  USE MakeFineMaskModule, ONLY: &
+  USE FineMaskModule, ONLY: &
     MakeFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
