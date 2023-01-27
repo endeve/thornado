@@ -253,9 +253,9 @@ CONTAINS
         ! --- Compute Lapse Function and Conformal Factor ---
 
         G_L(iNodeX,iGF_Alpha) &
-          = One
+          = LapseFunction  ( SQRT( xG_q(1)**2 + xG_q(2)**2 ), Mass )
         G_L(iNodeX,iGF_Psi) &
-          = One
+          = ConformalFactor( SQRT( xG_q(1)**2 + xG_q(2)**2 ), Mass )
 
         ! --- Set Geometry in Lobatto Points ---
 
