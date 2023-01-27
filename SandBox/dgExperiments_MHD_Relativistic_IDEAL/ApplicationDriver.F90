@@ -93,8 +93,10 @@ PROGRAM ApplicationDriver
   REAL(DP) :: MMBlastWaveB0  = 0.5_DP
   REAL(DP) :: MMBlastWavePhi = 0.0_DP
 
-  ProgramName = 'Riemann1D'
-  AdvectionProfile = 'MagneticSineWaveX1'
+  REAL(DP) :: OTScaleFactor = 100.0_DP
+
+  ProgramName = 'Advection1D'
+  AdvectionProfile = 'HydroSineWaveX1'
   RiemannProblemName = 'IsolatedContact'
 
   swX               = [ 0, 0, 0 ]
@@ -476,6 +478,26 @@ PROGRAM ApplicationDriver
       xL  = [ -6.0_DP, -6.0_DP, 0.0_DP ]
       xR  = [  6.0_DP,  6.0_DP, 1.0_DP ]
 
+    CASE( 'OrszagTang2D' )
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      UseDivergenceCleaning = .FALSE.
+      DampingParameter = 0.0_DP
+
+      OTScaleFactor = 100.0_DP
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 50.0_DP
+      bcX = [ 1, 1, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 256, 256, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -487,6 +509,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  Cleaning2D'
       WRITE(*,'(A)')     '  Riemann1D'
       WRITE(*,'(A)')     '  MMBlastWave2D'
+      WRITE(*,'(A)')     '  OrszagTang2D'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -591,7 +614,11 @@ PROGRAM ApplicationDriver
            MMBlastWaveB0_Option &
              = MMBlastWaveB0, &
            MMBlastWavePhi_Option &
-             = MMBlastWavePhi )
+             = MMBlastWavePhi, &
+           OTScaleFactor_Option &
+             = OTScaleFactor, &
+           EvolveOnlyMagnetic_Option &
+             = EvolveOnlyMagnetic )
 
   IF( RestartFileNumber .LT. 0 )THEN
 

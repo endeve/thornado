@@ -87,7 +87,8 @@ CONTAINS
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
                  ConstantDensity_Option, Angle_Option, RiemannProblemName_Option, &
-                 MMBlastWaveB0_Option, MMBlastWavePhi_Option, EvolveOnlyMagnetic_Option )
+                 MMBlastWaveB0_Option, MMBlastWavePhi_Option, &
+                 OTScaleFactor_Option, EvolveOnlyMagnetic_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
@@ -97,6 +98,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWaveB0_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWavePhi_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: OTScaleFactor_Option
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWaveX1'
     CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
@@ -105,6 +107,7 @@ CONTAINS
     REAL(DP)          :: Angle = Pi / Four
     REAL(DP)          :: MMBlastWaveB0 = 0.5_DP
     REAL(DP)          :: MMBlastWavePhi = 0.0_DP
+    REAL(DP)          :: OTScaleFactor = 100
 
     LOGICAL           :: EvolveOnlyMagnetic = .FALSE.
 
@@ -130,6 +133,9 @@ CONTAINS
 
     IF( PRESENT( MMBlastWavePhi_Option ) ) &
       MMBlastWavePhi = MMBlastWavePhi_Option
+
+    IF( PRESENT( OTScaleFactor_Option ) ) &
+      OTScaleFactor = OTScaleFactor_Option
 
     IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
       EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
@@ -168,6 +174,10 @@ CONTAINS
 
         CALL InitializeFields_MMBlastWave2D &
                ( MMBlastWaveB0, MMBlastWavePhi, EvolveOnlyMagnetic )
+
+      CASE( 'OrszagTang2D' )
+
+        CALL InitializeFields_OrszagTang2D( OTScaleFactor, EvolveOnlyMagnetic )
 
       CASE DEFAULT
 
@@ -1451,6 +1461,94 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_MMBlastWave2D
+
+
+  SUBROUTINE InitializeFields_OrszagTang2D( OTScaleFactor, EvolveOnlyMagnetic )
+
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic
+    REAL(DP), INTENT(in) :: OTScaleFactor
+
+    INTEGER iX1, iX2, iX3
+    INTEGER iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+    REAL(DP) :: VSq, W
+    REAL(DP) :: CB1, CB2, CB3, VdotB
+
+    ! --- 2D Orszag-Tang vortex based on the approach taken  ---
+    ! --- in Section 4.6 of Anninos et al., 2017, ApJ Supp., ---
+    ! --- 231:17                                             ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_D   ) = Gamma_IDEAL**2 / ( FourPi )
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ) = -SIN( TwoPi * X2 ) / OTScaleFactor
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ) =  SIN( TwoPi * X1 ) / OTScaleFactor
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ) = Zero
+        uPM(iNodeX,iX1,iX2,iX3,iPM_E   ) = Gamma_IDEAL &
+                                           / ( FourPi * ( Gamma_IDEAL - One ) &
+                                               * OTScaleFactor**2 )
+
+        VSq = uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
+              + uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
+              + uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2
+
+        W = One / ( One - VSq )
+
+        CB1 = -SIN( TwoPi  * X2 ) / ( SQRT( FourPi ) * OTScaleFactor )
+        CB2 =  SIN( FourPi * X1 ) / ( SQRT( FourPi ) * OTScaleFactor )
+        CB3 =  Zero
+
+        VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) * CB1 &
+                * uPM(iNodeX,iX1,iX2,iX3,iPM_V2) * CB2 &
+                * uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * CB3
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = W * VdotB * uPM(iNodeX,iX1,iX2,iX3,iPM_V1) + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = W * VdotB * uPM(iNodeX,iX1,iX2,iX3,iPM_V2) + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = W * VdotB * uPM(iNodeX,iX1,iX2,iX3,iPM_V3) + CB3 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = Zero
+
+      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_E ), &
+               uPM(:,iX1,iX2,iX3,iPM_Ne), uAM(:,iX1,iX2,iX3,iAM_P) )
+
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_OrszagTang2D
 
 
 END MODULE InitializationModule
