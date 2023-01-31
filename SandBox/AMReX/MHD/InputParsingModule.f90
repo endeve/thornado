@@ -118,6 +118,7 @@ CONTAINS
 
     UsePhysicalUnits      = .FALSE.
     PlotFileBaseName      = 'thornado'
+    WriteNodalData        = .FALSE.
     NodalDataFileNameBase = 'NodalData'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -136,6 +137,7 @@ CONTAINS
       CALL PP % get   ( 'iRestart'             , iRestart              )
       CALL PP % query ( 'UsePhysicalUnits'     , UsePhysicalUnits      )
       CALL PP % query ( 'PlotFileBaseName'     , PlotFileBaseName      )
+      CALL PP % query ( 'WriteNodalData'       , WriteNodalData        )
       CALL PP % query ( 'NodalDataFileNameBase', NodalDataFileNameBase )
     CALL amrex_parmparse_destroy( PP )
 
@@ -274,11 +276,7 @@ CONTAINS
     ALLOCATE( t(0:nLevels-1) )
     t = 0.0e0_DP
 
-    PRINT*, 'Creating magnetofluid fields.'
-
     CALL CreateFields_MF( nLevels )
-
-    PRINT*, 'Magnetofluid fields have been created.'
 
   END SUBROUTINE InitializeParameters
 

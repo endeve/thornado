@@ -18,6 +18,8 @@ PROGRAM ApplicationDriver
 
   USE MF_KindModule,                    ONLY: &
     DP
+  USE MF_UtilitiesModule,               ONLY: &
+    WriteNodalDataToFile
   USE MF_MHD_UtilitiesModule,           ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
@@ -51,7 +53,8 @@ PROGRAM ApplicationDriver
     iCycleD,   &
     iCycleW,   &
     iCycleChk, &
-    GEOM
+    GEOM,      &
+    WriteNodalData
 
   IMPLICIT NONE
 
@@ -60,7 +63,17 @@ PROGRAM ApplicationDriver
   INTEGER  :: iErr
   REAL(DP) :: Timer_Evolution
 
+  CHARACTER(LEN=6) :: NodalFileBaseName
+
   CALL InitializeProgram
+
+  IF( WriteNodalData )THEN
+
+    WRITE( NodalFileBaseName, '(I6.6)' ) StepNo
+
+    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
+
+  END IF
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
@@ -192,6 +205,14 @@ PROGRAM ApplicationDriver
            MF_uPM_Option = MF_uPM, &
            MF_uAM_Option = MF_uAM, &
            MF_uDM_Option = MF_uDM )
+
+  IF( WriteNodalData )THEN
+
+    WRITE( NodalFileBaseName, '(I6.6)' ) StepNo
+
+    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
+
+  END IF
 
   ! --- Finalize everything ---
 

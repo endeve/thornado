@@ -353,14 +353,20 @@ CONTAINS
       iLo = 1  - swX
       iHi = nX + swX
 
-      OPEN( UNIT = 100, FILE = TRIM( FileNameBase ) // 'r.dat'      )
-      OPEN( UNIT = 101, FILE = TRIM( FileNameBase ) // 'Alpha.dat'  )
-      OPEN( UNIT = 102, FILE = TRIM( FileNameBase ) // 'Psi.dat'    )
-      OPEN( UNIT = 103, FILE = TRIM( FileNameBase ) // 'SqrtGm.dat' )
-      OPEN( UNIT = 104, FILE = TRIM( FileNameBase ) // 'D.dat'      )
-      OPEN( UNIT = 105, FILE = TRIM( FileNameBase ) // 'V.dat'      )
-      OPEN( UNIT = 106, FILE = TRIM( FileNameBase ) // 'E.dat'      )
-      OPEN( UNIT = 107, FILE = TRIM( FileNameBase ) // 'P.dat'      )
+      OPEN( UNIT = 100, FILE = TRIM( FileNameBase ) // '_X1.dat'     )
+      OPEN( UNIT = 101, FILE = TRIM( FileNameBase ) // '_Alpha.dat'  )
+      OPEN( UNIT = 102, FILE = TRIM( FileNameBase ) // '_Psi.dat'    )
+      OPEN( UNIT = 103, FILE = TRIM( FileNameBase ) // '_SqrtGm.dat' )
+      OPEN( UNIT = 104, FILE = TRIM( FileNameBase ) // '_PD.dat'     )
+      OPEN( UNIT = 105, FILE = TRIM( FileNameBase ) // '_PV1.dat'    )
+      OPEN( UNIT = 106, FILE = TRIM( FileNameBase ) // '_PV2.dat'    )
+      OPEN( UNIT = 107, FILE = TRIM( FileNameBase ) // '_PV3.dat'    )
+      OPEN( UNIT = 108, FILE = TRIM( FileNameBase ) // '_PB1.dat'    )
+      OPEN( UNIT = 109, FILE = TRIM( FileNameBase ) // '_PB2.dat'    )
+      OPEN( UNIT = 110, FILE = TRIM( FileNameBase ) // '_PB3.dat'    )
+      OPEN( UNIT = 111, FILE = TRIM( FileNameBase ) // '_PChi.dat'   )
+      OPEN( UNIT = 112, FILE = TRIM( FileNameBase ) // '_E.dat'      )
+      OPEN( UNIT = 113, FILE = TRIM( FileNameBase ) // '_P.dat'      )
 
       WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
 
@@ -435,10 +441,34 @@ CONTAINS
             / unitsPM(iPM_V1)
 
         WRITE(106,FMT) &
+          P(:,iPM_V1) &
+            / unitsPM(iPM_V2)
+
+        WRITE(107,FMT) &
+          P(:,iPM_V1) &
+            / unitsPM(iPM_V3)
+
+        WRITE(108,FMT) &
+          P(:,iPM_V1) &
+            / unitsPM(iPM_B1)
+
+        WRITE(109,FMT) &
+          P(:,iPM_V1) &
+            / unitsPM(iPM_B2)
+
+        WRITE(110,FMT) &
+          P(:,iPM_V1) &
+            / unitsPM(iPM_B3)
+
+        WRITE(111,FMT) &
+          P(:,iPM_V1) &
+            / unitsPM(iPM_Chi)
+
+        WRITE(112,FMT) &
           P(:,iPM_E) &
             / unitsPM(iPM_E)
 
-        WRITE(107,FMT) &
+        WRITE(113,FMT) &
           A(:,iAM_P) &
             / unitsAM(iAM_P)
 
