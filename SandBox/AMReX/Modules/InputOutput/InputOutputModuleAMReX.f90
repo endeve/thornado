@@ -34,7 +34,12 @@ MODULE InputOutputModuleAMReX
     amrex_geometry_destroy
   USE amrex_amrcore_module, ONLY: &
     amrex_get_amrcore, &
-    amrex_ref_ratio
+    amrex_get_numlevels, &
+    amrex_ref_ratio, &
+    amrex_set_boxarray, &
+    amrex_set_distromap, &
+    amrex_set_geometry, &
+    amrex_set_finest_level
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_myproc
@@ -96,7 +101,8 @@ MODULE InputOutputModuleAMReX
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    Two
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -179,36 +185,6 @@ MODULE InputOutputModuleAMReX
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadMultiFabData
 
-    SUBROUTINE amrex_fi_set_boxarray( iLevel, pBA, amrcore ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      TYPE(c_ptr),    VALUE :: pBA
-      INTEGER(c_int), VALUE :: iLevel
-      TYPE(c_ptr),    VALUE :: amrcore
-    END SUBROUTINE amrex_fi_set_boxarray
-
-    SUBROUTINE amrex_fi_set_distromap( iLevel, pDM, amrcore ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      TYPE(c_ptr),    VALUE :: pDM
-      INTEGER(c_int), VALUE :: iLevel
-      TYPE(c_ptr),    VALUE :: amrcore
-    END SUBROUTINE amrex_fi_set_distromap
-
-    SUBROUTINE amrex_fi_clone_boxarray( bao, bai ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      TYPE(c_ptr)        :: bao
-      TYPE(c_ptr), VALUE :: bai
-    END SUBROUTINE amrex_fi_clone_boxarray
-
-    SUBROUTINE amrex_fi_set_finest_level( iLevel, amrcore ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      INTEGER(c_int), VALUE :: iLevel
-      TYPE(c_ptr),    VALUE :: amrcore
-    END SUBROUTINE amrex_fi_set_finest_level
-
   END INTERFACE
 
 CONTAINS
@@ -220,8 +196,8 @@ CONTAINS
       MF_uAF_Option, MF_uDF_Option, &
       MF_uCR_Option, MF_uPR_Option, PlotFileNumber_Option )
 
-    REAL(DP),             INTENT(in) :: Time
-    INTEGER,              INTENT(in) :: StepNo(0:)
+    REAL(DP)            , INTENT(in) :: Time
+    INTEGER             , INTENT(in) :: StepNo(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:)
@@ -230,7 +206,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
-    INTEGER,              INTENT(in), OPTIONAL :: PlotFileNumber_Option
+    INTEGER             , INTENT(in), OPTIONAL :: PlotFileNumber_Option
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
@@ -569,6 +545,7 @@ CONTAINS
     TYPE(amrex_boxarray)  :: BA  (0:nMaxLevels-1)
     TYPE(amrex_geometry)  :: GEOM(0:nMaxLevels-1)
 
+    INTEGER :: nXX(3)
     INTEGER :: FinestLevelArr(0:0) ! Hack
 
     LOGICAL :: ReadFields_uCF
@@ -584,11 +561,12 @@ CONTAINS
 
     amrcore = amrex_get_amrcore()
 
-    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
-
     DO iLevel = 0, nMaxLevels-1
 
-      CALL amrex_boxarray_build ( BA(iLevel), BX )
+      nXX = Two**( iLevel ) * nX
+      BX = amrex_box( [ 0, 0, 0 ], [ nXX(1)-1, nXX(2)-1, nXX(3)-1 ] )
+
+      CALL amrex_boxarray_build( BA(iLevel), BX )
 
       CALL BA(iLevel) % maxSize( MaxGridSizeX )
 
@@ -604,24 +582,18 @@ CONTAINS
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
 
-    FinestLevel = FinestLevelArr(0)
-    nLevels = FinestLevel + 1
+    FinestLevel = FinestLevelArr(0) ! Hack
+    CALL amrex_set_finest_level( FinestLevel )
+    nLevels = amrex_get_numlevels()
 
     DO iLevel = 0, nLevels-1
 
       BA(iLevel) = pBA(iLevel)
       DM(iLevel) = pDM(iLevel)
 
-    END DO
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
-      CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
-
-    END DO
-
-    DO iLevel = 0, nLevels-1
+      CALL amrex_set_boxarray ( iLevel, BA  (iLevel) )
+      CALL amrex_set_distromap( iLevel, DM  (iLevel) )
+      CALL amrex_set_geometry ( iLevel, GEOM(iLevel) )
 
       CALL amrex_multifab_build &
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
@@ -717,8 +689,6 @@ CONTAINS
 
     END IF
 
-    CALL amrex_fi_set_finest_level( FinestLevel, amrcore )
-
   END SUBROUTINE ReadCheckpointFile
 
 
@@ -728,10 +698,10 @@ CONTAINS
   SUBROUTINE ComputeCellAverage_X_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
-    INTEGER,              INTENT(in)    :: nFd, iOS
+    INTEGER             , INTENT(in)    :: nFd, iOS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(in)    :: MF
-    CHARACTER(2),         INTENT(in)    :: Field
+    CHARACTER(2)        , INTENT(in)    :: Field
     TYPE(amrex_multifab), INTENT(inout) :: MF_plt
 
     INTEGER                       :: iX1, iX2, iX3, iFd
@@ -749,9 +719,9 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      G     => MF_uGF % DataPtr( MFI )
-      U     => MF     % DataPtr( MFI )
-      U_plt => MF_plt % DataPtr( MFI )
+      G     => MF_uGF   % DataPtr( MFI )
+      U     => MF       % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -792,10 +762,10 @@ CONTAINS
   SUBROUTINE ComputeCellAverage_Z_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
-    INTEGER,              INTENT(in)    :: nFd, iOS
+    INTEGER             , INTENT(in)    :: nFd, iOS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(in)    :: MF
-    CHARACTER(2),         INTENT(in)    :: Field
+    CHARACTER(2)        , INTENT(in)    :: Field
     TYPE(amrex_multifab), INTENT(inout) :: MF_plt
 
     INTEGER                       :: iX1, iX2, iX3, iFd, iS, iZ1, iNZ, iNE
@@ -878,8 +848,8 @@ CONTAINS
   SUBROUTINE ConvertUnits( Field, nFd, iOS, U_plt )
 
     CHARACTER(2), INTENT(in)    :: Field
-    INTEGER,      INTENT(in)    :: nFd, iOS
-    REAL(DP),     INTENT(inout) :: U_plt(:,:,:,:)
+    INTEGER     , INTENT(in)    :: nFd, iOS
+    REAL(DP)    , INTENT(inout) :: U_plt(:,:,:,:)
 
     INTEGER :: iFd
 
@@ -965,7 +935,7 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      U_plt => MF_plt % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -988,7 +958,7 @@ CONTAINS
 
   SUBROUTINE WriteMesh( iLevel, MF_uGF, MF_plt )
 
-    INTEGER,              INTENT(in)    :: iLevel
+    INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_plt
 
@@ -1006,7 +976,7 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      U_plt => MF_plt % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
