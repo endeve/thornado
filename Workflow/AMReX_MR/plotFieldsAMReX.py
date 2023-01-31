@@ -25,7 +25,7 @@ Alernate usage, plot specific file in PlotFileDirectory:
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'AdiabaticCollapse_XCFC'
+ProblemName = 'RiemannProblem1D'
 
 # Specify title of figure
 FigTitle = ProblemName
@@ -33,7 +33,7 @@ FigTitle = ProblemName
 # Specify directory containing amrex plotfiles
 PlotFileDirectory \
   = '/home/kkadoogan/Work/Codes/\
-thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
+thornado/SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
 # Specify plot file base name
 PlotFileBaseName = ProblemName + '.plt'
@@ -42,15 +42,15 @@ PlotFileBaseName = ProblemName + '.plt'
 Field = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale_X  = True
-UseLogScale_Y  = True
+UseLogScale_X  = False
+UseLogScale_Y  = False
 UseLogScale_2D = False
 
 # Specify whether or not to use physical units
-UsePhysicalUnits = True
+UsePhysicalUnits = False
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical')
-CoordinateSystem = 'spherical'
+CoordinateSystem = 'cartesian'
 
 # Specify colormap (2D only)
 cmap = 'viridis'
