@@ -12,8 +12,7 @@ MODULE MF_Euler_SlopeLimiterModule
     amrex_multifab, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy, &
-    amrex_imultifab
+    amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
