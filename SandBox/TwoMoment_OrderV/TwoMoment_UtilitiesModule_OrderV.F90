@@ -1565,8 +1565,46 @@ CONTAINS
       Verbose = .FALSE.
     END IF
 
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width, &
+        dE  => MeshE    % Width, &
+        E_C => MeshE    % Center )
+
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+    TimeStep_X = HUGE( One )
+    TimeStep_E = HUGE( One )
+    dt_X       = HUGE( One )
+    dt_E       = HUGE( One )
+
+    CALL GetQuadrature( nNodes, xQ, wQ, 'Lobatto' )
+
+    CFL_Eff_X = Gamma_X * wQ(nNodes) / DBLE( nDimsX )
+    CFL_Eff_E = Gamma_E * wQ(nNodes)
+
+    dE_Min = HUGE( One ) ! --- Min of dE / E_H
+    DO iE = iZ_B0(1), iZ_E0(1)
+      dE_Min = MIN( dE_Min, dE(iE) / ( E_C(iE) + Half * dE(iE) ) )
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F ) &
+    !$OMP MAP( alloc: dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$OMP             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$OMP             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F ) &
+    !$ACC CREATE( dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#endif
 
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
@@ -1580,28 +1618,30 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
              dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 
-    TimeStep_X = HUGE( One )
-    TimeStep_E = HUGE( One )
-    dt_X       = HUGE( One )
-    dt_E       = HUGE( One )
-
-    CALL GetQuadrature( nNodes, xQ, wQ, 'Lobatto' )
-
-    CFL_Eff_X = Gamma_X * wQ(nNodes) / DBLE( nDimsX )
-    CFL_Eff_E = Gamma_E * wQ(nNodes)
-
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width, &
-        dX2 => MeshX(2) % Width, &
-        dX3 => MeshX(3) % Width, &
-        dE  => MeshE    % Width, &
-        E_C => MeshE    % Center )
-
-    dE_Min = HUGE( One ) ! --- Min of dE / E_H
-    DO iE = iZ_B0(1), iZ_E0(1)
-      dE_Min = MIN( dE_Min, dE(iE) / ( E_C(iE) + Half * dE(iE) ) )
-    END DO
-
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
+    !$OMP          h_d_1, h_d_2, h_d_3, &
+    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP          V_d_1, V_d_2, V_d_3 ) &
+    !$OMP REDUCTION( MIN : TimeStep_X, TimeStep_E ) &
+    !$OMP MAP( from: TimeStep_X, TimeStep_E )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
+    !$ACC          h_d_1, h_d_2, h_d_3, &
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC          V_d_1, V_d_2, V_d_3 ) &
+    !$ACC REDUCTION( MIN : TimeStep_X, TimeStep_E ) &
+    !$ACC COPYOUT( TimeStep_X, TimeStep_E )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
+    !$OMP          h_d_1, h_d_2, h_d_3, &
+    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP          V_d_1, V_d_2, V_d_3 ) &
+    !$OMP REDUCTION( MIN : TimeStep_X, TimeStep_E )
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -1666,14 +1706,30 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1, etc.
-
     TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
 
     IF( Verbose )THEN
       WRITE(*,'(A8,A7,ES12.6E2,A8,ES12.6E2)') &
         '', 'dt_X = ', TimeStep_X, ' dt_E = ', TimeStep_E
     END IF
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$OMP               dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$OMP               dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$OMP               dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$ACC         dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#endif
+
+    END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Realizability
 
