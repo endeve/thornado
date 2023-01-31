@@ -1593,14 +1593,18 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F ) &
+    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$OMP          TimeStep_X, TimeStep_E, dt_X, dt_E,  &
+    !$OMP          CFL, CFL_Eff_X, CFL_Eff_E, dE_Min ) &
     !$OMP MAP( alloc: dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
     !$OMP             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
     !$OMP             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F ) &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$ACC         TimeStep_X, TimeStep_E, dt_X, dt_E,  &
+    !$ACC         CFL, CFL_Eff_X, CFL_Eff_E, dE_Min ) &
     !$ACC CREATE( dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
     !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
     !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
@@ -1624,16 +1628,14 @@ CONTAINS
     !$OMP          h_d_1, h_d_2, h_d_3, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
     !$OMP          V_d_1, V_d_2, V_d_3 ) &
-    !$OMP REDUCTION( MIN : TimeStep_X, TimeStep_E ) &
-    !$OMP MAP( from: TimeStep_X, TimeStep_E )
+    !$OMP REDUCTION( MIN : TimeStep_X, TimeStep_E )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
     !$ACC          h_d_1, h_d_2, h_d_3, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
     !$ACC          V_d_1, V_d_2, V_d_3 ) &
-    !$ACC REDUCTION( MIN : TimeStep_X, TimeStep_E ) &
-    !$ACC COPYOUT( TimeStep_X, TimeStep_E )
+    !$ACC REDUCTION( MIN : TimeStep_X, TimeStep_E )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
@@ -1706,28 +1708,34 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: TimeStep_X, TimeStep_E ) &
+    !$OMP MAP( release: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$OMP               dt_X, dt_E,  &
+    !$OMP               CFL, CFL_Eff_X, CFL_Eff_E, dE_Min, &
+    !$OMP               dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$OMP               dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$OMP               dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( TimeStep_X, TimeStep_E ) &
+    !$ACC DELETE( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$ACC         dt_X, dt_E,  &
+    !$ACC         CFL, CFL_Eff_X, CFL_Eff_E, dE_Min, &
+    !$ACC         dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#endif
+
     TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
 
     IF( Verbose )THEN
       WRITE(*,'(A8,A7,ES12.6E2,A8,ES12.6E2)') &
         '', 'dt_X = ', TimeStep_X, ' dt_E = ', TimeStep_E
     END IF
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-    !$OMP               dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-    !$OMP               dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-    !$OMP               dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
-#elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA &
-    !$ACC DELETE( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-    !$ACC         dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
-#endif
 
     END ASSOCIATE ! dX1, etc.
 
