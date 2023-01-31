@@ -47,10 +47,6 @@ MODULE MF_Euler_PositivityLimiterModule
   USE MF_KindModule, ONLY: &
     DP, &
     One
-  USE FineMaskModule, ONLY: &
-    MakeFineMask, &
-    DestroyFineMask, &
-    iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
@@ -186,14 +182,12 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
-    TYPE(amrex_box)       :: BX
-    TYPE(amrex_mfiter)    :: MFI
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -209,16 +203,13 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
-
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF  => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF  => MF_uDF(iLevel) % DataPtr( MFI )
-      Mask => iMF_Mask       % DataPtr( MFI )
+      uGF => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF => MF_uDF(iLevel) % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 
@@ -259,7 +250,7 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL ApplyPositivityLimiter_Euler &
-             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D, Mask_Option = Mask )
+             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
@@ -283,8 +274,6 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
-
-    CALL DestroyFineMask( iLevel, iMF_Mask )
 
     CALL DestroyMesh_MF( MeshX )
 

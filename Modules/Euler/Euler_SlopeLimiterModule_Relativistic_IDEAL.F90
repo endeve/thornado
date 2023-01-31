@@ -48,13 +48,13 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_Beta_3, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
+    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nCF, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_Euler, &
@@ -311,27 +311,20 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-      SuppressBC_Option, iApplyBC_Option, Mask_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in)           :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER :: Mask(iX_B1(1):iX_E1(1), &
-                    iX_B1(2):iX_E1(2), &
-                    iX_B1(3):iX_E1(3),1:1)
 
     LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
@@ -438,12 +431,6 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
-    IF( PRESENT( Mask_Option ) )THEN
-      Mask = Mask_Option
-    ELSE
-      Mask = 0
-    END IF
-
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
@@ -492,16 +479,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-    !$OMP             dX1, dX2, dX3, Mask ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
     !$OMP MAP( alloc: U_N, U_X, SqrtGm, Vol, U_K, U_M, &
     !$OMP             a1, b1, c1, a2, b2, c2, a3, b3, c3, &
     !$OMP             dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
     !$OMP             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-    !$ACC             dX1, dX2, dX3, Mask ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
     !$ACC CREATE(     U_N, U_X, SqrtGm, Vol, U_K, U_M, &
     !$ACC             a1, b1, c1, a2, b2, c2, a3, b3, c3, &
     !$ACC             dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
@@ -855,7 +840,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, U_M, dU_X1, dU_X2, dU_X3, D, &
-    !$ACC          SlopeDifference, Mask )
+    !$ACC          SlopeDifference )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -865,8 +850,6 @@ CONTAINS
     DO iCF = 1, nCF
 
       LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
-
-      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
 
@@ -915,7 +898,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B1, iX_E1, U_N, U, Mask )
+    !$ACC PRESENT( iX_B1, iX_E1, U_N, U )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
@@ -924,8 +907,6 @@ CONTAINS
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iCF = 1, nCF
     DO iNX = 1, nDOFX
-
-!      IF( Mask(iX1,iX2,iX3,1) .EQ. 1 ) CYCLE
 
       U(iNX,iX1,iX2,iX3,iCF) = U_N(iNX,iCF,iX1,iX2,iX3)
 
@@ -942,7 +923,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U, D ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, Mask, &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$OMP               U_N, U_X, SqrtGm, Vol, U_K, U_M, &
     !$OMP               a1, b1, c1, a2, b2, c2, a3, b3, c3, &
     !$OMP               dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &
@@ -950,7 +931,7 @@ CONTAINS
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, D ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, Mask, &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$ACC               U_N, U_X, SqrtGm, Vol, U_K, U_M, &
     !$ACC               a1, b1, c1, a2, b2, c2, a3, b3, c3, &
     !$ACC               dU_X1, dU_X2, dU_X3, SlopeDifference, LimitedCell, &

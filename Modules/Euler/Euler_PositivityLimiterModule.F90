@@ -123,26 +123,16 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Mask_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    INTEGER,  INTENT(in)   :: &
+    INTEGER,  INTENT(in)              :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)   :: &
+    REAL(DP), INTENT(in)              :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)           :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout), OPTIONAL :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER,  INTENT(in)   , OPTIONAL :: &
-      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(2):,1:)
-
-    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
-
-    IF( PRESENT( Mask_Option ) )THEN
-      Mask = Mask_Option
-    ELSE
-      Mask = 0
-    END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -163,7 +153,7 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask_Option = Mask )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #else
 
