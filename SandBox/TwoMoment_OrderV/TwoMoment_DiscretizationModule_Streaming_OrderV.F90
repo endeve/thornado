@@ -1103,7 +1103,7 @@ CONTAINS
     !$ACC DELETE( dZ1, dZ3, dZ4, &
     !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -1283,7 +1283,7 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -1879,7 +1879,7 @@ CONTAINS
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -2059,7 +2059,7 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -2655,7 +2655,7 @@ CONTAINS
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
