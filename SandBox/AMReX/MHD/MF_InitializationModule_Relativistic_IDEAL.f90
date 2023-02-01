@@ -188,14 +188,21 @@ CONTAINS
 
     CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
 
-    AdvectionProfile = 'SineWaveX1'
+    AdvectionProfile = 'HydroSineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % query( 'AdvectionProfile', AdvectionProfile )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( TRIM( AdvectionProfile ) .NE. 'SineWaveX1' &
-        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX2' &
-        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX1X2' )THEN
+    IF( TRIM( AdvectionProfile ) .NE. 'HydroSineWaveX1' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'HydroSineWaveX2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'HydroSineWaveX1X2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'MagneticSineWaveX1' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'MagneticSineWaveX2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'MagneticSineWaveX1X2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX1' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenOblique' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'LoopAdvection' )THEN
 
       IF( amrex_parallel_ioprocessor() )THEN
 
@@ -204,9 +211,16 @@ CONTAINS
           'Invalid choice for AdvectionProfile: ', &
           TRIM( AdvectionProfile )
         WRITE(*,'(A)') 'Valid choices:'
-        WRITE(*,'(A)') '  SineWaveX1'
-        WRITE(*,'(A)') '  SineWaveX2'
-        WRITE(*,'(A)') '  SineWaveX1X2'
+        WRITE(*,'(A)') '  HydroSineWaveX1'
+        WRITE(*,'(A)') '  HydroSineWaveX2'
+        WRITE(*,'(A)') '  HydroSineWaveX1X2'
+        WRITE(*,'(A)') '  MagneticSineWaveX1'
+        WRITE(*,'(A)') '  MagneticSineWaveX2'
+        WRITE(*,'(A)') '  MagneticSineWaveX1X2'
+        WRITE(*,'(A)') '  CPAlfvenX1'
+        WRITE(*,'(A)') '  CPAlfvenX2'
+        WRITE(*,'(A)') '  CPAlfvenOblique'
+        WRITE(*,'(A)') '  LoopAdvection'
         WRITE(*,*)
         WRITE(*,'(A)') 'Stopping...'
 
@@ -265,30 +279,78 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-            IF     ( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
+            IF     ( TRIM( AdvectionProfile ) .EQ. 'HydroSineWaveX1' )THEN
 
-              uPM_K(iNX,iPM_D ) = One + 0.1_DP * SIN( TwoPi * X1 )
-              uPM_K(iNX,iPM_V1) = 0.1_DP
-              uPM_K(iNX,iPM_V2) = Zero
-              uPM_K(iNX,iPM_V3) = Zero
-              uPM_K(iNX,iPM_E ) = One / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_D )  = One + 0.1_DP * SIN( TwoPi * X1 )
+              uPM_K(iNX,iPM_V1)  = 0.1_DP
+              uPM_K(iNX,iPM_V2)  = Zero
+              uPM_K(iNX,iPM_V3)  = Zero
+              uPM_K(iNX,iPM_E )  = One / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_B1)  = Zero
+              uPM_K(iNX,iPM_B2)  = Zero
+              uPM_K(iNX,iPM_B3)  = Zero
+              uPM_K(iNX,iPM_Chi) = Zero
 
-            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX2' )THEN
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'HydroSineWaveX2' )THEN
 
-              uPM_K(iNX,iPM_D ) = One + 0.1_DP * SIN( TwoPi * X2 )
-              uPM_K(iNX,iPM_V1) = Zero
-              uPM_K(iNX,iPM_V2) = 0.1_DP
-              uPM_K(iNX,iPM_V3) = Zero
-              uPM_K(iNX,iPM_E ) = One / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_D )  = One + 0.1_DP * SIN( TwoPi * X2 )
+              uPM_K(iNX,iPM_V1)  = Zero
+              uPM_K(iNX,iPM_V2)  = 0.1_DP
+              uPM_K(iNX,iPM_V3)  = Zero
+              uPM_K(iNX,iPM_E )  = One / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_B1)  = Zero
+              uPM_K(iNX,iPM_B2)  = Zero
+              uPM_K(iNX,iPM_B3)  = Zero
+              uPM_K(iNX,iPM_Chi) = Zero
 
-            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1X2' )THEN
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'HydroSineWaveX1X2' )THEN
 
               uPM_K(iNX,iPM_D ) &
                 = One + 0.1_DP * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
-              uPM_K(iNX,iPM_V1) = 0.1_DP * COS( Pi / Four )
-              uPM_K(iNX,iPM_V2) = 0.1_DP * SIN( Pi / Four )
-              uPM_K(iNX,iPM_V3) = Zero
-              uPM_K(iNX,iPM_E ) = One / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_V1)  = 0.1_DP / SQRT( Two )
+              uPM_K(iNX,iPM_V2)  = 0.1_DP / SQRT( Two )
+              uPM_K(iNX,iPM_V3)  = Zero
+              uPM_K(iNX,iPM_E )  = One / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_B1)  = Zero
+              uPM_K(iNX,iPM_B2)  = Zero
+              uPM_K(iNX,iPM_B3)  = Zero
+              uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'MagneticSineWaveX1' )THEN
+
+              uPM_K(iNX,iPM_D )  = One
+              uPM_K(iNX,iPM_V1)  = 0.1_DP
+              uPM_K(iNX,iPM_V2)  = Zero
+              uPM_K(iNX,iPM_V3)  = Zero
+              uPM_K(iNX,iPM_E )  = 1.0d-4 / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_B1)  = 1.0d-4
+              uPM_K(iNX,iPM_B2)  = 1.0d-4 * SIN( TwoPi * X1 )
+              uPM_K(iNX,iPM_B3)  = 1.0d-4 * COS( TwoPi * X1 )
+              uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'MagneticSineWaveX2' )THEN
+
+              uPM_K(iNX,iPM_D )  = One
+              uPM_K(iNX,iPM_V1)  = 0.1_DP
+              uPM_K(iNX,iPM_V2)  = Zero
+              uPM_K(iNX,iPM_V3)  = Zero
+              uPM_K(iNX,iPM_E )  = 1.0d-4 / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_B1)  = 1.0d-4 * SIN( TwoPi * X2 )
+              uPM_K(iNX,iPM_B2)  = 1.0d-4
+              uPM_K(iNX,iPM_B3)  = 1.0d-4 * COS( TwoPi * X1 )
+              uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'MagneticSineWaveX1X2' )THEN
+
+              uPM_K(iNX,iPM_D )  = One
+              uPM_K(iNX,iPM_V1)  = 0.1_DP / SQRT( Two )
+              uPM_K(iNX,iPM_V2)  = 0.1_DP / SQRT( Two )
+              uPM_K(iNX,iPM_V3)  = Zero
+              uPM_K(iNX,iPM_E )  = 1.0d-4 / ( Gamma_IDEAL - One )
+              uPM_K(iNX,iPM_B1)  = 1.0d-4 / SQRT( Two )
+              uPM_K(iNX,iPM_B2)  = 1.0d-4 / SQRT( Two )
+              uPM_K(iNX,iPM_B3)  = 1.0d-4 * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
+              uPM_K(iNX,iPM_Chi) = Zero
 
             END IF
 

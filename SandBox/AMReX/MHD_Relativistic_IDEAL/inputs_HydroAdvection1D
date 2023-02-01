@@ -6,7 +6,9 @@
 DEBUG = 0
 
 thornado.ProgramName      = "Advection"
-thornado.AdvectionProfile = "SineWaveX1"
+thornado.AdvectionProfile = "HydroSineWaveX1"
+
+thornado.WriteNodalData = 1
 
 thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
 
@@ -40,5 +42,9 @@ amr.blocking_factor_x = 1
 amr.max_level         = 0
 
 # Equation of state parameters
-#EoS.Gamma = 1.6666666666666667 # Ideal Gas EoS Gamma
-EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma
+EoS.Gamma = 1.6666666666666667 # Ideal Gas EoS Gamma
+#EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma
+
+# MHD parameters
+MHD.EvolveOnlyMagnetic    = 0
+MHD.UseDivergenceCleaning = 0
