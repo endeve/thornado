@@ -17,8 +17,10 @@ MODULE MHD_UtilitiesModule
   PUBLIC :: Eigenvalues_MHD
   PUBLIC :: Flux_X1_MHD
   PUBLIC :: Flux_X2_MHD
+  PUBLIC :: Flux_X3_MHD
   PUBLIC :: NumericalFlux_MHD_X1
   PUBLIC :: NumericalFlux_MHD_X2
+  PUBLIC :: NumericalFlux_MHD_X3
 
   INTERFACE ComputePrimitive_MHD
     MODULE PROCEDURE ComputePrimitive_Scalar
@@ -300,6 +302,32 @@ CONTAINS
   END FUNCTION Flux_X2_MHD
 
 
+  FUNCTION Flux_X3_MHD &
+    ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, Lapse, & 
+      Shift_X1, Shift_X2, Shift_X3, &
+      UseDivergenceCleaning )
+
+    ! --- Shift is the first contravariant component of the shift-vector ---
+
+    REAL(DP)             :: Flux_X3_MHD(nCM)
+
+    LOGICAL,  INTENT(in) :: UseDivergenceCleaning
+
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
+                            B1, B2, B3, Chi, P
+    REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
+
+    ! --- Only needed for relativistic code ---
+    REAL(DP), INTENT(in) :: Lapse, Shift_X1, Shift_X2, Shift_X3
+
+    Flux_X3_MHD = Flux_X3_MHD_Relativistic &
+                      ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, &
+                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning )
+
+    RETURN
+  END FUNCTION Flux_X3_MHD
+
+
   FUNCTION NumericalFlux_MHD_X1 &
     ( uL, uR, fL, fR, aP, aM )
 
@@ -330,6 +358,22 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_MHD_X2
+
+
+  FUNCTION NumericalFlux_MHD_X3 &
+    ( uL, uR, fL, fR, aP, aM )
+
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP, aM
+
+    REAL(DP) :: NumericalFlux_MHD_X3(nCM)
+
+    NumericalFlux_MHD_X3 &
+      = NumericalFlux_MHD_HLL &
+          ( uL, uR, fL, fR, aP, aM )
+
+    RETURN
+  END FUNCTION NumericalFlux_MHD_X3
 
 
   FUNCTION NumericalFlux_MHD_HLL( uL, uR, fL, fR, aP, aM )

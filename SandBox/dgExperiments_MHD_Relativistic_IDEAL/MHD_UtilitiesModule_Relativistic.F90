@@ -83,6 +83,7 @@ MODULE MHD_UtilitiesModule_Relativistic
   PUBLIC :: Eigenvalues_MHD_Relativistic
   PUBLIC :: Flux_X1_MHD_Relativistic
   PUBLIC :: Flux_X2_MHD_Relativistic
+  PUBLIC :: Flux_X3_MHD_Relativistic
   PUBLIC :: NumericalFlux_HLL_MHD_Relativistic
 
   INTERFACE ComputePrimitive_MHD_Relativistic
@@ -1285,6 +1286,156 @@ CONTAINS
 
     RETURN
   END FUNCTION Flux_X2_MHD_Relativistic
+
+
+  !> Compute the physical flux in the X2-direction.
+  !> @param Vi The ith contravariant components of the three-velocity.
+  !> @param Gmii The ith covariant components of the spatial three-metric.
+  !> @param Shift The first contravariant component of the shift-vector.
+  FUNCTION Flux_X3_MHD_Relativistic &
+    ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, &
+      P, Gm11, Gm22, Gm33, Lapse, & 
+      Shift1, Shift2, Shift3, &
+      UseDivergenceCleaning )
+
+    LOGICAL,  INTENT(in) :: UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
+                            B1, B2, B3, Chi, P, &
+                            Gm11, Gm22, Gm33, Lapse, &
+                            Shift1, Shift2, Shift3
+
+    REAL(DP) :: VSq, W, Pstar, h, hStar, B0u, B0d, BSq, Flux_X3_MHD_Relativistic(nCM)
+
+
+  !PRINT*
+  !PRINT*, 'Input to Flux_X1_MHD_Relativistic Routine'
+  !PRINT*, '-----------------------------------------'
+  !PRINT*, 'D: ', D
+  !PRINT*, 'V1: ', V1
+  !PRINT*, 'V2: ', V2
+  !PRINT*, 'V3: ', V3
+  !PRINT*, 'E: ', E
+  !PRINT*, 'P: ', P
+  !PRINT*, 'Ne: ', Ne
+  !PRINT*, 'B1: ', B1
+  !PRINT*, 'B2: ', B2
+  !PRINT*, 'B3: ', B3
+  !PRINT*, 'Chi: ', Chi
+  !PRINT*, 'Gm11: ', Gm11
+  !PRINT*, 'Gm22: ', Gm22
+  !PRINT*, 'Gm33: ', Gm33
+  !PRINT*, 'Lapse: ', Lapse
+  !PRINT*, 'Shift1: ', Shift1
+  !PRINT*, 'Shift2: ', Shift2
+  !PRINT*, 'Shift3: ', Shift3
+  !PRINT*, '-----------------------------------------'
+  !PRINT*
+
+    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2 
+    W   = One / SQRT( One - VSq )
+
+    B0u = ( Gm11 * V1 * B1 &
+            + Gm22 * V2 * B2 &
+            + Gm33 * V3 * B3 ) &
+          / ( Lapse &
+              - Gm11 * V1 * Shift1 &
+              - Gm22 * V2 * Shift2 &
+              - Gm33 * V3 * Shift3 )
+
+    B0d =  - ( Lapse / W ) &
+             * ( Gm11 * V1 * B1 &
+                 + Gm22 * V2 * B2 &
+                 + Gm33 * V3 * B3 )
+
+    BSq = B0d * B0u &
+          + B0u * ( Gm11 * Shift1 * B1 &
+                    + Gm22 * Shift2 * B2 &
+                    + Gm33 * Shift3 * B3 ) &
+          + ( Gm11 * B1**2 &
+              + Gm22 * B2**2 &
+              + Gm33 * B3**2 )
+
+    hStar = One + ( E + P ) / D + BSq / D
+    pStar = P + BSq / 2.0_DP
+
+    Flux_X3_MHD_Relativistic(iCM_D)  &
+      = D * W * ( V3 - Shift3 / Lapse )
+
+   !PRINT*, 'iCM_D Flux: ', Flux_X2_MHD_Relativistic(iCM_D)
+
+    Flux_X3_MHD_Relativistic(iCM_S1) &
+      = D * hStar * W**2 * Gm11 * V1  * ( V3 - Shift3 / Lapse ) &
+        - Gm11 * ( B3 * B1 + B0u * B3 * Shift1 &
+                   + ( Lapse * B0u )**2 * Shift3 * Shift1 )
+
+   !PRINT*, 'iCM_S1 Flux: ', Flux_X2_MHD_Relativistic(iCM_S1)
+
+    Flux_X3_MHD_Relativistic(iCM_S2) &
+      = D * hStar * W**2 * Gm22 * V2  * ( V3 - Shift3 / Lapse ) &
+        - Gm22 * ( B3 * B2 + B0u * B3 * Shift2 &
+                   + ( Lapse * B0u )**2 * Shift3 * Shift2 )
+
+   !PRINT*, 'iCM_S2 Flux: ', Flux_X2_MHD_Relativistic(iCM_S2)
+
+    Flux_X3_MHD_Relativistic(iCM_S3) &
+      = D * hStar * W**2 * Gm33 * V3  * ( V3 - Shift3 / Lapse ) &
+        - Gm33 * ( B3**2 + B0u * B3 * Shift3 &
+                   + ( Lapse * B0u )**2 * Shift3**2 )
+
+   !PRINT*, 'iCM_S3 Flux: ', Flux_X2_MHD_Relativistic(iCM_S3)
+
+    Flux_X3_MHD_Relativistic(iCM_E)  &
+      = D * W * ( hStar * W - One ) * ( V3 - Shift3 / Lapse ) &
+        + Shift3 / Lapse * pStar &
+        - Lapse * B0u * B3 + Two * Lapse * (B0u)**2 * Shift3
+
+   !PRINT*, 'iCM_E Flux: ', Flux_X2_MHD_Relativistic(iCM_E)
+
+    Flux_X3_MHD_Relativistic(iCM_Ne) &
+      = Ne * W * ( V3 - Shift3 / Lapse )
+
+   !PRINT*, 'iCM_Ne Flux: ', Flux_X2_MHD_Relativistic(iCM_Ne)
+
+    IF( UseDivergenceCleaning )THEN
+
+      Flux_X3_MHD_Relativistic(iCM_B1) &
+        = Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift1 / Lapse ) &
+          + W * V3 * B1 - W * V1 * B3 &
+          - W * ( Shift3 / Lapse ) * B1
+
+      Flux_X3_MHD_Relativistic(iCM_B2) &
+        = Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift2 / Lapse ) &
+          + W * V3 * B2 - W * V2 * B3 &
+          - W * ( Shift3 / Lapse ) * B2 &
+          + ( Chi / Gm33 )
+
+      Flux_X3_MHD_Relativistic(iCM_B3) &
+        = Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift3 / Lapse ) &
+          - W * ( Shift3 / Lapse ) * B3
+
+      Flux_X3_MHD_Relativistic(iCM_Chi) &
+        = - Lapse * W * B0u + W * B3 - Chi * ( Shift3 / Lapse )
+
+    ELSE
+
+      Flux_X3_MHD_Relativistic(iCM_B1) &
+        = W * ( V3 - Shift3 / Lapse ) * B1 - W * ( V1 - Shift1 / Lapse ) * B3
+
+     !PRINT*, 'iCM_B2 Flux: ', Flux_X2_MHD_Relativistic(iCM_B1)
+
+      Flux_X3_MHD_Relativistic(iCM_B2) &
+        = W * ( V3 - Shift3 / Lapse ) * B2 - W * ( V2 - Shift2 / Lapse ) * B3
+
+      Flux_X3_MHD_Relativistic(iCM_B3) &
+        = 0.0_DP
+
+      Flux_X3_MHD_Relativistic(iCM_Chi) &
+        = 0.0_DP
+
+    END IF
+
+    RETURN
+  END FUNCTION Flux_X3_MHD_Relativistic
 
 
   !> Compute the Harten-Lax-van-Leer numerical flux at a given element
