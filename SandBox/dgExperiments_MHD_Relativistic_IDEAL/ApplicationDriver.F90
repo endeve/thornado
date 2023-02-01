@@ -326,6 +326,59 @@ PROGRAM ApplicationDriver
 
       END SELECT
 
+    CASE( 'Advection3D' )
+
+      SELECT CASE ( TRIM( AdvectionProfile ) )
+
+        CASE( 'HydroSineWaveX3' )
+
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'HydroSineWaveX3'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 1, 1 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 2, 2, 128 ]
+          swX = [ 1, 1, 1 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+        CASE( 'MagneticSineWaveX3' )
+
+          EvolveOnlyMagnetic = .TRUE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'MagneticSineWaveX3'
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 10.0_DP
+          bcX = [ 1, 0, 0 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 2, 2, 128 ]
+          swX = [ 1, 1, 1 ]
+          xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+          xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+        CASE DEFAULT
+
+          WRITE(*,*)
+          WRITE(*,'(A21,A)') 'Invalid AdvectionProfile: ', AdvectionProfile
+          WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  HydroSineWaveX3'
+          WRITE(*,'(A)')     '  MagneticSineWaveX3'
+          WRITE(*,'(A)')     'Stopping...'
+          STOP
+
+      END SELECT
+
+
     CASE( 'Cleaning1D' )
 
       EvolveOnlyMagnetic = .TRUE.

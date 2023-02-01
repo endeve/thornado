@@ -100,7 +100,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWavePhi_Option
     REAL(DP),         INTENT(in), OPTIONAL :: OTScaleFactor_Option
 
-    CHARACTER(LEN=64) :: AdvectionProfile = 'MagneticSineWaveX1'
+    CHARACTER(LEN=64) :: AdvectionProfile = 'HydroSineWaveX1'
     CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
     LOGICAL           :: SmoothProfile = .TRUE.
     LOGICAL           :: ConstantDensity = .TRUE.
@@ -154,6 +154,11 @@ CONTAINS
 
         CALL InitializeFields_Advection2D &
                ( TRIM( AdvectionProfile ), Angle, EvolveOnlyMagnetic )
+
+      CASE( 'Advection3D' )
+
+        CALL InitializeFields_Advection3D &
+               ( TRIM( AdvectionProfile ), EvolveOnlyMagnetic )
 
       CASE( 'Cleaning1D' )
 
@@ -646,6 +651,117 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Advection2D
+
+
+  SUBROUTINE InitializeFields_Advection3D( AdvectionProfile, EvolveOnlyMagnetic )
+
+    CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3
+    REAL(DP) :: Eta, h, P, VA, W, k, VdotB, &
+                V1_Transport, V2_Transport, V3_Transport
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+        SELECT CASE( TRIM( AdvectionProfile ) )
+
+          ! Sine wave advection problems to test hydro portion of code.
+
+         CASE( 'HydroSineWaveX3' )
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
+              = One + 0.1_DP * SIN ( TwoPi * X3 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.1_DP
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+            CALL ComputePressureFromPrimitive &
+                   ( uPM(iNodeX,iX1,iX2,iX3,iPM_D), &
+                     uPM(iNodeX,iX1,iX2,iX3,iPM_E), &
+                     0.0_DP, P )
+
+          CASE( 'MagneticSineWaveX3' )
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.1_DP
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = 0.0001_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0001_DP * SIN( TwoPi * X3 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0001_DP * COS( TwoPi * X3 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+          CASE DEFAULT
+
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for AdvectionProfile: ', AdvectionProfile
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') '  HydroSineWaveX3'
+            WRITE(*,'(A)') '  MagneticSineWaveX3'
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
+
+        END SELECT
+
+      END DO
+
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Advection3D
 
 
   SUBROUTINE InitializeFields_Cleaning1D( SmoothProfile, EvolveOnlyMagnetic )
