@@ -2019,7 +2019,7 @@ CONTAINS
 
         NumericalFlux(iNX,iCM,iX1,iX2,iX3) &
           = Flux_F(iCM) &
-              * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX1(iX1) * dX2(iX3) &
+              * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX1(iX1) * dX2(iX2) &
               * WeightsX_X3(iNX)
 
       END DO ! iCM
