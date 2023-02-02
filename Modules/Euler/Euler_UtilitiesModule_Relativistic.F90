@@ -829,7 +829,7 @@ CONTAINS
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, Mask_Option )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -840,6 +840,10 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
     INTEGER  :: iX1, iX2, iX3, iNX, iDimX, ErrorExists
     REAL(DP) :: dX(3), dt
@@ -847,6 +851,13 @@ CONTAINS
     INTEGER  :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
+
+    IF( PRESENT( Mask_Option ) )THEN
+      Mask = Mask_Option
+    ELSE
+      ! Every element is a leaf element
+      Mask = 0
+    END IF
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -861,11 +872,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
+    !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask ) &
     !$OMP MAP( alloc: iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
+    !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask ) &
     !$ACC CREATE(     iErr )
 #endif
 
@@ -885,7 +896,7 @@ CONTAINS
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC REDUCTION( MIN: TimeStep ) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr )
+    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr, Mask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
@@ -898,6 +909,8 @@ CONTAINS
     DO iNX = 1, nDOFX
 
       iErr(iNX,iX1,iX2,iX3) = 0
+
+      IF( Mask(iX1,iX2,iX3,1) .NE. 0 ) CYCLE
 
       dX(1) = dX1(iX1)
       dX(2) = dX2(iX2)
@@ -955,11 +968,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr, ErrorExists ) &
-    !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
+    !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      iErr, ErrorExists ) &
-    !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
+    !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CTS_CopyOut )
@@ -979,7 +992,13 @@ CONTAINS
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          WRITE(*,*) 'iNX: ', iNX
+          WRITE(*,*) 'iX1, X1_C, dX1: ', &
+            iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
+          WRITE(*,*) 'iX2, X2_C, dX2: ', &
+            iX2, MeshX(2) % Center(iX2), MeshX(2) % Width(iX2)
+          WRITE(*,*) 'iX3, X3_C, dX3: ', &
+            iX3, MeshX(3) % Center(iX3), MeshX(3) % Width(iX3)
 
           CALL DescribeError_Euler &
             ( iErr(iNX,iX1,iX2,iX3), &

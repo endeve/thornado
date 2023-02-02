@@ -227,7 +227,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimeStep_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, Mask_Option )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -238,11 +238,23 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
+
+    IF( PRESENT( Mask_Option ) )THEN
+      Mask = Mask_Option
+    ELSE
+      ! Every element is a leaf element
+      Mask = 0
+    END IF
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeTimeStep_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             G, U, CFL, TimeStep, Mask_Option = Mask )
 
 #else
 

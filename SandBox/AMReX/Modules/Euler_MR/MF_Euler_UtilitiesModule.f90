@@ -10,7 +10,8 @@ MODULE MF_Euler_UtilitiesModule
     amrex_multifab, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
@@ -69,6 +70,9 @@ MODULE MF_Euler_UtilitiesModule
     thornado2amrex_X, &
     AllocateArray_X, &
     DeallocateArray_X
+  USE FineMaskModule, ONLY: &
+    MakeFineMask, &
+    DestroyFineMask
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -206,14 +210,17 @@ CONTAINS
     ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
     TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:), MF_uCF(0:)
-    REAL(DP),             INTENT(in)  :: CFL
-    REAL(DP),             INTENT(out) :: TimeStepMin(0:)
+    REAL(DP)            , INTENT(in)  :: CFL
+    REAL(DP)            , INTENT(out) :: TimeStepMin(0:)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    TYPE(amrex_imultifab) :: iMF_Mask
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -230,12 +237,15 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
+        Mask => iMF_Mask       % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -243,8 +253,8 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -261,7 +271,8 @@ CONTAINS
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
         CALL ComputeTimeStep_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), &
+                 Mask_Option = Mask )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
@@ -278,6 +289,8 @@ CONTAINS
       END DO ! --- Loop over grids (boxes) ---
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
       CALL DestroyMesh_MF( MeshX )
 
