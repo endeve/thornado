@@ -155,9 +155,8 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels &
-    ( Time, MF_uGF, MF_uCF, MF_uDF )
+    ( MF_uGF, MF_uCF, MF_uDF )
 
-    REAL(DP),             INTENT(in)    :: Time  (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
@@ -181,7 +180,7 @@ CONTAINS
       END IF
 
       CALL ApplySlopeLimiter_Euler_MF_SingleLevel &
-             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF )
+             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     END DO
 
@@ -194,10 +193,9 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_MF_SingleLevel &
-    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
-    INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
+    INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
@@ -223,9 +221,9 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uDF )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 

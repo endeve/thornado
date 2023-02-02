@@ -236,7 +236,7 @@ CONTAINS
           CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
           CALL ApplySlopeLimiter_Euler_MF &
-                 ( t_new, MF_uGF, MF_U(iS,:), MF_uDF )
+                 ( MF_uGF, MF_U(iS,:), MF_uDF )
 
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
@@ -268,7 +268,7 @@ CONTAINS
         CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
         CALL ComputeIncrement_Euler_MF &
-               ( t_new, MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
+               ( MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
         DO iLevel = 0, nLevels-1
 
@@ -332,7 +332,7 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, MF_uDF )
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )

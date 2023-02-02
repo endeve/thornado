@@ -207,7 +207,7 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
-    M_outer, & 
+    M_outer, &
     MaxIter_outer, &
     Rtol_outer, &
     M_inner, &
@@ -473,7 +473,7 @@ CONTAINS
     CALL DescribeProgramHeader_AMReX
 
     CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, MF_uDF )
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )

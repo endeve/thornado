@@ -115,9 +115,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
-    ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
+    ( MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
-    REAL(DP),             INTENT(in)    :: Time   (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:)
@@ -140,7 +139,7 @@ CONTAINS
       END IF
 
       CALL ComputeIncrement_Euler_MF_SingleLevel &
-             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel) )
+             ( iLevel, MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel) )
 
     END DO
 
@@ -150,15 +149,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
-    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
 !    DO iLevel = 0, nLevels-1
 !
 !      ! --- Apply boundary conditions to interior domains ---
 !
-!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
+!      CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uGF )
+!      CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+!      CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uDF )
 !
 !      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 !
@@ -231,7 +230,6 @@ CONTAINS
 !    END DO
 
     INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
@@ -269,9 +267,9 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uDF )
 
     CALL MF_duCF % SetVal( Zero )
 
