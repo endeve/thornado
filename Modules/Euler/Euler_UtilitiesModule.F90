@@ -92,21 +92,28 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+      iDimX_Option, IndexTable_Option )
 
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP)    , INTENT(in)  :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP)    , INTENT(out) :: &
       PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP)    , INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+    CHARACTER(2), INTENT(in), OPTIONAL :: &
+      iDimX_Option
+    INTEGER     , INTENT(in), OPTIONAL :: &
+      IndexTable_Option(:,:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+             iDimX_Option = iDimX_Option, &
+             IndexTable_Option = IndexTable_Option )
 
 #else
 

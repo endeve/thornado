@@ -128,13 +128,18 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector_old &
     ( uD, uS1, uS2, uS3, uE, uNe, &
       pD, pV1, pV2, pV3, pE, pNe, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      iDimX_Option, IndexTable_Option )
 
-    REAL(DP), INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-    REAL(DP), INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
-    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    REAL(DP)    , INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
+    REAL(DP)    , INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+    REAL(DP)    , INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    CHARACTER(2), INTENT(in), OPTIONAL :: &
+      iDimX_Option
+    INTEGER     , INTENT(in), OPTIONAL :: &
+      IndexTable_Option(:,:)
 
-    INTEGER :: N, ErrorExists
+    INTEGER :: N, ErrorExists, iX1, iX2, iX3, iNXX
     INTEGER :: iNX, iErr(SIZE(uD))
 
     N           = SIZE(uD)
@@ -208,12 +213,45 @@ CONTAINS
 
       DO iNX = 1, N
 
-        CALL DescribeError_Euler &
-          ( iErr(iNX), &
-            Int_Option = [ iNX ], &
-            Real_Option = [ uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
-                            uE(iNX), uNe(iNX), &
-                            Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ] )
+        IF( iErr(iNX) .NE. 0 )THEN
+
+          IF( PRESENT( iDimX_Option ) )THEN
+
+            IF     ( iDimX_Option .EQ. 'X1' )THEN
+              iNXX = IndexTable_Option(1,iNX)
+              iX2  = IndexTable_Option(2,iNX)
+              iX3  = IndexTable_Option(3,iNX)
+              iX1  = IndexTable_Option(4,iNX)
+            ELSE IF( iDimX_Option .EQ. 'X2' )THEN
+              iNXX = IndexTable_Option(1,iNX)
+              iX1  = IndexTable_Option(2,iNX)
+              iX3  = IndexTable_Option(3,iNX)
+              iX2  = IndexTable_Option(4,iNX)
+            ELSE IF( iDimX_Option .EQ. 'X3' )THEN
+              iNXX = IndexTable_Option(1,iNX)
+              iX1  = IndexTable_Option(2,iNX)
+              iX2  = IndexTable_Option(3,iNX)
+              iX3  = IndexTable_Option(4,iNX)
+            END IF
+
+            WRITE(*,*) 'iNX: ', iNXX
+            WRITE(*,*) 'iX1, X1_C, dX1: ', &
+              iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
+            WRITE(*,*) 'iX2, X2_C, dX2: ', &
+              iX2, MeshX(2) % Center(iX2), MeshX(2) % Width(iX2)
+            WRITE(*,*) 'iX3, X3_C, dX3: ', &
+              iX3, MeshX(3) % Center(iX3), MeshX(3) % Width(iX3)
+
+          END IF
+
+          CALL DescribeError_Euler &
+            ( iErr(iNX), &
+              Int_Option = [ iNX ], &
+              Real_Option = [ uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
+                              uE(iNX), uNe(iNX), &
+                              Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ] )
+
+        END IF
 
       END DO
 
