@@ -17,9 +17,9 @@ def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
         if ( isdir( FileOrDirName ) and FileOrDirName[-1] != '/' ):
             FileOrDirName += '/'
 
-        YN = input( '{:} exists. overwrite? (Y/N): '.format( FileOrDirName ) )
+        YN = input( '{:} exists. overwrite? (y/N): '.format( FileOrDirName ) )
 
-        if YN == 'Y' :
+        if YN == 'Y' or YN == 'y' :
             print( 'Overwriting' )
             OW = True
         else:
