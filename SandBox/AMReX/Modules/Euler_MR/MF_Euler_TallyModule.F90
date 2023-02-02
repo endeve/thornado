@@ -52,7 +52,8 @@ MODULE MF_Euler_TallyModule
     ProgramName, &
     UseTiling, &
     xL, &
-    xR
+    xR, &
+    swX
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -248,6 +249,7 @@ CONTAINS
     LOGICAL :: Verbose
 
     INTEGER                       :: iX_B0(3), iX_E0(3)
+    INTEGER                       :: iX_B1(3), iX_E1(3)
     INTEGER                       :: iLevel, iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
@@ -297,6 +299,9 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
+
         CALL AllocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
@@ -310,7 +315,8 @@ CONTAINS
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-        CALL ComputeTally_Euler( iX_B0, iX_E0, G, U, Mask, iLevel )
+        CALL ComputeTally_Euler &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask, iLevel )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -413,16 +419,17 @@ CONTAINS
   ! --- PRIVATE Subroutines ---
 
 
-  SUBROUTINE ComputeTally_Euler( iX_B0, iX_E0, G, U, Mask, iLevel )
+  SUBROUTINE ComputeTally_Euler &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask, iLevel )
 
     INTEGER,  INTENT(in) :: &
-      iX_B0(3), iX_E0(3), iLevel
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
     REAL(DP), INTENT(in) :: &
       G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in) :: &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     INTEGER , INTENT(in) :: &
-      Mask(iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      Mask(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     TYPE(MeshType) :: MeshX(3)
     INTEGER        :: iNX, iX1, iX2, iX3
