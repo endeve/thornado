@@ -1253,73 +1253,71 @@ CONTAINS
 
     REAL(DP) :: Psi6
 
-    IF( UseXCFC )THEN
+    IF( .NOT. UseXCFC ) RETURN
 
-      nE = iE_E0 - iE_B0 + 1
+    nE = iE_E0 - iE_B0 + 1
 
-      nDOF = nDOFX * nDOFE
+    nDOF = nDOFX * nDOFE
 
-      nFd = MF_U(0) % nComp() / ( nDOF * nS * nE )
+    nFd = MF_U(0) % nComp() / ( nDOF * nS * nE )
 
-      DO iLevel = 0, nLevels-1
+    DO iLevel = 0, nLevels-1
 
-        CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
-        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
-        DO WHILE( MFI % next() )
+      DO WHILE( MFI % next() )
 
-          Mask => iMF_Mask % DataPtr( MFI )
+        Mask => iMF_Mask % DataPtr( MFI )
 
-          uGF => MF_uGF(iLevel) % DataPtr( MFI )
-          U   => MF_U  (iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        U   => MF_U  (iLevel) % DataPtr( MFI )
 
-          BX = MFI % tilebox()
+        BX = MFI % tilebox()
 
-          iX_B0 = BX % lo
-          iX_E0 = BX % hi
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
 
-          DO iS  = 1       , nS
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
-          DO iE  = iE_B0   , iE_E0
-          DO iNZ = 1       , nDOF
+        DO iS  = 1       , nS
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iE  = iE_B0   , iE_E0
+        DO iNZ = 1       , nDOF
 
-            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
-            iNX  = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
+          iNX  = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
 
-            Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-            DO iFd = 1, nFd
+          DO iFd = 1, nFd
 
-              iComp = iNZ &
-                        + ( iE  - 1 ) * nDOF &
-                        + ( iFd - 1 ) * nDOF * nE &
-                        + ( iS  - 1 ) * nDOF * nE * nFd
+            iComp = iNZ &
+                      + ( iE  - 1 ) * nDOF &
+                      + ( iFd - 1 ) * nDOF * nE &
+                      + ( iS  - 1 ) * nDOF * nE * nFd
 
-              U(iX1,iX2,iX3,iComp) &
-                = U(iX1,iX2,iX3,iComp) * Psi6**( Power )
-
-            END DO
+            U(iX1,iX2,iX3,iComp) &
+              = U(iX1,iX2,iX3,iComp) * Psi6**( Power )
 
           END DO
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
 
-        END DO ! WHILE( MFI % next() )
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
 
-        CALL amrex_mfiter_destroy( MFI )
+      END DO ! WHILE( MFI % next() )
 
-        CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL amrex_mfiter_destroy( MFI )
 
-      END DO ! iLevel
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
-    END IF ! UseXCFC
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE MultiplyWithPsi6_MF
 
