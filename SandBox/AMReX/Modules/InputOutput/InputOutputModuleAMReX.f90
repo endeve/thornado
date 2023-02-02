@@ -27,7 +27,8 @@ MODULE InputOutputModuleAMReX
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_geometry_module, ONLY: &
     amrex_geometry, &
     amrex_geometry_build, &
@@ -103,6 +104,10 @@ MODULE InputOutputModuleAMReX
     DP, &
     Zero, &
     Two
+  USE FineMaskModule, ONLY: &
+    MakeFineMask, &
+    DestroyFineMask, &
+    iLeaf_MFM
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -223,6 +228,7 @@ CONTAINS
     INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
+    TYPE(amrex_imultifab)           :: iMF_Mask
 
     nF = 7 ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3
 
@@ -432,9 +438,11 @@ CONTAINS
                nF, 0 )
       CALL MF_plt(iLevel) % setVal( Zero )
 
-      CALL WriteMPI( MF_uGF(iLevel), MF_plt(iLevel) )
+      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
-      CALL WriteMesh( iLevel, MF_uGF(iLevel), MF_plt(iLevel) )
+      CALL WriteMPI( MF_uGF(iLevel), iMF_Mask, MF_plt(iLevel) )
+
+      CALL WriteMesh( iLevel, MF_uGF(iLevel), iMF_Mask, MF_plt(iLevel) )
 
       iOS = 7
 
@@ -442,7 +450,7 @@ CONTAINS
 
         CALL ComputeCellAverage_X_MF &
                ( nGF, MF_uGF(iLevel), MF_uGF_Option(iLevel), &
-                 iOS, 'GF', MF_plt(iLevel) )
+                 iOS, 'GF', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nGF
 
@@ -452,7 +460,7 @@ CONTAINS
 
         CALL ComputeCellAverage_X_MF &
                ( nCF, MF_uGF(iLevel), MF_uCF_Option(iLevel), &
-                 iOS, 'CF', MF_plt(iLevel) )
+                 iOS, 'CF', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nCF
 
@@ -462,7 +470,7 @@ CONTAINS
 
         CALL ComputeCellAverage_X_MF &
                ( nPF, MF_uGF(iLevel), MF_uPF_Option(iLevel), &
-                 iOS, 'PF', MF_plt(iLevel) )
+                 iOS, 'PF', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nPF
 
@@ -472,7 +480,7 @@ CONTAINS
 
         CALL ComputeCellAverage_X_MF &
                ( nAF, MF_uGF(iLevel), MF_uAF_Option(iLevel), &
-                 iOS, 'AF', MF_plt(iLevel) )
+                 iOS, 'AF', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nAF
 
@@ -482,7 +490,7 @@ CONTAINS
 
         CALL ComputeCellAverage_X_MF &
                ( nDF, MF_uGF(iLevel), MF_uDF_Option(iLevel), &
-                 iOS, 'DF', MF_plt(iLevel) )
+                 iOS, 'DF', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nDF
 
@@ -492,7 +500,7 @@ CONTAINS
 
         CALL ComputeCellAverage_Z_MF &
                ( nCR, MF_uGF(iLevel), MF_uCR_Option(iLevel), &
-                 iOS, 'CR', MF_plt(iLevel) )
+                 iOS, 'CR', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nCR * nE * nSpecies
 
@@ -502,11 +510,13 @@ CONTAINS
 
         CALL ComputeCellAverage_Z_MF &
                ( nPR, MF_uGF(iLevel), MF_uPR_Option(iLevel), &
-                 iOS, 'PR', MF_plt(iLevel) )
+                 iOS, 'PR', iMF_Mask, MF_plt(iLevel) )
 
         iOS = iOS + nPR * nE * nSpecies
 
       END IF
+
+      CALL DestroyFineMask( iLevel, iMF_Mask )
 
     END DO ! iLevel = 0, nLevels-1
 
@@ -696,15 +706,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverage_X_MF &
-    ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
+    ( nFd, MF_uGF, MF, iOS, Field, iMF_Mask, MF_plt )
 
-    INTEGER             , INTENT(in)    :: nFd, iOS
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(in)    :: MF
-    CHARACTER(2)        , INTENT(in)    :: Field
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    INTEGER              , INTENT(in)    :: nFd, iOS
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab) , INTENT(in)    :: MF
+    CHARACTER(2)         , INTENT(in)    :: Field
+    TYPE(amrex_imultifab), INTENT(in)    :: iMF_Mask
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER                       :: iX1, iX2, iX3, iFd
+    INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
     REAL(DP)                      :: G_K(nDOFX,nGF)
@@ -714,6 +726,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask (:,:,:,:)
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -722,15 +735,21 @@ CONTAINS
       G     => MF_uGF   % DataPtr( MFI )
       U     => MF       % DataPtr( MFI )
       U_plt => MF_plt   % DataPtr( MFI )
+      Mask  => iMF_Mask % DataPtr( MFI )
 
       BX = MFI % TileBox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
@@ -760,15 +779,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverage_Z_MF &
-    ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
+    ( nFd, MF_uGF, MF, iOS, Field, iMF_Mask, MF_plt )
 
-    INTEGER             , INTENT(in)    :: nFd, iOS
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(in)    :: MF
-    CHARACTER(2)        , INTENT(in)    :: Field
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    INTEGER              , INTENT(in)    :: nFd, iOS
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab) , INTENT(in)    :: MF
+    CHARACTER(2)         , INTENT(in)    :: Field
+    TYPE(amrex_imultifab), INTENT(in)    :: iMF_Mask
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER                       :: iX1, iX2, iX3, iFd, iS, iZ1, iNZ, iNE
+    INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
     REAL(DP)                      :: G_K(nDOFX,nGF)
@@ -778,24 +799,31 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask (:,:,:,:)
     REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), V_K
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      G     => MF_uGF % DataPtr( MFI )
-      U     => MF     % DataPtr( MFI )
-      U_plt => MF_plt % DataPtr( MFI )
+      G     => MF_uGF   % DataPtr( MFI )
+      U     => MF       % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
+      Mask  => iMF_Mask % DataPtr( MFI )
 
       BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), &
@@ -920,28 +948,37 @@ CONTAINS
   END SUBROUTINE ConvertUnits
 
 
-  SUBROUTINE WriteMPI( MF_uGF, MF_plt )
+  SUBROUTINE WriteMPI( MF_uGF, iMF_Mask, MF_plt )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_imultifab), INTENT(in)    :: iMF_Mask
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iX_B0(3), iX_E0(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask (:,:,:,:)
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
       U_plt => MF_plt   % DataPtr( MFI )
+      Mask  => iMF_Mask % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         U_plt(iX1,iX2,iX3,1) = amrex_parallel_myproc()
 
@@ -956,17 +993,20 @@ CONTAINS
   END SUBROUTINE WriteMPI
 
 
-  SUBROUTINE WriteMesh( iLevel, MF_uGF, MF_plt )
+  SUBROUTINE WriteMesh( iLevel, MF_uGF, iMF_Mask, MF_plt )
 
-    INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    INTEGER              , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_imultifab), INTENT(in)    :: iMF_Mask
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iX_B0(3), iX_E0(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: Mask (:,:,:,:)
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -977,12 +1017,18 @@ CONTAINS
     DO WHILE( MFI % next() )
 
       U_plt => MF_plt   % DataPtr( MFI )
+      Mask  => iMF_Mask % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
 
         U_plt(iX1,iX2,iX3,2) = MeshX(1) % Center(iX1) / U % LengthX1Unit
         U_plt(iX1,iX2,iX3,3) = MeshX(2) % Center(iX2) / U % LengthX2Unit
