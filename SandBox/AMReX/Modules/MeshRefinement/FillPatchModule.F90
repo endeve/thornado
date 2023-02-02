@@ -73,10 +73,9 @@ CONTAINS
 
 
   SUBROUTINE FillPatch_WithMetric_Scalar &
-    ( FineLevel, Time, MF_uGF, MF_src, MF_dst )
+    ( FineLevel, MF_uGF, MF_src, MF_dst )
 
     INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
@@ -108,13 +107,13 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                 MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                 MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
       CALL SqrtGm(FineLevel  ) % COPY &
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
@@ -125,7 +124,7 @@ CONTAINS
 
     END IF
 
-    CALL FillPatch_Scalar( FineLevel, Time, MF_src, MF_dst )
+    CALL FillPatch_Scalar( FineLevel, MF_src, MF_dst )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -144,10 +143,9 @@ CONTAINS
   END SUBROUTINE FillPatch_WithMetric_Scalar
 
 
-  SUBROUTINE FillPatch_WithMetric_Vector( FineLevel, Time, MF_uGF, MF )
+  SUBROUTINE FillPatch_WithMetric_Vector( FineLevel, MF_uGF, MF )
 
     INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
 
@@ -174,13 +172,13 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                 MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                 MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
       CALL SqrtGm(FineLevel  ) % COPY &
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
@@ -189,7 +187,7 @@ CONTAINS
 
     END IF
 
-    CALL FillPatch_Vector( FineLevel, Time, MF )
+    CALL FillPatch_Vector( FineLevel, MF )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -206,10 +204,9 @@ CONTAINS
   END SUBROUTINE FillPatch_WithMetric_Vector
 
 
-  SUBROUTINE FillCoarsePatch( FineLevel, Time, MF_uGF, MF )
+  SUBROUTINE FillCoarsePatch( FineLevel, MF_uGF, MF )
 
     INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
 
@@ -240,7 +237,7 @@ CONTAINS
 
     END IF
 
-    CALL FillCoarsePatch_Vector( FineLevel, Time, MF )
+    CALL FillCoarsePatch_Vector( FineLevel, MF )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -258,35 +255,44 @@ CONTAINS
   ! --- PRIVATE SUBROUTINES ---
 
 
-  SUBROUTINE FillPatch_Scalar( FineLevel, Time, MF_src, MF_dst )
+  SUBROUTINE FillPatch_Scalar( FineLevel, MF_src, MF_dst )
 
     INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(in)    :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
+    REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
+    REAL(DP), PARAMETER :: t_old_fine = 0.0_DP
+    REAL(DP), PARAMETER :: t_new_fine = 0.0_DP
+    REAL(DP), PARAMETER :: t          = 0.0_DP
+
+    ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
+    ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
+
     IF( FineLevel .EQ. 0 )THEN
 
       CALL amrex_fillpatch( MF_dst, &
-                            Time, MF_src(FineLevel), &
-                            Time, MF_src(FineLevel), &
+                            t_old_fine, MF_src(FineLevel), &
+                            t_new_fine, MF_src(FineLevel), &
                             amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF_dst % nComp() )
+                            t, sComp, dComp, MF_dst % nComp() )
 
     ELSE
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
       CALL amrex_fillpatch( MF_dst, &
-                            Time, MF_src(FineLevel-1), &
-                            Time, MF_src(FineLevel-1), &
+                            t_old_crse, MF_src(FineLevel-1), &
+                            t_new_crse, MF_src(FineLevel-1), &
                             amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
-                            Time, MF_src(FineLevel  ), &
-                            Time, MF_src(FineLevel  ), &
+                            t_old_fine, MF_src(FineLevel  ), &
+                            t_new_fine, MF_src(FineLevel  ), &
                             amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF_dst % nComp(), &
+                            t, sComp, dComp, MF_dst % nComp(), &
                             amrex_ref_ratio(FineLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
@@ -298,36 +304,43 @@ CONTAINS
   END SUBROUTINE FillPatch_Scalar
 
 
-  SUBROUTINE FillPatch_Vector( FineLevel, Time, MF )
+  SUBROUTINE FillPatch_Vector( FineLevel, MF )
 
     INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
-    ! Assume MF_old = MF_new = MF and t_old = t_new = t
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
+    REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
+    REAL(DP), PARAMETER :: t_old_fine = 0.0_DP
+    REAL(DP), PARAMETER :: t_new_fine = 0.0_DP
+    REAL(DP), PARAMETER :: t          = 0.0_DP
+
+    ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
+    ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
 
     IF( FineLevel .EQ. 0 )THEN
 
       CALL amrex_fillpatch( MF(FineLevel), &
-                            Time, MF(FineLevel), &
-                            Time, MF(FineLevel), &
+                            t_old_fine, MF(FineLevel), &
+                            t_new_fine, MF(FineLevel), &
                             amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF(FineLevel) % nComp() )
+                            t, sComp, dComp, MF(FineLevel) % nComp() )
 
     ELSE
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
       CALL amrex_fillpatch( MF(FineLevel), &
-                            Time, MF(FineLevel-1), &
-                            Time, MF(FineLevel-1), &
+                            t_old_crse, MF(FineLevel-1), &
+                            t_new_crse, MF(FineLevel-1), &
                             amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
-                            Time, MF(FineLevel  ), &
-                            Time, MF(FineLevel  ), &
+                            t_old_fine, MF(FineLevel  ), &
+                            t_new_fine, MF(FineLevel  ), &
                             amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
-                            Time, sComp, dComp, MF(FineLevel) % nComp(), &
+                            t, sComp, dComp, MF(FineLevel) % nComp(), &
                             amrex_ref_ratio(FineLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
@@ -339,25 +352,30 @@ CONTAINS
   END SUBROUTINE FillPatch_Vector
 
 
-  SUBROUTINE FillCoarsePatch_Vector( FineLevel, Time, MF )
+  SUBROUTINE FillCoarsePatch_Vector( FineLevel, MF )
 
     INTEGER,              INTENT(in)    :: FineLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
-    ! Assume t_old = t_new = t and MF_old = MF_new = MF
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
+    REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
+    REAL(DP), PARAMETER :: t          = 0.0_DP
+
+    ! Assume MF_old_crse = MF_new_crse = MF
+    ! Assume t_old_crse  = t_new_crse  = t
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_fillcoarsepatch &
            ( MF(FineLevel), &
-             Time, MF(FineLevel-1), &
-             Time, MF(FineLevel-1), &
+             t_old_crse, MF(FineLevel-1), &
+             t_new_crse, MF(FineLevel-1), &
              amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
              amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
-             Time, sComp, dComp, MF(FineLevel) % nComp(), &
+             t, sComp, dComp, MF(FineLevel) % nComp(), &
              amrex_ref_ratio(FineLevel-1), &
              amrex_interp_dg, lo_bc, hi_bc )
 
@@ -375,47 +393,6 @@ CONTAINS
     REAL(DP),       VALUE :: Time
 
     RETURN
-!!$
-!!$    TYPE(amrex_geometry) :: GEOM
-!!$    TYPE(amrex_multifab) :: MF
-!!$    TYPE(amrex_mfiter)   :: MFI
-!!$    INTEGER              :: pLo(4), pHi(4)
-!!$    REAL(DP), CONTIGUOUS, POINTER :: p(:,:,:,:)
-!!$
-!!$    IF( .NOT. amrex_is_all_periodic() )THEN
-!!$
-!!$      GEOM = pGEOM
-!!$      MF   = pMF
-!!$
-!!$      !$OMP PARALLEL PRIVATE(MFI,p,pLo,pHi)
-!!$      CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
-!!$
-!!$      DO WHILE( MFI % next() )
-!!$
-!!$        p => MF % DataPtr( MFI )
-!!$
-!!$        ! Check if part of this box is outside the domain
-!!$        IF( .NOT. GEOM % DOMAIN % CONTAINS( p ) )THEN
-!!$
-!!$          pLo = LBOUND( p )
-!!$          pHi = UBOUND( p )
-!!$
-!!$          CALL amrex_filcc &
-!!$                 ( p, pLo, pHi, &
-!!$                   GEOM % DOMAIN % lo, GEOM % DOMAIN % hi, &
-!!$                   GEOM % dX, &
-!!$                   GEOM % get_physical_location( pLo ), &
-!!$                   lo_bc, hi_bc )
-!!$
-!!$        END IF
-!!$
-!!$      END DO
-!!$      !$OMP END PARALLEL
-!!$
-!!$      CALL amrex_mfiter_destroy( MFI )
-!!$
-!!$    END IF
-
   END SUBROUTINE FillPhysicalBC_Dummy
 
 

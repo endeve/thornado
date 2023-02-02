@@ -176,7 +176,7 @@ MODULE InitializationModule
     amrex_permute2amrex_Z, &
     MF_amrex2amrex_permute_Z_Level, &
     MF_amrex_permute2amrex_Z_Level
-    
+
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -440,7 +440,7 @@ CONTAINS
 
     END DO
 
-   
+
     CALL AverageDown( MF_uGF, MF_Permute )
 
     DO i = 0, nLevels-1
@@ -549,8 +549,8 @@ CONTAINS
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCR(iLevel), MF_uCF(iLevel) )
 
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
 
 
     IF(iLevel .NE. 0) THEN
@@ -561,11 +561,11 @@ CONTAINS
 
       END DO
 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
-    ELSE 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+       CALL FillPatch( iLevel, MF_uGF, MF_Permute )
+    ELSE
+       CALL FillPatch( iLevel, MF_uGF, MF_uCR )
     END IF
-   
+
 
     IF(iLevel .NE. 0) THEN
 
@@ -588,7 +588,7 @@ CONTAINS
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-    INTEGER :: i 
+    INTEGER :: i
 
     BA = pBA
     DM = pDM
@@ -616,9 +616,9 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOF_X1 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
 
     IF(iLevel .NE. 0) THEN
 
@@ -628,11 +628,11 @@ CONTAINS
 
       END DO
 
-       CALL FillCoarsePatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
-    ELSE 
-       CALL FillCoarsePatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+       CALL FillCoarsePatch( iLevel, MF_uGF, MF_Permute )
+    ELSE
+       CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
     END IF
-   
+
 
     IF(iLevel .NE. 0) THEN
 
@@ -687,9 +687,9 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
 
 
     IF(iLevel .NE. 0) THEN
@@ -700,15 +700,15 @@ CONTAINS
 
       END DO
 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute, MF_uCR_tmp )
-    ELSE 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR, MF_uCR_tmp  )
+       CALL FillPatch( iLevel, MF_uGF, MF_Permute, MF_uCR_tmp )
+    ELSE
+       CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp  )
     END IF
-   
 
 
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCR, MF_uCR_tmp )
+
+    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
 

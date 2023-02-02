@@ -113,17 +113,17 @@ CONTAINS
     DO i = 0, nLevels-1
 
       IF (i .NE. 0) THEN
-       
+
         DO j = i - 1, i
 
           !CALL MF_amrex2amrex_permute_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
 
         END DO
 
-        CALL FillPatch( i, Time(i), MF_uGF, MF_Permute )
+        CALL FillPatch( i, MF_uGF, MF_Permute )
       ELSE
 
-        CALL FillPatch( i, Time(i), MF_uGF, MF_uCR )
+        CALL FillPatch( i, MF_uGF, MF_uCR )
 
       END IF
 
