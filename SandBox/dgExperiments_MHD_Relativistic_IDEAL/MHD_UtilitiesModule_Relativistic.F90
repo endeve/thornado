@@ -1378,7 +1378,7 @@ CONTAINS
    !PRINT*, 'iCM_S2 Flux: ', Flux_X2_MHD_Relativistic(iCM_S2)
 
     Flux_X3_MHD_Relativistic(iCM_S3) &
-      = D * hStar * W**2 * Gm33 * V3  * ( V3 - Shift3 / Lapse ) &
+      = D * hStar * W**2 * Gm33 * V3  * ( V3 - Shift3 / Lapse ) + pStar &
         - Gm33 * ( B3**2 + B0u * B3 * Shift3 &
                    + ( Lapse * B0u )**2 * Shift3**2 )
 

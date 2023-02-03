@@ -1557,7 +1557,7 @@ CONTAINS
           iX_B0(3)-1:iX_E0(3)+1, &
           nGF)
     REAL(DP) :: &
-      G_F(nDOFX_X2, &
+      G_F(nDOFX_X3, &
           iX_B0(1)  :iX_E0(1),   &
           iX_B0(2)  :iX_E0(2),   &
           iX_B0(3)  :iX_E0(3)+1, &
@@ -1572,13 +1572,13 @@ CONTAINS
             iX_B0(3)-1:iX_E0(3)+1, &
             nCM)
     REAL(DP) :: &
-      uCM_L(nDOFX_X2, &
+      uCM_L(nDOFX_X3, &
             iX_B0(1)  :iX_E0(1),   &
             iX_B0(2)  :iX_E0(2),   &
             iX_B0(3)  :iX_E0(3)+1, &
             nCM)
     REAL(DP) :: &
-      uCM_R(nDOFX_X2, &
+      uCM_R(nDOFX_X3, &
             iX_B0(1)  :iX_E0(1),   &
             iX_B0(2)  :iX_E0(2),   &
             iX_B0(3)  :iX_E0(3)+1, &
