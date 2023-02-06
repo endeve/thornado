@@ -117,6 +117,7 @@ PROGRAM ApplicationDriver
 
   ProgramName = 'Advection'
 !!$  ProgramName = 'Advection2D'
+!!$  ProgramName = 'Advection3D'
 !!$  ProgramName = 'RiemannProblem'
 !!$  ProgramName = 'RiemannProblem2D'
 !!$  ProgramName = 'RiemannProblemSpherical'
@@ -159,6 +160,21 @@ PROGRAM ApplicationDriver
       swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
+
+    CASE( 'Advection3D' )
+
+      AdvectionProfile = 'SineWaveX3'
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 1, 1 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 2, 2, 128 ]
+      swX = [ 1, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
     CASE( 'RiemannProblem' )
 
@@ -305,6 +321,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  Advection'
       WRITE(*,'(A)')     '  Advection2D'
+      WRITE(*,'(A)')     '  Advection3D'
       WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     '  RiemannProblem2D'
       WRITE(*,'(A)')     '  RiemannProblemSpherical'

@@ -119,6 +119,11 @@ CONTAINS
         CALL InitializeFields_Advection2D &
                ( TRIM( AdvectionProfile ) )
 
+      CASE( 'Advection3D' )
+
+       CALL InitializeFields_Advection3D &
+              ( TRIM( AdvectionProfile ) )
+
       CASE( 'RiemannProblem' )
 
         CALL InitializeFields_RiemannProblem &
@@ -529,6 +534,78 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Advection2D
+
+
+  SUBROUTINE InitializeFields_Advection3D( AdvectionProfile )
+
+    CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+        SELECT CASE( TRIM( AdvectionProfile ) )
+
+          CASE( 'SineWaveX3' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X3 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.1_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+          CASE DEFAULT
+
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for AdvectionProfile: ', AdvectionProfile
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') '  SineWaveX3'
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
+
+        END SELECT
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Advection3D
 
 
   SUBROUTINE InitializeFields_RiemannProblem &
