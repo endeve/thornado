@@ -97,7 +97,7 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    EvolveGravity = .TRUE.
+    EvolveGravity = .FALSE.
     IF( PRESENT( EvolveGravity_Option ) ) &
       EvolveGravity = EvolveGravity_Option
 
