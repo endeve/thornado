@@ -125,7 +125,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE MaskModule, ONLY: &
     CreateFineMask, &
     DestroyFineMask, &
-    iLeaf_MFM
+    IsLeafElement
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -438,7 +438,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
@@ -524,7 +524,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
 
-            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -621,7 +621,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
@@ -670,7 +670,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
 
-            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -797,7 +797,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
@@ -958,7 +958,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
 
-            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -1069,7 +1069,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
@@ -1174,7 +1174,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
 
-            IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -1286,7 +1286,7 @@ CONTAINS
         DO iE  = iE_B0   , iE_E0
         DO iNZ = 1       , nDOF
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iNX  = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
 
@@ -1673,7 +1673,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iNX1 = NodeNumberTableX(1,iNX)
           iNX2 = NodeNumberTableX(2,iNX)
@@ -1755,7 +1755,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGF    (iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
             = uMF(iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX)
@@ -1863,7 +1863,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
           d3X = Two / Pi * MeshX(1) % Width(iX1) &
                          * MeshX(2) % Width(iX2) &
@@ -1944,7 +1944,7 @@ CONTAINS
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
 
-            IF( Mask(iX_B0(1),iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+            IF( .NOT. IsLeafElement( Mask(iX_B0(1),iX2,iX3,1) ) ) CYCLE
 
             DO iNX3 = 1, nNodesX(3)
             DO iNX2 = 1, nNodesX(2)

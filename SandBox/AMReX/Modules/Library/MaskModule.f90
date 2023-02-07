@@ -33,9 +33,10 @@ MODULE MaskModule
 
   PUBLIC :: CreateFineMask
   PUBLIC :: DestroyFineMask
+  PUBLIC :: IsLeafElement
 
-  INTEGER, PUBLIC :: iLeaf_MFM  = 0
-  INTEGER         :: iTrunk_MFM = 1
+  INTEGER :: iLeaf  = 0
+  INTEGER :: iTrunk = 1
 
   INTERFACE
 
@@ -93,7 +94,7 @@ CONTAINS
       iMF_Mask % nc    = 1
       CALL amrex_fi_createfinemask_thornado &
              ( iMF_Mask % p, BA(iLevel) % p, DM(iLevel) % p, BA(iLevel+1) % p, &
-               iLeaf_MFM, iTrunk_MFM, swX(1), amrex_geom(iLevel) % p )
+               iLeaf, iTrunk, swX(1), amrex_geom(iLevel) % p )
 
       ! --- Fix physical boundary ghost cells ---
 
@@ -150,7 +151,7 @@ CONTAINS
     ELSE
 
       CALL amrex_imultifab_build( iMF_Mask, BA(iLevel), DM(iLevel), 1, swX )
-      CALL iMF_Mask % SetVal( iLeaf_MFM )
+      CALL iMF_Mask % SetVal( iLeaf )
 
     END IF
 
@@ -166,5 +167,20 @@ CONTAINS
     CALL amrex_imultifab_destroy          ( iMF_Mask )
 
   END SUBROUTINE DestroyFineMask
+
+
+  LOGICAL FUNCTION IsLeafElement( iX )
+
+    INTEGER, INTENT(in) :: iX
+
+    IF( iX .EQ. iLeaf )THEN
+      IsLeafElement = .TRUE.
+    ELSE
+      IsLeafElement = .FALSE.
+    END IF
+
+    RETURN
+  END FUNCTION IsLeafElement
+
 
 END MODULE MaskModule

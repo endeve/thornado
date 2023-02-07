@@ -60,7 +60,7 @@ MODULE MF_Euler_TallyModule
   USE MaskModule, ONLY: &
     CreateFineMask, &
     DestroyFineMask, &
-    iLeaf_MFM
+    IsLeafElement
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     AllocateArray_X, &
@@ -448,7 +448,7 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+      IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       BaryonicMass_Interior &
         = BaryonicMass_Interior &

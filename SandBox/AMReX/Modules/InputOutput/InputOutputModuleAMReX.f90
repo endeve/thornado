@@ -107,7 +107,7 @@ MODULE InputOutputModuleAMReX
   USE MaskModule, ONLY: &
     CreateFineMask, &
     DestroyFineMask, &
-    iLeaf_MFM
+    IsLeafElement
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -749,7 +749,7 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+        IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
@@ -823,7 +823,7 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+        IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), &
@@ -978,7 +978,7 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+        IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
         U_plt(iX1,iX2,iX3,1) = amrex_parallel_myproc()
 
@@ -1028,7 +1028,7 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf_MFM ) CYCLE
+        IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
         U_plt(iX1,iX2,iX3,2) = MeshX(1) % Center(iX1) / U % LengthX1Unit
         U_plt(iX1,iX2,iX3,3) = MeshX(2) % Center(iX2) / U % LengthX2Unit
