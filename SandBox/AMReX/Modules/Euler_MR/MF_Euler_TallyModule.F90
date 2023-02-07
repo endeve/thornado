@@ -253,13 +253,13 @@ CONTAINS
     INTEGER                       :: iLevel, iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: G (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: U (:,:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: G     (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: U     (:,:,:,:,:)
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     IF( SuppressTally ) RETURN
 
@@ -282,15 +282,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uCF % BA, MF_uCF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask       % DataPtr( MFI )
-        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -316,7 +316,7 @@ CONTAINS
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
         CALL ComputeTally_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask, iLevel )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask, iLevel )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -332,7 +332,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 
@@ -420,7 +420,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTally_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask, iLevel )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask, iLevel )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
@@ -429,7 +429,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     INTEGER , INTENT(in) :: &
-      Mask(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      FineMask(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     TYPE(MeshType) :: MeshX(3)
     INTEGER        :: iNX, iX1, iX2, iX3
@@ -448,7 +448,7 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+      IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
       BaryonicMass_Interior &
         = BaryonicMass_Interior &

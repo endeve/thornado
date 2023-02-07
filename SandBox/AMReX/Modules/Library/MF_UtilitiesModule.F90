@@ -169,12 +169,12 @@ CONTAINS
 
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
-    ( iLevel, MF, iField, iMF_Mask_Option, &
+    ( iLevel, MF, iField, iMF_FineMask_Option, &
       swXX_Option, WriteToFile_Option, FileNameBase_Option )
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
-    TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_Mask_Option
+    TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_FineMask_Option
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileNameBase_Option
@@ -183,8 +183,8 @@ CONTAINS
     INTEGER                       :: lo(4), hi(4), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: F(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: F       (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
     INTEGER                       :: swXX(3)
     INTEGER                       :: iFileNo
     LOGICAL                       :: WriteToFile
@@ -230,8 +230,8 @@ CONTAINS
 
       END IF
 
-      IF( PRESENT( iMF_Mask_Option ) ) &
-        Mask => iMF_Mask_Option % DataPtr( MFI )
+      IF( PRESENT( iMF_FineMask_Option ) ) &
+        FineMask => iMF_FineMask_Option % DataPtr( MFI )
 
       F => MF % DataPtr( MFI )
 
@@ -252,9 +252,9 @@ CONTAINS
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( PRESENT( iMF_Mask_Option ) )THEN
+        IF( PRESENT( iMF_FineMask_Option ) )THEN
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
         END IF
 
@@ -318,7 +318,7 @@ CONTAINS
     LOGICAL        :: WriteToFile
     CHARACTER(128) :: FileNameBase
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     swXX = 0
     IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
@@ -332,16 +332,16 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF % BA, MF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF % BA, MF % DM )
 
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, &
-               iMF_Mask_Option = iMF_Mask, &
+               iMF_FineMask_Option = iMF_FineMask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
                FileNameBase_Option = TRIM( FileNameBase ) )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 

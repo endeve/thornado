@@ -395,14 +395,14 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
@@ -410,17 +410,16 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -438,7 +437,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
@@ -524,7 +523,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
 
-            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+            IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -554,7 +553,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -572,18 +571,18 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: jErr
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -593,17 +592,16 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -621,7 +619,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
@@ -670,7 +668,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
 
-            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+            IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -713,7 +711,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -735,18 +733,18 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
     REAL(DP) :: E, S_i(3), E_int, S_i_int(3)
@@ -767,18 +765,17 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uCR => MF_uCR(iLevel) % DataPtr( MFI )
-        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR      => MF_uCR(iLevel) % DataPtr( MFI )
+        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -797,7 +794,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
@@ -958,7 +955,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
 
-            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+            IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -988,7 +985,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -1010,18 +1007,18 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: jErr
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -1040,18 +1037,17 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uCR => MF_uCR(iLevel) % DataPtr( MFI )
-        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR      => MF_uCR(iLevel) % DataPtr( MFI )
+        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1069,7 +1065,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
@@ -1174,7 +1170,7 @@ CONTAINS
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
 
-            IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+            IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -1217,7 +1213,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -1248,8 +1244,8 @@ CONTAINS
                 iS, iFd, iComp, nDOF, nFd, nE
     INTEGER  :: iX_B0(3), iX_E0(3)
 
-    INTEGER, CONTIGUOUS, POINTER :: Mask(:,:,:,:)
-    TYPE(amrex_imultifab)        :: iMF_Mask
+    INTEGER, CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    TYPE(amrex_imultifab)        :: iMF_FineMask
 
     REAL(DP) :: Psi6
 
@@ -1263,16 +1259,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        U   => MF_U  (iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        U        => MF_U  (iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1286,7 +1281,7 @@ CONTAINS
         DO iE  = iE_B0   , iE_E0
         DO iNZ = 1       , nDOF
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iNX  = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
 
@@ -1315,7 +1310,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 
@@ -1638,19 +1633,19 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1658,10 +1653,9 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uMF => MF_uMF(iLevel) % DataPtr( MFI )
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uMF      => MF_uMF(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1673,7 +1667,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iNX1 = NodeNumberTableX(1,iNX)
           iNX2 = NodeNumberTableX(2,iNX)
@@ -1708,7 +1702,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -1723,27 +1717,26 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3)
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uMF => MF_uMF(iLevel) % DataPtr( MFI )
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uMF      => MF_uMF(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1755,7 +1748,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGF    (iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
             = uMF(iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX)
@@ -1789,7 +1782,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -1827,10 +1820,10 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     INTEGER  :: iNX, iX1, iX2, iX3, iX_B0(3), iX_E0(3), iLevel
     REAL(DP) :: d3X
@@ -1841,7 +1834,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGS % BA, MF_uGS % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGS % BA, MF_uGS % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
 
@@ -1849,9 +1842,8 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1863,7 +1855,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           d3X = Two / Pi * MeshX(1) % Width(iX1) &
                          * MeshX(2) % Width(iX2) &
@@ -1884,7 +1876,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 
@@ -1910,10 +1902,10 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     INTEGER :: iLevel, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
@@ -1922,15 +1914,14 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        Mask => iMF_Mask % DataPtr( MFI )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1944,7 +1935,7 @@ CONTAINS
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
 
-            IF( .NOT. IsLeafElement( Mask(iX_B0(1),iX2,iX3,1) ) ) CYCLE
+            IF( .NOT. IsLeafElement( FineMask(iX_B0(1),iX2,iX3,1) ) ) CYCLE
 
             DO iNX3 = 1, nNodesX(3)
             DO iNX2 = 1, nNodesX(2)
@@ -2009,7 +2000,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
     END DO
 

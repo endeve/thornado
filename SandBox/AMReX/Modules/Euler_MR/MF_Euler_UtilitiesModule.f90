@@ -216,11 +216,11 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    TYPE(amrex_imultifab) :: iMF_Mask
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: Mask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -237,15 +237,15 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
-        Mask => iMF_Mask       % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -272,7 +272,7 @@ CONTAINS
 
         CALL ComputeTimeStep_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), &
-                 Mask_Option = Mask )
+                 Mask_Option = FineMask )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
@@ -290,7 +290,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iLevel, iMF_FineMask )
 
       CALL DestroyMesh_MF( MeshX )
 
