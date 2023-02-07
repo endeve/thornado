@@ -57,8 +57,8 @@ MODULE MF_Euler_TallyModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE FineMaskModule, ONLY: &
-    MakeFineMask, &
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
@@ -282,7 +282,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uCF % BA, MF_uCF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 

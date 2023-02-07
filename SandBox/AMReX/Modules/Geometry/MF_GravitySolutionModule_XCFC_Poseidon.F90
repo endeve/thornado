@@ -122,8 +122,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     ComputeConserved_Euler_MF
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
-  USE FineMaskModule, ONLY: &
-    MakeFineMask, &
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
   USE InputParsingModule, ONLY: &
@@ -410,7 +410,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -593,7 +593,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -767,7 +767,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1040,7 +1040,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1263,7 +1263,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1650,7 +1650,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1734,7 +1734,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1841,7 +1841,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGS % BA, MF_uGS % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGS % BA, MF_uGS % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
 
@@ -1922,7 +1922,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 

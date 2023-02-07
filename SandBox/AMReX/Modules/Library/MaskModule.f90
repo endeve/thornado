@@ -1,4 +1,4 @@
-MODULE FineMaskModule
+MODULE MaskModule
 
   USE ISO_C_BINDING
 
@@ -31,7 +31,7 @@ MODULE FineMaskModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MakeFineMask
+  PUBLIC :: CreateFineMask
   PUBLIC :: DestroyFineMask
 
   INTEGER, PUBLIC :: iLeaf_MFM  = 0
@@ -39,7 +39,7 @@ MODULE FineMaskModule
 
   INTERFACE
 
-    SUBROUTINE amrex_fi_makefinemask_thornado &
+    SUBROUTINE amrex_fi_createfinemask_thornado &
       ( iMF_Mask, CrseBA, CrseDM, FineBA, iCoarse, iFine, swXX, geom ) BIND(c)
 
         IMPORT
@@ -54,7 +54,7 @@ MODULE FineMaskModule
         INTEGER(c_int), VALUE :: swXX
         TYPE(c_ptr)   , VALUE :: geom
 
-    END SUBROUTINE amrex_fi_makefinemask_thornado
+    END SUBROUTINE amrex_fi_createfinemask_thornado
 
 
     SUBROUTINE amrex_fi_destroyfinemask_thornado( iMF_Mask ) BIND(c)
@@ -71,7 +71,7 @@ MODULE FineMaskModule
 CONTAINS
 
 
-  SUBROUTINE MakeFineMask( iLevel, iMF_Mask, BA, DM )
+  SUBROUTINE CreateFineMask( iLevel, iMF_Mask, BA, DM )
 
     INTEGER              , INTENT(in)    :: iLevel
     TYPE(amrex_imultifab), INTENT(inout) :: iMF_Mask
@@ -91,7 +91,7 @@ CONTAINS
       ! a vector of dimension `nDimsX` and fills each value with `int`
       iMF_Mask % owner = .TRUE.
       iMF_Mask % nc    = 1
-      CALL amrex_fi_makefinemask_thornado &
+      CALL amrex_fi_createfinemask_thornado &
              ( iMF_Mask % p, BA(iLevel) % p, DM(iLevel) % p, BA(iLevel+1) % p, &
                iLeaf_MFM, iTrunk_MFM, swX(1), amrex_geom(iLevel) % p )
 
@@ -154,7 +154,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE MakeFineMask
+  END SUBROUTINE CreateFineMask
 
 
   SUBROUTINE DestroyFineMask( iLevel, iMF_Mask )
@@ -167,4 +167,4 @@ CONTAINS
 
   END SUBROUTINE DestroyFineMask
 
-END MODULE FineMaskModule
+END MODULE MaskModule

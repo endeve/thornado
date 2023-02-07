@@ -70,8 +70,8 @@ MODULE MF_Euler_UtilitiesModule
     thornado2amrex_X, &
     AllocateArray_X, &
     DeallocateArray_X
-  USE FineMaskModule, ONLY: &
-    MakeFineMask, &
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
     DestroyFineMask
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -237,7 +237,7 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 

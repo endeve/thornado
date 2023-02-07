@@ -107,8 +107,8 @@ MODULE MF_UtilitiesModule
 
   USE MF_KindModule, ONLY: &
     DP
-  USE FineMaskModule, ONLY: &
-    MakeFineMask, &
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
   USE InputParsingModule, ONLY: &
@@ -332,7 +332,7 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF % BA, MF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF % BA, MF % DM )
 
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, &

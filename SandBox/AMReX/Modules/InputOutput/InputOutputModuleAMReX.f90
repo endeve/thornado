@@ -104,8 +104,8 @@ MODULE InputOutputModuleAMReX
     DP, &
     Zero, &
     Two
-  USE FineMaskModule, ONLY: &
-    MakeFineMask, &
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
   USE MF_MeshModule, ONLY: &
@@ -438,7 +438,7 @@ CONTAINS
                nF, 0 )
       CALL MF_plt(iLevel) % setVal( Zero )
 
-      CALL MakeFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_Mask, MF_uGF % BA, MF_uGF % DM )
 
       CALL WriteMPI( MF_uGF(iLevel), iMF_Mask, MF_plt(iLevel) )
 
