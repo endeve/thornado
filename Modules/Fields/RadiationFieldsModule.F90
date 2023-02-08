@@ -82,6 +82,36 @@ MODULE RadiationFieldsModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uAR(:,:,:,:,:,:,:)
 
+  ! --- Grey (Energy-Integrated) Radiation Variables ---
+
+  INTEGER, PUBLIC, PARAMETER :: iGR_N   = 1  ! Eulerian   Number Density
+  INTEGER, PUBLIC, PARAMETER :: iGR_D   = 2  ! Lagrangian Number Density
+  INTEGER, PUBLIC, PARAMETER :: iGR_I1  = 3  ! Lagrangian Number Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iGR_I2  = 4  ! Lagrangian Number Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iGR_I3  = 5  ! Lagrangian Number Flux 3
+  INTEGER, PUBLIC, PARAMETER :: iGR_J   = 6  ! Lagrangian Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iGR_H1  = 7  ! Lagrangian Energy Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iGR_H2  = 8  ! Lagrangian Energy Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iGR_H3  = 9  ! Lagrangian Energy Flux 3
+  INTEGER, PUBLIC, PARAMETER :: iGR_RMS = 10 ! RMS Energy
+  INTEGER, PUBLIC, PARAMETER :: nGR     = 10 ! n Gray Radiation Fields
+
+  CHARACTER(34), DIMENSION(nGR), PUBLIC, PARAMETER :: &
+    namesGR = [ 'Eulerian Number Density           ', &
+                'Lagrangian Number Density         ', &
+                'Lagrangian Number Flux Density (1)', &
+                'Lagrangian Number Flux Density (2)', &
+                'Lagrangian Number Flux Density (3)', &
+                'Lagrangian Energy Density         ', &
+                'Lagrangian Energy Flux Density (1)', &
+                'Lagrangian Energy Flux Density (2)', &
+                'Lagrangian Energy Flux Density (3)', &
+                'RMS Energy                        ' ]
+
+  REAL(DP), DIMENSION(nGR), PUBLIC :: unitsGR
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uGR(:,:,:,:,:,:)
+
   ! --- Diagnostic Radiation Variables ---
 
   INTEGER, PUBLIC, PARAMETER :: iDR_iter_outer  = 1
@@ -166,6 +196,7 @@ CONTAINS
     CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Auxiliary ( nX, swX, nE, swE )
+    CALL CreateRadiationFields_Gray      ( nX, swX )
     CALL CreateRadiationFields_Diagnostic( nX, swX )
 
     CALL SetUnitsRadiationFields
@@ -273,12 +304,14 @@ CONTAINS
     INTEGER :: iAR
 
     IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A5,A28)') '', 'Radiation Fields (Auxiliary)'
       WRITE(*,*)
       DO iAR = 1, nAR
         WRITE(*,'(A5,A)') '', TRIM( namesAR(iAR) )
       END DO
+
     END IF
 
     ALLOCATE &
@@ -290,6 +323,31 @@ CONTAINS
             1:nAR, 1:nSpecies) )
 
   END SUBROUTINE CreateRadiationFields_Auxiliary
+
+
+  SUBROUTINE CreateRadiationFields_Gray( nX, swX )
+
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+
+    INTEGER :: iGR
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A23)') '', 'Radiation Fields (Gray)'
+      WRITE(*,*)
+      DO iGR = 1, nGR
+        WRITE(*,'(A5,A)') '', TRIM( namesGR(iGR) )
+      END DO
+    END IF
+
+    ALLOCATE &
+      ( uGR(1:nDOFX, &
+            1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), &
+            1-swX(3):nX(3)+swX(3), &
+            1:nGR, 1:nSpecies) )
+
+  END SUBROUTINE CreateRadiationFields_Gray
 
 
   SUBROUTINE CreateRadiationFields_Diagnostic( nX, swX )
@@ -325,7 +383,7 @@ CONTAINS
     !$ACC DELETE( uCR, uPR )
 #endif
 
-    DEALLOCATE( uCR, uPR, uAR, uDR )
+    DEALLOCATE( uCR, uPR, uAR, uGR, uDR )
 
   END SUBROUTINE DestroyRadiationFields
 
@@ -340,6 +398,7 @@ CONTAINS
       unitsCR = 1.0_DP
       unitsPR = 1.0_DP
       unitsAR = 1.0_DP
+      unitsGR = 1.0_DP
       unitsDR = 1.0_DP
 
     ELSE
@@ -347,6 +406,7 @@ CONTAINS
       unitsCR = 1.0_DP
       unitsPR = 1.0_DP
       unitsAR = 1.0_DP
+      unitsGR = 1.0_DP
       unitsDR = 1.0_DP
 
     END IF
