@@ -81,29 +81,7 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL ComputeFromConserved_TwoMoment_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-    CALL ComputeFromConserved_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-    CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF, &
-             MF_uGF_Option = MF_uGF, &
-             MF_uCF_Option = MF_uCF, &
-             MF_uPF_Option = MF_uPF, &
-             MF_uAF_Option = MF_uAF, &
-             MF_uDF_Option = MF_uDF )
-
-    CALL WriteFieldsAMReX_Checkpoint &
-           ( StepNo, nLevels, dt, t_new, &
-             MF_uGF % BA % P, &
-             iWriteFields_uGF = 1, &
-             iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 1, &
-             pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P, &
-             pMF_uCR_Option = MF_uCR % P )
 
     CALL Finalize_IMEX_RK_MF
 
