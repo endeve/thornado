@@ -43,9 +43,18 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     ApplyPositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment_MF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    OffGridFlux_TwoMoment_MF
   ! --- Local Modules ---
   USE InputParsingModule,                      ONLY: &
     nLevels, DEBUG, UseTiling, nSpecies
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    IncrementOffGridTally_TwoMoment_MF
+
 
   IMPLICIT NONE
   PRIVATE
@@ -97,11 +106,16 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
 
+    REAL(DP) :: dM_OffGrid_TwoMoment(1:2*nCR,0:nLevels-1)
+
+    INTEGER :: i
+
     LOGICAL :: Verbose
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+    dM_OffGrid_TwoMoment = Zero
     ! --- Set temporary MultiFabs U and dU to zero --
     DO iLevel = 0, nLevels-1
 
@@ -256,6 +270,12 @@ CONTAINS
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
                ( t, GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
+
+
+          dM_OffGrid_TwoMoment(:,iLevel) &
+            = dM_OffGrid_TwoMoment(:,iLevel) &
+            + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
+
         END IF
 
       END DO
@@ -322,6 +342,9 @@ CONTAINS
     END IF
 
   END DO
+
+  CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
+
 
 #if defined(MICROPHYSICS_WEAKLIB)
   uCR = U
