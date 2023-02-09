@@ -214,6 +214,41 @@ CONTAINS
 
           CALL thornado_abort
 
+      CASE( 11 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: Euler_UtilitiesModule_Relativistic'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ComputePrimitive_Scalar'
+           WRITE(*,'(2x,A)') &
+            'CF_D .LT. Min_D'
+          WRITE(*,*)
+          WRITE(*,'(2x,A,I8.8)') &
+            'iNX:              ', Int_Option(1)
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'U(iCF_D       ) = ', Real_Option(1), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'U(iCF_S1      ) = ', Real_Option(2), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'U(iCF_S2      ) = ', Real_Option(3), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'U(iCF_S3      ) = ', Real_Option(4), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'U(iCF_E       ) = ', Real_Option(5), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'U(iCF_Ne      ) = ', Real_Option(6), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'G(iGF_Gm_dd_11) = ', Real_Option(7), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'G(iGF_Gm_dd_22) = ', Real_Option(8), '_DP'
+          WRITE(*,'(2x,A,ES24.16E3,A)') &
+            'G(iGF_Gm_dd_33) = ', Real_Option(9), '_DP'
+          WRITE(*,'(2x,A)') TRIM( Message )
+
+          CALL thornado_abort
+
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr

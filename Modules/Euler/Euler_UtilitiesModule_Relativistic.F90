@@ -247,6 +247,8 @@ CONTAINS
               iX3  = IndexTable_Option(4,iNX)
             END IF
 
+            WRITE(*,*)
+
             WRITE(*,*) 'iNX: ', iNXX
             WRITE(*,*) 'iX1, X1_C, dX1: ', &
               iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
@@ -521,6 +523,8 @@ CONTAINS
       PF_V3 = Zero
       PF_E  = MAX( CF_E, SqrtTiny ) ! What to put here
       PF_Ne = CF_Ne / CF_D
+
+      iErr = 11
 
       RETURN
 
