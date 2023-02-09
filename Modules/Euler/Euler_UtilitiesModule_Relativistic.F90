@@ -129,11 +129,14 @@ CONTAINS
     ( uD, uS1, uS2, uS3, uE, uNe, &
       pD, pV1, pV2, pV3, pE, pNe, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      Mask_Option, &
       iDimX_Option, IndexTable_Option )
 
     REAL(DP)    , INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
     REAL(DP)    , INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
     REAL(DP)    , INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    INTEGER     , INTENT(in), OPTIONAL :: &
+      Mask_Option(:)
     CHARACTER(2), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
@@ -141,23 +144,31 @@ CONTAINS
 
     INTEGER :: N, ErrorExists, iX1, iX2, iX3, iNXX
     INTEGER :: iNX, iErr(SIZE(uD))
+    INTEGER :: Mask(SIZE(uD))
 
     N           = SIZE(uD)
     ErrorExists = 0
 
     CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
 
+    IF( PRESENT( Mask_Option ) )THEN
+      Mask = Mask_Option
+    ELSE
+      ! Every element is a leaf element
+      Mask = 0
+    END IF
+
     CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask ) &
     !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask ) &
     !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, iErr )
 #endif
 
@@ -173,7 +184,7 @@ CONTAINS
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, iErr )
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, iErr, Mask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP REDUCTION( +:ErrorExists )
@@ -181,6 +192,8 @@ CONTAINS
     DO iNX = 1, N
 
       iErr(iNX) = 0
+
+      IF( Mask(iNX) .NE. 0 ) CYCLE
 
       CALL ComputePrimitive_Scalar &
              ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), &
@@ -199,12 +212,12 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CP_CopyOut )

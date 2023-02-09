@@ -14,7 +14,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_sum, &
     amrex_parallel_communicator
@@ -100,6 +101,9 @@ MODULE  MF_Euler_dgDiscretizationModule
     FillPatch
   USE AverageDownModule, ONLY: &
     AverageDown
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
+    DestroyFineMask
 
   IMPLICIT NONE
   PRIVATE
@@ -238,10 +242,13 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: duCF (:,:,:,:)
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: duCF    (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X1(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X2(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X3(:,:,:,:)
@@ -295,14 +302,18 @@ CONTAINS
 
     END DO
 
+    CALL CreateFineMask &
+           ( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF  => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF  => MF_uDF(iLevel) % DataPtr( MFI )
-      duCF => MF_duCF        % DataPtr( MFI )
+      uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF      => MF_uDF(iLevel) % DataPtr( MFI )
+      duCF     => MF_duCF        % DataPtr( MFI )
+      FineMask => iMF_FineMask   % DataPtr( MFI )
 
       uSurfaceFlux_X1 => SurfaceFluxes(1) % DataPtr( MFI )
       IF( nDimsX .GT. 1 ) uSurfaceFlux_X2 => SurfaceFluxes(2) % DataPtr( MFI )
@@ -371,7 +382,8 @@ CONTAINS
                SurfaceFlux_X1_Option = SurfaceFlux_X1, &
                SurfaceFlux_X2_Option = SurfaceFlux_X2, &
                SurfaceFlux_X3_Option = SurfaceFlux_X3, &
-               UseXCFC_Option = UseXCFC )
+               UseXCFC_Option = UseXCFC, &
+               Mask_Option = FineMask )
 
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
@@ -386,7 +398,6 @@ CONTAINS
                               [ iX_B0(1)  , iX_B0(2), iX_B0(3) ], &
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], &
                               uSurfaceFlux_X1, SurfaceFlux_X1 )
-
 
       IF( nDimsX .GT. 1 )THEN
 
@@ -451,16 +462,18 @@ CONTAINS
 
     END DO ! MFI
 
-    CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
-
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL DestroyFineMask( iLevel, iMF_FineMask )
+
+    CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
     IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
-        CALL FluxRegister_Euler( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
+        CALL FluxRegister_Euler( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF )
 
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )

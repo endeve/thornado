@@ -6,7 +6,7 @@ using namespace amrex;
 extern "C"
 {
     void amrex_fi_createfinemask_thornado
-      ( iMultiFab*& Mask,
+      ( iMultiFab*& FineMask,
         const BoxArray& CrseBA,
         const DistributionMapping& CrseDM,
         const BoxArray& FineBA,
@@ -15,7 +15,7 @@ extern "C"
         const int swX,
         const Geometry * geom )
     {
-        Mask
+        FineMask
           = new iMultiFab
                   ( makeFineMask
                     ( CrseBA, CrseDM, amrex::IntVect(swX), FineBA,
@@ -24,9 +24,26 @@ extern "C"
     }
 
     void amrex_fi_destroyfinemask_thornado
-      ( iMultiFab*& Mask )
+      ( iMultiFab*& FineMask )
     {
-        delete Mask;
-        Mask = NULL;
+        delete FineMask;
+        FineMask = NULL;
+    }
+
+    void amrex_fi_createpointmask_thornado
+      ( iMultiFab*& PointMask,
+        const Geometry * geom,
+        const int iCovered,
+        const int iNotCovered,
+        const int iPhysicalBoundary,
+        const int iInterior )
+
+    {
+        PointMask -> BuildMask( geom -> Domain(),
+                                geom -> periodicity(),
+                                iCovered,
+                                iNotCovered,
+                                iPhysicalBoundary,
+                                iInterior );
     }
 }

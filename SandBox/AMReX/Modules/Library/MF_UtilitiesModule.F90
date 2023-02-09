@@ -110,7 +110,7 @@ MODULE MF_UtilitiesModule
   USE MaskModule, ONLY: &
     CreateFineMask, &
     DestroyFineMask, &
-    IsLeafElement
+    IsNotLeafElement
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -254,7 +254,7 @@ CONTAINS
 
         IF( PRESENT( iMF_FineMask_Option ) )THEN
 
-          IF( .NOT. IsLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
         END IF
 
