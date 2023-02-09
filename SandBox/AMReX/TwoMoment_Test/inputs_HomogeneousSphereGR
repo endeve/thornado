@@ -7,6 +7,8 @@ DEBUG = 0
 thornado.ProgramName = "HomogeneousSphereGR"
 
 thornado.Scheme = "IMEX_PDARS"
+thornado.nStages = 2
+
 
 thornado.t_end     = 1000.0     # Final time
 thornado.dt_wrt    = 1000.0      # Write time interval
@@ -44,7 +46,7 @@ amr.max_grid_size_y   = 1
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
 amr.max_level         = 0
-
+amr.ref_ratio         = 2
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter_TwoMoment = 1
