@@ -99,6 +99,7 @@ MODULE MF_TwoMoment_TallyModule
   PUBLIC :: InitializeTally_TwoMoment_MF
   PUBLIC :: ComputeTally_TwoMoment_MF
   PUBLIC :: FinalizeTally_TwoMoment_MF
+  PUBLIC :: IncrementOffGridTally_TwoMoment_MF
 
   LOGICAL :: SuppressTally
 
@@ -106,9 +107,17 @@ MODULE MF_TwoMoment_TallyModule
   REAL(DP) :: hc3
 
 
-  CHARACTER(256) :: Neutrino_FileName
-  REAL(DP), ALLOCATABLE :: Neutrino_LeptonNumber(:)
-  REAL(DP), ALLOCATABLE :: Neutrino_Energy(:)
+  CHARACTER(256) :: NeutrinoLeptonNumber_FileName
+  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_Interior(:)
+  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_Initial(:)
+  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_OffGrid(:)
+  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_Change(:)
+
+  CHARACTER(256) :: NeutrinoEnergy_FileName
+  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Interior(:)
+  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Initial(:)
+  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Offgrid(:)
+  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Change(:)
 
 
   CHARACTER(256) :: Momentum_FileName
@@ -134,8 +143,16 @@ CONTAINS
     INTEGER        :: FileUnit
 
     CHARACTER(256) :: TimeLabel
-    CHARACTER(256) :: LeptonNumberLabel
-    CHARACTER(256) :: EnergyLabel
+    CHARACTER(256) :: LeptonNumber_InteriorLabel
+    CHARACTER(256) :: LeptonNumber_InitialLabel
+    CHARACTER(256) :: LeptonNumber_OffgridLabel
+    CHARACTER(256) :: LeptonNumber_ChangeLabel
+
+    CHARACTER(256) :: Energy_InteriorLabel
+    CHARACTER(256) :: Energy_InitialLabel
+    CHARACTER(256) :: Energy_OffGridLabel
+    CHARACTER(256) :: Energy_ChangeLabel
+
     CHARACTER(256) :: Momentum1Label
     CHARACTER(256) :: Momentum2Label
     CHARACTER(256) :: Momentum3Label
@@ -152,6 +169,7 @@ CONTAINS
     IF( UnitsActive )THEN
 
       hc3 = ( PlanckConstant * SpeedOfLight )**3
+
     ELSE
 
       hc3 = One
@@ -159,8 +177,17 @@ CONTAINS
     END IF
 
 
-    ALLOCATE( Neutrino_LeptonNumber(0:nLevels-1) )
-    ALLOCATE( Neutrino_Energy(0:nLevels-1) )
+
+    ALLOCATE(NeutrinoLeptonNumber_Interior(0:nLevels-1) )
+    ALLOCATE(NeutrinoLeptonNumber_Initial (0:nLevels-1) )
+    ALLOCATE(NeutrinoLeptonNumber_OffGrid (0:nLevels-1) )
+    ALLOCATE(NeutrinoLeptonNumber_Change  (0:nLevels-1) )
+
+    ALLOCATE( NeutrinoEnergy_Interior(0:nLevels-1) )
+    ALLOCATE( NeutrinoEnergy_Initial (0:nLevels-1) )
+    ALLOCATE( NeutrinoEnergy_Offgrid (0:nLevels-1) )
+    ALLOCATE( NeutrinoEnergy_Change  (0:nLevels-1) )
+
     ALLOCATE( Momentum_X1(0:nLevels-1) )
     ALLOCATE( Momentum_X2(0:nLevels-1) )
     ALLOCATE( Momentum_X3(0:nLevels-1) )
@@ -174,30 +201,59 @@ CONTAINS
 
       BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
 
-      ! --- Neutrino ---
+      ! --- Neutrino Lepton Number ---
 
-      Neutrino_FileName &
-        = TRIM( BaseFileName ) // '.Tally_Neutrino.dat'
+      NeutrinoLeptonNumber_FileName &
+        = TRIM( BaseFileName ) // '_Tally_NeutrinoLeptonNumber.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      LeptonNumberLabel &
-        = 'LeptonNumber'
-      EnergyLabel &
-        = 'Energy [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+      LeptonNumber_InteriorLabel &
+        = 'LeptonNumber_Interior'
+      LeptonNumber_OffgridLabel &
+        = 'LeptonNumber_OffGrid'
+      LeptonNumber_InitialLabel &
+        = 'LeptonNumber_Initial'
+      LeptonNumber_ChangeLabel &
+        = 'LeptonNumber_Change'
 
 
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM(Neutrino_FileName ) )
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM(NeutrinoLeptonNumber_FileName ) )
 
       WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( LeptonNumberLabel ), TRIM( EnergyLabel )
+        TRIM( TimeLabel ), TRIM( LeptonNumber_InteriorLabel ), TRIM( LeptonNumber_OffGridLabel ), &
+        TRIM( LeptonNumber_InitialLabel ), TRIM( LeptonNumber_ChangeLabel ) 
       CLOSE( FileUnit )
+
+      ! --- Neutrino Energy  ---
+
+      NeutrinoEnergy_FileName &
+        = TRIM( BaseFileName ) // '_Tally_NeutrinoEnergy.dat'
+
+      TimeLabel     &
+        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+      Energy_InteriorLabel &
+        = 'Energy_Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+      Energy_OffGridLabel &
+        = 'Energy_OffGrid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+      Energy_InitialLabel &
+        = 'Energy_Initial [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+      Energy_ChangeLabel &
+        = 'Energy_Change [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM(NeutrinoEnergy_FileName ) )
+
+      WRITE(FileUnit,'(5(A25,x))') &
+        TRIM( TimeLabel ), TRIM( Energy_InteriorLabel ), TRIM( Energy_OffGridLabel ), &
+        TRIM( Energy_InitialLabel ), TRIM( Energy_ChangeLabel ) 
+      CLOSE( FileUnit )
+
 
       ! --- Momentum ---
 
       Momentum_FileName &
-        = TRIM( BaseFileName ) // '.Tally_Momentum.dat'
+        = TRIM( BaseFileName ) // '_Tally_Momentum.dat'
       Momentum1Label &
         = 'Momentum_1'
       Momentum2Label &
@@ -215,12 +271,22 @@ CONTAINS
 
     END IF
 
-    Neutrino_LeptonNumber = Zero
-    Neutrino_Energy       = Zero
+    NeutrinoLeptonNumber_Interior = Zero
+    NeutrinoLeptonNumber_Initial  = Zero
+    NeutrinoLeptonNumber_OffGrid  = Zero
+    NeutrinoLeptonNumber_Change   = Zero
 
-    Momentum_X1           = Zero
-    Momentum_X2           = Zero
-    Momentum_X3           = Zero
+
+    NeutrinoEnergy_Interior       = Zero
+    NeutrinoEnergy_Initial        = Zero
+    NeutrinoEnergy_OffGrid        = Zero
+    NeutrinoEnergy_Change         = Zero
+
+
+
+    Momentum_X1                   = Zero
+    Momentum_X2                   = Zero
+    Momentum_X3                   = Zero
 
   END SUBROUTINE InitializeTally_TwoMoment_MF
 
@@ -230,8 +296,16 @@ CONTAINS
 
     IF( SuppressTally ) RETURN
 
-    DEALLOCATE( Neutrino_LeptonNumber )
-    DEALLOCATE( Neutrino_Energy )
+    DEALLOCATE( NeutrinoLeptonNumber_Interior )
+    DEALLOCATE( NeutrinoLeptonNumber_Initial )
+    DEALLOCATE( NeutrinoLeptonNumber_OffGrid )
+    DEALLOCATE( NeutrinoLeptonNumber_Change  )
+   
+    DEALLOCATE( NeutrinoEnergy_Interior )
+    DEALLOCATE( NeutrinoEnergy_Initial  )
+    DEALLOCATE( NeutrinoEnergy_Offgrid  )
+    DEALLOCATE( NeutrinoEnergy_Change   )
+
     DEALLOCATE( Momentum_X1 )
     DEALLOCATE( Momentum_X2 )
     DEALLOCATE( Momentum_X3 )
@@ -240,7 +314,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTally_TwoMoment_MF &
-    ( GEOM, MF_uGF, MF_uCF, MF_uCR, Time, Verbose_Option )
+    ( GEOM, MF_uGF, MF_uCF, MF_uCR, Time, SetInitialValues_Option, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
@@ -249,10 +323,11 @@ CONTAINS
 
 
     REAL(DP),             INTENT(in) :: Time
+    LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
 
-
+    LOGICAL :: SetInitialValues
     LOGICAL :: Verbose
 
     INTEGER                       :: iX_B0(3), iX_E0(3), iZ_B0(4), iZ_E0(4)
@@ -270,6 +345,12 @@ CONTAINS
     IF( SuppressTally ) RETURN
 
 
+    SetInitialValues = .FALSE.
+    IF( PRESENT( SetInitialValues_Option ) ) &
+      SetInitialValues = SetInitialValues_Option
+
+
+
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
@@ -280,8 +361,9 @@ CONTAINS
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
-      Neutrino_LeptonNumber(iLevel) = Zero
-      Neutrino_Energy(iLevel)       = Zero
+      NeutrinoLeptonNumber_Interior(iLevel) = Zero
+
+      NeutrinoEnergy_Interior(iLevel)       = Zero
 
       Momentum_X1(iLevel)           = Zero
       Momentum_X2(iLevel)           = Zero
@@ -377,6 +459,51 @@ CONTAINS
 
     END DO
 
+
+
+
+
+
+
+
+
+    IF( SetInitialValues )THEN
+
+      DO iLevel = 0, nLevels-1
+
+        NeutrinoLeptonNumber_Initial(iLevel) = NeutrinoLeptonNumber_Interior(iLevel)
+        NeutrinoEnergy_Initial      (iLevel) = NeutrinoEnergy_Interior      (iLevel)
+
+      END DO
+
+      CALL amrex_parallel_reduce_sum( NeutrinoLeptonNumber_Initial, nLevels )
+      CALL amrex_parallel_reduce_sum( NeutrinoEnergy_Initial      , nLevels )
+
+    END IF
+
+
+    DO iLevel = 0, nLevels-1
+
+      NeutrinoLeptonNumber_Change(iLevel) &
+        = NeutrinoLeptonNumber_Interior(iLevel) &
+            - ( NeutrinoLeptonNumber_Initial(iLevel) + NeutrinoLeptonNumber_OffGrid(iLevel) )
+
+      NeutrinoEnergy_Change(iLevel) &
+        = NeutrinoEnergy_Interior(iLevel) &
+            - ( NeutrinoEnergy_Initial(iLevel)       + NeutrinoEnergy_OffGrid(iLevel)       )
+
+    END DO
+
+
+
+
+
+
+
+
+
+
+
     CALL WriteTally_TwoMoment( Time )
 
     IF( Verbose )THEN
@@ -389,6 +516,29 @@ CONTAINS
 
 
   END SUBROUTINE ComputeTally_TwoMoment_MF
+
+  SUBROUTINE IncrementOffGridTally_TwoMoment_MF( dM )
+
+    REAL(DP), INTENT(in) :: dM(1:,0:)
+
+    INTEGER :: iLevel
+
+    IF( SuppressTally ) RETURN
+
+    DO iLevel = 0, nLevels-1
+
+      NeutrinoLeptonNumber_OffGrid(iLevel) &
+        = NeutrinoLeptonNumber_OffGrid(iLevel) + FourPi * dM(iCR_N,iLevel) / hc3
+
+      NeutrinoEnergy_OffGrid &
+        = NeutrinoEnergy_OffGrid(iLevel)       + FourPi * dM(nCR+iCR_N,iLevel ) / hc3
+
+
+    END DO
+  END SUBROUTINE IncrementOffGridTally_TwoMoment_MF
+
+
+
 
 
   SUBROUTINE ComputeTally_TwoMoment( iZ_B0, iZ_E0, G, UF, U, iLevel )
@@ -497,8 +647,8 @@ CONTAINS
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
-        Neutrino_LeptonNumber(iLevel)                     &
-          = Neutrino_LeptonNumber(iLevel)                 &
+        NeutrinoLeptonNumber_Interior(iLevel)             &
+          = NeutrinoLeptonNumber_Interior(iLevel)        &
               + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
                 * LeptonNumber(iS)                        &
                 * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
@@ -563,8 +713,8 @@ CONTAINS
             + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
         W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
-        Neutrino_Energy                                       &
-          = Neutrino_Energy                                   &
+        NeutrinoEnergy_Interior                                       &
+          = NeutrinoEnergy_Interior                                   &
               + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
                 * ( W * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)    &
                     + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)           &
@@ -629,15 +779,31 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      ! --- Neutrino ---
+      ! --- Neutrino Lepton Number ---
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( Neutrino_FileName ), &
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( NeutrinoLeptonNumber_FileName ), &
             POSITION = 'APPEND', ACTION = 'WRITE' )
 
       WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
-        Time / UnitsDisplay % TimeUnit,                       &
-        Neutrino_LeptonNumber(0),                             &
-        Neutrino_Energy(0) / UnitsDisplay % EnergyGlobalUnit
+        Time / UnitsDisplay % TimeUnit, &
+        NeutrinoLeptonNumber_Interior(0), &
+        NeutrinoLeptonNumber_OffGrid (0), &
+        NeutrinoLeptonNumber_Initial (0), &
+        NeutrinoLeptonNumber_Change  (0)
+
+
+      CLOSE( FileUnit )
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( NeutrinoEnergy_FileName ), &
+            POSITION = 'APPEND', ACTION = 'WRITE' )
+
+      WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
+        Time / UnitsDisplay % TimeUnit, &
+        NeutrinoEnergy_Interior(0) / UnitsDisplay % EnergyGlobalUnit, &
+        NeutrinoEnergy_OffGrid (0) / UnitsDisplay % EnergyGlobalUnit, &
+        NeutrinoEnergy_Initial (0) / UnitsDisplay % EnergyGlobalUnit, &
+        NeutrinoEnergy_Change  (0) / UnitsDisplay % EnergyGlobalUnit
+
 
       CLOSE( FileUnit )
 
@@ -671,10 +837,10 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Neutrino Lepton Number.: ', &
-        Neutrino_LeptonNumber(0)
+        NeutrinoLeptonNumber_Interior(0)
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Neutrino Energy.: ', &
-        Neutrino_Energy(0) / UnitsDisplay % EnergyGlobalUnit
+        NeutrinoEnergy_Interior(0) / UnitsDisplay % EnergyGlobalUnit
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
         '', 'Neutrino Momentum1.: ', &
         Momentum_X1(0)
