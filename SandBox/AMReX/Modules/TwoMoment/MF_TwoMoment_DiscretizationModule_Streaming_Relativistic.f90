@@ -25,7 +25,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE FluidFieldsModule,            ONLY: &
     nCF
   USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+    ComputeIncrement_TwoMoment_Explicit, &
+    OffGridFlux_TwoMoment  
   USE MeshModule, ONLY: &
     MeshX
 
@@ -57,7 +58,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_FieldsModule_TwoMoment, ONLY: &
-    MF_Permute
+    MF_Permute, &
+    OffGridFlux_TwoMoment_MF
   USE MF_UtilitiesModule, ONLY: &
     amrex2amrex_permute_Z, &
     amrex_permute2amrex_Z, &
@@ -113,17 +115,17 @@ CONTAINS
     DO i = 0, nLevels-1
 
       IF (i .NE. 0) THEN
-
+       
         DO j = i - 1, i
 
           !CALL MF_amrex2amrex_permute_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
 
         END DO
 
-        CALL FillPatch( i, MF_uGF, MF_Permute )
+!        CALL FillPatch( i, Time(i), MF_uGF, MF_Permute )
       ELSE
 
-        CALL FillPatch( i, MF_uGF, MF_uCR )
+!        CALL FillPatch( i, Time(i), MF_uGF, MF_uCR )
 
       END IF
 
@@ -138,6 +140,9 @@ CONTAINS
       END IF
     END DO
 
+
+
+    OffGridFlux_TwoMoment_MF = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -249,6 +254,18 @@ CONTAINS
               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
                 Verbose_Option = Verbose, &
                 SuppressBC_Option = .TRUE.  )
+
+
+
+ DO i=1,nCR
+        OffGridFlux_TwoMoment_MF(i,iLevel) &
+          = OffGridFlux_TwoMoment_MF(i,iLevel) &
+          + OffGridFlux_TwoMoment(i)  
+        OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
+          = OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
+          + OffGridFlux_TwoMoment(i+nCR)  
+END DO
+
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
