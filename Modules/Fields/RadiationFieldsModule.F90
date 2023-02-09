@@ -1,7 +1,7 @@
 MODULE RadiationFieldsModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, One
   USE ProgramHeaderModule, ONLY: &
     nDOF, nDOFX
 
@@ -160,7 +160,7 @@ CONTAINS
         '', 'Radiation Fields, nSpecies = ', nSpecies
     END IF
 
-    LeptonNumber = [ 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP, 1.0_DP, - 1.0_DP ]
+    LeptonNumber = [ One, - One, One, - One, One, - One ]
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( LeptonNumber )
@@ -391,23 +391,31 @@ CONTAINS
   SUBROUTINE SetUnitsRadiationFields
 
     USE UnitsModule, ONLY: &
-      UnitsActive
+      UnitsActive, &
+      Centimeter, &
+      Second, &
+      Erg, MeV
+
+    unitsCR = One
+    unitsPR = One
+    unitsAR = One
+    unitsGR = One
+    unitsDR = One
 
     IF( UnitsActive )THEN
 
-      unitsCR = 1.0_DP
-      unitsPR = 1.0_DP
-      unitsAR = 1.0_DP
-      unitsGR = 1.0_DP
-      unitsDR = 1.0_DP
+      ! --- Gray Units ---
 
-    ELSE
-
-      unitsCR = 1.0_DP
-      unitsPR = 1.0_DP
-      unitsAR = 1.0_DP
-      unitsGR = 1.0_DP
-      unitsDR = 1.0_DP
+      unitsGR(iGR_N)   = One / Centimeter**3
+      unitsGR(iGR_D)   = One / Centimeter**3
+      unitsGR(iGR_I1)  = One / Centimeter**2 / Second
+      unitsGR(iGR_I2)  = One / Centimeter**2 / Second
+      unitsGR(iGR_I3)  = One / Centimeter**2 / Second
+      unitsGR(iGR_J)   = Erg / Centimeter**3
+      unitsGR(iGR_H1)  = Erg / Centimeter**2 / Second
+      unitsGR(iGR_H2)  = Erg / Centimeter**2 / Second
+      unitsGR(iGR_H3)  = Erg / Centimeter**2 / Second
+      unitsGR(iGR_RMS) = MeV
 
     END IF
 
