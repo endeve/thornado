@@ -516,7 +516,7 @@ CONTAINS
 
       END IF
 
-      CALL DestroyFineMask( iLevel, iMF_Mask )
+      CALL DestroyFineMask( iMF_Mask )
 
     END DO ! iLevel = 0, nLevels-1
 

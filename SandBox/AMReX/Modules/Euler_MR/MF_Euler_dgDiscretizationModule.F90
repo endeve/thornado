@@ -464,7 +464,7 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    CALL DestroyFineMask( iLevel, iMF_FineMask )
+    CALL DestroyFineMask( iMF_FineMask )
 
     CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
 

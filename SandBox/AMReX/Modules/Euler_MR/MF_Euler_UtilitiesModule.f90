@@ -290,7 +290,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_FineMask )
+      CALL DestroyFineMask( iMF_FineMask )
 
       CALL DestroyMesh_MF( MeshX )
 

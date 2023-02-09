@@ -257,9 +257,8 @@ CONTAINS
   END SUBROUTINE CreateFineMask
 
 
-  SUBROUTINE DestroyFineMask( iLevel, iMF_FineMask )
+  SUBROUTINE DestroyFineMask( iMF_FineMask )
 
-    INTEGER              , INTENT(in)    :: iLevel
     TYPE(amrex_imultifab), INTENT(inout) :: iMF_FineMask
 
     CALL amrex_fi_destroyfinemask_thornado( iMF_FineMask % p )

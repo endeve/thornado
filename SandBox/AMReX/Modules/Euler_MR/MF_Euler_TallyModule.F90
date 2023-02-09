@@ -332,7 +332,7 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iLevel, iMF_FineMask )
+      CALL DestroyFineMask( iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 

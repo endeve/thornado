@@ -341,7 +341,7 @@ CONTAINS
                WriteToFile_Option = WriteToFile, &
                FileNameBase_Option = TRIM( FileNameBase ) )
 
-      CALL DestroyFineMask( iLevel, iMF_FineMask )
+      CALL DestroyFineMask( iMF_FineMask )
 
     END DO
 
