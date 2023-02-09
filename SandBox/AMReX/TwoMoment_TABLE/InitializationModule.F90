@@ -127,6 +127,9 @@ MODULE InitializationModule
     InitializeClosure_TwoMoment
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
     InitializeTimers
+  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+    InitializeNeutrinoMatterSolverParameters
+
 
   ! --- Local Modules ---
 
@@ -213,7 +216,20 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
-    DescribeProgramHeader_AMReX
+    OpacityTableName_Brem, &
+    DescribeProgramHeader_AMReX, &
+    M_outer,        & 
+    MaxIter_outer,  & 
+    Rtol_outer,     & 
+    M_inner,        & 
+    MaxIter_inner,  & 
+    Rtol_inner,     & 
+    Include_NES,    & 
+    Include_Pair,   & 
+    Include_Brem,   & 
+    Include_LinCorr,& 
+    wMatterRHS      
+    
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
@@ -309,36 +325,50 @@ CONTAINS
 
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
-
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
                EquationOfStateTableName_Option = EosTableName, &
                Verbose_Option = amrex_parallel_ioprocessor() )
-
+      
       CALL InitializeOpacities_TABLE &
              ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
                OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
                OpacityTableName_NES_Option  = OpacityTableName_NES,  &
                OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+               OpacityTableName_Brem_Option = OpacityTableName_Brem, &
                EquationOfStateTableName_Option = EosTableName, &
                Verbose_Option = amrex_parallel_ioprocessor())
 
+     CALL InitializeNeutrinoMatterSolverParameters &
+            ( M_outer_Option &
+                = M_outer, &
+              M_inner_Option &
+                = M_inner, &
+              MaxIter_outer_Option &
+                = MaxIter_outer, &
+              MaxIter_inner_Option &
+                = MaxIter_inner, &
+              Rtol_inner_Option &
+                = Rtol_inner, &
+              Rtol_outer_Option &
+                = Rtol_outer, &
+              Include_NES_Option &
+                = Include_NES, &
+              Include_Pair_Option &
+                = Include_Pair, &
+              Include_Brem_Option &
+                = Include_Brem, &
+              Include_LinCorr_Option &
+                = Include_LinCorr, &
+              wMatrRHS_Option &
+                = wMatterRHS, &
+              Verbose_Option &
+                = amrex_parallel_ioprocessor() )
+
     ELSE
 
-      CALL InitializeEquationOfState &
-               ( EquationOfState_Option = EquationOfState, &
-                 Gamma_IDEAL_Option = Gamma_IDEAL, &
-                 Verbose_Option = amrex_parallel_ioprocessor() )
-
-      CALL CreateOpacities &
-             ( nX, [ 1, 1, 1 ], nE, 1, &
-               Verbose_Option = amrex_parallel_ioprocessor() )
-
-      CALL SetOpacities &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, &
-               Verbose_Option = amrex_parallel_ioprocessor()  )
 
     END IF
 
@@ -435,6 +465,10 @@ CONTAINS
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
+             MF_uGF_Option = MF_uGF, &
+             MF_uCF_Option = MF_uCF, &
+             MF_uPF_Option = MF_uPF, &
+             MF_uAF_Option = MF_uAF, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
 
@@ -444,7 +478,7 @@ CONTAINS
 
     CALL ComputeTally_TwoMoment_MF &
            ( amrex_geom(0), MF_uGF, MF_uCF, MF_uCR, &
-             t_new(0), Verbose_Option = .FALSE. )
+             t_new(0), SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
   END SUBROUTINE InitializeProgram
 
@@ -463,7 +497,6 @@ CONTAINS
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-
     BA = pBA
     DM = pDM
 
@@ -506,13 +539,11 @@ CONTAINS
     CALL CreateMesh_MF( iLevel, MeshX )
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
-
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCR(iLevel), MF_uCF(iLevel) )
-
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCR )
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -552,10 +583,10 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFZ_Z2 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCR )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -602,10 +633,10 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
 
