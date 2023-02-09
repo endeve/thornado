@@ -87,14 +87,12 @@ num = 1
     IF ( dt_rel .NE. 0.0_amrex_real ) THEN
 
       dt = dt_rel
-
     ELSE
 
       CALL ComputeTimeStep_TwoMoment_Fancy_MF &
              ( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
 
     END IF
-
     IF( ALL( t_new + dt .LE. t_end ) )THEN
       t_new = t_new + dt
     ELSE
@@ -129,11 +127,13 @@ num = 1
       CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
-               ( t_new(0), StepNo, MF_uGF, &
-                 MF_uCR_Option = MF_uCR, &
-                 MF_uPR_Option = MF_uPR, &
-                 PlotFileNumber_Option = num )
-
+             ( t_new(0), StepNo, MF_uGF, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF, &
+               MF_uCR_Option = MF_uCR, &
+               MF_uPR_Option = MF_uPR )
 
 
 
@@ -178,22 +178,18 @@ num = 1
            pMF_uCF_Option = MF_uCF % P, &
            pMF_uCR_Option = MF_uCR % P )
 
-  CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF, &
-             MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR, &
-             PlotFileNumber_Option = num )
+      CALL WriteFieldsAMReX_PlotFile &
+             ( t_new(0), StepNo, MF_uGF, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF, &
+               MF_uCR_Option = MF_uCR, &
+               MF_uPR_Option = MF_uPR )
 
   CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
 
-!!$  CALL WriteFieldsAMReX_PlotFile_Euler &
-!!$             ( t_new(0), StepNo, MF_uGF, &
-!!$               MF_uGF_Option = MF_uGF, &
-!!$               MF_uCF_Option = MF_uCF, &
-!!$               MF_uPF_Option = MF_uPF, &
-!!$               MF_uAF_Option = MF_uAF, &
-!!$               num_Option = num )
 
   CALL ComputeTally_Euler_MF &
          ( t_new, MF_uGF, MF_uCF, Verbose_Option = .FALSE. )
