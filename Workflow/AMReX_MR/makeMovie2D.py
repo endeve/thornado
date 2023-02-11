@@ -4,20 +4,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-from UtilitiesModule import GetData, GetNorm, GetFileArray
+from UtilitiesModule import GetNorm
 from MakeDataFile import MakeDataFile, ReadHeader
+
+"""
+
+Creates a directory with structure as laid out
+in MakeDataFile.py and makes a movie from it
+
+Usage:
+  $ python3 makeMovie2D.py
+
+"""
 
 #### ========== User Input ==========
 
 # ID to be used for naming purposes
 ID = 'KelvinHelmholtz2D'
 
-# Directory containing AMReX plotfiles
-PlotFileDirectory \
-  = 'thornado/SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
+# Directory containing AMReX Plotfiles
+PlotfileDirectory \
+  = '/home/kkadoogan/Work/Codes/thornado/SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
-# PlotFile base name (e.g., Advection2D.plt######## -> Advection2D.plt )
-PlotFileBaseName = ID + '.plt'
+# Plotfile base name (e.g., Advection2D.plt######## -> Advection2D.plt )
+PlotfileBaseName = ID + '.plt'
 
 # Field to plot
 Field = 'PF_D'
@@ -32,12 +42,12 @@ UsePhysicalUnits = False
 CoordinateSystem = 'cartesian'
 
 # Colormap
-cmap = 'viridis'
+cmap = 'jet'
 
 # First and last snapshots and number of snapshots to include in movie
 SSi = -1 # -1 -> SSi = 0
-SSf = -1 # -1 -> PlotFileArray.shape[0] - 1
-nSS = -1 # -1 -> PlotFileArray.shape[0]
+SSf = -1 # -1 -> PlotfileArray.shape[0] - 1
+nSS = -1 # -1 -> PlotfileArray.shape[0]
 
 # Max level of refinement to include
 MaxLevel = -1 # -1 -> use all levels
@@ -54,66 +64,98 @@ zAxisVertical = False
 
 #### ====== End of User Input =======
 
-DataFileDirectory = '.{:s}_{:s}_MovieData2D'.format( ID, Field )
-MovieName         = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
+DataDirectory = '.{:s}'.format( ID )
+MovieName     = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 
 # Append "/" if not present
-if( not PlotFileDirectory[-1] == '/' ): PlotFileDirectory += '/'
-if( not DataFileDirectory[-1] == '/' ): DataFileDirectory += '/'
+if( not PlotfileDirectory[-1] == '/' ): PlotfileDirectory += '/'
+if( not DataDirectory    [-1] == '/' ): DataDirectory     += '/'
 
 TimeUnit = ''
 if UsePhysicalUnits: TimeUnit = 'ms'
 
-MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
-              PlotFileBaseName, CoordinateSystem, \
-              SSi = SSi, SSf = SSf, nSS = nSS, \
-              UsePhysicalUnits = UsePhysicalUnits, \
-              MaxLevel = MaxLevel, Verbose = Verbose )
-
-PlotFileArray \
-  = GetFileArray( PlotFileDirectory, PlotFileBaseName, \
-                  SSi = SSi, SSf = SSf, nSS = nSS )
-
+PlotfileArray \
+  = MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
+                  PlotfileBaseName, CoordinateSystem, \
+                  SSi = SSi, SSf = SSf, nSS = nSS, \
+                  UsePhysicalUnits = UsePhysicalUnits, \
+                  MaxLevel = MaxLevel, Verbose = Verbose )
 def f(t):
 
-    DataFile = DataFileDirectory + PlotFileArray[t] + '.dat'
+    FileDirectory = DataDirectory + PlotfileArray[t] + '/'
 
-    DataShape, DataUnits, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3 \
-      = ReadHeader( DataFile )
+    TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
+    X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
+    X2File   = FileDirectory + '{:}.dat'.format( 'X2' )
+    dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
+    dX2File  = FileDirectory + '{:}.dat'.format( 'dX2' )
+    DataFile = FileDirectory + '{:}.dat'.format( Field )
 
-    Data = np.loadtxt( DataFile ).reshape( np.int64( DataShape ) )
+    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+
+    Time = np.loadtxt( TimeFile )
+    X1_C = np.loadtxt( X1File   ).reshape( np.int64( DataShape ) )
+    X2_C = np.loadtxt( X2File   ).reshape( np.int64( DataShape ) )
+    dX1  = np.loadtxt( dX1File  ).reshape( np.int64( DataShape ) )
+    dX2  = np.loadtxt( dX2File  ).reshape( np.int64( DataShape ) )
+    Data = np.loadtxt( DataFile )
 
     return Data, DataUnits, X1_C, X2_C, dX1, dX2, Time
 
-Data, DataUnits, \
-  X1_C, X2_C, X3_C, dX1, dX2, dX3, xL, xU, nX \
-    = GetData( PlotFileDirectory, PlotFileBaseName, Field, \
-               CoordinateSystem, UsePhysicalUnits, \
-               argv = [ 'a' ], \
-               MaxLevel = MaxLevel, \
-               ReturnTime = False, ReturnMesh = True )
+Data, DataUnits, X1_C, X2_C, dX1, dX2, Time = f(0)
 
-xL = np.array( [ X1_C[0 ]-0.5*dX1[0 ], X2_C[0 ]-0.5*dX2[0 ] ], np.float64 )
-xU = np.array( [ X1_C[-1]+0.5*dX1[-1], X2_C[-1]+0.5*dX2[-1] ], np.float64 )
+nX = np.shape(X1_C)
+
+x1L = X1_C[0 ,0 ] - 0.5 * dX1[0 ,0 ]
+x1H = X1_C[-1,-1] + 0.5 * dX1[-1,-1]
+x2L = X2_C[0 ,0 ] - 0.5 * dX2[0 ,0 ]
+x2H = X2_C[-1,-1] + 0.5 * dX2[-1,-1]
+
+if nSS < 0: nSS = PlotfileArray.shape[0]
 
 if not UseCustomLimits:
-    vmin = Data.min()
-    vmax = Data.max()
+    vmin = +np.inf
+    vmax = -np.inf
+    for j in range( nSS ):
+        DataFile \
+          = DataDirectory + PlotfileArray[j] + '/{:}.dat'.format( Field )
+        DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+        vmin = min( vmin, MinVal )
+        vmax = max( vmax, MaxVal )
 
 Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
-
-X1v, X2v = np.meshgrid( X1_C, X2_C, indexing = 'ij' )
 
 fig = plt.figure()
 ax  = fig.add_subplot( 111 )
 
-im = ax.pcolormesh( X1v, X2v, Data, \
+# pcolormesh wants the corners of the elements
+X1c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+X2c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+for iX1 in range( nX[0] ):
+    for iX2 in range( nX[1] ):
+        X1c[iX1,iX2] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+        X2c[iX1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+        if   iX2 == nX[1]-1 and iX1 == nX[0]-1:
+            X1c[iX1,iX2+1  ] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+            X2c[iX1,iX2+1  ] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            X1c[iX1+1,iX2  ] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+            X2c[iX1+1,iX2  ] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+            X1c[iX1+1,iX2+1] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+            X2c[iX1+1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+        elif iX2 == nX[1]-1:
+            X1c[iX1,iX2+1] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+            X2c[iX1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+        elif iX1 == nX[0]-1:
+            X1c[iX1+1,iX2] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+            X2c[iX1+1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+
+im = ax.pcolormesh( X1c, X2c, Data, \
                     cmap = cmap, \
                     norm = Norm, \
-                    shading = 'nearest' )
+                    shading = 'flat' )
 
-ax.set_xlim( xL[0], xU[0] )
-ax.set_ylim( xL[1], xU[1] )
+ax.set_xlim( x1L, x1H )
+ax.set_ylim( x2L, x2H )
 #ax.set_aspect( 'auto' )
 
 time_text = plt.text( 0.5, 0.9, '', transform = ax.transAxes )
@@ -126,20 +168,37 @@ def UpdateFrame(t):
 
     Data, DataUnits, X1_C, X2_C, dX1, dX2, Time = f(t)
 
-    X1v, X2v = np.meshgrid( X1_C, X2_C, indexing = 'ij' )
+    # pcolormesh wants the corners of the elements
+    X1c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+    X2c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+    for iX1 in range( nX[0] ):
+        for iX2 in range( nX[1] ):
+            X1c[iX1,iX2] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+            X2c[iX1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+            if   iX2 == nX[1]-1 and iX1 == nX[0]-1:
+                X1c[iX1,iX2+1  ] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+                X2c[iX1,iX2+1  ] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+                X1c[iX1+1,iX2  ] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2  ] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+                X1c[iX1+1,iX2+1] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            elif iX2 == nX[1]-1:
+                X1c[iX1,iX2+1] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+                X2c[iX1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            elif iX1 == nX[0]-1:
+                X1c[iX1+1,iX2] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
 
-    im = ax.pcolormesh( X1v, X2v, Data, \
+    im = ax.pcolormesh( X1c, X2c, Data, \
                         cmap = cmap, \
                         norm = Norm, \
-                        shading = 'nearest' )
+                        shading = 'flat' )
 
     im.set_array( Data.flatten() )
     time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnit ) )
 
     ret = ( im, time_text )
     return ret
-
-if nSS < 0: nSS = PlotFileArray.shape[0]
 
 # Call the animator
 anim = animation.FuncAnimation \

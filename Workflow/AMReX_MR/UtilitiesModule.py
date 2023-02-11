@@ -17,7 +17,7 @@ def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
         if ( isdir( FileOrDirName ) and FileOrDirName[-1] != '/' ):
             FileOrDirName += '/'
 
-        YN = input( '{:} exists. overwrite? (y/N): '.format( FileOrDirName ) )
+        YN = input( '{:} exists. Overwrite? (y/N): '.format( FileOrDirName ) )
 
         if YN == 'Y' or YN == 'y' :
             print( 'Overwriting' )
@@ -138,6 +138,7 @@ def ChoosePlotFile \
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
              MaxLevel = -1, iX3_CS = 0, \
+             SSi = -1, SSf = -1, nSS = -1, \
              ReturnTime = False, ReturnMesh = False, Verbose = False ):
 
     import yt
@@ -157,7 +158,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     # https://yt-project.org/doc/faq/index.html#how-can-i-change-yt-s-log-level
     yt.funcs.mylog.setLevel(40) # Suppress yt warnings
 
-    FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
+    FileArray = GetFileArray( DataDirectory, PlotFileBaseName, \
+                              SSi = SSi, SSf = SSf, nSS = nSS )
 
     File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv, \
                            Verbose = Verbose )
@@ -168,7 +170,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     Time = ds.current_time.to_ndarray()
     nX   = ds.domain_dimensions
     xL   = ds.domain_left_edge
-    xU   = ds.domain_right_edge
+    xH   = ds.domain_right_edge
 
     nDimsX = 1
     if nX[1] > 1: nDimsX += 1
@@ -194,27 +196,20 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                 dims            = nX * 2**MaxLevel, \
                 num_ghost_zones = nX[0] )
 
-#    ds.force_periodicity()
+    ds.force_periodicity()
 
     # --- Get Mesh ---
 
     xL = np.copy( xL.to_ndarray() )
-    xU = np.copy( xU.to_ndarray() )
+    xH = np.copy( xH.to_ndarray() )
 
-    X1 = np.copy( CoveringGrid['X1_C'].to_ndarray()[:,0,0] )
-    X2 = np.copy( CoveringGrid['X2_C'].to_ndarray()[0,:,0] )
-    X3 = np.copy( CoveringGrid['X3_C'].to_ndarray()[0,0,:] )
+    X1 = np.copy( CoveringGrid['X1_C'].to_ndarray() )
+    X2 = np.copy( CoveringGrid['X2_C'].to_ndarray() )
+    X3 = np.copy( CoveringGrid['X3_C'].to_ndarray() )
 
-    dX1 = np.copy( CoveringGrid['dX1'].to_ndarray()[:,0,0] )
-    dX2 = np.copy( CoveringGrid['dX2'].to_ndarray()[0,:,0] )
-    dX3 = np.copy( CoveringGrid['dX3'].to_ndarray()[0,0,:] )
-
-    if nDimsX < 3:
-        X3  = X3 [0] * np.ones( 1, np.float64 )
-        dX3 = dX3[0] * np.ones( 1, np.float64 )
-    if nDimsX < 2:
-        X2  = X2 [0] * np.ones( 1 )
-        dX2 = dX2[0] * np.ones( 1 )
+    dX1 = np.copy( CoveringGrid['dX1'].to_ndarray() )
+    dX2 = np.copy( CoveringGrid['dX2'].to_ndarray() )
+    dX3 = np.copy( CoveringGrid['dX3'].to_ndarray() )
 
     if   Field == 'MPIProcess':
 
@@ -378,7 +373,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         for iX1 in range( nX[0] ):
             for iX2 in range( nX[1] ):
                 for iX3 in range( nX[2] ):
-                    Data[iX1,iX2,iX3] = p[iX1,iX2,iX3] * ( X1[iX1] * 1.0e5 )**4
+                    Data[iX1,iX2,iX3] = p[iX1,iX2,iX3] \
+                                          * ( X1[iX1,iX2,iX3] * 1.0e5 )**4
 
         DataUnits = 'erg*cm'
 
@@ -484,12 +480,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                     AngleAveragedMass[iX1] \
                       += rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
                     AngleAveragedRadialVelocity[iX1] \
                       += V1[iX1,iX2,iX3] * rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
             AngleAveragedRadialVelocity[iX1] /= AngleAveragedMass[iX1]
 
@@ -536,12 +534,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                     AngleAveragedMass[iX1] \
                       += rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
                     AngleAveragedRadialVelocity[iX1] \
                       += V1[iX1,iX2,iX3] * rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
             AngleAveragedRadialVelocity[iX1] /= AngleAveragedMass[iX1]
 
@@ -613,10 +613,10 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                   = 1.0 / ( h1A[i,j,k]      * h2A[i,j,k] ) \
                     * ( (   h2A[i+1,j,k]**2 * V2A[i+1,j,k] \
                           - h2A[i-1,j,k]**2 * V2A[i-1,j,k] ) \
-                          / ( 2.0 * X1[i] ) \
+                          / ( 2.0 * X1[i,j,k] ) \
                       - (   h1A[i,j+1,k]**2 * V1A[i,j+1,k] \
                           - h1A[i,j-1,k]**2 * V1A[i,j-1,k] ) \
-                          / ( 2.0 * X2[j-1] ) )
+                          / ( 2.0 * X2[i,j-1,k] ) )
 
         DataUnits = '1/s'
 
@@ -665,21 +665,9 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     del ds, CoveringGrid
     gc.collect()
 
-    if nDimsX == 1:
-
-        Data = np.copy( Data[:,0,0] )
-
-    elif nDimsX == 2:
-
-        Data = np.copy( Data[:,:,0] )
-
-    else:
-
-        Data = np.copy( Data[:,:,iX3_CS] )
-
     if ReturnTime and ReturnMesh:
 
-        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time
+        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xH, nX, Time
 
     elif ReturnTime:
 
@@ -687,7 +675,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     elif ReturnMesh:
 
-        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX
+        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xH, nX
 
     else:
 
