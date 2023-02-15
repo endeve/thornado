@@ -72,11 +72,13 @@ MODULE RadiationFieldsModule
 
   INTEGER, PUBLIC, PARAMETER :: iAR_F = 1  ! Flux Factor
   INTEGER, PUBLIC, PARAMETER :: iAR_K = 2  ! Eddington Factor
-  INTEGER, PUBLIC, PARAMETER :: nAR   = 2  ! n Auxiliary Radiation Fields
+  INTEGER, PUBLIC, PARAMETER :: iAR_Q = 3  ! Heat Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: nAR   = 3  ! n Auxiliary Radiation Fields
 
   CHARACTER(32), DIMENSION(nAR), PUBLIC, PARAMETER :: &
     namesAR = [ 'Lagrangian Flux Factor          ', &
-                'Lagrangian Eddington Factor     ' ]
+                'Lagrangian Eddington Factor     ', &
+                'Lagrangian Heat Flux Factor     ' ]
 
   REAL(DP), DIMENSION(nAR), PUBLIC :: unitsAR
 
@@ -94,7 +96,10 @@ MODULE RadiationFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iGR_H2  = 8  ! Lagrangian Energy Flux 2
   INTEGER, PUBLIC, PARAMETER :: iGR_H3  = 9  ! Lagrangian Energy Flux 3
   INTEGER, PUBLIC, PARAMETER :: iGR_RMS = 10 ! RMS Energy
-  INTEGER, PUBLIC, PARAMETER :: nGR     = 10 ! n Gray Radiation Fields
+  INTEGER, PUBLIC, PARAMETER :: iGR_F   = 11 ! Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: iGR_K   = 12 ! Eddington Factor
+  INTEGER, PUBLIC, PARAMETER :: iGR_Q   = 13 ! Heat Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: nGR     = 13 ! n Gray Radiation Fields
 
   CHARACTER(34), DIMENSION(nGR), PUBLIC, PARAMETER :: &
     namesGR = [ 'Eulerian Number Density           ', &
@@ -106,7 +111,10 @@ MODULE RadiationFieldsModule
                 'Lagrangian Energy Flux Density (1)', &
                 'Lagrangian Energy Flux Density (2)', &
                 'Lagrangian Energy Flux Density (3)', &
-                'RMS Energy                        ' ]
+                'RMS Energy                        ', &
+                'Lagrangian Flux Factor            ', &
+                'Lagrangian Eddington Factor       ', &
+                'Lagrangian Heat Flux Factor       ' ]
 
   REAL(DP), DIMENSION(nGR), PUBLIC :: unitsGR
 
