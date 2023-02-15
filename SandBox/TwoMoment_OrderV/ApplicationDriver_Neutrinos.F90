@@ -24,7 +24,7 @@ PROGRAM ApplicationDriver_Neutrinos
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF
@@ -156,7 +156,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       CoordinateSystem = 'SPHERICAL'
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
       nX    = [ 200, 1, 1 ]
@@ -236,6 +236,9 @@ PROGRAM ApplicationDriver_Neutrinos
   CALL InitializeDriver
 
   CALL InitializeFields( ProfileName )
+
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -335,7 +338,7 @@ PROGRAM ApplicationDriver_Neutrinos
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -360,7 +363,7 @@ PROGRAM ApplicationDriver_Neutrinos
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
