@@ -85,6 +85,7 @@ MODULE InputParsingModule
 
   LOGICAL  :: UsePositivityLimiter_Euler
   REAL(DP) :: Min_1_Euler, Min_2_Euler
+  REAL(DP) :: D_Min_Euler_PL, IntE_Min_Euler_PL
   LOGICAL  :: UsePositivityLimiter_TwoMoment
   REAL(DP) :: Min_1_TwoMoment, Min_2_TwoMoment
 
@@ -333,6 +334,8 @@ call amrex_parmparse_destroy( pp )
     UsePositivityLimiter_Euler     = .TRUE.
     UsePositivityLimiter_TwoMoment = .TRUE.
     Min_1_Euler                    = 1.0e-12_DP
+    D_Min_Euler_PL                 = Zero
+    IntE_Min_Euler_PL              = Zero
     Min_1_TwoMoment                = 1.0e-12_DP
     Min_2_Euler                    = 1.0e-12_DP
     Min_2_TwoMoment                = 1.0e-12_DP
@@ -343,6 +346,10 @@ call amrex_parmparse_destroy( pp )
                         UsePositivityLimiter_TwoMoment )
       CALL PP % query( 'Min_1_Euler', &
                         Min_1_Euler )
+      CALL PP % query( 'D_Min_Euler_PL', &
+                        D_Min_Euler_PL )
+      CALL PP % query( 'IntE_Min_Euler_PL', &
+                        IntE_Min_Euler_PL )
       CALL PP % query( 'Min_1_TwoMoment', &
                         Min_1_TwoMoment )
       CALL PP % query( 'Min_2_Euler', &
