@@ -129,7 +129,7 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
-        .AND. ( LEN( OpacityTableName_EmAb_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
       OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
       Include_EmAb = .TRUE.
     ELSE
@@ -138,7 +138,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Iso_Option ) &
-        .AND. ( LEN( OpacityTableName_Iso_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Iso_Option ) > 1 ) )THEN
       OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
       Include_Iso = .TRUE.
     ELSE
@@ -147,7 +147,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_NES_Option ) &
-        .AND. ( LEN( OpacityTableName_NES_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_NES_Option ) > 1 ) )THEN
       OpacityTableName_NES = TRIM( OpacityTableName_NES_Option )
       Include_NES = .TRUE.
     ELSE
@@ -156,7 +156,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Pair_Option ) &
-        .AND. ( LEN( OpacityTableName_Pair_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Pair_Option ) > 1 ) )THEN
       OpacityTableName_Pair = TRIM( OpacityTableName_Pair_Option )
       Include_Pair = .TRUE.
     ELSE
@@ -165,7 +165,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Brem_Option ) &
-        .AND. ( LEN( OpacityTableName_Brem_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Brem_Option ) > 1 ) )THEN
       OpacityTableName_Brem = TRIM( OpacityTableName_Brem_Option )
       Include_Brem = .TRUE.
     ELSE
@@ -174,7 +174,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( EquationOfStateTableName_Option ) &
-        .AND. ( LEN( EquationOfStateTableName_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( EquationOfStateTableName_Option ) > 1 ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
