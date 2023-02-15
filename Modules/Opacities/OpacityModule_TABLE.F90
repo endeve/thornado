@@ -63,6 +63,7 @@ MODULE OpacityModule_TABLE
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
 #endif
+  LOGICAL :: Use_OpacityTables
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2
@@ -205,7 +206,20 @@ CONTAINS
       END IF
     END IF
 
+    Use_OpacityTables = .FALSE.
+
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF (   Include_EmAb &
+      .OR. Include_Iso  &
+      .OR. Include_NES  &
+      .OR. Include_Pair &
+      .OR. Include_Brem ) THEN
+      Use_OpacityTables = .TRUE.
+    ELSE
+      Use_OpacityTables = .FALSE.
+      RETURN
+    END IF
 
     CALL InitializeHDF( )
 
@@ -556,20 +570,24 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+  IF ( Use_OpacityTables ) THEN
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+      !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+      !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #endif
 
-    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
-    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
+      DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
+      DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
-    DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
-    DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
-    DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+      DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
+      DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
+      DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+
+  END IF
 
 #endif
 
