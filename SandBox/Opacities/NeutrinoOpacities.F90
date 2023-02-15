@@ -93,7 +93,8 @@ PROGRAM NeutrinoOpacities
 
   INTEGER, PARAMETER :: &
     nNodes   = 3, & !2, &
-    nE       = 16, & !2**4, &
+    !nE       = 16, & !2**4, &
+    nE       = 20, & !2**4, &
     nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
@@ -110,8 +111,10 @@ PROGRAM NeutrinoOpacities
     BaryonMass = AtomicMassUnit, &
     Unit_Qdot  = 1.0_DP / ( BaryonMass * Second ), &
     Unit_Edot  = 1.0_DP / ( BaryonMass * Second ), &
-    eL         = 0.0e0_DP * Unit_E, &
-    eR         = 3.0e2_DP * Unit_E, &
+    !eL         = 0.0e0_DP * Unit_E, &
+    !eR         = 3.0e2_DP * Unit_E, &
+    eL         = 2.63183d0 * Unit_E, &
+    eR         = 335.368d0 * Unit_E, &
     !ZoomE      = 1.183081754893913_DP
     ZoomE      = 1.266038160710160d0
 
@@ -247,9 +250,13 @@ PROGRAM NeutrinoOpacities
    !D = 2.0d10 * Unit_D
    !T = 0.95d0 / 8.61733d-11 * Unit_T
    !Y = 0.465 * Unit_Y
-   D = 1.0d12 * Unit_D
-   T = 2.0d0 / 8.61733d-11 * Unit_T
-   Y = 0.33 * Unit_Y
+   !D = 1.0d12 * Unit_D
+   !T = 2.0d0 / 8.61733d-11 * Unit_T
+   !Y = 0.33 * Unit_Y
+
+   D = 0.70428d10 * Unit_D
+   T = 0.66006d0 / 8.61733d-11 * Unit_T
+   Y = 0.43642d0
 
   ! --- Energy Grid ---
 
@@ -275,30 +282,30 @@ PROGRAM NeutrinoOpacities
   ! --- Initialize Opacities ---
 
   CALL TimersStart( Timer_ReadOpacities )
-  !CALL InitializeOpacities_TABLE &
-  !       ( OpacityTableName_EmAb_Option &
-  !           = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
-  !         OpacityTableName_Iso_Option  &
-  !           = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
-  !         OpacityTableName_NES_Option &
-  !           = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
-  !         OpacityTableName_Pair_Option &
-  !           = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
-  !         OpacityTableName_Brem_Option &
-  !           = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
-  !         Verbose_Option = .TRUE. ) 
   CALL InitializeOpacities_TABLE &
          ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
+             = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
            OpacityTableName_Iso_Option  &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+             = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
            OpacityTableName_NES_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+             = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
            OpacityTableName_Pair_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+             = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
            OpacityTableName_Brem_Option &
-             = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
+             = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
            Verbose_Option = .TRUE. ) 
+  !CALL InitializeOpacities_TABLE &
+  !       ( OpacityTableName_EmAb_Option &
+  !           = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
+  !         OpacityTableName_Iso_Option  &
+  !           = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+  !         OpacityTableName_NES_Option &
+  !           = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+  !         OpacityTableName_Pair_Option &
+  !           = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+  !         OpacityTableName_Brem_Option &
+  !           = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
+  !         Verbose_Option = .TRUE. ) 
   CALL TimersStop( Timer_ReadOpacities )
 
   ! --- Initialize distributions to zero ---
@@ -531,7 +538,7 @@ PROGRAM NeutrinoOpacities
   DO iE = 1, nPointsE
 
     !Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
-    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
+    Edot_EmAb(iE,iS,iX) = abs(Chi_EmAb(iE,iS,iX))
     Edot_Iso(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
     Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
     Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
@@ -544,6 +551,7 @@ PROGRAM NeutrinoOpacities
   Chi_EmAb_element = 0.0d0
   E_element = 0.0d0
 
+  loctot = 0.0d0
   DO iX = 1, nPointsX
   DO iN_E = 1, nPointsE
 
@@ -551,101 +559,20 @@ PROGRAM NeutrinoOpacities
     iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
 
     Chi_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
-                             + dE(iE) / Unit_E * WeightsE(iNodeE) * Chi_EmAb(iN_E,1,iX) !&
-                             !* (E(iN_E)/Unit_E)**2
+                             + dE(iE) / Unit_E * WeightsE(iNodeE) * Chi_EmAb(iN_E,1,iX) &
+                             * (E(iN_E) / Unit_E)**2
     E_element(iE,iX) = E_element(iE,iX) &
                              + dE(iE) / Unit_E * WeightsE(iNodeE)
   END DO
   END DO
+write(*,*) 'nPointsE', nPointsE
+do iE = 1, nE
+write(*,*) iE, MeshE % Center(iE)/Unit_E, dE(iE) / Unit_E
+loctot = loctot + Chi_EmAb_element(iE,1)
+Edot_EmAb_element(iE,1) = Chi_EmAb_element(iE,1) / (MeshE % Center(iE)/Unit_E)**2 / (dE(iE) / Unit_E)
+enddo
+write(*,*) 'loctot from Chi_EmAb_element', loctot
 
-
-  DO iX = 1, nPointsX
-  DO iN_E = 1, nPointsE
-
-    iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
-    iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
-
-    Edot_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
-                             * FourPi / PlanckConstant**3 / D(iX) * E(iE)**3 / E_element(iE,iX)
-  END DO
-  END DO
-
-  IF( use_EC_Table > 0 ) THEN
-
-  loctot = 0.0d0
-
-  write(*,*) 'elements'
-  DO iE = 1, nE
-    !loctot = loctot + Edot_EmAb_element(iE,1) * MeshE % Center(iE)**3 !* (MeshE % Center(iE)/Unit_E)**2
-    !loctot = loctot + Edot_EmAb_element(iE,1) * Unit_E**3 !* (MeshE % Center(iE))**2
-    loctot = loctot + Edot_EmAb_element(iE,1) * Unit_E**3 !* (MeshE % Center(iE))**2
-    write(*,*) MeshE % Center(iE)/Unit_E, MeshE % Width(iE)/Unit_E, Edot_EmAb_element(iE,1) * Unit_E**3 & 
-            / Unit_Edot / (dE(iE) / Unit_E)
-  ENDDO
-
-  write(*,*) 'nodes'
-  DO iN_E = 1, nPointsE
-
-    iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
-    iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
-
-    write(*,*) E(iN_E)/Unit_E, Chi_EmAb(iN_E,1,1) * (E(iN_E)/Unit_E)**2 * FourPi / PlanckConstant**3 / D(1) * Unit_E**3 / Unit_Edot
-
-  END DO
-
-
-  write(*,*) 'loctot later', loctot / Unit_Edot
-
-  block
-  integer :: wl_nE
-
-  real(dp) :: wl_E  (size(EmAb_EC_spec_T(1,1,1,:)))
-  real(dp) :: wl_jec(size(EmAb_EC_spec_T(1,1,1,:)))
-
-  real(dp) :: D_P, T_P, Y_P
-
-  real(dp) :: EC_rate
-
-  D_P     = D(1) / Unit_D
-  T_P     = T(1) / Unit_T
-  Y_P     = Y(1) / Unit_Y
-
-  CALL LogInterpolateSingleVariable_3D_Custom_Point &
-       ( D_P,     T_P,     Y_P,  &
-         Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-         OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate)
-
-  write(*,*) 'weaklib'
-  do iE = 1, EC_nE
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-         ( D_P,     T_P,     Y_P,  &
-           Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-           0.0d0, EmAb_EC_spec_T(:,:,:,iE), wl_jec(iE))
-
-   !write(*,*) Es_T(iE), dEs_T(iE), wl_jec(iE) * EC_rate * 324936944.84933436d0 / (D_P)
-   write(*,*) Es_EC_T(iE), wl_jec(iE) * EC_rate * 8963170213.4612865 / (D_P)
-
-  enddo
-
-  write(*,*) 'EC_rate', EC_rate
-
-  write(*,*) 'wl nD', size(Ds_T)
-  write(*,*) 'wl nT', size(Ts_T)
-  write(*,*) 'wl nY', size(Ys_T)
-
-  write(*,*) log10(minval(Ds_T))
-  write(*,*) log10(minval(Ts_T))
-  write(*,*) minval(Ys_T)
-  write(*,*) log10(maxval(Ds_T))
-  write(*,*) log10(maxval(Ts_T))
-  write(*,*) maxval(Ys_T)
-
-
-
-
-  end block
-
-  ENDIF
 
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
@@ -653,7 +580,8 @@ PROGRAM NeutrinoOpacities
   CALL WriteVector &
          ( nE, MeshE % Center / Unit_E, 'EC.dat' )
   CALL WriteVector & ! --- NuE
-         ( nE, Edot_EmAb_element(:,1) / Unit_Edot, 'Edot_EmAb_NuE_element.dat'     )
+         !( nE, Edot_EmAb_element(:,1) / Unit_Edot, 'Edot_EmAb_NuE_element.dat'     )
+         ( nE, Edot_EmAb_element(:,1) / Unit_Chi, 'Edot_EmAb_NuE_element.dat'     )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, f0   (:,iNuE    ,1), 'f0_NuE.dat'        )
@@ -728,7 +656,8 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Eta_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Brem_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         ( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Edot, 'Edot_EmAb_NuE.dat'     )
+         !( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Edot, 'Edot_EmAb_NuE.dat'     )
+         ( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Chi, 'Edot_EmAb_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Edot_EmAb(:,iNuE_Bar,1) / Unit_Edot, 'Edot_EmAb_NuE_Bar.dat' )
   CALL WriteVector & ! --- NuE

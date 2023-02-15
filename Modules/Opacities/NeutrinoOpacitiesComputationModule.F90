@@ -54,6 +54,7 @@ MODULE NeutrinoOpacitiesComputationModule
     Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T, &
     EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max, &
     EC_kfmin, EC_kfmax, &
+    EC_a, EC_b, EC_ak, EC_bk, &
 #endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     C1, C2
@@ -839,7 +840,7 @@ CONTAINS
   REAL(dp) :: E_node
   REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nNodesE)
 
-  REAL(dp) :: a, b, f_a
+  REAL(dp) :: a, b, f_a, f_b
 
   CenterE(:) = MeshE % Center(:)
   WidthE(:)  = MeshE % Width(:)
@@ -889,24 +890,24 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
 
-        D_P = D(iX) / UnitD
-        T_P = T(iX) / UnitT
-        Y_P = Y(iX) / UnitY
+      D_P = D(iX) / UnitD
+      T_P = T(iX) / UnitT
+      Y_P = Y(iX) / UnitY
 
-        IF(     D_P < Ds_EC_T(1) .or. D_P > Ds_EC_T(SIZE(Ds_EC_T)) &
-           .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
-           .or. Y_p < Ys_EC_T(1) .or. Y_P > Ys_EC_T(SIZE(Ys_EC_T)) &
-           .or. Ah(iX) < 40.0d0) THEN
+      IF(     D_P < Ds_EC_T(1) .or. D_P > Ds_EC_T(SIZE(Ds_EC_T)) &
+         .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
+         .or. Y_p < Ys_EC_T(1) .or. Y_P > Ys_EC_T(SIZE(Ys_EC_T)) &
+         .or. Ah(iX) < 40.0d0) THEN
 
-          EC_rate(iX) = 0.0d0
+        EC_rate(iX) = 0.0d0
 
-        ELSE 
+      ELSE 
 
-          CALL LogInterpolateSingleVariable_3D_Custom_Point &
-                 ( D_P,     T_P,     Y_P,  &
-                   Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-                   OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate(iX)) 
-        ENDIF
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P,     T_P,     Y_P,  &
+               Ds_EC_T, Ts_EC_T, Ys_EC_T, &
+               OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate(iX)) 
+      ENDIF
 
     END DO
 
@@ -929,13 +930,13 @@ CONTAINS
     !$OMP PRIVATE( iE, iE1, iE2, iNodeE1, D_P, T_P, Y_P,           &
     !$OMP          spec_nodes, spec_elements_nodes,                &
     !$OMP          spec_elements, spec_fine, tmev, Xnuc,           &
-    !$OMP          lowerFaceE, E_node, a, b, f_a )
+    !$OMP          lowerFaceE, E_node, a, b, f_a, f_b )
 #endif
     DO iX = iX_B, iX_E
 
-      D_P     = D(iX) / UnitD
-      T_P     = T(iX) / UnitT
-      Y_P     = Y(iX) / UnitY
+      D_P = D(iX) / UnitD
+      T_P = T(iX) / UnitT
+      Y_P = Y(iX) / UnitY
 
       IF(     D_P < Ds_EC_T(1) .or. D_P > Ds_EC_T(SIZE(Ds_EC_T)) &
          .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
@@ -948,21 +949,36 @@ CONTAINS
 
       ELSE
 
-        spec_nodes          = 0.0d0
-        spec_elements_nodes = 0.0d0
-        spec_elements       = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD            
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                 
+#endif
+        DO iE = iE_B, iE_E
+          spec_nodes(iE) = 0.0d0
+        END DO
 
-        spec_fine           = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD            
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                 
+#endif
+        DO iE = 1, nE
+          spec_elements(iE) = 0.0d0
+          spec_elements_nodes(iE) = 0.0d0
+        END DO
 
-        tmev                = T(iX) / UnitT * kmev
-        Xnuc                = Xh(iX) / (Ah(iX) / AvogadroConstantMKS) * D(iX) / UnitD 
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD            
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                 
+#endif
+        DO iE = 1, EC_nE
+          spec_fine(iE) = 0.0d0
+        END DO
 
-if(iX==1) then
-print *, 'tmev', tmev
-print *, 'xnuc', Xnuc
-print *, 'coeff', coeff
-endif
-
+        tmev = T(iX) / UnitT * kmev
+        Xnuc = Xh(iX) / (Ah(iX) / AvogadroConstantMKS) * D(iX) / UnitD 
 
         loctot = 0.0d0
 #if defined(THORNADO_OMP_OL)
@@ -992,11 +1008,13 @@ endif
         ENDDO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD                             &
-    !$OMP PRIVATE ( iE, iNodeE1, iE2, E_node, loctot )
+    !$OMP PARALLEL DO SIMD              &
+    !$OMP PRIVATE ( iE, iE1, iNodeE1,   &
+    !$OMP           iE2, E_node, loctot )
 #elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                                  &
-    !$ACC PRIVATE ( iE, iNodeE1, iE2, E_node, loctot )
+    !$ACC LOOP VECTOR                   &
+    !$ACC PRIVATE ( iE, iE1, iNodeE1,   &
+    !$ACC           iE2, E_node, loctot )
 #endif
         DO iE1 = 1, EC_iE_max
           loctot = 0.0d0
@@ -1007,114 +1025,120 @@ endif
 
               iE2 = FLOOR(E_node/EC_dE) + 1
 
-              spec_nodes(iE) = spec_fine(iE2) + (E_node - Es_EC_T(iE2)) &
-                             * (spec_fine(iE2+1)-spec_fine(iE2)) / (Es_EC_T(iE2+1)-Es_EC_T(iE2)) 
+              spec_nodes(iE) = (spec_fine(iE2) + (E_node - Es_EC_T(iE2)) &
+                             * (spec_fine(iE2+1)-spec_fine(iE2)) / (Es_EC_T(iE2+1)-Es_EC_T(iE2))) &
+                             / E_node**2 
 
-              loctot  = loctot + spec_nodes(iE) &
-                      * MeshE % Width(iE1) / UnitE * WeightsE(iNodeE1)
+              loctot  = loctot + spec_nodes(iE) * E_node**2 &
+                      * WidthE(iE1) / UnitE * WeightsE(iNodeE1)
             ENDIF
           ENDDO
           spec_elements_nodes(iE1) = loctot
         ENDDO
 
-!        loctot = 0.0d0
-!#if defined(THORNADO_OMP_OL)
-!    !$OMP PARALLEL DO SIMD            &
-!    !$OMP REDUCTION(+:loctot)         
-!#elif defined(THORNADO_OACC)
-!    !$ACC LOOP VECTOR                 &
-!    !$ACC REDUCTION(+:loctot)         
-!#endif
-!        DO iE = 1, nE
-!          loctot = loctot + spec_elements_nodes(iE)
-!        ENDDO
-!        if(iX==1) print *,  'loctot from elements, nodal integration', loctot
+        loctot = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD  &
+    !$OMP REDUCTION(+:loctot)         
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR       &
+    !$ACC REDUCTION(+:loctot)         
+#endif
+        DO iE = 1, nE
+          loctot = loctot + spec_elements_nodes(iE)
+        ENDDO
+        if(iX==1) print *,  'loctot from elements, nodal integration', loctot
 
+        loctot = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD  &
+    !$OMP REDUCTION(+:loctot)         
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR       &
+    !$ACC REDUCTION(+:loctot)         
+#endif
+        DO iE = 1, EC_nE
+          loctot = loctot + EC_dE * spec_fine(iE)
+        ENDDO
 
-!        loctot = 0.0d0
-!#if defined(THORNADO_OMP_OL)
-!    !$OMP PARALLEL DO SIMD            &
-!    !$OMP REDUCTION(+:loctot)         
-!#elif defined(THORNADO_OACC)
-!    !$ACC LOOP VECTOR                 &
-!    !$ACC REDUCTION(+:loctot)         
-!#endif
-!        DO iE = 1, EC_nE
-!          loctot = loctot + EC_dE * spec_fine(iE)
-!        ENDDO
-!
-!        if(iX==1) print *, 'loctot from actual table', loctot
+        if(iX==1) print *, 'loctot from actual table', loctot
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD          &
-    !$OMP PRIVATE (iE1, a, b, f_a)  
+    !$OMP PARALLEL DO SIMD            &
+    !$OMP PRIVATE (iE1, a, b, f_a, f_b)  
 #elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR               &
-    !$ACC PRIVATE (iE1, a, b, f_a)
+    !$ACC LOOP VECTOR                 &
+    !$ACC PRIVATE (iE1, a, b, f_a, f_b)
 #endif
         DO iE = 1, EC_iE_max
-          !we have at least one full wl energy bin contained in the 
-          !thornado bin
-          IF(EC_kfmin(iE)+1 < EC_kfmax(iE)) THEN
 
-            a = (CenterE(iE) - 0.5d0*WidthE(iE)) / UnitE
-            b = Es_EC_T(EC_kfmin(iE)+1)
-            f_a = spec_fine(EC_kfmin(iE))
-            spec_elements(iE) = spec_elements(iE) + f_a * (b-a)
+          IF(EC_kfmin(iE) >= EC_kfmax(iE)) THEN
+
+            a = EC_a(iE,1)
+            b = EC_b(iE,2)
+
+            f_a =  spec_fine(EC_ak(iE,1)) + (a-Es_EC_T(EC_ak(iE,1))) &
+                * (spec_fine(EC_ak(iE,2)) -  spec_fine(EC_ak(iE,1))) &
+                / (  Es_EC_T(EC_ak(iE,2)) -    Es_EC_T(EC_ak(iE,1)))
+            f_b =  spec_fine(EC_ak(iE,1)) + (b-Es_EC_T(EC_ak(iE,1))) &
+                * (spec_fine(EC_ak(iE,2)) -  spec_fine(EC_ak(iE,1))) &
+                / (  Es_EC_T(EC_ak(iE,2)) -    Es_EC_T(EC_ak(iE,1)))
+ 
+            spec_elements(iE) = spec_elements(iE) &
+                              + 0.5d0 * (b - a) * (f_a + f_b)
+
+          ELSE
+
+            a = EC_a(iE,1)
+            b = EC_b(iE,1)
+
+            f_a =  spec_fine(EC_ak(iE,1)) + (a-Es_EC_T(EC_ak(iE,1))) &
+                * (spec_fine(EC_ak(iE,2)) -  spec_fine(EC_ak(iE,1))) &
+                / (  Es_EC_T(EC_ak(iE,2)) -    Es_EC_T(EC_ak(iE,1)))
+
+            f_b = spec_fine(EC_kfmin(iE)+1)
+
+            spec_elements(iE) = spec_elements(iE) &
+                              + 0.5d0 * (b - a) * (f_a + f_b)
 
             !the fully contained wl energy bins can just be summed over
             !as they have been integrated already in the table construction 
             DO iE1 = EC_kfmin(iE)+1, EC_kfmax(iE)-1
               spec_elements(iE) = spec_elements(iE) &
-                                + spec_fine(iE1) * EC_dE
+                                + 0.5d0 * EC_dE * (spec_fine(iE1) + spec_fine(iE1+1))
             ENDDO
 
-            a = Es_EC_T(EC_kfmax(iE))
-            b = (CenterE(iE) + 0.5d0*WidthE(iE)) / UnitE
-            IF (b > Es_EC_T(EC_nE)) b = Es_EC_T(EC_nE)
+            a = EC_a(iE,2)            
+            b = EC_b(iE,2)
 
-            f_a = spec_fine(EC_kfmax(iE))
-            spec_elements(iE) = spec_elements(iE) + f_a * (b-a)
+            f_a = spec_fine(EC_kfmax(iE))            
 
+            f_b =  spec_fine(EC_bk(iE,1)) + (a-Es_EC_T(EC_bk(iE,1))) &
+                * (spec_fine(EC_bk(iE,2)) -  spec_fine(EC_bk(iE,1))) &
+                / (  Es_EC_T(EC_bk(iE,2)) -    Es_EC_T(EC_bk(iE,1)))
 
-          !thornado energy bin is contained within two wl energy bins
-          ELSE IF(EC_kfmin(iE)+1 == EC_kfmax(iE)) THEN
+            spec_elements(iE) = spec_elements(iE) &
+                              + 0.5d0 * (b - a) * (f_a + f_b)            
 
-            a = (CenterE(iE) - 0.5d0*WidthE(iE)) / UnitE
-            b = Es_EC_T(EC_kfmax(iE))
-            f_a = spec_fine(EC_kfmin(iE))
-            spec_elements(iE) = spec_elements(iE) + f_a * (b-a)
-
-            a = b
-            b = (CenterE(iE) + 0.5d0*WidthE(iE)) / UnitE
-            f_a = spec_fine(EC_kfmax(iE))
-            spec_elements(iE) = spec_elements(iE) + f_a * (b-a)
-
-          !thornado energy bin is contained within a single wl energy bin
-          ELSE
-
-            a = (CenterE(iE) - 0.5d0*WidthE(iE)) / UnitE
-            b = (CenterE(iE) + 0.5d0*WidthE(iE)) / UnitE
-            f_a = spec_fine(EC_kfmin(iE))
-            spec_elements(iE) = f_a * (b-a)
-    
           ENDIF
 
         ENDDO
 
-!        loctot = 0.0d0
-!#if defined(THORNADO_OMP_OL)
-!    !$OMP PARALLEL DO SIMD            &
-!    !$OMP REDUCTION(+:loctot)         
-!#elif defined(THORNADO_OACC)
-!    !$ACC LOOP VECTOR                 &
-!    !$ACC REDUCTION(+:loctot)         
-!#endif
-!        DO iE = 1, nE
-!          loctot = loctot + spec_elements(iE)
-!        ENDDO
-!
-!        if(iX==1) print *, 'loctot from elements, EC table integration onto elements exact int', loctot
+        loctot = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD            &
+    !$OMP REDUCTION(+:loctot)         
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                 &
+    !$ACC REDUCTION(+:loctot)         
+#endif
+        DO iE = 1, nE
+          loctot = loctot + spec_elements(iE)
+          if(iX==1) print *, iE, spec_elements(iE) * coeff * Xnuc * EC_rate(iX) &
+          / (WidthE(iE)/UnitE) / (CenterE(iE)/UnitE)**2
+        ENDDO
+
+        if(iX==1) print *, 'loctot from elements, EC table integration onto elements exact int', loctot
 
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD         &
@@ -1132,24 +1156,30 @@ endif
         ENDDO
 
 
-!        loctot = 0.0d0
-!#if defined(THORNADO_OMP_OL)
-!    !$OMP PARALLEL DO SIMD                &
-!    !$OMP PRIVATE( iE1, iNodeE1 ) &
-!    !$OMP REDUCTION(+:loctot)         
-!#elif defined(THORNADO_OACC)
-!    !$ACC LOOP VECTOR                     &
-!    !$ACC PRIVATE( iE1, iNodeE1 ) &
-!    !$ACC REDUCTION(+:loctot)           
-!#endif
-!        DO iE = iE_B, iE_E
-!          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
-!          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
-!
-!          loctot = loctot + spec_nodes(iE) * MeshE % Width(iE1) / UnitE * WeightsE(iNodeE1)
-!        ENDDO
-!
-!        if(iX==1) print *, 'loctot from nodes, after normalisation', loctot
+        loctot = 0.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD                &
+    !$OMP PRIVATE( iE1, iNodeE1, E_node ) &
+    !$OMP REDUCTION(+:loctot)         
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR                     &
+    !$ACC PRIVATE( iE1, iNodeE1, E_node ) &
+    !$ACC REDUCTION(+:loctot)           
+#endif
+        DO iE = iE_B, iE_E
+          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
+          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
+
+          E_node  = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
+
+          loctot = loctot + spec_nodes(iE) * E_node**2 * MeshE % Width(iE1) / UnitE * WeightsE(iNodeE1)
+        ENDDO
+
+        if(iX==1) print *, 'loctot from nodes, after normalisation', loctot
+
+if(iX==1) print *, 'rate interp', EC_rate(iX)
+if(iX==1) print *, 'coeff', coeff
+if(iX==1) print *, 'xnuc', Xnuc
 
 
 #if defined(THORNADO_OMP_OL)
@@ -1164,11 +1194,10 @@ endif
           iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
           E_node  = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
 
-          !spec_nodes(iE) = spec_nodes(iE) * EC_rate(iX) / (E_node)**2
-          !opECT(iE,iX) = Xnuc * coeff * spec_nodes(iE) / f0(iE,1,iX)
-          opECT(iE,iX) = spec_nodes(iE) / (E_node)**2 * EC_rate(iX) &
-                       !* Xnuc * coeff / f0(iE,1,iX) * UnitEC
-                       * Xnuc * coeff * UnitEC
+          !opECT(iE,iX) = Xnuc * coeff * EC_rate(iX) &
+          !             * spec_nodes(iE) / E_node**2 / f0(iE,1,iX) * UnitEC
+          opECT(iE,iX) = Xnuc * coeff * EC_rate(iX) &
+                       * spec_nodes(iE) * UnitEC !/ E_node**2 * UnitEC
 
         END DO
 

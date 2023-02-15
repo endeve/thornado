@@ -63,6 +63,10 @@ MODULE OpacityModule_TABLE
   INTEGER, PUBLIC :: EC_nE, EC_iE_max, EC_iNodeE_max
   INTEGER, DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     EC_kfmin, EC_kfmax
+  REAL(dp), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
+    EC_a, EC_b 
+  INTEGER, DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
+    EC_ak, EC_bk
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     OS_EmAb
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
@@ -117,7 +121,8 @@ MODULE OpacityModule_TABLE
   !$OMP   Brem_T, Brem_AT, C1, C2,                        &
   !$OMP   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
-  !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax )   
+  !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+  !$OMP   EC_a, EC_b, EC_ak, EC_bk )   
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
@@ -127,7 +132,8 @@ MODULE OpacityModule_TABLE
   !$ACC   Brem_T, Brem_AT, C1, C2,                        &
   !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
-  !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax )
+  !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+  !$ACC   EC_a, EC_b, EC_ak, EC_bk )
 #endif
 
 CONTAINS
@@ -405,6 +411,7 @@ CONTAINS
 
       ALLOCATE(EC_kfmin(nE))
       ALLOCATE(EC_kfmax(nE))
+      ALLOCATE(EC_a(nE,2),EC_b(nE,2),EC_ak(nE,2),EC_bk(nE,2))
 
       ALLOCATE( OS_EmAb_EC_spec (OPACITIES % EmAb% EC_table_nOpacities) )
       OS_EmAb_EC_spec = OPACITIES % EmAb % EC_table_spec_Offsets(1)
@@ -516,6 +523,10 @@ write(*,*) 'lol EC table'
 
       EC_kfmin = 1
       EC_kfmax = 1
+      EC_a     = -1.0d0
+      EC_b     = -1.0d0
+      EC_ak    = -1
+      EC_bk    = -1
  
       DO k = 1, EC_iE_max
         DO kk = 1, EC_nE
@@ -540,6 +551,64 @@ write(*,*) 'lol EC table'
 
       EC_kfmax(EC_iE_max) = EC_nE
 
+      DO k = 1, EC_iE_max
+
+        !thornado energy element is fully contained within
+        !an energy bin of the tabulated EC table
+        IF(EC_kfmin(k) >= EC_kfmax(k)) THEN
+          EC_a (k,1) = E_faces(k)
+          EC_a (k,1) = MAX(EC_a (k,1), 0.0d0)
+          EC_a (k,1) = MIN(EC_a (k,1), Es_EC_T(EC_nE))
+
+          EC_ak(k,1) = EC_kfmin(k)
+          EC_ak(k,1) = MAX(EC_ak(k,1), 1)
+          EC_ak(k,2) = EC_ak(k,1) + 1
+          IF(EC_ak(k,2) > EC_nE) THEN
+            EC_ak(k,2) = EC_nE
+            EC_ak(k,1) = EC_ak(k,2) - 1
+          END IF
+
+          EC_b (k,2) = E_faces(k+1) 
+          EC_b (k,2) = MAX(EC_b (k,2), 0.0d0)
+          EC_b (k,2) = MIN(EC_b (k,2), Es_EC_T(EC_nE))
+
+          EC_bk(k,1) = EC_ak(k,1)
+          EC_bk(k,2) = EC_ak(k,2)
+        ELSE
+          EC_a (k,1) = E_faces(k)
+          EC_a (k,1) = MAX(EC_a (k,1), 0.0d0)
+          EC_a (k,1) = MIN(EC_a (k,1), Es_EC_T(EC_nE))
+
+          EC_ak(k,1) = EC_kfmin(k)
+          EC_ak(k,1) = MAX(EC_ak(k,1), 1)
+          EC_ak(k,2) = EC_ak(k,1) + 1
+          IF(EC_ak(k,2) > EC_nE) THEN
+            EC_ak(k,2) = EC_nE
+            EC_ak(k,1) = EC_ak(k,2) - 1
+          END IF
+
+          EC_b (k,1) = Es_EC_T(EC_kfmin(k)+1)
+          EC_b (k,1) = MAX(EC_b (k,1), 0.0d0)
+          EC_b (k,1) = MIN(EC_b (k,1), Es_EC_T(EC_nE))
+
+          EC_a (k,2) = Es_EC_T(EC_kfmax(k))
+
+          EC_b (k,2) = E_faces(k+1) 
+          EC_b (k,2) = MAX(EC_b (k,2), 0.0d0)
+          EC_b (k,2) = MIN(EC_b (k,2), Es_EC_T(EC_nE))
+
+          EC_bk(k,1) = EC_kfmax(k)
+          EC_bk(k,1) = MAX(EC_bk(k,1), 1)
+          EC_bk(k,2) = EC_bk(k,1) + 1
+          IF(EC_bk(k,2) > EC_nE) THEN
+            EC_bk(k,2) = EC_nE
+            EC_bk(k,1) = EC_bk(k,2) - 1
+          END IF
+
+        ENDIF
+      
+      ENDDO
+
     END BLOCK build_kfmin_max
 
 #if defined(THORNADO_OMP_OL)
@@ -549,20 +618,23 @@ write(*,*) 'lol EC table'
     !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
     !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
     !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   & 
-    !$OMP   EC_kfmin, EC_kfmax, use_EC_table )
+    !$OMP   EC_kfmin, EC_kfmax, use_EC_table,         &
+    !$OMP   EC_a, EC_b, EC_ak, EC_bk )
     !$OMP TARGET UPDATE TO                            &
     !$OMP ( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       & 
     !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
     !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
     !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   &
-    !$OMP   EC_kfmin, EC_kfmax, use_EC_table )
+    !$OMP   EC_kfmin, EC_kfmax, use_EC_table,         &
+    !$OMP   EC_a, EC_b, EC_ak, EC_bk )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE                               &
     !$ACC ( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       &
     !$ACC   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
     !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
     !$ACC   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   &
-    !$ACC   EC_kfmin, EC_kfmax, use_EC_table )
+    !$ACC   EC_kfmin, EC_kfmax, use_EC_table,         &
+    !$ACC   EC_a, EC_b, EC_ak, EC_bk )
 #endif
 
      ENDIF
@@ -747,9 +819,13 @@ write(*,*) 'lol EC table'
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
+    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2,           &
+    !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+    !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+    !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+    !$OMP               EC_a, EC_b, EC_ak, EC_bk )
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
@@ -769,6 +845,10 @@ write(*,*) 'lol EC table'
     IF(ALLOCATED(Es_EC_T))         DEALLOCATE(Es_EC_T)
     IF(ALLOCATED(EC_kfmin))        DEALLOCATE(EC_kfmin)
     IF(ALLOCATED(EC_kfmax))        DEALLOCATE(EC_kfmax)
+    IF(ALLOCATED(EC_a))            DEALLOCATE(EC_a)
+    IF(ALLOCATED(EC_b))            DEALLOCATE(EC_b)
+    IF(ALLOCATED(EC_ak))           DEALLOCATE(EC_ak)
+    IF(ALLOCATED(EC_bk))           DEALLOCATE(EC_bk)
 
 #endif
 
