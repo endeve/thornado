@@ -184,7 +184,7 @@ contains
     IF( PRESENT(EnergyLimiter_Option) )THEN
       EnergyLimiter = EnergyLimiter_Option
     ELSE
-      EnergyLimiter = .FALSE.
+      EnergyLimiter = .TRUE.
     END IF
 
     IF( PRESENT(Verbose_Option) )THEN
