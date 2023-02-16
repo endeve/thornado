@@ -877,39 +877,6 @@ CONTAINS
     CALL ComputeHeavyMassNumber_TABLE &
            ( D, T, Y, Ah )
 
-    ! --- Interpolate EC rate
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-  !$OMP PRIVATE( D_P, T_P, Y_P ) 
-#elif defined(THORNADO_OACC)
-  !$ACC PARALLEL LOOP GANG VECTOR                &
-  !$ACC PRIVATE( D_P, T_P, Y_P ) 
-#elif defined(THORNADO_OMP)
-  !$OMP PARALLEL DO                              &
-  !$OMP PRIVATE( D_P, T_P, Y_P )
-#endif
-    DO iX = iX_B, iX_E
-
-      D_P = D(iX) / UnitD
-      T_P = T(iX) / UnitT
-      Y_P = Y(iX) / UnitY
-
-      IF(     D_P < Ds_EC_T(1) .or. D_P > Ds_EC_T(SIZE(Ds_EC_T)) &
-         .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
-         .or. Y_p < Ys_EC_T(1) .or. Y_P > Ys_EC_T(SIZE(Ys_EC_T)) &
-         .or. Ah(iX) < 40.0d0) THEN
-
-        EC_rate(iX) = 0.0d0
-
-      ELSE 
-
-        CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P,     T_P,     Y_P,  &
-               Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-               OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate(iX)) 
-      ENDIF
-
-    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE                                  &
@@ -946,8 +913,14 @@ CONTAINS
         DO iE = iE_B, iE_E
           opECT(iE,iX) = 0.0d0
         END DO
+        EC_rate(iX) = 0.0d0
 
       ELSE
+
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P,     T_P,     Y_P,  &
+               Ds_EC_T, Ts_EC_T, Ys_EC_T, &
+               OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate(iX)) 
 
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD            
@@ -998,6 +971,7 @@ CONTAINS
 
         END DO
 
+        !renormalise interpolated spectrum to 1
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD            
 #elif defined(THORNADO_OACC)
@@ -1006,7 +980,8 @@ CONTAINS
         DO iE = 1, EC_nE
           spec_fine(iE) = spec_fine(iE) / loctot
         ENDDO
-
+       
+        loctot = 0.0d0
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD              &
     !$OMP PRIVATE ( iE, iE1, iNodeE1,   &
@@ -1036,33 +1011,6 @@ CONTAINS
           spec_elements_nodes(iE1) = loctot
         ENDDO
 
-        loctot = 0.0d0
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD  &
-    !$OMP REDUCTION(+:loctot)         
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR       &
-    !$ACC REDUCTION(+:loctot)         
-#endif
-        DO iE = 1, nE
-          loctot = loctot + spec_elements_nodes(iE)
-        ENDDO
-        if(iX==1) print *,  'loctot from elements, nodal integration', loctot
-
-        loctot = 0.0d0
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD  &
-    !$OMP REDUCTION(+:loctot)         
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR       &
-    !$ACC REDUCTION(+:loctot)         
-#endif
-        DO iE = 1, EC_nE
-          loctot = loctot + EC_dE * spec_fine(iE)
-        ENDDO
-
-        if(iX==1) print *, 'loctot from actual table', loctot
-
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD            &
     !$OMP PRIVATE (iE1, a, b, f_a, f_b)  
@@ -1080,15 +1028,16 @@ CONTAINS
             f_a =  spec_fine(EC_ak(iE,1)) + (a-Es_EC_T(EC_ak(iE,1))) &
                 * (spec_fine(EC_ak(iE,2)) -  spec_fine(EC_ak(iE,1))) &
                 / (  Es_EC_T(EC_ak(iE,2)) -    Es_EC_T(EC_ak(iE,1)))
-            f_b =  spec_fine(EC_ak(iE,1)) + (b-Es_EC_T(EC_ak(iE,1))) &
-                * (spec_fine(EC_ak(iE,2)) -  spec_fine(EC_ak(iE,1))) &
-                / (  Es_EC_T(EC_ak(iE,2)) -    Es_EC_T(EC_ak(iE,1)))
+            f_b =  spec_fine(EC_bk(iE,1)) + (b-Es_EC_T(EC_bk(iE,1))) &
+                * (spec_fine(EC_bk(iE,2)) -  spec_fine(EC_bk(iE,1))) &
+                / (  Es_EC_T(EC_bk(iE,2)) -    Es_EC_T(EC_bk(iE,1)))
  
             spec_elements(iE) = spec_elements(iE) &
                               + 0.5d0 * (b - a) * (f_a + f_b)
-
           ELSE
-
+            
+            !integrate from lower thornado element face to next
+            !EC table energy bin face  
             a = EC_a(iE,1)
             b = EC_b(iE,1)
 
@@ -1101,19 +1050,20 @@ CONTAINS
             spec_elements(iE) = spec_elements(iE) &
                               + 0.5d0 * (b - a) * (f_a + f_b)
 
-            !the fully contained wl energy bins can just be summed over
-            !as they have been integrated already in the table construction 
+            !integrate over the fully contained EC table energy bins
             DO iE1 = EC_kfmin(iE)+1, EC_kfmax(iE)-1
               spec_elements(iE) = spec_elements(iE) &
                                 + 0.5d0 * EC_dE * (spec_fine(iE1) + spec_fine(iE1+1))
             ENDDO
 
+            !integrate from EC table energy bin face
+            !to upper thornado element face  
             a = EC_a(iE,2)            
             b = EC_b(iE,2)
 
             f_a = spec_fine(EC_kfmax(iE))            
 
-            f_b =  spec_fine(EC_bk(iE,1)) + (a-Es_EC_T(EC_bk(iE,1))) &
+            f_b =  spec_fine(EC_bk(iE,1)) + (b-Es_EC_T(EC_bk(iE,1))) &
                 * (spec_fine(EC_bk(iE,2)) -  spec_fine(EC_bk(iE,1))) &
                 / (  Es_EC_T(EC_bk(iE,2)) -    Es_EC_T(EC_bk(iE,1)))
 
@@ -1124,22 +1074,6 @@ CONTAINS
 
         ENDDO
 
-        loctot = 0.0d0
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD            &
-    !$OMP REDUCTION(+:loctot)         
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                 &
-    !$ACC REDUCTION(+:loctot)         
-#endif
-        DO iE = 1, nE
-          loctot = loctot + spec_elements(iE)
-          if(iX==1) print *, iE, spec_elements(iE) * coeff * Xnuc * EC_rate(iX) &
-          / (WidthE(iE)/UnitE) / (CenterE(iE)/UnitE)**2
-        ENDDO
-
-        if(iX==1) print *, 'loctot from elements, EC table integration onto elements exact int', loctot
-
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD         &
     !$OMP PRIVATE ( iE1, iNodeE1 )          
@@ -1149,55 +1083,22 @@ CONTAINS
 #endif
         DO iE = iE_B, EC_iNodeE_max
           iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
-          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
 
           spec_nodes(iE) = spec_nodes(iE) * spec_elements(iE1) / spec_elements_nodes(iE1)
 
         ENDDO
 
-
-        loctot = 0.0d0
 #if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD                &
-    !$OMP PRIVATE( iE1, iNodeE1, E_node ) &
-    !$OMP REDUCTION(+:loctot)         
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX, iE )
 #elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                     &
-    !$ACC PRIVATE( iE1, iNodeE1, E_node ) &
-    !$ACC REDUCTION(+:loctot)           
+    !$ACC LOOP VECTOR      &
+    !$ACC PRIVATE( iX, iE ) 
 #endif
         DO iE = iE_B, iE_E
-          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
-          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
 
-          E_node  = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
-
-          loctot = loctot + spec_nodes(iE) * E_node**2 * MeshE % Width(iE1) / UnitE * WeightsE(iNodeE1)
-        ENDDO
-
-        if(iX==1) print *, 'loctot from nodes, after normalisation', loctot
-
-if(iX==1) print *, 'rate interp', EC_rate(iX)
-if(iX==1) print *, 'coeff', coeff
-if(iX==1) print *, 'xnuc', Xnuc
-
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD                    &
-    !$OMP PRIVATE( iE1, iNodeE1, E_node )
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                         &
-    !$ACC PRIVATE( iE1, iNodeE1, E_node ) 
-#endif
-        DO iE = iE_B, iE_E
-          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
-          iNodeE1 = MOD( (iE-1)          , nNodesE ) + 1
-          E_node  = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
-
-          !opECT(iE,iX) = Xnuc * coeff * EC_rate(iX) &
-          !             * spec_nodes(iE) / E_node**2 / f0(iE,1,iX) * UnitEC
           opECT(iE,iX) = Xnuc * coeff * EC_rate(iX) &
-                       * spec_nodes(iE) * UnitEC !/ E_node**2 * UnitEC
+                       * spec_nodes(iE) / f0(iE,1,iX) * UnitEC
 
         END DO
 
@@ -1215,8 +1116,8 @@ if(iX==1) print *, 'xnuc', Xnuc
     DO iX = iX_B, iX_E
       DO iE = iE_B, iE_E
 
-!        opEC(iE,1,iX) = opEC(iE,1,iX) + opECT(iE,iX)
-        opEC(iE,1,iX) = opECT(iE,iX)
+        opEC(iE,1,iX) = opEC(iE,1,iX) + opECT(iE,iX)
+!        opEC(iE,1,iX) = opECT(iE,iX)
 
       END DO
     END DO

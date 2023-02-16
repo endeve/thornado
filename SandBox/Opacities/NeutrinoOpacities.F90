@@ -93,8 +93,8 @@ PROGRAM NeutrinoOpacities
 
   INTEGER, PARAMETER :: &
     nNodes   = 3, & !2, &
-    !nE       = 16, & !2**4, &
-    nE       = 20, & !2**4, &
+    nE       = 16, & !2**4, &
+    !nE       = 20, & !2**4, &
     nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
@@ -111,10 +111,10 @@ PROGRAM NeutrinoOpacities
     BaryonMass = AtomicMassUnit, &
     Unit_Qdot  = 1.0_DP / ( BaryonMass * Second ), &
     Unit_Edot  = 1.0_DP / ( BaryonMass * Second ), &
-    !eL         = 0.0e0_DP * Unit_E, &
-    !eR         = 3.0e2_DP * Unit_E, &
-    eL         = 2.63183d0 * Unit_E, &
-    eR         = 335.368d0 * Unit_E, &
+    eL         = 0.0e0_DP * Unit_E, &
+    eR         = 3.0e2_DP * Unit_E, &
+    !eL         = 2.63183d0 * Unit_E, &
+    !eR         = 335.368d0 * Unit_E, &
     !ZoomE      = 1.183081754893913_DP
     ZoomE      = 1.266038160710160d0
 
@@ -144,7 +144,11 @@ PROGRAM NeutrinoOpacities
     D, T, Y
   REAL(DP), DIMENSION(nE) :: &
     dE
-  REAL(DP), DIMENSION(nE,nPointsX) :: Chi_EmAb_element, Edot_EmAb_element, E_element
+  REAL(DP), DIMENSION(nE,nSpecies,nPointsX) :: Edot_EmAb_element, &
+    Edot_Iso_element,  &
+    Qdot_Pair_element, &
+    Qdot_Brem_element, &
+    Edot_NES_element
   REAL(DP), DIMENSION(nPointsE) :: &
     E, W2
   REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
@@ -537,8 +541,8 @@ PROGRAM NeutrinoOpacities
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    !Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
-    Edot_EmAb(iE,iS,iX) = abs(Chi_EmAb(iE,iS,iX))
+    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
+    !Edot_EmAb(iE,iS,iX) = abs(Chi_EmAb(iE,iS,iX))
     Edot_Iso(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
     Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
     Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
@@ -548,31 +552,37 @@ PROGRAM NeutrinoOpacities
   END DO
   END DO
 
-  Chi_EmAb_element = 0.0d0
-  E_element = 0.0d0
+  Edot_EmAb_element = 0.0d0
+  Edot_Iso_element  = 0.0d0
+  Qdot_Pair_element = 0.0d0
+  Qdot_Brem_element = 0.0d0
+  Edot_NES_element  = 0.0d0
 
-  loctot = 0.0d0
   DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
   DO iN_E = 1, nPointsE
 
     iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
     iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
 
-    Chi_EmAb_element(iE,iX) = Chi_EmAb_element(iE,iX) &
-                             + dE(iE) / Unit_E * WeightsE(iNodeE) * Chi_EmAb(iN_E,1,iX) &
-                             * (E(iN_E) / Unit_E)**2
-    E_element(iE,iX) = E_element(iE,iX) &
-                             + dE(iE) / Unit_E * WeightsE(iNodeE)
+    Edot_EmAb_element(iE,iS,iX) = Edot_EmAb_element(iE,iS,iX) &
+                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_EmAb(iN_E,iS,iX) &
+                                * (E(iN_E) / Unit_E)**2
+    Edot_Iso_element(iE,iS,iX)  = Edot_Iso_element(iE,iS,iX) &
+                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_Iso(iN_E,iS,iX) &
+                                * (E(iN_E) / Unit_E)**2
+    Qdot_Pair_element(iE,iS,iX) = Qdot_Pair_element(iE,iS,iX) &
+                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_Pair(iN_E,iS,iX) &
+                                * (E(iN_E) / Unit_E)**2
+    Qdot_Brem_element(iE,iS,iX) = Qdot_Brem_element(iE,iS,iX) &
+                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_Brem(iN_E,iS,iX) &
+                                * (E(iN_E) / Unit_E)**2
+    Edot_NES_element(iE,iS,iX)  = Edot_NES_element(iE,iS,iX) &
+                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_NES(iN_E,iS,iX) &
+                                * (E(iN_E) / Unit_E)**2
   END DO
   END DO
-write(*,*) 'nPointsE', nPointsE
-do iE = 1, nE
-write(*,*) iE, MeshE % Center(iE)/Unit_E, dE(iE) / Unit_E
-loctot = loctot + Chi_EmAb_element(iE,1)
-Edot_EmAb_element(iE,1) = Chi_EmAb_element(iE,1) / (MeshE % Center(iE)/Unit_E)**2 / (dE(iE) / Unit_E)
-enddo
-write(*,*) 'loctot from Chi_EmAb_element', loctot
-
+  END DO
 
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
@@ -580,8 +590,15 @@ write(*,*) 'loctot from Chi_EmAb_element', loctot
   CALL WriteVector &
          ( nE, MeshE % Center / Unit_E, 'EC.dat' )
   CALL WriteVector & ! --- NuE
-         !( nE, Edot_EmAb_element(:,1) / Unit_Edot, 'Edot_EmAb_NuE_element.dat'     )
-         ( nE, Edot_EmAb_element(:,1) / Unit_Chi, 'Edot_EmAb_NuE_element.dat'     )
+         ( nE, Edot_EmAb_element(:,iNuE, 1) / Unit_Edot, 'Edot_EmAb_NuE_element.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nE, Edot_Iso_element (:,iNuE, 1) / Unit_Edot, 'Edot_Iso_NuE_element.dat'  )
+  CALL WriteVector & ! --- NuE
+         ( nE, Qdot_Pair_element(:,iNuE, 1) / Unit_Edot, 'Qdot_Pair_NuE_element.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nE, Qdot_Brem_element(:,iNuE, 1) / Unit_Edot, 'Qdot_Brem_NuE_element.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nE, Edot_NES_element (:,iNuE, 1) / Unit_Edot, 'Edot_NES_NuE_element.dat'  )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, f0   (:,iNuE    ,1), 'f0_NuE.dat'        )
@@ -656,8 +673,7 @@ write(*,*) 'loctot from Chi_EmAb_element', loctot
          ( nPointsE, Eta_Brem(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Brem_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
-         !( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Edot, 'Edot_EmAb_NuE.dat'     )
-         ( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Chi, 'Edot_EmAb_NuE.dat'     )
+         ( nPointsE, Edot_EmAb(:,iNuE    ,1) / Unit_Edot, 'Edot_EmAb_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Edot_EmAb(:,iNuE_Bar,1) / Unit_Edot, 'Edot_EmAb_NuE_Bar.dat' )
   CALL WriteVector & ! --- NuE

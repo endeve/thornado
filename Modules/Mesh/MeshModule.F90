@@ -140,48 +140,6 @@ CONTAINS
       Center(i) = xL + SUM( Width(1:i-1) ) + 0.5_DP * Width(i)
     END DO
 
-    Center(1)  = 2.992755d0 * MeV !0.30000d+01 * MeV !3.35368d0/2.0d0 * MeV
-    Center(2)  = 3.813595d0 * MeV !0.38228d+01 * MeV
-    Center(3)  = 4.859565d0 * MeV !0.48713d+01 * MeV
-    Center(4)  = 6.19242d0 * MeV !0.62074d+01 * MeV
-    Center(5)  = 7.89085d0 * MeV !0.79100d+01 * MeV
-    Center(6)  = 10.05509d0 * MeV !0.10079d+02 * MeV
-    Center(7)  = 12.81295d0 * MeV !0.12844d+02 * MeV
-    Center(8)  = 16.32725d0 * MeV !0.16367d+02 * MeV
-    Center(9)  = 20.8054d0 * MeV !0.20856d+02 * MeV
-    Center(10) = 26.5118d0 * MeV !0.26576d+02 * MeV
-    Center(11) = 33.78335d0 * MeV !0.33865d+02 * MeV
-    Center(12) = 43.0493d0 * MeV !0.43153d+02 * MeV
-    Center(13) = 54.85665d0 * MeV !0.54989d+02 * MeV
-    Center(14) = 69.90245d0 * MeV !0.70072d+02 * MeV
-    Center(15) = 89.0749d0 * MeV !0.89291d+02 * MeV
-    Center(16) = 113.5061d0 * MeV !0.11378d+03 * MeV
-    Center(17) = 144.638d0 * MeV !0.14499d+03 * MeV
-    Center(18) = 184.3085d0 * MeV !0.18475d+03 * MeV
-    Center(19) = 234.8595d0 * MeV !0.23543d+03 * MeV
-    Center(20) = 299.2755d0 * MeV !0.30000d+03 * MeV
-
-    Width(1)  = 0.72185d0 * MeV !3.35368d0 * MeV
-    Width(2)  = 0.91983d0 * MeV
-    Width(3)  = 0.11721d1 * MeV
-    Width(4)  = 0.14936d1 * MeV
-    Width(5)  = 0.19033d1 * MeV
-    Width(6)  = 0.24253d1 * MeV
-    Width(7)  = 0.30905d1 * MeV
-    Width(8)  = 0.39381d1 * MeV
-    Width(9)  = 0.50182d1 * MeV
-    Width(10) = 0.63946d1 * MeV
-    Width(11) = 0.81485d1 * MeV
-    Width(12) = 0.10383d2 * MeV
-    Width(13) = 0.13231d2 * MeV
-    Width(14) = 0.16860d2 * MeV
-    Width(15) = 0.21485d2 * MeV
-    Width(16) = 0.27377d2 * MeV
-    Width(17) = 0.34886d2 * MeV
-    Width(18) = 0.44455d2 * MeV
-    Width(19) = 0.56648d2 * MeV
-    Width(20) = 0.72185d2 * MeV
-
   END SUBROUTINE CreateMesh_Geometric
 
 
