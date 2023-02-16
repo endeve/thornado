@@ -164,6 +164,8 @@ CONTAINS
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
             'iNX:              ', Int_Option(1)
+          WRITE(*,'(2x,A,I8.8)') &
+            'ITERATION:        ', Int_Option(2)
           WRITE(*,'(2x,A,ES24.16E3,A)') &
             'U(iCF_D       ) = ', Real_Option(1), '_DP'
           WRITE(*,'(2x,A,ES24.16E3,A)') &
@@ -227,6 +229,8 @@ CONTAINS
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
             'iNX:              ', Int_Option(1)
+          WRITE(*,'(2x,A,I8.8)') &
+            'ITERATION:        ', Int_Option(2)
           WRITE(*,'(2x,A,ES24.16E3,A)') &
             'U(iCF_D       ) = ', Real_Option(1), '_DP'
           WRITE(*,'(2x,A,ES24.16E3,A)') &

@@ -52,7 +52,8 @@ CONTAINS
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-      iErr )
+      ITERATION_Option, &
+      iErr_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -67,7 +68,19 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
     INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr
+      ITERATION_Option
+    INTEGER,  INTENT(inout), OPTIONAL :: &
+      iErr_Option
+
+    INTEGER :: ITERATION, iErr
+
+    ITERATION = 0
+    IF( PRESENT( ITERATION_Option ) ) &
+      ITERATION = ITERATION_Option
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) &
+      iErr = iErr_Option
 
 #ifdef HYDRO_RELATIVISTIC
 
@@ -75,7 +88,14 @@ CONTAINS
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-             iErr )
+             ITERATION_Option = ITERATION, &
+             iErr_Option = iErr )
+
+    IF( PRESENT( ITERATION_Option ) ) &
+      ITERATION_Option = ITERATION
+
+    IF( PRESENT( iErr_Option ) ) &
+      iErr_Option = iErr
 
 #else
 

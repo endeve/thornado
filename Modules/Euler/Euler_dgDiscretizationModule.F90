@@ -3610,6 +3610,8 @@ CONTAINS
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
 
+    INTEGER, PARAMETER :: MAX_IT = 30
+
     REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)
     REAL(DP) :: Pressure
@@ -3637,9 +3639,13 @@ CONTAINS
                                            iX_B0(2):iX_E0(2), &
                                            iX_B0(3):iX_E0(3))
 
-    INTEGER :: iErr(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3))
+    INTEGER :: ITERATION(nDOFX,iX_B0(1):iX_E0(1), &
+                               iX_B0(2):iX_E0(2), &
+                               iX_B0(3):iX_E0(3))
+
+    INTEGER :: iErr     (nDOFX,iX_B0(1):iX_E0(1), &
+                               iX_B0(2):iX_E0(2), &
+                               iX_B0(3):iX_E0(3))
 
     REAL(DP) :: GradPsiF(nDOFX)
 
@@ -3651,14 +3657,14 @@ CONTAINS
     !$OMP MAP( alloc: PressureTensor, &
     !$OMP             dGdX1, dGdX2, dGdX3, &
     !$OMP             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$OMP             iErr )
+    !$OMP             ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, tau, Mask ) &
     !$ACC CREATE(     PressureTensor, &
     !$ACC             dGdX1, dGdX2, dGdX3, &
     !$ACC             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$ACC             iErr )
+    !$ACC             ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -3686,7 +3692,7 @@ CONTAINS
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, &
     !$ACC          PressureTensor, tau, &
-    !$ACC          dGdX1, dGdX2, dGdX3, iErr, Mask )
+    !$ACC          dGdX1, dGdX2, dGdX3, ITERATION, iErr, Mask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure ) &
@@ -3697,7 +3703,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+      ITERATION(iNX,iX1,iX2,iX3) = 0
+      iErr     (iNX,iX1,iX2,iX3) = 0
 
       IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
@@ -3717,7 +3724,8 @@ CONTAINS
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr(iNX,iX1,iX2,iX3) )
+               ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+               iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
       ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -3957,14 +3965,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr, ErrorExists ) &
+    !$OMP MAP( from:    ITERATION, iErr, ErrorExists ) &
     !$OMP MAP( release: iX_B0, iX_E0, tau, &
     !$OMP               PressureTensor, &
     !$OMP               dGdX1, dGdX2, dGdX3, Mask, &
     !$OMP               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr, ErrorExists ) &
+    !$ACC COPYOUT(      ITERATION, iErr, ErrorExists ) &
     !$ACC DELETE(       iX_B0, iX_E0, tau, &
     !$ACC               PressureTensor, &
     !$ACC               dGdX1, dGdX2, dGdX3, Mask, &
@@ -3986,9 +3994,11 @@ CONTAINS
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1       , nDOFX
 
-        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 &
+            .OR. ITERATION(iNX,iX1,iX2,iX3) .EQ. MAX_IT )THEN
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+          WRITE(*,*) 'ITERATION: ', ITERATION
 
           CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
 
