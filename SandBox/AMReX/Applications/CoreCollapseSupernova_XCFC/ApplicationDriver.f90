@@ -335,11 +335,13 @@ CONTAINS
 
       CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, &
-               Verbose_Option = amrex_parallel_ioprocessor() )
+               Verbose_Option = .FALSE. )
+               !Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL ComputeTally_TwoMoment_MF &
              ( amrex_geom, MF_uGF, MF_uCF, MF_uCR, t_new(0), &
-               Verbose_Option = amrex_parallel_ioprocessor() )
+               Verbose_Option = .FALSE. )
+               !Verbose_Option = amrex_parallel_ioprocessor() )
 
       wrt = .FALSE.
 
