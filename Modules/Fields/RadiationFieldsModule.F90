@@ -409,13 +409,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCR, uPR, uAR, uGR, uDR, unitsGR )
+    !$OMP MAP( release: uCR, uPR, uAR, uGR, uDR, &
+    !$OMP               unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( uCR, uPR, uPR, uAR, uGR, uDR, unitsGR )
+    !$ACC DELETE( uCR, uPR, uPR, uAR, uGR, uDR, &
+    !$ACC         unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #endif
 
-    DEALLOCATE( uCR, uPR, uAR, uGR, uDR, unitsGR )
+    DEALLOCATE( uCR, uPR, uAR, uGR, uDR )
 
   END SUBROUTINE DestroyRadiationFields
 
@@ -453,10 +455,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: unitsGR )
+    !$OMP MAP( to: unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( unitsGR )
+    !$ACC COPYIN( unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #endif
 
   END SUBROUTINE SetUnitsRadiationFields
