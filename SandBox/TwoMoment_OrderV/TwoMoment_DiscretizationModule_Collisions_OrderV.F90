@@ -506,6 +506,14 @@ CONTAINS
 
     IF( PRESENT( uDR_Option ) )THEN
 
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC  )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( uDR_Option, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP   )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -516,6 +524,17 @@ CONTAINS
       END DO
       END DO
 
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+      !$OMP PRIVATE( iN_X )
+#elif defined(THORNADO_OACC  )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRIVATE( iN_X ) &
+      !$ACC PRESENT( uDR_Option, iX_B0, iX_E0, nX, nIterations )
+#elif defined(THORNADO_OMP   )
+      !$OMP PARALLEL DO COLLAPSE(4) &
+      !$OMP PRIVATE( iN_X )
+#endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)

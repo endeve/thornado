@@ -1184,6 +1184,14 @@ CONTAINS
 
     IF( PRESENT( uDR_Option ) )THEN
 
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC  )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( uDR_Option, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP   )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
       DO iZ4 = iZ_B0(4), iZ_E0(4)
       DO iZ3 = iZ_B0(3), iZ_E0(3)
       DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1196,6 +1204,14 @@ CONTAINS
       END DO
       END DO
 
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC  )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+      !$ACC PRESENT( uDR_Option, iZ_B0, iZ_E0, ApplyEnergyLimiter, dEnergy_K )
+#elif defined(THORNADO_OMP   )
+      !$OMP PARALLEL DO COLLAPSE(4)
+#endif
       DO iS  = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
       DO iZ3 = iZ_B0(3), iZ_E0(3)
