@@ -10,8 +10,7 @@ MODULE OpacityModule_TABLE
   USE wlOpacityTableIOModuleHDF, ONLY: &
     ReadOpacityTableHDF
   USE wlOpacityTableModule, ONLY: &
-    OpacityTableType, &
-    DescribeOpacityTable
+    OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D_Custom_Point
@@ -90,6 +89,7 @@ MODULE OpacityModule_TABLE
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
 #endif
+  LOGICAL :: Use_OpacityTables
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2
@@ -155,7 +155,8 @@ CONTAINS
 
     CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: LogE1, LogE2
-    INTEGER :: iS, iM, iEta, iD, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
+    INTEGER :: iS, iM, iEta, iD, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2
+    INTEGER :: nOpacities, nMoments, nPointsEta, nPointsD, nPointsT, nPointsE
     LOGICAL :: Include_EmAb
     LOGICAL :: Include_Iso
     LOGICAL :: Include_NES
@@ -164,7 +165,7 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
-        .AND. ( LEN( OpacityTableName_EmAb_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
       OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
       Include_EmAb = .TRUE.
     ELSE
@@ -173,7 +174,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Iso_Option ) &
-        .AND. ( LEN( OpacityTableName_Iso_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Iso_Option ) > 1 ) )THEN
       OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
       Include_Iso = .TRUE.
     ELSE
@@ -182,7 +183,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_NES_Option ) &
-        .AND. ( LEN( OpacityTableName_NES_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_NES_Option ) > 1 ) )THEN
       OpacityTableName_NES = TRIM( OpacityTableName_NES_Option )
       Include_NES = .TRUE.
     ELSE
@@ -191,7 +192,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Pair_Option ) &
-        .AND. ( LEN( OpacityTableName_Pair_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Pair_Option ) > 1 ) )THEN
       OpacityTableName_Pair = TRIM( OpacityTableName_Pair_Option )
       Include_Pair = .TRUE.
     ELSE
@@ -200,7 +201,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Brem_Option ) &
-        .AND. ( LEN( OpacityTableName_Brem_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Brem_Option ) > 1 ) )THEN
       OpacityTableName_Brem = TRIM( OpacityTableName_Brem_Option )
       Include_Brem = .TRUE.
     ELSE
@@ -209,7 +210,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( EquationOfStateTableName_Option ) &
-        .AND. ( LEN( EquationOfStateTableName_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( EquationOfStateTableName_Option ) > 1 ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
@@ -241,7 +242,20 @@ CONTAINS
       END IF
     END IF
 
+    Use_OpacityTables = .FALSE.
+
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF (   Include_EmAb &
+      .OR. Include_Iso  &
+      .OR. Include_NES  &
+      .OR. Include_Pair &
+      .OR. Include_Brem ) THEN
+      Use_OpacityTables = .TRUE.
+    ELSE
+      Use_OpacityTables = .FALSE.
+      RETURN
+    END IF
 
     CALL InitializeHDF( )
 
@@ -255,11 +269,6 @@ CONTAINS
              EquationOfStateTableName_Option = EquationOfStateTableName )
 
     CALL FinalizeHDF( )
-
-#ifdef THORNADO_DEBUG
-    IF( Verbose ) &
-      CALL DescribeOpacityTable( OPACITIES )
-#endif
 
     nPointsE = nE * nNodesE
 
@@ -643,12 +652,12 @@ write(*,*) 'lol EC table'
 
     NES: BLOCK
 
-    INTEGER :: nSpecies, nMoments, nPointsEta, nPointsT
+    INTEGER :: nOpacities, nMoments, nPointsEta, nPointsT
 
-    nSpecies   = OPACITIES % Scat_NES % nOpacities
+    nOpacities = OPACITIES % Scat_NES % nOpacities
     nMoments   = OPACITIES % Scat_NES % nMoments
-    nPointsEta = OPACITIES % Scat_NES % nPoints(5)
     nPointsT   = OPACITIES % Scat_NES % nPoints(4)
+    nPointsEta = OPACITIES % Scat_NES % nPoints(5)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -661,10 +670,10 @@ write(*,*) 'lol EC table'
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies !OPACITIES % Scat_NES % nOpacities
-      DO iM = 1, nMoments !OPACITIES % Scat_NES % nMoments
-        DO iEta = 1, nPointsEta !OPACITIES % Scat_NES % nPoints(5)
-          DO iT = 1, nPointsT !OPACITIES % Scat_NES % nPoints(4)
+    DO iS = 1, nOpacities
+      DO iM = 1, nMoments
+        DO iEta = 1, nPointsEta
+          DO iT = 1, nPointsT
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -695,12 +704,12 @@ write(*,*) 'lol EC table'
 
     Pair: BLOCK
 
-    INTEGER :: nSpecies, nMoments, nPointsEta, nPointsT
+    INTEGER :: nOpacities, nMoments, nPointsEta, nPointsT
 
-    nSpecies   = OPACITIES % Scat_Pair % nOpacities
+    nOpacities = OPACITIES % Scat_Pair % nOpacities
     nMoments   = OPACITIES % Scat_Pair % nMoments
-    nPointsEta = OPACITIES % Scat_Pair % nPoints(5)
     nPointsT   = OPACITIES % Scat_Pair % nPoints(4)
+    nPointsEta = OPACITIES % Scat_Pair % nPoints(5)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -713,10 +722,10 @@ write(*,*) 'lol EC table'
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies !OPACITIES % Scat_Pair % nOpacities
-      DO iM = 1, nMoments !OPACITIES % Scat_Pair % nMoments
-        DO iEta = 1, nPointsEta !OPACITIES % Scat_Pair % nPoints(5)
-          DO iT = 1, nPointsT !OPACITIES % Scat_Pair % nPoints(4)
+    DO iS = 1, nOpacities
+      DO iM = 1, nMoments
+        DO iEta = 1, nPointsEta
+          DO iT = 1, nPointsT
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -747,12 +756,12 @@ write(*,*) 'lol EC table'
 
     Brem: BLOCK
 
-    INTEGER :: nSpecies, nMoments, nPointsD, nPointsT
+    INTEGER :: nOpacities, nMoments, nPointsD, nPointsT
 
-    nSpecies = OPACITIES % Scat_Brem % nOpacities
-    nMoments = OPACITIES % Scat_Brem % nMoments
-    nPointsD = OPACITIES % Scat_Brem % nPoints(4)
-    nPointsT = OPACITIES % Scat_Brem % nPoints(5)
+    nOpacities = OPACITIES % Scat_Brem % nOpacities
+    nMoments   = OPACITIES % Scat_Brem % nMoments
+    nPointsD   = OPACITIES % Scat_Brem % nPoints(4)
+    nPointsT   = OPACITIES % Scat_Brem % nPoints(5)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -765,10 +774,10 @@ write(*,*) 'lol EC table'
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies !OPACITIES % Scat_Brem % nOpacities
-      DO iM = 1, nMoments !OPACITIES % Scat_Brem % nMoments
-        DO iD = 1, nPointsD !OPACITIES % Scat_Brem % nPoints(4)
-          DO iT = 1, nPointsT !OPACITIES % Scat_Brem % nPoints(5)
+    DO iS = 1, nOpacities
+      DO iM = 1, nMoments
+        DO iD = 1, nPointsD
+          DO iT = 1, nPointsT
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE 
 
@@ -816,12 +825,14 @@ write(*,*) 'lol EC table'
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+  IF ( Use_OpacityTables ) THEN
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
-    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2,           &
+    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,           &
+    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2,               &
     !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
     !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
     !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
@@ -849,6 +860,7 @@ write(*,*) 'lol EC table'
     IF(ALLOCATED(EC_b))            DEALLOCATE(EC_b)
     IF(ALLOCATED(EC_ak))           DEALLOCATE(EC_ak)
     IF(ALLOCATED(EC_bk))           DEALLOCATE(EC_bk)
+  END IF
 
 #endif
 

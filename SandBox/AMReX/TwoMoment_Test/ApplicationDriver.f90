@@ -92,14 +92,14 @@ num = 1
 
       CALL ComputeTimeStep_TwoMoment_Fancy_MF &
              ( MF_uGF, nX, nNodes, xR, xL, CFL, dt )
-
+      dt = MINVAL( dt )
     END IF
 
     IF( ALL( t_new + dt .LE. t_end ) )THEN
       t_new = t_new + dt
     ELSE
-      dt = t_end - [t_new]
-      t_new  = [t_end]
+      dt = t_end - t_new
+      t_new  = t_end
     END IF
     IF( amrex_parallel_ioprocessor() )THEN
       !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &

@@ -13,6 +13,10 @@ MODULE MF_Euler_TallyModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
@@ -48,14 +52,15 @@ MODULE MF_Euler_TallyModule
     DestroyMesh_MF
 !  USE TimersModule_AMReX_Euler, ONLY: &
 !    TimersStart_AMReX_Euler, &
-!    TimersStop_AMReX_Euler, &
-!    Timer_AMReX_Euler_Allocate
+!    TimersStop_AMReX_Euler
   USE MakeFineMaskModule, ONLY: &
     MakeFineMask, &
     DestroyFineMask, &
     iLeaf_MFM
   USE MF_UtilitiesModule, ONLY: &
-    amrex2thornado_X
+    amrex2thornado_X, &
+    AllocateArray_X, &
+    DeallocateArray_X
 
   IMPLICIT NONE
   PRIVATE
@@ -82,16 +87,13 @@ MODULE MF_Euler_TallyModule
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_MF &
-    ( SuppressTally_Option, BaseFileName_Option )
+  SUBROUTINE InitializeTally_Euler_MF( SuppressTally_Option )
 
-    LOGICAL,  INTENT(in),         OPTIONAL :: &
-      SuppressTally_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
-      BaseFileName_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: SuppressTally_Option
 
-    CHARACTER(256) :: BaseFileName
-    INTEGER        :: FileUnit
+    CHARACTER(:), ALLOCATABLE :: FileNameBase
+    INTEGER                   :: FileUnit
+    TYPE(amrex_parmparse)     :: PP
 
     CHARACTER(256) :: TimeLabel
     CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
@@ -104,30 +106,25 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      IF( nMaxLevels .GT. 1 )THEN
+      IF( nMaxLevels .GT. 1 .AND. .NOT. UseFluxCorrection_Euler )THEN
 
-        IF( .NOT. UseFluxCorrection_Euler )THEN
-
-          WRITE(*,*)
-          WRITE(*,'(4x,A)') &
-            'WARNING: Euler tally not accurate when UseFluxCorrection is false'
-          WRITE(*,'(4x,A)') &
-            '-------'
-
-        END IF
+        WRITE(*,*)
+        WRITE(*,'(4x,A)') &
+          'WARNING: Euler tally not accurate when UseFluxCorrection is false'
+        WRITE(*,'(4x,A)') &
+          '-------'
 
       END IF
 
-      BaseFileName = ''
-      IF( PRESENT( BaseFileName_Option ) ) &
-        BaseFileName = TRIM( BaseFileName_Option )
-
-      BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
+      FileNameBase = TRIM( ProgramName )
+      CALL amrex_parmparse_build( PP, 'thornado' )
+        CALL PP % query( 'TallyFileNameBase_Euler', FileNameBase )
+      CALL amrex_parmparse_destroy( PP )
 
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
-        = TRIM( BaseFileName ) // '_Tally_BaryonicMass.dat'
+        = TRIM( FileNameBase ) // '.Tally_BaryonicMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -151,7 +148,7 @@ CONTAINS
       ! --- Energy ---
 
       Energy_FileName &
-        = TRIM( BaseFileName ) // '_Tally_Energy.dat'
+        = TRIM( FileNameBase ) // '.Tally_Energy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -243,29 +240,31 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-!        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
+                 G )
 
-        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nGF) )
-
-        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
-
-!        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
+                 U )
 
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
         CALL ComputeTally_Euler( iX_B0, iX_E0, G, U, Mask, iLevel )
 
-!        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Allocate )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
+                 U )
 
-        DEALLOCATE( U )
-        DEALLOCATE( G )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
+                 G )
 
-!        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Allocate )
 
       END DO
 
@@ -285,13 +284,15 @@ CONTAINS
 
     END IF
 
+    ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
+
     BaryonicMass_Change &
       = BaryonicMass_Interior &
-          - ( BaryonicMass_Initial + BaryonicMass_OffGrid )
+          - BaryonicMass_Initial + BaryonicMass_OffGrid
 
     Energy_Change &
       = Energy_Interior &
-          - ( Energy_Initial + Energy_OffGrid )
+          - Energy_Initial + Energy_OffGrid
 
     CALL WriteTally_Euler( Time(0) )
 

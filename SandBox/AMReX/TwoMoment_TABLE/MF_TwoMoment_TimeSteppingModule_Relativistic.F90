@@ -184,7 +184,7 @@ CONTAINS
 
             CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
+                            dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 
             CALL MF_F(iLevel) &

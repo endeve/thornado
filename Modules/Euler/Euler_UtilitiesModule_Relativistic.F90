@@ -111,6 +111,7 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_Epsilon     = 1.0e-12_DP
+  REAL(DP), PARAMETER :: Offset_z           = 10.0_DP * SqrtTiny
 
 
 CONTAINS
@@ -2052,8 +2053,8 @@ CONTAINS
 
     za = SQRT( One - Fourth * k**2 )
     zb = SQRT( One - k**2 )
-    za = Half * k / za - SqrtTiny
-    zb = k        / zb + SqrtTiny
+    za = Half * k / za - Offset_z
+    zb = k        / zb + Offset_z
 
     ! --- Compute FunZ for upper and lower bounds ---
 

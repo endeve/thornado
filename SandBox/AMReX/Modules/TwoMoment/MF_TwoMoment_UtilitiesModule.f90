@@ -1,9 +1,8 @@
 MODULE MF_TwoMoment_UtilitiesModule
 
   ! --- AMReX Modules ---
-  USE amrex_fort_module,     ONLY: &
-    amrex_real
-  USE amrex_box_module,      ONLY: &
+
+  USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
@@ -13,38 +12,93 @@ MODULE MF_TwoMoment_UtilitiesModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
-  USE MF_KindModule,         ONLY: &
-    DP
+
   ! --- thornado Modules ---
-  USE ProgramHeaderModule,      ONLY: &
-    swX, nDOFX, nDOFZ, swE, nDOFE, iE_B0, iE_E0, iE_B1, iE_E1
-  USE RadiationFieldsModule,            ONLY: &
-    nCR, nPR, iCR_G1, iCR_G2, iCR_G3, iCR_N, &
-    iPR_D, iPR_I1, iPR_I2, iPR_I3
-  USE FluidFieldsModule,            ONLY: &
-    nCF, nPF, iCF_D, iCF_E, iCF_Ne, iCF_S1, iCF_S2, iCF_S3, &
-    iPF_D, iPF_E, iPF_Ne, iPF_V1, iPF_V2, iPF_V3, nAF, nDF, nPF
-  USE GeometryFieldsModule,     ONLY: &
-    nGF, iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_h_1, iGF_h_2, iGF_h_3
-  USE TwoMoment_UtilitiesModule_Relativistic,  ONLY: &
-    ComputePrimitive_TwoMoment
+
+  USE ProgramHeaderModule, ONLY: &
+    swX, &
+    swE, &
+    nDOFX, &
+    nDOFZ, &
+    nDOFE, &
+    iE_B0, &
+    iE_E0, &
+    iE_B1, &
+    iE_E1
+  USE RadiationFieldsModule, ONLY: &
+    nCR, &
+    iCR_N, &
+    iCR_G1, &
+    iCR_G2, &
+    iCR_G3, &
+    nPR, &
+    iPR_D, &
+    iPR_I1, &
+    iPR_I2, &
+    iPR_I3
+  USE FluidFieldsModule, ONLY: &
+    nCF, &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
+    nPF, &
+    iPF_D, &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E, &
+    iPF_Ne, &
+    nAF, &
+    nDF
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_TwoMoment_Vector_Richardson
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
     ComputeFromConserved_Euler_Relativistic
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
   USE MeshModule, ONLY: &
     MeshX
+
   ! --- Local Modules ---
+
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One, &
+    Two
   USE InputParsingModule, ONLY: &
-    nLevels, nSpecies, nE, UseTiling
+    nLevels, &
+    nSpecies, &
+    nE, &
+    UseTiling
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_UtilitiesModule,                ONLY: &
+  USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
     amrex2thornado_Z, &
-    thornado2amrex_Z
+    thornado2amrex_Z, &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z
 
   IMPLICIT NONE
   PRIVATE
@@ -56,29 +110,27 @@ MODULE MF_TwoMoment_UtilitiesModule
 CONTAINS
 
 
-
-
-  SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF( MF_uGF, nX, nNodes, xR, xL, CFL, TimeStepMin )
+  SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF &
+    ( MF_uGF, nX, nNodes, xR, xL, CFL, TimeStepMin )
 
     TYPE(amrex_multifab),  INTENT(in)  :: MF_uGF(0:nLevels-1)
-    INTEGER,              INTENT(in)  :: nX(:), nNodes
-    REAL(amrex_real),     INTENT(in)  :: xR(:), xL(:)
-    REAL(amrex_real),     INTENT(in)  :: CFL
-    REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels-1)
+    INTEGER             ,  INTENT(in)  :: nX(:), nNodes
+    REAL(DP)            ,  INTENT(in)  :: xR(:), xL(:)
+    REAL(DP)            ,  INTENT(in)  :: CFL
+    REAL(DP)            ,  INTENT(out) :: TimeStepMin(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
 
-    REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP) :: TimeStep(0:nLevels-1)
+    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER  :: iLo_MF(4)
 
-    REAL(amrex_real) :: TimeStep(0:nLevels-1)
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iLo_MF(4)
-
-    TimeStepMin = HUGE( 1.0e0_amrex_real )
+    TimeStepMin = HUGE( One )
 
     DO iLevel = 0, nLevels-1
 
@@ -87,7 +139,6 @@ CONTAINS
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
-
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
@@ -100,21 +151,23 @@ CONTAINS
         iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
-
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
-
-        CALL CalculateTimeStep( iX_B1, iX_E1, iX_B0, iX_E0, CFL, G, TimeStep( iLevel) )
+        CALL CalculateTimeStep &
+               ( iX_B1, iX_E1, iX_B0, iX_E0, CFL, G, TimeStep( iLevel) )
 
         TimeStepMin( iLevel ) = MIN( TimeStepMin( iLevel ), TimeStep( iLevel ) )
 
-        DEALLOCATE( G )
-
-
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO ! --- Loop over grids (boxes) ---
 
@@ -124,76 +177,77 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
+    CALL amrex_parallel_reduce_min( TimeStepMin, SIZE(TimeStepMin) )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Fancy_MF
 
 
-  SUBROUTINE ComputeTimeStep_TwoMoment_MF( nX, xR, xL, nNodes, CFL, TimeStepMin )
-    INTEGER,              INTENT(in)  :: nX(:), nNodes
-    REAL(amrex_real),     INTENT(in)  :: xR(:), xL(:), CFL
-    REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels-1)
+  SUBROUTINE ComputeTimeStep_TwoMoment_MF &
+    ( nX, xR, xL, nNodes, CFL, TimeStepMin )
 
+    INTEGER , INTENT(in)  :: nX(:), nNodes
+    REAL(DP), INTENT(in)  :: xR(:), xL(:), CFL
+    REAL(DP), INTENT(out) :: TimeStepMin(0:nLevels-1)
 
-    INTEGER          :: iLevel
-    REAL(amrex_real) :: TimeStep(0:nLevels-1)
+    INTEGER  :: iLevel
+    REAL(DP) :: TimeStep(0:nLevels-1)
 
-
-    TimeStepMin = HUGE( 1.0e0_amrex_real )
+    TimeStepMin = HUGE( One )
 
     DO iLevel = 0, nLevels-1
 
       TimeStep( iLevel ) = CFL * MINVAL( (xR-xL) / DBLE(nX) ) &
-                           / ( 2.0_amrex_real * DBLE(nNodes-1) + 1.0_amrex_real )
+                           / ( Two * DBLE(nNodes-1) + One )
 
       TimeStepMin( iLevel ) = MIN( TimeStepMin( iLevel ), TimeStep( iLevel ) )
 
     END DO
 
-
   END SUBROUTINE ComputeTimeStep_TwoMoment_MF
+
 
   SUBROUTINE ComputeFromConserved_TwoMoment_MF &
     ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: &
+    TYPE(amrex_multifab), INTENT(in)    :: &
       MF_uGF(0:nLevels-1), MF_uCR(0:nLevels-1), MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
       MF_uPR(0:nLevels-1)
 
-
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uPR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPR(:,:,:,:)
 
-    REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: CF(:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: PF(:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: CR(:,:,:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: PR(:,:,:,:,:,:,:)
-
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CR(:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PR(:,:,:,:,:,:,:)
+    REAL(DP) :: PR_D(1), PR_I1(1), PR_I2(1), PR_I3(1)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iLo_MF(4), nPoints, iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    INTEGER :: i, iX1, iX2, iX3, iS, iE, iNodeX, iNodeZ, iPoint, iErr(nDOFX)
+    INTEGER :: iLo_MF(4), iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    INTEGER :: iNX, iX1, iX2, iX3
+    INTEGER :: iNZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER :: ErrorExists
+    INTEGER :: nIter(1)
 
+    INTEGER, ALLOCATABLE :: iErr_Euler(:,:,:,:)
 
     DO iLevel = 0, nLevels-1
-
-      ! --- Apply boundary conditions to interior domains ---
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-        uCF  => MF_uCF (iLevel) % DataPtr( MFI )
-        uCR  => MF_uCR (iLevel) % DataPtr( MFI )
-        uPR  => MF_uPR (iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
+        uPR => MF_uPR(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -204,53 +258,64 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        i=1
+        iZ_B0(1) = iE_B0
+        iZ_E0(1) = iE_E0
+        iZ_B1(1) = iE_B1
+        iZ_E1(1) = iE_E1
 
-        DO WHILE (i<=4)
+        iZ_B0(2:4) = iX_B0
+        iZ_E0(2:4) = iX_E0
+        iZ_B1(2:4) = iX_B1
+        iZ_E1(2:4) = iX_E1
 
-          IF (i==1) THEN
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-            iZ_B0(i)=iE_B0
-            iZ_E0(i)=iE_E0
-            iZ_B1(i)=iE_B1
-            iZ_E1(i)=iE_E1
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 CF )
 
-          ELSE
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
 
-            iZ_B0(i)=iX_B0(i-1)
-            iZ_E0(i)=iX_E0(i-1)
-            iZ_B1(i)=iX_B1(i-1)
-            iZ_E1(i)=iX_E1(i-1)
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 CR )
 
-          END IF
-          i = i + 1
-        END DO
-
-        nPoints = nSpecies * PRODUCT( iX_E0 - iX_B0 + 1 ) &
-              * ( iE_E0 - iE_B0 + 1 ) * nDOFZ
-
-
-
-        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nGF) )
-
-        ALLOCATE( CF (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF) )
-
-        ALLOCATE( PF (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nPF) )
-
-        ALLOCATE( CR (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
-
-        ALLOCATE( PR (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                             iZ_B1(3):iZ_E1(3), &
-                             iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies) )
-
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nPR     , &
+                   nSpecies ], &
+                 PR )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
@@ -266,98 +331,226 @@ CONTAINS
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
+        ALLOCATE( iErr_Euler(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                     iX_B0(2):iX_E0(2), &
+                                     iX_B0(3):iX_E0(3)) )
+
+        ErrorExists = 0
+
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
 
-          iErr = 0
+          iErr_Euler(iNX,iX1,iX2,iX3) = 0
 
           CALL ComputePrimitive_Euler_Relativistic &
-               ( CF(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
-                 CF(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
-                 CF(1:nDOFX,iX1,iX2,iX3,iCF_S2),        &
-                 CF(1:nDOFX,iX1,iX2,iX3,iCF_S3),        &
-                 CF(1:nDOFX,iX1,iX2,iX3,iCF_E),         &
-                 CF(1:nDOFX,iX1,iX2,iX3,iCF_Ne),        &
-                 PF(1:nDOFX,iX1,iX2,iX3,iPF_D),         &
-                 PF(1:nDOFX,iX1,iX2,iX3,iPF_V1),        &
-                 PF(1:nDOFX,iX1,iX2,iX3,iPF_V2),        &
-                 PF(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
-                 PF(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
-                 PF(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-                 G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33))
+               ( CF(iNX,iX1,iX2,iX3,iCF_D ), &
+                 CF(iNX,iX1,iX2,iX3,iCF_S1), &
+                 CF(iNX,iX1,iX2,iX3,iCF_S2), &
+                 CF(iNX,iX1,iX2,iX3,iCF_S3), &
+                 CF(iNX,iX1,iX2,iX3,iCF_E ), &
+                 CF(iNX,iX1,iX2,iX3,iCF_Ne), &
+                 PF(iNX,iX1,iX2,iX3,iPF_D ), &
+                 PF(iNX,iX1,iX2,iX3,iPF_V1), &
+                 PF(iNX,iX1,iX2,iX3,iPF_V2), &
+                 PF(iNX,iX1,iX2,iX3,iPF_V3), &
+                 PF(iNX,iX1,iX2,iX3,iPF_E ), &
+                 PF(iNX,iX1,iX2,iX3,iPF_Ne), &
+                 G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 iErr = iErr_Euler(iNX,iX1,iX2,iX3) )
 
-          IF (ANY(iErr .NE. 0) )THEN
+          ErrorExists = ErrorExists + iErr_Euler(iNX,iX1,iX2,iX3)
 
-            print*, iErr
+        END DO
+        END DO
+        END DO
+        END DO
+
+        IF( ErrorExists .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Fluid)'
+          WRITE(*,*) 'iX_B0: ', iX_B0
+          WRITE(*,*) 'iX_E0: ', iX_E0
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+          DO iNX = 1       , nDOFX
+
+            IF( iErr_Euler(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+              WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+              CALL DescribeError_Euler &
+                ( iErr_Euler(iNX,iX1,iX2,iX3), &
+                  Int_Option = [ iNX ], &
+                  Real_Option = [ CF(iNX,iX1,iX2,iX3,iCF_D ), &
+                                  CF(iNX,iX1,iX2,iX3,iCF_S1), &
+                                  CF(iNX,iX1,iX2,iX3,iCF_S2), &
+                                  CF(iNX,iX1,iX2,iX3,iCF_S3), &
+                                  CF(iNX,iX1,iX2,iX3,iCF_E ), &
+                                  CF(iNX,iX1,iX2,iX3,iCF_Ne), &
+                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
+
+            END IF
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+        DO iS  = 1       , nSpecies
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+        DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iNZ = 1       , nDOFZ
+
+          iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
+
+          CALL ComputePrimitive_TwoMoment_Vector_Richardson &
+               ( [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)], &
+                 [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)], &
+                 [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)], &
+                 [CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)], &
+                 PR_D, PR_I1, PR_I2, PR_I3, &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)], &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)], &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS)], &
+!                 [PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)], &
+                 [PF(iNX    ,iZ2,iZ3,iZ4,iPF_V1)], &
+                 [PF(iNX    ,iZ2,iZ3,iZ4,iPF_V2)], &
+                 [PF(iNX    ,iZ2,iZ3,iZ4,iPF_V3)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33)], &
+                 !Zero, Zero, Zero, &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Alpha )], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_1)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_2)], &
+                 [G (iNX    ,iZ2,iZ3,iZ4,iGF_Beta_3)], &
+                 [1], &
+                 nIterations_Option = nIter )
+
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = PR_D (1)
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = PR_I1(1)
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = PR_I2(1)
+          PR(iNZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = PR_I3(1)
+
+          IF( nIter(1) .GT. 990 )THEN
+
+            WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Radiation)'
+            WRITE(*,*) 'iZ_B0: ', iZ_B0
+            WRITE(*,*) 'iZ_E0: ', iZ_E0
+
+            WRITE(*,*) 'iNZ, iZ1, iZ2, iZ3, iZ4, iS: ', &
+                        iNZ, iZ1, iZ2, iZ3, iZ4, iS
+
+            iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
+
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              ' CR_N: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'CR_G1: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'CR_G2: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'CR_G3: ', CR(iNZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+            WRITE(*,*)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'PF_V1: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V1)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'PF_V2: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V2)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'PF_V3: ', PF(iNX,iZ2,iZ3,iZ4,iPF_V3)
+            WRITE(*,*)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_g1: ', G (iNX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_g2: ', G (iNX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_g3: ', G (iNX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_Al: ', G (iNX,iZ2,iZ3,iZ4,iGF_Alpha)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_b1: ', G (iNX,iZ2,iZ3,iZ4,iGF_Beta_1)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_b2: ', G (iNX,iZ2,iZ3,iZ4,iGF_Beta_2)
+            WRITE(*,'(2x,A,ES24.16E3)') &
+              'GF_b3: ', G (iNX,iZ2,iZ3,iZ4,iGF_Beta_3)
+
+            CALL DescribeError_Euler( 99 )
+
           END IF
 
         END DO
         END DO
         END DO
-
-
-        DO iS  = 1, nSpecies
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-
-        DO iE = iE_B0, iE_E0
-
-          DO iNodeZ = 1, nDOFZ
-
-
-            iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
-
-
-            CALL ComputePrimitive_TwoMoment &
-                 ( CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
-                   CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
-                   CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
-                   CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
-                   PR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
-                   PR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
-                   PR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
-                   PR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
-                   PF(iNodeX,iX1,iX2,iX3,iPF_V1),     &
-                   PF(iNodeX,iX1,iX2,iX3,iPF_V2),     &
-                   PF(iNodeX,iX1,iX2,iX3,iPF_V3),     &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   0.0_amrex_real, 0.0_amrex_real, 0.0_amrex_real, &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Alpha), &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_1), &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_2), &
-                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
-
-
-          END DO
-
         END DO
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-
+        END DO
+        END DO
 
         CALL thornado2amrex_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        DEALLOCATE( G )
+        DEALLOCATE( iErr_Euler )
 
-        DEALLOCATE( CF )
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nPR     , &
+                   nSpecies ], &
+                 PR )
 
-        DEALLOCATE( PF )
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 CR )
 
-        DEALLOCATE( CR )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
 
-        DEALLOCATE( PR )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 CF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO
 
@@ -365,27 +558,22 @@ CONTAINS
 
     END DO
 
-
-
-
-
-
   END SUBROUTINE ComputeFromConserved_TwoMoment_MF
 
 
   SUBROUTINE CalculateTimeStep( iX_B1, iX_E1, iX_B0, iX_E0, CFL, G, dt)
 
     INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iX_B0(3), iX_E0(3)
-    REAL(amrex_real),     INTENT(in)  :: CFL
-    REAL(amrex_real),     INTENT(in) ::  &
+    REAL(DP),     INTENT(in)  :: CFL
+    REAL(DP),     INTENT(in) ::  &
       G (1:nDOFX,iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), &
          iX_B1(3):iX_E1(3),1:nGF)
-    REAL(amrex_real),     INTENT(out) :: dt
+    REAL(DP),     INTENT(out) :: dt
 
 
-    REAL(amrex_real) ::   dX(3)
+    REAL(DP) ::   dX(3)
     INTEGER :: iX1, iX2, iX3, iNodeX
-    REAL(amrex_real) :: dt_min(3), dt_s
+    REAL(DP) :: dt_min(3), dt_s
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -393,8 +581,8 @@ CONTAINS
         dX3 => MeshX(3) % Width )
 
 
-    dt_min = 100000.0_amrex_real
-    dt_s = 0.0_amrex_real
+    dt_min = 100000.0_DP
+    dt_s = 0.0_DP
 
 
     DO iX3 = iX_B0(3), iX_E0(3)

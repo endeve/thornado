@@ -13,12 +13,15 @@ PROGRAM ApplicationDriver
     uGE
   USE FluidFieldsModule, ONLY: &
     uCF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
-    ComputeFromConserved_TwoMoment
+    ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment_Realizability
   USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
     ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
@@ -46,6 +49,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: UseRealizabilityTimeStep
   INTEGER       :: nNodes
   INTEGER       :: nSpecies
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -53,7 +57,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, t_end, dt_CFL, dt_0, dt_grw, V_0(3)
-  REAL(DP)      :: D_0, Chi, Sigma, C_TCI
+  REAL(DP)      :: D_0, Chi, Sigma, C_TCI, C_CFL
   REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
@@ -64,6 +68,8 @@ PROGRAM ApplicationDriver
 
   C_TCI = 1.0_DP
   UseTroubledCellIndicator = .FALSE.
+
+  UseRealizabilityTimeStep = .FALSE.
 
   dt_0   = HUGE( One )
   dt_grw = One
@@ -253,7 +259,7 @@ PROGRAM ApplicationDriver
       nE    = 32
       eL    = 0.0d0
       eR    = 5.0d1
-      bcE   = 10
+      bcE   = 11
       zoomE = 1.0_DP
 
       nNodes = 2
@@ -272,6 +278,8 @@ PROGRAM ApplicationDriver
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'TransparentTurbulence' )
 
@@ -716,10 +724,13 @@ PROGRAM ApplicationDriver
   ! --- Write Initial Condition ---
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
+  !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
 #elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
+  !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
 #endif
+
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
@@ -743,7 +754,21 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    dt_CFL = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
+    IF( UseRealizabilityTimeStep )THEN
+
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+      CALL ComputeTimeStep_TwoMoment_Realizability &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, One, dt_CFL )
+
+    ELSE
+
+      C_CFL  = 0.3_DP / ( Two * DBLE(nNodes-1) + One )
+
+      dt_CFL = C_CFL * MINVAL( ( xR - xL ) / DBLE( nX ) )
+
+    END IF
 
     IF( dt_grw > One )THEN
 
@@ -784,13 +809,13 @@ PROGRAM ApplicationDriver
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
 #elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGF, uCF, uCR )
+      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
 #endif
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -805,13 +830,13 @@ PROGRAM ApplicationDriver
   END DO
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
+  !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( uGF, uCF, uCR )
+  !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
 #endif
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &

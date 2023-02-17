@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import subprocess
-from os.path import isfile
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
 from UtilitiesModule import GetNorm, GetFileArray
 from MakeDataFile import MakeDataFile, ReadHeader
-
-# --- Get user's HOME directory ---
-
-HOME = subprocess.check_output( ["echo $HOME"], shell = True )
-HOME = HOME[:-1].decode( "utf-8" ) + '/'
-
-# --- Get user's THORNADO_DIR directory ---
-
-THORNADO_DIR = subprocess.check_output( ["echo $THORNADO_DIR"], shell = True )
-THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 
 #### ========== User Input ==========
 
@@ -26,7 +14,7 @@ ID = 'RiemannProblem1D'
 
 # Directory containing AMReX plotfiles
 PlotFileDirectory \
-  = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
+  = 'thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
 
 # PlotFile base name (e.g., Advection2D.plt######## -> Advection2D.plt )
 PlotFileBaseName = ID + '.plt'
@@ -35,7 +23,8 @@ PlotFileBaseName = ID + '.plt'
 Field = 'PF_D'
 
 # Plot data in log10-scale?
-UseLogScale = False
+UseLogScale_Y = False
+UseLogScale_X = False
 
 # Unit system of the data
 UsePhysicalUnits = False
@@ -52,7 +41,7 @@ nSS = -1 # -1 -> PlotFileArray.shape[0]
 MaxLevel = -1
 
 # Include initial conditions in movie?
-ShowIC = True
+ShowIC = False
 
 PlotMesh = False
 
@@ -79,10 +68,10 @@ MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
               UsePhysicalUnits = UsePhysicalUnits, \
               MaxLevel = MaxLevel, Verbose = Verbose )
 
-PlotFileArray = GetFileArray( PlotFileDirectory, PlotFileBaseName )
+PlotFileArray \
+  = GetFileArray( PlotFileDirectory, PlotFileBaseName, \
+                  SSi = SSi, SSf = SSf, nSS = nSS )
 
-if SSi < 0: SSi = 0
-if SSf < 0: SSf = PlotFileArray.shape[0] - 1
 if nSS < 0: nSS = PlotFileArray.shape[0]
 
 fig = plt.figure()
@@ -92,8 +81,7 @@ if UseCustomLimits: ax.set_ylim( ymin, ymax )
 ymin = +np.inf
 ymax = -np.inf
 for j in range( nSS ):
-    iSS = SSi + np.int64( ( SSf - SSi ) / ( nSS - 1 ) * j )
-    DataFile = DataFileDirectory + PlotFileArray[iSS] + '.dat'
+    DataFile = DataFileDirectory + PlotFileArray[j] + '.dat'
     Data = np.loadtxt( DataFile )
     ymin = min( ymin, Data.min() )
     ymax = max( ymax, Data.max() )
@@ -101,9 +89,7 @@ if not UseCustomLimits: ax.set_ylim( ymin, ymax )
 
 def f(t):
 
-    iSS = SSi + np.int64( ( SSf - SSi + 1 ) / nSS ) * t
-
-    DataFile = DataFileDirectory + PlotFileArray[iSS] + '.dat'
+    DataFile = DataFileDirectory + PlotFileArray[t] + '.dat'
 
     DataShape, DataUnits, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3 \
       = ReadHeader( DataFile )
@@ -121,7 +107,7 @@ Data0, DataUnits, X1_C0, dX10, Time0 = f(0)
 xL = np.array( [ X1_C0[0 ]-0.5*dX10[0 ] ], np.float64 )
 xU = np.array( [ X1_C0[-1]+0.5*dX10[-1] ], np.float64 )
 
-Norm = GetNorm( UseLogScale, Data0, vmin = ymin, vmax = ymax )
+Norm = GetNorm( UseLogScale_Y, Data0, vmin = ymin, vmax = ymax )
 
 TimeUnits = ''
 LengthUnits = ''
@@ -136,7 +122,8 @@ ax.set_ylabel( Field + ' ' + DataUnits )
 
 time_text = plt.text( 0.5, 0.7, '', transform = ax.transAxes )
 
-if( UseLogScale ): ax.set_yscale( 'log' )
+if( UseLogScale_Y ): ax.set_yscale( 'log' )
+if( UseLogScale_X ): ax.set_xscale( 'log' )
 
 line, = ax.plot( [],[], 'k.', label = 'u(t)' )
 if ShowIC: IC, = ax.plot( [],[], 'r.', label = 'u(0)' )

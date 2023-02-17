@@ -49,7 +49,11 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
-    thornado2amrex_Z
+    thornado2amrex_Z, &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z
   USE InputParsingModule, ONLY: &
     UseSlopeLimiter_TwoMoment, &
     BetaTVD_TwoMoment, &
@@ -164,18 +168,32 @@ CONTAINS
         iZ_E0(2:4) = iX_E0
         iZ_E1(2:4) = iX_E1
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-        ALLOCATE( C(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 C )
 
-        ALLOCATE( U(1:nDOFZ,iZ_B1(1):iZ_E1(1), &
-                            iZ_B1(2):iZ_E1(2), &
-                            iZ_B1(3):iZ_E1(3), &
-                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
@@ -203,9 +221,32 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
 
-        DEALLOCATE( U )
-        DEALLOCATE( C )
-        DEALLOCATE( G )
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 U )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 C )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO ! WHILE( MFI % next() )
 

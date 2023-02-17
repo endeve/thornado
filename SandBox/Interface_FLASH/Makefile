@@ -129,10 +129,14 @@ OBJS += \
        TwoMoment_DiscretizationModule_Streaming_OrderV.o
 endif
 
-ifeq ($(USE_GPU),TRUE)
-OBJS += \
-       CudaModule.o
+ifeq ($(USE_CUDA),TRUE)
+LIBRARY += \
+  CudaModule.o
+else ifeq ($(USE_HIP),TRUE)
+LIBRARY += \
+  HipModule.o
 endif
+
 ifeq ($(USE_OACC),TRUE)
 OBJS += \
        OpenACCModule.o
@@ -140,12 +144,18 @@ else ifeq ($(USE_OMP_OL),TRUE)
 OBJS += \
        OpenMPModule.o
 endif
+
+ifeq ($(USE_CUBLAS),TRUE)
+LIBRARY += \
+  CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_ROCM),TRUE)
+LIBRARY += \
+  RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
+endif
+
 ifeq ($(USE_MAGMA),TRUE)
-OBJS += \
-       MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
-else ifeq ($(USE_CUBLAS),TRUE)
-OBJS += \
-       CublasModule.o CusolverModule.o CusparseModule.o
+LIBRARY += \
+  MagmaModule.o
 endif
 
 $(LIBNAME): $(OBJS)
@@ -283,5 +293,6 @@ ThornadoInitializationModule.o: \
   InputOutputModuleHDF.o \
   Euler_dgDiscretizationModule.o \
   TwoMoment_MeshRefinementModule.o \
+  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
   ThornadoInitializationModule.F90
 endif

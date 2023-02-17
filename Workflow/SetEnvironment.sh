@@ -105,8 +105,6 @@ elif [[ $THORNADO_MACHINE == jrober* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
   export POSEIDON_DIR=~/Poseidon
-  export PETSC_DIR=/usr/local/petsc/petsc-3.10.4
-  export PETSC_ARCH=/usr/local/petsc/petsc-3.10.4/arch-darwin-c-debug
 
 elif [[ $THORNADO_MACHINE == rmurph* ]]; then
 

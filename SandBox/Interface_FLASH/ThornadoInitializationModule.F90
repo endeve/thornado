@@ -100,6 +100,8 @@ module ThornadoInitializationModule
   use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
     InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+  use TwoMoment_NeutrinoMatterSolverModule_OrderV, only: &
+    InitializeNeutrinoMatterSolverParameters
 #endif
 
   implicit none
@@ -118,9 +120,14 @@ contains
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
       SlopeLimiter_Option, &
+      EnergyLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
-      OpacityTableName_Brem_Option, Verbose_Option )
+      OpacityTableName_Brem_Option, &
+      M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
+      MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
+      Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
+      Include_LinCorr_Option, wMatrRHS_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -137,12 +144,24 @@ contains
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
     logical,          intent(in), optional :: PositivityLimiter_Option
     logical,          intent(in), optional :: SlopeLimiter_Option
+    logical,          intent(in), optional :: EnergyLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
     character(len=*), intent(in), optional :: OpacityTableName_Brem_Option
+    integer,          intent(in), optional :: M_outer_Option
+    integer,          intent(in), optional :: M_inner_Option
+    integer,          intent(in), optional :: MaxIter_outer_Option
+    integer,          intent(in), optional :: MaxIter_inner_Option
+    real(dp),         intent(in), optional :: Rtol_inner_Option
+    real(dp),         intent(in), optional :: Rtol_outer_Option
+    logical,          intent(in), optional :: Include_NES_Option
+    logical,          intent(in), optional :: Include_Pair_Option
+    logical,          intent(in), optional :: Include_Brem_Option
+    logical,          intent(in), optional :: Include_LinCorr_Option
+    real(dp),         intent(in), optional :: wMatrRHS_Option(5)
     logical,          intent(in), optional :: Verbose_Option
 
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
@@ -162,12 +181,11 @@ contains
       SlopeLimiter = .FALSE.
     END IF
 
-    EnergyLimiter = .TRUE.
-!!    IF( PRESENT(EnergyLimiter_Option) )THEN
-!!      EnergyLimiter = EnergyLimiter_Option
-!!    ELSE
-!!      EnergyLimiter = .FALSE.
-!!    END IF
+    IF( PRESENT(EnergyLimiter_Option) )THEN
+      EnergyLimiter = EnergyLimiter_Option
+    ELSE
+      EnergyLimiter = .TRUE.
+    END IF
 
     IF( PRESENT(Verbose_Option) )THEN
       Verbose = Verbose_Option
@@ -350,6 +368,20 @@ stop
              Max_3_Option &
                = ( One - 1.0d-3 * EPSILON( One ) ) * Max_Y )
 #endif
+
+    call InitializeNeutrinoMatterSolverParameters &
+           ( M_outer_Option = M_outer_Option, &
+             M_inner_Option = M_inner_Option, &
+             MaxIter_outer_Option = MaxIter_outer_Option, &
+             MaxIter_inner_Option = MaxIter_inner_Option, &
+             Rtol_inner_Option = Rtol_inner_Option, &
+             Rtol_outer_Option = Rtol_outer_Option, &
+             Include_NES_Option = Include_NES_Option, &
+             Include_Pair_Option = Include_Pair_Option, &
+             Include_Brem_Option = Include_Brem_Option, &
+             Include_LinCorr_Option = Include_LinCorr_Option, &
+             wMatrRHS_Option = wMatrRHS_Option, &
+             Verbose_Option = Verbose )
 #endif
 
   end subroutine InitThornado

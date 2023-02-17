@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import psutil
 import numpy as np
 import os
 from multiprocessing import Process, cpu_count
@@ -11,7 +10,8 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
                   PlotFileBaseName, CoordinateSystem, \
                   SSi = -1, SSf = -1, nSS = -1, \
                   UsePhysicalUnits = True, \
-                  MaxLevel = -1, Verbose = False ):
+                  MaxLevel = -1, forceChoice = False, ow = True, \
+                  Verbose = False ):
 
     """
     Generate a directory containing data files where each data file corresponds
@@ -26,7 +26,7 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
     if Verbose:
         print( '\nDataFileDirectory: {:}\n'.format( DataFileDirectory ) )
 
-    OW = Overwrite( DataFileDirectory )
+    OW = Overwrite( DataFileDirectory, ForceChoice = forceChoice, OW = ow )
 
     if OW:
 
@@ -38,21 +38,12 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
         if Verbose:
             print( 'PlotFileDirectory: {:}\n'.format( PlotFileDirectory ) )
 
-        PlotFileNameArray = GetFileArray( PlotFileDirectory, PlotFileBaseName )
+        PlotFileArray \
+          = GetFileArray \
+              ( PlotFileDirectory, PlotFileBaseName, \
+                SSi = SSi, SSf = SSf, nSS = nSS )
 
-        if SSi < 0: SSi = 0
-        if SSf < 0: SSf = PlotFileNameArray.shape[0] - 1
-        if nSS < 0: nSS = PlotFileNameArray.shape[0]
-
-        PlotFileArray = []
-        for i in range( nSS ):
-            iSS = SSi + np.int64( ( SSf - SSi ) / ( nSS - 1 ) * i )
-            PlotFile = str( PlotFileNameArray[iSS] )
-            if PlotFile[-1] == '/':
-                PlotFileArray.append( PlotFile[0:-1] )
-            else:
-                PlotFileArray.append( PlotFile )
-        PlotFileArray = np.array( PlotFileArray )
+        if nSS < 0: nSS = PlotFileArray.shape[0]
 
         TimeHeaderBase = '# Time []: '
         X1Base         = '# X1_C []: '
@@ -82,6 +73,7 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
         Verbose      = True
 
         if printProcMem:
+            import psutil
             process = psutil.Process( os.getpid() )
             print( 'mem: {:.3e} kB'.format \
                     ( process.memory_info().rss / 1024.0 ) )
@@ -176,14 +168,14 @@ def MakeDataFile( Field, PlotFileDirectory, DataFileDirectory, \
 
                 # end with open( DataFileName, 'w' ) as FileOut
 
-            # end for i in range( nSS )
+            # end for i in range( iLo, iHi )
 
         # end of loop( iLo, iHi )
 
         # Adapted from:
         # https://www.benmather.info/post/2018-11-24-multiprocessing-in-python/
 
-        nProc = cpu_count()
+        nProc = min( 4, cpu_count() )
 
         print( 'Generating {:} with {:} processes...\n'.format \
              ( DataFileDirectory, nProc ) )

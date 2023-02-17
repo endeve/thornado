@@ -18,7 +18,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -230,6 +231,10 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
+             GX_N(:,iGF_Alpha   ), &
+             GX_N(:,iGF_Beta_1  ), &
+             GX_N(:,iGF_Beta_2  ), &
+             GX_N(:,iGF_Beta_3  ), &
              nIterations_Inner, &
              nIterations_Outer )
 
