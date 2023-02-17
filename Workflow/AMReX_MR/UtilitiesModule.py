@@ -364,6 +364,15 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     # --- Derived Fields ---
 
+    elif Field == 'alphaE':
+
+        alpha = np.copy( CoveringGrid['GF_Alpha'].to_ndarray() )
+        D     = np.copy( CoveringGrid['CF_D'].to_ndarray() )
+        tau   = np.copy( CoveringGrid['CF_E'].to_ndarray() )
+
+        Data = alpha * ( tau + D )
+        DataUnits = 'erg/cm^3'
+
     elif Field == 'pr4':
 
         p = np.copy( CoveringGrid['AF_P'].to_ndarray() )
@@ -647,6 +656,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  GF_Alpha' )
         print( '  GF_Beta1' )
         print( '  DF_TCI' )
+        print( '  alphaE' )
         print( '  pr4' )
         print( '  RelativisticBernoulliConstant' )
         print( '  PolytropicConstant' )
@@ -706,3 +716,31 @@ def GetNorm( UseLogScale, Data, vmin = +1.0e100, vmax = -1.0e100 ):
         Norm = plt.Normalize ( vmin = vmin, vmax = vmax )
 
     return Norm
+
+def MapCenterToCorners( X1_C, X2_C ):
+
+    if( X1_C.ndim == 3 ): X1_C = np.copy( X1_C[:,:,0] )
+
+    nX = [ X1_C.shape[0], X1_C.shape[1] ]
+
+    X1c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+    X2c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+    for iX1 in range( nX[0] ):
+        for iX2 in range( nX[1] ):
+            X1c[iX1,iX2] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+            X2c[iX1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+            if   iX2 == nX[1]-1 and iX1 == nX[0]-1:
+                X1c[iX1,iX2+1  ] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+                X2c[iX1,iX2+1  ] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+                X1c[iX1+1,iX2  ] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2  ] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+                X1c[iX1+1,iX2+1] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            elif iX2 == nX[1]-1:
+                X1c[iX1,iX2+1] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+                X2c[iX1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            elif iX1 == nX[0]-1:
+                X1c[iX1+1,iX2] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+
+    return X1c, X2c

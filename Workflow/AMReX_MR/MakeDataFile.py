@@ -10,7 +10,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                   PlotfileBaseName, CoordinateSystem, \
                   SSi = -1, SSf = -1, nSS = -1, \
                   UsePhysicalUnits = True, \
-                  MaxLevel = -1, forceChoice = False, ow = True, \
+                  MaxLevel = -1, \
+                  forceChoiceD = False, owD = True, \
+                  forceChoiceF = False, owF = True, \
                   Verbose = False ):
 
     """
@@ -37,9 +39,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
     print( '\nDataDirectory: {:}\n'.format( DataDirectory ) )
 
-    OW = Overwrite( DataDirectory, ForceChoice = forceChoice, OW = ow )
+    ow = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = owD )
 
-    if OW:
+    if ow:
 
         os.system( 'rm -rf {:}'.format( DataDirectory ) )
         os.system(  'mkdir {:}'.format( DataDirectory ) )
@@ -286,15 +288,130 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
           [ p.join() for p in processes ]
 
-        else:
+    else:
 
-          loop( 0, nSSS )
-    # end if OW
+        PlotfileArray \
+          = np.loadtxt( DataDirectory + 'PlotfileNumbers.dat', dtype = str )
+
+        File = DataDirectory + PlotfileArray[0] + '/{:}.dat'.format( Field )
+
+        oww = Overwrite( File, ForceChoice = forceChoiceF, OW = owF )
+
+        if oww:
+
+            print( '\nPlotfileDirectory: {:}\n'.format( PlotfileDirectory ) )
+
+            nSSS = nSS
+            if nSS < 0: nSSS = PlotfileArray.shape[0]
+
+            printProcMem = False
+
+            if printProcMem:
+                import psutil
+                process = psutil.Process( os.getpid() )
+                print( 'mem: {:.3e} kB'.format \
+                        ( process.memory_info().rss / 1024.0 ) )
+
+            def loop( iLo, iHi ):
+
+                for i in range( iLo, iHi ):
+
+                    if printProcMem:
+                        print( 'mem: {:.3e} kB'.format \
+                                ( process.memory_info().rss / 1024.0 ) )
+
+                    PlotfileNumber = PlotfileArray[i]
+
+                    FileDirectory = DataDirectory + PlotfileNumber + '/'
+
+                    DataFile = FileDirectory + '{:}.dat'.format( Field )
+
+                    if Verbose:
+                        print( 'Generating data file: {:} ({:}/{:})'.format \
+                                 ( DataFile, i+1-iLo, iHi-iLo ) )
+
+                    Data, DataUnits, \
+                      X1, X2, X3, dX1, dX2, dX3, xL, xH, nX \
+                        = GetData( PlotfileDirectory, PlotfileBaseName, Field, \
+                                   CoordinateSystem, UsePhysicalUnits, \
+                                   argv = [ 'a', PlotfileNumber ], \
+                                   MaxLevel = MaxLevel, \
+                                   SSi = SSi, SSf = SSf, nSS = nSS, \
+                                   ReturnTime = False, ReturnMesh = True )
+
+                    nDimsX = 1
+                    if( nX[1] > 1 ): nDimsX += 1
+                    if( nX[2] > 1 ): nDimsX += 1
+
+                    if   nDimsX == 1:
+                        LoopShape = [ Data.shape[0], 1, 1 ]
+                        DataShape = '{:d}' \
+                                    .format( Data.shape[0] )
+                        Data = np.copy( Data[:,0  ,0  ] )
+                    elif nDimsX == 2:
+                        LoopShape = [ Data.shape[0], Data.shape[1], 1 ]
+                        DataShape = '{:d} {:d}' \
+                                    .format( Data.shape[0], Data.shape[1] )
+                        Data = np.copy( Data[:,:,0  ] )
+                    else:
+                        exit( 'MakeDataFile not implemented for nDimsX > 2' )
+
+
+                    # Save multi-D array with np.savetxt. Taken from:
+                    # https://stackoverflow.com/questions/3685265/
+                    # how-to-write-a-multidimensional-array-to-a-text-file
+
+                    with open( DataFile, 'w' ) as FileOut:
+
+                        FileOut.write( '# {:}\n'             .format( DataFile  ) )
+                        FileOut.write( '# Array Shape: {:}\n'.format( DataShape ) )
+                        FileOut.write( '# Data Units: {:}\n' .format( DataUnits ) )
+                        FileOut.write( '# Min. value: {:.16e}\n' \
+                                       .format( Data.min() ) )
+                        FileOut.write( '# Max. value: {:.16e}\n' \
+                                       .format( Data.max() ) )
+
+                        np.savetxt( FileOut, Data )
+
+                    # end with open( DataFile, 'w' ) as FileOut
+
+                # end for i in range( iLo, iHi )
+
+            # end of loop( iLo, iHi )
+
+            # Adapted from:
+            # https://www.benmather.info/post/2018-11-24-multiprocessing-in-python/
+
+            nProc = max( 1, cpu_count() // 2 )
+
+            print( 'Generating {:} with {:} processes...\n'.format \
+                 ( DataDirectory, nProc ) )
+
+            if nProc > 1:
+
+              processes = []
+
+              for i in range( nProc ):
+                  iLo = np.int64( np.float64( i     ) / np.float64( nProc ) * nSSS )
+                  iHi = np.int64( np.float64( i + 1 ) / np.float64( nProc ) * nSSS )
+                  p = Process( target = loop, args = (iLo,iHi) )
+                  p.start()
+                  processes.append( p )
+
+              [ p.join() for p in processes ]
+
+            else:
+
+              loop( 0, nSSS )
+        # END if oww
+
+    # END if ow
 
     PlotfileArray \
       = np.loadtxt( DataDirectory + 'PlotfileNumbers.dat', dtype = str )
 
-    return PlotfileArray # end of MakeDataFile
+    return PlotfileArray
+# END of MakeDataFile
 
 def ReadHeader( DataFile ):
 
@@ -317,3 +434,4 @@ def ReadHeader( DataFile ):
     f.close()
 
     return DataShape, DataUnits, MinVal, MaxVal
+# END of ReadHeader

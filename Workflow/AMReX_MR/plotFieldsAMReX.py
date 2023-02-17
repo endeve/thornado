@@ -5,7 +5,7 @@ from sys import argv
 import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
-from UtilitiesModule import GetData, GetNorm
+from UtilitiesModule import GetData, GetNorm, MapCenterToCorners
 
 """
 
@@ -126,25 +126,7 @@ elif( nDims == 2 ):
     Data = np.copy( Data[:,:,0] )
 
     # pcolormesh wants the corners of the elements
-    X1c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
-    X2c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
-    for iX1 in range( nX[0] ):
-        for iX2 in range( nX[1] ):
-            X1c[iX1,iX2] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
-            X2c[iX1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
-            if   iX2 == nX[1]-1 and iX1 == nX[0]-1:
-                X1c[iX1,iX2+1  ] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
-                X2c[iX1,iX2+1  ] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
-                X1c[iX1+1,iX2  ] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
-                X2c[iX1+1,iX2  ] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
-                X1c[iX1+1,iX2+1] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
-                X2c[iX1+1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
-            elif iX2 == nX[1]-1:
-                X1c[iX1,iX2+1] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
-                X2c[iX1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
-            elif iX1 == nX[0]-1:
-                X1c[iX1+1,iX2] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
-                X2c[iX1+1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+    X1c, X2c = MapCenterToCorners( X1_C, X2_C )
 
     '''
     # To make lineout plot
