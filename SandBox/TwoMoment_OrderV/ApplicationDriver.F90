@@ -723,12 +723,6 @@ PROGRAM ApplicationDriver
 
   ! --- Write Initial Condition ---
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
-
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
@@ -808,12 +802,6 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
-
       CALL ComputeFromConserved_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
@@ -828,12 +816,6 @@ PROGRAM ApplicationDriver
     END IF
 
   END DO
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )

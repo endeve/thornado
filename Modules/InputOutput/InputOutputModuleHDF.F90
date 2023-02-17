@@ -198,6 +198,12 @@ CONTAINS
     INTEGER        :: iGF
     INTEGER(HID_T) :: FILE_ID
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( uGF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( uGF )
+#endif
+
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
     FileName &
@@ -369,6 +375,12 @@ CONTAINS
 
     CALL H5CLOSE_F( HDFERR )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uGF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uGF )
+#endif
+
   END SUBROUTINE ReadGeometryFieldsHDF
 
 
@@ -383,6 +395,12 @@ CONTAINS
     CHARACTER(256) :: DatasetName
     INTEGER        :: iFF
     INTEGER(HID_T) :: FILE_ID
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( uCF, uPF, uAF, uDF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( uCF, uPF, uAF, uDF )
+#endif
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -649,6 +667,12 @@ CONTAINS
 
     CALL H5CLOSE_F( HDFERR )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uCF, uPF, uAF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uCF, uPF, uAF )
+#endif
+
   END SUBROUTINE ReadFluidFieldsHDF
 
 
@@ -664,6 +688,12 @@ CONTAINS
     CHARACTER(256) :: DatasetName
     INTEGER        :: iS, iRF
     INTEGER(HID_T) :: FILE_ID
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( uCR, uPR, uAR, uGR, uDR )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( uCR, uPR, uAR, uGR, uDR )
+#endif
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -984,6 +1014,12 @@ CONTAINS
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uCR, uPR )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uCR, uPR )
+#endif
 
   END SUBROUTINE ReadRadiationFieldsHDF
 

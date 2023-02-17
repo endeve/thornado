@@ -1407,6 +1407,12 @@ CONTAINS
       PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
          1:nPF)
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( GX, CF, CR )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( GX, CF, CR )
+#endif
+
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1475,6 +1481,12 @@ CONTAINS
 
     CALL ComputeGray_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CR, PR, AR, GR )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( PR, AR, GR )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( PR, AR, GR )
+#endif
 
   END SUBROUTINE ComputeFromConserved_TwoMoment
 
