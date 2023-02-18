@@ -16,7 +16,7 @@ PROGRAM ApplicationDriver
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
@@ -259,7 +259,7 @@ PROGRAM ApplicationDriver
       nE    = 32
       eL    = 0.0d0
       eR    = 5.0d1
-      bcE   = 10
+      bcE   = 11
       zoomE = 1.0_DP
 
       nNodes = 2
@@ -729,6 +729,9 @@ PROGRAM ApplicationDriver
   !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
 #endif
 
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
+
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
@@ -812,7 +815,7 @@ PROGRAM ApplicationDriver
 #endif
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -833,7 +836,7 @@ PROGRAM ApplicationDriver
 #endif
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
