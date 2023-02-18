@@ -717,9 +717,12 @@ def GetNorm( UseLogScale, Data, vmin = +1.0e100, vmax = -1.0e100 ):
 
     return Norm
 
-def MapCenterToCorners( X1_C, X2_C ):
+def MapCenterToCorners( X1_C, X2_C, dX1, dX2 ):
 
     if( X1_C.ndim == 3 ): X1_C = np.copy( X1_C[:,:,0] )
+    if( X2_C.ndim == 3 ): X2_C = np.copy( X2_C[:,:,0] )
+    if( dX1 .ndim == 3 ): dX1  = np.copy( dX1 [:,:,0] )
+    if( dX2 .ndim == 3 ): dX2  = np.copy( dX2 [:,:,0] )
 
     nX = [ X1_C.shape[0], X1_C.shape[1] ]
 
