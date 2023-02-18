@@ -24,7 +24,7 @@ Alernate usage, plot specific file in PlotfileDirectory:
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'Advection1D'
+ProblemName = 'Advection2D'
 
 # Specify title of figure
 FigTitle = ProblemName
@@ -71,18 +71,27 @@ cmap = 'viridis'
 
 #### ====== End of User Input =======
 
+polar = False
+if CoordinateSystem == 'spherical':
+    polar = True
+
 ID      = '{:s}_{:s}'.format( ProblemName, Field )
 FigName = 'fig.{:s}.png'.format( ID )
 
 # Append "/" to PlotfileDirectory, if not present
-if( not PlotfileDirectory[-1] == '/' ): PlotfileDirectory += '/'
+if not PlotfileDirectory[-1] == '/': PlotfileDirectory += '/'
 
-TimeUnit   = '[]'
-LengthUnit = '[]'
-if( UsePhysicalUnits ):
-
-    TimeUnit   = '[ms]'
-    LengthUnit = '[km]'
+TimeUnits = ''
+X1Units   = ''
+X2Units   = ''
+if UsePhysicalUnits:
+    TimeUnits = 'ms'
+    if   CoordinateSystem == 'cartesian':
+        X1Units = 'km'
+        X2Units = 'km'
+    elif CoordinateSystem == 'spherical':
+        X1Units = 'km'
+        X2Units = 'rad'
 
 Data, DataUnit, X1_C, X2_C, X3_C, dX1, dX2, dX3, xL, xH, nX, Time \
   = GetData( PlotfileDirectory, PlotfileBaseName, Field, \
@@ -107,15 +116,16 @@ if nDims == 1:
     fig, ax = plt.subplots( 1, 1 )
 
     ax.plot( X1_C, Data, 'k.' )
-    if( UseLogScale_X ): ax.set_xscale( 'log' )
-    if( UseLogScale_Y ): ax.set_yscale( 'log' )
-    if( UseCustomLimits ): ax.set_ylim( vmin, vmax )
+    if UseLogScale_X: ax.set_xscale( 'log' )
+    if UseLogScale_Y: ax.set_yscale( 'log' )
+    if UseCustomLimits: ax.set_ylim( vmin, vmax )
     ax.set_xlim( xL[0], xH[0] )
-    ax.set_xlabel( 'X1_C' + ' ' + LengthUnit )
+    ax.set_xlabel \
+      ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
     ax.set_ylabel( Field + ' ' + DataUnit )
     ax.grid()
 
-elif( nDims == 2 ):
+elif nDims == 2:
 
     X1_C = np.copy( X1_C[:,:,0] )
     X2_C = np.copy( X2_C[:,:,0] )
@@ -125,20 +135,23 @@ elif( nDims == 2 ):
     dX3  = np.copy( dX3 [:,:,0] )
     Data = np.copy( Data[:,:,0] )
 
-    # pcolormesh wants the corners of the elements
-    X1c, X2c = MapCenterToCorners( X1_C, X2_C )
-
     '''
-    # To make lineout plot
-    # From: https://yt-project.org/doc/visualizing/
-    #       manual_plotting.html#line-plots
+    # Line-out plots
+    fig, ax = plt.subplots( 1, 1 )
 
-    oray = ds.ortho_ray( axis = 0, coords = (0,0) )
+    nX2 = X1_C.shape[1]
 
-    plt.plot( X1_C[:,0], oray[Field] )
+    ax.plot( X1_C[:,0      ], Data[:,0     ], \
+             label = r'$\theta/\pi={:.3f}$'.format( X2_C[0,0     ] / np.pi ) )
+    ax.plot( X1_C[:,nX2//2 ], Data[:,nX2//2], \
+              label = r'$\theta/\pi={:.3f}$'.format( X2_C[0,nX2//2] / np.pi ) )
+    ax.plot( X1_C[:,-1     ], Data[:,-1    ], \
+              label = r'$\theta/\pi={:.3f}$'.format( X2_C[0,-1    ] / np.pi ) )
 
-    if( UseLogScale_X ): plt.xscale( 'log' )
-    if( UseLogScale_Y ): plt.yscale( 'log' )
+    if UseLogScale_X: ax.set_xscale( 'log' )
+    if UseLogScale_Y: ax.set_yscale( 'log' )
+    ax.legend()
+
     plt.show()
     exit()
     '''
@@ -150,45 +163,52 @@ elif( nDims == 2 ):
 
     Norm = GetNorm( UseLogScale_2D, Data, vmin = vmin, vmax = vmax )
 
+    fig = plt.figure()
+    ax = fig.add_subplot( 111, polar = polar )
+
+    # pcolormesh wants the corners of the elements
+    X1c, X2c = MapCenterToCorners( X1_C, X2_C, dX1, dX2 )
+
     if CoordinateSystem == 'cartesian':
-
-        fig, ax = plt.subplots( 1, 1 )
-
-        im = ax.pcolormesh( X1c, X2c, Data, \
-                            cmap = cmap, \
-                            norm = Norm, \
-                            shading = 'flat' )
 
         ax.set_xlim( xL[0], xH[0] )
         ax.set_ylim( xL[1], xH[1] )
 
-        ax.set_xlabel( 'X1_C' + ' ' + LengthUnit )
-        ax.set_ylabel( 'X2_C' + ' ' + LengthUnit )
+        ax.set_xlabel \
+          ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
+        ax.set_ylabel \
+          ( r'$x^{{2}}\ \left[{:}\right]$'.format( X2Units ), fontsize = 15 )
 
-        ax.text( 0.4, 0.9, 'Time = {:.2e} {:}'.format \
-                 ( Time, TimeUnit ), \
-                   transform = ax.transAxes )
-
-        cbar = fig.colorbar( im )
-        cbar.set_label( Field + DataUnit )
+        ax.text( 0.4, 0.9, r'$t={:.2e}\ \left[{:}\right]$'.format \
+                 ( Time, TimeUnits ), transform = ax.transAxes )
 
     elif CoordinateSystem == 'spherical':
 
-        fig = plt.figure()
-
-        ax = fig.add_subplot( 111, polar = True )
-
-        im = ax.pcolormesh( X2c, X1c, Data, \
-                            cmap = cmap, \
-                            norm = Norm, \
-                            shading = 'flat' )
-
+        ax.grid( False )
         ax.set_thetamin( 0.0  )
         ax.set_thetamax( 180.0)
         ax.set_theta_direction( -1 )
         ax.set_theta_zero_location( 'W' ) # z-axis horizontal
 
-ax.set_title( FigTitle )
+        ax.text( 0.6, 0.9, r'$t={:.2e}\ \left[{:}\right]$'.format \
+                 ( Time, TimeUnits ), transform = ax.transAxes )
+
+        # Transpose data for spherical-polar coordinates
+
+        X1c = np.copy( X1c[:,0] )
+        X2c = np.copy( X2c[0,:] )
+
+        X1c, X2c = np.meshgrid( X2c, X1c )
+
+    im = ax.pcolormesh( X1c, X2c, Data, \
+                        cmap = cmap, \
+                        norm = Norm, \
+                        shading = 'flat' )
+
+    cbar = fig.colorbar( im )
+    cbar.set_label( Field + DataUnit )
+
+ax.set_title( r'$\texttt{{{:}}}$'.format( FigTitle ) )
 
 if SaveFig:
 
