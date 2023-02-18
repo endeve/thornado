@@ -77,8 +77,8 @@ DataDirectory = '.{:s}'.format( ID )
 MovieName     = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 
 # Append "/" if not present
-if( not plotfileDirectory[-1] == '/' ): plotfileDirectory += '/'
-if( not DataDirectory    [-1] == '/' ): DataDirectory     += '/'
+if not plotfileDirectory[-1] == '/': plotfileDirectory += '/'
+if not DataDirectory    [-1] == '/': DataDirectory     += '/'
 
 TimeUnits = ''
 X1Units   = ''
@@ -182,10 +182,18 @@ im = ax.pcolormesh( X1c, X2c, Data, \
                     norm = Norm, \
                     shading = 'flat' )
 
-time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnits ) )
+time_text = ax.text( 0.4, 0.9, '', transform = ax.transAxes )
 
 cbar = fig.colorbar( im )
 cbar.set_label( Field + ' ' + DataUnits )
+
+def InitializeFrame():
+
+    Data, DataUnits, X1_C, X2_C, dX1, dX2, Time = f(0)
+    im.set_array( Data.flatten() )
+    time_text.set_text('')
+    ret = ( im, time_text )
+    return ret
 
 def UpdateFrame(t):
 
@@ -208,7 +216,8 @@ def UpdateFrame(t):
                         shading = 'flat' )
 
     im.set_array( Data.flatten() )
-    time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnits ) )
+    time_text.set_text( r'$t={:.3e}\ \left[{:}\right]$' \
+                        .format( Time, TimeUnits ) )
 
     ret = ( im, time_text )
 
@@ -217,7 +226,7 @@ def UpdateFrame(t):
 # Call the animator
 anim \
   = animation.FuncAnimation \
-      ( fig, UpdateFrame, frames = nSS, blit = True)
+      ( fig, UpdateFrame, init_func = InitializeFrame, frames = nSS, blit = True)
 
 fps = max( 1, nSS // MovieRunTime )
 

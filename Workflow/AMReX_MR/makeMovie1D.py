@@ -74,8 +74,8 @@ DataDirectory = '.{:s}'.format( ID )
 MovieName     = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 
 # Append "/" if not present
-if( not plotfileDirectory[-1] == '/' ): plotfileDirectory += '/'
-if( not DataDirectory    [-1] == '/' ): DataDirectory     += '/'
+if not plotfileDirectory[-1] == '/': plotfileDirectory += '/'
+if not DataDirectory    [-1] == '/': DataDirectory     += '/'
 
 TimeUnits = ''
 X1Units   = ''
@@ -132,7 +132,7 @@ fig = plt.figure()
 ax  = fig.add_subplot( 111 )
 ax.set_title( r'$\texttt{{{:}}}$'.format( ID ) )
 
-time_text = plt.text( 0.5, 0.7, '', transform = ax.transAxes )
+time_text = ax.text( 0.3, 0.9, '', transform = ax.transAxes )
 
 ax.set_xlabel \
   ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
@@ -141,8 +141,8 @@ ax.set_ylabel( Field  + ' ' + DataUnits   )
 ax.set_xlim( xL, xH )
 ax.set_ylim( vmin, vmax )
 
-if( UseLogScale_Y ): ax.set_yscale( 'log' )
-if( UseLogScale_X ): ax.set_xscale( 'log' )
+if UseLogScale_Y: ax.set_yscale( 'log' )
+if UseLogScale_X: ax.set_xscale( 'log' )
 
 if PlotMesh: mesh, = ax.plot( [],[], 'b.', label = 'mesh boundaries' )
 if ShowIC: IC,     = ax.plot( [],[], 'r.', label = 'u(0)' )
@@ -167,7 +167,8 @@ def UpdateFrame( t ):
     print('{:}/{:}'.format( t, nSS ) )
     Data, DataUnits, X1_C, dX1, Time = f(t)
 
-    time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnits ) )
+    time_text.set_text( r'$t={:.3e}\ \left[{:}\right]$' \
+                        .format( Time, TimeUnits ) )
 
     line             .set_data( X1_C , Data .flatten() )
     if ShowIC:   IC  .set_data( X1_C0, Data0.flatten() )
