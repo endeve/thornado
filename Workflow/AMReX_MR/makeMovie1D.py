@@ -3,8 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+plt.style.use( 'publication.sty' )
 
-from UtilitiesModule import GetNorm
 from MakeDataFile import MakeDataFile, ReadHeader
 
 """
@@ -22,14 +22,14 @@ Usage:
 # ID to be used for naming purposes
 ID = 'Advection1D'
 
-# Directory containing AMReX Plotfiles
-PlotfileDirectory = 'thornado/SandBox/AMReX/'
-#PlotfileDirectory \
+# Directory containing AMReX plotfiles
+plotfileDirectory = 'thornado/SandBox/AMReX/'
+#plotfileDirectory \
 #  = '/home/kkadoogan/Work/Codes/thornado/\
 #SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
-# Plotfile base name (e.g., Advection1D.plt######## -> Advection1D.plt )
-PlotfileBaseName = ID + '.plt'
+# plotfile base name (e.g., Advection1D.plt######## -> Advection1D.plt )
+plotfileBaseName = ID + '.plt'
 
 # Field to plot
 Field = 'PF_D'
@@ -44,10 +44,13 @@ UsePhysicalUnits = False
 # Coordinate system (currently supports 'cartesian' and 'spherical' )
 CoordinateSystem = 'cartesian'
 
+# Only use every <plotEvery> plotfile
+plotEvery = 1
+
 # First and last snapshots and number of snapshots to include in movie
 SSi = -1 # -1 -> SSi = 0
-SSf = -1 # -1 -> PlotfileArray.shape[0] - 1
-nSS = -1 # -1 -> PlotfileArray.shape[0]
+SSf = -1 # -1 -> plotfileArray.shape[0] - 1
+nSS = -1 # -1 -> plotfileArray.shape[0]
 
 # Max level of refinement to include
 MaxLevel = -1
@@ -71,36 +74,26 @@ DataDirectory = '.{:s}'.format( ID )
 MovieName     = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 
 # Append "/" if not present
-if( not PlotfileDirectory[-1] == '/' ): PlotfileDirectory += '/'
+if( not plotfileDirectory[-1] == '/' ): plotfileDirectory += '/'
 if( not DataDirectory    [-1] == '/' ): DataDirectory     += '/'
 
-PlotfileArray \
-  = MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
-                  PlotfileBaseName, CoordinateSystem, \
+TimeUnits = ''
+X1Units   = ''
+if UsePhysicalUnits:
+    TimeUnits = 'ms'
+    X1Units   = 'km'
+
+plotfileArray \
+  = MakeDataFile( Field, plotfileDirectory, DataDirectory, \
+                  plotfileBaseName, CoordinateSystem, \
                   SSi = SSi, SSf = SSf, nSS = nSS, \
                   UsePhysicalUnits = UsePhysicalUnits, \
-                  MaxLevel = MaxLevel, forceChoice = False, ow = False, \
-                  Verbose = Verbose )
-
-if nSS < 0: nSS = PlotfileArray.shape[0]
-
-fig = plt.figure()
-ax  = fig.add_subplot( 111 )
-
-if not UseCustomLimits:
-    vmin = +np.inf
-    vmax = -np.inf
-    for j in range( nSS ):
-        DataFile \
-          = DataDirectory + PlotfileArray[j] + '/{:}.dat'.format( Field )
-        DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
-        vmin = min( vmin, MinVal )
-        vmax = max( vmax, MaxVal )
-ax.set_ylim( vmin, vmax )
+                  MaxLevel = MaxLevel, Verbose = Verbose )
+plotfileArray = np.copy( plotfileArray[::plotEvery] )
 
 def f(t):
 
-    FileDirectory = DataDirectory + PlotfileArray[t] + '/'
+    FileDirectory = DataDirectory + plotfileArray[t] + '/'
 
     TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
     X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
@@ -116,25 +109,37 @@ def f(t):
 
     return Data, DataUnits, X1_C, dX1, Time
 
-Data0, DataUnits, X1_C0, dX1, Time = f(0)
+Data0, DataUnits, X1_C0, dX10, Time = f(0)
 
-xL = X1_C0[0 ] - 0.5 * dX1[0 ]
-xH = X1_C0[-1] + 0.5 * dX1[-1]
+if nSS < 0: nSS = plotfileArray.shape[0]
 
-Norm = GetNorm( UseLogScale_Y, Data0, vmin = vmin, vmax = vmax )
+if not UseCustomLimits:
+    vmin = +np.inf
+    vmax = -np.inf
+    for j in range( nSS ):
+        DataFile \
+          = DataDirectory + plotfileArray[j] + '/{:}.dat'.format( Field )
+        DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+        vmin = min( vmin, MinVal )
+        vmax = max( vmax, MaxVal )
 
-TimeUnits = ''
-LengthUnits = '[]'
-if UsePhysicalUnits:
-    TimeUnits   = 'ms'
-    LengthUnits = '[km]'
+nX = np.shape(X1_C0)
 
-ax.set_xlim( xL, xH )
+xL = X1_C0[0 ] - 0.5 * dX10[0 ]
+xH = X1_C0[-1] + 0.5 * dX10[-1]
 
-ax.set_xlabel( 'X1_C' + ' ' + LengthUnits )
-ax.set_ylabel( Field  + ' ' + DataUnits   )
+fig = plt.figure()
+ax  = fig.add_subplot( 111 )
+ax.set_title( r'$\texttt{{{:}}}$'.format( ID ) )
 
 time_text = plt.text( 0.5, 0.7, '', transform = ax.transAxes )
+
+ax.set_xlabel \
+  ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
+ax.set_ylabel( Field  + ' ' + DataUnits   )
+
+ax.set_xlim( xL, xH )
+ax.set_ylim( vmin, vmax )
 
 if( UseLogScale_Y ): ax.set_yscale( 'log' )
 if( UseLogScale_X ): ax.set_xscale( 'log' )
@@ -159,6 +164,7 @@ def InitializeFrame():
 
 def UpdateFrame( t ):
 
+    print('{:}/{:}'.format( t, nSS ) )
     Data, DataUnits, X1_C, dX1, Time = f(t)
 
     time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnits ) )

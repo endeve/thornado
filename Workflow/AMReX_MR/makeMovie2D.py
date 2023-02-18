@@ -25,6 +25,9 @@ ID = 'Advection2D'
 
 # Directory containing AMReX plotfiles
 plotfileDirectory = 'thornado/SandBox/AMReX/'
+#plotfileDirectory \
+#  = '/home/kkadoogan/Work/Codes/thornado/\
+#SandBox/AMReX/Euler_Relativistic_IDEAL_MR/'
 
 # plotfile base name (e.g., Advection2D.plt######## -> Advection2D.plt )
 plotfileBaseName = ID + '.plt'
@@ -77,17 +80,17 @@ MovieName     = 'mov.{:s}_{:s}.mp4'.format( ID, Field )
 if( not plotfileDirectory[-1] == '/' ): plotfileDirectory += '/'
 if( not DataDirectory    [-1] == '/' ): DataDirectory     += '/'
 
-TimeUnit = ''
-X1Unit   = ''
-X2Unit   = ''
+TimeUnits = ''
+X1Units   = ''
+X2Units   = ''
 if UsePhysicalUnits:
-    TimeUnit = 'ms'
+    TimeUnits = 'ms'
     if   CoordinateSystem == 'cartesian':
-        X1Unit = 'km'
-        X2Unit = 'km'
+        X1Units = 'km'
+        X2Units = 'km'
     elif CoordinateSystem == 'spherical':
-        X1Unit = 'km'
-        X2Unit = 'rad'
+        X1Units = 'km'
+        X2Units = 'rad'
 
 plotfileArray \
   = MakeDataFile( Field, plotfileDirectory, DataDirectory, \
@@ -121,13 +124,6 @@ def f(t):
 
 Data, DataUnits, X1_C, X2_C, dX1, dX2, Time = f(0)
 
-nX = np.shape(X1_C)
-
-x1L = X1_C[0 ,0 ] - 0.5 * dX1[0 ,0 ]
-x1H = X1_C[-1,-1] + 0.5 * dX1[-1,-1]
-x2L = X2_C[0 ,0 ] - 0.5 * dX2[0 ,0 ]
-x2H = X2_C[-1,-1] + 0.5 * dX2[-1,-1]
-
 if nSS < 0: nSS = plotfileArray.shape[0]
 
 if not UseCustomLimits:
@@ -140,7 +136,12 @@ if not UseCustomLimits:
         vmin = min( vmin, MinVal )
         vmax = max( vmax, MaxVal )
 
-Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
+nX = np.shape(X1_C)
+
+x1L = X1_C[0 ,0 ] - 0.5 * dX1[0 ,0 ]
+x1H = X1_C[-1,-1] + 0.5 * dX1[-1,-1]
+x2L = X2_C[0 ,0 ] - 0.5 * dX2[0 ,0 ]
+x2H = X2_C[-1,-1] + 0.5 * dX2[-1,-1]
 
 fig = plt.figure()
 ax  = fig.add_subplot( 111, polar = polar )
@@ -170,16 +171,18 @@ if CoordinateSystem == 'spherical':
 elif CoordinateSystem == 'cartesian':
 
     ax.set_xlabel \
-      ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Unit ), fontsize = 15 )
+      ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
     ax.set_ylabel \
-      ( r'$x^{{2}}\ \left[{:}\right]$'.format( X2Unit ), fontsize = 15 )
+      ( r'$x^{{2}}\ \left[{:}\right]$'.format( X2Units ), fontsize = 15 )
+
+Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
 
 im = ax.pcolormesh( X1c, X2c, Data, \
                     cmap = cmap, \
                     norm = Norm, \
                     shading = 'flat' )
 
-time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnit ) )
+time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnits ) )
 
 cbar = fig.colorbar( im )
 cbar.set_label( Field + ' ' + DataUnits )
@@ -205,7 +208,7 @@ def UpdateFrame(t):
                         shading = 'flat' )
 
     im.set_array( Data.flatten() )
-    time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnit ) )
+    time_text.set_text( 'Time = {:.3e} {:}'.format( Time, TimeUnits ) )
 
     ret = ( im, time_text )
 
