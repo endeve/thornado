@@ -476,8 +476,6 @@ CONTAINS
 
       ! --- No perturbation, for reference plotfile ---
 
-      epsMin_Euler_GR = HUGE( One )
-
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF % DataPtr( MFI )
@@ -542,10 +540,6 @@ CONTAINS
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
-          epsMin_Euler_GR &
-            = MIN( epsMin_Euler_GR, &
-                   MINVAL( uPF_K(:,iPF_E) / uPF_K(:,iPF_D) ) )
-
         END DO
         END DO
         END DO
@@ -588,6 +582,8 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_uGFF(0) )
 
     END IF ! nLevels .EQ. 1
+
+    epsMin_Euler_GR = HUGE( One )
 
     ! --- With perturbation ---
 
@@ -703,6 +699,9 @@ CONTAINS
 
           END IF ! Apply perturbation
 
+          epsMin_Euler_GR &
+            = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
+
         END DO !iNX
 
         CALL ComputePressureFromPrimitive &
@@ -730,14 +729,14 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
+    CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+
+    epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
+
     DEALLOCATE( Field   )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
-
-    CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
-
-    epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
 
     IF( ResetEndTime ) &
       t_end = 1.00e2_DP * AdvectionTime
