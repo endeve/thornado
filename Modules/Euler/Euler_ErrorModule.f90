@@ -293,7 +293,7 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: SolveZ_Bisection_Scalar'
            WRITE(*,'(2x,A)') &
-            'ITERATION = MAX_IT'
+            'ITERATION .EQ. MAX_IT'
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
             'ITERATION:          ', Int_Option(2)
