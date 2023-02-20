@@ -38,6 +38,7 @@ MODULE InputOutputModuleHDF
     uCR, nCR, namesCR, unitsCR, &
     uPR, nPR, namesPR, unitsPR, &
     uAR, nAR, namesAR, unitsAR, &
+    uGR, nGR, namesGR, unitsGR, &
     uDR, nDR, namesDR, unitsDR
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, namesEQ, unitsEQ, &
@@ -847,6 +848,24 @@ CONTAINS
                      [ nE, nX(1), nX(2), nX(3) ],                     &
                      [ nNodesE, nNodesX(1), nNodesX(2), nNodesX(3) ], &
                      nDOF, NodeNumberTable ), DatasetName, FILE_ID )
+
+      END DO
+
+      ! --- Gray ---
+
+      GroupName = TRIM( GroupNameSpecies ) // '/Gray'
+
+      CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+      DO iRF = 1, nGR
+
+        DatasetName = TRIM( GroupName ) // '/' // TRIM( namesGR(iRF) )
+
+        CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uGR(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iRF,iS), &
+                   nX, nNodesX, nDOFX, NodeNumberTableX ) / unitsGR(iRF), &
+               DatasetName, FILE_ID )
 
       END DO
 

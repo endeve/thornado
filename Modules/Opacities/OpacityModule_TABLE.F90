@@ -63,6 +63,7 @@ MODULE OpacityModule_TABLE
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
 #endif
+  LOGICAL :: Use_OpacityTables
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2
@@ -128,7 +129,7 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
-        .AND. ( LEN( OpacityTableName_EmAb_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
       OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
       Include_EmAb = .TRUE.
     ELSE
@@ -137,7 +138,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Iso_Option ) &
-        .AND. ( LEN( OpacityTableName_Iso_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Iso_Option ) > 1 ) )THEN
       OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
       Include_Iso = .TRUE.
     ELSE
@@ -146,7 +147,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_NES_Option ) &
-        .AND. ( LEN( OpacityTableName_NES_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_NES_Option ) > 1 ) )THEN
       OpacityTableName_NES = TRIM( OpacityTableName_NES_Option )
       Include_NES = .TRUE.
     ELSE
@@ -155,7 +156,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Pair_Option ) &
-        .AND. ( LEN( OpacityTableName_Pair_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Pair_Option ) > 1 ) )THEN
       OpacityTableName_Pair = TRIM( OpacityTableName_Pair_Option )
       Include_Pair = .TRUE.
     ELSE
@@ -164,7 +165,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Brem_Option ) &
-        .AND. ( LEN( OpacityTableName_Brem_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Brem_Option ) > 1 ) )THEN
       OpacityTableName_Brem = TRIM( OpacityTableName_Brem_Option )
       Include_Brem = .TRUE.
     ELSE
@@ -173,7 +174,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( EquationOfStateTableName_Option ) &
-        .AND. ( LEN( EquationOfStateTableName_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( EquationOfStateTableName_Option ) > 1 ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
@@ -205,7 +206,20 @@ CONTAINS
       END IF
     END IF
 
+    Use_OpacityTables = .FALSE.
+
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF (   Include_EmAb &
+      .OR. Include_Iso  &
+      .OR. Include_NES  &
+      .OR. Include_Pair &
+      .OR. Include_Brem ) THEN
+      Use_OpacityTables = .TRUE.
+    ELSE
+      Use_OpacityTables = .FALSE.
+      RETURN
+    END IF
 
     CALL InitializeHDF( )
 
@@ -556,20 +570,24 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+  IF ( Use_OpacityTables ) THEN
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+      !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+      !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #endif
 
-    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
-    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
+      DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
+      DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
-    DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
-    DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
-    DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+      DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
+      DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
+      DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+
+  END IF
 
 #endif
 

@@ -2,12 +2,19 @@ MODULE TwoMoment_UtilitiesModule_OrderV
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five, &
-    SqrtTiny
+    SqrtTiny, FourPi
+  USE UnitsModule, ONLY: &
+    UnitsActive, &
+    SpeedOfLight, &
+    PlanckConstant, &
+    MeV
   USE QuadratureModule, ONLY: &
     GetQuadrature
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE, &
     nNodes, nDimsX
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
     WeightsX_q, &
@@ -20,7 +27,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     dLXdX3_q, LX_X3_Dn, LX_X3_Up
   USE MeshModule, ONLY: &
     MeshX, &
-    MeshE
+    MeshE, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_h_1, &
@@ -38,7 +46,12 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
+    nAR, iAR_F, iAR_K , iAR_Q, &
+    nGR, iGR_N, &
+         iGR_D, iGR_I1, iGR_I2, iGR_I3, &
+         iGR_J, iGR_H1, iGR_H2, iGR_H3, &
+         iGR_RMS, iGR_F, iGR_K, iGR_Q
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor, &
@@ -1365,7 +1378,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, CF, CR, PR )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, CF, CR, PR, AR, GR )
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -1381,6 +1394,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       PR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      AR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nAR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      GR(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGR,1:nSpecies)
 
     INTEGER  :: &
       iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeX
@@ -1451,7 +1470,261 @@ CONTAINS
     END DO
     END DO
 
+    CALL ComputeAuxiliary_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PR, AR )           
+
+    CALL ComputeGray_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CR, PR, AR, GR )
+
   END SUBROUTINE ComputeFromConserved_TwoMoment
+
+
+  SUBROUTINE ComputeAuxiliary_TwoMoment &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PR, AR )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      PR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      AR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nAR,1:nSpecies)
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: FF
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        FF = FluxFactor &
+               ( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+        AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_F,iS) &
+          = FF
+
+        AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_K,iS) &
+          = EddingtonFactor( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS), FF )
+
+        AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_Q,iS) &
+          = HeatFluxFactor ( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS), FF )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeAuxiliary_TwoMoment
+
+
+  SUBROUTINE ComputeGray_TwoMoment &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CR, PR, AR, GR )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nPF)
+    REAL(DP), INTENT(in)  :: &
+      CR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      PR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      AR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nAR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      GR(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGR,1:nSpecies)
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iGR, iS, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: hc3, E_0, E, RMS_Int3, RMS_Int5
+    REAL(DP) :: W2(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W3(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W3_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W5_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+
+    IF( UnitsActive )THEN
+
+      hc3 = ( PlanckConstant * SpeedOfLight )**3
+
+    ELSE
+
+      hc3 = One
+
+    END IF
+
+    ! --- Integration Weights ---
+
+    ASSOCIATE( dZ1 => MeshE % Width )
+
+    E_0 = NodeCoordinate( MeshE, iZ_B0(1), 1 )
+
+    DO iZ1    = iZ_B0(1), iZ_E0(1)
+    DO iNodeE = 1, nDOFE
+
+      E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+      W2(iNodeE,iZ1) = FourPi * WeightsE(iNodeE) * ( dZ1(iZ1) * E**2 / hc3 )
+
+      W3(iNodeE,iZ1) = W2(iNodeE,iZ1) * E
+
+      W3_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )
+
+      W5_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**3
+
+    END DO
+    END DO
+
+    END ASSOCIATE ! dZ1
+
+    ! --- Initialize Gray Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iGR = 1, nGR
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR,iS) = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Integrate Over Energy ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        RMS_Int3 = Zero
+        RMS_Int5 = Zero
+
+        DO iZ1    = iZ_B0(1), iZ_E0(1)
+        DO iNodeE = 1, nDOFE
+
+          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_I1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I1,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_I2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I2,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_H1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_H1,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_H2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_H2,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_H3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_H3,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
+
+          RMS_Int3 &
+            = RMS_Int3 &
+                + W3_RMS(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          RMS_Int5 &
+            = RMS_Int5 &
+                + W5_RMS(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+                    * AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_F,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+                    * AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_K,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+                    * AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_Q,iS)
+
+        END DO
+        END DO
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_RMS,iS) &
+          = E_0 * SQRT( RMS_Int5 / RMS_Int3 )
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+          = GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+              / GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS)
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+          = GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+              / GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS)
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+          = GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+              / GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    
+  END SUBROUTINE ComputeGray_TwoMoment
 
 
   SUBROUTINE ComputeTimeStep_TwoMoment &
@@ -1565,8 +1838,50 @@ CONTAINS
       Verbose = .FALSE.
     END IF
 
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width, &
+        dE  => MeshE    % Width, &
+        E_C => MeshE    % Center )
+
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+    TimeStep_X = HUGE( One )
+    TimeStep_E = HUGE( One )
+    dt_X       = HUGE( One )
+    dt_E       = HUGE( One )
+
+    CALL GetQuadrature( nNodes, xQ, wQ, 'Lobatto' )
+
+    CFL_Eff_X = Gamma_X * wQ(nNodes) / DBLE( nDimsX )
+    CFL_Eff_E = Gamma_E * wQ(nNodes)
+
+    dE_Min = HUGE( One ) ! --- Min of dE / E_H
+    DO iE = iZ_B0(1), iZ_E0(1)
+      dE_Min = MIN( dE_Min, dE(iE) / ( E_C(iE) + Half * dE(iE) ) )
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$OMP          TimeStep_X, TimeStep_E, dt_X, dt_E,  &
+    !$OMP          CFL, CFL_Eff_X, CFL_Eff_E, dE_Min ) &
+    !$OMP MAP( alloc: dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$OMP             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$OMP             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$ACC         TimeStep_X, TimeStep_E, dt_X, dt_E,  &
+    !$ACC         CFL, CFL_Eff_X, CFL_Eff_E, dE_Min ) &
+    !$ACC CREATE( dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#endif
 
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
@@ -1580,28 +1895,28 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
              dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 
-    TimeStep_X = HUGE( One )
-    TimeStep_E = HUGE( One )
-    dt_X       = HUGE( One )
-    dt_E       = HUGE( One )
-
-    CALL GetQuadrature( nNodes, xQ, wQ, 'Lobatto' )
-
-    CFL_Eff_X = Gamma_X * wQ(nNodes) / DBLE( nDimsX )
-    CFL_Eff_E = Gamma_E * wQ(nNodes)
-
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width, &
-        dX2 => MeshX(2) % Width, &
-        dX3 => MeshX(3) % Width, &
-        dE  => MeshE    % Width, &
-        E_C => MeshE    % Center )
-
-    dE_Min = HUGE( One ) ! --- Min of dE / E_H
-    DO iE = iZ_B0(1), iZ_E0(1)
-      dE_Min = MIN( dE_Min, dE(iE) / ( E_C(iE) + Half * dE(iE) ) )
-    END DO
-
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
+    !$OMP          h_d_1, h_d_2, h_d_3, &
+    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP          V_d_1, V_d_2, V_d_3 ) &
+    !$OMP REDUCTION( MIN : TimeStep_X, TimeStep_E )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
+    !$ACC          h_d_1, h_d_2, h_d_3, &
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC          V_d_1, V_d_2, V_d_3 ) &
+    !$ACC REDUCTION( MIN : TimeStep_X, TimeStep_E )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( A, Lambda, dt_X, AbsV, Alpha_E, dt_E,  &
+    !$OMP          h_d_1, h_d_2, h_d_3, &
+    !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP          V_d_1, V_d_2, V_d_3 ) &
+    !$OMP REDUCTION( MIN : TimeStep_X, TimeStep_E )
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -1666,7 +1981,27 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1, etc.
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: TimeStep_X, TimeStep_E ) &
+    !$OMP MAP( release: E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$OMP               dt_X, dt_E,  &
+    !$OMP               CFL, CFL_Eff_X, CFL_Eff_E, dE_Min, &
+    !$OMP               dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$OMP               dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$OMP               dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( TimeStep_X, TimeStep_E ) &
+    !$ACC DELETE( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+    !$ACC         dt_X, dt_E,  &
+    !$ACC         CFL, CFL_Eff_X, CFL_Eff_E, dE_Min, &
+    !$ACC         dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+#endif
 
     TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
 
@@ -1674,6 +2009,8 @@ CONTAINS
       WRITE(*,'(A8,A7,ES12.6E2,A8,ES12.6E2)') &
         '', 'dt_X = ', TimeStep_X, ' dt_E = ', TimeStep_E
     END IF
+
+    END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Realizability
 

@@ -44,6 +44,7 @@ MODULE Euler_UtilitiesModule
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler
 
+  INTEGER, PARAMETER :: iLeaf = 0
 
 CONTAINS
 
@@ -114,7 +115,7 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
       Mask_Option, &
-      iDimX_Option, IndexTable_Option )
+      iDimX_Option, IndexTable_Option, iX_B0_Option, iX_E0_Option )
 
     REAL(DP)    , INTENT(in)  :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
@@ -123,14 +124,16 @@ CONTAINS
     REAL(DP)    , INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
-      Mask_Option(:)
+      Mask_Option(:), iX_B0_Option(3), iX_E0_Option(3)
     CHARACTER(2), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
       IndexTable_Option(:,:)
 
-    INTEGER :: N
+    INTEGER :: N, iX_B0(3), iX_E0(3)
     INTEGER, ALLOCATABLE :: Mask(:)
+
+#ifdef HYDRO_RELATIVISTIC
 
     N = SIZE( PF_D )
     ALLOCATE( Mask(1:N) )
@@ -139,10 +142,16 @@ CONTAINS
       Mask = Mask_Option
     ELSE
       ! Every element is a leaf element
-      Mask = 0
+      Mask = iLeaf
     END IF
 
-#ifdef HYDRO_RELATIVISTIC
+    iX_B0 = 1
+    IF( PRESENT( iX_B0_Option ) ) &
+      iX_B0 = iX_B0_Option
+
+    iX_E0 = 1
+    IF( PRESENT( iX_E0_Option ) ) &
+      iX_E0 = iX_E0_Option
 
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
@@ -150,7 +159,9 @@ CONTAINS
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
              Mask_Option = Mask, &
              iDimX_Option = iDimX_Option, &
-             IndexTable_Option = IndexTable_Option )
+             IndexTable_Option = IndexTable_Option)!, &
+           !  iX_B0_Option = iX_B0, &
+           !  iX_E0_Option = iX_E0 )
 
 #else
 
@@ -239,7 +250,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, Mask_Option )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -249,11 +260,22 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
+
+    IF( PRESENT( Mask_Option ) )THEN
+      Mask = Mask_Option
+    ELSE
+      ! Every element is a leaf element
+      Mask = iLeaf
+    END IF
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A)!, Mask_Option = Mask )
 
 #else
 
@@ -286,7 +308,7 @@ CONTAINS
       Mask = Mask_Option
     ELSE
       ! Every element is a leaf element
-      Mask = 0
+      Mask = iLeaf
     END IF
 
 #ifdef HYDRO_RELATIVISTIC

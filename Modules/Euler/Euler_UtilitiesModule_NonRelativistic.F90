@@ -249,6 +249,8 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
+      A(1:nDOFX,iX1,iX2,iX3,:) = Zero
+
       CALL ComputePrimitive_Euler_NonRelativistic &
              ( U(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
                U(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &

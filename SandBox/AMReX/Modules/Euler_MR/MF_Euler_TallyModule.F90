@@ -358,13 +358,15 @@ CONTAINS
 
     END IF
 
+    ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
+
     BaryonicMass_Change &
       = BaryonicMass_Interior &
-          - ( BaryonicMass_Initial + BaryonicMass_OffGrid )
+          - BaryonicMass_Initial + BaryonicMass_OffGrid
 
     Energy_Change &
       = Energy_Interior &
-          - ( Energy_Initial + Energy_OffGrid )
+          - Energy_Initial + Energy_OffGrid
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 

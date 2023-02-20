@@ -52,6 +52,11 @@ MODULE MF_Euler_PositivityLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
+    UsePositivityLimiter_Euler, &
+    Min_1_Euler, &
+    Min_2_Euler, &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL, &
     EquationOfState, &
     nLevels, &
     UseTiling, &
@@ -114,8 +119,10 @@ CONTAINS
       CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
                Verbose_Option = amrex_parallel_ioprocessor(), &
-               Min_1_Option = Min_1, &
-               Min_2_Option = Min_2 )
+               Min_1_Option = Min_1_Euler, &
+               Min_2_Option = Min_2_Euler, &
+               D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
 
     END IF
 

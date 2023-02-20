@@ -67,7 +67,7 @@ MODULE InputOutputModuleAMReX
   USE ReferenceElementModule, ONLY: &
     Weights_q
   USE MeshModule, ONLY: &
-    MeshX, &
+    MeshType, &
     MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
@@ -1005,10 +1005,12 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
+    TYPE(MeshType) :: MeshXX(3)
+
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: Mask (:,:,:,:)
 
-    CALL CreateMesh_MF( iLevel, MeshX )
+    CALL CreateMesh_MF( iLevel, MeshXX )
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -1030,13 +1032,13 @@ CONTAINS
 
         IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
-        U_plt(iX1,iX2,iX3,2) = MeshX(1) % Center(iX1) / U % LengthX1Unit
-        U_plt(iX1,iX2,iX3,3) = MeshX(2) % Center(iX2) / U % LengthX2Unit
-        U_plt(iX1,iX2,iX3,4) = MeshX(3) % Center(iX3) / U % LengthX3Unit
+        U_plt(iX1,iX2,iX3,2) = MeshXX(1) % Center(iX1) / U % LengthX1Unit
+        U_plt(iX1,iX2,iX3,3) = MeshXX(2) % Center(iX2) / U % LengthX2Unit
+        U_plt(iX1,iX2,iX3,4) = MeshXX(3) % Center(iX3) / U % LengthX3Unit
 
-        U_plt(iX1,iX2,iX3,5) = MeshX(1) % Width(iX1) / U % LengthX1Unit
-        U_plt(iX1,iX2,iX3,6) = MeshX(2) % Width(iX2) / U % LengthX2Unit
-        U_plt(iX1,iX2,iX3,7) = MeshX(3) % Width(iX3) / U % LengthX3Unit
+        U_plt(iX1,iX2,iX3,5) = MeshXX(1) % Width(iX1) / U % LengthX1Unit
+        U_plt(iX1,iX2,iX3,6) = MeshXX(2) % Width(iX2) / U % LengthX2Unit
+        U_plt(iX1,iX2,iX3,7) = MeshXX(3) % Width(iX3) / U % LengthX3Unit
 
       END DO
       END DO
@@ -1048,7 +1050,7 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    CALL DestroyMesh_MF( MeshX )
+    CALL DestroyMesh_MF( MeshXX )
 
   END SUBROUTINE WriteMesh
 

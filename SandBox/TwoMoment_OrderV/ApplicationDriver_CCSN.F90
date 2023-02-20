@@ -25,7 +25,7 @@ PROGRAM ApplicationDriver_CCSN
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment, &
     ComputeTimeStep_TwoMoment
@@ -213,7 +213,7 @@ PROGRAM ApplicationDriver_CCSN
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL ComputeFromConserved_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
     CALL WriteFieldsHDF &
            ( Time = t, &
@@ -338,7 +338,7 @@ PROGRAM ApplicationDriver_CCSN
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -365,7 +365,7 @@ PROGRAM ApplicationDriver_CCSN
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &

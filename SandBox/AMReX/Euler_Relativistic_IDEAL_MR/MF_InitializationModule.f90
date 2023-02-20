@@ -14,7 +14,8 @@ MODULE MF_InitializationModule
     amrex_parmparse_build, &
     amrex_parmparse_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_min
 
   ! --- thornado Modules ---
 
@@ -51,6 +52,8 @@ MODULE MF_InitializationModule
     iAF_P
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    epsMin_Euler_GR
 
   ! --- Local Modules ---
 
@@ -895,6 +898,8 @@ CONTAINS
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
+    epsMin_Euler_GR = HUGE( One )
+
     DO WHILE( MFI % next() )
 
       uGF => MF_uGF % DataPtr( MFI )
@@ -996,6 +1001,9 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
                  uAF(iNX,iAF_P) )
 
+        epsMin_Euler_GR &
+          = MIN( epsMin_Euler_GR, uPF(iNX,iPF_E) / uPF(iNX,iPF_D) )
+
       END DO
       END DO
       END DO
@@ -1020,6 +1028,10 @@ CONTAINS
                G )
 
     END DO
+
+    CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+
+    epsMin_Euler_GR = 1.0e-12_DP * epsMin_Euler_GR
 
     CALL amrex_mfiter_destroy( MFI )
 

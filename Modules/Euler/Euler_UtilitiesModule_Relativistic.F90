@@ -123,6 +123,9 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   INTEGER, PARAMETER :: MAX_IT = 30
 
+  ! --- User must set this in fluid initialization ---
+  REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
+
 CONTAINS
 
 
@@ -2083,8 +2086,9 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, Ne, r, z, q
-    REAL(DP), INTENT(out) :: FunZ
+    REAL(DP), INTENT(in)    :: D, Ne, r, z
+    REAL(DP), INTENT(inout) :: q
+    REAL(DP), INTENT(out)   :: FunZ
 
     REAL(DP) :: Wt, rhot, epst, pt, at, Ye, ht
 
@@ -2096,6 +2100,20 @@ CONTAINS
     ! --- Eq. C16 ---
 
     epst = Wt * q - z * r + z**2 / ( One + Wt )
+
+    IF( epst .LT. epsMin_Euler_GR )THEN
+
+      PRINT *, 'IntE (Old), IntE (New): ', epst, epsMin_Euler_GR
+      PRINT *, 'q+1=E/D (Old): ', q+One
+
+      q = ( One + q ) * ( One + epsMin_Euler_GR ) &
+            / ( One + epst ) - One
+
+      PRINT *, 'q+1=E/D (New): ', q+One
+
+      epst = epsMin_Euler_GR
+
+    END IF
 
     Ye = Ne * AtomicMassUnit / D
 

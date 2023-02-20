@@ -501,6 +501,8 @@ CONTAINS
     INTEGER , INTENT(in) :: iLevel
     INTEGER , INTENT(in) :: iX_B0(3), iX_E0(3)
 
+    ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
+
     IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
       OffGridFlux_Euler_MF(:,iLevel) &
         = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X1_Inner
