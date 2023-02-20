@@ -341,8 +341,11 @@ CONTAINS
 
     ! --- Neutrino Absorption Opacities and Equilibrium Distributions ---
 
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ )
+
     CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, Chi )
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ, Chi )
 
     DO iR = 1, nR
 
@@ -363,9 +366,6 @@ CONTAINS
       END DO
 
     END DO
-
-    CALL ComputeEquilibriumDistributions_DG &
-           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ )
 
     ! --- Approximate Neutrino Sphere Radii ---
 

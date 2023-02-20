@@ -94,7 +94,6 @@ PROGRAM NeutrinoOpacities
   INTEGER, PARAMETER :: &
     nNodes   = 3, & !2, &
     nE       = 16, & !2**4, &
-    !nE       = 20, & !2**4, &
     nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
     nPointsE = nNodes * nE, &
@@ -113,8 +112,6 @@ PROGRAM NeutrinoOpacities
     Unit_Edot  = 1.0_DP / ( BaryonMass * Second ), &
     eL         = 0.0e0_DP * Unit_E, &
     eR         = 3.0e2_DP * Unit_E, &
-    !eL         = 2.63183d0 * Unit_E, &
-    !eR         = 335.368d0 * Unit_E, &
     !ZoomE      = 1.183081754893913_DP
     ZoomE      = 1.266038160710160d0
 
@@ -286,30 +283,30 @@ PROGRAM NeutrinoOpacities
   ! --- Initialize Opacities ---
 
   CALL TimersStart( Timer_ReadOpacities )
-  CALL InitializeOpacities_TABLE &
-         ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
-           OpacityTableName_Iso_Option  &
-             = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
-           OpacityTableName_NES_Option &
-             = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
-           OpacityTableName_Pair_Option &
-             = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
-           OpacityTableName_Brem_Option &
-             = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
-           Verbose_Option = .TRUE. ) 
   !CALL InitializeOpacities_TABLE &
   !       ( OpacityTableName_EmAb_Option &
-  !           = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-EmAb.h5', &
   !         OpacityTableName_Iso_Option  &
-  !           = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5',  &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-Iso.h5',  &
   !         OpacityTableName_NES_Option &
-  !           = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5',  &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-NES.h5',  &
   !         OpacityTableName_Pair_Option &
-  !           = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
+  !           = 'wl-Op-LS220-25-50-100-E40-B85-Pair.h5', &
   !         OpacityTableName_Brem_Option &
-  !           = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5', &
+  !           = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
   !         Verbose_Option = .TRUE. ) 
+  CALL InitializeOpacities_TABLE &
+         ( OpacityTableName_EmAb_Option &
+             = 'wl-Op-EmAb.h5', &
+           OpacityTableName_Iso_Option  &
+             = 'wl-Op-Iso.h5',  &
+           OpacityTableName_NES_Option &
+             = 'wl-Op-NES.h5',  &
+           OpacityTableName_Pair_Option &
+             = 'wl-Op-Pair.h5', &
+           OpacityTableName_Brem_Option &
+             = 'wl-Op-Brem.h5', &
+           Verbose_Option = .TRUE. ) 
   CALL TimersStop( Timer_ReadOpacities )
 
   ! --- Initialize distributions to zero ---
