@@ -120,8 +120,10 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_Epsilon     = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_z           = 10.0_DP * SqrtTiny
+  REAL(DP), PARAMETER :: vMax               = One - 1.0e-05_DP
+  REAL(DP), PARAMETER :: kMax               = Two * vMax / ( One + vMax**2 )
 
-  INTEGER, PARAMETER :: MAX_IT = 30
+  INTEGER, PARAMETER :: MAX_IT = 35
 
   INTEGER, PARAMETER :: iLeaf = 0
 
@@ -149,10 +151,11 @@ CONTAINS
     INTEGER     , INTENT(in), OPTIONAL :: &
       IndexTable_Option(:,:)
 
-    INTEGER :: N, ErrorExists, iX1, iX2, iX3, iNXX
-    INTEGER :: iNX, iErr(SIZE(uD))
-    INTEGER :: ITERATION(SIZE(uD))
-    INTEGER :: Mask(SIZE(uD))
+    INTEGER  :: N, ErrorExists, iX1, iX2, iX3, iNXX
+    INTEGER  :: iNX, iErr(SIZE(uD))
+    INTEGER  :: ITERATION(SIZE(uD))
+    INTEGER  :: Mask(SIZE(uD))
+    REAL(DP) :: X1, X2, X3, dX1, dX2, dX3
 
     CHARACTER(2) :: iDimX
     INTEGER      :: iX_B0(3), iX_E0(3)
@@ -160,10 +163,10 @@ CONTAINS
     iDimX = 'NA'
     IF( PRESENT( iDimX_Option ) ) iDimX = iDimX_Option
 
-    iX_B0 = -999
+    iX_B0 = -99
     IF( PRESENT( iX_B0_Option ) ) iX_B0 = iX_B0_Option
 
-    iX_E0 = -999
+    iX_E0 = -99
     IF( PRESENT( iX_E0_Option ) ) iX_E0 = iX_E0_Option
 
     N           = SIZE(uD)
@@ -253,7 +256,19 @@ CONTAINS
 
         IF( iErr(iNX) .NE. 0 .OR. ITERATION(iNX) .EQ. MAX_IT )THEN
 
-          IF( PRESENT( iDimX_Option ) )THEN
+          iNXX = -99
+          iX1  = -99
+          iX2  = -99
+          iX3  = -99
+
+          X1  = -HUGE( One )
+          X2  = -HUGE( One )
+          X3  = -HUGE( One )
+          dX1 = -HUGE( One )
+          dX2 = -HUGE( One )
+          dX3 = -HUGE( One )
+
+          IF( PRESENT( iDimX_Option ) .AND. PRESENT( IndexTable_Option ) )THEN
 
             IF     ( iDimX .EQ. 'X1' )THEN
               iNXX = IndexTable_Option(1,iNX)
@@ -272,28 +287,27 @@ CONTAINS
               iX3  = IndexTable_Option(4,iNX)
             END IF
 
-            WRITE(*,*)
+            X1  = MeshX(1) % Center(iX1)
+            X2  = MeshX(2) % Center(iX2)
+            X3  = MeshX(3) % Center(iX3)
 
-            WRITE(*,*) 'iDimX: ', iDimX
-            WRITE(*,*) 'iX_B0:' , iX_B0
-            WRITE(*,*) 'iX_E0:' , iX_E0
-            WRITE(*,*)
-            WRITE(*,*) 'iNX: ', iNXX
-            WRITE(*,*) 'iX1, X1_C, dX1: ', &
-              iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
-            WRITE(*,*) 'iX2, X2_C, dX2: ', &
-              iX2, MeshX(2) % Center(iX2), MeshX(2) % Width(iX2)
-            WRITE(*,*) 'iX3, X3_C, dX3: ', &
-              iX3, MeshX(3) % Center(iX3), MeshX(3) % Width(iX3)
+            dX1 = MeshX(1) % Width (iX1)
+            dX2 = MeshX(2) % Width (iX2)
+            dX3 = MeshX(3) % Width (iX3)
 
           END IF
 
           CALL DescribeError_Euler &
             ( iErr(iNX), &
-              Int_Option = [ iNX, ITERATION(iNX) ], &
-              Real_Option = [ uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
+              Int_Option = [ iNX, ITERATION(iNX), &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNXX, iX1, iX2, iX3 ], &
+              Real_Option = [ X1, X2, X3, dX1, dX2, dX3, &
+                              uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
                               uE(iNX), uNe(iNX), &
-                              Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ] )
+                              Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ], &
+              Char_Option = [ TRIM( iDimX ) ] )
 
         END IF
 
@@ -575,6 +589,13 @@ CONTAINS
 
       r = k
       q = Zero
+
+    END IF
+
+    IF( k .GT. kMax )THEN
+
+      k = kMax
+      r = kMax * ( One + q )
 
     END IF
 
@@ -2338,6 +2359,8 @@ CONTAINS
       END IF
 
     END DO
+
+    IF( ITERATION .EQ. MAX_IT ) iErr = 12
 
     z0 = zc
 
