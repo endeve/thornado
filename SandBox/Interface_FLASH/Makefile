@@ -130,10 +130,10 @@ OBJS += \
 endif
 
 ifeq ($(USE_CUDA),TRUE)
-LIBRARY += \
+OBJS += \
   CudaModule.o
 else ifeq ($(USE_HIP),TRUE)
-LIBRARY += \
+OBJS += \
   HipModule.o
 endif
 
@@ -146,15 +146,15 @@ OBJS += \
 endif
 
 ifeq ($(USE_CUBLAS),TRUE)
-LIBRARY += \
+OBJS += \
   CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_ROCM),TRUE)
-LIBRARY += \
+OBJS += \
   RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
 endif
 
 ifeq ($(USE_MAGMA),TRUE)
-LIBRARY += \
+OBJS += \
   MagmaModule.o
 endif
 
