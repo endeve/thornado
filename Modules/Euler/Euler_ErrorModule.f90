@@ -164,18 +164,18 @@ CONTAINS
             'No Root in Interval'
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(2)
+            'ITERATION:          ', Int_Option(1)
           WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(1)
+            'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,3I6.5)') &
-            'iX_B0: ', Int_Option(2), Int_Option(3), Int_Option(4)
+            'iX_B0: ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
-            'iX_E0: ', Int_Option(5), Int_Option(6), Int_Option(7)
+            'iX_E0: ', Int_Option(6), Int_Option(7), Int_Option(8)
           WRITE(*,'(2x,A,4I5.4)') &
             'iNX, iX1, iX2, iX3: ', &
-             Int_Option(8), Int_Option(9), Int_Option(10), Int_Option(11)
+             Int_Option(9), Int_Option(10), Int_Option(11), Int_Option(12)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
@@ -244,18 +244,18 @@ CONTAINS
             'CF_D .LT. Min_D'
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(2)
+            'ITERATION:          ', Int_Option(1)
           WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(1)
+            'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,3I6.5)') &
-            'iX_B0: ', Int_Option(2), Int_Option(3), Int_Option(4)
+            'iX_B0: ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
-            'iX_E0: ', Int_Option(5), Int_Option(6), Int_Option(7)
+            'iX_E0: ', Int_Option(6), Int_Option(7), Int_Option(8)
           WRITE(*,'(2x,A,4I5.4)') &
             'iNX, iX1, iX2, iX3: ', &
-             Int_Option(8), Int_Option(9), Int_Option(10), Int_Option(11)
+             Int_Option(9), Int_Option(10), Int_Option(11), Int_Option(12)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
@@ -296,18 +296,70 @@ CONTAINS
             'ITERATION .EQ. MAX_IT'
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(2)
+            'ITERATION:          ', Int_Option(1)
           WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(1)
+            'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,3I6.5)') &
-            'iX_B0: ', Int_Option(2), Int_Option(3), Int_Option(4)
+            'iX_B0: ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
-            'iX_E0: ', Int_Option(5), Int_Option(6), Int_Option(7)
+            'iX_E0: ', Int_Option(6), Int_Option(7), Int_Option(8)
           WRITE(*,'(2x,A,4I5.4)') &
             'iNX, iX1, iX2, iX3: ', &
-             Int_Option(8), Int_Option(9), Int_Option(10), Int_Option(11)
+             Int_Option(9), Int_Option(10), Int_Option(11), Int_Option(12)
+          WRITE(*,'(2x,A,SP3ES15.6E3)') &
+            'X1_C, X2_C, X3_C: ', &
+             Real_Option(1), Real_Option(2), Real_Option(3)
+          WRITE(*,'(2x,A,SP3ES15.6E3)') &
+            'dX1, dX2, dX3:    ', &
+             Real_Option(4), Real_Option(5), Real_Option(6)
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'U(iCF_D       ) = ', Real_Option(7), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'U(iCF_S1      ) = ', Real_Option(8), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'U(iCF_S2      ) = ', Real_Option(9), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'U(iCF_S3      ) = ', Real_Option(10), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'U(iCF_E       ) = ', Real_Option(11), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'U(iCF_Ne      ) = ', Real_Option(12), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'G(iGF_Gm_dd_11) = ', Real_Option(13), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'G(iGF_Gm_dd_22) = ', Real_Option(14), '_DP'
+          WRITE(*,'(2x,A,SPES24.16E3,A)') &
+            'G(iGF_Gm_dd_33) = ', Real_Option(15), '_DP'
+          WRITE(*,'(2x,A)') TRIM( Message )
+
+          CALL thornado_abort
+
+      CASE( 13 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: Euler_UtilitiesModule_Relativistic'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ComputePrimitive_Scalar'
+           WRITE(*,'(2x,A)') &
+            'NANS'
+          WRITE(*,*)
+          WRITE(*,'(2x,A,I8.8)') &
+            'ITERATION:          ', Int_Option(1)
+          WRITE(*,'(2x,A,I8.8)') &
+            'iNX (Packed array): ', Int_Option(2)
+          WRITE(*,'(2x,A,A)') &
+            'iDimX: ', TRIM( Char_Option(1) )
+          WRITE(*,'(2x,A,3I6.5)') &
+            'iX_B0: ', Int_Option(3), Int_Option(4), Int_Option(5)
+          WRITE(*,'(2x,A,3I6.5)') &
+            'iX_E0: ', Int_Option(6), Int_Option(7), Int_Option(8)
+          WRITE(*,'(2x,A,4I5.4)') &
+            'iNX, iX1, iX2, iX3: ', &
+             Int_Option(9), Int_Option(10), Int_Option(11), Int_Option(12)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)

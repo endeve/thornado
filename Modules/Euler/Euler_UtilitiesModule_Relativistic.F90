@@ -226,6 +226,10 @@ CONTAINS
                ITERATION_Option = ITERATION(iNX), &
                iErr_Option      = iErr     (iNX) )
 
+      IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
+          .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
+          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) ) iErr(iNX) = 13
+
       ErrorExists = ErrorExists + iErr(iNX)
 
     END DO
@@ -299,7 +303,7 @@ CONTAINS
 
           CALL DescribeError_Euler &
             ( iErr(iNX), &
-              Int_Option = [ iNX, ITERATION(iNX), &
+              Int_Option = [ ITERATION(iNX), iNX, &
                              iX_B0(1), iX_B0(2), iX_B0(3), &
                              iX_E0(1), iX_E0(2), iX_E0(3), &
                              iNXX, iX1, iX2, iX3 ], &
