@@ -273,8 +273,6 @@ contains
 
     call CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
-write(*,*) size(MeshE % NodesE)
-stop
 
     call CreateGeometryFieldsE &
            ( nE, swE, Verbose_Option = Verbose )
