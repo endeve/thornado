@@ -159,9 +159,9 @@ CONTAINS
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
              Mask_Option = Mask, &
              iDimX_Option = iDimX_Option, &
-             IndexTable_Option = IndexTable_Option)!, &
-           !  iX_B0_Option = iX_B0, &
-           !  iX_E0_Option = iX_E0 )
+             IndexTable_Option = IndexTable_Option, &
+             iX_B0_Option = iX_B0, &
+             iX_E0_Option = iX_E0 )
 
 #else
 
@@ -190,10 +190,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
-    ! --- Only needed for relativistic code ---
-    REAL(DP), INTENT(in) :: AF_P
-
 #ifdef HYDRO_RELATIVISTIC
+
+    REAL(DP), INTENT(in) :: AF_P
 
     CALL ComputeConserved_Euler_Relativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -226,10 +225,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
-    ! --- Only needed for relativistic code ---
-    REAL(DP), INTENT(in) :: AF_P(:)
-
 #ifdef HYDRO_RELATIVISTIC
+
+    REAL(DP), INTENT(in) :: AF_P(:)
 
     CALL ComputeConserved_Euler_Relativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -265,6 +263,8 @@ CONTAINS
 
     INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
+#ifdef HYDRO_RELATIVISTIC
+
     IF( PRESENT( Mask_Option ) )THEN
       Mask = Mask_Option
     ELSE
@@ -272,10 +272,8 @@ CONTAINS
       Mask = iLeaf
     END IF
 
-#ifdef HYDRO_RELATIVISTIC
-
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A)!, Mask_Option = Mask )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, Mask_Option = Mask )
 
 #else
 
@@ -304,14 +302,14 @@ CONTAINS
 
     INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
+#ifdef HYDRO_RELATIVISTIC
+
     IF( PRESENT( Mask_Option ) )THEN
       Mask = Mask_Option
     ELSE
       ! Every element is a leaf element
       Mask = iLeaf
     END IF
-
-#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeTimeStep_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &

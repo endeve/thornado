@@ -102,10 +102,13 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -121,14 +124,19 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uPF => MF_uPF(iLevel) % DataPtr( MFI )
-        uAF => MF_uAF(iLevel) % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        uPF      => MF_uPF(iLevel) % DataPtr( MFI )
+        uAF      => MF_uAF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -171,7 +179,7 @@ CONTAINS
         CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uAF, A )
 
         CALL ComputeFromConserved_Euler &
-               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A )
+               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, Mask_Option = FineMask )
 
         CALL thornado2amrex_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uPF, P )
 
@@ -200,6 +208,10 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iMF_FineMask )
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO
 

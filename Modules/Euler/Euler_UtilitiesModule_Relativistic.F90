@@ -123,6 +123,8 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   INTEGER, PARAMETER :: MAX_IT = 30
 
+  INTEGER, PARAMETER :: iLeaf = 0
+
   ! --- User must set this in fluid initialization ---
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
@@ -134,13 +136,14 @@ CONTAINS
       pD, pV1, pV2, pV3, pE, pNe, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       Mask_Option, &
-      iDimX_Option, IndexTable_Option )
+      iDimX_Option, IndexTable_Option, &
+      iX_B0_Option, iX_E0_Option )
 
     REAL(DP)    , INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
     REAL(DP)    , INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
     REAL(DP)    , INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
-      Mask_Option(:)
+      Mask_Option(:), iX_B0_Option(3), iX_E0_Option(3)
     CHARACTER(2), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
@@ -150,6 +153,18 @@ CONTAINS
     INTEGER :: iNX, iErr(SIZE(uD))
     INTEGER :: ITERATION(SIZE(uD))
     INTEGER :: Mask(SIZE(uD))
+
+    CHARACTER(2) :: iDimX
+    INTEGER      :: iX_B0(3), iX_E0(3)
+
+    iDimX = 'NA'
+    IF( PRESENT( iDimX_Option ) ) iDimX = iDimX_Option
+
+    iX_B0 = -999
+    IF( PRESENT( iX_B0_Option ) ) iX_B0 = iX_B0_Option
+
+    iX_E0 = -999
+    IF( PRESENT( iX_E0_Option ) ) iX_E0 = iX_E0_Option
 
     N           = SIZE(uD)
     ErrorExists = 0
@@ -240,17 +255,17 @@ CONTAINS
 
           IF( PRESENT( iDimX_Option ) )THEN
 
-            IF     ( iDimX_Option .EQ. 'X1' )THEN
+            IF     ( iDimX .EQ. 'X1' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX2  = IndexTable_Option(2,iNX)
               iX3  = IndexTable_Option(3,iNX)
               iX1  = IndexTable_Option(4,iNX)
-            ELSE IF( iDimX_Option .EQ. 'X2' )THEN
+            ELSE IF( iDimX .EQ. 'X2' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX1  = IndexTable_Option(2,iNX)
               iX3  = IndexTable_Option(3,iNX)
               iX2  = IndexTable_Option(4,iNX)
-            ELSE IF( iDimX_Option .EQ. 'X3' )THEN
+            ELSE IF( iDimX .EQ. 'X3' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX1  = IndexTable_Option(2,iNX)
               iX2  = IndexTable_Option(3,iNX)
@@ -259,6 +274,10 @@ CONTAINS
 
             WRITE(*,*)
 
+            WRITE(*,*) 'iDimX: ', iDimX
+            WRITE(*,*) 'iX_B0:' , iX_B0
+            WRITE(*,*) 'iX_E0:' , iX_E0
+            WRITE(*,*)
             WRITE(*,*) 'iNX: ', iNXX
             WRITE(*,*) 'iX1, X1_C, dX1: ', &
               iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
@@ -673,7 +692,7 @@ CONTAINS
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
   SUBROUTINE ComputeFromConserved_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, Mask_Option )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -683,6 +702,10 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
     INTEGER :: iNX, iX1, iX2, iX3, iAF, ErrorExists
     INTEGER :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
@@ -694,6 +717,13 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ComputeFromConserved )
 
+    IF( PRESENT( Mask_Option ) )THEN
+      Mask = Mask_Option
+    ELSE
+      ! Every element is a leaf element
+      Mask = iLeaf
+    END IF
+
     ErrorExists = 0
 
     ! --- Update primitive variables, pressure, and sound speed ---
@@ -702,11 +732,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask ) &
     !$OMP MAP( alloc: P, A, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask ) &
     !$ACC CREATE(     P, A, ITERATION, iErr )
 #endif
 
@@ -742,7 +772,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
+    !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr, Mask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP REDUCTION( +:ErrorExists )
@@ -754,6 +784,8 @@ CONTAINS
 
       ITERATION(iNX,iX1,iX2,iX3) = 0
       iErr     (iNX,iX1,iX2,iX3) = 0
+
+      IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( U(iNX,iX1,iX2,iX3,iCF_D ),        &
@@ -822,11 +854,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    P, A, ITERATION, iErr, ErrorExists ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      P, A, ITERATION, iErr, ErrorExists ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CFC_CopyOut )
