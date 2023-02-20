@@ -330,6 +330,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nAR, 1:nSpecies) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uAR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uAR )
+#endif
+
   END SUBROUTINE CreateRadiationFields_Auxiliary
 
 
@@ -355,6 +363,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nGR, 1:nSpecies) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uGR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uGR )
+#endif
+
   END SUBROUTINE CreateRadiationFields_Gray
 
 
@@ -378,6 +394,14 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nDR) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uDR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uDR )
+#endif
+
   END SUBROUTINE CreateRadiationFields_Diagnostic
 
 
@@ -385,10 +409,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCR, uPR )
+    !$OMP MAP( release: uCR, uPR, uAR, uGR, uDR, &
+    !$OMP               unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( uCR, uPR )
+    !$ACC DELETE( uCR, uPR, uPR, uAR, uGR, uDR, &
+    !$ACC         unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #endif
 
     DEALLOCATE( uCR, uPR, uAR, uGR, uDR )
@@ -426,6 +452,14 @@ CONTAINS
       unitsGR(iGR_RMS) = MeV
 
     END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
+#endif
 
   END SUBROUTINE SetUnitsRadiationFields
 

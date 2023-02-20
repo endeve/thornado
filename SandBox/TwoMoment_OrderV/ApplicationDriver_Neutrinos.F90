@@ -328,12 +328,6 @@ PROGRAM ApplicationDriver_Neutrinos
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
-
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
@@ -352,12 +346,6 @@ PROGRAM ApplicationDriver_Neutrinos
     END IF
 
   END DO
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
