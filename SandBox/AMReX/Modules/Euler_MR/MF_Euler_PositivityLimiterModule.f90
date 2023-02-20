@@ -45,6 +45,7 @@ MODULE MF_Euler_PositivityLimiterModule
 
   USE MF_KindModule, ONLY: &
     DP, &
+    Zero, &
     One
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
@@ -52,11 +53,6 @@ MODULE MF_Euler_PositivityLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    UsePositivityLimiter_Euler, &
-    Min_1_Euler, &
-    Min_2_Euler, &
-    D_Min_Euler_PL, &
-    IntE_Min_Euler_PL, &
     EquationOfState, &
     nLevels, &
     UseTiling, &
@@ -88,15 +84,17 @@ MODULE MF_Euler_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE InitializePositivityLimiter_Euler_MF
+  SUBROUTINE InitializePositivityLimiter_Euler_MF &
+    ( D_Min_Euler_PL_Option, IntE_Min_Euler_PL_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: D_Min_Euler_PL_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IntE_Min_Euler_PL_Option
 
     TYPE(amrex_parmparse) :: PP
 
-    REAL(DP) :: Min_1, Min_2
+    REAL(DP) :: Min_1, Min_2, D_Min_Euler_PL, IntE_Min_Euler_PL
 
     UsePositivityLimiter = .TRUE.
-    Min_1                = 1.0e-12_DP
-    Min_2                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
       CALL PP % query( 'UsePositivityLimiter_Euler', &
                         UsePositivityLimiter )
@@ -116,13 +114,30 @@ CONTAINS
 
     ELSE
 
+      Min_1 = 1.0e-12_DP
+      Min_2 = 1.0e-12_DP
+      CALL amrex_parmparse_build( PP, 'PL' )
+        CALL PP % query( 'Min_1_Euler', &
+                          Min_1 )
+        CALL PP % query( 'Min_2_Euler', &
+                          Min_2 )
+      CALL amrex_parmparse_destroy( PP )
+
+      D_Min_Euler_PL = Zero
+      IF( PRESENT( D_Min_Euler_PL_Option ) ) &
+        D_Min_Euler_PL = D_Min_Euler_PL_Option
+
+      IntE_Min_Euler_PL = Zero
+      IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
+        IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
+
       CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
-               Verbose_Option = amrex_parallel_ioprocessor(), &
-               Min_1_Option = Min_1_Euler, &
-               Min_2_Option = Min_2_Euler, &
-               D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
-               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
+               Verbose_Option              = amrex_parallel_ioprocessor(), &
+               Min_1_Option                = Min_1, &
+               Min_2_Option                = Min_2, &
+               D_Min_Euler_PL_Option       = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option    = IntE_Min_Euler_PL )
 
     END IF
 
