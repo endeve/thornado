@@ -125,7 +125,7 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   INTEGER, PARAMETER :: iLeaf = 0
 
-  ! --- User must set this in fluid initialization ---
+  ! --- User must set this in fluid initialization and upload to GPU ---
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
 CONTAINS
@@ -175,7 +175,7 @@ CONTAINS
       Mask = Mask_Option
     ELSE
       ! Every element is a leaf element
-      Mask = 0
+      Mask = iLeaf
     END IF
 
     CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
@@ -949,7 +949,7 @@ CONTAINS
       Mask = Mask_Option
     ELSE
       ! Every element is a leaf element
-      Mask = 0
+      Mask = iLeaf
     END IF
 
     ASSOCIATE &
