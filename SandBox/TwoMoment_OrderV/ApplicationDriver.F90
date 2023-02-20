@@ -259,7 +259,7 @@ PROGRAM ApplicationDriver
       nE    = 32
       eL    = 0.0d0
       eR    = 5.0d1
-      bcE   = 10
+      bcE   = 11
       zoomE = 1.0_DP
 
       nNodes = 2

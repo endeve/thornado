@@ -248,8 +248,6 @@ CONTAINS
 
     END IF
 
-    CALL InitializePositivityLimiter_Euler_MF
-
     CALL InitializeSlopeLimiter_Euler_MF
 
     CALL amrex_init_virtual_functions &
@@ -283,6 +281,8 @@ CONTAINS
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
     END IF
+
+    CALL InitializePositivityLimiter_Euler_MF
 
     CALL AverageDown( MF_uGF, MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
