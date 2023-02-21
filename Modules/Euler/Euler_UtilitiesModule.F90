@@ -190,9 +190,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
-#ifdef HYDRO_RELATIVISTIC
-
     REAL(DP), INTENT(in) :: AF_P
+
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeConserved_Euler_Relativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -225,9 +225,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
-#ifdef HYDRO_RELATIVISTIC
-
     REAL(DP), INTENT(in) :: AF_P(:)
+
+#ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeConserved_Euler_Relativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
