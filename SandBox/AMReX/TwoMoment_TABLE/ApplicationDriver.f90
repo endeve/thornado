@@ -133,23 +133,10 @@ num = 1
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
                MF_uCR_Option = MF_uCR, &
-               MF_uPR_Option = MF_uPR )
+               MF_uPR_Option = MF_uPR, &
+               PlotFileNumber_Option = num )
 
 
-
-!!$      CALL WriteFieldsAMReX_PlotFile_Euler &
-!!$             ( t_new(0), StepNo, &
-!!$               MF_uGF_Option = MF_uGF, &
-!!$               MF_uCF_Option = MF_uCF, &
-!!$               MF_uPF_Option = MF_uPF, &
-!!$               MF_uAF_Option = MF_uAF, &
-!!$               num_Option = num )
-
-!      CALL ComputeTally_Euler_MF &
-!             ( t_new, MF_uGF, MF_uCF, Verbose_Option = .FALSE. )
-
-!      CALL ComputeTally_TwoMoment_MF( amrex_geom, MF_uGF, MF_uCF, MF_uCR, &
-!                                    t_new(0), Verbose_Option = .FALSE. )
 
       num = num + 1
       wrt = .FALSE.
@@ -167,6 +154,8 @@ num = 1
   END IF
 
   CALL ComputeFromConserved_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
+  CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t_new, &
@@ -187,7 +176,6 @@ num = 1
                MF_uCR_Option = MF_uCR, &
                MF_uPR_Option = MF_uPR )
 
-  CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
 
 
