@@ -62,11 +62,11 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout) :: &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
     INTEGER,  INTENT(inout), OPTIONAL :: &
       ITERATION_Option
@@ -117,11 +117,11 @@ CONTAINS
       Mask_Option, &
       iDimX_Option, IndexTable_Option, iX_B0_Option, iX_E0_Option )
 
-    REAL(DP)    , INTENT(in)  :: &
+    REAL(DP)    , INTENT(inout) :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
-    REAL(DP)    , INTENT(out) :: &
+    REAL(DP)    , INTENT(out)   :: &
       PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
-    REAL(DP)    , INTENT(in)  :: &
+    REAL(DP)    , INTENT(in)    :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       Mask_Option(:), iX_B0_Option(3), iX_E0_Option(3)
@@ -250,12 +250,13 @@ CONTAINS
   SUBROUTINE ComputeFromConserved_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, Mask_Option )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER , INTENT(in), OPTIONAL :: &
@@ -288,14 +289,15 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, Mask_Option )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       CFL
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       TimeStep
     INTEGER , INTENT(in), OPTIONAL :: &
       Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)

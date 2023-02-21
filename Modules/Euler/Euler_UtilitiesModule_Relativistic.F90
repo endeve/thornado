@@ -141,9 +141,9 @@ CONTAINS
       iDimX_Option, IndexTable_Option, &
       iX_B0_Option, iX_E0_Option )
 
-    REAL(DP)    , INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-    REAL(DP)    , INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
-    REAL(DP)    , INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    REAL(DP)    , INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
+    REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+    REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       Mask_Option(:), iX_B0_Option(3), iX_E0_Option(3)
     CHARACTER(2), INTENT(in), OPTIONAL :: &
@@ -329,9 +329,9 @@ CONTAINS
 !!$      pD, pV1, pV2, pV3, pE, pNe, &
 !!$      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 !!$
-!!$    REAL(DP), INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-!!$    REAL(DP), INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
-!!$    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+!!$    REAL(DP), INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
+!!$    REAL(DP), INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+!!$    REAL(DP), INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
 !!$
 !!$    INTEGER  :: N, iX, ErrorExists
 !!$    INTEGER  :: iErr(SIZE(uD))
@@ -541,7 +541,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(inout) :: &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(in)    :: &
       GF_Gm11, GF_Gm22, GF_Gm33
@@ -719,12 +719,13 @@ CONTAINS
   SUBROUTINE ComputeFromConserved_Euler_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, Mask_Option )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER , INTENT(in), OPTIONAL :: &
@@ -946,14 +947,15 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, Mask_Option )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       CFL
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       TimeStep
     INTEGER , INTENT(in), OPTIONAL :: &
       Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
