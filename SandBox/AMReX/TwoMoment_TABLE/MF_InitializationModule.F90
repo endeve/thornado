@@ -1320,9 +1320,13 @@ CONTAINS
 !    REAL(DP), PARAMETER :: D_0   = 1.022d13 * Gram / Centimeter**3
 !    REAL(DP), PARAMETER :: T_0   = 1.617d1 * MeV
 !    REAL(DP), PARAMETER :: Y_0   = 0.1421_DP
+    
+!    REAL(DP), PARAMETER :: D_0   = 1.032d14 * Gram / Centimeter**3
+!    REAL(DP), PARAMETER :: T_0   = 1.50d1 * MeV
+!    REAL(DP), PARAMETER :: Y_0   = 0.27_DP
 
 
-    REAL(DP), PARAMETER :: Mu_0  = -1.0_DP ! \in [-1,1]
+    REAL(DP), PARAMETER :: Mu_0  = 0.0_DP ! \in [-1,1]
 
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % getarr( 'V_0', &

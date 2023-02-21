@@ -1232,15 +1232,15 @@ m=0
     G_uu(0,0) = - 1.0_DP / alp**2
     G_uu(1:3,0) = B(1:3) / alp**2
     G_uu(0,1:3) = B(1:3) / alp**2
-    G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)
-    G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)
-    G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)
-    G_uu(1,2) = - alp**2 * B(1) * B(2)
-    G_uu(1,3) = - alp**2 * B(1) * B(3)
-    G_uu(2,1) = - alp**2 * B(1) * B(2)
-    G_uu(3,1) = - alp**2 * B(1) * B(3)
-    G_uu(2,3) = - alp**2 * B(2) * B(3)
-    G_uu(3,2) = - alp**2 * B(2) * B(3)
+    G_uu(1,1) = 1.0_DP / Gm_dd_11 - B(1) * B(1) / alp**2
+    G_uu(2,2) = 1.0_DP / Gm_dd_22 - B(2) * B(2) / alp**2
+    G_uu(3,3) = 1.0_DP / Gm_dd_33 - B(3) * B(3) / alp**2
+    G_uu(1,2) = - B(1) * B(2) / alp**2
+    G_uu(1,3) = - B(1) * B(3) / alp**2
+    G_uu(2,1) = - B(1) * B(2) / alp**2
+    G_uu(3,1) = - B(1) * B(3) / alp**2
+    G_uu(2,3) = - B(2) * B(3) / alp**2
+    G_uu(3,2) = - B(2) * B(3) / alp**2
 
     G(0) = ( V1 * G1 + V2 * G2 + V3 * G3 ) / alp
     G(1) = G1
@@ -1343,42 +1343,6 @@ m=0
 
   END SUBROUTINE SolveTheta_Bisection
 
-!  SUBROUTINE PointsZtoPointsX( nNodes, iPT_Z, iPT_X )
-!
-!
-!    INTEGER, INTENT(in)  :: nNodes, iPT_Z
-!    INTEGER, INTENT(out) :: iPT_X
-!
-!    IF (nNodes .EQ. 2) THEN
-!
-!      IF(iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 10) THEN
-!        iPT_X = 1
-!      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 7) THEN
-!        iPT_X = 2
-!      ELSE IF(iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 8) THEN
-!        iPT_X = 3
-!      ELSE IF(iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 12) THEN
-!        iPT_X = 4
-!      END IF
-!
-!    ELSE IF(nNodes .EQ. 3) THEN
-!
-!      IF(iPT_Z .EQ. 16 .OR. iPT_Z .EQ. 17 .OR. iPT_Z .EQ. 18) THEN
-!        iPT_X = 1
-!      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 10 .OR. iPT_Z .EQ. 13) THEN
-!        iPT_X = 2
-!      ELSE IF(iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 14) THEN
-!        iPT_X = 3
-!      ELSE IF(iPT_Z .EQ. 7 .OR. iPT_Z .EQ. 8 .OR. iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 12 .OR. iPT_Z .EQ. 15) THEN
-!        iPT_X = 4
-!      ELSE IF(iPT_Z .EQ. 19 .OR. iPT_Z .EQ. 20 .OR. iPT_Z .EQ. 21) THEN
-!        iPT_X = 5
-!      END IF
-!
-!    END IF
-!
-!  END SUBROUTINE
-!
   SUBROUTINE CheckCellAverageRealizability(iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
               V_1_P, V_2_P, V_3_P, G_11_P, G_22_P, G_33_P, &
               A_P, B1_P, B2_P, B3_P, RealizableCellAverage)
@@ -1649,15 +1613,15 @@ m=0
             G_uu(0,0) = - 1.0_DP / alp**2
             G_uu(1:3,0) = B(1:3) / alp**2
             G_uu(0,1:3) = B(1:3) / alp**2
-            G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)
-            G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)
-            G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)
-            G_uu(1,2) = - alp**2 * B(1) * B(2)
-            G_uu(1,3) = - alp**2 * B(1) * B(3)
-            G_uu(2,1) = - alp**2 * B(1) * B(2)
-            G_uu(3,1) = - alp**2 * B(1) * B(3)
-            G_uu(2,3) = - alp**2 * B(2) * B(3)
-            G_uu(3,2) = - alp**2 * B(2) * B(3)
+            G_uu(1,1) = 1.0_DP / Gm_dd_11 - B(1) * B(1) / alp**2
+            G_uu(2,2) = 1.0_DP / Gm_dd_22 - B(2) * B(2) / alp**2
+            G_uu(3,3) = 1.0_DP / Gm_dd_33 - B(3) * B(3) / alp**2
+            G_uu(1,2) = - B(1) * B(2) / alp**2
+            G_uu(1,3) = - B(1) * B(3) / alp**2
+            G_uu(2,1) = - B(1) * B(2) / alp**2
+            G_uu(3,1) = - B(1) * B(3) / alp**2
+            G_uu(2,3) = - B(2) * B(3) / alp**2
+            G_uu(3,2) = - B(2) * B(3) / alp**2
 
             G(1) = G1_K(iZ1,iZ2,iZ3,iZ4,iS)
             G(2) = G2_K(iZ1,iZ2,iZ3,iZ4,iS)

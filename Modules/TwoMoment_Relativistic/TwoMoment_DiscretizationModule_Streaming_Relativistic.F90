@@ -42,6 +42,7 @@
     MeshX
   USE GeometryFieldsModuleE, ONLY: &
     nGE, &
+    iGE_Ep1, &
     iGE_Ep2, &
     iGE_Ep3
   USE GeometryFieldsModule, ONLY: &
@@ -66,7 +67,7 @@
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, &
+    nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
@@ -269,12 +270,12 @@ CONTAINS
     END DO
     END DO
 
-
+    OffGridFlux_TwoMoment = Zero
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              SurfaceFlux_X1, Verbose_Option = Verbose )
-   CALL ComputeIncrement_Divergence_X2 &
+    CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              SurfaceFlux_X2, Verbose_Option = Verbose )
 
@@ -300,6 +301,7 @@ CONTAINS
              Verbose_Option = Verbose )
 
     ! --- Multiply Inverse Mass Matrix ---
+
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -472,6 +474,13 @@ CONTAINS
                      nSpecies, &
                      iZ_B0(2)  :iZ_E0(2)+1)
     REAL(DP) :: &
+      NumericalFlux2(nDOF_X1,nCR, &
+                     iZ_B0(1)  :iZ_E0(1)  , &
+                     iZ_B0(3)  :iZ_E0(3)  , &
+                     iZ_B0(4)  :iZ_E0(4)  , &
+                     nSpecies, &
+                     iZ_B0(2)  :iZ_E0(2)+1)
+    REAL(DP) :: &
       Flux_q        (nDOFZ,nCR, &
                      iZ_B0(1)  :iZ_E0(1)  , &
                      iZ_B0(3)  :iZ_E0(3)  , &
@@ -489,9 +498,9 @@ CONTAINS
             nSpecies, &
             iZ_B0(2)  :iZ_E0(2)  )
 
-    INTEGER :: nZP(4), nZP_X(4)
-    LOGICAL :: Verbose
-
+    INTEGER  :: nZP(4), nZP_X(4)
+    LOGICAL  :: Verbose
+    REAL(DP) :: vsq, W
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
@@ -922,6 +931,7 @@ CONTAINS
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = NumericalFlux_LLF &
               ( uCR_X1_L(iCR), uCR_X1_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+
         SurfaceFlux_X1(iNodeZ_X1,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
           = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
           * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
@@ -934,8 +944,54 @@ CONTAINS
 
       END DO
 
+      ! --- Energy ---
+      
+      vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
+          + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+
+      W = 1.0_DP / SQRT( 1.0_DP - vsq )
+
+      NumericalFlux2(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( W *   NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) &
+                + uV1_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X1,iCR_G1,iZ1,iZ3,iZ4,iS,iZ2) &
+                + uV2_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X1,iCR_G2,iZ1,iZ3,iZ4,iS,iZ2) &
+                + uV3_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X1,iCR_G3,iZ1,iZ3,iZ4,iS,iZ2) )
+
+      ! --- Momentum 1 ---
+
+      NumericalFlux2(iNodeZ_X1,iCR_G1,iZ1,iZ3,iZ4,iS,iZ2) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X1,iCR_G1,iZ1,iZ3,iZ4,iS,iZ2) &
+                + W * Gm_dd_11_F(iX_F) * uV1_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) )
+
+      ! --- Momentum 2 ---
+
+      NumericalFlux2(iNodeZ_X1,iCR_G2,iZ1,iZ3,iZ4,iS,iZ2) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X1,iCR_G2,iZ1,iZ3,iZ4,iS,iZ2) &
+                + W * Gm_dd_22_F(iX_F) * uV2_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) )
+
+      ! --- Momentum 3 ---
+
+      NumericalFlux2(iNodeZ_X1,iCR_G3,iZ1,iZ3,iZ4,iS,iZ2) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X1,iCR_G3,iZ1,iZ3,iZ4,iS,iZ2) &
+                + W * Gm_dd_33_F(iX_F) * uV3_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X1,iCR_N,iZ1,iZ3,iZ4,iS,iZ2) )
+
+
+
+
 
     END DO
+
 
 
     ! --- Surface Contributions ---
@@ -953,6 +1009,64 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), &
              nDOF_X1, One,  dU_X1, nDOFZ )
+
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X1 = 1, nDOF_X1
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              + NumericalFlux2(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X1 = 1, nDOF_X1
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              - NumericalFlux2(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+
+
+
+
+
 
 
     !--------------------
@@ -1254,6 +1368,13 @@ CONTAINS
                      nSpecies, &
                      iZ_B0(3)  :iZ_E0(3)+1)
     REAL(DP) :: &
+      NumericalFlux2 (nDOF_X2,nCR, &
+                     iZ_B0(1)  :iZ_E0(1)  , &
+                     iZ_B0(2)  :iZ_E0(2)  , &
+                     iZ_B0(4)  :iZ_E0(4)  , &
+                     nSpecies, &
+                     iZ_B0(3)  :iZ_E0(3)+1)
+    REAL(DP) :: &
       Flux_q        (nDOFZ,nCR, &
                      iZ_B0(1)  :iZ_E0(1)  , &
                      iZ_B0(2)  :iZ_E0(2)  , &
@@ -1271,7 +1392,7 @@ CONTAINS
             nSpecies, &
             iZ_B0(3)  :iZ_E0(3)  )
     LOGICAL :: Verbose
-
+    REAL(DP) :: vsq, W
 
     INTEGER :: nZP(4), nZP_X(4)
 
@@ -1733,6 +1854,54 @@ CONTAINS
 
       END DO
 
+
+
+      vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
+          + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+
+      W = 1.0_DP / SQRT( 1.0_DP - vsq )
+
+      ! --- Energy and Momentum Fluxes for Conservation Tally ---
+
+      ! --- Energy ---
+
+      NumericalFlux2(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( W * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) &
+                + uV1_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X2,iCR_G1,iZ1,iZ2,iZ4,iS,iZ3) &
+                + uV2_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X2,iCR_G2,iZ1,iZ2,iZ4,iS,iZ3) &
+                + uV3_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X2,iCR_G3,iZ1,iZ2,iZ4,iS,iZ3) )
+
+      ! --- Momentum 1 ---
+
+      NumericalFlux2(iNodeZ_X2,iCR_G1,iZ1,iZ2,iZ4,iS,iZ3) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X2,iCR_G1,iZ1,iZ2,iZ4,iS,iZ3) &
+                + W * Gm_dd_11_F(iX_F) * uV1_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) )
+
+      ! --- Momentum 2 ---
+
+      NumericalFlux2(iNodeZ_X2,iCR_G2,iZ1,iZ2,iZ4,iS,iZ3) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X2,iCR_G2,iZ1,iZ2,iZ4,iS,iZ3) &
+                + W * Gm_dd_22_F(iX_F) * uV2_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) )
+
+      ! --- Momentum 3 ---
+
+      NumericalFlux2(iNodeZ_X2,iCR_G3,iZ1,iZ2,iZ4,iS,iZ3) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X2,iCR_G3,iZ1,iZ2,iZ4,iS,iZ3) &
+                + W * Gm_dd_33_F(iX_F) * uV3_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X2,iCR_N,iZ1,iZ2,iZ4,iS,iZ3) )
+
+
+
     END DO
 
 
@@ -1751,6 +1920,58 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X2, - One, L_X2_Up, nDOF_X2, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)+1), &
              nDOF_X2, One,  dU_X2, nDOFZ )
+
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X2 = 1, nDOF_X2
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              + NumericalFlux2(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X2 = 1, nDOF_X2
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              - NumericalFlux2(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
 
 
 
@@ -2056,6 +2277,13 @@ CONTAINS
                      nSpecies, &
                      iZ_B0(4)  :iZ_E0(4)+1)
     REAL(DP) :: &
+      NumericalFlux2 (nDOF_X3,nCR, &
+                     iZ_B0(1)  :iZ_E0(1)  , &
+                     iZ_B0(2)  :iZ_E0(2)  , &
+                     iZ_B0(3)  :iZ_E0(3)  , &
+                     nSpecies, &
+                     iZ_B0(4)  :iZ_E0(4)+1)
+    REAL(DP) :: &
       Flux_q        (nDOFZ,nCR, &
                      iZ_B0(1)  :iZ_E0(1)  , &
                      iZ_B0(2)  :iZ_E0(2)  , &
@@ -2073,6 +2301,8 @@ CONTAINS
             nSpecies, &
             iZ_B0(4)  :iZ_E0(4)  )
     LOGICAL :: Verbose
+    REAL(DP) :: vsq, W
+
 
     INTEGER :: nZP(4), nZP_X(4)
 
@@ -2526,6 +2756,51 @@ CONTAINS
       END DO
 
 
+      vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
+          + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+
+      W = 1.0_DP / SQRT( 1.0_DP - vsq )
+
+      ! --- Energy and Momentum Fluxes for Conservation Tally ---
+
+      ! --- Energy ---
+
+      NumericalFlux2(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( W * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) &
+                + uV1_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
+                + uV2_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X3,iCR_G2,iZ1,iZ2,iZ3,iS,iZ4) &
+                + uV3_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X3,iCR_G3,iZ1,iZ2,iZ3,iS,iZ4) )
+
+      ! --- Momentum 1 ---
+
+      NumericalFlux2(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X3,iCR_G1,iZ1,iZ2,iZ3,iS,iZ4) &
+                + W * Gm_dd_11_F(iX_F) * uV1_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) )
+
+      ! --- Momentum 2 ---
+
+      NumericalFlux2(iNodeZ_X3,iCR_G2,iZ1,iZ2,iZ3,iS,iZ4) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X3,iCR_G2,iZ1,iZ2,iZ3,iS,iZ4) &
+                + W * Gm_dd_22_F(iX_F) * uV2_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) )
+
+      ! --- Momentum 3 ---
+
+      NumericalFlux2(iNodeZ_X3,iCR_G3,iZ1,iZ2,iZ3,iS,iZ4) &
+        = GE(iNodeE,iZ1,iGE_Ep1) &
+            * ( NumericalFlux(iNodeZ_X3,iCR_G3,iZ1,iZ2,iZ3,iS,iZ4) &
+                + W * Gm_dd_33_F(iX_F) * uV3_F(iX_F) &
+                    * NumericalFlux(iNodeZ_X3,iCR_N,iZ1,iZ2,iZ3,iS,iZ4) )
+
+
     END DO
 
 
@@ -2545,7 +2820,57 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)+1), &
              nDOF_X3, One,  dU_X3, nDOFZ )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
 
+    DO iS  = 1       , nSpecies
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X3 = 1, nDOF_X3
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              + NumericalFlux2(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_X3 = 1, nDOF_X3
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              - NumericalFlux2(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
     !--------------------
     ! --- Volume Term ---
@@ -2912,6 +3237,13 @@ CONTAINS
                      nSpecies, &
                      iZ_B0(1)  :iZ_E0(1)+1)
     REAL(DP) :: &
+      NumericalFlux2 (nDOF_E,nCR, &
+                     iZ_B0(2)  :iZ_E0(2)  , &
+                     iZ_B0(3)  :iZ_E0(3)  , &
+                     iZ_B0(4)  :iZ_E0(4)  , &
+                     nSpecies, &
+                     iZ_B0(1)  :iZ_E0(1)+1)
+    REAL(DP) :: &
       Flux_q        (nDOFZ,nCR, &
                      iZ_B0(2)  :iZ_E0(2)  , &
                      iZ_B0(3)  :iZ_E0(3)  , &
@@ -3105,7 +3437,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
 
     ! --- Compute Primitive Fluid ---
 
@@ -3333,6 +3664,48 @@ CONTAINS
 
       END DO
 
+
+
+
+      ! --- Energy ---
+
+      NumericalFlux2(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
+        = EdgeEnergyCubed &
+            * ( W * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
+                + uV1_K(iX_F) &
+                    * NumericalFlux(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
+                + uV2_K(iX_F) &
+                    * NumericalFlux(iNodeZ_E,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
+                + uV3_K(iX_F) &
+                    * NumericalFlux(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) )
+
+      ! --- Momentum 1 ---
+
+      NumericalFlux2(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
+        = EdgeEnergyCubed &
+            * ( NumericalFlux(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
+                + W * Gm_dd_11_K(iX_F) * uV1_K(iX_F) &
+                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
+
+      ! --- Momentum 2 ---
+
+      NumericalFlux2(iNodeZ_E,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
+        = EdgeEnergyCubed &
+            * ( NumericalFlux(iNodeZ_E,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
+                + W * Gm_dd_22_K(iX_F) * uV2_K(iX_F) &
+                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
+
+      ! --- Momentum 3 ---
+
+      NumericalFlux2(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
+        = EdgeEnergyCubed &
+            * ( NumericalFlux(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
+                + W * Gm_dd_33_K(iX_F) * uV3_K(iX_F) &
+                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) ) 
+
+
+
+
     END DO
 
 
@@ -3351,7 +3724,57 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
              nDOF_E, One,  dU_E, nDOFZ )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
 
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_E = 1, nDOF_E
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              + LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              + NumericalFlux2(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1       , nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iCR = 1       , nCR
+
+      DO iNodeZ_E = 1, nDOF_E
+
+        OffGridFlux_TwoMoment(iCR) &
+          = OffGridFlux_TwoMoment(iCR) &
+              - LeptonNumber(iS) &
+                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
+
+        OffGridFlux_TwoMoment(nCR+iCR) &
+          = OffGridFlux_TwoMoment(nCR+iCR) &
+              - NumericalFlux2(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
 
     !--------------------
@@ -5909,7 +6332,6 @@ CONTAINS
 
 
 
-
       END DO
 
 
@@ -6948,9 +7370,18 @@ CONTAINS
         G_uu_munu(iNodeX,0,1,iX1,iX2,iX3) = B(1) / A**2
         G_uu_munu(iNodeX,0,2,iX1,iX2,iX3) = B(2) / A**2
         G_uu_munu(iNodeX,0,3,iX1,iX2,iX3) = B(3) / A**2
+
         G_uu_munu(iNodeX,1,1,iX1,iX2,iX3) = 1.0_DP / G_dd_11 - B(1) * B(1) / A**2
         G_uu_munu(iNodeX,2,2,iX1,iX2,iX3) = 1.0_DP / G_dd_22 - B(2) * B(2) / A**2
         G_uu_munu(iNodeX,3,3,iX1,iX2,iX3) = 1.0_DP / G_dd_33 - B(3) * B(3) / A**2
+
+        G_uu_munu(iNodeX,1,2,iX1,iX2,iX3) =  - B(1) * B(2) / A**2
+        G_uu_munu(iNodeX,1,3,iX1,iX2,iX3) =  - B(1) * B(3) / A**2
+        G_uu_munu(iNodeX,2,1,iX1,iX2,iX3) =  - B(1) * B(2) / A**2
+        G_uu_munu(iNodeX,3,1,iX1,iX2,iX3) =  - B(1) * B(3) / A**2
+        G_uu_munu(iNodeX,2,3,iX1,iX2,iX3) =  - B(2) * B(3) / A**2
+        G_uu_munu(iNodeX,3,2,iX1,iX2,iX3) =  - B(3) * B(2) / A**2
+
       END DO
 
 
