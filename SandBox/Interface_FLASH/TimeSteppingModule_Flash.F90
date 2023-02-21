@@ -922,11 +922,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: swZ, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D ) &
+    !$OMP MAP( tofrom: U ) &
     !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
-    !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
+    !$ACC COPYIN( swZ, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D ) &
+    !$ACC COPY( U ) &
+    !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
