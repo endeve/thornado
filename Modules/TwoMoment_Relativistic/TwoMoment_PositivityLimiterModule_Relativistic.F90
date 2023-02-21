@@ -493,7 +493,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       GX (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                   iZ_B1(4):iZ_E1(4),1:nGF)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(inout) :: &
       U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                   iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
@@ -806,7 +806,7 @@ CONTAINS
                G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_33_Q(iNodeX,iZ2,iZ3,iZ4), &
-               iErr = iErr_Q(iNodeX,iZ2,iZ3,iZ4) )
+               iErr_Option = iErr_Q(iNodeX,iZ2,iZ3,iZ4) )
 
         ErrorExists = ErrorExists + iErr_Q(iNodeX,iZ2,iZ3,iZ4)
 
@@ -905,7 +905,7 @@ CONTAINS
                G_11_P(iP,iZ2,iZ3,iZ4), &
                G_22_P(iP,iZ2,iZ3,iZ4), &
                G_33_P(iP,iZ2,iZ3,iZ4), &
-               iErr = iErr_P(iP,iZ2,iZ3,iZ4) )
+               iErr_Option = iErr_P(iP,iZ2,iZ3,iZ4) )
 
       ErrorExists = ErrorExists + iErr_P(iP,iZ2,iZ3,iZ4)
 
