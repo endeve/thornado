@@ -19,6 +19,10 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     Timer_Streaming_PrimitiveTwoMoment, &
     Timer_Streaming_NumericalFlux, &
     Timer_Streaming_Sources
+  USE ArrayUtilitiesModule, ONLY: &
+    ArraySet, &
+    ArrayGather, &
+    CreatePermuteIndex
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply, &
     EigenvaluesSymmetric3
@@ -66,6 +70,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_SpatialMetric
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
@@ -136,7 +142,24 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   INTEGER :: nZ_X2(4), nX2_X, nX2_Z, nNodesX_X2, nNodesZ_X2
   INTEGER :: nZ_X3(4), nX3_X, nX3_Z, nNodesX_X3, nNodesZ_X3
 
+  INTEGER,  DIMENSION(:), ALLOCATABLE :: &
+    iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R
+
+  INTEGER : GX_B (5), GX_E (5)
+  INTEGER : U_F_B(5), U_F_E(5)
+  INTEGER : U_R_B(7), U_R_E(7)
+
   REAL(DP), PUBLIC :: OffGridFlux_TwoMoment(2*nCR)
+
+  INTERFACE
+    SUBROUTINE FaceVelocity_X &
+      ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
+        USE KindModule, ONLY: DP
+        REAL(DP), INTENT(in)  :: V1_L, V2_L, V3_L
+        REAL(DP), INTENT(in)  :: V1_R, V2_R, V3_R
+        REAL(DP), INTENT(out) :: V1_F, V2_F, V3_F
+    END SUBROUTINE FaceVelocity_X
+  END INTERFACE
 
 CONTAINS
 
@@ -213,33 +236,7 @@ CONTAINS
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU_R, iZ_B1, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(7)
-#endif
-    DO iS  = 1, nSpecies
-    DO iCR = 1, nCR
-    DO iZ4 = iZ_B1(4), iZ_E1(4)
-    DO iZ3 = iZ_B1(3), iZ_E1(3)
-    DO iZ2 = iZ_B1(2), iZ_E1(2)
-    DO iZ1 = iZ_B1(1), iZ_E1(1)
-
-      DO iNodeZ = 1, nDOFZ
-
-        dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ArraySet( Zero, dU_R, SIZE(dU_R) )
 
     OffGridFlux_TwoMoment = Zero
 
@@ -370,6 +367,8 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
+    INTEGER  :: PermuteOrder_Fluid(5)
+    INTEGER  :: PermuteOrder_Radiation(7)
 
     REAL(DP) :: Flux_L(nCR), uCR_X1_L(nCR)
     REAL(DP) :: Flux_R(nCR), uCR_X1_R(nCR)
@@ -483,6 +482,9 @@ CONTAINS
     iZP_B0(3) = iZ_B0(4) ; iZP_E0(3) = iZ_E0(4)
     iZP_B0(4) = iZ_B0(2) ; iZP_E0(4) = iZ_E0(2)
 
+    PermuteOrder_Fluid     = [ 1, 3, 4, 2, 5 ]
+    PermuteOrder_Radiation = [ 1, 2, 4, 5, 7, 3, 6 ]
+
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
         dZ3 => MeshX(2) % Width, &
@@ -490,222 +492,58 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
+    !$OMP MAP( to: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$OMP          PermuteOrder_Fluid, PermuteOrder_Radiation ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
+    !$ACC COPYIN( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$ACC         PermuteOrder_Fluid, PermuteOrder_Radiation ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X1, nDOF_X1, &
+             PermuteOrder_Fluid, PermuteOrder_Radiation, &
              GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
     ! --- Permute Geometry Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iGF = 1, nGF
-    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-
-      DO iNodeX = 1, nDOFX
-
-        GX_K(iNodeX,iZ3,iZ4,iZ2,iGF) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
-    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    CALL ArrayGather( SIZE(GX), SIZE(GX_K), GX, GX_K, iP_GX )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
-    DO iGF = iGF_h_1, iGF_h_3
-
-      ! --- Face States (Average of Left and Right States) ---
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF), nDOFX, Zero, &
-               GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX, Half, &
-               GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
-
-    END DO
-
-    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+    CALL InterpolateFaceGeometry &
+           ( iZP_B0, iZP_E0, nDOFX_X1, nX1_X, LX_X1_Up, LX_X1_Dn, &
+             GX_K, GX_F )
 
     ! --- Recompute Geometry from Scale Factors ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, iZ_B0, iZ_E0 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iZ2  = iZ_B0(2), iZ_E0(2)+1
-    DO iZ4  = iZ_B0(4), iZ_E0(4)
-    DO iZ3  = iZ_B0(3), iZ_E0(3)
-
-      DO iNodeX = 1, nDOFX_X1
-
-        GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11) &
-          = MAX( GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_h_1)**2, SqrtTiny )
-        GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22) &
-          = MAX( GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_h_2)**2, SqrtTiny )
-        GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) &
-          = MAX( GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_h_3)**2, SqrtTiny )
-        GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_SqrtGm) &
-          = SQRT(   GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11) &
-                  * GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22) &
-                  * GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
+    CALL ComputeFaceGeometry &
+           ( iZP_B0, iZP_E0, nDOFX_X1, GX_F, &
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
 
     ! --- Permute Fluid Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U_F, iZ_B0, iZ_E0 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iCF = 1, nCF
-    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-
-      DO iNodeX = 1, nDOFX
-
-        uCF_K(iNodeX,iZ3,iZ4,iZ2,iCF) = U_F(iNodeX,iZ2,iZ3,iZ4,iCF)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    CALL ArrayGather( SIZE(U_F), SIZE(uCF_K), U_F, uCF_K, iP_U_F )
 
     ! --- Interpolate Fluid Fields ---
 
-    DO iCF = iCF_D, iCF_S3
-
-      ! --- Interpolate Left State ---
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-               uCF_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iCF), nDOFX, Zero, &
-               uCF_L(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX_X1 )
-
-      ! --- Interpolate Right State ---
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-               uCF_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX, Zero, &
-               uCF_R(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX_X1 )
-
-    END DO
-
-    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+    CALL InterpolateFaceFluid &
+           ( iZP_B0, iZP_E0, nDOFX_X1, nX1_X, LX_X1_Up, LX_X1_Dn, &
+             uCF_K, uCF_L, uCF_R )
 
     ! --- Compute Face Velocity Components ---
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
-#elif defined( THORNADO_OACC )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R ) &
-    !$ACC PRESENT( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          uFD_L, uS1_L, uS2_L, uS3_L, &
-    !$ACC          uFD_R, uS1_R, uS2_R, uS3_R, &
-    !$ACC          uV1_F, uV2_F, uV3_F)
-#elif defined( THORNADO_OMP )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
-#endif
-    DO iX_F = 1, nNodesX_X1
-
-      ! --- Left State ---
-
-      uV1_L = uS1_L(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_L(iX_F) )
-      uV2_L = uS2_L(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_L(iX_F) )
-      uV3_L = uS3_L(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_L(iX_F) )
-
-      ! --- Right State ---
-
-      uV1_R = uS1_R(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_R(iX_F) )
-      uV2_R = uS2_R(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_R(iX_F) )
-      uV3_R = uS3_R(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_R(iX_F) )
-
-      CALL FaceVelocity_X1 &
-             ( uV1_L, uV2_L, uV3_L, &
-               uV1_R, uV2_R, uV3_R, &
-               uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F) )
-
-    END DO
+    CALL ComputeFaceVelocity &
+           ( iZP_B0, iZP_E0, nDOFX_X1, GX_F, uCF_L, uCF_R, &
+             uV1_F, uV2_F, uV3_F, FaceVelocity_X1 )
 
     ! --- Permute Radiation Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_K, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(7)
-#endif
-    DO iCR = 1, nCR
-    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      DO iNodeZ = 1, nDOFZ
-
-        uCR_K(iNodeZ,iZ1,iZ3,iZ4,iS,iZ2,iCR) &
-          = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ArrayGather( SIZE(U_R), SIZE(uCR_K), U_R, uCR_K, iP_U_R )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -730,6 +568,10 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Numerical Flux ---
 
@@ -1083,12 +925,14 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ3, dZ4, &
     !$OMP               iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$OMP               PermuteOrder_Fluid, PermuteOrder_Radiation, &
     !$OMP               GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$OMP               uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ3, dZ4, &
     !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$ACC         PermuteOrder_Fluid, PermuteOrder_Radiation, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
 #endif
@@ -1142,6 +986,8 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
+    INTEGER  :: PermuteOrder_Fluid(5)
+    INTEGER  :: PermuteOrder_Radiation(7)
 
     REAL(DP) :: Flux_L(nCR), uCR_X2_L(nCR)
     REAL(DP) :: Flux_R(nCR), uCR_X2_R(nCR)
@@ -1262,18 +1108,21 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
+    !$OMP MAP( to: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$OMP          PermuteOrder_Fluid, PermuteOrder_Radiation ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
+    !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$ACC         PermuteOrder_Fluid, PermuteOrder_Radiation ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X2, nDOF_X2, &
+             PermuteOrder_Fluid, PermuteOrder_Radiation, &
              GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
     ! --- Permute Geometry Fields ---
@@ -1302,90 +1151,20 @@ CONTAINS
     END DO
     END DO
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
-    CALL TimersStart( Timer_Streaming_LinearAlgebra )
-
     ! --- Interpolate Geometry Fields on Shared Face ---
 
-    DO iGF = iGF_h_1, iGF_h_3
-
-      ! --- Face States (Average of Left and Right States) ---
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-               GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)-1,iGF), nDOFX, Zero, &
-               GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-               GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX, Half, &
-               GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
-
-    END DO
-
-    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+    CALL InterpolateFaceGeometry &
+           ( iZP_B0, iZP_E0, nDOFX_X2, nX2_X, LX_X2_Up, LX_X2_Dn, GX_K, GX_F )
 
     ! --- Recompute Geometry from Scale Factors ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, iZ_B0, iZ_E0, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iZ3  = iZ_B0(3), iZ_E0(3)+1
-    DO iZ4  = iZ_B0(4), iZ_E0(4)
-    DO iZ2  = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX_X2
-
-        GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_11) &
-          = MAX( GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_h_1)**2, SqrtTiny )
-        GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_22) &
-          = MAX( GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_h_2)**2, SqrtTiny )
-        GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_33) &
-          = MAX( GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_h_3)**2, SqrtTiny )
-        GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_SqrtGm) &
-          = SQRT(   GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_11) &
-                  * GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_22) &
-                  * GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_33) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
+    CALL ComputeFaceGeometry &
+           ( iZP_B0, iZP_E0, nDOFX_X2, GX_F, &
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
 
     ! --- Permute Fluid Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U_F, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iCF = 1, nCF
-    DO iZ3 = iZ_B0(3)-1, iZ_E0(3)+1
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX
-
-        uCF_K(iNodeX,iZ2,iZ4,iZ3,iCF) = U_F(iNodeX,iZ2,iZ3,iZ4,iCF)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ArrayGather( SIZE(U_F), SIZE(uCF_K), U_F, uCF_K, iP_U_F )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -1413,71 +1192,13 @@ CONTAINS
 
     ! --- Compute Face Velocity Components ---
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
-#elif defined( THORNADO_OACC )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R ) &
-    !$ACC PRESENT( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          uFD_L, uS1_L, uS2_L, uS3_L, &
-    !$ACC          uFD_R, uS1_R, uS2_R, uS3_R, &
-    !$ACC          uV1_F, uV2_F, uV3_F)
-#elif defined( THORNADO_OMP )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
-#endif
-    DO iX_F = 1, nNodesX_X2
-
-      ! --- Left State ---
-
-      uV1_L = uS1_L(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_L(iX_F) )
-      uV2_L = uS2_L(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_L(iX_F) )
-      uV3_L = uS3_L(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_L(iX_F) )
-
-      ! --- Right State ---
-
-      uV1_R = uS1_R(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_R(iX_F) )
-      uV2_R = uS2_R(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_R(iX_F) )
-      uV3_R = uS3_R(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_R(iX_F) )
-
-      CALL FaceVelocity_X2 &
-             ( uV1_L, uV2_L, uV3_L, &
-               uV1_R, uV2_R, uV3_R, &
-               uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F) )
-
-    END DO
+    CALL ComputeFaceVelocity &
+           ( iZP_B0, iZP_E0, nDOFX_X2, GX_F, uCF_L, uCF_R, &
+             uV1_F, uV2_F, uV3_F, FaceVelocity_X2 )
 
     ! --- Permute Radiation Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_K, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(7)
-#endif
-    DO iCR = 1, nCR
-    DO iZ3 = iZ_B0(3)-1, iZ_E0(3)+1
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      DO iNodeZ = 1, nDOFZ
-
-        uCR_K(iNodeZ,iZ1,iZ2,iZ4,iS,iZ3,iCR) &
-          = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ArrayGather( SIZE(U_R), SIZE(uCR_K), U_R, uCR_K, iP_U_R )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -1502,6 +1223,10 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Numerical Flux ---
 
@@ -1854,11 +1579,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$OMP      PermuteOrder_Fluid, PermuteOrder_Radiation, &
     !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$ACC         PermuteOrder_Fluid, PermuteOrder_Radiation, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
 #endif
@@ -1912,6 +1639,8 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
+    INTEGER  :: PermuteOrder_Fluid(5)
+    INTEGER  :: PermuteOrder_Radiation(7)
 
     REAL(DP) :: Flux_L(nCR), uCR_X3_L(nCR)
     REAL(DP) :: Flux_R(nCR), uCR_X3_R(nCR)
@@ -2032,18 +1761,21 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$OMP          PermuteOrder_Fluid, PermuteOrder_Radiation ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
+    !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$ACC         PermuteOrder_Fluid, PermuteOrder_Radiation ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X3, nDOF_X3, &
+             PermuteOrder_Fluid, PermuteOrder_Radiation, &
              GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
     ! --- Permute Geometry Fields ---
@@ -2072,10 +1804,6 @@ CONTAINS
     END DO
     END DO
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
@@ -2100,62 +1828,13 @@ CONTAINS
 
     ! --- Recompute Geometry from Scale Factors ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, iZ_B0, iZ_E0, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-    DO iZ4  = iZ_B0(4), iZ_E0(4)+1
-    DO iZ3  = iZ_B0(3), iZ_E0(3)
-    DO iZ2  = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX_X3
-
-        GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
-          = MAX( GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_h_1)**2, SqrtTiny )
-        GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) &
-          = MAX( GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_h_2)**2, SqrtTiny )
-        GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) &
-          = MAX( GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_h_3)**2, SqrtTiny )
-        GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) &
-          = SQRT(   GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
-                  * GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) &
-                  * GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
+    CALL ComputeFaceGeometry &
+           ( iZP_B0, iZP_E0, nDOFX_X3, GX_F, &
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
 
     ! --- Permute Fluid Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U_F, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
-#endif
-    DO iCF = 1, nCF
-    DO iZ4 = iZ_B0(4)-1, iZ_E0(4)+1
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeX = 1, nDOFX
-
-        uCF_K(iNodeX,iZ2,iZ3,iZ4,iCF) = U_F(iNodeX,iZ2,iZ3,iZ4,iCF)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ArrayGather( SIZE(U_F), SIZE(uCF_K), U_F, uCF_K, iP_U_F )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -2183,71 +1862,13 @@ CONTAINS
 
     ! --- Compute Face Velocity Components ---
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
-#elif defined( THORNADO_OACC )
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R ) &
-    !$ACC PRESENT( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          uFD_L, uS1_L, uS2_L, uS3_L, &
-    !$ACC          uFD_R, uS1_R, uS2_R, uS3_R, &
-    !$ACC          uV1_F, uV2_F, uV3_F)
-#elif defined( THORNADO_OMP )
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
-#endif
-    DO iX_F = 1, nNodesX_X3
-
-      ! --- Left State ---
-
-      uV1_L = uS1_L(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_L(iX_F) )
-      uV2_L = uS2_L(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_L(iX_F) )
-      uV3_L = uS3_L(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_L(iX_F) )
-
-      ! --- Right State ---
-
-      uV1_R = uS1_R(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_R(iX_F) )
-      uV2_R = uS2_R(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_R(iX_F) )
-      uV3_R = uS3_R(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_R(iX_F) )
-
-      CALL FaceVelocity_X3 &
-             ( uV1_L, uV2_L, uV3_L, &
-               uV1_R, uV2_R, uV3_R, &
-               uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F) )
-
-    END DO
+    CALL ComputeFaceVelocity &
+           ( iZP_B0, iZP_E0, nDOFX_X3, GX_F, uCF_L, uCF_R, &
+             uV1_F, uV2_F, uV3_F, FaceVelocity_X3 )
 
     ! --- Permute Radiation Fields ---
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_K, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(7)
-#endif
-    DO iCR = 1, nCR
-    DO iZ4 = iZ_B0(4)-1, iZ_E0(4)+1
-    DO iS  = 1, nSpecies
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-      DO iNodeZ = 1, nDOFZ
-
-        uCR_K(iNodeZ,iZ1,iZ2,iZ3,iS,iZ4,iCR) &
-          = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ArrayGather( SIZE(U_R), SIZE(uCR_K), U_R, uCR_K, iP_U_R )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -2272,6 +1893,10 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Numerical Flux ---
 
@@ -2624,11 +2249,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$OMP      PermuteOrder_Fluid, PermuteOrder_Radiation, &
     !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
+    !$ACC         PermuteOrder_Fluid, PermuteOrder_Radiation, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
     !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
 #endif
@@ -3719,10 +3346,6 @@ CONTAINS
     END DO
     END DO
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
@@ -3902,6 +3525,10 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Surface Contributions ---
 
@@ -4290,10 +3917,6 @@ CONTAINS
     END DO
     END DO
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
@@ -4473,6 +4096,10 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Surface Contributions ---
 
@@ -4861,10 +4488,6 @@ CONTAINS
     END DO
     END DO
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
@@ -5045,6 +4668,10 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Surface Contributions ---
 
@@ -5236,6 +4863,285 @@ CONTAINS
   END SUBROUTINE ComputeWeakDerivatives_X3
 
 
+  SUBROUTINE InterpolateFaceGeometry
+      ( iZP_B0, iZP_E0, nDOFX_X, nX_X, LX_X_Up, LX_X_Dn, GX_K, GX_F )
+
+    INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
+    INTEGER, INTENT(in) :: nDOFX_X ! nDOFX_X1, ...
+    INTEGER, INTENT(in) :: nX_X    ! nX_X1, ...
+
+    INTEGER, INTENT(in) :: LX_X_Up(1:nDOFX_X,1:nDOFX)
+    INTEGER, INTENT(in) :: LX_X_Dn(1:nDOFX_X,1:nDOFX)
+
+    REAL(DP), INTENT(in) :: &
+      GX_K (1:nDOFX, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)-1:iZP_E0(4)+1, &
+            1:nGF)
+
+    REAL(DP), INTENT(inout) :: &
+      GX_F (1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nGF)
+
+    INTEGER :: iGF
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    DO iGF = iGF_h_1, iGF_h_3
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X, nX_X, nDOFX, One,  LX_X_Up, nDOFX_X, &
+               GX_K(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)  ,iGF), nDOFX_X )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X, nX_X, nDOFX, Half, LX_X_Dn, nDOFX_X, &
+               GX_K(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)  ,iGF), nDOFX_X )
+
+    END DO
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+  END SUBROUTINE InterpolateFaceGeometry
+
+
+  SUBROUTINE InterpolateFaceFluid
+      ( iZP_B0, iZP_E0, nDOFX_X, nX_X, LX_X_Up, LX_X_Dn, &
+        uCF_K, uCF_L, uCF_R )
+
+    INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
+    INTEGER, INTENT(in) :: nDOFX_X ! nDOFX_X1, ...
+    INTEGER, INTENT(in) :: nX_X    ! nX_X1, ...
+
+    INTEGER, INTENT(in) :: LX_X_Up(1:nDOFX_X,1:nDOFX)
+    INTEGER, INTENT(in) :: LX_X_Dn(1:nDOFX_X,1:nDOFX)
+
+    REAL(DP), INTENT(in) :: &
+      uCF_K(1:nDOFX, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)-1:iZP_E0(4)+1, &
+            1:nCF)
+
+    REAL(DP), INTENT(inout) :: &
+      uCF_L(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      uCF_R(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCF)
+
+    INTEGER :: iCF
+
+    CALL TimersStart( Timer_Streaming_LinearAlgebra )
+
+    DO iCF = iCF_D, iCF_S3
+
+      ! --- Interpolate Left State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X, nX_X, nDOFX, One,  LX_X_Up, nDOFX_X, &
+               uCF_K(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)-1,iCF), nDOFX, Zero, &
+               uCF_L(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)  ,iCF), nDOFX_X )
+
+      ! --- Interpolate Right State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X, nX_X, nDOFX, Half, LX_X_Dn, nDOFX_X, &
+               uCF_K(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)  ,iCF), nDOFX, Zero, &
+               uCF_R(1,iZP_B0(2),iZP_B0(3),iZP_B0(4)  ,iCF), nDOFX_X )
+
+    END DO
+
+    CALL TimersStop( Timer_Streaming_LinearAlgebra )
+
+  END SUBROUTINE InterpolateFaceFluid
+
+
+  SUBROUTINE ComputeFaceGeometry &
+      ( iZP_B0, iZP_E0, nDOFX_X, GX_F, &
+        Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
+
+    INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
+    INTEGER, INTENT(in) :: nDOFX_X ! nDOFX_X1, ...
+
+    REAL(DP), INTENT(in) :: &
+      GX_F (1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nGF)
+
+    REAL(DP), INTENT(out) :: &
+      Gm_dd_11_F(1:nDOFX_X, &
+                 iZP_B0(2)  :iZP_E0(2)  , &
+                 iZP_B0(3)  :iZP_E0(3)  , &
+                 iZP_B0(4)  :iZP_E0(4)+1)
+    REAL(DP), INTENT(out) :: &
+      Gm_dd_22_F(1:nDOFX_X, &
+                 iZP_B0(2)  :iZP_E0(2)  , &
+                 iZP_B0(3)  :iZP_E0(3)  , &
+                 iZP_B0(4)  :iZP_E0(4)+1)
+    REAL(DP), INTENT(out) :: &
+      Gm_dd_33_F(1:nDOFX_X, &
+                 iZP_B0(2)  :iZP_E0(2)  , &
+                 iZP_B0(3)  :iZP_E0(3)  , &
+                 iZP_B0(4)  :iZP_E0(4)+1)
+    REAL(DP), INTENT(out) :: &
+      SqrtGm_F  (1:nDOFX_X, &
+                 iZP_B0(2)  :iZP_E0(2)  , &
+                 iZP_B0(3)  :iZP_E0(3)  , &
+                 iZP_B0(4)  :iZP_E0(4)+1)
+
+    INTEGER :: iZP2, iZP3, iZP4, iNodeX_X
+
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( GX_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iZP4 = iZP_B0(4), iZP_E0(4)+1
+    DO iZP3 = iZP_B0(3), iZP_E0(3)
+    DO iZP2 = iZP_B0(2), iZP_E0(2)
+    DO iNodeX_X = 1, nDOFX_X
+
+      CALL ComputeGeometryX_SpatialMetric &
+             ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_h_1), &
+               GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_h_2), &
+               GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_h_3), &
+               Gm_dd_11_F(iNodeX_X,iZP2,iZP3,iZP4), &
+               Gm_dd_22_F(iNodeX_X,iZP2,iZP3,iZP4), &
+               Gm_dd_33_F(iNodeX_X,iZP2,iZP3,iZP4), &
+               SqrtGm_F  (iNodeX_X,iZP2,iZP3,iZP4) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeFaceGeometry
+
+
+  SUBROUTINE ComputeFaceVelocity &
+      ( iZP_B0, iZP_E0, nDOFX_X, GX_F, uCF_L, uCF_R, &
+        uV1_F, uV2_F, uV3_F, FaceVelocity_X )
+
+    INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
+    INTEGER, INTENT(in) :: nDOFX_X ! nDOFX_X1, ...
+
+    REAL(DP), INTENT(in) :: &
+      GX_F (1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nGF)
+
+    REAL(DP), INTENT(in) :: &
+      uCF_L(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCF)
+    REAL(DP), INTENT(in) :: &
+      uCF_R(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1, &
+            1:nCF)
+
+    REAL(DP), INTENT(out) :: &
+      uV1_F(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1)
+    REAL(DP), INTENT(out) :: &
+      uV2_F(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1)
+    REAL(DP), INTENT(out) :: &
+      uV3_F(1:nDOFX_X, &
+            iZP_B0(2)  :iZP_E0(2)  , &
+            iZP_B0(3)  :iZP_E0(3)  , &
+            iZP_B0(4)  :iZP_E0(4)+1)
+
+    PROCEDURE(FaceVelocity) :: FaceVelocity_X
+
+    INTEGER :: iZP2, iZP3, iZP4, iNodeX_X
+
+    REAL(DP) :: uV1_L, uV2_L, uV3_L
+    REAL(DP) :: uV1_R, uV2_R, uV3_R
+
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
+#elif defined( THORNADO_OACC )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R ) &
+    !$ACC PRESENT( GX_F, uCF_L, uCF_R, uV1_F, uV2_F, uV3_F )
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R )
+#endif
+    DO iZP4 = iZP_B0(4), iZP_E0(4)+1
+    DO iZP3 = iZP_B0(3), iZP_E0(3)
+    DO iZP2 = iZP_B0(2), iZP_E0(2)
+    DO iNodeX_X = 1, nDOFX_X
+
+      ! --- Left State ---
+
+      uV1_L = uCF_L(iNodeX_X,iZP2,iZP3,iZP4,iCF_S1) &
+              / ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_Gm_dd_11) &
+                * uCF_L(iNodeX_X,iZP2,iZP3,iZP4,iCF_D) )
+      uV2_L = uCF_L(iNodeX_X,iZP2,iZP3,iZP4,iCF_S2) &
+              / ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_Gm_dd_22) &
+                * uCF_L(iNodeX_X,iZP2,iZP3,iZP4,iCF_D) )
+      uV3_L = uCF_L(iNodeX_X,iZP2,iZP3,iZP4,iCF_S3) &
+              / ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_Gm_dd_33) &
+                * uCF_L(iNodeX_X,iZP2,iZP3,iZP4,iCF_D) )
+
+      ! --- Right State ---
+
+      uV1_R = uCF_R(iNodeX_X,iZP2,iZP3,iZP4,iCF_S1) &
+              / ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_Gm_dd_11) &
+                * uCF_R(iNodeX_X,iZP2,iZP3,iZP4,iCF_D) )
+      uV2_R = uCF_R(iNodeX_X,iZP2,iZP3,iZP4,iCF_S2) &
+              / ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_Gm_dd_22) &
+                * uCF_R(iNodeX_X,iZP2,iZP3,iZP4,iCF_D) )
+      uV3_R = uCF_R(iNodeX_X,iZP2,iZP3,iZP4,iCF_S3) &
+              / ( GX_F(iNodeX_X,iZP2,iZP3,iZP4,iGF_Gm_dd_33) &
+                * uCF_R(iNodeX_X,iZP2,iZP3,iZP4,iCF_D) )
+
+      CALL FaceVelocity_X &
+             ( uV1_L, uV2_L, uV3_L, &
+               uV1_R, uV2_R, uV3_R, &
+               uV1_F(iNodeX_X,iZP2,iZP3,iZP4), &
+               uV2_F(iNodeX_X,iZP2,iZP3,iZP4), &
+               uV3_F(iNodeX_X,iZP2,iZP3,iZP4) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeFaceVelocity
+
+
   SUBROUTINE FaceVelocity_X1 &
     ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
 
@@ -5349,6 +5255,15 @@ CONTAINS
     ALLOCATE( uI2_K(nNodesZ_K) )
     ALLOCATE( uI3_K(nNodesZ_K) )
 
+    GX_B  = [ 1    , iZ_B1(2), iZ_B1(3), iZ_B1(4), 1   ]
+    GX_E  = [ nDOFX, iZ_E1(2), iZ_E1(3), iZ_E1(4), nGF ]
+
+    U_F_B = [ 1    , iZ_B1(2), iZ_B1(3), iZ_B1(4), 1   ]
+    U_F_E = [ nDOFX, iZ_E1(2), iZ_E1(3), iZ_E1(4), nCF ]
+
+    U_R_B = [ 1    , iZ_B1(1), iZ_B1(2), iZ_B1(3), iZ_B1(4), 1  , 1        ]
+    U_R_E = [ nDOFZ, iZ_E1(1), iZ_E1(2), iZ_E1(3), iZ_E1(4), nCR, nSpecies ]
+
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
         dZ2 => MeshX(1) % Width, &
@@ -5358,12 +5273,14 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &
+    !$OMP          GX_B, GX_E, U_F_B, U_F_E, U_R_B, U_R_E, &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, &
-    !$ACC          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
+    !$ACC         GX_B, GX_E, U_F_B, U_F_E, U_R_B, U_R_E, &
+    !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$ACC CREATE( uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif
 
@@ -5383,11 +5300,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, &
+    !$OMP               GX_B, GX_E, U_F_B, U_F_E, U_R_B, U_R_E, &
     !$OMP               nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3, &
     !$OMP               uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, &
+    !$ACC         GX_B, GX_E, U_F_B, U_F_E, U_R_B, U_R_E, &
     !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3,  &
     !$ACC         uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif
@@ -5402,11 +5321,14 @@ CONTAINS
 
   SUBROUTINE InitializeIncrement_Divergence_X &
     ( iZP_B0, iZP_E0, nDOFX_X, nDOFZ_X, &
+      PermuteOrder_Fluid, PermuteOrder_Radiation, &
       GX_K, GX_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
 
     INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
     INTEGER, INTENT(in) :: nDOFX_X ! nDOFX_X1, ...
     INTEGER, INTENT(in) :: nDOFZ_X ! nDOFZ_X1, ...
+    INTEGER, INTENT(in) :: PermuteOrder_Fluid(5)
+    INTEGER, INTENT(in) :: PermuteOrder_Radiation(7)
 
     ! --- Geometry Fields ---
 
@@ -5612,6 +5534,14 @@ CONTAINS
     END DO
     END DO
 
+    ALLOCATE( iP_GX (SIZE(GX_K )) )
+    ALLOCATE( iP_U_F(SIZE(uCF_K)) )
+    ALLOCATE( iP_U_R(SIZE(uCR_K)) )
+
+    ALLOCATE( jP_GX (GX_E  - GX_B  + 1) )
+    ALLOCATE( jP_U_F(U_F_E - U_F_B + 1) )
+    ALLOCATE( jP_U_R(U_R_E - U_R_B + 1) )
+
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
@@ -5619,6 +5549,7 @@ CONTAINS
     !$OMP MAP( alloc: uV1_F, uV2_F, uV3_F, &
     !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
     !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP             iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R, &
     !$OMP             nIterations_L, nIterations_R, nIterations_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
@@ -5627,8 +5558,21 @@ CONTAINS
     !$ACC CREATE( uV1_F, uV2_F, uV3_F, &
     !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
     !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
+
+    CALL CreatePermuteIndex &
+           ( PermuteOrder_Fluid, GX_B, GX_E, &
+             LBOUND(GX_K), UBOUND(GX_K), iP_GX, jP_GX )
+
+    CALL CreatePermuteIndex &
+           ( PermuteOrder_Fluid, U_F_B, U_F_E, &
+             LBOUND(uCF_K), UBOUND(uCF_K), iP_U_F, jP_U_F )
+
+    CALL CreatePermuteIndex &
+           ( PermuteOrder_Radiation, U_R_B, U_R_E, &
+             LBOUND(uCR_K), UBOUND(uCR_K), iP_U_R, jP_U_R )
 
     RETURN
   END SUBROUTINE InitializeIncrement_Divergence_X
@@ -5643,14 +5587,17 @@ CONTAINS
     !$OMP               uV1_F, uV2_F, uV3_F, &
     !$OMP               uD_L, uI1_L, uI2_L, uI3_L, &
     !$OMP               uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP               iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R, &
     !$OMP               nIterations_L, nIterations_R, nIterations_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( PositionIndexZ_F, PositionIndexZ_K, &
     !$ACC         IndexTableZ_F, IndexTableZ_K, &
+    !$ACC         GX_K_B, GX_K_E, uCF_K_B, uCF_K_E, uCR_K_B, uCR_K_E, &
     !$ACC         uV1_F, uV2_F, uV3_F, &
     !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
     !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
 
@@ -5660,6 +5607,7 @@ CONTAINS
     DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
     DEALLOCATE( uV1_F, uV2_F, uV3_F )
     DEALLOCATE( nIterations_L, nIterations_R, nIterations_K )
+    DEALLOCATE( iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R )
 
     NULLIFY( Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K )
     NULLIFY( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
