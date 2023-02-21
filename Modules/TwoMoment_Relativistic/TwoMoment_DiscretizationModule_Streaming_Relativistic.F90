@@ -3665,7 +3665,7 @@ CONTAINS
       END DO
 
 
-
+      EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )
 
       ! --- Energy ---
 
