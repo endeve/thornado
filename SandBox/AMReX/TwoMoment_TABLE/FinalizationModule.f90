@@ -98,7 +98,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_TwoMoment_MF
 
-    CALL DestroyOpacities
+    !CALL DestroyOpacities
 
     CALL FinalizeEquationOfState
 
