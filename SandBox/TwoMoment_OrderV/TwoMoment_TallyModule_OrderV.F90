@@ -349,6 +349,12 @@ CONTAINS
       Verbose = Verbose_Option
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( GE, GX, U, M )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( GE, GX, U, M )
+#endif
+
     CALL ComputeTally_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, M )
 

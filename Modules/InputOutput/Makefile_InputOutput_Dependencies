@@ -15,4 +15,4 @@ InputOutputModuleHDF.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   NeutrinoOpacitiesModule.o \
-  InputOutputModuleHDF.f90
+  InputOutputModuleHDF.F90

@@ -200,12 +200,6 @@ PROGRAM ApplicationDriver_CCSN
 
     CALL SolveGravity_Newtonian_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF(:,:,:,:,iCF_D) )
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE TO( uGF )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE DEVICE   ( uGF )
-#endif
     
     ! --- Write Initial Condition ---
 
@@ -328,12 +322,6 @@ PROGRAM ApplicationDriver_CCSN
 
     IF( wrt )THEN
 
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
-#elif defined( THORNADO_OACC   )
-      !$ACC UPDATE HOST       ( uGF, uCF, uCR )
-#endif
-
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
@@ -354,12 +342,6 @@ PROGRAM ApplicationDriver_CCSN
     END IF
 
   END DO
-
-#if   defined( THORNADO_OMP_OL )
-  !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
-#elif defined( THORNADO_OACC   )
-  !$ACC UPDATE HOST       ( uGF, uCF, uCR )
-#endif
   
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
