@@ -492,7 +492,7 @@ CONTAINS
 
     CenterE(:) = MeshE % Center(1:nE)
     WidthE(:)  = MeshE % Width(1:nE)
-    NodesE(:)  = MeshE % Nodes()
+    NodesE(:)  = MeshE % Nodes(:)
 
     EC_TABLE: BLOCK
 
