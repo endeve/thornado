@@ -226,7 +226,6 @@ CONTAINS
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, &
                   Verbose_Option = Verbose )
 
-
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
 

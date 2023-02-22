@@ -360,7 +360,7 @@ CONTAINS
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 iErr = iErr_Euler(iNX,iX1,iX2,iX3) )
+                 iErr_Option = iErr_Euler(iNX,iX1,iX2,iX3) )
 
           ErrorExists = ErrorExists + iErr_Euler(iNX,iX1,iX2,iX3)
 

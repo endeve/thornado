@@ -83,6 +83,7 @@ CONTAINS
         uOP(:,:,:,:,:,iOP_Chi  ,:) = Chi
         uOP(:,:,:,:,:,iOP_Sigma,:) = Sigma
 
+
     END SELECT
 
   END SUBROUTINE SetOpacities

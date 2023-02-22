@@ -3059,7 +3059,7 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nGF)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(inout)    :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
@@ -3665,7 +3665,7 @@ CONTAINS
       END DO
 
 
-
+      EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )
 
       ! --- Energy ---
 
@@ -4126,7 +4126,7 @@ CONTAINS
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
       GX (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       uCF(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(out) :: &
       U_u(1:nDOFX,0:3, &
@@ -4217,7 +4217,7 @@ CONTAINS
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
       GX (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       uCF(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(in) :: &
       Gamma_udd &
