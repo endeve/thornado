@@ -251,6 +251,9 @@ CONTAINS
 
     INTEGER :: iE1, iE2, iN_E, iS, iN_X
 
+    REAL(DP) :: TMP(1)
+    REAL(DP), ALLOCATABLE :: AMAT(:,:), BVEC(:)
+
     iE_B = iZ_B(1)
     iE_E = iZ_E(1)
     nZ   = iZ_E - iZ_B + 1
@@ -659,6 +662,66 @@ CONTAINS
 
     END IF
 
+    IF( M_outer > 3 )THEN
+
+      ALLOCATE( AMAT(n_FP_outer,M_outer) )
+      ALLOCATE( BVEC(n_FP_outer        ) )
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: AMAT, BVEC )
+#elif defined(THORNADO_OACC  )
+      !$ACC ENTER DATA &
+      !$ACC CREATE( AMAT, BVEC )
+#endif
+      CALL LinearLeastSquares_LWORK &
+             ( 'N', n_FP_outer, M_outer-1, 1, AMAT, n_FP_outer, &
+               BVEC, n_FP_outer, TMP, LWORK_outer )
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: AMAT, BVEC )
+#elif defined(THORNADO_OACC  )
+      !$ACC EXIT DATA &
+      !$ACC DELETE( AMAT, BVEC )
+#endif
+      DEALLOCATE( AMAT )
+      DEALLOCATE( BVEC )
+
+    ELSE
+
+      LWORK_outer = 1
+
+    END IF
+
+    IF( M_inner > 3 )THEN
+
+      ALLOCATE( AMAT(n_FP_inner,M_inner) )
+      ALLOCATE( BVEC(n_FP_inner        ) )
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: AMAT, BVEC )
+#elif defined(THORNADO_OACC  )
+      !$ACC ENTER DATA &
+      !$ACC CREATE( AMAT, BVEC )
+#endif
+      CALL LinearLeastSquares_LWORK &
+             ( 'N', n_FP_inner, M_inner-1, 1, AMAT, n_FP_inner, &
+               BVEC, n_FP_inner, TMP, LWORK_inner )
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: AMAT, BVEC )
+#elif defined(THORNADO_OACC  )
+      !$ACC EXIT DATA &
+      !$ACC DELETE( AMAT, BVEC )
+#endif
+      DEALLOCATE( AMAT )
+      DEALLOCATE( BVEC )
+
+    ELSE
+
+      LWORK_inner = 1
+
+    END IF
+
   END SUBROUTINE InitializeNeutrinoMatterSolver
 
 
@@ -682,9 +745,6 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
-
-    REAL(DP) :: TMP(1)
-    REAL(DP), ALLOCATABLE :: AMAT(:,:,:), BVEC(:,:)
 
     IF( SolverParametersInitialized ) RETURN
 
@@ -789,66 +849,6 @@ CONTAINS
     END IF
 
     M_FP = MAX( M_outer, M_inner )
-
-    IF( M_outer > 3 )THEN
-
-      ALLOCATE( AMAT(n_FP_outer,M_outer,nX_G) )
-      ALLOCATE( BVEC(n_FP_outer,        nX_G) )
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( alloc: AMAT, BVEC )
-#elif defined(THORNADO_OACC  )
-      !$ACC ENTER DATA &
-      !$ACC CREATE( AMAT, BVEC )
-#endif
-      CALL LinearLeastSquares_LWORK &
-             ( 'N', n_FP_outer, M_outer-1, 1, AMAT, n_FP_outer, &
-               BVEC, n_FP_outer, TMP, LWORK_outer )
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: AMAT, BVEC )
-#elif defined(THORNADO_OACC  )
-      !$ACC EXIT DATA &
-      !$ACC DELETE( AMAT, BVEC )
-#endif
-      DEALLOCATE( AMAT )
-      DEALLOCATE( BVEC )
-
-    ELSE
-
-      LWORK_outer = 1
-
-    END IF
-
-    IF( M_inner > 3 )THEN
-
-      ALLOCATE( AMAT(n_FP_inner,M_inner,nX_G) )
-      ALLOCATE( BVEC(n_FP_inner,        nX_G) )
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( alloc: AMAT, BVEC )
-#elif defined(THORNADO_OACC  )
-      !$ACC ENTER DATA &
-      !$ACC CREATE( AMAT, BVEC )
-#endif
-      CALL LinearLeastSquares_LWORK &
-             ( 'N', n_FP_inner, M_inner-1, 1, AMAT, n_FP_inner, &
-               BVEC, n_FP_inner, TMP, LWORK_inner )
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: AMAT, BVEC )
-#elif defined(THORNADO_OACC  )
-      !$ACC EXIT DATA &
-      !$ACC DELETE( AMAT, BVEC )
-#endif
-      DEALLOCATE( AMAT )
-      DEALLOCATE( BVEC )
-
-    ELSE
-
-      LWORK_inner = 1
-
-    END IF
 
     SolverParametersInitialized = .TRUE.
 

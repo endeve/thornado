@@ -3766,6 +3766,35 @@ CONTAINS
     ALLOCATE( IndexTableZ_F(7,nNodesZ_X) )
     ALLOCATE( IndexTableZ_K(7,nNodesZ_K) )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP             IndexTableZ_F, IndexTableZ_K, &
+    !$OMP             uV1_F, uV2_F, uV3_F, &
+    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
+    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP             nIterations_L, nIterations_R, nIterations_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC         IndexTableZ_F, IndexTableZ_K, &
+    !$ACC         uV1_F, uV2_F, uV3_F, &
+    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
+    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ_X, iZ_F, iX_F )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ_X, iZ_F, iX_F ) &
+    !$ACC PRESENT( PositionIndexZ_F, IndexTableZ_F )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ_X, iZ_F, iX_F )
+#endif
     DO iZP4 = iZP_B0(4), iZP_E0(4)+1
     DO iS  = 1, nSpecies
     DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -3801,6 +3830,17 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ, iZ_K, iX_K ) &
+    !$ACC PRESENT( PositionIndexZ_K, IndexTableZ_K )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#endif
     DO iZP4 = iZP_B0(4), iZP_E0(4)
     DO iS  = 1, nSpecies
     DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -3836,22 +3876,15 @@ CONTAINS
     END DO
     END DO
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
-    !$OMP          IndexTableZ_F, IndexTableZ_K ) &
-    !$OMP MAP( alloc: uV1_F, uV2_F, uV3_F, &
-    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
-    !$OMP             nIterations_L, nIterations_R, nIterations_K )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( PositionIndexZ_F, PositionIndexZ_K, &
-    !$ACC         IndexTableZ_F, IndexTableZ_K ) &
-    !$ACC CREATE( uV1_F, uV2_F, uV3_F, &
-    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+    ! AH: This update *may* not be necessary.
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP FROM( PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP       IndexTableZ_F, IndexTableZ_K )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC HOST( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC       IndexTableZ_F, IndexTableZ_K )
 #endif
 
     RETURN
@@ -3997,7 +4030,34 @@ CONTAINS
     ALLOCATE( IndexTableZ_F(7,nNodesZ_E) )
     ALLOCATE( IndexTableZ_K(7,nNodesZ_K) )
 
-    iNodeE = 1
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP             IndexTableZ_F, IndexTableZ_K, &
+    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
+    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP             nIterations_L, nIterations_R, nIterations_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC         IndexTableZ_F, IndexTableZ_K, &
+    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
+    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+#endif
+
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iZ_F, iX_F )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iZ_F, iX_F ) &
+    !$ACC PRESENT( PositionIndexZ_F, IndexTableZ_F )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iZ_F, iX_F )
+#endif
     DO iZ1 = iZ_B0(1), iZ_E0(1)+1
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -4019,7 +4079,7 @@ CONTAINS
 
       PositionIndexZ_F(iZ_F) = iX_F
 
-      IndexTableZ_F(:,iZ_F) = [ iNodeE, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
+      IndexTableZ_F(:,iZ_F) = [ 1, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
 
     END DO
     END DO
@@ -4028,6 +4088,17 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ, iZ_K, iX_K ) &
+    !$ACC PRESENT( PositionIndexZ_K, IndexTableZ_K )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#endif
     DO iZ1 = iZ_B0(1), iZ_E0(1)
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -4063,20 +4134,15 @@ CONTAINS
     END DO
     END DO
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
-    !$OMP          IndexTableZ_F, IndexTableZ_K ) &
-    !$OMP MAP( alloc: uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
-    !$OMP             nIterations_L, nIterations_R, nIterations_K )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( PositionIndexZ_F, PositionIndexZ_K, &
-    !$ACC         IndexTableZ_F, IndexTableZ_K ) &
-    !$ACC CREATE( uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+    ! AH: This update *may* not be necessary.
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP FROM( PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP       IndexTableZ_F, IndexTableZ_K )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC HOST( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC       IndexTableZ_F, IndexTableZ_K )
 #endif
 
     RETURN
