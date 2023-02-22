@@ -488,12 +488,11 @@ CONTAINS
 #endif
 
     Energy_Grid: BLOCK
-    REAL(dp) :: CenterE(1-swE:nE+swE), WidthE(1-swE:nE+swE), &
-                NodesE(nNodesE)
+    REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nNodesE)
 
-    CenterE(:) = MeshE % Center(:)
-    WidthE(:)  = MeshE % Width(:)
-    NodesE(:)  = MeshE % Nodes(:)
+    CenterE(:) = MeshE % Center(1:nE)
+    WidthE(:)  = MeshE % Width(1:nE)
+    NodesE(:)  = MeshE % Nodes()
 
     EC_TABLE: BLOCK
 

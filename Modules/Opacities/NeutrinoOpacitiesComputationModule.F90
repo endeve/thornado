@@ -844,8 +844,8 @@ CONTAINS
 
   REAL(dp) :: a, b, f_a, f_b
 
-  CenterE(:) = MeshE % Center(:)
-  WidthE(:)  = MeshE % Width(:)
+  CenterE(:) = MeshE % Center(1:nE)
+  WidthE(:)  = MeshE % Width(1:nE)
   NodesE(:)  = MeshE % Nodes(:)
 
 #if defined(THORNADO_OMP_OL)
