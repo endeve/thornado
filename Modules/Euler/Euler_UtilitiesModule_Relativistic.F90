@@ -219,6 +219,18 @@ CONTAINS
 
       IF( Mask(iNX) .NE. 0 ) CYCLE
 
+      IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
+          .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
+          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) )THEN
+
+        iErr(iNX) = 13
+
+        ErrorExists = ErrorExists + iErr(iNX)
+
+        CYCLE
+
+      END IF
+
       CALL ComputePrimitive_Scalar &
              ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), &
                pD(iNX), pV1(iNX), pV2(iNX), pV3(iNX), pE(iNX), pNe(iNX), &
@@ -228,7 +240,7 @@ CONTAINS
 
       IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
           .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
-          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) ) iErr(iNX) = 13
+          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) ) iErr(iNX) = 14
 
       ErrorExists = ErrorExists + iErr(iNX)
 
