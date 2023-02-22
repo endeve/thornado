@@ -33,13 +33,14 @@ MODULE MF_Euler_TallyModule
     CreateMesh, &
     DestroyMesh
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_SqrtGm, &
+    nGF, &
     CoordinateSystem
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
-    iCF_E
+    iCF_E, &
+    iCF_Ne, &
+    nCF
 
   ! --- Local Modules ---
 
@@ -94,6 +95,12 @@ MODULE MF_Euler_TallyModule
   REAL(DP)       :: Energy_Initial
   REAL(DP)       :: Energy_OffGrid
   REAL(DP)       :: Energy_Change
+
+  CHARACTER(256) :: ElectronNumber_FileName
+  REAL(DP)       :: ElectronNumber_Interior
+  REAL(DP)       :: ElectronNumber_Initial
+  REAL(DP)       :: ElectronNumber_OffGrid
+  REAL(DP)       :: ElectronNumber_Change
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -184,6 +191,30 @@ CONTAINS
 
       CLOSE( FileUnit )
 
+      ! --- Electron Number ---
+
+      ElectronNumber_FileName &
+        = TRIM( BaseFileName ) // '.Tally_ElectronNumber.dat'
+
+      TimeLabel     &
+        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+      InteriorLabel &
+        = 'Interior [' // '' // ']'
+      OffGridLabel  &
+        = 'Off Grid [' // '' // ']'
+      InitialLabel  &
+        = 'Initial ['  // '' // ']'
+      ChangeLabel   &
+        = 'Change ['   // '' // ']'
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ElectronNumber_FileName ) )
+
+      WRITE(FileUnit,'(5(A25,x))') &
+        TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+        TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+      CLOSE( FileUnit )
+
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
       ! --- ADM Mass ---
@@ -223,6 +254,11 @@ CONTAINS
     Energy_Initial  = Zero
     Energy_OffGrid  = Zero
     Energy_Change   = Zero
+
+    ElectronNumber_Interior = Zero
+    ElectronNumber_Initial  = Zero
+    ElectronNumber_OffGrid  = Zero
+    ElectronNumber_Change   = Zero
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -271,8 +307,9 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    BaryonicMass_Interior = Zero
-    Energy_Interior       = Zero
+    BaryonicMass_Interior   = Zero
+    Energy_Interior         = Zero
+    ElectronNumber_Interior = Zero
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -342,13 +379,15 @@ CONTAINS
 
 #endif
 
-    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior )
-    CALL amrex_parallel_reduce_sum( Energy_Interior       )
+    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior   )
+    CALL amrex_parallel_reduce_sum( Energy_Interior         )
+    CALL amrex_parallel_reduce_sum( ElectronNumber_Interior )
 
     IF( SetInitialValues )THEN
 
-      BaryonicMass_Initial = BaryonicMass_Interior
-      Energy_Initial       = Energy_Interior
+      BaryonicMass_Initial   = BaryonicMass_Interior
+      Energy_Initial         = Energy_Interior
+      ElectronNumber_Initial = ElectronNumber_Interior
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -367,6 +406,10 @@ CONTAINS
     Energy_Change &
       = Energy_Interior &
           - Energy_Initial + Energy_OffGrid
+
+    ElectronNumber_Change &
+      = ElectronNumber_Interior &
+          - ElectronNumber_Initial + ElectronNumber_OffGrid
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -398,6 +441,9 @@ CONTAINS
 
       Energy_OffGrid &
         = Energy_OffGrid + dM(iCF_E,iLevel)
+
+      ElectronNumber_OffGrid &
+        = ElectronNumber_OffGrid + dM(iCF_Ne,iLevel)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -466,6 +512,13 @@ CONTAINS
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                 * U(iNX,iX1,iX2,iX3,iCF_E)
 
+      ElectronNumber_Interior &
+        = ElectronNumber_Interior &
+            + d3X &
+                * WeightsX_q(iNX) &
+                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                * U(iNX,iX1,iX2,iX3,iCF_Ne)
+
     END DO
     END DO
     END DO
@@ -507,6 +560,22 @@ CONTAINS
         Energy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
         Energy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
         Energy_Change   / UnitsDisplay % EnergyGlobalUnit
+
+      CLOSE( FileUnit )
+
+      CLOSE( FileUnit )
+
+      ! --- Electron Number ---
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ElectronNumber_FileName ), &
+            POSITION = 'APPEND', ACTION = 'WRITE' )
+
+      WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
+        Time / UnitsDisplay % TimeUnit, &
+        ElectronNumber_Interior, &
+        ElectronNumber_OffGrid , &
+        ElectronNumber_Initial , &
+        ElectronNumber_Change
 
       CLOSE( FileUnit )
 
@@ -583,6 +652,24 @@ CONTAINS
         'Energy Change...: ', &
         Energy_Change   / UnitsDisplay % EnergyGlobalUnit, &
         UnitsDisplay % EnergyGlobalLabel
+
+      WRITE(*,*)
+      WRITE(*,TRIM(FMT)) &
+        'Electron Number Interior.: ', &
+        ElectronNumber_Interior, &
+        ''
+      WRITE(*,TRIM(FMT)) &
+        'Electron Number Initial..: ', &
+        ElectronNumber_Initial, &
+        ''
+      WRITE(*,TRIM(FMT)) &
+        'Electron Number Off Grid.: ', &
+        ElectronNumber_OffGrid, &
+        ''
+      WRITE(*,TRIM(FMT)) &
+        'Electron Number Change...: ', &
+        ElectronNumber_Change, &
+        ''
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 

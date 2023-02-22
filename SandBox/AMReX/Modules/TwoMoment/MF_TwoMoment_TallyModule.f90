@@ -125,12 +125,6 @@ MODULE MF_TwoMoment_TallyModule
   REAL(DP), ALLOCATABLE :: Momentum_X2(:)
   REAL(DP), ALLOCATABLE :: Momentum_X3(:)
 
-  CHARACTER(256) :: FluidLeptonNumber_FileName
-  REAL(DP), ALLOCATABLE :: FluidLeptonNumber_Interior(:)
-  REAL(DP), ALLOCATABLE :: FluidLeptonNumber_Initial(:)
-  REAL(DP), ALLOCATABLE :: FluidLeptonNumber_OffGrid(:)
-  REAL(DP), ALLOCATABLE :: FluidLeptonNumber_Change(:)
-
 CONTAINS
 
 
@@ -160,12 +154,6 @@ CONTAINS
     CHARACTER(256) :: Momentum1Label
     CHARACTER(256) :: Momentum2Label
     CHARACTER(256) :: Momentum3Label
-
-
-    CHARACTER(256) :: FluidLeptonNumber_InteriorLabel
-    CHARACTER(256) :: FluidLeptonNumber_InitialLabel
-    CHARACTER(256) :: FluidLeptonNumber_OffgridLabel
-    CHARACTER(256) :: FluidLeptonNumber_ChangeLabel
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
@@ -200,11 +188,6 @@ CONTAINS
     ALLOCATE( Momentum_X2(0:nLevels-1) )
     ALLOCATE( Momentum_X3(0:nLevels-1) )
 
-    ALLOCATE(FluidLeptonNumber_Interior(0:nLevels-1) )
-    ALLOCATE(FluidLeptonNumber_Initial (0:nLevels-1) )
-    ALLOCATE(FluidLeptonNumber_OffGrid (0:nLevels-1) )
-    ALLOCATE(FluidLeptonNumber_Change  (0:nLevels-1) )
-
     IF( amrex_parallel_ioprocessor() )THEN
 
       BaseFileName = ''
@@ -234,7 +217,7 @@ CONTAINS
 
       WRITE(FileUnit,'(5(A25,x))') &
         TRIM( TimeLabel ), TRIM( LeptonNumber_InteriorLabel ), TRIM( LeptonNumber_OffGridLabel ), &
-        TRIM( LeptonNumber_InitialLabel ), TRIM( LeptonNumber_ChangeLabel ) 
+        TRIM( LeptonNumber_InitialLabel ), TRIM( LeptonNumber_ChangeLabel )
       CLOSE( FileUnit )
 
       ! --- Neutrino Energy  ---
@@ -258,7 +241,7 @@ CONTAINS
 
       WRITE(FileUnit,'(5(A25,x))') &
         TRIM( TimeLabel ), TRIM( Energy_InteriorLabel ), TRIM( Energy_OffGridLabel ), &
-        TRIM( Energy_InitialLabel ), TRIM( Energy_ChangeLabel ) 
+        TRIM( Energy_InitialLabel ), TRIM( Energy_ChangeLabel )
       CLOSE( FileUnit )
 
 
@@ -281,30 +264,6 @@ CONTAINS
 
       CLOSE( FileUnit )
 
-      ! --- Fluid Lepton Number ---
-
-      FluidLeptonNumber_FileName &
-        = TRIM( BaseFileName ) // '_Tally_FluidLeptonNumber.dat'
-
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      FluidLeptonNumber_InteriorLabel &
-        = 'FluidLeptonNumber_Interior'
-      FluidLeptonNumber_OffgridLabel &
-        = 'FluidLeptonNumber_OffGrid'
-      FluidLeptonNumber_InitialLabel &
-        = 'FluidLeptonNumber_Initial'
-      FluidLeptonNumber_ChangeLabel &
-        = 'FluidLeptonNumber_Change'
-
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM(FluidLeptonNumber_FileName ) )
-
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( FluidLeptonNumber_InteriorLabel ), TRIM( FluidLeptonNumber_OffGridLabel ), &
-        TRIM( FluidLeptonNumber_InitialLabel ), TRIM( FluidLeptonNumber_ChangeLabel ) 
-      CLOSE( FileUnit )
-
     END IF
 
     NeutrinoLeptonNumber_Interior = Zero
@@ -324,11 +283,6 @@ CONTAINS
     Momentum_X2                   = Zero
     Momentum_X3                   = Zero
 
-    FluidLeptonNumber_Interior = Zero
-    FluidLeptonNumber_Initial  = Zero
-    FluidLeptonNumber_OffGrid  = Zero
-    FluidLeptonNumber_Change   = Zero
-
   END SUBROUTINE InitializeTally_TwoMoment_MF
 
 
@@ -341,7 +295,7 @@ CONTAINS
     DEALLOCATE( NeutrinoLeptonNumber_Initial )
     DEALLOCATE( NeutrinoLeptonNumber_OffGrid )
     DEALLOCATE( NeutrinoLeptonNumber_Change  )
-   
+
     DEALLOCATE( NeutrinoEnergy_Interior )
     DEALLOCATE( NeutrinoEnergy_Initial  )
     DEALLOCATE( NeutrinoEnergy_Offgrid  )
@@ -350,11 +304,6 @@ CONTAINS
     DEALLOCATE( Momentum_X1 )
     DEALLOCATE( Momentum_X2 )
     DEALLOCATE( Momentum_X3 )
-
-    DEALLOCATE( FluidLeptonNumber_Interior )
-    DEALLOCATE( FluidLeptonNumber_Initial )
-    DEALLOCATE( FluidLeptonNumber_OffGrid )
-    DEALLOCATE( FluidLeptonNumber_Change  )
 
   END SUBROUTINE FinalizeTally_TwoMoment_MF
 
@@ -414,8 +363,6 @@ CONTAINS
       Momentum_X1(iLevel)           = Zero
       Momentum_X2(iLevel)           = Zero
       Momentum_X3(iLevel)           = Zero
-
-      FluidLeptonNumber_Interior(iLevel) = Zero
 
       DO WHILE( MFI % next() )
 
@@ -521,13 +468,11 @@ CONTAINS
 
         NeutrinoLeptonNumber_Initial(iLevel) = NeutrinoLeptonNumber_Interior(iLevel)
         NeutrinoEnergy_Initial      (iLevel) = NeutrinoEnergy_Interior      (iLevel)
-        FluidLeptonNumber_Initial   (iLevel) = FluidLeptonNumber_Interior   (iLevel)
 
       END DO
 
       CALL amrex_parallel_reduce_sum( NeutrinoLeptonNumber_Initial, nLevels )
       CALL amrex_parallel_reduce_sum( NeutrinoEnergy_Initial      , nLevels )
-      CALL amrex_parallel_reduce_sum( FluidLeptonNumber_Initial   , nLevels )
 
     END IF
 
@@ -542,9 +487,6 @@ CONTAINS
         = NeutrinoEnergy_Interior(iLevel) &
             - ( NeutrinoEnergy_Initial(iLevel)       + NeutrinoEnergy_OffGrid(iLevel)       )
 
-      FluidLeptonNumber_Change(iLevel) &
-        = FluidLeptonNumber_Interior(iLevel) &
-            - ( FluidLeptonNumber_Initial(iLevel) + FluidLeptonNumber_OffGrid(iLevel) )
     END DO
 
 
@@ -815,39 +757,6 @@ CONTAINS
     END DO
     END DO
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-
-
-
-      dX = MeshX(1) % Width(iZ2) &
-         * MeshX(2) % Width(iZ3) &
-         * MeshX(3) % Width(iZ4)
-
-
-      DO iNodeX = 1, nDOFX
-
-
-        FluidLeptonNumber_Interior(iLevel)             &
-          = FluidLeptonNumber_Interior(iLevel)        &
-              + dX             &
-                * WeightsX_q(iNodeX) &
-                * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) &
-                * UF(iNodeX,iZ2,iZ3,iZ4,iCF_Ne)
-
-
-
-      END DO
-
-
-
-    END DO
-    END DO
-    END DO
-
-
     END ASSOCIATE
 
     CALL DestroyMesh( MeshE )
@@ -904,20 +813,6 @@ CONTAINS
 
       CLOSE( FileUnit )
 
-      ! --- Fluid Lepton Number ---
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( FluidLeptonNumber_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
-
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
-        Time / UnitsDisplay % TimeUnit, &
-        FluidLeptonNumber_Interior(0), &
-        FluidLeptonNumber_OffGrid (0), &
-        FluidLeptonNumber_Initial (0), &
-        FluidLeptonNumber_Change  (0)
-
-
-      CLOSE( FileUnit )
     END IF
 
   END SUBROUTINE WriteTally_TwoMoment
