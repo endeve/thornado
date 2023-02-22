@@ -206,7 +206,7 @@ elif nDims == 2:
                         shading = 'flat' )
 
     cbar = fig.colorbar( im )
-    cbar.set_label( Field + DataUnit )
+    cbar.set_label( Field + ' ' + DataUnit )
 
 ax.set_title( r'$\texttt{{{:}}}$'.format( FigTitle ) )
 
