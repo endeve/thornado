@@ -130,9 +130,9 @@ xH = X1_C0[-1] + 0.5 * dX10[-1]
 
 fig = plt.figure()
 ax  = fig.add_subplot( 111 )
-ax.set_title( r'$\texttt{{{:}}}$'.format( ID ) )
+ax.set_title( r'$\texttt{{{:}}}$'.format( ID ), fontsize = 15 )
 
-time_text = ax.text( 0.3, 0.9, '', transform = ax.transAxes )
+time_text = ax.text( 0.1, 0.9, '', transform = ax.transAxes, fontsize = 13 )
 
 ax.set_xlabel \
   ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
@@ -144,9 +144,9 @@ ax.set_ylim( vmin, vmax )
 if UseLogScale_Y: ax.set_yscale( 'log' )
 if UseLogScale_X: ax.set_xscale( 'log' )
 
-if PlotMesh: mesh, = ax.plot( [],[], 'b.', label = 'mesh boundaries' )
-if ShowIC: IC,     = ax.plot( [],[], 'r.', label = 'u(0)' )
-line,              = ax.plot( [],[], 'k.', label = 'u(t)' )
+if PlotMesh: mesh, = ax.plot( [],[], 'b.', label = 'mesh boundaries'    )
+if ShowIC: IC,     = ax.plot( [],[], 'r.', label = r'$u\left(0\right)$' )
+line,              = ax.plot( [],[], 'k.', label = r'$u\left(t\right)$' )
 
 def InitializeFrame():
 
@@ -182,7 +182,7 @@ def UpdateFrame( t ):
     return ret
 
 ax.set_ylim( vmin, vmax )
-ax.legend()
+ax.legend( prop = {'size':12} )
 
 anim = animation.FuncAnimation( fig, UpdateFrame, \
                                 init_func = InitializeFrame, \
