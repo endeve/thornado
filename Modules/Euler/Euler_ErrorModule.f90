@@ -169,13 +169,13 @@ CONTAINS
             'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
+          WRITE(*,'(2x,A,4I6.5)') &
+            'iX1, iX2, iX3, iNX: ', &
+             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_B0:              ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_E0:              ', Int_Option(6), Int_Option(7), Int_Option(8)
-          WRITE(*,'(2x,A,4I6.5)') &
-            'iX1, iX2, iX3, iNX: ', &
-             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
@@ -249,13 +249,13 @@ CONTAINS
             'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
+          WRITE(*,'(2x,A,4I6.5)') &
+            'iX1, iX2, iX3, iNX: ', &
+             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_B0:              ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_E0:              ', Int_Option(6), Int_Option(7), Int_Option(8)
-          WRITE(*,'(2x,A,4I6.5)') &
-            'iX1, iX2, iX3, iNX: ', &
-             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
@@ -301,13 +301,13 @@ CONTAINS
             'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
+          WRITE(*,'(2x,A,4I6.5)') &
+            'iX1, iX2, iX3, iNX: ', &
+             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_B0:              ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_E0:              ', Int_Option(6), Int_Option(7), Int_Option(8)
-          WRITE(*,'(2x,A,4I6.5)') &
-            'iX1, iX2, iX3, iNX: ', &
-             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
@@ -353,13 +353,13 @@ CONTAINS
             'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
+          WRITE(*,'(2x,A,4I6.5)') &
+            'iX1, iX2, iX3, iNX: ', &
+             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_B0:              ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_E0:              ', Int_Option(6), Int_Option(7), Int_Option(8)
-          WRITE(*,'(2x,A,4I6.5)') &
-            'iX1, iX2, iX3, iNX: ', &
-             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
@@ -405,13 +405,13 @@ CONTAINS
             'iNX (Packed array): ', Int_Option(2)
           WRITE(*,'(2x,A,A)') &
             'iDimX: ', TRIM( Char_Option(1) )
+          WRITE(*,'(2x,A,4I6.5)') &
+            'iX1, iX2, iX3, iNX: ', &
+             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_B0:              ', Int_Option(3), Int_Option(4), Int_Option(5)
           WRITE(*,'(2x,A,3I6.5)') &
             'iX_E0:              ', Int_Option(6), Int_Option(7), Int_Option(8)
-          WRITE(*,'(2x,A,4I6.5)') &
-            'iX1, iX2, iX3, iNX: ', &
-             Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
