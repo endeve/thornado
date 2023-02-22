@@ -132,8 +132,6 @@ CONTAINS
                DM(iLevel) % p, BA(iLevel+1) % p, &
                iLeaf, iNotLeaf, swX(1), amrex_geom(iLevel) % p )
 
-      ! --- Fix physical boundary ghost cells ---
-
       CALL amrex_mfiter_build( MFI, iMF_FineMask, tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -146,6 +144,8 @@ CONTAINS
         iX_E0 = BX % hi
         iX_B1 = iX_B0 - swX
         iX_E1 = iX_E0 + swX
+
+        ! --- Fix physical boundary ghost cells ---
 
         ! --- X1 ---
 
@@ -181,67 +181,75 @@ CONTAINS
 
         ! --- X2 ---
 
-        IF( .NOT. amrex_is_periodic(2) )THEN
+        IF( iX_B0(2) .NE. iX_E0(2) )THEN
 
-          IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo( 2 ) )THEN
+          IF( .NOT. amrex_is_periodic(2) )THEN
 
-            DO iX3 = iX_B0(3), iX_E0(3)
-            DO iX1 = iX_B0(1), iX_E0(1)
+            IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo( 2 ) )THEN
 
-              IF( IsNotLeafElement( FineMask(iX1,iX_B0(2),iX3,1) ) ) &
-                FineMask(iX1,iX_B1(2),iX3,1) = iNotLeaf
+              DO iX3 = iX_B0(3), iX_E0(3)
+              DO iX1 = iX_B0(1), iX_E0(1)
 
-            END DO
-            END DO
+                IF( IsNotLeafElement( FineMask(iX1,iX_B0(2),iX3,1) ) ) &
+                  FineMask(iX1,iX_B1(2),iX3,1) = iNotLeaf
 
-          END IF
+              END DO
+              END DO
 
-          IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi( 2 ) )THEN
+            END IF
 
-            DO iX3 = iX_B0(3), iX_E0(3)
-            DO iX1 = iX_B0(1), iX_E0(1)
+            IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi( 2 ) )THEN
 
-              IF( IsNotLeafElement( FineMask(iX1,iX_E0(2),iX3,1) ) ) &
-                FineMask(iX1,iX_E1(2),iX3,1) = iNotLeaf
+              DO iX3 = iX_B0(3), iX_E0(3)
+              DO iX1 = iX_B0(1), iX_E0(1)
 
-            END DO
-            END DO
+                IF( IsNotLeafElement( FineMask(iX1,iX_E0(2),iX3,1) ) ) &
+                  FineMask(iX1,iX_E1(2),iX3,1) = iNotLeaf
 
-          END IF
+              END DO
+              END DO
 
-        END IF ! .NOT. amrex_is_periodic(2)
+            END IF
+
+          END IF ! .NOT. amrex_is_periodic(2)
+
+        END IF ! iX_B0(2) .NE. iX_E0(2)
 
         ! --- X3 ---
 
-        IF( .NOT. amrex_is_periodic(3) )THEN
+        IF( iX_B0(3) .NE. iX_E0(3) )THEN
 
-          IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo( 3 ) )THEN
+          IF( .NOT. amrex_is_periodic(3) )THEN
 
-            DO iX2 = iX_B0(2), iX_E0(2)
-            DO iX1 = iX_B0(1), iX_E0(1)
+            IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo( 3 ) )THEN
 
-              IF( IsNotLeafElement( FineMask(iX1,iX2,iX_B0(3),1) ) ) &
-                FineMask(iX1,iX2,iX_B1(3),1) = iNotLeaf
+              DO iX2 = iX_B0(2), iX_E0(2)
+              DO iX1 = iX_B0(1), iX_E0(1)
 
-            END DO
-            END DO
+                IF( IsNotLeafElement( FineMask(iX1,iX2,iX_B0(3),1) ) ) &
+                  FineMask(iX1,iX2,iX_B1(3),1) = iNotLeaf
 
-          END IF
+              END DO
+              END DO
 
-          IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi( 3 ) )THEN
+            END IF
 
-            DO iX2 = iX_B0(2), iX_E0(2)
-            DO iX1 = iX_B0(1), iX_E0(1)
+            IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi( 3 ) )THEN
 
-              IF( IsNotLeafElement( FineMask(iX1,iX2,iX_E0(3),1) ) ) &
-                FineMask(iX1,iX2,iX_E1(3),1) = iNotLeaf
+              DO iX2 = iX_B0(2), iX_E0(2)
+              DO iX1 = iX_B0(1), iX_E0(1)
 
-            END DO
-            END DO
+                IF( IsNotLeafElement( FineMask(iX1,iX2,iX_E0(3),1) ) ) &
+                  FineMask(iX1,iX2,iX_E1(3),1) = iNotLeaf
 
-          END IF
+              END DO
+              END DO
 
-        END IF ! .NOT. amrex_is_periodic(3)
+            END IF
+
+          END IF ! .NOT. amrex_is_periodic(3)
+
+        END IF ! iX_B0(3) .NE. iX_E0(3)
 
       END DO ! WHILE( MFI % next() )
 
