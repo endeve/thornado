@@ -33,6 +33,7 @@ MODULE OpacityModule_TABLE
     MeV
   USE ProgramHeaderModule, ONLY: &
     nE, &
+    swE, &
     nNodesE
   USE MeshModule, ONLY: &
     MeshE, &
@@ -487,7 +488,8 @@ CONTAINS
 #endif
 
     Energy_Grid: BLOCK
-    REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nNodesE)
+    REAL(dp) :: CenterE(1-swE:nE+swE), WidthE(1-swE:nE+swE), &
+                NodesE(nNodesE)
 
     CenterE(:) = MeshE % Center(:)
     WidthE(:)  = MeshE % Width(:)
