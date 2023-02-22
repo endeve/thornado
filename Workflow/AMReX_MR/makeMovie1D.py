@@ -164,7 +164,7 @@ def InitializeFrame():
 
 def UpdateFrame( t ):
 
-    print('{:}/{:}'.format( t, nSS ) )
+    print('    {:}/{:}'.format( t, nSS ) )
     Data, DataUnits, X1_C, dX1, Time = f(t)
 
     time_text.set_text( r'$t={:.3e}\ \left[{:}\right]$' \
@@ -191,6 +191,8 @@ anim = animation.FuncAnimation( fig, UpdateFrame, \
 
 fps = max( 1, nSS / MovieRunTime )
 
+print( '\n  Making movie' )
+print( '  ------------' )
 anim.save( MovieName, fps = fps )
 
 import os

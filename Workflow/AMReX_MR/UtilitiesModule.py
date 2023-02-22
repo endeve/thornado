@@ -17,13 +17,13 @@ def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
         if ( isdir( FileOrDirName ) and FileOrDirName[-1] != '/' ):
             FileOrDirName += '/'
 
-        YN = input( '{:} exists. Overwrite? (y/N): '.format( FileOrDirName ) )
+        YN = input( '  {:} exists. Overwrite? (y/N): '.format( FileOrDirName ) )
 
         if YN == 'Y' or YN == 'y' :
-            print( 'Overwriting' )
+            print( '  Overwriting' )
             OW = True
         else:
-            print( 'Not overwriting' )
+            print( '  Not overwriting' )
             OW = False
 
     return OW

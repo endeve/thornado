@@ -33,11 +33,12 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
     .DataDirectory/08675309/<Your favorite field>.dat
     """
 
-    print( '\nRunning MakeDataFile...' )
+    print( '\n  Running MakeDataFile' )
+    print(   '  --------------------' )
 
     if not DataDirectory[-1] == '/': DataDirectory += '/'
 
-    print( '\nDataDirectory: {:}\n'.format( DataDirectory ) )
+    print( '\n  DataDirectory: {:}\n'.format( DataDirectory ) )
 
     ow = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = owD )
 
@@ -57,7 +58,7 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
         if PlotfileDirectory[-1] != '/': PlotfileDirectory += '/'
 
-        print( '\nPlotfileDirectory: {:}\n'.format( PlotfileDirectory ) )
+        print( '\n  PlotfileDirectory: {:}\n'.format( PlotfileDirectory ) )
 
         nSSS = nSS
         if nSS < 0: nSSS = PlotfileArray.shape[0]
@@ -117,7 +118,7 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                 DataFile = FileDirectory + '{:}.dat'.format( Field )
 
                 if Verbose:
-                    print( 'Generating data file: {:} ({:}/{:})'.format \
+                    print( '  Generating data file: {:} ({:}/{:})'.format \
                              ( DataFile, i+1-iLo, iHi-iLo ) )
 
                 Data, DataUnits, \
@@ -272,7 +273,7 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
         nProc = max( 1, cpu_count() // 2 )
 
-        print( 'Generating {:} with {:} processes...\n'.format \
+        print( '  Generating {:} with {:} processes...\n'.format \
              ( DataDirectory, nProc ) )
 
         if nProc > 1:
