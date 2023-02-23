@@ -6,7 +6,7 @@
 DEBUG = 0
 
 thornado.ProgramName      = "Advection"
-thornado.AdvectionProfile = "HydroSineWaveX1"
+thornado.AdvectionProfile = "MagneticSineWaveX2"
 
 thornado.WriteNodalData = 1
 
@@ -28,22 +28,26 @@ thornado.nStages = 1 # Number of SSP-RK stages for time integration
 
 thornado.CFL = 0.5 # CFL number
 
-thornado.bcX         = 1 0 0 # Boundary conditions
+thornado.bcX         = 1 1 1 # Boundary conditions
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 
 geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-amr.n_cell            = 128 01 01 # Number of cells in each dimension
-thornado.swX          = 01 00 00 # Stencil width (nGhostCells) in each dimension
+amr.n_cell            = 02 128 01 # Number of cells in each dimension
+thornado.swX          = 01 01 00 # Stencil width (nGhostCells) in each dimension
 amr.max_grid_size_x   = 1
 amr.blocking_factor_x = 1
+amr.max_grid_size_y   = 1
+amr.blocking_factor_y = 1
+amr.max_grid_size_z   = 1
+amr.blocking_factor_z = 1
 amr.max_level         = 0
 
 # Equation of state parameters
 EoS.Gamma = 1.6666666666666667 # Ideal Gas EoS Gamma
 
 # MHD parameters
-MHD.EvolveOnlyMagnetic    = 0
+MHD.EvolveOnlyMagnetic    = 1
 MHD.UseDivergenceCleaning = 0
