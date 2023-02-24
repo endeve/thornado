@@ -441,27 +441,27 @@ CONTAINS
             / unitsPM(iPM_V1)
 
         WRITE(106,FMT) &
-          P(:,iPM_V1) &
+          P(:,iPM_V2) &
             / unitsPM(iPM_V2)
 
         WRITE(107,FMT) &
-          P(:,iPM_V1) &
+          P(:,iPM_V3) &
             / unitsPM(iPM_V3)
 
         WRITE(108,FMT) &
-          P(:,iPM_V1) &
+          P(:,iPM_B1) &
             / unitsPM(iPM_B1)
 
         WRITE(109,FMT) &
-          P(:,iPM_V1) &
+          P(:,iPM_B2) &
             / unitsPM(iPM_B2)
 
         WRITE(110,FMT) &
-          P(:,iPM_V1) &
+          P(:,iPM_B3) &
             / unitsPM(iPM_B3)
 
         WRITE(111,FMT) &
-          P(:,iPM_V1) &
+          P(:,iPM_Chi) &
             / unitsPM(iPM_Chi)
 
         WRITE(112,FMT) &
@@ -476,6 +476,12 @@ CONTAINS
       END DO
       END DO
 
+      CLOSE( 113 )
+      CLOSE( 112 )
+      CLOSE( 111 )
+      CLOSE( 110 )
+      CLOSE( 109 )
+      CLOSE( 108 )
       CLOSE( 107 )
       CLOSE( 106 )
       CLOSE( 105 )
