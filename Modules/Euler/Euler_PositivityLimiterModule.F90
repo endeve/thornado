@@ -31,7 +31,6 @@ MODULE Euler_PositivityLimiterModule
   PUBLIC :: FinalizePositivityLimiter_Euler
   PUBLIC :: ApplyPositivityLimiter_Euler
 
-
 CONTAINS
 
 
@@ -208,7 +207,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, FineMask_Option )
 
     INTEGER,  INTENT(in)              :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -218,6 +217,20 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout), OPTIONAL :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in)   , OPTIONAL :: &
+      FineMask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: FineMask(iX_B1(1):iX_E1(1), &
+                        iX_B1(2):iX_E1(2), &
+                        iX_B1(3):iX_E1(3),1:1)
+
+    INTEGER, PARAMETER :: iLeaf = 0
+
+    IF( PRESENT( FineMask_Option ) )THEN
+      FineMask = FineMask_Option
+    ELSE
+      FineMask = iLeaf
+    END IF
 
 #if   defined( MICROPHYSICS_WEAKLIB ) && defined( HYDRO_RELATIVISTIC    )
 
@@ -232,7 +245,7 @@ CONTAINS
 #elif defined( HYDRO_RELATIVISTIC )
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask_Option = FineMask )
 
 #else
 

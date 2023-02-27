@@ -33,12 +33,12 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     iGF_h_3, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
-    iCF_E
+    iCF_E, &
+    nCF
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
@@ -67,6 +67,11 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   INTEGER               :: nPT      ! Total number of Positive Points
   REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: L_X(:,:)
+
+  INTEGER, PARAMETER :: iLeaf    = 0
+  INTEGER, PARAMETER :: iNotLeaf = 1
+
+  REAL(DP), PARAMETER :: OffSet_q = 1.0e-12
 
   INTERFACE ComputePointValues
     MODULE PROCEDURE ComputePointValues_SingleField
@@ -207,7 +212,7 @@ CONTAINS
   !>        and velocity
   !> @todo Modify to accomodate GR
   SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -215,9 +220,18 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      FineMask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K
-    REAL(DP) :: Min_D, Min_K, Min_ESq, Theta_D, Theta_P, q
+    INTEGER :: FineMask(iX_B1(1):iX_E1(1), &
+                        iX_B1(2):iX_E1(2), &
+                        iX_B1(3):iX_E1(3),1:1)
+    INTEGER :: TmpMask (iX_B1(1):iX_E1(1), &
+                        iX_B1(2):iX_E1(2), &
+                        iX_B1(3):iX_E1(3))
+
+    INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K, iLo(3), iHi(3)
+    REAL(DP) :: Min_D, Min_K, Min_E, Theta_D, Theta_P, q, q_K(nPT)
 
     INTEGER :: iErr(              iX_B0(1):iX_E0(1), &
                                   iX_B0(2):iX_E0(2), &
@@ -282,6 +296,28 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
+    iLo = 1
+    iHi = 1
+
+    iLo(1) = iX_B1(1)+1
+    iHi(1) = iX_E1(1)-1
+
+    IF( iX_B0(2) .NE. iX_E0(2) )THEN
+      iLo(2) = iX_B1(2)+1
+      iHi(2) = iX_E1(2)-1
+    END IF
+
+    IF( iX_B0(3) .NE. iX_E0(3) )THEN
+      iLo(3) = iX_B1(3)+1
+      iHi(3) = iX_E1(3)-1
+    END IF
+
+    IF( PRESENT( FineMask_Option ) )THEN
+      FineMask = FineMask_Option
+    ELSE
+      FineMask = iLeaf
+    END IF
+
     nX_K  = PRODUCT( iX_E0 - iX_B0 + 1 )
     nCF_K = nCF * nX_K
 
@@ -289,15 +325,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, G, U ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, G, U, iLo, iHi, FineMask ) &
     !$OMP MAP( alloc: iErr, NegativeStates, Theta_q, SqrtGm, &
-    !$OMP             U_Q, U_P, U_K, &
+    !$OMP             U_Q, U_P, U_K, TmpMask, &
     !$OMP             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, G, U ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, G, U, iLo, iHi, FineMask ) &
     !$ACC CREATE(     iErr, NegativeStates, Theta_q, SqrtGm, &
-    !$ACC             U_Q, U_P, U_K, &
+    !$ACC             U_Q, U_P, U_K, TmpMask, &
     !$ACC             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #endif
 
@@ -369,7 +405,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT(  iX_B0, iX_E0, g1P, g2P, g3P, h1P, h2P, h3P )
+    !$ACC PRESENT( iX_B0, iX_E0, g1P, g2P, g3P, h1P, h2P, h3P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -387,20 +423,125 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Ensure neighbors of leaf elements are leaf elements.
+    !     This is needed for computation of fluxes across interfaces ---
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B1, iX_E1, TmpMask, FineMask )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      TmpMask(iX1,iX2,iX3) = FineMask(iX1,iX2,iX3,1)
+
+    END DO
+    END DO
+    END DO
+
+    ! --- X1 ---
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iLo, iHi, TmpMask, FineMask )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iLo(3), iHi(3)
+    DO iX2 = iLo(2), iHi(2)
+    DO iX1 = iLo(1), iHi(1)
+
+      IF( TmpMask(iX1,iX2,iX3) .EQ. iLeaf )THEN
+
+        FineMask(iX1-1,iX2,iX3,1) = iLeaf
+        FineMask(iX1+1,iX2,iX3,1) = iLeaf
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+    ! --- X2 ---
+
+    IF( iX_B0(2) .NE. iX_E0(2) )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRESENT( iLo, iHi, TmpMask, FineMask )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX3 = iLo(3), iHi(3)
+      DO iX2 = iLo(2), iHi(2)
+      DO iX1 = iLo(1), iHi(1)
+
+        IF( TmpMask(iX1,iX2,iX3) .EQ. iLeaf )THEN
+
+          FineMask(iX1,iX2-1,iX3,1) = iLeaf
+          FineMask(iX1,iX2+1,iX3,1) = iLeaf
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+
+    END IF ! iX_B0(2) .NE. iX_E0(2)
+
+    ! --- X3 ---
+
+    IF( iX_B0(3) .NE. iX_E0(3) )THEN
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRESENT( iLo, iHi, iX_B1, iX_E1, TmpMask, FineMask )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+      DO iX2 = iLo(2), iHi(2)
+      DO iX1 = iLo(1), iHi(1)
+
+        IF(       TmpMask(iX1,iX2,iX_B1(3)) .EQ. iLeaf &
+            .AND. TmpMask(iX1,iX2,iLo  (3)) .NE. iLeaf ) &
+          FineMask(iX1,iX2,iX_B1(3),1) = iNotLeaf
+
+        IF(       TmpMask(iX1,iX2,iX_E1(3)) .EQ. iLeaf &
+            .AND. TmpMask(iX1,iX2,iHi  (3)) .NE. iLeaf ) &
+          FineMask(iX1,iX2,iX_E1(3),1) = iNotLeaf
+
+      END DO
+      END DO
+
+    END IF ! iX_B0(3) .NE. iX_E0(3)
+
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( U_K, WeightsX_q, SqrtGm, U_Q )
+    !$ACC PRESENT( U_K, WeightsX_q, SqrtGm, U_Q, FineMask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iCF = 1, nCF
+    DO iCF = 1       , nCF
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( FineMask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
       U_K(iCF,iX1,iX2,iX3) &
         = SUM( WeightsX_q * SqrtGm(:,iX1,iX2,iX3) * U_Q(:,iCF,iX1,iX2,iX3) ) &
@@ -422,7 +563,7 @@ CONTAINS
     !$OMP PRIVATE( Min_D, Min_K, Theta_D )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( U_K, U_Q, U_P, NegativeStates ) &
+    !$ACC PRESENT( U_K, U_Q, U_P, NegativeStates, FineMask ) &
     !$ACC PRIVATE( Min_D, Min_K, Theta_D )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
@@ -433,6 +574,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( FineMask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
       Min_D = Min_1 * U_K(iCF_D,iX1,iX2,iX3)
 
@@ -485,15 +628,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( Min_ESq, Theta_P )
+    !$OMP PRIVATE( Min_E, Theta_P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U_K, U_Q, U_P, g1P, g2P, g3P, Theta_q, &
-    !$ACC          iErr, NegativeStates ) &
-    !$ACC PRIVATE( Min_ESq, Theta_P )
+    !$ACC          iErr, NegativeStates, FineMask ) &
+    !$ACC PRIVATE( Min_E, Theta_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( Min_ESq, Theta_P )
+    !$OMP PRIVATE( Min_E, Theta_P )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -503,9 +646,26 @@ CONTAINS
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
-      IF( U_K(iCF_E,iX1,iX2,iX3) .LT. Zero ) iErr(iX1,iX2,iX3) = 01
+      IF( FineMask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
-      Min_ESq = Min_2 * U_K(iCF_E,iX1,iX2,iX3)**2
+      Min_E = Min_2 * ABS( U_K(iCF_E,iX1,iX2,iX3) )
+
+      DO iPT = 1, nPT
+
+        q_K(iPT) &
+          = Computeq &
+              ( U_K(iCF_D ,iX1,iX2,iX3), &
+                U_K(iCF_S1,iX1,iX2,iX3), &
+                U_K(iCF_S2,iX1,iX2,iX3), &
+                U_K(iCF_S3,iX1,iX2,iX3), &
+                U_K(iCF_E ,iX1,iX2,iX3), &
+                g1P(iPT   ,iX1,iX2,iX3), &
+                g2P(iPT   ,iX1,iX2,iX3), &
+                g3P(iPT   ,iX1,iX2,iX3) )
+
+      END DO
+
+      IF( ANY( q_K .LT. Min_E ) ) iErr(iX1,iX2,iX3) = 01
 
       Theta_q(iX1,iX2,iX3) = One
 
@@ -521,8 +681,7 @@ CONTAINS
                 U_P(iPT,iCF_E ,iX1,iX2,iX3), &
                 g1P(iPT      ,iX1,iX2,iX3), &
                 g2P(iPT      ,iX1,iX2,iX3), &
-                g3P(iPT      ,iX1,iX2,iX3), &
-                Min_ESq )
+                g3P(iPT      ,iX1,iX2,iX3) )
 
         IF( q .LT. Zero )THEN
 
@@ -539,10 +698,10 @@ CONTAINS
                    U_K(    iCF_S2,iX1,iX2,iX3), &
                    U_K(    iCF_S3,iX1,iX2,iX3), &
                    U_K(    iCF_E ,iX1,iX2,iX3), &
-                   g1P(iPT      ,iX1,iX2,iX3), &
-                   g2P(iPT      ,iX1,iX2,iX3), &
-                   g3P(iPT      ,iX1,iX2,iX3), &
-                   Min_ESq, Theta_P, &
+                   g1P(iPT       ,iX1,iX2,iX3), &
+                   g2P(iPT       ,iX1,iX2,iX3), &
+                   g3P(iPT       ,iX1,iX2,iX3), &
+                   Theta_P, &
                    iErr(iX1,iX2,iX3) )
 
           Theta_q(iX1,iX2,iX3) = MIN( Theta_q(iX1,iX2,iX3), Theta_P )
@@ -561,7 +720,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates )
+    !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates, FineMask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -570,6 +729,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( FineMask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
       IF( NegativeStates(2,iX1,iX2,iX3) )THEN
 
@@ -608,13 +769,13 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U, iErr ) &
     !$OMP MAP( release: NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
-    !$OMP               G, U_Q, U_P, U_K, &
+    !$OMP               G, U_Q, U_P, U_K, FineMask, TmpMask, iLo, iHi, &
     !$OMP               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, iErr ) &
     !$ACC DELETE(       NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
-    !$ACC               G, U_Q, U_P, U_K, &
+    !$ACC               G, U_Q, U_P, U_K, FineMask, TmpMask, iLo, iHi, &
     !$ACC               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #endif
 
@@ -685,7 +846,7 @@ CONTAINS
 
 
   FUNCTION Computeq &
-    ( D, S1, S2, S3, tau, g1, g2, g3, Min_ESq ) RESULT( q )
+    ( D, S1, S2, S3, tau, g1, g2, g3 ) RESULT( q )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -693,13 +854,13 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, g1, g2, g3, Min_ESq
+    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, g1, g2, g3
 
     REAL(DP) :: q
 
     q = tau + D &
-          - SQRT( D**2 + ( S1**2 / g1 + S2**2 / g2 + S3**2 / g3 ) &
-                  + Min_ESq )
+          - D * SQRT( One + ( S1**2 / g1 + S2**2 / g2 + S3**2 / g3 ) / D**2 &
+                  + OffSet_q )
 
     RETURN
   END FUNCTION Computeq
@@ -708,7 +869,7 @@ CONTAINS
   SUBROUTINE SolveTheta_Bisection &
     ( D_P, S1_P, S2_P, S3_P, E_P, &
       D_K, S1_K, S2_K, S3_K, E_K, &
-      g1_P, g2_P, g3_P, Min_ESq, Theta_P, iErr )
+      g1_P, g2_P, g3_P, Theta_P, iErr )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -718,7 +879,7 @@ CONTAINS
 
     REAL(DP), INTENT(in)    :: D_P, S1_P, S2_P, S3_P, E_P, &
                                D_K, S1_K, S2_K, S3_K, E_K, &
-                               g1_P, g2_P, g3_P, Min_ESq
+                               g1_P, g2_P, g3_P
     REAL(DP), INTENT(out)   :: Theta_P
     INTEGER , INTENT(inout) :: iErr
 
@@ -737,7 +898,7 @@ CONTAINS
               x_a * S2_P + ( One - x_a ) * S2_K, &
               x_a * S3_P + ( One - x_a ) * S3_K, &
               x_a *  E_P + ( One - x_a ) *  E_K, &
-              g1_P, g2_P, g3_P, Min_ESq )
+              g1_P, g2_P, g3_P )
 
     x_b = One
     f_b = Computeq &
@@ -746,7 +907,7 @@ CONTAINS
               x_b * S2_P + ( One - x_b ) * S2_K, &
               x_b * S3_P + ( One - x_b ) * S3_K, &
               x_b *  E_P + ( One - x_b ) *  E_K, &
-              g1_P, g2_P, g3_P, Min_ESq )
+              g1_P, g2_P, g3_P )
 
     IF( .NOT. f_a * f_b < 0 ) iErr = 02
 
@@ -766,7 +927,7 @@ CONTAINS
                 x_c * S2_P + ( One - x_c ) * S2_K, &
                 x_c * S3_P + ( One - x_c ) * S3_K, &
                 x_c *  E_P + ( One - x_c ) *  E_K, &
-                g1_P, g2_P, g3_P, Min_ESq )
+                g1_P, g2_P, g3_P )
 
       IF( f_a * f_c < Zero )THEN
 

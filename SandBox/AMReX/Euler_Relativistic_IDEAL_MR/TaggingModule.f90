@@ -111,9 +111,9 @@ CONTAINS
 
       GradD = SQRT( GradD )
 
-      IF( ABS( MeshX(1) % Center(iX1) - 1.0_DP ) .LT. TagCriteria_this )THEN
+      !IF( ABS( MeshX(1) % Center(iX1) - 1.0_DP ) .LT. TagCriteria_this )THEN
 
-      !IF( ANY( GradD .GT. TagCriteria_this ) )THEN
+      IF( ANY( GradD .GT. TagCriteria_this ) )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -221,7 +221,7 @@ CONTAINS
       GradD = SQRT( GradD )
 
       IF( ANY( GradD .GT. TagCriteria_this ) )THEN
-      !IF( MeshX(1) % Center(iX1) .GT. TagCriteria_this )THEN
+      !IF( ABS(MeshX(2) % Center(iX2)) .GT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 

@@ -161,7 +161,8 @@ MODULE Euler_dgDiscretizationModule
                       OffGridFlux_Euler_X3_Inner(nCF), &
                       OffGridFlux_Euler_X3_Outer(nCF)
 
-  INTEGER, PARAMETER :: iLeaf = 0
+  INTEGER, PARAMETER :: iLeaf    = 0
+  INTEGER, PARAMETER :: iNotLeaf = 1
 
 CONTAINS
 
@@ -394,11 +395,11 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5)
 #endif
-    DO iCF = 1, nCF
+    DO iCF = 1       , nCF
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNX = 1, nDOFX
+    DO iNX = 1       , nDOFX
 
       dU(iNX,iX1,iX2,iX3,iCF) &
         = dU(iNX,iX1,iX2,iX3,iCF) &
@@ -550,6 +551,10 @@ CONTAINS
              iX_B0(3)  :iX_E0(3),   &
              iX_B0(1)  :iX_E0(1)+1, &
              1)
+    INTEGER :: &
+      TmpMask(iX_B1(1)  :iX_E1(1), &
+              iX_B1(2)  :iX_E1(2), &
+              iX_B1(3)  :iX_E1(3))
 
     ! --- Diagnostic Fields ---
 
@@ -607,7 +612,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             Mask_K, Mask_L, Mask_R, &
+    !$OMP             Mask_K, Mask_L, Mask_R, TmpMask, &
     !$OMP             NumericalFlux, Flux_q, dU_X1, SurfaceFlux_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
@@ -619,7 +624,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             Mask_K, Mask_L, Mask_R, &
+    !$ACC             Mask_K, Mask_L, Mask_R, TmpMask, &
     !$ACC             NumericalFlux, Flux_q, dU_X1, SurfaceFlux_X1 )
 #endif
 
@@ -678,11 +683,54 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Ensure neighbors of leaf elements are leaf elements ---
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B1, iX_E1, TmpMask, Mask )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      TmpMask(iX1,iX2,iX3) = Mask(iX1,iX2,iX3,1)
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, Mask, TmpMask )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. iLeaf )THEN
+
+        TmpMask(iX1-1,iX2,iX3) = iLeaf
+        TmpMask(iX1+1,iX2,iX3) = iLeaf
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, Mask_K, Mask )
+    !$ACC PRESENT( iX_B0, iX_E0, Mask_K, TmpMask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -691,7 +739,28 @@ CONTAINS
     DO iX2 = iX_B0(2)    , iX_E0(2)
     DO iNX = 1           , nDOFX
 
-      Mask_K(iNX,iX2,iX3,iX1,1) = Mask(iX1,iX2,iX3,1)
+      Mask_K(iNX,iX2,iX3,iX1,1) = TmpMask(iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, Mask_L, Mask_R )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX1 = iX_B0(1), iX_E0(1) + 1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iNX = 1       , nDOFX_X1
+
+      Mask_L(iNX,iX2,iX3,iX1,1) = iNotLeaf
+      Mask_R(iNX,iX2,iX3,iX1,1) = iNotLeaf
 
     END DO
     END DO
@@ -706,23 +775,20 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX1 = iX_B0(1), iX_E0(1) + 1
+    DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iNX = 1       , nDOFX_X1
 
-      Mask_L(iNX,iX2,iX3,iX1,1) = Mask(iX1-1,iX2,iX3,1)
-      Mask_R(iNX,iX2,iX3,iX1,1) = Mask(iX1  ,iX2,iX3,1)
+      IF( Mask(iX1,iX2,iX3,1) .EQ. iLeaf )THEN
 
-      ! --- Ensure that if an element is a leaf element,
-      !     both of its neighbors in the X1-direction are
-      !     treated as leaves too ---
+        Mask_L(iNX,iX2,iX3,iX1  ,1) = iLeaf
+        Mask_R(iNX,iX2,iX3,iX1  ,1) = iLeaf
 
-      IF( Mask_L(iNX,iX2,iX3,iX1,1) .EQ. iLeaf ) &
-          Mask_R(iNX,iX2,iX3,iX1,1) = iLeaf
+        Mask_L(iNX,iX2,iX3,iX1+1,1) = iLeaf
+        Mask_R(iNX,iX2,iX3,iX1+1,1) = iLeaf
 
-      IF( Mask_R(iNX,iX2,iX3,iX1,1) .EQ. iLeaf ) &
-          Mask_L(iNX,iX2,iX3,iX1,1) = iLeaf
+      END IF
 
     END DO
     END DO
@@ -905,10 +971,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
- ! Initializations needed in debug mode
- NumericalFlux  = Zero
- Flux_q         = Zero
- SurfaceFlux_X1 = Zero
+! Initializations needed in debug mode
+NumericalFlux  = Zero
+Flux_q         = Zero
+SurfaceFlux_X1 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -939,7 +1005,8 @@ CONTAINS
 
       iErr(iNX_X) = 0
 
-      IF( ( msk_L(iNX_X) .NE. 0 ) .OR. ( msk_R(iNX_X) .NE. 0 ) ) CYCLE
+      !IF( ( msk_L(iNX_X) .NE. iLeaf ) .OR. ( msk_R(iNX_X) .NE. iLeaf ) ) CYCLE
+      IF( msk_L(iNX_X) .NE. iLeaf ) CYCLE ! msk_L(iNX_X) = msk_R(iNX_X)
 
       ! --- Left state ---
 
@@ -1149,7 +1216,7 @@ CONTAINS
 #endif
     DO iNX_K = 1, nNodesX_K
 
-      IF( msk_K(iNX_K) .NE. 0 ) CYCLE
+      IF( msk_K(iNX_K) .NE. iLeaf ) CYCLE
 
       CALL ComputePressureFromPrimitive &
              ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
@@ -1244,7 +1311,7 @@ CONTAINS
     !$OMP               Flux_F, Flux_K, &
     !$OMP               uCF_L_nCF, uCF_R_nCF, &
     !$OMP               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP               Mask_K, Mask_L, Mask_R, &
+    !$OMP               Mask_K, Mask_L, Mask_R, TmpMask, &
     !$OMP               Flux_q, dU_X1, Mask )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
@@ -1255,7 +1322,7 @@ CONTAINS
     !$ACC               Flux_F, Flux_K, &
     !$ACC               uCF_L_nCF, uCF_R_nCF, &
     !$ACC               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC               Mask_K, Mask_L, Mask_R, &
+    !$ACC               Mask_K, Mask_L, Mask_R, TmpMask, &
     !$ACC               Flux_q, dU_X1, Mask )
 #endif
 
@@ -1307,7 +1374,7 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_Divergence_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2, Mask )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
@@ -1322,8 +1389,8 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
-    INTEGER :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCF, iGF
-    INTEGER :: iXP_B0(3), iXP_E0(3)
+    INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCF, iGF
+    INTEGER  :: iXP_B0(3), iXP_E0(3)
 
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
     REAL(DP) :: P_L, P_R, Cs_L, Cs_R, P_K
@@ -1391,6 +1458,10 @@ CONTAINS
              iX_B0(3)  :iX_E0(3),   &
              iX_B0(2)  :iX_E0(2)+1, &
              1)
+    INTEGER :: &
+      TmpMask(iX_B1(1):iX_E1(1), &
+              iX_B1(2):iX_E1(2), &
+              iX_B1(3):iX_E1(3))
 
     ! --- Diagnostic Fields ---
 
@@ -1448,7 +1519,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             Mask_K, Mask_L, Mask_R, &
+    !$OMP             Mask_K, Mask_L, Mask_R, TmpMask, &
     !$OMP             NumericalFlux, Flux_q, dU_X2, SurfaceFlux_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
@@ -1460,7 +1531,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             Mask_K, Mask_L, Mask_R, &
+    !$ACC             Mask_K, Mask_L, Mask_R, TmpMask, &
     !$ACC             NumericalFlux, Flux_q, dU_X2, SurfaceFlux_X2 )
 #endif
 
@@ -1519,11 +1590,54 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Ensure neighbors of leaf elements are leaf elements ---
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B1, iX_E1, TmpMask, Mask )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+        TmpMask(iX1,iX2,iX3) = Mask(iX1,iX2,iX3,1)
+
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, Mask, TmpMask )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. iLeaf )THEN
+
+        TmpMask(iX1,iX2-1,iX3) = iLeaf
+        TmpMask(iX1,iX2+1,iX3) = iLeaf
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, Mask_K, Mask )
+    !$ACC PRESENT( iX_B0, iX_E0, Mask_K, TmpMask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -1532,7 +1646,28 @@ CONTAINS
     DO iX1 = iX_B0(1)    , iX_E0(1)
     DO iNX = 1           , nDOFX
 
-      Mask_K(iNX,iX1,iX3,iX2,1) = Mask(iX1,iX2,iX3,1)
+      Mask_K(iNX,iX1,iX3,iX2,1) = TmpMask(iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B0, iX_E0, Mask_L, Mask_R )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX2 = iX_B0(2), iX_E0(2) + 1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1       , nDOFX_X2
+
+      Mask_L(iNX,iX1,iX3,iX2,1) = iNotLeaf
+      Mask_R(iNX,iX1,iX3,iX2,1) = iNotLeaf
 
     END DO
     END DO
@@ -1547,28 +1682,37 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX2 = iX_B0(2), iX_E0(2) + 1
+    DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX_X2
 
-      Mask_L(iNX,iX1,iX3,iX2,1) = Mask(iX1,iX2-1,iX3,1)
-      Mask_R(iNX,iX1,iX3,iX2,1) = Mask(iX1,iX2  ,iX3,1)
+      IF( Mask(iX1,iX2,iX3,1) .EQ. iLeaf )THEN
 
-      ! --- Ensure that if an element is a leaf element,
-      !     both of its neighbors in the X2-direction are
-      !     treated as leaves too ---
+        Mask_L(iNX,iX1,iX3,iX2  ,1) = iLeaf
+        Mask_R(iNX,iX1,iX3,iX2  ,1) = iLeaf
 
-      IF( Mask_L(iNX,iX1,iX3,iX2,1) .EQ. iLeaf ) &
-          Mask_R(iNX,iX1,iX3,iX2,1) = iLeaf
+        Mask_L(iNX,iX1,iX3,iX2+1,1) = iLeaf
+        Mask_R(iNX,iX1,iX3,iX2+1,1) = iLeaf
 
-      IF( Mask_R(iNX,iX1,iX3,iX2,1) .EQ. iLeaf ) &
-          Mask_L(iNX,iX1,iX3,iX2,1) = iLeaf
+      END IF
 
     END DO
     END DO
     END DO
     END DO
+
+!if(ix_b0(2).eq.96)then
+!!if( all( mask(:,ix_b1(2),1,1) .eq. ileaf   ) .and. &
+!!    all( mask(:,ix_b0(2),1,1) .eq. inotleaf) )then
+!
+!print*
+!
+!do ix2=ix_e1(2),ix_b1(2),-1
+!print*,mask(:,ix2,1,1)
+!enddo
+!
+!endif
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -1746,10 +1890,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
-! ! Initializations needed in debug mode
-! NumericalFlux  = Zero
-! Flux_q         = Zero
-! SurfaceFlux_X2 = Zero
+! Initializations needed in debug mode
+NumericalFlux  = Zero
+Flux_q         = Zero
+SurfaceFlux_X2 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -1780,7 +1924,7 @@ CONTAINS
 
       iErr(iNX_X) = 0
 
-      IF( ( msk_L(iNX_X) .NE. 0 ) .OR. ( msk_R(iNX_X) .NE. 0 ) ) CYCLE
+      IF( ( msk_L(iNX_X) .NE. iLeaf ) .OR. ( msk_R(iNX_X) .NE. iLeaf ) ) CYCLE
 
       ! --- Left state ---
 
@@ -1990,7 +2134,7 @@ CONTAINS
 #endif
     DO iNX_K = 1, nNodesX_K
 
-      IF( msk_K(iNX_K) .NE. 0 ) CYCLE
+      IF( msk_K(iNX_K) .NE. iLeaf ) CYCLE
 
       CALL ComputePressureFromPrimitive &
              ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
@@ -2085,7 +2229,7 @@ CONTAINS
     !$OMP               Flux_F, Flux_K, &
     !$OMP               uCF_L_nCF, uCF_R_nCF, &
     !$OMP               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP               Mask_K, Mask_L, Mask_R, &
+    !$OMP               Mask_K, Mask_L, Mask_R, TmpMask, &
     !$OMP               Flux_q, dU_X2, Mask )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
@@ -2096,7 +2240,7 @@ CONTAINS
     !$ACC               Flux_F, Flux_K, &
     !$ACC               uCF_L_nCF, uCF_R_nCF, &
     !$ACC               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC               Mask_K, Mask_L, Mask_R, &
+    !$ACC               Mask_K, Mask_L, Mask_R, TmpMask, &
     !$ACC               Flux_q, dU_X2, Mask )
 #endif
 
@@ -2148,7 +2292,7 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_Divergence_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3, Mask )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
@@ -2163,8 +2307,8 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
-    INTEGER :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCF, iGF
-    INTEGER :: iXP_B0(3), iXP_E0(3)
+    INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCF, iGF
+    INTEGER  :: iXP_B0(3), iXP_E0(3)
 
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
     REAL(DP) :: P_L, P_R, Cs_L, Cs_R, P_K
@@ -2232,6 +2376,10 @@ CONTAINS
              iX_B0(2)  :iX_E0(2),   &
              iX_B0(3)  :iX_E0(3)+1, &
              1)
+    INTEGER :: &
+      TmpMask(iX_B1(1)  :iX_E1(1), &
+              iX_B1(2)  :iX_E1(2), &
+              iX_B1(3)  :iX_E1(3))
 
     ! --- Diagnostic Fields ---
 
@@ -2289,7 +2437,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             Mask_K, Mask_L, Mask_R, &
+    !$OMP             Mask_K, Mask_L, Mask_R, TmpMask, &
     !$OMP             NumericalFlux, Flux_q, dU_X3, SurfaceFlux_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
@@ -2301,7 +2449,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             Mask_K, Mask_L, Mask_R, &
+    !$ACC             Mask_K, Mask_L, Mask_R, TmpMask, &
     !$ACC             NumericalFlux, Flux_q, dU_X3, SurfaceFlux_X3 )
 #endif
 
@@ -2360,20 +2508,63 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Ensure neighbors of leaf elements are leaf elements ---
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B1, iX_E1, TmpMask, Mask )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      TmpMask(iX1,iX2,iX3) = Mask(iX1,iX2,iX3,1)
+
+    END DO
+    END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, Mask, TmpMask )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( Mask(iX1,iX2,iX3,1) .EQ. iLeaf )THEN
+
+        TmpMask(iX1,iX2,iX3-1) = iLeaf
+        TmpMask(iX1,iX2,iX3+1) = iLeaf
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, Mask_K, Mask )
+    !$ACC PRESENT( iX_B0, iX_E0, Mask_K, TmpMask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+    DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
+    DO iX3 = iX_B0(3)    , iX_E0(3)
     DO iX2 = iX_B0(2)    , iX_E0(2)
-    DO iX1 = iX_B0(1)    , iX_E0(1)
     DO iNX = 1           , nDOFX
 
-      Mask_K(iNX,iX1,iX2,iX3,1) = Mask(iX1,iX2,iX3,1)
+      Mask_K(iNX,iX2,iX3,iX1,1) = TmpMask(iX1,iX2,iX3)
 
     END DO
     END DO
@@ -2388,23 +2579,25 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX3 = iX_B0(3), iX_E0(3) + 1
+    DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX_X3
 
-      Mask_L(iNX,iX1,iX2,iX3,1) = Mask(iX1,iX2,iX3-1,1)
-      Mask_R(iNX,iX1,iX2,iX3,1) = Mask(iX1,iX2,iX3  ,1)
+      IF( Mask(iX1,iX2,iX3,1) .EQ. iLeaf )THEN
 
-      ! --- Ensure that if an element is a leaf element,
-      !     both of its neighbors in the X2-direction are
-      !     treated as leaves too ---
+        Mask_L(iNX,iX1,iX2,iX3  ,1) = iLeaf
+        Mask_R(iNX,iX1,iX2,iX3  ,1) = iLeaf
 
-      IF( Mask_L(iNX,iX1,iX2,iX3,1) .EQ. iLeaf ) &
-          Mask_R(iNX,iX1,iX2,iX3,1) = iLeaf
+        Mask_L(iNX,iX1,iX2,iX3+1,1) = iLeaf
+        Mask_R(iNX,iX1,iX2,iX3+1,1) = iLeaf
 
-      IF( Mask_R(iNX,iX1,iX2,iX3,1) .EQ. iLeaf ) &
-          Mask_L(iNX,iX1,iX2,iX3,1) = iLeaf
+      ELSE
+
+        Mask_L(iNX,iX1,iX2,iX3,1) = iNotLeaf
+        Mask_R(iNX,iX1,iX2,iX3,1) = iNotLeaf
+
+      END IF
 
     END DO
     END DO
@@ -2586,10 +2779,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
-! ! Initializations needed in debug mode
-! NumericalFlux  = Zero
-! Flux_q         = Zero
-! SurfaceFlux_X3 = Zero
+! Initializations needed in debug mode
+NumericalFlux  = Zero
+Flux_q         = Zero
+SurfaceFlux_X3 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -2620,7 +2813,7 @@ CONTAINS
 
       iErr(iNX_X) = 0
 
-      IF( ( msk_L(iNX_X) .NE. 0 ) .OR. ( msk_R(iNX_X) .NE. 0 ) ) CYCLE
+      IF( ( msk_L(iNX_X) .NE. iLeaf ) .OR. ( msk_R(iNX_X) .NE. iLeaf ) ) CYCLE
 
       ! --- Left state ---
 
@@ -2830,7 +3023,7 @@ CONTAINS
 #endif
     DO iNX_K = 1, nNodesX_K
 
-      IF( msk_K(iNX_K) .NE. 0 ) CYCLE
+      IF( msk_K(iNX_K) .NE. iLeaf ) CYCLE
 
       CALL ComputePressureFromPrimitive &
              ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
@@ -2925,7 +3118,7 @@ CONTAINS
     !$OMP               Flux_F, Flux_K, &
     !$OMP               uCF_L_nCF, uCF_R_nCF, &
     !$OMP               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP               Mask_K, Mask_L, Mask_R, &
+    !$OMP               Mask_K, Mask_L, Mask_R, TmpMask, &
     !$OMP               Flux_q, dU_X3, Mask )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
@@ -2936,7 +3129,7 @@ CONTAINS
     !$ACC               Flux_F, Flux_K, &
     !$ACC               uCF_L_nCF, uCF_R_nCF, &
     !$ACC               G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC               Mask_K, Mask_L, Mask_R, &
+    !$ACC               Mask_K, Mask_L, Mask_R, TmpMask, &
     !$ACC               Flux_q, dU_X3, Mask )
 #endif
 
@@ -3622,7 +3815,7 @@ CONTAINS
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
 
-    INTEGER, PARAMETER :: MAX_IT = 30
+    INTEGER, PARAMETER :: MAX_IT = 35
 
     REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)

@@ -69,7 +69,7 @@ PROGRAM main
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
 
-  IMPLICIT NONE
+ IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
@@ -259,6 +259,7 @@ PROGRAM main
 
     CALL WriteCheckpointFile
 
+!if(stepno(0).eq.50) exit
   END DO
 
   ! --- END of evolution ---
@@ -385,6 +386,5 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   END SUBROUTINE WriteCheckpointFile
-
 
 END PROGRAM main

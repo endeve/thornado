@@ -478,7 +478,7 @@ CONTAINS
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
 
-    END IF ! UseFluxCorrection_Euler
+    END IF
 
 #endif
 

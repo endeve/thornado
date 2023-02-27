@@ -11,7 +11,7 @@ thornado.nStages   = 03
 thornado.t_end     = 1.0e1
 thornado.iCycleD   = 10
 thornado.CFL       = 0.5
-thornado.iCycleW   = 100
+thornado.dt_wrt   = 1.0e-1
 thornado.iCycleChk = 100000
 
 thornado.PlotFileBaseName       = "Advection1D.plt"
@@ -27,19 +27,19 @@ geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
 thornado.swX                = 01 00 00
-amr.n_cell                  = 32 01 01 # Number of cells in each dimension
-amr.max_grid_size_x         = 8
+amr.n_cell                  = 64 01 01 # Number of cells in each dimension
+amr.max_grid_size_x         = 4
 amr.blocking_factor_x       = 4
-amr.max_level               = 0
-amr.UseAMR                  = 0
-amr.UseFluxCorrection_Euler = 0
-amr.TagCriteria             = 0.5
+amr.max_level               = 1
+amr.UseAMR                  = 1
+amr.UseFluxCorrection_Euler = 1
+amr.TagCriteria             = 1.2
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 amr.UseTiling               = 0
 
-SL.UseSlopeLimiter_Euler           = 1
+SL.UseSlopeLimiter_Euler           = 0
 SL.UseCharacteristicLimiting_Euler = 0
 SL.UseTroubledCellIndicator_Euler  = 0
 
-PL.UsePositivityLimiter_Euler = 1
+PL.UsePositivityLimiter_Euler = 0

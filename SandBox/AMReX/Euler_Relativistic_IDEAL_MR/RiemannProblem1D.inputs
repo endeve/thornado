@@ -30,16 +30,16 @@ thornado.swX                = 01 00 00
 amr.n_cell                  = 128 01 01 # Number of cells in each dimension
 amr.max_grid_size_x         = 8
 amr.blocking_factor_x       = 4
-amr.max_level               = 0
-amr.UseAMR                  = 0
-amr.UseFluxCorrection_Euler = 0
-amr.TagCriteria             = 0.5
+amr.max_level               = 1
+amr.UseAMR                  = 1
+amr.UseFluxCorrection_Euler = 1
+amr.TagCriteria             = 0.02
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 amr.UseTiling               = 0
 
-SL.UseSlopeLimiter_Euler           = 1
+SL.UseSlopeLimiter_Euler           = 0
 SL.UseCharacteristicLimiting_Euler = 1
 SL.UseTroubledCellIndicator_Euler  = 0
 
-PL.UsePositivityLimiter_Euler = 1
+PL.UsePositivityLimiter_Euler = 0

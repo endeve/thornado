@@ -290,7 +290,15 @@ CONTAINS
       END DO
       END DO
 
-      IF( WriteToFile ) CLOSE( iFileNo )
+      IF( WriteToFile )THEN
+
+        CLOSE( iFileNo )
+
+      ELSE
+
+        WRITE(*,*)
+
+      END IF
 
     END DO
 

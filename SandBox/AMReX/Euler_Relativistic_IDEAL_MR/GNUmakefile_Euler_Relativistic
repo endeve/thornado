@@ -18,7 +18,7 @@ DEBUG = TRUE
 USE_MPI = TRUE
 USE_OMP = FALSE
 
-DIM = 1
+DIM = 2
 
 EBASE = main
 

@@ -8,7 +8,8 @@ MODULE MF_Euler_PositivityLimiterModule
     amrex_multifab, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
@@ -47,6 +48,9 @@ MODULE MF_Euler_PositivityLimiterModule
     DP, &
     Zero, &
     One
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
+    DestroyFineMask
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
@@ -187,9 +191,6 @@ CONTAINS
 
       END DO ! iLevel
 
-      ! --- Ensure underlying coarse cells are consistent with
-      !     cells on refined level ---
-
     END DO ! iCycle
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels
@@ -206,9 +207,12 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -224,13 +228,16 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
+    CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF => MF_uDF(iLevel) % DataPtr( MFI )
+      uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF      => MF_uDF(iLevel) % DataPtr( MFI )
+      FineMask => iMF_FineMask   % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 
@@ -271,7 +278,8 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL ApplyPositivityLimiter_Euler &
-             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
+             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D, &
+               FineMask_Option = FineMask )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
@@ -295,6 +303,8 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL DestroyFineMask( iMF_FineMask )
 
     CALL DestroyMesh_MF( MeshX )
 

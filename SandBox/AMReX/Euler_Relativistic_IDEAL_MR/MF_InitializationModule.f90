@@ -185,7 +185,7 @@ CONTAINS
       CASE( 'SineWave' )
 
         D_0 = 1.0_DP
-        Amp = 0.1_DP
+        Amp = 0.3_DP
 
         V1 = 0.1_DP
         V2 = 0.0_DP
