@@ -19,7 +19,9 @@ MODULE InputParsingModule
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
-    UnitsDisplay
+    UnitsDisplay, &
+    SolarMass, &
+    Centimeter
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
@@ -389,6 +391,16 @@ call amrex_parmparse_destroy( pp )
 
       eL = eL * UnitsDisplay % EnergyUnit
       eR = eR * UnitsDisplay % EnergyUnit
+
+      Chi = Chi * ( 1.0_DP / Centimeter )
+
+      Mass = Mass * SolarMass
+      E0 = E0 * UnitsDisplay % EnergyUnit
+      mu0 = mu0 * UnitsDisplay % EnergyUnit
+      kT = kT * UnitsDisplay % EnergyUnit
+      R0 = R0 * UnitsDisplay % LengthX1Unit
+
+
 
     END IF
 
