@@ -190,6 +190,13 @@ MODULE InitializationModule
     zoomE, &
     StepNo, &
     iRestart, &
+    D_0, &
+    Sigma, &
+    Chi, &
+    kT, &
+    Mu0, &
+    E0, &
+    R0, &
     dt, &
     t_old, &
     t_new, &
@@ -222,6 +229,7 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
+    IOS_CPP,               &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -325,6 +333,7 @@ CONTAINS
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
 
+
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
@@ -342,19 +351,22 @@ CONTAINS
 
     ELSE
 
+      CALL CreateMesh_MF( 0, MeshX )
+
       CALL InitializeEquationOfState &
                ( EquationOfState_Option = EquationOfState, &
                  Gamma_IDEAL_Option = Gamma_IDEAL, &
                  Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL CreateOpacities &
-             ( nX, [ 1, 1, 1 ], nE, 1, &
+             ( iZ_B1, iZ_E1, iOS_CPP, &
                Verbose_Option = amrex_parallel_ioprocessor() )
-!I think I need to define BX and calculate iZ_B and iZ_E from that instead
+
       CALL SetOpacities &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, &
+             ( iZ_B0, iZ_E0, iOS_CPP, D_0, Chi, Sigma, kT, E0, mu0, R0, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
+      CALL DestroyMesh_MF( MeshX )
     END IF
 
     CALL InitializeClosure_TwoMoment
@@ -465,10 +477,16 @@ CONTAINS
     CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
-             MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
+             MF_uGF_Option = MF_uGF, &
+             MF_uCF_Option = MF_uCF, &
+             MF_uPF_Option = MF_uPF, &
+             MF_uAF_Option = MF_uAF, &
+             MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
+             MF_uCR_Option = MF_uCR )
 
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &

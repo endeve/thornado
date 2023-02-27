@@ -148,7 +148,7 @@ CONTAINS
     ( iLevel, MF_uGF, MF_uCR, MF_uCF )
 
     INTEGER,              INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR, MF_uCF
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
@@ -178,6 +178,15 @@ CONTAINS
       CASE( 'StreamingDopplerShift' )
 
         CALL InitializeFields_StreamingDopplerShift &
+               ( iLevel, MF_uGF, MF_uCR, MF_uCF )
+      CASE( 'HomogeneousSphere1D' )
+
+        CALL InitializeFields_HomogeneousSphere1D &
+               ( iLevel, MF_uGF, MF_uCR, MF_uCF )
+
+      CASE( 'HomogeneousSphereGR' )
+
+        CALL InitializeFields_HomogeneousSphereGR &
                ( iLevel, MF_uGF, MF_uCR, MF_uCF )
 
       CASE DEFAULT
@@ -444,7 +453,6 @@ CONTAINS
     REAL(DP)       :: uPF_K( nDOFX, nPF )
     REAL(DP)       :: uCF_K( nDOFX, nCF )
     REAL(DP)       :: uAF_K( nDOFX, nAF )
-    TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
     INTEGER                       :: lo_C(4), hi_C(4)
@@ -621,7 +629,6 @@ CONTAINS
     REAL(DP)       :: uPF_K( nDOFX, nPF )
     REAL(DP)       :: uCF_K( nDOFX, nCF )
     REAL(DP)       :: uAF_K( nDOFX, nAF )
-    TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
     INTEGER                       :: lo_C(4), hi_C(4)
@@ -1120,7 +1127,6 @@ CONTAINS
     REAL(DP)       :: uPF_K( nDOFX, nPF )
     REAL(DP)       :: uCF_K( nDOFX, nCF )
     REAL(DP)       :: uAF_K( nDOFX, nAF )
-    TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
     INTEGER                       :: lo_C(4), hi_C(4)
@@ -1285,7 +1291,6 @@ CONTAINS
     REAL(DP)       :: uPF_K( nDOFX, nPF )
     REAL(DP)       :: uCF_K( nDOFX, nCF )
     REAL(DP)       :: uAF_K( nDOFX, nAF )
-    TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
     INTEGER                       :: lo_C(4), hi_C(4)
@@ -1296,7 +1301,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP)                      :: W, R, Theta
+    REAL(DP)                      :: W, R, Theta, E
 
     uCR_K = Zero
     uPF_K = Zero
@@ -1338,9 +1343,6 @@ CONTAINS
             iNodeX2 = NodeNumberTableX(2,iNodeX)
 
             R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-IF (iX1 .NE. 0 .AND. iX1 .NE. nX(1)+1) THEN
-print*, R / UnitsDisplay % LengthX1Unit
-END IF
             theta = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
             uPF_K(iNodeX,iPF_D ) = 1.0d12 * Gram / Centimeter**3
@@ -1374,7 +1376,6 @@ END IF
                  uGF_K(:,iGF_Gm_dd_33), &
                  uAF_K(:,iAF_P)      )
 
-
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
@@ -1389,9 +1390,15 @@ END IF
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
+              iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+              E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+              IF (iX1 .EQ. 1) THEN
+              print*, E / MeV
+              END IF
 
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 10d-20
+                = 1.0d-8
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                  = 0.0_DP
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
@@ -1704,7 +1711,6 @@ END IF
 
     a = GravitationalConstant * M  / ( 2.0_DP * ( R0 )**3 )
     b = GravitationalConstant * M
-
       !Need to add constants here
     IF ( R .LE. R0 ) THEN
 
