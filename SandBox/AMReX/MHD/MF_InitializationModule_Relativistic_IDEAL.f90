@@ -188,6 +188,7 @@ CONTAINS
     ! --- Problem-dependent Parameters ---
 
     CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
+    REAL(DP) :: W, CB1, CB2, CB3, VdotB
 
     AdvectionProfile = 'HydroSineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -205,7 +206,8 @@ CONTAINS
         .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX1' &
         .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX2' &
         .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenOblique' &
-        .AND. TRIM( AdvectionProfile ) .NE. 'LoopAdvection' )THEN
+        .AND. TRIM( AdvectionProfile ) .NE. 'LoopAdvection2D' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'LoopAdvection3D' )THEN
 
       IF( amrex_parallel_ioprocessor() )THEN
 
@@ -225,7 +227,8 @@ CONTAINS
         WRITE(*,'(A)') '  CPAlfvenX1'
         WRITE(*,'(A)') '  CPAlfvenX2'
         WRITE(*,'(A)') '  CPAlfvenOblique'
-        WRITE(*,'(A)') '  LoopAdvection'
+        WRITE(*,'(A)') '  LoopAdvection2D'
+        WRITE(*,'(A)') '  LoopAdvection3D'
         WRITE(*,*)
         WRITE(*,'(A)') 'Stopping...'
 
@@ -382,6 +385,80 @@ CONTAINS
               uPM_K(iNX,iPM_B2)  = 1.0d-4 * COS( TwoPi * X3 )
               uPM_K(iNX,iPM_B3)  = 1.0d-4
               uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'LoopAdvection2D' )THEN
+
+              ! V3 = 0 variant of the 2D field loop advection
+              ! problem from Section 5.5 of Mosta et al. (2014).
+
+              uPM_K(iNX,iPM_D ) = One
+              uPM_K(iNX,iPM_V1) = Half
+              uPM_K(iNX,iPM_V2) = One / 24.0_DP
+              uPM_K(iNX,iPM_V3) = Zero
+              uPM_K(iNX,iPM_E ) = Three / ( Gamma_IDEAL - One )
+
+              W = One / SQRT( One - ( uPM_K(iNX,iPM_V1)**2 &
+                                      + uPM_K(iNX,iPM_V2)**2 &
+                                      + uPM_K(iNX,iPM_V3)**2 ) )
+
+              IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
+
+                CB1 = -1.0d-3 * X2 / SQRT( X1**2 + X2**2 )
+                CB2 =  1.0d-3 * X1 / SQRT( X1**2 + X2**2 )
+                CB3 =  Zero
+
+              ELSE
+
+                CB1 = Zero
+                CB2 = Zero
+                CB3 = Zero
+
+              END IF
+
+              VdotB = uPM_K(iNX,iPM_V1) * CB1 &
+                      + uPM_K(iNX,iPM_V2) * CB2 &
+                      + uPM_K(iNX,iPM_V3) * CB3
+
+              uPM_K(iNX,iPM_B1) = W * VdotB * uPM_K(iNX,iPM_V1) + CB1 / W
+              uPM_K(iNX,iPM_B2) = W * VdotB * uPM_K(iNX,iPM_V2) + CB2 / W
+              uPM_K(iNX,iPM_B3) = W * VdotB * uPM_K(iNX,iPM_V3) + CB2 / W
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'LoopAdvection3D' )THEN
+
+              ! 3D field loop advection problem from Section 5.5 of
+              ! Mosta et al. (2014).
+
+              uPM_K(iNX,iPM_D ) = One
+              uPM_K(iNX,iPM_V1) = 0.2_DP * SQRT( Two )
+              uPM_K(iNX,iPM_V2) = 0.2_DP
+              uPM_K(iNX,iPM_V3) = 0.1_DP
+              uPM_K(iNX,iPM_E ) = Three / ( Gamma_IDEAL - One )
+
+              W = One / SQRT( One - ( uPM_K(iNX,iPM_V1)**2 &
+                                      + uPM_K(iNX,iPM_V2)**2 &
+                                      + uPM_K(iNX,iPM_V3)**2 ) )
+
+              IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
+
+                CB1 = -( SQRT( Two ) / Two ) * 1.0d-3 * X2 / SQRT( X1**2 + X2**2 )
+                CB2 =  1.0d-3 * X1 / SQRT( X1**2 + X2**2 )
+                CB3 =  ( SQRT( Two ) / Two ) * 1.0d-3 * X2 / SQRT( X1**2 + X2**2 )
+
+              ELSE
+
+                CB1 = Zero
+                CB2 = Zero
+                CB3 = Zero
+
+              END IF
+
+              VdotB = uPM_K(iNX,iPM_V1) * CB1 &
+                      + uPM_K(iNX,iPM_V2) * CB2 &
+                      + uPM_K(iNX,iPM_V3) * CB3
+
+              uPM_K(iNX,iPM_B1) = W * VdotB * uPM_K(iNX,iPM_V1) + CB1 / W
+              uPM_K(iNX,iPM_B2) = W * VdotB * uPM_K(iNX,iPM_V2) + CB2 / W
+              uPM_K(iNX,iPM_B3) = W * VdotB * uPM_K(iNX,iPM_V3) + CB2 / W
 
             END IF
 
