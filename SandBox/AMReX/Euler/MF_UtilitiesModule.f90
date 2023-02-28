@@ -357,9 +357,11 @@ CONTAINS
       OPEN( UNIT = 102, FILE = TRIM( FileNameBase ) // 'Psi.dat'    )
       OPEN( UNIT = 103, FILE = TRIM( FileNameBase ) // 'SqrtGm.dat' )
       OPEN( UNIT = 104, FILE = TRIM( FileNameBase ) // 'D.dat'      )
-      OPEN( UNIT = 105, FILE = TRIM( FileNameBase ) // 'V.dat'      )
-      OPEN( UNIT = 106, FILE = TRIM( FileNameBase ) // 'E.dat'      )
-      OPEN( UNIT = 107, FILE = TRIM( FileNameBase ) // 'P.dat'      )
+      OPEN( UNIT = 105, FILE = TRIM( FileNameBase ) // 'V1.dat'     )
+      OPEN( UNIT = 106, FILE = TRIM( FileNameBase ) // 'V2.dat'     )
+      OPEN( UNIT = 107, FILE = TRIM( FileNameBase ) // 'V3.dat'     )
+      OPEN( UNIT = 108, FILE = TRIM( FileNameBase ) // 'E.dat'      )
+      OPEN( UNIT = 109, FILE = TRIM( FileNameBase ) // 'P.dat'      )
 
       WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
 
@@ -421,10 +423,18 @@ CONTAINS
             / unitsPF(iPF_V1)
 
         WRITE(106,FMT) &
+          P(:,iPF_V2) &
+            / unitsPF(iPF_V2)
+
+        WRITE(107,FMT) &
+          P(:,iPF_V3) &
+            / unitsPF(iPF_V3)
+
+        WRITE(108,FMT) &
           P(:,iPF_E) &
             / unitsPF(iPF_E)
 
-        WRITE(107,FMT) &
+        WRITE(109,FMT) &
           A(:,iAF_P) &
             / unitsAF(iAF_P)
 
@@ -432,6 +442,8 @@ CONTAINS
       END DO
       END DO
 
+      CLOSE( 109 )
+      CLOSE( 108 )
       CLOSE( 107 )
       CLOSE( 106 )
       CLOSE( 105 )
