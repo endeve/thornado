@@ -5,7 +5,7 @@ FORTRAN = mpifort -Mpreprocess
 FLINKER = mpifort
 
 DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
-OPTIMIZE = -g -O2 -tp=skylake
+OPTIMIZE = -gopt -fast -tp=skylake
 
 SUFFIX_f90 =
 
@@ -13,13 +13,13 @@ MDEFS =
 PP    = -D
 
 ifeq ($(USE_OMP),TRUE)
-  OPENMP = -mp
+  OPENMP = -mp=multicore
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -mp=gpu -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
+  OPENMP = -mp=gpu -gpu=cc70,ptxinfo -Minfo=accel
 endif
 
 ifeq ($(USE_OACC),TRUE)
-  OPENACC = -acc -gpu=cc70,cuda11.1,ptxinfo -Minfo=accel
+  OPENACC = -acc -gpu=cc70,ptxinfo -Minfo=accel
 endif
 
 INCLUDE_CUDA     =
