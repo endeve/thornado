@@ -547,7 +547,7 @@ CONTAINS
                 + Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
-          ! Loop advection problem from Mosta et al. (2013)
+          ! Loop advection problem from Section 5.5 of Mosta et al. (2014).
 
           CASE( 'LoopAdvection' )
 
