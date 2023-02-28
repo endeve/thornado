@@ -196,8 +196,8 @@ CONTAINS
 
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNX, iNX1, iNX2
-    REAL(DP)       :: X1, X2
+    INTEGER        :: iNX, iNX1, iNX2, iNX3
+    REAL(DP)       :: X1, X2, X3
     REAL(DP)       :: uGF_K(nDOFX,nGF)
     REAL(DP)       :: uCF_K(nDOFX,nCF)
     REAL(DP)       :: uPF_K(nDOFX,nPF)
@@ -226,7 +226,8 @@ CONTAINS
 
     IF( TRIM( AdvectionProfile ) .NE. 'SineWaveX1' &
         .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX2' &
-        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX1X2' )THEN
+        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX1X2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'SineWaveX3' )THEN
 
       IF( amrex_parallel_ioprocessor() )THEN
 
@@ -238,6 +239,7 @@ CONTAINS
         WRITE(*,'(A)') '  SineWaveX1'
         WRITE(*,'(A)') '  SineWaveX2'
         WRITE(*,'(A)') '  SineWaveX1X2'
+        WRITE(*,'(A)') '  SineWaveX3'
         WRITE(*,*)
         WRITE(*,'(A)') 'Stopping...'
 
@@ -294,9 +296,11 @@ CONTAINS
 
             iNX1 = NodeNumberTableX(1,iNX)
             iNX2 = NodeNumberTableX(2,iNX)
+            iNX3 = NodeNumberTableX(3,iNX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+            X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
 
             IF     ( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
@@ -321,6 +325,14 @@ CONTAINS
               uPF_K(iNX,iPF_V1) = 0.1_DP * COS( Pi / Four )
               uPF_K(iNX,iPF_V2) = 0.1_DP * SIN( Pi / Four )
               uPF_K(iNX,iPF_V3) = Zero
+              uPF_K(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX3' )THEN
+
+              uPF_K(iNX,iPF_D ) = One + 0.1_DP * SIN( TwoPi * X3 )
+              uPF_K(iNX,iPF_V1) = Zero
+              uPF_K(iNX,iPF_V2) = Zero
+              uPF_K(iNX,iPF_V3) = 0.1_DP
               uPF_K(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
             END IF
