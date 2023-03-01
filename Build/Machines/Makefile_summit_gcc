@@ -5,7 +5,7 @@ FORTRAN = mpifort -cpp
 FLINKER = mpifort
 
 DEBUG    = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
-OPTIMIZE = -g -O3 -mcpu=power9
+OPTIMIZE = -g -Ofast -mcpu=power9 -funroll-loops -fprefetch-loop-arrays
 
 SUFFIX_f90 =
 

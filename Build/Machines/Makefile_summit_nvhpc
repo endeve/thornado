@@ -5,7 +5,7 @@ FORTRAN = mpifort -Mpreprocess
 FLINKER = mpifort
 
 DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
-OPTIMIZE = -g -O2 -tp=pwr9
+OPTIMIZE = -gopt -fast -tp=pwr9
 
 SUFFIX_f90 =
 
