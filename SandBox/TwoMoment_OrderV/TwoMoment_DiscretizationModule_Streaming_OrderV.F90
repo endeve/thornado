@@ -911,9 +911,10 @@ CONTAINS
 
 !! Shaoping Added UPDATE FROM as these variables are now on the Device, needs to update their value on the Host
 #if defined(THORNADO_OMP_OL)
-!$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+   !$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+#elif defined(THORNADO_OACC)
+   !$ACC UPDATE HOST(NumericalFlux, NumericalFlux2 )
 #endif
-
     DO iS  = 1       , nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1103,7 +1104,7 @@ CONTAINS
     !$ACC DELETE( dZ1, dZ3, dZ4, &
     !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -1283,7 +1284,7 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -1690,7 +1691,9 @@ CONTAINS
 
 !! Shaoping Added UPDATE FROM as these variables are now on the Device, needs to update their value on the Host
 #if defined(THORNADO_OMP_OL)
-!$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+    !$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+#elif defined ( THORNADO_OACC )
+    !$ACC UPDATE HOST(NumericalFlux, NumericalFlux2 )
 #endif
     DO iS  = 1       , nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1879,7 +1882,7 @@ CONTAINS
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -2059,7 +2062,7 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -2466,7 +2469,9 @@ CONTAINS
 
 !! Shaoping Added UPDATE FROM as these variables are now on the Device, needs to update their value on the Host
 #if defined(THORNADO_OMP_OL)
-!$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+    !$OMP TARGET UPDATE FROM( NumericalFlux, NumericalFlux2 )
+#elif defined ( THORNADO_OACC )
+    !$ACC UPDATE HOST(NumericalFlux, NumericalFlux2 )
 #endif
     DO iS  = 1       , nSpecies
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -2655,7 +2660,7 @@ CONTAINS
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -3811,6 +3816,36 @@ CONTAINS
     ALLOCATE( IndexTableZ_F(7,nNodesZ_X) )
     ALLOCATE( IndexTableZ_K(7,nNodesZ_K) )
 
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP             IndexTableZ_F, IndexTableZ_K, &
+    !$OMP             uV1_F, uV2_F, uV3_F, &
+    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
+    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP             nIterations_L, nIterations_R, nIterations_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC         IndexTableZ_F, IndexTableZ_K,  &
+    !$ACC         uV1_F, uV2_F, uV3_F, &
+    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
+    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+#endif
+
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ_X, iZ_F, iX_F )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ_X, iZ_F, iX_F ) &
+    !$ACC PRESENT( PositionIndexZ_F, IndexTableZ_F )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ_X, iZ_F, iX_F )
+#endif
+
     DO iZP4 = iZP_B0(4), iZP_E0(4)+1
     DO iS  = 1, nSpecies
     DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -3836,7 +3871,16 @@ CONTAINS
 
       PositionIndexZ_F(iZ_F) = iX_F
 
-      IndexTableZ_F(:,iZ_F) = [ iNodeE, iNodeX_X, iZP1, iZP2, iZP3, iS, iZP4 ]
+    !  IndexTableZ_F(:,iZ_F) = [ iNodeE, iNodeX_X, iZP1, iZP2, iZP3, iS, iZP4 ]
+    !! Shaoping : causing ERROR: Memory allocation error
+!!      IndexTableZ_F(:,iZ_F) = [ iNodeE, iNodeX_X, iZP1, iZP2, iZP3, iS, iZP4 ]
+      IndexTableZ_F(1,iZ_F) =  iNodeE
+      IndexTableZ_F(2,iZ_F) =  iNodeX_X
+      IndexTableZ_F(3,iZ_F) =  iZP1
+      IndexTableZ_F(4,iZ_F) =  iZP2
+      IndexTableZ_F(5,iZ_F) =  iZP3
+      IndexTableZ_F(6,iZ_F) =  iS
+      IndexTableZ_F(7,iZ_F) =  iZP4
 
     END DO
     END DO
@@ -3845,6 +3889,18 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ, iZ_K, iX_K ) &
+    !$ACC PRESENT( PositionIndexZ_K, IndexTableZ_K )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#endif
 
     DO iZP4 = iZP_B0(4), iZP_E0(4)
     DO iS  = 1, nSpecies
@@ -3871,7 +3927,16 @@ CONTAINS
 
       PositionIndexZ_K(iZ_K) = iX_K
 
-      IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZP1, iZP2, iZP3, iS, iZP4 ]
+      !IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZP1, iZP2, iZP3, iS, iZP4 ]
+      !! Shaoping : causing ERROR: Memory allocation error
+!!      IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZP1, iZP2, iZP3, iS, iZP4 ]
+      IndexTableZ_K(1,iZ_K) = iNodeE
+      IndexTableZ_K(2,iZ_K) = iNodeX
+      IndexTableZ_K(3,iZ_K) = iZP1
+      IndexTableZ_K(4,iZ_K) = iZP2
+      IndexTableZ_K(5,iZ_K) = iZP3
+      IndexTableZ_K(6,iZ_K) = iS
+      IndexTableZ_K(7,iZ_K) = iZP4
 
     END DO
     END DO
@@ -3881,22 +3946,32 @@ CONTAINS
     END DO
     END DO
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
-    !$OMP          IndexTableZ_F, IndexTableZ_K ) &
-    !$OMP MAP( alloc: uV1_F, uV2_F, uV3_F, &
-    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
-    !$OMP             nIterations_L, nIterations_R, nIterations_K )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( PositionIndexZ_F, PositionIndexZ_K, &
-    !$ACC         IndexTableZ_F, IndexTableZ_K ) &
-    !$ACC CREATE( uV1_F, uV2_F, uV3_F, &
-    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+!#if defined( THORNADO_OMP_OL )
+!    !$OMP TARGET ENTER DATA &
+!    !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
+!    !$OMP          IndexTableZ_F, IndexTableZ_K ) &
+!    !$OMP MAP( alloc: uV1_F, uV2_F, uV3_F, &
+!    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
+!    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+!    !$OMP             nIterations_L, nIterations_R, nIterations_K )
+!#elif defined( THORNADO_OACC   )
+!    !$ACC ENTER DATA &
+!    !$ACC COPYIN( PositionIndexZ_F, PositionIndexZ_K, &
+!    !$ACC         IndexTableZ_F, IndexTableZ_K ) &
+!    !$ACC CREATE( uV1_F, uV2_F, uV3_F, &
+!    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
+!    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+!    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+!#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP FROM( PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP       IndexTableZ_F, IndexTableZ_K )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC HOST( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC       IndexTableZ_F, IndexTableZ_K )
 #endif
 
     RETURN
@@ -4042,7 +4117,35 @@ CONTAINS
     ALLOCATE( IndexTableZ_F(7,nNodesZ_E) )
     ALLOCATE( IndexTableZ_K(7,nNodesZ_K) )
 
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP             IndexTableZ_F, IndexTableZ_K, &
+    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
+    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP             nIterations_L, nIterations_R, nIterations_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC         IndexTableZ_F, IndexTableZ_K, &
+    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
+    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+#endif
+
     iNodeE = 1
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iZ_F, iX_F )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iZ_F, iX_F ) &
+    !$ACC PRESENT( PositionIndexZ_F, IndexTableZ_F )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iZ_F, iX_F )
+#endif
+
     DO iZ1 = iZ_B0(1), iZ_E0(1)+1
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -4064,7 +4167,17 @@ CONTAINS
 
       PositionIndexZ_F(iZ_F) = iX_F
 
-      IndexTableZ_F(:,iZ_F) = [ iNodeE, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
+      !IndexTableZ_F(:,iZ_F) = [ iNodeE, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
+
+      !! Shaoping : causing ERROR: Memory allocation error
+!!      IndexTableZ_F(:,iZ_F) = [ 1, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
+      IndexTableZ_F(1,iZ_F) =  1
+      IndexTableZ_F(2,iZ_F) =  iNode_E
+      IndexTableZ_F(3,iZ_F) =  iZ2
+      IndexTableZ_F(4,iZ_F) =  iZ3
+      IndexTableZ_F(5,iZ_F) =  iZ4
+      IndexTableZ_F(6,iZ_F) =  iS
+      IndexTableZ_F(7,iZ_F) =  iZ1
 
     END DO
     END DO
@@ -4072,6 +4185,18 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeZ, iZ_K, iX_K ) &
+    !$ACC PRESENT( PositionIndexZ_K, IndexTableZ_K )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
+#endif
 
     DO iZ1 = iZ_B0(1), iZ_E0(1)
     DO iS  = 1, nSpecies
@@ -4098,7 +4223,16 @@ CONTAINS
 
       PositionIndexZ_K(iZ_K) = iX_K
 
-      IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZ2, iZ3, iZ4, iS, iZ1 ]
+     ! IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZ2, iZ3, iZ4, iS, iZ1 ]
+     !! Shaoping : causing ERROR: Memory allocation error
+ !!     IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZ2, iZ3, iZ4, iS, iZ1 ]
+      IndexTableZ_K(1,iZ_K) = iNodeE
+      IndexTableZ_K(2,iZ_K) = iNodeX
+      IndexTableZ_K(3,iZ_K) = iZ2
+      IndexTableZ_K(4,iZ_K) = iZ3
+      IndexTableZ_K(5,iZ_K) = iZ4
+      IndexTableZ_K(6,iZ_K) = iS
+      IndexTableZ_K(7,iZ_K) = iZ1
 
     END DO
     END DO
@@ -4108,20 +4242,30 @@ CONTAINS
     END DO
     END DO
 
-#if defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
-    !$OMP          IndexTableZ_F, IndexTableZ_K ) &
-    !$OMP MAP( alloc: uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
-    !$OMP             nIterations_L, nIterations_R, nIterations_K )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( PositionIndexZ_F, PositionIndexZ_K, &
-    !$ACC         IndexTableZ_F, IndexTableZ_K ) &
-    !$ACC CREATE( uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+!#if defined( THORNADO_OMP_OL )
+!    !$OMP TARGET ENTER DATA &
+!    !$OMP MAP( to: PositionIndexZ_F, PositionIndexZ_K, &
+!    !$OMP          IndexTableZ_F, IndexTableZ_K ) &
+!    !$OMP MAP( alloc: uD_L, uI1_L, uI2_L, uI3_L, &
+!    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+!    !$OMP             nIterations_L, nIterations_R, nIterations_K )
+!#elif defined( THORNADO_OACC   )
+!    !$ACC ENTER DATA &
+!    !$ACC COPYIN( PositionIndexZ_F, PositionIndexZ_K, &
+!    !$ACC         IndexTableZ_F, IndexTableZ_K ) &
+!    !$ACC CREATE( uD_L, uI1_L, uI2_L, uI3_L, &
+!    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+!    !$ACC         nIterations_L, nIterations_R, nIterations_K )
+!#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP FROM( PositionIndexZ_F, PositionIndexZ_K, &
+    !$OMP       IndexTableZ_F, IndexTableZ_K )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC HOST( PositionIndexZ_F, PositionIndexZ_K, &
+    !$ACC       IndexTableZ_F, IndexTableZ_K )
 #endif
 
     RETURN

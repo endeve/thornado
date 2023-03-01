@@ -2,16 +2,27 @@
 ## VERY IMPORTANT: heap-arrays is needed for the large table of the app
 
 C       = mpic++ --c++11
+<<<<<<< HEAD
 FORTRAN = mpifort -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0 
+=======
+FORTRAN = mpifort -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0
+>>>>>>> ddf5c759bc728b8115bf64cc84919e2684e492e9
 #-init=snan -traceback
 FLINKER = mpifort -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0
 #-init=snan -traceback
 # -O0 -fpe0
 
+<<<<<<< HEAD
 DEBUG    = -warn all -ftrapuv  -$(OP_LEVEL) 
 #-traceback 
 #-debug offload 
 OPTIMIZE = -warn all -$(OP_LEVEL) 
+=======
+DEBUG    = -warn all -ftrapuv  -$(OP_LEVEL)
+#-traceback 
+#-debug offload 
+OPTIMIZE = -warn all -$(OP_LEVEL)
+>>>>>>> ddf5c759bc728b8115bf64cc84919e2684e492e9
 #-traceback 
 #-debug offload
 
