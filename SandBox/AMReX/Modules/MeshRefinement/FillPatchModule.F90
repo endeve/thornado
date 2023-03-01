@@ -31,12 +31,15 @@ MODULE FillPatchModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
+  USE amrex_bc_types_module, ONLY: &
+    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     nNodes, &
-    nDOFX
+    nDOFX, &
+    nDimsX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
 
@@ -50,8 +53,6 @@ MODULE FillPatchModule
     UseTiling, &
     t_old, &
     t_new, &
-    lo_bc, &
-    hi_bc, &
     swX, &
     DEBUG
   USE MF_TimersModule, ONLY: &
@@ -65,14 +66,14 @@ MODULE FillPatchModule
   PUBLIC :: FillPatch, FillCoarsePatch
 
   INTERFACE FillPatch
-    MODULE PROCEDURE FillPatch_WithMetric_Scalar
-    MODULE PROCEDURE FillPatch_WithMetric_Vector
+    MODULE PROCEDURE FillPatch_Scalar_WithMetric
+    MODULE PROCEDURE FillPatch_Vector_WithMetric
   END INTERFACE FillPatch
 
 CONTAINS
 
 
-  SUBROUTINE FillPatch_WithMetric_Scalar &
+  SUBROUTINE FillPatch_Scalar_WithMetric &
     ( FineLevel, MF_uGF, MF_src, MF_dst )
 
     INTEGER,              INTENT(in)    :: FineLevel
@@ -97,7 +98,7 @@ CONTAINS
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,'(4x,A,I3.3)') &
-          'CALL FillPatch_WithMetric_Scalar, FineLevel: ', FineLevel
+          'CALL FillPatch_Scalar_WithMetric, FineLevel: ', FineLevel
 
       END IF
 
@@ -118,9 +119,9 @@ CONTAINS
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL MultiplyWithMetric &
-             ( SqrtGm(FineLevel-1), MF_src(FineLevel-1), nF, +1 )
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, +1 )
       CALL MultiplyWithMetric &
-             ( SqrtGm(FineLevel  ), MF_src(FineLevel  ), nF, +1 )
+             ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, +1 )
 
     END IF
 
@@ -129,9 +130,9 @@ CONTAINS
     IF( FineLevel .GT. 0 )THEN
 
       CALL MultiplyWithMetric &
-             ( SqrtGm(FineLevel-1), MF_src(FineLevel-1), nF, -1 )
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, -1 )
       CALL MultiplyWithMetric &
-             ( SqrtGm(FineLevel  ), MF_src(FineLevel  ), nF, -1 )
+             ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, -1 )
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
@@ -140,10 +141,10 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-  END SUBROUTINE FillPatch_WithMetric_Scalar
+  END SUBROUTINE FillPatch_Scalar_WithMetric
 
 
-  SUBROUTINE FillPatch_WithMetric_Vector( FineLevel, MF_uGF, MF )
+  SUBROUTINE FillPatch_Vector_WithMetric( FineLevel, MF_uGF, MF )
 
     INTEGER,              INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
@@ -164,7 +165,7 @@ CONTAINS
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillPatch_WithMetric_Vector, FineLevel: ', FineLevel
+        'CALL FillPatch_Vector_WithMetric, FineLevel: ', FineLevel
 
     END IF
 
@@ -182,8 +183,11 @@ CONTAINS
       CALL SqrtGm(FineLevel  ) % COPY &
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric( SqrtGm(FineLevel-1), MF(FineLevel-1), nF, +1 )
-      CALL MultiplyWithMetric( SqrtGm(FineLevel  ), MF(FineLevel  ), nF, +1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1 )
+
+      CALL MultiplyWithMetric &
+             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1 )
 
     END IF
 
@@ -191,8 +195,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric( SqrtGm(FineLevel-1), MF(FineLevel-1), nF, -1 )
-      CALL MultiplyWithMetric( SqrtGm(FineLevel  ), MF(FineLevel  ), nF, -1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1 )
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
@@ -201,7 +207,7 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-  END SUBROUTINE FillPatch_WithMetric_Vector
+  END SUBROUTINE FillPatch_Vector_WithMetric
 
 
   SUBROUTINE FillCoarsePatch( FineLevel, MF_uGF, MF )
@@ -232,8 +238,10 @@ CONTAINS
       CALL SqrtGm(FineLevel  ) % COPY &
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric( SqrtGm(FineLevel-1), MF(FineLevel-1), nF, +1 )
-      CALL MultiplyWithMetric( SqrtGm(FineLevel  ), MF(FineLevel  ), nF, +1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1 )
 
     END IF
 
@@ -241,8 +249,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric( SqrtGm(FineLevel-1), MF(FineLevel-1), nF, -1 )
-      CALL MultiplyWithMetric( SqrtGm(FineLevel  ), MF(FineLevel  ), nF, -1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1 )
+      CALL MultiplyWithMetric &
+             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1 )
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
@@ -262,6 +272,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
     ! Dummy variables. Only matter when interpolating in time
     REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
@@ -285,6 +297,12 @@ CONTAINS
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
+      ALLOCATE( lo_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
+      ALLOCATE( hi_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
+
+      lo_bc = amrex_bc_bogus
+      hi_bc = amrex_bc_bogus
+
       CALL amrex_fillpatch( MF_dst, &
                             t_old_crse, MF_src(FineLevel-1), &
                             t_new_crse, MF_src(FineLevel-1), &
@@ -296,6 +314,9 @@ CONTAINS
                             amrex_ref_ratio(FineLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
+
+      DEALLOCATE( hi_bc )
+      DEALLOCATE( lo_bc )
 
 #endif
 
@@ -310,6 +331,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
     ! Dummy variables. Only matter when interpolating in time
     REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
@@ -333,6 +356,12 @@ CONTAINS
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
+      ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+      ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+
+      lo_bc = amrex_bc_bogus
+      hi_bc = amrex_bc_bogus
+
       CALL amrex_fillpatch( MF(FineLevel), &
                             t_old_crse, MF(FineLevel-1), &
                             t_new_crse, MF(FineLevel-1), &
@@ -344,6 +373,9 @@ CONTAINS
                             amrex_ref_ratio(FineLevel-1), &
                             amrex_interp_dg, &
                             lo_bc, hi_bc )
+
+      DEALLOCATE( hi_bc )
+      DEALLOCATE( lo_bc )
 
 #endif
 
@@ -359,6 +391,8 @@ CONTAINS
 
     INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
+
     ! Dummy variables. Only matter when interpolating in time
     REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
     REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
@@ -368,6 +402,12 @@ CONTAINS
     ! Assume t_old_crse  = t_new_crse  = t
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
+
+    ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+    ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+
+    lo_bc = amrex_bc_bogus
+    hi_bc = amrex_bc_bogus
 
     CALL amrex_fillcoarsepatch &
            ( MF(FineLevel), &
@@ -379,6 +419,9 @@ CONTAINS
              amrex_ref_ratio(FineLevel-1), &
              amrex_interp_dg, lo_bc, hi_bc )
 
+    DEALLOCATE( hi_bc )
+    DEALLOCATE( lo_bc )
+
 #endif
 
   END SUBROUTINE FillCoarsePatch_Vector
@@ -388,11 +431,62 @@ CONTAINS
 
     ! --- No INTENT here because amrex source code doesn't have it ---
 
-    TYPE(c_ptr),    VALUE :: pMF, pGEOM
+    TYPE(c_ptr)   , VALUE :: pMF, pGEOM
     INTEGER(c_int), VALUE :: sComp, nComp
-    REAL(DP),       VALUE :: Time
+    REAL(DP)      , VALUE :: Time
 
-    RETURN
+    TYPE(amrex_geometry) :: GEOM
+    TYPE(amrex_multifab) :: MF
+    TYPE(amrex_mfiter)   :: MFI
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
+
+    REAL(DP), CONTIGUOUS, POINTER, DIMENSION(:,:,:,:) :: p
+
+    INTEGER :: plo(4), phi(4)
+
+    IF( .NOT. amrex_is_all_periodic() )THEN
+
+      GEOM = pGEOM
+      MF   = pMF
+
+      CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        p => mf%dataptr(mfi)
+
+        ! Part of this box is outside the domain
+        IF( .NOT. GEOM % domain % CONTAINS(p) )THEN
+
+          plo = LBOUND(p)
+          phi = UBOUND(p)
+
+          ALLOCATE( lo_bc(1:nDimsX,plo(4):phi(4)) )
+          ALLOCATE( hi_bc(1:nDimsX,plo(4):phi(4)) )
+
+          lo_bc = amrex_bc_bogus
+          hi_bc = amrex_bc_bogus
+
+          CALL amrex_filcc &
+                 ( p, plo, phi, &
+                   GEOM % domain % lo, GEOM % domain % hi, &
+                   GEOM % dx, &
+                   GEOM % get_physical_location( plo ), &
+                   lo_bc, hi_bc )
+
+          ! amrex_filcc doesn't fill EXT_DIR (see amrex_bc_types_module for a list of bc types
+          ! In that case, the user needs to fill it.
+
+          DEALLOCATE( hi_bc )
+          DEALLOCATE( lo_bc )
+
+        END IF
+
+      END DO
+
+    END IF
+
   END SUBROUTINE FillPhysicalBC_Dummy
 
 

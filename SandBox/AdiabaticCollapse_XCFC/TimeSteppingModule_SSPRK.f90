@@ -61,8 +61,7 @@ MODULE TimeSteppingModule_SSPRK
         SuppressBC_Option, UseXCFC_Option, &
         SurfaceFlux_X1_Option, &
         SurfaceFlux_X2_Option, &
-        SurfaceFlux_X3_Option, &
-        Mask_Option )
+        SurfaceFlux_X3_Option )
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)    :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -81,8 +80,6 @@ MODULE TimeSteppingModule_SSPRK
         SurfaceFlux_X1_Option(:,:,:,:,:), &
         SurfaceFlux_X2_Option(:,:,:,:,:), &
         SurfaceFlux_X3_Option(:,:,:,:,:)
-      INTEGER,  INTENT(in), OPTIONAL :: &
-        Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     END SUBROUTINE FluidIncrement
   END INTERFACE
 

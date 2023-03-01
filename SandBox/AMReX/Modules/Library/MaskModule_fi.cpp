@@ -15,19 +15,22 @@ extern "C"
         const int swX,
         const Geometry * geom )
     {
+        if( &CrseBA == NULL )
+        {
+            std::cout << "CrseBA IS NULL!\n";
+            amrex::Abort();
+        }
+        if( &FineBA == NULL )
+        {
+            std::cout << "FineBA IS NULL!\n";
+            amrex::Abort();
+        }
         FineMask
           = new iMultiFab
                   ( makeFineMask
                     ( CrseBA, CrseDM, amrex::IntVect(swX), FineBA,
                       amrex::IntVect(2), geom -> periodicity(),
                       iCoarse, iFine ) );
-    }
-
-    void amrex_fi_destroyfinemask_thornado
-      ( iMultiFab*& FineMask )
-    {
-        delete FineMask;
-        FineMask = NULL;
     }
 
     void amrex_fi_createpointmask_thornado

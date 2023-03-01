@@ -64,11 +64,6 @@ MODULE InputParsingModule
   INTEGER  :: nE, nSpecies, swE, bcE
   REAL(DP) :: eL, eR, zoomE
 
-  ! --- Boundary Conditions ---
-
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc(:,:)
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc(:,:)
-
   ! --- Slope Limiter ---
 
   LOGICAL                       :: UseSlopeLimiter_Euler

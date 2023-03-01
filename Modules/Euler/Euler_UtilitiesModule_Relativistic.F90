@@ -125,8 +125,6 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   INTEGER, PARAMETER :: MAX_IT = 35
 
-  INTEGER, PARAMETER :: iLeaf = 0
-
   ! --- User must set this in fluid initialization and upload to GPU ---
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
@@ -137,7 +135,6 @@ CONTAINS
     ( uD, uS1, uS2, uS3, uE, uNe, &
       pD, pV1, pV2, pV3, pE, pNe, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      Mask_Option, &
       iDimX_Option, IndexTable_Option, &
       iX_B0_Option, iX_E0_Option )
 
@@ -145,7 +142,7 @@ CONTAINS
     REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
     REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
-      Mask_Option(:), iX_B0_Option(3), iX_E0_Option(3)
+      iX_B0_Option(3), iX_E0_Option(3)
     CHARACTER(2), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
@@ -154,7 +151,6 @@ CONTAINS
     INTEGER  :: N, ErrorExists, iX1, iX2, iX3, iNXX
     INTEGER  :: iNX, iErr(SIZE(uD))
     INTEGER  :: ITERATION(SIZE(uD))
-    INTEGER  :: Mask(SIZE(uD))
     REAL(DP) :: X1, X2, X3, dX1, dX2, dX3
 
     CHARACTER(2) :: iDimX
@@ -174,24 +170,17 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
 
-    IF( PRESENT( Mask_Option ) )THEN
-      Mask = Mask_Option
-    ELSE
-      ! Every element is a leaf element
-      Mask = iLeaf
-    END IF
-
     CALL TimersStart_Euler( Timer_Euler_CP_CopyIn )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask ) &
+    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask ) &
+    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
 #endif
 
@@ -216,8 +205,6 @@ CONTAINS
 
       iErr     (iNX) = 0
       ITERATION(iNX) = 0
-
-      IF( Mask(iNX) .NE. 0 ) CYCLE
 
       IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
           .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
@@ -255,13 +242,13 @@ CONTAINS
     !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, &
     !$OMP               ITERATION, iErr, ErrorExists ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask )
+    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, &
     !$ACC               ITERATION, iErr, ErrorExists ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, Mask )
+    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CP_CopyOut )
@@ -540,7 +527,6 @@ CONTAINS
 
   !> Compute the primitive variables from the conserved variables,
   !> a la Galeazzi et al., (2013), Phys. Rev. D., 88, 064009, Appendix C
-  !> @todo Modify for tabular EOS
   SUBROUTINE ComputePrimitive_Scalar &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -729,7 +715,7 @@ CONTAINS
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
   SUBROUTINE ComputeFromConserved_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, Mask_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -740,10 +726,6 @@ CONTAINS
     REAL(DP), INTENT(out)   :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER , INTENT(in), OPTIONAL :: &
-      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
     INTEGER :: iNX, iX1, iX2, iX3, iAF, ErrorExists
     INTEGER :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
@@ -755,13 +737,6 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ComputeFromConserved )
 
-    IF( PRESENT( Mask_Option ) )THEN
-      Mask = Mask_Option
-    ELSE
-      ! Every element is a leaf element
-      Mask = iLeaf
-    END IF
-
     ErrorExists = 0
 
     ! --- Update primitive variables, pressure, and sound speed ---
@@ -770,11 +745,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$OMP MAP( alloc: P, A, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
     !$ACC CREATE(     P, A, ITERATION, iErr )
 #endif
 
@@ -810,7 +785,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr, Mask )
+    !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP REDUCTION( +:ErrorExists )
@@ -822,8 +797,6 @@ CONTAINS
 
       ITERATION(iNX,iX1,iX2,iX3) = 0
       iErr     (iNX,iX1,iX2,iX3) = 0
-
-      IF( Mask(iX1,iX2,iX3,1) .NE. iLeaf ) CYCLE
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( U(iNX,iX1,iX2,iX3,iCF_D ),        &
@@ -892,11 +865,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    P, A, ITERATION, iErr, ErrorExists ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask )
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      P, A, ITERATION, iErr, ErrorExists ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mask )
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CFC_CopyOut )
@@ -957,7 +930,7 @@ CONTAINS
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, Mask_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -969,10 +942,6 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out)   :: &
       TimeStep
-    INTEGER , INTENT(in), OPTIONAL :: &
-      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:1)
 
     INTEGER  :: iX1, iX2, iX3, iNX, iDimX, ErrorExists
     REAL(DP) :: dX(3), dt
@@ -983,13 +952,6 @@ CONTAINS
     INTEGER  :: iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
                                   iX_B0(2):iX_E0(2), &
                                   iX_B0(3):iX_E0(3))
-
-    IF( PRESENT( Mask_Option ) )THEN
-      Mask = Mask_Option
-    ELSE
-      ! Every element is a leaf element
-      Mask = iLeaf
-    END IF
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -1004,11 +966,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask ) &
+    !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$OMP MAP( alloc: ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask ) &
+    !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$ACC CREATE(     ITERATION, iErr )
 #endif
 
@@ -1042,8 +1004,6 @@ CONTAINS
 
       ITERATION(iNX,iX1,iX2,iX3) = 0
       iErr     (iNX,iX1,iX2,iX3) = 0
-
-      IF( Mask(iX1,iX2,iX3,1) .NE. 0 ) CYCLE
 
       dX(1) = dX1(iX1)
       dX(2) = dX2(iX2)
@@ -1106,11 +1066,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    ITERATION, iErr, ErrorExists ) &
-    !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask )
+    !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      ITERATION, iErr, ErrorExists ) &
-    !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3, Mask )
+    !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CTS_CopyOut )

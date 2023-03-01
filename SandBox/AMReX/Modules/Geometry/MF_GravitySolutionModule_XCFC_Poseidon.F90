@@ -115,6 +115,10 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     Pi, &
     FourPi, &
     SqrtTiny
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
+    DestroyFineMask, &
+    IsNotLeafElement
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -122,10 +126,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     ComputeConserved_Euler_MF
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
-  USE MaskModule, ONLY: &
-    CreateFineMask, &
-    DestroyFineMask, &
-    IsNotLeafElement
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -136,6 +136,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     xR, &
     swX, &
     UseXCFC
+  USE AverageDownModule, ONLY: &
+    AverageDown
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -176,6 +178,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: MultiplyWithPsi6_MF
   PUBLIC :: InitializeMetric_MF
   PUBLIC :: InitializeMetric_TwoMoment_MF
+  PUBLIC :: ApplyBoundaryConditions_Geometry
 
   ! --- MF: Metric Fields ---
 
@@ -316,6 +319,8 @@ CONTAINS
 
     CALL UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
 
+    CALL AverageDown( MF_uGF )
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy( MF_uMF(iLevel) )
@@ -366,6 +371,8 @@ CONTAINS
 
     CALL ComputeGeometryFromPoseidon_MF( MF_uMF, MF_uGF )
 
+    CALL AverageDown( MF_uGF )
+
     CALL ApplyBoundaryConditions_Geometry( MF_uGF )
 
     DO iLevel = 0, nLevels-1
@@ -384,25 +391,23 @@ CONTAINS
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF &
     ( MF_uGF, MF_uCF, MF_uGS )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:) ! Psi^6 * U
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, ErrorExists
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
-
-    TYPE(amrex_imultifab) :: iMF_FineMask
 
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
 
@@ -426,7 +431,7 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        jErr = 0
+        ErrorExists = 0
 
         ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                                iX_B0(2):iX_E0(2), &
@@ -437,46 +442,72 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( .NOT. IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+          iErr(iNX,iX1,iX2,iX3) = 0
+
+          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
                + uCF(iX1,iX2,iX3,nDOFX*(iCF_D-1)+iNX) )
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S1-1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX)
+          uGS       (iX1,iX2,iX3,nDOFX*(iGS_S1-1)+iNX) &
+            = uCF   (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S2-1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX)
+          uGS       (iX1,iX2,iX3,nDOFX*(iGS_S2-1)+iNX) &
+            = uCF   (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX)
 
-          uGS        (iX1,iX2,iX3,nDOFX*(iGS_S3-1)+iNX) &
-            = uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX)
+          uGS       (iX1,iX2,iX3,nDOFX*(iGS_S3-1)+iNX) &
+            = uCF   (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX)
 
           ! Assume Psi^(iStage) ~ Psi^(iStage+1) for Poseidon BCs
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-          iErr(iNX,iX1,iX2,iX3) = 0
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-                   uPF (iPF_D ), &
-                   uPF (iPF_V1), &
-                   uPF (iPF_V2), &
-                   uPF (iPF_V3), &
-                   uPF (iPF_E ), &
-                   uPF (iPF_Ne), &
-                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                   iErr(iNX,iX1,iX2,iX3) )
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                   uPF(iPF_D ), &
+                   uPF(iPF_V1), &
+                   uPF(iPF_V2), &
+                   uPF(iPF_V3), &
+                   uPF(iPF_E ), &
+                   uPF(iPF_Ne), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
 
-          jErr = jErr + iErr(iNX,iX1,iX2,iX3)
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) * Psi6
+
+          ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
           CALL ComputePressureFromPrimitive &
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
@@ -516,14 +547,12 @@ CONTAINS
         END DO
         END DO
 
-        IF( jErr .GT. 0 )THEN
+        IF( ErrorExists .GT. 0 )THEN
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
-
-            IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -549,13 +578,13 @@ CONTAINS
 
         DEALLOCATE( iErr )
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
       CALL DestroyFineMask( iMF_FineMask )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
 #endif
 
@@ -568,21 +597,19 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
-    INTEGER :: jErr
+    INTEGER :: ErrorExists
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
-
-    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -612,28 +639,41 @@ CONTAINS
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3)) )
 
-        jErr = 0
+        ErrorExists = 0
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
-
           iErr(iNX,iX1,iX2,iX3) = 0
+
+          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
           ! --- Compute trace of stress tensor ---
 
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
+
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
                    uPF(iPF_D ), &
                    uPF(iPF_V1), &
                    uPF(iPF_V2), &
@@ -643,9 +683,22 @@ CONTAINS
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                   iErr(iNX,iX1,iX2,iX3) )
+                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
 
-          jErr = jErr + iErr(iNX,iX1,iX2,iX3)
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) * Psi6
+
+          ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
           CALL ComputePressureFromPrimitive &
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
@@ -661,14 +714,12 @@ CONTAINS
         END DO
         END DO
 
-        IF( jErr .NE. 0 )THEN
+        IF( ErrorExists .NE. 0 )THEN
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
-
-            IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -705,15 +756,15 @@ CONTAINS
 
         END IF
 
-        DEALLOCATE( iErr )
+        DEALLOCATE( iErr      )
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
       CALL DestroyFineMask( iMF_FineMask )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
 #endif
 
@@ -733,20 +784,18 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, jErr
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, ErrorExists
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
 
-    TYPE(amrex_imultifab) :: iMF_FineMask
-
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+
     REAL(DP) :: E, S_i(3), E_int, S_i_int(3)
     REAL(DP) :: N, G_d_1, G_d_2, G_d_3, vG
     REAL(DP) :: V_u_1, V_u_2, V_u_3
@@ -765,24 +814,21 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
-        uCR      => MF_uCR(iLevel) % DataPtr( MFI )
-        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
+        uGS => MF_uGS(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        jErr = 0
+        ErrorExists = 0
 
         ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
                                iX_B0(2):iX_E0(2), &
@@ -793,8 +839,6 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
-
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGS       (iX1,iX2,iX3,nDOFX*(iGS_E-1)+iNX) &
             =  ( uCF(iX1,iX2,iX3,nDOFX*(iCF_E-1)+iNX) &
@@ -815,25 +859,25 @@ CONTAINS
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
-          CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-                   uPF (iPF_D ), &
-                   uPF (iPF_V1), &
-                   uPF (iPF_V2), &
-                   uPF (iPF_V3), &
-                   uPF (iPF_E ), &
-                   uPF (iPF_Ne), &
-                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                   uGF (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                   iErr(iNX,iX1,iX2,iX3) )
+!          CALL ComputePrimitive_Euler_Relativistic &
+!                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+!                   uPF(iPF_D ), &
+!                   uPF(iPF_V1), &
+!                   uPF(iPF_V2), &
+!                   uPF(iPF_V3), &
+!                   uPF(iPF_E ), &
+!                   uPF(iPF_Ne), &
+!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+!                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
 
-          jErr = jErr + iErr(iNX,iX1,iX2,iX3)
+          ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
           CALL ComputePressureFromPrimitive &
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
@@ -948,14 +992,12 @@ CONTAINS
         END DO
         END DO
 
-        IF( jErr .GT. 0 )THEN
+        IF( ErrorExists .GT. 0 )THEN
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1       , nDOFX
-
-            IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -981,13 +1023,11 @@ CONTAINS
 
         DEALLOCATE( iErr )
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
     END ASSOCIATE
 
@@ -1007,18 +1047,15 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
 
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
-    INTEGER :: jErr
+    INTEGER :: ErrorExists
     INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
-
-    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -1037,17 +1074,14 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
-        uCR      => MF_uCR(iLevel) % DataPtr( MFI )
-        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
+        uGS => MF_uGS(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1058,14 +1092,12 @@ CONTAINS
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3)) )
 
-        jErr = 0
+        ErrorExists = 0
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
-
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iErr(iNX,iX1,iX2,iX3) = 0
 
@@ -1073,25 +1105,25 @@ CONTAINS
 
           ! --- Compute trace of stress tensor ---
 
-          CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-                   uPF(iPF_D ), &
-                   uPF(iPF_V1), &
-                   uPF(iPF_V2), &
-                   uPF(iPF_V3), &
-                   uPF(iPF_E ), &
-                   uPF(iPF_Ne), &
-                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                   iErr(iNX,iX1,iX2,iX3) )
+!          CALL ComputePrimitive_Euler_Relativistic &
+!                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+!                   uPF(iPF_D ), &
+!                   uPF(iPF_V1), &
+!                   uPF(iPF_V2), &
+!                   uPF(iPF_V3), &
+!                   uPF(iPF_E ), &
+!                   uPF(iPF_Ne), &
+!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+!                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
 
-          jErr = jErr + iErr(iNX,iX1,iX2,iX3)
+          ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
           CALL ComputePressureFromPrimitive &
                  ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
@@ -1163,14 +1195,12 @@ CONTAINS
         END DO
         END DO
 
-        IF( jErr .NE. 0 )THEN
+        IF( ErrorExists .NE. 0 )THEN
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
           DO iNX = 1, nDOFX
-
-            IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
             IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
@@ -1209,13 +1239,11 @@ CONTAINS
 
         DEALLOCATE( iErr )
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
     END ASSOCIATE
 
@@ -1234,18 +1262,17 @@ CONTAINS
     INTEGER             , INTENT(in)    :: nDOFE, iE_B0, iE_E0, nS
     TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels-1)
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: U  (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U       (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iNZ, iE, iX1, iX2, iX3, &
                 iS, iFd, iComp, nDOF, nFd, nE
     INTEGER  :: iX_B0(3), iX_E0(3)
-
-    INTEGER, CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-    TYPE(amrex_imultifab)        :: iMF_FineMask
 
     REAL(DP) :: Psi6
 
@@ -1377,7 +1404,7 @@ CONTAINS
                nDOFX, swXX )
       CALL dCF(iLevel) % SetVal( Zero )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
     ! --- Iterate to incorporate gravity in initial conditions ---
 
@@ -1415,7 +1442,7 @@ CONTAINS
 
       CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
-      DO iLevel = 0, nLevels - 1
+      DO iLevel = 0, nLevels-1
 
         CALL LF2(iLevel) % COPY &
               ( MF_uGF(iLevel), nDOFX*(iGF_Alpha-1)+1, 1, nDOFX, 0 )
@@ -1440,7 +1467,7 @@ CONTAINS
 
         END DO
 
-      END DO
+      END DO ! iLevel = 0, nLevels-1
 
       CALL amrex_parallel_reduce_max( MinLF )
       CALL amrex_parallel_reduce_max( MinCF )
@@ -1531,7 +1558,7 @@ CONTAINS
                nDOFX, 0 )
       CALL dCF(iLevel) % SetVal( Zero )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
     ! --- Iterate to incorporate gravity in initial conditions ---
 
@@ -1594,7 +1621,7 @@ CONTAINS
 
         END DO
 
-      END DO
+      END DO ! iLevel = 0, nLevels-1
 
       CALL amrex_parallel_reduce_max( MinLF )
       CALL amrex_parallel_reduce_max( MinCF )
@@ -1633,19 +1660,14 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
-    INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
-    TYPE(amrex_imultifab) :: iMF_FineMask
-
     DO iLevel = 0, nLevels-1
-
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1653,21 +1675,20 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        uMF      => MF_uMF(iLevel) % DataPtr( MFI )
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uMF => MF_uMF(iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swXX
+        iX_E1 = iX_E0 + swXX
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iX3 = iX_B1(3), iX_E1(3)
+        DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
         DO iNX = 1       , nDOFX
-
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           iNX1 = NodeNumberTableX(1,iNX)
           iNX2 = NodeNumberTableX(2,iNX)
@@ -1696,15 +1717,13 @@ CONTAINS
         END DO
         END DO
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE UpdateConformalFactorAndMetric_MF
 
@@ -1717,38 +1736,32 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-
-    TYPE(amrex_imultifab) :: iMF_FineMask
+    REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
-    INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     DO iLevel = 0, nLevels-1
-
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uMF      => MF_uMF(iLevel) % DataPtr( MFI )
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uMF => MF_uMF(iLevel) % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swXX
+        iX_E1 = iX_E0 + swXX
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iX3 = iX_B1(3), iX_E1(3)
+        DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
         DO iNX = 1       , nDOFX
-
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           uGF    (iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
             = uMF(iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX)
@@ -1778,13 +1791,11 @@ CONTAINS
         END DO
         END DO
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ComputeGeometryFromPoseidon_MF
 
@@ -1820,10 +1831,7 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-
-    TYPE(amrex_imultifab) :: iMF_FineMask
+    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iX_B0(3), iX_E0(3), iLevel
     REAL(DP) :: d3X
@@ -1834,16 +1842,13 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGS % BA, MF_uGS % DM )
-
       CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
       DO WHILE( MFI % next() )
 
-        uGS      => MF_uGS(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGS => MF_uGS(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1854,8 +1859,6 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
-
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
           d3X = Two / Pi * MeshX(1) % Width(iX1) &
                          * MeshX(2) % Width(iX2) &
@@ -1870,15 +1873,13 @@ CONTAINS
         END DO
         END DO
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
     CALL amrex_parallel_reduce_sum( GravitationalMass )
 
@@ -1902,10 +1903,7 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-
-    TYPE(amrex_imultifab) :: iMF_FineMask
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER :: iLevel, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
@@ -1914,14 +1912,11 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -1934,8 +1929,6 @@ CONTAINS
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
-
-            IF( IsNotLeafElement( FineMask(iX_B0(1),iX2,iX3,1) ) ) CYCLE
 
             DO iNX3 = 1, nNodesX(3)
             DO iNX2 = 1, nNodesX(2)
@@ -1996,13 +1989,11 @@ CONTAINS
 
         END IF
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyBoundaryConditions_X1_Inner
 
@@ -2083,11 +2074,11 @@ CONTAINS
 
         END IF
 
-      END DO
+      END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
 
-    END DO
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyBoundaryConditions_X1_Outer
 

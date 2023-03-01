@@ -67,9 +67,7 @@ MODULE FinalizationModule
     StepNo, &
     dt, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
 
   IMPLICIT NONE
   PRIVATE
@@ -112,9 +110,6 @@ CONTAINS
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF

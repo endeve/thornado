@@ -48,9 +48,7 @@ MODULE FinalizationModule
     StepNo, &
     dt, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     FinalizeGravitySolver_XCFC_Poseidon_MF
   USE MF_TimersModule, ONLY: &
@@ -114,9 +112,6 @@ CONTAINS
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_Euler_MF
     CALL DestroyFields_Geometry_MF

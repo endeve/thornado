@@ -6,6 +6,7 @@ f90EXE_sources  += MF_ErrorModule.f90
 f90EXE_sources  += MaskModule.f90
 CEXE_sources    += MaskModule_fi.cpp
 F90EXE_sources  += MF_UtilitiesModule.F90
+CEXE_sources    += MF_UtilitiesModule_fi.cpp
 f90EXE_sources  += MF_TimersModule.f90
 
 # THORNADO_DIR/Modules/Library

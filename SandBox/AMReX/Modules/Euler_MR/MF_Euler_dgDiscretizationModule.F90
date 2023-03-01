@@ -101,9 +101,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     FillPatch
   USE AverageDownModule, ONLY: &
     AverageDown
-  USE MaskModule, ONLY: &
-    CreateFineMask, &
-    DestroyFineMask
 
   IMPLICIT NONE
   PRIVATE
@@ -242,13 +239,10 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    TYPE(amrex_imultifab) :: iMF_FineMask
-
     REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uDF     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: duCF    (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X1(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X2(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X3(:,:,:,:)
@@ -302,18 +296,14 @@ CONTAINS
 
     END DO
 
-    CALL CreateFineMask &
-           ( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
-
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF      => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF      => MF_uDF(iLevel) % DataPtr( MFI )
-      duCF     => MF_duCF        % DataPtr( MFI )
-      FineMask => iMF_FineMask   % DataPtr( MFI )
+      uGF  => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF  => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF  => MF_uDF(iLevel) % DataPtr( MFI )
+      duCF => MF_duCF        % DataPtr( MFI )
 
       uSurfaceFlux_X1 => SurfaceFluxes(1) % DataPtr( MFI )
       IF( nDimsX .GT. 1 ) uSurfaceFlux_X2 => SurfaceFluxes(2) % DataPtr( MFI )
@@ -382,8 +372,7 @@ CONTAINS
                SurfaceFlux_X1_Option = SurfaceFlux_X1, &
                SurfaceFlux_X2_Option = SurfaceFlux_X2, &
                SurfaceFlux_X3_Option = SurfaceFlux_X3, &
-               UseXCFC_Option = UseXCFC, &
-               Mask_Option = FineMask )
+               UseXCFC_Option = UseXCFC )
 
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
@@ -463,8 +452,6 @@ CONTAINS
     END DO ! MFI
 
     CALL amrex_mfiter_destroy( MFI )
-
-    CALL DestroyFineMask( iMF_FineMask )
 
     CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
 

@@ -110,13 +110,16 @@ nX[2] = X1_C.shape[2]
 
 if nDims == 1:
 
+    dX1  = np.copy( dX1 [:,0,0] )
     X1_C = np.copy( X1_C[:,0,0] )
     Data = np.copy( Data[:,0,0] )
 
     fig, ax = plt.subplots( 1, 1 )
 
     ax.plot( X1_C, Data, 'k.' )
-    if UseLogScale_X: ax.set_xscale( 'log' )
+    if UseLogScale_X:
+        ax.set_xscale( 'log' )
+        xL = [ max( xL[0], 0.0 + 0.25 * dX1[0] ), 0 ]
     if UseLogScale_Y: ax.set_yscale( 'log' )
     if UseCustomLimits: ax.set_ylim( vmin, vmax )
     ax.set_xlim( xL[0], xH[0] )

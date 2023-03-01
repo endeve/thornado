@@ -83,9 +83,7 @@ MODULE FinalizationModule
     dt, &
     dt_TM, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     FinalizeGravitySolver_XCFC_Poseidon_MF
   USE MF_TimersModule, ONLY: &
@@ -178,9 +176,6 @@ CONTAINS
     CALL FinalizeReferenceElementX
 
     CALL DestroyMesh( MeshE )
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF

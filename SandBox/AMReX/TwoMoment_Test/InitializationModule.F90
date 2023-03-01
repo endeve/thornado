@@ -39,9 +39,6 @@ MODULE InitializationModule
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_foextrap, &
-    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
@@ -176,7 +173,7 @@ MODULE InitializationModule
     amrex_permute2amrex_Z, &
     MF_amrex2amrex_permute_Z_Level, &
     MF_amrex_permute2amrex_Z_Level
-    
+
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -216,8 +213,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    lo_bc, &
-    hi_bc, &
     ProgramName, &
     TagCriteria, &
     nRefinementBuffer, &
@@ -250,7 +245,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    INTEGER :: i
+    INTEGER :: iLevel, i
 
     CALL amrex_init()
 
@@ -270,12 +265,6 @@ CONTAINS
     CALL CreateFields_Geometry_MF
     CALL CreateFields_Euler_MF
     CALL CreateFields_TwoMoment_MF
-
-    ALLOCATE( lo_bc(1:amrex_spacedim,1) )
-    ALLOCATE( hi_bc(1:amrex_spacedim,1) )
-
-    lo_bc = amrex_bc_bogus
-    hi_bc = amrex_bc_bogus
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
@@ -400,6 +389,41 @@ CONTAINS
 
       nLevels = amrex_get_numlevels()
 
+      DO iLevel = 0, nLevels-1
+
+        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+        IF( iLevel .NE. 0 )THEN
+
+          DO i = iLevel - 1, iLevel
+
+            CALL MF_amrex2amrex_permute_Z_Level &
+                   (i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+          END DO
+
+          CALL FillPatch( iLevel, MF_uGF, MF_Permute )
+
+        ELSE
+
+          CALL FillPatch( iLevel, MF_uGF, MF_uCR )
+
+        END IF
+
+        IF( iLevel .NE. 0 )THEN
+
+          DO i = iLevel - 1, iLevel
+
+            CALL MF_amrex_permute2amrex_Z_Level &
+                   (i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+          END DO
+
+        END IF
+
+      END DO ! iLevel = 0, nLevels-1
+
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
       CALL CreateMesh_MF( 0, MeshX )
@@ -441,7 +465,7 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF, MF_uGF )
+    CALL AverageDown( MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
 
 
@@ -452,7 +476,7 @@ CONTAINS
 
     END DO
 
-   
+
     CALL AverageDown( MF_uGF, MF_Permute )
 
     DO i = 0, nLevels-1
@@ -567,32 +591,6 @@ CONTAINS
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCR(iLevel), MF_uCF(iLevel) )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-
-
-    IF(iLevel .NE. 0) THEN
-
-      DO i = iLevel - 1, iLevel
-
-        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
-
-      END DO
-
-       CALL FillPatch( iLevel, MF_uGF, MF_Permute )
-    ELSE 
-       CALL FillPatch( iLevel, MF_uGF, MF_uCR )
-    END IF
-   
-
-    IF(iLevel .NE. 0) THEN
-
-      DO i = iLevel - 1, iLevel
-
-        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
-
-      END DO
-    END IF
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
@@ -606,7 +604,7 @@ CONTAINS
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-    INTEGER :: i 
+    INTEGER :: i
 
     BA = pBA
     DM = pDM
@@ -647,10 +645,10 @@ CONTAINS
       END DO
 
        CALL FillCoarsePatch( iLevel, MF_uGF, MF_Permute )
-    ELSE 
+    ELSE
        CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
     END IF
-   
+
 
     IF(iLevel .NE. 0) THEN
 
@@ -719,10 +717,10 @@ CONTAINS
       END DO
 
        CALL FillPatch( iLevel, MF_uGF, MF_Permute, MF_uCR_tmp )
-    ELSE 
+    ELSE
        CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp  )
     END IF
-   
+
 
 
 

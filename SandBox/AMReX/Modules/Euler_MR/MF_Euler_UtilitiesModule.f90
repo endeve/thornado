@@ -70,9 +70,6 @@ MODULE MF_Euler_UtilitiesModule
     thornado2amrex_X, &
     AllocateArray_X, &
     DeallocateArray_X
-  USE MaskModule, ONLY: &
-    CreateFineMask, &
-    DestroyFineMask
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -102,13 +99,10 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    TYPE(amrex_imultifab) :: iMF_FineMask
-
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uPF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uAF     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -126,17 +120,14 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
-        uPF      => MF_uPF(iLevel) % DataPtr( MFI )
-        uAF      => MF_uAF(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uPF => MF_uPF(iLevel) % DataPtr( MFI )
+        uAF => MF_uAF(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -179,7 +170,7 @@ CONTAINS
         CALL amrex2thornado_X( nAF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uAF, A )
 
         CALL ComputeFromConserved_Euler &
-               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, Mask_Option = FineMask )
+               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A )
 
         CALL thornado2amrex_X( nPF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uPF, P )
 
@@ -209,8 +200,6 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
-
       CALL DestroyMesh_MF( MeshX )
 
     END DO
@@ -228,11 +217,8 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    TYPE(amrex_imultifab) :: iMF_FineMask
-
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -249,15 +235,12 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -283,8 +266,7 @@ CONTAINS
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
         CALL ComputeTimeStep_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), &
-                 Mask_Option = FineMask )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel) )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
@@ -301,8 +283,6 @@ CONTAINS
       END DO ! --- Loop over grids (boxes) ---
 
       CALL amrex_mfiter_destroy( MFI )
-
-      CALL DestroyFineMask( iMF_FineMask )
 
       CALL DestroyMesh_MF( MeshX )
 

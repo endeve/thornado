@@ -1,10 +1,14 @@
 !> Module for operations on MultiFabs
 MODULE MF_UtilitiesModule
 
+  USE ISO_C_BINDING
+
   ! --- AMReX Modules ---
 
   USE amrex_box_module, ONLY: &
     amrex_box
+  USE amrex_boxarray_module, ONLY: &
+    amrex_boxarray
   USE amrex_multifab_module, ONLY: &
     amrex_mfiter, &
     amrex_mfiter_build, &
@@ -158,12 +162,27 @@ MODULE MF_UtilitiesModule
   PUBLIC :: DeallocateArray_X
   PUBLIC :: AllocateArray_Z
   PUBLIC :: DeallocateArray_Z
+  PUBLIC :: PrintBoxArray
 
+  INTERFACE MultiplyWithMetric
+    MODULE PROCEDURE MultiplyWithMetric_uGF
+    MODULE PROCEDURE MultiplyWithMetric_uCF
+  END INTERFACE MultiplyWithMetric
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
     MODULE PROCEDURE ShowVariableFromMultiFab_Vector
   END INTERFACE ShowVariableFromMultiFab
+
+  INTERFACE
+
+    SUBROUTINE print_boxarray( BA ) BIND(c)
+        IMPORT
+        IMPLICIT NONE
+        TYPE(c_ptr), VALUE :: BA
+    END SUBROUTINE print_boxarray
+
+  END INTERFACE
 
 CONTAINS
 
@@ -290,9 +309,17 @@ CONTAINS
       END DO
       END DO
 
-      IF( WriteToFile ) CLOSE( iFileNo )
+      IF( WriteToFile )THEN
 
-    END DO
+        CLOSE( iFileNo )
+
+      ELSE IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
+
+        WRITE(*,*)
+
+      END IF
+
+    END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
 
@@ -348,36 +375,111 @@ CONTAINS
   END SUBROUTINE ShowVariableFromMultiFab_Vector
 
 
-  SUBROUTINE MultiplyWithMetric( MF_SqrtGm, MF, nFd, Power )
+  SUBROUTINE MultiplyWithMetric_uGF &
+    ( iLevel, MF_uGF, nFd, Power, swXX_Option )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
-    TYPE(amrex_multifab), INTENT(inout) :: MF
-    INTEGER             , INTENT(in)    :: nFd, Power
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
+    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
 
-    INTEGER                       :: iX1, iX2, iX3, iNX, iFd
-    INTEGER                       :: lo_F(4), hi_F(4)
-    INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: F     (:,:,:,:)
-    REAL(DP)                      :: F_K(nDOFX,nFd)
+    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    REAL(DP)           :: G_K(nDOFX,nFd)
 
-    CALL amrex_mfiter_build( MFI, MF_SqrtGm, tiling = UseTiling )
+    REAL(DP)                      :: SqrtGm(nDOFX)
+    REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
+
+    swXX = swX
+    IF( PRESENT( swXX_Option ) ) &
+      swXX = swXX_Option
+
+    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      SqrtGm => MF_SqrtGm % DataPtr( MFI )
-      F      => MF        % DataPtr( MFI )
+      G => MF_uGF(iLevel) % DataPtr( MFI )
+
+      lo_G = LBOUND( G ); hi_G = UBOUND( G )
 
       BX = MFI % tilebox()
 
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swXX
+      iX_E1 = iX_E0 + swXX
+
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+
+        G_K(1:nDOFX,1:nFd) &
+          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nFd ] )
+
+        DO iNX = 1, nDOFX
+
+          SqrtGm(iNX) = SQRT( G_K(iNX,iGF_SqrtGm) )
+
+        END DO
+
+        DO iFd = 1, nFd
+        DO iNX = 1, nDOFX
+
+          G_K(iNX,iFd) = G_K(iNX,iFd) * SqrtGm(iNX)**( Power )
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END DO ! WHILE( MFI % next() )
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE MultiplyWithMetric_uGF
+
+
+  SUBROUTINE MultiplyWithMetric_uCF &
+    ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
+    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
+    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
+
+    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
+    INTEGER            :: lo_F(4), hi_F(4)
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    REAL(DP)           :: F_K(nDOFX,nFd)
+
+    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm  (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: F       (:,:,:,:)
+
+    swXX = swX
+    IF( PRESENT( swXX_Option ) ) &
+      swXX = swXX_Option
+
+    CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      SqrtGm => MF_SqrtGm  % DataPtr( MFI )
+      F      => MF(iLevel) % DataPtr( MFI )
+
       lo_F = LBOUND( F ); hi_F = UBOUND( F )
+
+      BX = MFI % tilebox()
 
       iX_B0 = BX % lo
       iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swX
-      iX_E1 = iX_E0 + swX
+      iX_B1 = iX_B0 - swXX
+      iX_E1 = iX_E0 + swXX
 
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
@@ -398,11 +500,11 @@ CONTAINS
       END DO
       END DO
 
-    END DO
+    END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
 
-  END SUBROUTINE MultiplyWithMetric
+  END SUBROUTINE MultiplyWithMetric_uCF
 
 
   SUBROUTINE amrex2thornado_X &
@@ -1617,5 +1719,15 @@ iD_permute = 0
 
 
   END SUBROUTINE MF_amrex_permute2amrex_Z_Level
+
+
+  SUBROUTINE PrintBoxArray( BA )
+
+    TYPE(amrex_boxarray), INTENT(in) :: BA
+
+    CALL print_boxarray( BA % p )
+
+  END SUBROUTINE PrintBoxArray
+
 
 END MODULE MF_UtilitiesModule
