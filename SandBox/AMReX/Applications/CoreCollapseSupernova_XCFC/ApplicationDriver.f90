@@ -77,7 +77,8 @@ PROGRAM main
     DEBUG, &
     nX, &
     xL, &
-    xR
+    xR, &
+    iReGrid
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
   USE MF_TimersModule, ONLY: &
@@ -114,108 +115,8 @@ PROGRAM main
 
     t_old = t_new
 
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-    END IF
-
-    IF( UseAMR )THEN
-
-      IF( MOD( StepNo(0), 10 ) .EQ. 0 )THEN
-
-        IF( DEBUG )THEN
-
-          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-          IF( amrex_parallel_ioprocessor() )THEN
-
-            WRITE(*,*)
-            WRITE(*,'(6x,A,I2.2)') 'nLevels (before regrid): ', nLevels
-            WRITE(*,'(6x,A)') 'Regridding'
-
-          END IF
-
-        END IF
-
-        DO iLevel = 0, nLevels
-
-          IF( iLevel .LT. nLevels-1 ) &
-            CALL amrex_regrid( iLevel, t_new(iLevel) )
-
-        END DO
-
-        nLevels = amrex_get_numlevels()
-
-        ! --- nLevels <= nMaxLevels; entire arrays t_old(0:nMaxLevels-1) and
-        !     t_new(0:nMaxLevels-1) must have valid data ---
-        t_old = t_old(0)
-        t_new = t_new(0)
-
-        IF( DEBUG )THEN
-
-          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-          IF( amrex_parallel_ioprocessor() )THEN
-
-            WRITE(*,'(6x,A,I2.2)') 'nLevels (after regrid): ', nLevels
-            WRITE(*,*)
-            WRITE(*,'(A)') 'CALL ApplyBoundaryConditions_Geometry_MF'
-
-          END IF
-
-        END IF
-
-        CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
-
-        IF( DEBUG )THEN
-
-          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-          IF( amrex_parallel_ioprocessor() )THEN
-
-            WRITE(*,*)
-            WRITE(*,'(A)') 'CALL ApplyPositivityLimiter_Euler_MF'
-            WRITE(*,*)
-
-          END IF
-
-        END IF
-
-        ! --- Regridding may cause some cells to be un-physical ---
-        CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
-
-        IF( DEBUG )THEN
-
-          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-          IF( amrex_parallel_ioprocessor() )THEN
-
-            WRITE(*,*)
-            WRITE(*,'(A)') 'CALL ComputeFromConserved_Euler_MF'
-            WRITE(*,*)
-
-          END IF
-
-          CALL ComputeFromConserved_Euler_MF &
-                 ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-        END IF
-
-      END IF ! MOD( StepNo(0), 10 ) .EQ. 0
-
-    END IF ! UseAMR
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      IF( amrex_parallel_ioprocessor() ) &
-        WRITE(*,'(A)') 'CALL ComputeTimeStep_Euler_MF'
-
-    END IF
-
     CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
+
     CALL ComputeTimeStep_TwoMoment_Fancy_MF &
            ( MF_uGF, nX, nNodes, xR, xL, CFL, dt_TM )
 
@@ -421,6 +322,103 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   END SUBROUTINE WriteCheckpointFile
+
+
+  SUBROUTINE ReGrid
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+    END IF
+
+    IF( UseAMR )THEN
+
+      IF( MOD( StepNo(0), iReGrid ) .EQ. 0 )THEN
+
+        IF( DEBUG )THEN
+
+          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+          IF( amrex_parallel_ioprocessor() )THEN
+
+            WRITE(*,*)
+            WRITE(*,'(6x,A,I2.2)') 'nLevels (before regrid): ', nLevels
+            WRITE(*,'(6x,A)') 'Regridding'
+
+          END IF
+
+        END IF
+
+        DO iLevel = 0, nLevels
+
+          IF( iLevel .LT. nLevels-1 ) &
+            CALL amrex_regrid( iLevel, t_new(iLevel) )
+
+        END DO
+
+        nLevels = amrex_get_numlevels()
+
+        ! --- nLevels <= nMaxLevels; entire arrays t_old(0:nMaxLevels-1) and
+        !     t_new(0:nMaxLevels-1) must have valid data ---
+        t_old = t_old(0)
+        t_new = t_new(0)
+
+        IF( DEBUG )THEN
+
+          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+          IF( amrex_parallel_ioprocessor() )THEN
+
+            WRITE(*,'(6x,A,I2.2)') 'nLevels (after regrid): ', nLevels
+            WRITE(*,*)
+            WRITE(*,'(A)') 'CALL ApplyBoundaryConditions_Geometry_MF'
+
+          END IF
+
+        END IF
+
+        CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+
+        IF( DEBUG )THEN
+
+          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+          IF( amrex_parallel_ioprocessor() )THEN
+
+            WRITE(*,*)
+            WRITE(*,'(A)') 'CALL ApplyPositivityLimiter_Euler_MF'
+            WRITE(*,*)
+
+          END IF
+
+        END IF
+
+        ! --- Regridding may cause some cells to be un-physical ---
+        CALL ApplyPositivityLimiter_Euler_MF( MF_uGF, MF_uCF, MF_uDF )
+
+        IF( DEBUG )THEN
+
+          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+          IF( amrex_parallel_ioprocessor() )THEN
+
+            WRITE(*,*)
+            WRITE(*,'(A)') 'CALL ComputeFromConserved_Euler_MF'
+            WRITE(*,*)
+
+          END IF
+
+          CALL ComputeFromConserved_Euler_MF &
+                 ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+        END IF
+
+      END IF ! MOD( StepNo(0), 10 ) .EQ. 0
+
+    END IF ! UseAMR
+
+  END SUBROUTINE ReGrid
 
 
 END PROGRAM main

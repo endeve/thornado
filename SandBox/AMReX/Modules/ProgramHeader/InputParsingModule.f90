@@ -46,7 +46,7 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
-  INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
+  INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   REAL(DP)                  :: t_end
   LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
   LOGICAL     , SAVE        :: DEBUG
@@ -207,6 +207,7 @@ call amrex_parmparse_destroy( pp )
     dt_chk           = -1.0_DP
     dt_rel           = 0.0_DP
     UseXCFC          = .FALSE.
+    iReGrid          = 1
     SolveGravity_NR  = .FALSE.
     Scheme           = ''
     nE               = 1
@@ -256,6 +257,8 @@ call amrex_parmparse_destroy( pp )
                          UsePhysicalUnits )
       CALL PP % query ( 'UseXCFC', &
                          UseXCFC )
+      CALL PP % query ( 'iReGrid', &
+                         iReGrid )
       CALL PP % query ( 'SolveGravity_NR', &
                          SolveGravity_NR )
       CALL PP % query ( 'nE', &
