@@ -159,7 +159,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-      Verbose_Option, SuppressBC_Option, &
+      Verbose_Option, SuppressBC_Option, UseXCFC_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
@@ -186,6 +186,8 @@ CONTAINS
       Verbose_Option
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      UseXCFC_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
@@ -220,6 +222,16 @@ CONTAINS
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
     LOGICAL :: Verbose
     LOGICAL  :: SuppressBC
+    LOGICAL  :: UseXCFC
+    REAL(DP) :: tau(nDOFX,iZ_B1(2):iZ_E1(2), &
+                          iZ_B1(3):iZ_E1(3), &
+                          iZ_B1(4):iZ_E1(4))
+
+
+    UseXCFC = .FALSE.
+    IF( PRESENT( UseXCFC_Option ) ) &
+      UseXCFC = UseXCFC_Option
+
 
 
     SuppressBC = .FALSE.
@@ -249,6 +261,40 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
     END IF
+
+    IF( UseXCFC )THEN
+
+      DO iZ4 = iZ_B1(4), iZ_E1(4)
+      DO iZ3 = iZ_B1(3), iZ_E1(3)
+      DO iZ2 = iZ_B1(2), iZ_E1(2)
+      DO iNodeX = 1, nDOFX
+
+        tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    ELSE
+
+      DO iZ4 = iZ_B1(4), iZ_E1(4)
+      DO iZ3 = iZ_B1(3), iZ_E1(3)
+      DO iZ2 = iZ_B1(2), iZ_E1(2)
+      DO iNodeX = 1, nDOFX
+
+        tau(iNodeX,iZ2,iZ3,iZ4) = One
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+
+
+
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -317,6 +363,7 @@ CONTAINS
 
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+              * tau(iNodeX,iZ2,iZ3,iZ4) &
               / ( Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
                     * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) &
                     * dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) )
