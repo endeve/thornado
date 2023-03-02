@@ -136,7 +136,8 @@ MODULE InputOutputModuleAMReX
     iRestart, &
     UseTiling, &
     UseFluxCorrection_Euler, &
-    UseFluxCorrection_TwoMoment
+    UseFluxCorrection_TwoMoment, &
+    iOS_CPP
 
   IMPLICIT NONE
   PRIVATE
@@ -564,8 +565,13 @@ CONTAINS
 
     DO iLevel = 0, nMaxLevels-1
 
-      nXX = Two**( iLevel ) * nX
-      BX = amrex_box( [ 0, 0, 0 ], [ nXX(1)-1, nXX(2)-1, nXX(3)-1 ] )
+      nXX = nX
+
+      nXX(1) = 2**( iLevel ) * nX(1)
+      IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
+      IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
+
+      BX = amrex_box( 1 - iOS_CPP, nXX - iOS_CPP )
 
       CALL amrex_boxarray_build( BA(iLevel), BX )
 
@@ -658,22 +664,10 @@ CONTAINS
     pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
     CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
 
-    DO iLevel = 0, nLevels-1
-
-      CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-
-    END DO
-
     IF( ReadFields_uCF )THEN
 
       pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
       CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
-
-      DO iLevel = 0, nLevels-1
-
-        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-
-      END DO
 
     END IF
 
@@ -681,12 +675,6 @@ CONTAINS
 
       pCR(0:nLevels-1) = MF_uCR(0:nLevels-1) % P
       CALL ReadMultiFabData( FinestLevel, pCR, 2, iRestart )
-
-      DO iLevel = 0, nLevels-1
-
-        CALL FillPatch( iLevel, MF_uGF, MF_uCR )
-
-      END DO
 
     END IF
 
