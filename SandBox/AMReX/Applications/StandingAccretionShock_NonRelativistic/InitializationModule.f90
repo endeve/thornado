@@ -273,9 +273,6 @@ CONTAINS
 
     ELSE
 
-      CALL amrex_init_from_scratch( 0.0_DP )
-      ! nLevels read from checkpoint file
-
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
     END IF
