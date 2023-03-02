@@ -104,6 +104,7 @@ CONTAINS
 
     INTEGER  :: iNodeZ, iNodeZ2, iZ1, iZ2, iZ3, iZ4, iS
     REAL(DP) :: Radius
+
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
     DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
@@ -122,7 +123,6 @@ CONTAINS
           = Chi * Half * ( One - TANH( ( Radius - R_0 ) / L_R ) )
         uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
           = Zero
-
       END DO
 
     END DO
@@ -130,6 +130,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
   END SUBROUTINE SetOpacities_HomogeneousSphere1D
 
 
@@ -264,12 +265,13 @@ CONTAINS
         '', 'Simple Opacities, nSpecies = ', nSpecies
     END IF
 
+
     ALLOCATE &
       ( uOP(1:nDOFZ, &
             iZ_B1(1):iZ_E1(1), &
-            iZ_B1(2):iZ_E1(2), &
-            1:1, &
-            1:1, &
+            iZ_B1(2)-iOS_CPP(1):iZ_E1(2)-iOS_CPP(1), &
+            iZ_B1(3)-iOS_CPP(2):iZ_E1(3)-iOS_CPP(2), &
+            iZ_B1(4)-iOS_CPP(3):iZ_E1(4)-iOS_CPP(3), &
             1:nOP,1:nSpecies) )
 
   END SUBROUTINE CreateOpacities
