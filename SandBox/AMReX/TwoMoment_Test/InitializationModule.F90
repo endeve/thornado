@@ -245,7 +245,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    INTEGER :: iLevel, i
+    INTEGER :: i
 
     CALL amrex_init()
 
@@ -389,41 +389,6 @@ CONTAINS
 
       nLevels = amrex_get_numlevels()
 
-      DO iLevel = 0, nLevels-1
-
-        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-
-        IF( iLevel .NE. 0 )THEN
-
-          DO i = iLevel - 1, iLevel
-
-            CALL MF_amrex2amrex_permute_Z_Level &
-                   (i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
-
-          END DO
-
-          CALL FillPatch( iLevel, MF_uGF, MF_Permute )
-
-        ELSE
-
-          CALL FillPatch( iLevel, MF_uGF, MF_uCR )
-
-        END IF
-
-        IF( iLevel .NE. 0 )THEN
-
-          DO i = iLevel - 1, iLevel
-
-            CALL MF_amrex_permute2amrex_Z_Level &
-                   (i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
-
-          END DO
-
-        END IF
-
-      END DO ! iLevel = 0, nLevels-1
-
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
       CALL CreateMesh_MF( 0, MeshX )
@@ -465,23 +430,23 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
 
 
 
     DO i = 0, nLevels-1
 
-      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+!      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
     END DO
 
 
-    CALL AverageDown( MF_uGF, MF_Permute )
+!    CALL AverageDown( MF_uGF, MF_Permute )
 
     DO i = 0, nLevels-1
 
-      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+!      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
     END DO
 
@@ -591,6 +556,32 @@ CONTAINS
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCR(iLevel), MF_uCF(iLevel) )
 
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+
+    IF(iLevel .NE. 0) THEN
+
+      DO i = iLevel - 1, iLevel
+
+      !  CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+
+    !   CALL FillPatch( iLevel, MF_uGF, MF_Permute )
+    ELSE
+    !   CALL FillPatch( iLevel, MF_uGF, MF_uCR )
+    END IF
+
+
+    IF(iLevel .NE. 0) THEN
+
+      DO i = iLevel - 1, iLevel
+
+    !    CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+
+      END DO
+    END IF
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
@@ -640,13 +631,13 @@ CONTAINS
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+  !      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
 
-       CALL FillCoarsePatch( iLevel, MF_uGF, MF_Permute )
+   !    CALL FillCoarsePatch( iLevel, MF_uGF, MF_Permute )
     ELSE
-       CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
+    !   CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
     END IF
 
 
@@ -654,7 +645,7 @@ CONTAINS
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+ !       CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
     END IF
@@ -712,19 +703,19 @@ CONTAINS
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+   !     CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
 
-       CALL FillPatch( iLevel, MF_uGF, MF_Permute, MF_uCR_tmp )
+   !    CALL FillPatch( iLevel, MF_uGF, MF_Permute, MF_uCR_tmp )
     ELSE
-       CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp  )
+    !   CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp  )
     END IF
 
 
 
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
+!    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
 
@@ -747,8 +738,8 @@ CONTAINS
     CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
     CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
     CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
-    CALL MF_Permute(iLevel) % COPY &
-           ( MF_uCR_tmp, 1, 1, nDOFZ * nCR * nE * nSpecies, swX )
+!    CALL MF_Permute(iLevel) % COPY &
+!           ( MF_uCR_tmp, 1, 1, nDOFZ * nCR * nE * nSpecies, swX )
 
     CALL amrex_multifab_destroy( MF_uPR_tmp )
     CALL amrex_multifab_destroy( MF_uCR_tmp )
@@ -762,7 +753,7 @@ CONTAINS
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+ !       CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
     END IF
