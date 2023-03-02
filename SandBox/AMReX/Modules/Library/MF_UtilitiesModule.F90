@@ -37,7 +37,7 @@ MODULE MF_UtilitiesModule
     iE_B1, &
     iE_E1
   USE MeshModule, ONLY: &
-    MeshX, &
+    MeshType, &
     NodeCoordinate
   USE UnitsModule, ONLY: &
     MeV
@@ -209,6 +209,8 @@ CONTAINS
     LOGICAL                       :: WriteToFile
     CHARACTER(128)                :: FMT
     CHARACTER(128)                :: FileNameBase, FileName
+
+    TYPE(MeshType) :: MeshX(3)
 
     REAL(DP) :: NodesX1(nNodesX(1))
     REAL(DP) :: NodesX2(nNodesX(2))
