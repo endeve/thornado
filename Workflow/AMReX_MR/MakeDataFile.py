@@ -289,6 +289,10 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
           [ p.join() for p in processes ]
 
+        else:
+
+            loop( 0, nSSS )
+
     else:
 
         PlotfileArray \
