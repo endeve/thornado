@@ -66,17 +66,8 @@ MODULE InputParsingModule
 
   ! --- Slope Limiter ---
 
-  LOGICAL                       :: UseSlopeLimiter_Euler
-  LOGICAL                       :: UseSlopeLimiter_TwoMoment
-  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod_Euler
-  REAL(DP)                      :: BetaTVD_Euler
-  REAL(DP)                      :: BetaTVD_TwoMoment
-  REAL(DP)                      :: BetaTVB_Euler
-  REAL(DP)                      :: SlopeTolerance_Euler
-  LOGICAL                       :: UseCharacteristicLimiting_Euler
-  LOGICAL                       :: UseTroubledCellIndicator_Euler
-  REAL(DP)                      :: LimiterThresholdParameter_Euler
-  LOGICAL                       :: UseConservativeCorrection_Euler
+  LOGICAL  :: UseSlopeLimiter_TwoMoment
+  REAL(DP) :: BetaTVD_TwoMoment
 
   ! --- Positivity Limiter ---
 
@@ -291,40 +282,13 @@ call amrex_parmparse_destroy( pp )
 
     ! --- Slope Limiter Parameters SL.* ---
 
-    UseSlopeLimiter_Euler           = .TRUE.
-    UseSlopeLimiter_TwoMoment       = .TRUE.
-    SlopeLimiterMethod_Euler        = 'TVD'
-    BetaTVD_Euler                   = 1.75_DP
-    BetaTVD_TwoMoment               = 1.75_DP
-    BetaTVB_Euler                   = Zero
-    SlopeTolerance_Euler            = 1.0e-6_DP
-    UseCharacteristicLimiting_Euler = .TRUE.
-    UseTroubledCellIndicator_Euler  = .TRUE.
-    LimiterThresholdParameter_Euler = 0.03_DP
-    UseConservativeCorrection_Euler = .TRUE.
+    UseSlopeLimiter_TwoMoment = .TRUE.
+    BetaTVD_TwoMoment         = 1.75_DP
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter_Euler', &
-                        UseSlopeLimiter_Euler )
       CALL PP % query( 'UseSlopeLimiter_TwoMoment', &
                         UseSlopeLimiter_TwoMoment )
-      CALL PP % query( 'SlopeLimiterMethod_Euler', &
-                        SlopeLimiterMethod_Euler )
-      CALL PP % query( 'BetaTVD_Euler', &
-                        BetaTVD_Euler )
       CALL PP % query( 'BetaTVD_TwoMoment', &
                         BetaTVD_TwoMoment )
-      CALL PP % query( 'BetaTVB_Euler', &
-                        BetaTVB_Euler )
-      CALL PP % query( 'SlopeTolerance_Euler', &
-                        SlopeTolerance_Euler )
-      CALL PP % query( 'UseCharacteristicLimiting_Euler', &
-                        UseCharacteristicLimiting_Euler )
-      CALL PP % query( 'UseTroubledCellIndicator_Euler', &
-                        UseTroubledCellIndicator_Euler )
-      CALL PP % query( 'LimiterThresholdParameter_Euler', &
-                        LimiterThresholdParameter_Euler )
-      CALL PP % query( 'UseConservativeCorrection_Euler', &
-                        UseConservativeCorrection_Euler )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivity Limiter Parameters PL.* ---
