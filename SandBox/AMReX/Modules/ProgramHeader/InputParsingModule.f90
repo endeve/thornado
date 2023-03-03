@@ -607,6 +607,8 @@ call amrex_parmparse_destroy( pp )
                                       BlockingFactor
       WRITE(*,'(4x,A26,1x,I2.2)')    'nMaxLevels:', &
                                       nMaxLevels
+      WRITE(*,'(4x,A26,1x,I2.2)')    'iReGrid:', &
+                                      iReGrid
       WRITE(*,'(4x,A26,1x,L)')       'UseFluxCorrection_Euler:', &
                                       UseFluxCorrection_Euler
       WRITE(*,'(4x,A26,1x,L)')       'UseTiling:', &

@@ -156,9 +156,11 @@ CONTAINS
 !
 !      ! --- Apply boundary conditions to interior domains ---
 !
-!      CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-!      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+!      CALL FillPatch( iLevel, MF_uGF )
 !      CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+!      CALL FillPatch &
+!             ( iLevel, MF_uGF, MF_uCF, &
+!               MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 !
 !      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 !
@@ -268,9 +270,11 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     CALL MF_duCF % SetVal( Zero )
 

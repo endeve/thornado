@@ -211,7 +211,9 @@ CONTAINS
         END DO ! iLevel = 0, nLevels-1
 
 !!$        IF( a_SSPRK(iS,jS) .NE. Zero ) &
-!!$          CALL AverageDown( MF_uGF, MF_U(iS,:) )
+!!$          CALL AverageDown &
+!!$                 ( MF_uGF, MF_U(iS,:), &
+!!$                   MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
       END DO ! jS = 1, iS-1
 
@@ -301,7 +303,9 @@ CONTAINS
       END DO ! iLevel
 
 !!$      IF( w_SSPRK(iS) .NE. Zero ) &
-!!$        CALL AverageDown( MF_uGF, MF_uCF )
+!!$        CALL AverageDown &
+!!$               ( MF_uGF, MF_uCF, &
+!!$                 MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     END DO ! iS
 

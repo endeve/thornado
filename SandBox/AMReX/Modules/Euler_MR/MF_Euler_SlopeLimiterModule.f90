@@ -60,8 +60,6 @@ MODULE MF_Euler_SlopeLimiterModule
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
-!!$  USE AverageDownModule, ONLY: &
-!!$    AverageDown
 
   IMPLICIT NONE
   PRIVATE
@@ -184,11 +182,6 @@ CONTAINS
 
     END DO
 
-    ! --- Ensure underlying coarse cells are consistent with
-    !     cells on refined level ---
-
-!!$    CALL AverageDown( MF_uGF, MF_uCF )
-
   END SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels
 
 
@@ -221,9 +214,11 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 

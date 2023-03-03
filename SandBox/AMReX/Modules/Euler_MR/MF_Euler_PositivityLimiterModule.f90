@@ -64,8 +64,6 @@ MODULE MF_Euler_PositivityLimiterModule
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
-  USE FillPatchModule, ONLY: &
-    FillPatch
 
   IMPLICIT NONE
   PRIVATE
@@ -154,43 +152,32 @@ CONTAINS
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
     ( MF_uGF, MF_uCF, MF_uDF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
-    INTEGER, PARAMETER :: nCycles = 1
+    INTEGER :: iLevel, iErr
 
-    INTEGER :: iCycle, iLevel, iErr
+    DO iLevel = 0, nLevels-1
 
-    DO iCycle = 1, nCycles
+      IF( DEBUG )THEN
 
-      DO iLevel = 0, nLevels-1
+        CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
-        IF( DEBUG )THEN
+        IF( amrex_parallel_ioprocessor() )THEN
 
-          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+          WRITE(*,'(2x,A,I3.3)') &
+            'CALL ApplyPositivityLimiter_Euler_MF_SingleLevel, iLevel: ', &
+            iLevel
 
-          IF( amrex_parallel_ioprocessor() )THEN
+        END IF
 
-            WRITE(*,'(2x,A,I3.3)') &
-              'CALL ApplyPositivityLimiter_Euler_MF_SingleLevel, iLevel: ', &
-              iLevel
+      END IF ! DEBUG
 
-          END IF
+      CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
+             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
-        END IF ! DEBUG
-
-        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-
-        CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
-               ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-
-      END DO ! iLevel
-
-      ! --- Ensure underlying coarse cells are consistent with
-      !     cells on refined level ---
-
-    END DO ! iCycle
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels
 
@@ -199,9 +186,9 @@ CONTAINS
     ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -224,13 +211,13 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF => MF_uDF(iLevel) % DataPtr( MFI )
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+      uDF => MF_uDF % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 
