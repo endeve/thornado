@@ -193,7 +193,7 @@ fps = max( 1, nSS / MovieRunTime )
 
 print( '\n  Making movie' )
 print( '  ------------' )
-anim.save( MovieName, fps = fps )
+anim.save( MovieName, fps = fps, dpi = 300 )
 
 import os
 os.system( 'rm -rf __pycache__ ' )

@@ -197,7 +197,7 @@ def InitializeFrame():
 
 def UpdateFrame(t):
 
-    print('{:}/{:}'.format( t, nSS ) )
+    print( '    {:}/{:}'.format( t, nSS ) )
     Data, DataUnits, X1_C, X2_C, dX1, dX2, Time = f(t)
 
     # pcolormesh wants the corners of the elements
@@ -226,11 +226,15 @@ def UpdateFrame(t):
 # Call the animator
 anim \
   = animation.FuncAnimation \
-      ( fig, UpdateFrame, init_func = InitializeFrame, frames = nSS, blit = True)
+      ( fig, UpdateFrame, init_func = InitializeFrame, \
+        frames = nSS, blit = True)
 
 fps = max( 1, nSS // MovieRunTime )
 
-anim.save( MovieName, fps = fps )
+print( '\n  Making Movie' )
+print( '  ------------' )
+
+anim.save( MovieName, fps = fps, dpi = 300 )
 
 import os
 os.system( 'rm -rf __pycache__ ' )
