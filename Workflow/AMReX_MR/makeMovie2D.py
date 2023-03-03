@@ -171,9 +171,11 @@ if CoordinateSystem == 'spherical':
 elif CoordinateSystem == 'cartesian':
 
     ax.set_xlabel \
-      ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
+      ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( X1Units ), \
+        fontsize = 15 )
     ax.set_ylabel \
-      ( r'$x^{{2}}\ \left[{:}\right]$'.format( X2Units ), fontsize = 15 )
+      ( r'$x^{{2}}\ \left[\mathrm{{{:}}}\right]$'.format( X2Units ), \
+        fontsize = 15 )
 
 Norm = GetNorm( UseLogScale, Data, vmin = vmin, vmax = vmax )
 
@@ -216,7 +218,7 @@ def UpdateFrame(t):
                         shading = 'flat' )
 
     im.set_array( Data.flatten() )
-    time_text.set_text( r'$t={:.3e}\ \left[{:}\right]$' \
+    time_text.set_text( r'$t={:.3e}\ \left[\mathrm{{{:}}}\right]$' \
                         .format( Time, TimeUnits ) )
 
     ret = ( im, time_text )

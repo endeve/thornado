@@ -185,7 +185,7 @@ elif nDims == 2:
           ( r'$x^{{2}}\ \left[\mathrm{{{:}}}\right]$'.format( X2Units ), \
             fontsize = 15 )
 
-        ax.text( 0.4, 0.9, r'$t={:.2e}\ \left[{:}\right]$'.format \
+        ax.text( 0.4, 0.9, r'$t={:.2e}\ \left[\mathrm{{{:}}}\right]$'.format \
                  ( Time, TimeUnits ), transform = ax.transAxes )
 
     elif CoordinateSystem == 'spherical':
@@ -196,7 +196,7 @@ elif nDims == 2:
         ax.set_theta_direction( -1 )
         ax.set_theta_zero_location( 'W' ) # z-axis horizontal
 
-        ax.text( 0.6, 0.9, r'$t={:.2e}\ \left[{:}\right]$'.format \
+        ax.text( 0.6, 0.9, r'$t={:.2e}\ \left[\mathrm{{{:}}}\right]$'.format \
                  ( Time, TimeUnits ), transform = ax.transAxes )
 
         # Transpose data for spherical-polar coordinates

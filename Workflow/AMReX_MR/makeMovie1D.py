@@ -135,14 +135,17 @@ ax.set_title( r'$\texttt{{{:}}}$'.format( ID ), fontsize = 15 )
 time_text = ax.text( 0.1, 0.9, '', transform = ax.transAxes, fontsize = 13 )
 
 ax.set_xlabel \
-  ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
+  ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( X1Units ), fontsize = 15 )
 ax.set_ylabel( Field  + ' ' + DataUnits   )
 
 ax.set_xlim( xL, xH )
 ax.set_ylim( vmin, vmax )
 
 if UseLogScale_Y: ax.set_yscale( 'log' )
-if UseLogScale_X: ax.set_xscale( 'log' )
+if UseLogScale_X:
+    xL = max( xL, xL + 0.25 * dX10[0] )
+    ax.set_xlim( xL, xH )
+    ax.set_xscale( 'log' )
 
 if PlotMesh: mesh, = ax.plot( [],[], 'b.', label = 'mesh boundaries'    )
 if ShowIC: IC,     = ax.plot( [],[], 'r.', label = r'$u\left(0\right)$' )
@@ -167,7 +170,7 @@ def UpdateFrame( t ):
     print('    {:}/{:}'.format( t, nSS ) )
     Data, DataUnits, X1_C, dX1, Time = f(t)
 
-    time_text.set_text( r'$t={:.3e}\ \left[{:}\right]$' \
+    time_text.set_text( r'$t={:.3e}\ \left[\mathrm{{{:}}}\right]$' \
                         .format( Time, TimeUnits ) )
 
     line             .set_data( X1_C , Data .flatten() )
