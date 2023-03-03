@@ -40,9 +40,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
     print( '\n  DataDirectory: {:}\n'.format( DataDirectory ) )
 
-    ow = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = owD )
+    owD = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = owD )
 
-    if ow:
+    if owD:
 
         os.system( 'rm -rf {:}'.format( DataDirectory ) )
         os.system(  'mkdir {:}'.format( DataDirectory ) )
@@ -281,8 +281,10 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
           processes = []
 
           for i in range( nProc ):
-              iLo = np.int64( np.float64( i     ) / np.float64( nProc ) * nSSS )
-              iHi = np.int64( np.float64( i + 1 ) / np.float64( nProc ) * nSSS )
+              iLo = np.int64( np.float64( i     ) \
+                      / np.float64( nProc ) * nSSS )
+              iHi = np.int64( np.float64( i + 1 ) \
+                      / np.float64( nProc ) * nSSS )
               p = Process( target = loop, args = (iLo,iHi) )
               p.start()
               processes.append( p )
@@ -300,9 +302,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
         File = DataDirectory + PlotfileArray[0] + '/{:}.dat'.format( Field )
 
-        oww = Overwrite( File, ForceChoice = forceChoiceF, OW = owF )
+        owF = Overwrite( File, ForceChoice = forceChoiceF, OW = owF )
 
-        if oww:
+        if owF:
 
             print( '\nPlotfileDirectory: {:}\n'.format( PlotfileDirectory ) )
 
@@ -397,8 +399,10 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
               processes = []
 
               for i in range( nProc ):
-                  iLo = np.int64( np.float64( i     ) / np.float64( nProc ) * nSSS )
-                  iHi = np.int64( np.float64( i + 1 ) / np.float64( nProc ) * nSSS )
+                  iLo = np.int64( np.float64( i     ) \
+                          / np.float64( nProc ) * nSSS )
+                  iHi = np.int64( np.float64( i + 1 ) \
+                          / np.float64( nProc ) * nSSS )
                   p = Process( target = loop, args = (iLo,iHi) )
                   p.start()
                   processes.append( p )
@@ -408,9 +412,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
             else:
 
               loop( 0, nSSS )
-        # END if oww
+        # END if owF
 
-    # END if ow
+    # END if owD
 
     PlotfileArray \
       = np.loadtxt( DataDirectory + 'PlotfileNumbers.dat', dtype = str )
