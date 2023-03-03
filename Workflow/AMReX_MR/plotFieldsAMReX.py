@@ -124,7 +124,8 @@ if nDims == 1:
     if UseCustomLimits: ax.set_ylim( vmin, vmax )
     ax.set_xlim( xL[0], xH[0] )
     ax.set_xlabel \
-      ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
+      ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( X1Units ), \
+        fontsize = 15 )
     ax.set_ylabel( Field + ' ' + DataUnit )
     ax.grid()
 
@@ -178,9 +179,11 @@ elif nDims == 2:
         ax.set_ylim( xL[1], xH[1] )
 
         ax.set_xlabel \
-          ( r'$x^{{1}}\ \left[{:}\right]$'.format( X1Units ), fontsize = 15 )
+          ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( X1Units ), \
+            fontsize = 15 )
         ax.set_ylabel \
-          ( r'$x^{{2}}\ \left[{:}\right]$'.format( X2Units ), fontsize = 15 )
+          ( r'$x^{{2}}\ \left[\mathrm{{{:}}}\right]$'.format( X2Units ), \
+            fontsize = 15 )
 
         ax.text( 0.4, 0.9, r'$t={:.2e}\ \left[{:}\right]$'.format \
                  ( Time, TimeUnits ), transform = ax.transAxes )
