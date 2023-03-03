@@ -42,6 +42,8 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
     owD = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = owD )
 
+    nProc = 2#max( 1, cpu_count() // 2 )
+
     if owD:
 
         os.system( 'rm -rf {:}'.format( DataDirectory ) )
@@ -61,7 +63,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
         print( '\n  PlotfileDirectory: {:}\n'.format( PlotfileDirectory ) )
 
         nSSS = nSS
-        if nSS < 0: nSSS = PlotfileArray.shape[0]
+        if SSi < 0: SSi  = 0
+        if SSf < 0: SSf  = PlotfileArray.shape[0]-1
+        if nSS < 0: nSSS = SSf - SSi + 1
 
         TimeUnits = '[]'
         X1Units   = '[]'
@@ -271,8 +275,6 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
         # Adapted from:
         # https://www.benmather.info/post/2018-11-24-multiprocessing-in-python/
 
-        nProc = max( 1, cpu_count() // 2 )
-
         print( '  Generating {:} with {:} processes...\n'.format \
              ( DataDirectory, nProc ) )
 
@@ -295,7 +297,7 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
             loop( 0, nSSS )
 
-    else:
+    else: # owD = False
 
         PlotfileArray \
           = np.loadtxt( DataDirectory + 'PlotfileNumbers.dat', dtype = str )
@@ -309,7 +311,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
             print( '\nPlotfileDirectory: {:}\n'.format( PlotfileDirectory ) )
 
             nSSS = nSS
-            if nSS < 0: nSSS = PlotfileArray.shape[0]
+            if SSi < 0: SSi  = 0
+            if SSf < 0: SSf  = PlotfileArray.shape[0]-1
+            if nSS < 0: nSSS = SSf - SSi + 1
 
             printProcMem = False
 
@@ -388,8 +392,6 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
             # Adapted from:
             # https://www.benmather.info/post/2018-11-24-multiprocessing-in-python/
-
-            nProc = max( 1, cpu_count() // 2 )
 
             print( 'Generating {:} with {:} processes...\n'.format \
                  ( DataDirectory, nProc ) )
