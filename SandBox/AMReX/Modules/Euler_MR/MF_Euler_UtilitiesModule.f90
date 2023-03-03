@@ -14,7 +14,8 @@ MODULE MF_Euler_UtilitiesModule
     amrex_imultifab
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
@@ -64,7 +65,8 @@ MODULE MF_Euler_UtilitiesModule
     swX, &
     nX, &
     xL, &
-    xR
+    xR, &
+    DEBUG
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
@@ -223,11 +225,20 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4), iErr
 
     REAL(DP) :: TimeStep(0:nLevels-1)
 
     CALL TimersStart_AMReX( Timer_AMReX_ComputeTimeStep_Euler )
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() ) &
+        WRITE(*,'(A)') 'CALL ComputeTimeStep_Euler_MF'
+
+    END IF
 
     TimeStepMin = HUGE( One )
 
