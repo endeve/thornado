@@ -2,6 +2,7 @@
 
 import numpy as np
 import os
+from os.path import isdir, isfile
 from multiprocessing import Process, cpu_count
 
 from UtilitiesModule import Overwrite, GetData, GetFileArray
@@ -98,9 +99,18 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
             print( 'mem: {:.3e} kB'.format \
                     ( process.memory_info().rss / 1024.0 ) )
 
-        def loop( iLo, iHi ):
+        def loop( iLo, iHi, fileArray = [] ):
 
-            for i in range( iLo, iHi ):
+            if len( fileArray ) == 0:
+                fileArray \
+                  = np.linspace( iLo, iHi-1, iHi-iLo, dtype = np.int64 )
+            else:
+                fileArray = np.array( fileArray, dtype = np.int64 )
+
+            j = 0
+            for i in fileArray:
+
+                j += 1
 
                 if printProcMem:
                     print( 'mem: {:.3e} kB'.format \
@@ -110,7 +120,8 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
                 FileDirectory = DataDirectory + PlotfileNumber + '/'
 
-                os.system( 'mkdir {:}'.format( FileDirectory ) )
+                if not isdir( FileDirectory ):
+                    os.system( 'mkdir {:}'.format( FileDirectory ) )
 
                 TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
                 X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
@@ -123,7 +134,7 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
 
                 if Verbose:
                     print( '  Generating data file: {:} ({:}/{:})'.format \
-                             ( DataFile, i+1-iLo, iHi-iLo ) )
+                             ( DataFile, j, fileArray.shape[0] ) )
 
                 Data, DataUnits, \
                   X1, X2, X3, dX1, dX2, dX3, xL, xH, nX, Time \
@@ -164,109 +175,134 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                     exit( 'MakeDataFile not implemented for nDimsX > 2' )
 
 
-                # Save multi-D array with np.savetxt. Taken from:
-                # https://stackoverflow.com/questions/3685265/
-                # how-to-write-a-multidimensional-array-to-a-text-file
+                if not isfile( DataFile ):
 
-                with open( DataFile, 'w' ) as FileOut:
+                    # Save multi-D array with np.savetxt. Taken from:
+                    # https://stackoverflow.com/questions/3685265/
+                    # how-to-write-a-multidimensional-array-to-a-text-file
 
-                    FileOut.write( '# {:}\n'             .format( DataFile  ) )
-                    FileOut.write( '# Array Shape: {:}\n'.format( DataShape ) )
-                    FileOut.write( '# Data Units: {:}\n' .format( DataUnits ) )
-                    FileOut.write( '# Min. value: {:.16e}\n' \
-                                   .format( Data.min() ) )
-                    FileOut.write( '# Max. value: {:.16e}\n' \
-                                   .format( Data.max() ) )
+                    with open( DataFile, 'w' ) as FileOut:
 
-                    np.savetxt( FileOut, Data )
+                        FileOut.write( '# {:}\n'              \
+                                       .format( DataFile  ) )
+                        FileOut.write( '# Array Shape: {:}\n' \
+                                       .format( DataShape ) )
+                        FileOut.write( '# Data Units: {:}\n'  \
+                                       .format( DataUnits ) )
+                        FileOut.write( '# Min. value: {:.16e}\n' \
+                                       .format( Data.min() ) )
+                        FileOut.write( '# Max. value: {:.16e}\n' \
+                                       .format( Data.max() ) )
 
-                # end with open( DataFile, 'w' ) as FileOut
+                        np.savetxt( FileOut, Data )
 
-                with open( TimeFile, 'w' ) as FileOut:
+                    # end with open( DataFile, 'w' ) as FileOut
 
-                    FileOut.write( '# {:}\n'              \
-                                   .format( TimeFile  ) )
-                    FileOut.write( '# Time Units: {:}\n'  \
-                                   .format( TimeUnits ) )
-                    FileOut.write( str( Time ) + '\n' )
+                if not isfile( TimeFile ):
 
-                with open( X1File, 'w' ) as FileOut:
+                    with open( TimeFile, 'w' ) as FileOut:
 
-                    FileOut.write( '# {:}\n'.format( X1File  ) )
-                    FileOut.write( '# X1_C {:}\n'.format( X1Units ) )
+                        FileOut.write( '# {:}\n'              \
+                                       .format( TimeFile  ) )
+                        FileOut.write( '# Time Units: {:}\n'  \
+                                       .format( TimeUnits ) )
+                        FileOut.write( str( Time ) + '\n' )
 
-                    for iX1 in range( LoopShape[0] ):
-                        for iX2 in range( LoopShape[1] ):
-                            for iX3 in range( LoopShape[2] ):
-                                FileOut.write( str( X1 [iX1,iX2,iX3] ) + ' ' )
+                if not isfile( X1File ):
+
+                    with open( X1File, 'w' ) as FileOut:
+
+                        FileOut.write( '# {:}\n'.format( X1File  ) )
+                        FileOut.write( '# X1_C {:}\n'.format( X1Units ) )
+
+                        for iX1 in range( LoopShape[0] ):
+                            for iX2 in range( LoopShape[1] ):
+                                for iX3 in range( LoopShape[2] ):
+                                    FileOut.write \
+                                      ( str( X1 [iX1,iX2,iX3] ) + ' ' )
+                                FileOut.write( '\n' )
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
-                    FileOut.write( '\n' )
 
-                with open( dX1File, 'w' ) as FileOut:
+                if not isfile( dX1File ):
 
-                    FileOut.write( '# {:}\n'.format( dX1File  ) )
-                    FileOut.write( '# dX1 {:}\n'.format( X1Units ) )
+                    with open( dX1File, 'w' ) as FileOut:
 
-                    for iX1 in range( LoopShape[0] ):
-                        for iX2 in range( LoopShape[1] ):
-                            for iX3 in range( LoopShape[2] ):
-                                FileOut.write( str( dX1[iX1,iX2,iX3] ) + ' ' )
+                        FileOut.write( '# {:}\n'.format( dX1File  ) )
+                        FileOut.write( '# dX1 {:}\n'.format( X1Units ) )
+
+                        for iX1 in range( LoopShape[0] ):
+                            for iX2 in range( LoopShape[1] ):
+                                for iX3 in range( LoopShape[2] ):
+                                    FileOut.write \
+                                      ( str( dX1[iX1,iX2,iX3] ) + ' ' )
+                                FileOut.write( '\n' )
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
-                    FileOut.write( '\n' )
 
-                with open( X2File, 'w' ) as FileOut:
+                if not isfile( X2File ):
 
-                    FileOut.write( '# {:}\n'.format( X2File  ) )
-                    FileOut.write( '# X2_C {:}\n'.format( X2Units ) )
+                    with open( X2File, 'w' ) as FileOut:
 
-                    for iX1 in range( LoopShape[0] ):
-                        for iX2 in range( LoopShape[1] ):
-                            for iX3 in range( LoopShape[2] ):
-                                FileOut.write( str( X2 [iX1,iX2,iX3] ) + ' ' )
+                        FileOut.write( '# {:}\n'.format( X2File  ) )
+                        FileOut.write( '# X2_C {:}\n'.format( X2Units ) )
+
+                        for iX1 in range( LoopShape[0] ):
+                            for iX2 in range( LoopShape[1] ):
+                                for iX3 in range( LoopShape[2] ):
+                                    FileOut.write \
+                                      ( str( X2 [iX1,iX2,iX3] ) + ' ' )
+                                FileOut.write( '\n' )
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
-                    FileOut.write( '\n' )
 
-                with open( dX2File, 'w' ) as FileOut:
+                if not isfile( dX2File ):
 
-                    FileOut.write( '# {:}\n'.format( dX2File  ) )
-                    FileOut.write( '# dX2 {:}\n'.format( X2Units ) )
+                    with open( dX2File, 'w' ) as FileOut:
 
-                    for iX1 in range( LoopShape[0] ):
-                        for iX2 in range( LoopShape[1] ):
-                            for iX3 in range( LoopShape[2] ):
-                                FileOut.write( str( dX2[iX1,iX2,iX3] ) + ' ' )
+                        FileOut.write( '# {:}\n'.format( dX2File  ) )
+                        FileOut.write( '# dX2 {:}\n'.format( X2Units ) )
+
+                        for iX1 in range( LoopShape[0] ):
+                            for iX2 in range( LoopShape[1] ):
+                                for iX3 in range( LoopShape[2] ):
+                                    FileOut.write \
+                                      ( str( dX2[iX1,iX2,iX3] ) + ' ' )
+                                FileOut.write( '\n' )
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
-                    FileOut.write( '\n' )
 
-                with open( X3File, 'w' ) as FileOut:
+                if not isfile( X3File ):
 
-                    FileOut.write( '# {:}\n'.format( X3File  ) )
-                    FileOut.write( '# X3_C {:}\n'.format( X3Units ) )
+                    with open( X3File, 'w' ) as FileOut:
 
-                    for iX1 in range( LoopShape[0] ):
-                        for iX2 in range( LoopShape[1] ):
-                            for iX3 in range( LoopShape[2] ):
-                                FileOut.write( str( X3 [iX1,iX2,iX3] ) + ' ' )
+                        FileOut.write( '# {:}\n'.format( X3File  ) )
+                        FileOut.write( '# X3_C {:}\n'.format( X3Units ) )
+
+                        for iX1 in range( LoopShape[0] ):
+                            for iX2 in range( LoopShape[1] ):
+                                for iX3 in range( LoopShape[2] ):
+                                    FileOut.write \
+                                      ( str( X3 [iX1,iX2,iX3] ) + ' ' )
+                                FileOut.write( '\n' )
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
-                    FileOut.write( '\n' )
 
-                with open( dX3File, 'w' ) as FileOut:
+                if not isfile( dX3File ):
 
-                    FileOut.write( '# {:}\n'.format( dX3File  ) )
-                    FileOut.write( '# dX3 {:}\n'.format( X3Units ) )
+                    with open( dX3File, 'w' ) as FileOut:
 
-                    for iX1 in range( LoopShape[0] ):
-                        for iX2 in range( LoopShape[1] ):
-                            for iX3 in range( LoopShape[2] ):
-                                FileOut.write( str( dX3[iX1,iX2,iX3] ) + ' ' )
+                        FileOut.write( '# {:}\n'.format( dX3File  ) )
+                        FileOut.write( '# dX3 {:}\n'.format( X3Units ) )
+
+                        for iX1 in range( LoopShape[0] ):
+                            for iX2 in range( LoopShape[1] ):
+                                for iX3 in range( LoopShape[2] ):
+                                    FileOut.write \
+                                      ( str( dX3[iX1,iX2,iX3] ) + ' ' )
+                                FileOut.write( '\n' )
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
-                    FileOut.write( '\n' )
 
             # end for i in range( iLo, iHi )
 
@@ -292,6 +328,32 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
               processes.append( p )
 
           [ p.join() for p in processes ]
+
+          # Ensure all files were created
+
+          fileArray = []
+          for i in range( nSSS ):
+
+              PlotfileNumber = PlotfileArray[i][-8:]
+              FileDirectory = DataDirectory + PlotfileNumber + '/'
+
+              TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
+              X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
+              X2File   = FileDirectory + '{:}.dat'.format( 'X2' )
+              X3File   = FileDirectory + '{:}.dat'.format( 'X3' )
+              dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
+              dX2File  = FileDirectory + '{:}.dat'.format( 'dX2' )
+              dX3File  = FileDirectory + '{:}.dat'.format( 'dX3' )
+              DataFile = FileDirectory + '{:}.dat'.format( Field )
+
+              if not isfile( TimeFile ) or not isfile( X1File ) \
+                 or not isfile( X2File ) or not isfile( X3File ) \
+                 or not isfile( dX1File ) or not isfile( dX2File ) \
+                 or not isfile( dX3File ) or not isfile( DataFile ):
+                  fileArray.append( i )
+
+          if len( fileArray ) != 0:
+              loop( -1, -1, fileArray )
 
         else:
 
