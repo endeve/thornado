@@ -150,8 +150,9 @@ CONTAINS
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, nranks, ierr )
 !! Shaoping. To avoid cll MPI_FINALIZE twices which leads to "In MPIR_Free_contextid, the context id is not in use (Internal MPI error!)"    
-   ! ndevices = omp_get_num_devices() 
-#if defined(THORNADO_CUDA)
+#if defined(THORNADO_OMP_OL)
+    ndevices = omp_get_num_devices() ! doesn't work for OpenACC
+#elif defined(THORNADO_CUDA)
     ierr = cudaGetDeviceCount( ndevices )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipGetDeviceCount( ndevices ) )
@@ -162,7 +163,9 @@ CONTAINS
       WRITE(*,*) 'No capable device found'
       CALL MPI_FINALIZE( ierr )
     END IF
-#if defined(THORNADO_CUDA)
+#if defined(THORNADO_OMP_OL)
+    CALL omp_set_default_device( mydevice )
+#elif defined(THORNADO_CUDA)
     ierr = cudaSetDevice( mydevice )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipSetDevice( mydevice ) )
@@ -170,10 +173,6 @@ CONTAINS
 #else
     mydevice = -1
     ndevices = 0
-#endif
-#if defined(THORNADO_OMP_OL)
-    ndevices = omp_get_num_devices() 
-    CALL omp_set_default_device( mydevice )
 #endif
 
     ! Setup linear algebra library handles
