@@ -186,18 +186,21 @@ CONTAINS
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
                                     MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL MultiplyWithMetric &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, +1, &
                swXX_Option = swXX )
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+
+      CALL SqrtGm(FineLevel  ) % COPY &
+             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
+
       CALL MultiplyWithMetric &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, +1, &
                swXX_Option = swXX )
@@ -320,18 +323,20 @@ CONTAINS
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
                                     MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL MultiplyWithMetric &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
                swXX_Option = swXX )
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+
+      CALL SqrtGm(FineLevel  ) % COPY &
+             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL MultiplyWithMetric &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1, &
@@ -444,7 +449,7 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                 MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
 
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
@@ -463,11 +468,19 @@ CONTAINS
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
                swXX_Option = swXX )
 
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel), MF_uGF(FineLevel) % BA, &
+                                  MF_uGF(FineLevel) % DM, nDOFX, swX )
+
+      CALL SqrtGm(FineLevel) % COPY &
+             ( MF_uGF(FineLevel), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
+
       CALL MultiplyWithMetric &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
                swXX_Option = swXX )
 
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
 
     END IF
