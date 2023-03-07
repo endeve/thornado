@@ -303,7 +303,7 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                             FileOut.write( '\n' )
                         FileOut.write( '\n' )
 
-            # end for i in range( iLo, iHi )
+            # end for i in fileArray
 
         # end of loop( iLo, iHi )
 
@@ -437,30 +437,32 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                     else:
                         exit( 'MakeDataFile not implemented for nDimsX > 2' )
 
-                if not isfile( DataFile ):
+                    if not isfile( DataFile ):
 
-                    # Save multi-D array with np.savetxt. Taken from:
-                    # https://stackoverflow.com/questions/3685265/
-                    # how-to-write-a-multidimensional-array-to-a-text-file
+                        # Save multi-D array with np.savetxt. Taken from:
+                        # https://stackoverflow.com/questions/3685265/
+                        # how-to-write-a-multidimensional-array-to-a-text-file
 
-                    with open( DataFile, 'w' ) as FileOut:
+                        with open( DataFile, 'w' ) as FileOut:
 
-                        FileOut.write( '# {:}\n'              \
-                                       .format( DataFile  ) )
-                        FileOut.write( '# Array Shape: {:}\n' \
-                                       .format( DataShape ) )
-                        FileOut.write( '# Data Units: {:}\n'  \
-                                       .format( DataUnits ) )
-                        FileOut.write( '# Min. value: {:.16e}\n' \
-                                       .format( Data.min() ) )
-                        FileOut.write( '# Max. value: {:.16e}\n' \
-                                       .format( Data.max() ) )
+                            FileOut.write( '# {:}\n'              \
+                                           .format( DataFile  ) )
+                            FileOut.write( '# Array Shape: {:}\n' \
+                                           .format( DataShape ) )
+                            FileOut.write( '# Data Units: {:}\n'  \
+                                           .format( DataUnits ) )
+                            FileOut.write( '# Min. value: {:.16e}\n' \
+                                           .format( Data.min() ) )
+                            FileOut.write( '# Max. value: {:.16e}\n' \
+                                           .format( Data.max() ) )
 
-                        np.savetxt( FileOut, Data )
+                            np.savetxt( FileOut, Data )
 
-                    # end with open( DataFile, 'w' ) as FileOut
+                        # end with open( DataFile, 'w' ) as FileOut
 
-                # end for i in range( iLo, iHi )
+                    # end if not isfile( DataFile )
+
+                # end for i in fileArray
 
             # end of loop( iLo, iHi )
 

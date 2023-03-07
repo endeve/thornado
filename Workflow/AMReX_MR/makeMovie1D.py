@@ -137,7 +137,7 @@ time_text = ax.text( 0.1, 0.9, '', transform = ax.transAxes, fontsize = 13 )
 ax.set_xlabel \
   ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( X1Units ), fontsize = 15 )
 ax.set_ylabel( Field  + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
-                              .format( DataUnits[1:-1] ) )
+                              .format( DataUnits[2:-2] ) )
 
 ax.set_xlim( xL, xH )
 ax.set_ylim( vmin, vmax )

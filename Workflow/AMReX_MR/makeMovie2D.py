@@ -188,7 +188,7 @@ time_text = ax.text( 0.4, 0.9, '', transform = ax.transAxes )
 
 cbar = fig.colorbar( im )
 cbar.set_label( Field + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
-                              .format( DataUnits[1:-1] ) )
+                              .format( DataUnits[2:-2] ) )
 
 def InitializeFrame():
 
