@@ -187,7 +187,8 @@ im = ax.pcolormesh( X1c, X2c, Data, \
 time_text = ax.text( 0.4, 0.9, '', transform = ax.transAxes )
 
 cbar = fig.colorbar( im )
-cbar.set_label( Field + ' ' + DataUnits )
+cbar.set_label( Field + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
+                              .format( DataUnits[1:-1] ) )
 
 def InitializeFrame():
 

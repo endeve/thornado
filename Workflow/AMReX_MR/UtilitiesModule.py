@@ -219,7 +219,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     elif Field == 'PF_D':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'g/cm**3'
+        DataUnits = 'g/cm^3'
 
     elif Field == 'PF_V1':
 
@@ -245,53 +245,53 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     elif Field == 'PF_E':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'PF_Ne':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = '1/cm**3'
+        DataUnits = '1/cm^3'
 
     elif Field == 'CF_D':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'g/cm**3'
+        DataUnits = 'g/cm^3'
 
     elif Field == 'CF_S1':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'g/cm**2/s'
+        DataUnits = 'g/cm^2/s'
 
     elif Field == 'CF_S2':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
 
-        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm**2/s'
-        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm**2/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm^2/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm^2/s'
         elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
 
     elif Field == 'CF_S3':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
 
-        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm**2/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm^2/s'
         elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm/s'
         elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
 
     elif Field == 'CF_E':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'CF_Ne':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = '1/cm**3'
+        DataUnits = '1/cm^3'
 
     elif Field == 'AF_P':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'AF_Ye':
 
@@ -324,15 +324,15 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         if   CoordinateSystem == 'cartesian'  : DataUnits = ''
         elif CoordinateSystem == 'cylindrical': DataUnits = ''
-        elif CoordinateSystem == 'spherical'  : DataUnits = 'km**2'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
 
     elif Field == 'GF_Gm_33':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
 
         if   CoordinateSystem == 'cartesian'  : DataUnits = ''
-        elif CoordinateSystem == 'cylindrical': DataUnits = 'km**2'
-        elif CoordinateSystem == 'spherical'  : DataUnits = 'km**2'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km^2'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
 
     elif Field == 'GF_K_11':
 
@@ -409,7 +409,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = B
 
-        DataUnits = 'cm**2/s**2'
+        DataUnits = 'cm^2/s^2'
 
     elif Field == 'PolytropicConstant':
 
@@ -419,7 +419,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data  = AF_P / PF_D**AF_Gm
 
-        DataUnits = 'erg/cm**3/(g/cm**3)**(Gamma_IDEAL)'
+        DataUnits = 'erg/cm^3/(g/cm^3)^(Gamma_IDEAL)'
 
     elif Field == 'NonRelativisticSpecificEnthalpy':
 
@@ -429,7 +429,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = ( e + p ) / rho
 
-        DataUnits = 'cm**2/s**2'
+        DataUnits = 'cm^2/s^2'
 
     elif Field == 'RelativisticSpecificEnthalpy':
 
@@ -574,7 +574,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                       = rho[iX1,iX2,iX3] * ( c * 1.0e5 )**2 \
                           * W**2 * BetaSq / ( W + 1.0 )
 
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'Vorticity':
 
@@ -588,44 +588,43 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         V1A = np.empty( (nX[0],nX[1]+2,nX[2]), np.float64 )
         V2A = np.empty( (nX[0],nX[1]+2,nX[2]), np.float64 )
 
-        h1A[:,1:-1,:] = h1
-        h2A[:,1:-1,:] = h2
-        V1A[:,1:-1,:] = V1
-        V2A[:,1:-1,:] = V2
-
-        k = 0
+        h1A[:,1:-1,:] = np.copy( h1 )
+        h2A[:,1:-1,:] = np.copy( h2 )
+        V1A[:,1:-1,:] = np.copy( V1 )
+        V2A[:,1:-1,:] = np.copy( V2 )
 
         # --- Apply reflecting boundary conditions in theta ---
 
         for i in range( nX[0] ):
+            for k in range( nX[2] ):
 
-          h1A[i,0,k] = +h1A[i,1,k]
-          h2A[i,0,k] = +h2A[i,1,k]
-          V1A[i,0,k] = +V1A[i,1,k]
-          V2A[i,0,k] = -V2A[i,1,k]
+                h1A[i,0,k] = +h1A[i,1,k]
+                h2A[i,0,k] = +h2A[i,1,k]
+                V1A[i,0,k] = +V1A[i,1,k]
+                V2A[i,0,k] = -V2A[i,1,k]
 
-          h1A[i,nX[1]+1,k] = +h1A[i,nX[1],k]
-          h2A[i,nX[1]+1,k] = +h2A[i,nX[1],k]
-          V1A[i,nX[1]+1,k] = +V1A[i,nX[1],k]
-          V2A[i,nX[1]+1,k] = -V2A[i,nX[1],k]
+                h1A[i,-1,k] = +h1A[i,-2,k]
+                h2A[i,-1,k] = +h2A[i,-2,k]
+                V1A[i,-1,k] = +V1A[i,-2,k]
+                V2A[i,-1,k] = -V2A[i,-2,k]
 
         # --- Compute vorticity in domain using
-        #     central differences for derivatives ---
+        #     central differences for derivatives (assume 2D) ---
 
         Data = np.zeros( (nX[0],nX[1],nX[2]), np.float64 )
 
-        k = 0
         for i in range( 1, nX[0] - 1 ):
             for j in range( 1, nX[1] + 1 ):
+                for k in range( nX[2] ):
 
-                Data[i,j-1,k] \
-                  = 1.0 / ( h1A[i,j,k]      * h2A[i,j,k] ) \
-                    * ( (   h2A[i+1,j,k]**2 * V2A[i+1,j,k] \
-                          - h2A[i-1,j,k]**2 * V2A[i-1,j,k] ) \
-                          / ( 2.0 * X1[i,j,k] ) \
-                      - (   h1A[i,j+1,k]**2 * V1A[i,j+1,k] \
-                          - h1A[i,j-1,k]**2 * V1A[i,j-1,k] ) \
-                          / ( 2.0 * X2[i,j-1,k] ) )
+                    Data[i,j-1,k] \
+                      = 1.0 / ( h1A[i,j,k]      * h2A[i,j,k] ) \
+                        * ( (   h2A[i+1,j,k]**2 * V2A[i+1,j,k] \
+                              - h2A[i-1,j,k]**2 * V2A[i-1,j,k] ) \
+                              / ( 2.0 * X1[i,j,k] ) \
+                          - (   h1A[i,j+1,k]**2 * V1A[i,j+1,k] \
+                              - h1A[i,j-1,k]**2 * V1A[i,j-1,k] ) \
+                              / ( 2.0 * X2[i,j-1,k] ) )
 
         DataUnits = '1/s'
 
@@ -648,10 +647,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  CF_E' )
         print( '  CF_Ne' )
         print( '  AF_P' )
+        print( '  AF_Ye' )
+        print( '  AF_T' )
+        print( '  AF_S' )
         print( '  AF_Cs' )
         print( '  GF_Gm_11' )
         print( '  GF_Gm_22' )
         print( '  GF_Gm_33' )
+        print( '  GF_K_11' )
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
         print( '  GF_Beta1' )
