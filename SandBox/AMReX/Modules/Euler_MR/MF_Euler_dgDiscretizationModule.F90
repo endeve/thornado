@@ -14,8 +14,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy, &
-    amrex_imultifab
+    amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_sum, &
     amrex_parallel_communicator
@@ -28,26 +27,14 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
-    nDOFX_X3, &
-    WeightsX_X1, &
-    WeightsX_X2, &
-    WeightsX_X3, &
-    WeightsX_q
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, &
-    LX_X1_Up, &
-    LX_X2_Dn, &
-    LX_X2_Up, &
-    LX_X3_Dn, &
-    LX_X3_Up
+    nDOFX_X3
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nDF
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_Psi
+    nGF
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
     OffGridFlux_Euler_X1_Inner, &
@@ -58,24 +45,16 @@ MODULE  MF_Euler_dgDiscretizationModule
     OffGridFlux_Euler_X3_Outer
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
-  USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply
-  USE Euler_MeshRefinementModule, ONLY: &
-    LX_X1_Refined_C, &
-    LX_X2_Refined_C, &
-    LX_X3_Refined_C
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
     thornado2amrex_X_F, &
-    amrex2thornado_X_F, &
     AllocateArray_X, &
     DeallocateArray_X
   USE MF_FieldsModule_Euler, ONLY: &
@@ -88,8 +67,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
