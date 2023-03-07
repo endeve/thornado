@@ -263,12 +263,6 @@ CONTAINS
       iX_B1 = BX % lo - swXX
       iX_E1 = BX % hi + swXX
 
-!!$      IF( BX % LO(1) .EQ. amrex_geom(iLevel) % DOMAIN % LO(1) ) &
-!!$        iX_B1(1) = BX % lo(1)
-!!$
-!!$      IF( BX % HI(1) .EQ. amrex_geom(iLevel) % DOMAIN % HI(1) ) &
-!!$        iX_E1(1) = BX % hi(1)
-
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
@@ -312,6 +306,8 @@ CONTAINS
       END DO
 
       IF( WriteToFile )THEN
+
+        WRITE(iFileNo,*)
 
         CLOSE( iFileNo )
 
