@@ -289,21 +289,13 @@ CONTAINS
 
     ELSE
 
-      CALL amrex_init_from_scratch( 0.0_DP )
-      ! nLevels read from checkpoint file
-
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+      CALL InitializeGravitySolver_XCFC_Poseidon_MF( MF_uGF, MF_uCF )
 
       CALL DestroyMesh_MF( MeshX )
-
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     END IF
 

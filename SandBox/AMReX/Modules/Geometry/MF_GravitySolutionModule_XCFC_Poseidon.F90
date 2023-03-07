@@ -135,7 +135,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     xL, &
     xR, &
     swX, &
-    UseXCFC
+    UseXCFC, &
+    iRestart
   USE AverageDownModule, ONLY: &
     AverageDown
 
@@ -158,6 +159,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     Poseidon_Return_ALL
   USE Poseidon_Interface_Close, ONLY: &
     Poseidon_Close
+  USE Poseidon_Interface_Initial_Guess, ONLY: &
+    Poseidon_Input_Initial_Guess
 
 #endif
 
@@ -208,11 +211,21 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver_XCFC_Poseidon_MF
+  SUBROUTINE InitializeGravitySolver_XCFC_Poseidon_MF &
+    ( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uCF(0:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
+    TYPE(amrex_multifab)  :: MF_uGS(0:nLevels-1), MF_uMF(0:nLevels-1)
     TYPE(amrex_parmparse) :: PP
+
+    INTEGER          :: iLevel
+    REAL(DP)         :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
+    CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
+    REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
     FillGhostCells = .FALSE.
     CALL amrex_parmparse_build( PP, 'poseidon' )
@@ -247,6 +260,62 @@ CONTAINS
              Verbose_Option               = .FALSE.,          &
              Print_Setup_Option           = .TRUE.,           &
              Print_Results_Option         = .FALSE. )
+
+    IF( iRestart .GE. 0 )THEN
+
+      DO iLevel = 0, nLevels-1
+
+        CALL amrex_multifab_build &
+               ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+                 nDOFX * nGS, swXX )
+        CALL MF_uGS(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+                 nDOFX * nMF, swXX )
+        CALL MF_uMF(iLevel) % SetVal( Zero )
+
+      END DO
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+
+      CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
+
+      ! --- Set Boundary Values ---
+
+      CALL SetPoseidonBoundaryConditions_Outer &
+             ( MF_uGS, Psi_xR, AlphaPsi_xR, Beta_u_xR )
+
+      INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
+      OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
+
+      INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
+      OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, &
+                          Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
+
+      CALL Poseidon_Set_Uniform_Boundary_Conditions &
+             ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
+      CALL Poseidon_Set_Uniform_Boundary_Conditions &
+             ( 'O', OUTER_BC_TYPES, OUTER_BC_VALUES)
+
+      CALL PopulateMF_uMF( MF_uGF, MF_uMF )
+
+      CALL Poseidon_Input_Initial_Guess( MF_uMF )
+
+      CALL Poseidon_XCFC_Run_Part1()
+
+      DO iLevel = 0, nLevels-1
+
+        CALL amrex_multifab_destroy( MF_uMF(iLevel) )
+        CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+
+      END DO
+
+    END IF ! iLevel = 0, nLevels-1
 
 #endif
 
@@ -2081,6 +2150,88 @@ CONTAINS
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyBoundaryConditions_X1_Outer
+
+
+  SUBROUTINE PopulateMF_uMF( MF_uGF, MF_uMF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
+
+    TYPE(amrex_imultifab) :: iMF_FineMask
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3)
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uMF      => MF_uMF(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_Psi-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)
+
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX)
+
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_Beta_1-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_Beta_2-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_Beta_3-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX)
+
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_K_dd_11-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_K_dd_11-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_K_dd_12-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_K_dd_12-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_K_dd_13-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_K_dd_13-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_K_dd_22-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_K_dd_22-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_K_dd_23-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_K_dd_23-1)+iNX)
+          uMF    (iX1,iX2,iX3,nDOFX*(iMF_K_dd_33-1)+iNX) &
+            = uGF(iX1,iX2,iX3,nDOFX*(iGF_K_dd_33-1)+iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO ! WHILE( MFI % next() )
+
+    END DO ! iLevel = 0, nLevels-1
+
+#endif
+
+  END SUBROUTINE PopulateMF_uMF
 
 
 END MODULE MF_GravitySolutionModule_XCFC_Poseidon
