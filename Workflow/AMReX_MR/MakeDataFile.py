@@ -123,6 +123,15 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                 if not isdir( FileDirectory ):
                     os.system( 'mkdir {:}'.format( FileDirectory ) )
 
+                TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
+                X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
+                X2File   = FileDirectory + '{:}.dat'.format( 'X2' )
+                X3File   = FileDirectory + '{:}.dat'.format( 'X3' )
+                dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
+                dX2File  = FileDirectory + '{:}.dat'.format( 'dX2' )
+                dX3File  = FileDirectory + '{:}.dat'.format( 'dX3' )
+                DataFile = FileDirectory + '{:}.dat'.format( Field )
+
                 if Verbose:
                     print( '  Generating data file: {:} ({:}/{:})'.format \
                              ( DataFile, j, fileArray.shape[0] ) )
@@ -164,15 +173,6 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                     dX3  = np.copy( dX3 [:,:,0:1] )
                 else:
                     exit( 'MakeDataFile not implemented for nDimsX > 2' )
-
-                TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
-                X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
-                X2File   = FileDirectory + '{:}.dat'.format( 'X2' )
-                X3File   = FileDirectory + '{:}.dat'.format( 'X3' )
-                dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
-                dX2File  = FileDirectory + '{:}.dat'.format( 'dX2' )
-                dX3File  = FileDirectory + '{:}.dat'.format( 'dX3' )
-                DataFile = FileDirectory + '{:}.dat'.format( Field )
 
                 if not isfile( DataFile ):
 
