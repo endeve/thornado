@@ -33,7 +33,6 @@ MODULE OpacityModule_TABLE
     MeV
   USE ProgramHeaderModule, ONLY: &
     nE, &
-    swE, &
     nNodesE
   USE MeshModule, ONLY: &
     MeshE, &
@@ -499,7 +498,6 @@ CONTAINS
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
 
     IF( use_EC_table .gt. 0 ) THEN
-write(*,*) 'lol EC table'
 
     build_kfmin_max: BLOCK
 
