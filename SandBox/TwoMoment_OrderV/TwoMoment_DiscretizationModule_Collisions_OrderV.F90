@@ -547,7 +547,7 @@ CONTAINS
 
         uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
           = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
-                 REAL( MAXVAL( nIterations(:,:,iN_X) ) ) )
+                 REAL( MAXVAL( nIterations(:,:,iN_X) ), DP ) )
 
       END DO
       END DO
