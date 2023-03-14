@@ -12,6 +12,9 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     amrex_mfiter,   &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_reduce_sum
+
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -317,6 +320,9 @@ END DO
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL amrex_parallel_reduce_sum( OffGridFlux_TwoMoment_MF(:,iLevel), 2 * nCR )
+
 
       CALL DestroyMesh_MF( MeshX )
 

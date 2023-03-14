@@ -199,7 +199,7 @@ CONTAINS
       ! --- Neutrino Lepton Number ---
 
       NeutrinoLeptonNumber_FileName &
-        = TRIM( BaseFileName ) // '_Tally_NeutrinoLeptonNumber.dat'
+        = TRIM( BaseFileName ) // '.Tally_NeutrinoLeptonNumber.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -223,7 +223,7 @@ CONTAINS
       ! --- Neutrino Energy  ---
 
       NeutrinoEnergy_FileName &
-        = TRIM( BaseFileName ) // '_Tally_NeutrinoEnergy.dat'
+        = TRIM( BaseFileName ) // '.Tally_NeutrinoEnergy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -248,7 +248,7 @@ CONTAINS
       ! --- Momentum ---
 
       Momentum_FileName &
-        = TRIM( BaseFileName ) // '_Tally_Momentum.dat'
+        = TRIM( BaseFileName ) // '.Tally_Momentum.dat'
       Momentum1Label &
         = 'Momentum_1'
       Momentum2Label &
@@ -457,8 +457,12 @@ CONTAINS
 
 
 
+    CALL amrex_parallel_reduce_sum( NeutrinoLeptonNumber_Interior, nLevels   )
+    CALL amrex_parallel_reduce_sum( NeutrinoEnergy_Interior, nLevels         )
 
-
+    CALL amrex_parallel_reduce_sum( Momentum_X1, nLevels         )
+    CALL amrex_parallel_reduce_sum( Momentum_X2, nLevels         )
+    CALL amrex_parallel_reduce_sum( Momentum_X3, nLevels         )
 
 
 
@@ -470,9 +474,6 @@ CONTAINS
         NeutrinoEnergy_Initial      (iLevel) = NeutrinoEnergy_Interior      (iLevel)
 
       END DO
-
-      CALL amrex_parallel_reduce_sum( NeutrinoLeptonNumber_Initial, nLevels )
-      CALL amrex_parallel_reduce_sum( NeutrinoEnergy_Initial      , nLevels )
 
     END IF
 
