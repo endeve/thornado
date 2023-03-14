@@ -123,7 +123,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: vMax               = One - 1.0e-05_DP
   REAL(DP), PARAMETER :: kMax               = Two * vMax / ( One + vMax**2 )
 
-  INTEGER, PARAMETER :: MAX_IT = 35
+  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 35
 
   ! --- User must set this in fluid initialization and upload to GPU ---
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
@@ -253,11 +253,11 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_CP_CopyOut )
 
-    IF( ErrorExists .GT. 0 .OR. ANY( ITERATION .EQ. MAX_IT ) )THEN
+    IF( ErrorExists .GT. 0 )THEN
 
       DO iNX = 1, N
 
-        IF( iErr(iNX) .NE. 0 .OR. ITERATION(iNX) .EQ. MAX_IT )THEN
+        IF( iErr(iNX) .NE. 0 )THEN
 
           iNXX = -99
           iX1  = -99
@@ -878,30 +878,26 @@ CONTAINS
 
     IF( ErrorExists .GT. 0 )THEN
 
-      WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
-      WRITE(*,*) 'iX_B0: ', iX_B0
-      WRITE(*,*) 'iX_E0: ', iX_E0
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
+      DO iNX = 1       , nDOFX
 
-        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 &
-            .OR. ITERATION(iNX,iX1,iX2,iX3) .EQ. MAX_IT )THEN
-
-          WRITE(*,*) 'iNX: ', iNX
-          WRITE(*,*) 'iX1, X1_C, dX1: ', &
-            iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
-          WRITE(*,*) 'iX2, X2_C, dX2: ', &
-            iX2, MeshX(2) % Center(iX2), MeshX(2) % Width(iX2)
-          WRITE(*,*) 'iX3, X3_C, dX3: ', &
-            iX3, MeshX(3) % Center(iX3), MeshX(3) % Width(iX3)
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
           CALL DescribeError_Euler &
             ( iErr(iNX,iX1,iX2,iX3), &
-              Int_Option = [ iNX, ITERATION(iNX,iX1,iX2,iX3) ], &
-              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+              Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNX, iX1, iX2, iX3 ], &
+              Real_Option = [ MeshX(1) % Center(iX1), &
+                              MeshX(2) % Center(iX2), &
+                              MeshX(3) % Center(iX3), &
+                              MeshX(1) % Width (iX1), &
+                              MeshX(2) % Width (iX2), &
+                              MeshX(3) % Width (iX3), &
+                              U(iNX,iX1,iX2,iX3,iCF_D ), &
                               U(iNX,iX1,iX2,iX3,iCF_S1), &
                               U(iNX,iX1,iX2,iX3,iCF_S2), &
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
@@ -909,7 +905,10 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ComputeFromConserved_Euler_Relativistic' )
 
         END IF
 
@@ -1077,32 +1076,28 @@ CONTAINS
 
     END ASSOCIATE ! dX1, etc.
 
-    IF( ErrorExists .GT. 0 .OR. ANY( ITERATION .EQ. MAX_IT ) )THEN
-
-      WRITE(*,*) 'ERROR: ComputeTimeStep_Euler_Relativistic'
-      WRITE(*,*) 'iX_B0: ', iX_B0
-      WRITE(*,*) 'iX_E0: ', iX_E0
+    IF( ErrorExists .GT. 0 )THEN
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1       , nDOFX
 
-        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 &
-            .OR. ITERATION(iNX,iX1,iX2,iX3) .EQ. MAX_IT )THEN
-
-          WRITE(*,*) 'iNX: ', iNX
-          WRITE(*,*) 'iX1, X1_C, dX1: ', &
-            iX1, MeshX(1) % Center(iX1), MeshX(1) % Width(iX1)
-          WRITE(*,*) 'iX2, X2_C, dX2: ', &
-            iX2, MeshX(2) % Center(iX2), MeshX(2) % Width(iX2)
-          WRITE(*,*) 'iX3, X3_C, dX3: ', &
-            iX3, MeshX(3) % Center(iX3), MeshX(3) % Width(iX3)
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
           CALL DescribeError_Euler &
             ( iErr(iNX,iX1,iX2,iX3), &
-              Int_Option = [ iNX, ITERATION(iNX,iX1,iX2,iX3) ], &
-              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+              Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNX, iX1, iX2, iX3 ], &
+              Real_Option = [ MeshX(1) % Center(iX1), &
+                              MeshX(2) % Center(iX2), &
+                              MeshX(3) % Center(iX3), &
+                              MeshX(1) % Width (iX1), &
+                              MeshX(2) % Width (iX2), &
+                              MeshX(3) % Width (iX3), &
+                              U(iNX,iX1,iX2,iX3,iCF_D ), &
                               U(iNX,iX1,iX2,iX3,iCF_S1), &
                               U(iNX,iX1,iX2,iX3,iCF_S2), &
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
@@ -1110,7 +1105,10 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ComputeTimeStep_Euler_Relativistic' )
 
         END IF
 
@@ -2244,13 +2242,13 @@ CONTAINS
     LOGICAL  :: CONVERGED
     REAL(DP) :: za, zb, zc, dz, dzMin
     REAL(DP) :: fa, fb, fc
-    !INTEGER  :: MAX_IT
+    !INTEGER  :: MaxIterations_ComputePrimitive_Euler
 
     dzMin = 1.0e-08_DP
     IF( PRESENT( dzMin_Option ) ) &
       dzMin = dzMin_Option
 
-    !MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
+    !MaxIterations_ComputePrimitive_Euler = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ! --- Eq. C23 ---
 
@@ -2273,7 +2271,8 @@ CONTAINS
 
     ITERATION = 0
     CONVERGED = .FALSE.
-    DO WHILE ( .NOT. CONVERGED .AND. ITERATION .LT. MAX_IT )
+    DO WHILE( .NOT. CONVERGED &
+                .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 
       ITERATION = ITERATION + 1
 
@@ -2326,7 +2325,7 @@ CONTAINS
       IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dzMin ) &
         CONVERGED = .TRUE.
 
-     IF( ITERATION .GT. MAX_IT - 2 )THEN
+     IF( ITERATION .GT. MaxIterations_ComputePrimitive_Euler - 2 )THEN
 
         WRITE(*,*) 'Iter       = ', ITERATION
         WRITE(*,*) 'za, zb     = ', za, zb
@@ -2338,7 +2337,7 @@ CONTAINS
 
     END DO
 
-    IF( ITERATION .EQ. MAX_IT ) iErr = 12
+    IF( ITERATION .EQ. MaxIterations_ComputePrimitive_Euler ) iErr = 12
 
     z0 = zc
 
@@ -2358,7 +2357,7 @@ CONTAINS
 !!$    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 !!$
 !!$    REAL(DP) :: dzMin
-!!$    INTEGER  :: MAX_IT
+!!$    INTEGER  :: MaxIterations_ComputePrimitive_Euler
 !!$
 !!$    INTEGER :: ITERATION, iX
 !!$
@@ -2366,10 +2365,11 @@ CONTAINS
 !!$    IF( PRESENT( dzMin_Option ) ) &
 !!$      dzMin = dzMin_Option
 !!$
-!!$    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
+!!$    MaxIterations_ComputePrimitive_Euler = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 !!$
 !!$    ITERATION = 0
-!!$    DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+!!$    DO WHILE( ANY( ITERATE ) &
+!!$              .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 !!$
 !!$      ITERATION = ITERATION + 1
 !!$
@@ -2428,7 +2428,7 @@ CONTAINS
 !!$          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dzMin ) &
 !!$            ITERATE(iX) = .FALSE.
 !!$
-!!$!!$          IF( ITERATION .GT. MAX_IT - 3 )THEN
+!!$!!$          IF( ITERATION .GT. MaxIterations_ComputePrimitive_Euler - 3 )THEN
 !!$!!$
 !!$!!$            WRITE(*,*) 'iX     = ', iX
 !!$!!$            WRITE(*,*) 'Iter   = ', ITERATION
@@ -2451,7 +2451,7 @@ CONTAINS
 !!$      !$ACC UPDATE HOST       ( ITERATE )
 !!$#endif
 !!$
-!!$    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+!!$    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 !!$
 !!$  END SUBROUTINE SolveZ_Bisection_Vector
 

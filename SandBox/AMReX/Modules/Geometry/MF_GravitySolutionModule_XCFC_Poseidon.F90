@@ -478,7 +478,8 @@ CONTAINS
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
 
-    INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+    INTEGER, ALLOCATABLE :: ITERATION(:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr     (:,:,:,:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -502,16 +503,20 @@ CONTAINS
 
         ErrorExists = 0
 
-        ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                               iX_B0(2):iX_E0(2), &
-                               iX_B0(3):iX_E0(3)) )
+        ALLOCATE( ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
+        ALLOCATE( iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          iErr(iNX,iX1,iX2,iX3) = 0
+          ITERATION(iNX,iX1,iX2,iX3) = 0
+          iErr     (iNX,iX1,iX2,iX3) = 0
 
           IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
@@ -561,7 +566,8 @@ CONTAINS
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
           uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
             = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
@@ -618,6 +624,13 @@ CONTAINS
 
         IF( ErrorExists .GT. 0 )THEN
 
+          WRITE(*,*) 'ERROR'
+          WRITE(*,*) '-----'
+          WRITE(*,*) '    MODULE: MF_GravitySolutionModule_XCFC_Poseidon'
+          WRITE(*,*) 'SUBROUTINE: ComputeConformalFactorSourcesAndMg_XCFC_MF'
+
+          CALL CreateMesh_MF( iLevel, MeshX )
+
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
@@ -626,26 +639,43 @@ CONTAINS
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
             CALL DescribeError_Euler &
-              ( iErr(iNX,iX1,iX2,iX3), &
-                Int_Option = [ iNX ], &
-                Real_Option = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
+                   ( iErr(iNX,iX1,iX2,iX3), &
+                     Int_Option &
+                       = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                           iX_B0(1), iX_B0(2), iX_B0(3), &
+                           iX_E0(1), iX_E0(2), iX_E0(3), &
+                           iNX, iX1, iX2, iX3 ], &
+                     Real_Option &
+                       = [ MeshX(1) % Center(iX1), &
+                           MeshX(2) % Center(iX2), &
+                           MeshX(3) % Center(iX3), &
+                           MeshX(1) % Width (iX1), &
+                           MeshX(2) % Width (iX2), &
+                           MeshX(3) % Width (iX3), &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ], &
+                     Char_Option = [ 'NA' ], &
+                     Message_Option &
+                       = 'Calling from ComputeConformalFactorSourcesAndMg_XCFC_MF' )
 
           END DO
           END DO
           END DO
           END DO
+
+          CALL DestroyMesh_MF( MeshX )
 
         END IF
 
-        DEALLOCATE( iErr )
+        DEALLOCATE( ITERATION )
+        DEALLOCATE( iErr      )
 
       END DO ! WHILE( MFI % next() )
 
@@ -678,7 +708,9 @@ CONTAINS
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: ErrorExists
-    INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+
+    INTEGER, ALLOCATABLE :: ITERATION(:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr     (:,:,:,:)
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -704,18 +736,22 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                               iX_B0(2):iX_E0(2), &
-                               iX_B0(3):iX_E0(3)) )
-
         ErrorExists = 0
+
+        ALLOCATE( ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
+        ALLOCATE( iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          iErr(iNX,iX1,iX2,iX3) = 0
+          ITERATION(iNX,iX1,iX2,iX3) = 0
+          iErr     (iNX,iX1,iX2,iX3) = 0
 
           IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
@@ -752,7 +788,8 @@ CONTAINS
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
           uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
             = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
@@ -783,48 +820,59 @@ CONTAINS
         END DO
         END DO
 
-        IF( ErrorExists .NE. 0 )THEN
+        IF( ErrorExists .GT. 0 )THEN
+
+          WRITE(*,*) 'ERROR'
+          WRITE(*,*) '-----'
+          WRITE(*,*) '    MODULE: MF_GravitySolutionModule_XCFC_Poseidon'
+          WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_XCFC_MF'
+
+          CALL CreateMesh_MF( iLevel, MeshX )
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
-          DO iNX = 1, nDOFX
+          DO iNX = 1       , nDOFX
 
-            IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+            Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-              WRITE(*,*) 'ERROR'
-              WRITE(*,*) '-----'
-              WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
-              WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Poseidon'
-              WRITE(*,*) 'iX_B0: ', iX_B0
-              WRITE(*,*) 'iX_E0: ', iX_E0
-              WRITE(*,*) 'iX1, iX2, iX3: ', iX1, iX2, iX3
-
-              Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
-
-              CALL DescribeError_Euler &
-                ( iErr(iNX,iX1,iX2,iX3), &
-                  Int_Option = [ iNX ], &
-                  Real_Option &
-                    = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX) / Psi6, &
-                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
-
-            END IF
+            CALL DescribeError_Euler &
+                   ( iErr(iNX,iX1,iX2,iX3), &
+                     Int_Option &
+                       = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                           iX_B0(1), iX_B0(2), iX_B0(3), &
+                           iX_E0(1), iX_E0(2), iX_E0(3), &
+                           iNX, iX1, iX2, iX3 ], &
+                     Real_Option &
+                       = [ MeshX(1) % Center(iX1), &
+                           MeshX(2) % Center(iX2), &
+                           MeshX(3) % Center(iX3), &
+                           MeshX(1) % Width (iX1), &
+                           MeshX(2) % Width (iX2), &
+                           MeshX(3) % Width (iX3), &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ], &
+                     Char_Option = [ 'NA' ], &
+                     Message_Option &
+                       = 'Calling from ComputePressureTensorTrace_XCFC_MF' )
 
           END DO
           END DO
           END DO
           END DO
+
+          CALL DestroyMesh_MF( MeshX )
 
         END IF
 
+        DEALLOCATE( ITERATION )
         DEALLOCATE( iErr      )
 
       END DO ! WHILE( MFI % next() )
@@ -863,7 +911,8 @@ CONTAINS
     REAL(DP) :: Psi6
     REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
 
-    INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+    INTEGER, ALLOCATABLE :: ITERATION(:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr     (:,:,:,:)
 
     REAL(DP) :: E, S_i(3), E_int, S_i_int(3)
     REAL(DP) :: N, G_d_1, G_d_2, G_d_3, vG
@@ -899,10 +948,12 @@ CONTAINS
 
         ErrorExists = 0
 
-        ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                               iX_B0(2):iX_E0(2), &
-                               iX_B0(3):iX_E0(3)) )
-
+        ALLOCATE( ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
+        ALLOCATE( iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -926,7 +977,8 @@ CONTAINS
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-          iErr(iNX,iX1,iX2,iX3) = 0
+          ITERATION(iNX,iX1,iX2,iX3) = 0
+          iErr     (iNX,iX1,iX2,iX3) = 0
 
 !          CALL ComputePrimitive_Euler_Relativistic &
 !                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
@@ -944,7 +996,8 @@ CONTAINS
 !                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
 !                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
 !                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-!                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+!                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+!                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
           ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -1063,6 +1116,15 @@ CONTAINS
 
         IF( ErrorExists .GT. 0 )THEN
 
+          WRITE(*,*) 'ERROR'
+          WRITE(*,*) '-----'
+          WRITE(*,*) &
+            '    MODULE: MF_GravitySolutionModule_XCFC_Poseidon'
+          WRITE(*,*) &
+            'SUBROUTINE: ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF'
+
+          CALL CreateMesh_MF( iLevel, MeshX )
+
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
@@ -1071,26 +1133,43 @@ CONTAINS
             Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
             CALL DescribeError_Euler &
-              ( iErr(iNX,iX1,iX2,iX3), &
-                Int_Option = [ iNX ], &
-                Real_Option = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-                                uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                                uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
+                   ( iErr(iNX,iX1,iX2,iX3), &
+                     Int_Option &
+                       = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                           iX_B0(1), iX_B0(2), iX_B0(3), &
+                           iX_E0(1), iX_E0(2), iX_E0(3), &
+                           iNX, iX1, iX2, iX3 ], &
+                     Real_Option &
+                       = [ MeshX(1) % Center(iX1), &
+                           MeshX(2) % Center(iX2), &
+                           MeshX(3) % Center(iX3), &
+                           MeshX(1) % Width (iX1), &
+                           MeshX(2) % Width (iX2), &
+                           MeshX(3) % Width (iX3), &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ], &
+                     Char_Option = [ 'NA' ], &
+                     Message_Option &
+                       = 'Calling from ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF' )
 
           END DO
           END DO
           END DO
           END DO
+
+          CALL DestroyMesh_MF( MeshX )
 
         END IF
 
-        DEALLOCATE( iErr )
+        DEALLOCATE( ITERATION )
+        DEALLOCATE( iErr      )
 
       END DO ! WHILE( MFI % next() )
 
@@ -1124,7 +1203,8 @@ CONTAINS
     INTEGER :: iLevel, iNX, iX1, iX2, iX3
     INTEGER :: iX_B0(3), iX_E0(3)
     INTEGER :: ErrorExists
-    INTEGER, ALLOCATABLE :: iErr(:,:,:,:)
+    INTEGER, ALLOCATABLE :: ITERATION(:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr     (:,:,:,:)
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
@@ -1157,9 +1237,12 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        ALLOCATE( iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                               iX_B0(2):iX_E0(2), &
-                               iX_B0(3):iX_E0(3)) )
+        ALLOCATE( ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
+        ALLOCATE( iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                    iX_B0(2):iX_E0(2), &
+                                    iX_B0(3):iX_E0(3)) )
 
         ErrorExists = 0
 
@@ -1168,7 +1251,8 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          iErr(iNX,iX1,iX2,iX3) = 0
+          ITERATION(iNX,iX1,iX2,iX3) = 0
+          iErr     (iNX,iX1,iX2,iX3) = 0
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
@@ -1190,7 +1274,8 @@ CONTAINS
 !                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
 !                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
 !                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-!                   iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+!                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+!                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
           ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -1266,47 +1351,58 @@ CONTAINS
 
         IF( ErrorExists .NE. 0 )THEN
 
+          WRITE(*,*) 'ERROR'
+          WRITE(*,*) '-----'
+          WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
+          WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_XCFC_TwoMoment_MF'
+
+          CALL CreateMesh_MF( iLevel, MeshX )
+
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
-          DO iNX = 1, nDOFX
+          DO iNX = 1       , nDOFX
 
-            IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+            Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-              WRITE(*,*) 'ERROR'
-              WRITE(*,*) '-----'
-              WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
-              WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Poseidon'
-              WRITE(*,*) 'iX_B0: ', iX_B0
-              WRITE(*,*) 'iX_E0: ', iX_E0
-              WRITE(*,*) 'iX1, iX2, iX3: ', iX1, iX2, iX3
-
-              Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
-
-              CALL DescribeError_Euler &
-                ( iErr(iNX,iX1,iX2,iX3), &
-                  Int_Option = [ iNX ], &
-                  Real_Option &
-                    = [ uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX) / Psi6, &
-                        uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX) / Psi6, &
-                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ] )
-
-            END IF
+            CALL DescribeError_Euler &
+                   ( iErr(iNX,iX1,iX2,iX3), &
+                     Int_Option &
+                       = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                           iX_B0(1), iX_B0(2), iX_B0(3), &
+                           iX_E0(1), iX_E0(2), iX_E0(3), &
+                           iNX, iX1, iX2, iX3 ], &
+                     Real_Option &
+                       = [ MeshX(1) % Center(iX1), &
+                           MeshX(2) % Center(iX2), &
+                           MeshX(3) % Center(iX3), &
+                           MeshX(1) % Width (iX1), &
+                           MeshX(2) % Width (iX2), &
+                           MeshX(3) % Width (iX3), &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
+                           uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                           uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) ], &
+                     Char_Option = [ 'NA' ], &
+                     Message_Option &
+                       = 'Calling from ComputePressureTensorTrace_XCFC_TwoMoment_MF' )
 
           END DO
           END DO
           END DO
           END DO
+
+          CALL DestroyMesh_MF( MeshX )
 
         END IF
 
-        DEALLOCATE( iErr )
+        DEALLOCATE( ITERATION )
+        DEALLOCATE( iErr      )
 
       END DO ! WHILE( MFI % next() )
 

@@ -82,9 +82,12 @@ CONTAINS
     REAL(DP) :: uPF(nPF), uGF(nGF), Psi6, &
                 Pressure, LorentzFactor, Enthalpy, BetaDotV
 
-    INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3))
+    INTEGER :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3))
+    INTEGER :: iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3))
 
     INTEGER :: iNX, iX1, iX2, iX3, iGF
 
@@ -95,7 +98,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+      ITERATION(iNX,iX1,iX2,iX3) = 0
+      iErr     (iNX,iX1,iX2,iX3) = 0
 
       E(iNX,iX1,iX2,iX3) &
         = U(iNX,iX1,iX2,iX3,iCF_E) + U(iNX,iX1,iX2,iX3,iCF_D)
@@ -130,7 +134,8 @@ CONTAINS
                uGF (iGF_Gm_dd_11), &
                uGF (iGF_Gm_dd_22), &
                uGF (iGF_Gm_dd_33), &
-               iErr(iNX,iX1,iX2,iX3) )
+               ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+               iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
        CALL ComputePressureFromPrimitive &
               ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
@@ -167,14 +172,34 @@ CONTAINS
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
+      DO iNX = 1       , nDOFX
 
-        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+        Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
 
-          WRITE(*,'(2x,A,4I5.4)') 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
-
-        END IF
+        CALL DescribeError_Euler &
+          ( iErr(iNX,iX1,iX2,iX3), &
+            Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                           iX_B0(1), iX_B0(2), iX_B0(3), &
+                           iX_E0(1), iX_E0(2), iX_E0(3), &
+                           iNX, iX1, iX2, iX3 ], &
+            Real_Option = [ MeshX(1) % Center(iX1), &
+                            MeshX(2) % Center(iX2), &
+                            MeshX(3) % Center(iX3), &
+                            MeshX(1) % Width (iX1), &
+                            MeshX(2) % Width (iX2), &
+                            MeshX(3) % Width (iX3), &
+                            U(iNX,iX1,iX2,iX3,iCF_D ) / Psi6, &
+                            U(iNX,iX1,iX2,iX3,iCF_S1) / Psi6, &
+                            U(iNX,iX1,iX2,iX3,iCF_S2) / Psi6, &
+                            U(iNX,iX1,iX2,iX3,iCF_S3) / Psi6, &
+                            U(iNX,iX1,iX2,iX3,iCF_E ) / Psi6, &
+                            U(iNX,iX1,iX2,iX3,iCF_Ne) / Psi6, &
+                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+            Char_Option = [ 'NA' ], &
+            Message_Option &
+              = 'Calling from ComputeMatterSources_Poseidon' )
 
       END DO
       END DO

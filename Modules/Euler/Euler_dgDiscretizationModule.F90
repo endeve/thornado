@@ -3341,8 +3341,6 @@ CONTAINS
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
 
-    INTEGER, PARAMETER :: MAX_IT = 30
-
     REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)
     REAL(DP) :: Pressure
@@ -3692,14 +3690,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    ITERATION, iErr, ErrorExists ) &
+    !$OMP MAP( from:    G, U, ITERATION, iErr, ErrorExists ) &
     !$OMP MAP( release: iX_B0, iX_E0, tau, &
     !$OMP               PressureTensor, &
     !$OMP               dGdX1, dGdX2, dGdX3, &
     !$OMP               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      ITERATION, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      G, U, ITERATION, iErr, ErrorExists ) &
     !$ACC DELETE(       iX_B0, iX_E0, tau, &
     !$ACC               PressureTensor, &
     !$ACC               dGdX1, dGdX2, dGdX3, &
@@ -3712,23 +3710,37 @@ CONTAINS
 
     IF( ErrorExists .GT. 0 )THEN
 
-      WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
-      WRITE(*,*) 'iX_B0: ', iX_B0
-      WRITE(*,*) 'iX_E0: ', iX_E0
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1       , nDOFX
 
-        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 &
-            .OR. ITERATION(iNX,iX1,iX2,iX3) .EQ. MAX_IT )THEN
+        IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
-          WRITE(*,*) 'ITERATION: ', ITERATION
-
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
-
+          CALL DescribeError_Euler &
+            ( iErr(iNX,iX1,iX2,iX3), &
+              Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNX, iX1, iX2, iX3 ], &
+              Real_Option = [ MeshX(1) % Center(iX1), &
+                              MeshX(2) % Center(iX2), &
+                              MeshX(3) % Center(iX3), &
+                              MeshX(1) % Width (iX1), &
+                              MeshX(2) % Width (iX2), &
+                              MeshX(3) % Width (iX3), &
+                              U(iNX,iX1,iX2,iX3,iCF_D ), &
+                              U(iNX,iX1,iX2,iX3,iCF_S1), &
+                              U(iNX,iX1,iX2,iX3,iCF_S2), &
+                              U(iNX,iX1,iX2,iX3,iCF_S3), &
+                              U(iNX,iX1,iX2,iX3,iCF_E ), &
+                              U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ComputeIncrement_Geometry_Relativistic' )
         END IF
 
       END DO

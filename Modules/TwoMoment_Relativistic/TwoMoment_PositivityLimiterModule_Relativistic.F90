@@ -46,6 +46,8 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
     ComputePrimitive_Euler_Relativistic
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
+  USE MeshModule, ONLY: &
+    MeshX
 
   IMPLICIT NONE
   PRIVATE
@@ -686,12 +688,20 @@ CONTAINS
          iZ_B0(4):iZ_E0(4), &
          nSpecies)
 
-    INTEGER :: iErr_Q(nDOFX,iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_B0(3), &
-                            iZ_B0(4):iZ_E0(4))
-    INTEGER :: iErr_P(nPT_X,iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_B0(3), &
-                            iZ_B0(4):iZ_E0(4))
+    INTEGER :: ITERATION_Q(nDOFX,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+    INTEGER :: iErr_Q     (nDOFX,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+
+    INTEGER :: ITERATION_P(nPT_X,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+    INTEGER :: iErr_P     (nPT_X,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+
     INTEGER :: ErrorExists
 
     Verbose = .TRUE.
@@ -788,7 +798,8 @@ CONTAINS
     DO iZ2    = iZ_B0(2), iZ_E0(2)
     DO iNodeX = 1       , nDOFX
 
-      iErr_Q(iNodeX,iZ2,iZ3,iZ4) = 0
+      ITERATION_Q(iNodeX,iZ2,iZ3,iZ4) = 0
+      iErr_Q     (iNodeX,iZ2,iZ3,iZ4) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( D_Q   (iNodeX,iZ2,iZ3,iZ4), &
@@ -806,9 +817,10 @@ CONTAINS
                G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_33_Q(iNodeX,iZ2,iZ3,iZ4), &
-               iErr_Option = iErr_Q(iNodeX,iZ2,iZ3,iZ4) )
+               ITERATION_Option = ITERATION_Q(iNodeX,iZ2,iZ3,iZ4), &
+               iErr_Option      = iErr_Q     (iNodeX,iZ2,iZ3,iZ4) )
 
-        ErrorExists = ErrorExists + iErr_Q(iNodeX,iZ2,iZ3,iZ4)
+      ErrorExists = ErrorExists + iErr_Q(iNodeX,iZ2,iZ3,iZ4)
 
     END DO
     END DO
@@ -824,26 +836,30 @@ CONTAINS
 
         IF( iErr_Q(iNodeX,iZ2,iZ3,IZ4) .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ApplyPositivityLimiter_TwoMoment'
-          WRITE(*,*) 'iZ_B0: ', iZ_B0
-          WRITE(*,*) 'iZ_E0: ', iZ_E0
-
-          WRITE(*,*) 'iNodeX, iZ2, iZ3, iZ4: ', &
-                      iNodeX, iZ2, iZ3, iZ4
-
           CALL DescribeError_Euler &
-                 ( iErr_Q(iNodeX,iZ2,iZ3,iZ4), &
-                   Int_Option = [ iZ2 ], &
-                   Real_Option &
-                     = [ D_Q   (iNodeX,iZ2,iZ3,iZ4), &
-                         S1_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         S2_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         S3_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         E_Q   (iNodeX,iZ2,iZ3,iZ4), &
-                         Ne_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
-                         G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
-                         G_33_Q(iNodeX,iZ2,iZ3,iZ4) ] )
+            ( iErr_Q(iNodeX,iZ2,iZ3,iZ4), &
+              Int_Option = [ ITERATION_Q(iNodeX,iZ2,iZ3,iZ4), 99999999, &
+                             iZ_B0(2), iZ_B0(3), iZ_B0(4), &
+                             iZ_E0(2), iZ_E0(3), iZ_E0(4), &
+                             iNodeX, iZ2, iZ3, iZ4 ], &
+              Real_Option = [ MeshX(1) % Center(iZ2), &
+                              MeshX(2) % Center(iZ3), &
+                              MeshX(3) % Center(iZ4), &
+                              MeshX(1) % Width (iZ2), &
+                              MeshX(2) % Width (iZ3), &
+                              MeshX(3) % Width (iZ4), &
+                              D_Q   (iNodeX,iZ2,iZ3,iZ4), &
+                              S1_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              S2_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              S3_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              E_Q   (iNodeX,iZ2,iZ3,iZ4), &
+                              Ne_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
+                              G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
+                              G_33_Q(iNodeX,iZ2,iZ3,iZ4) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ApplyPositivityLimiter_TwoMoment (nDOFX)' )
 
         END IF
 
@@ -887,7 +903,8 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iP  = 1       , nPT_X
 
-      iErr_P(iP,iZ2,iZ3,iZ4) = 0
+      ITERATION_P(iP,iZ2,iZ3,iZ4) = 0
+      iErr_P     (iP,iZ2,iZ3,iZ4) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( D_P   (iP,iZ2,iZ3,iZ4), &
@@ -905,7 +922,8 @@ CONTAINS
                G_11_P(iP,iZ2,iZ3,iZ4), &
                G_22_P(iP,iZ2,iZ3,iZ4), &
                G_33_P(iP,iZ2,iZ3,iZ4), &
-               iErr_Option = iErr_P(iP,iZ2,iZ3,iZ4) )
+               ITERATION_Option = ITERATION_P(iP,iZ2,iZ3,iZ4), &
+               iErr_Option      = iErr_P     (iP,iZ2,iZ3,iZ4) )
 
       ErrorExists = ErrorExists + iErr_P(iP,iZ2,iZ3,iZ4)
 
@@ -923,26 +941,31 @@ CONTAINS
 
         IF( iErr_P(iP,iZ2,iZ3,IZ4) .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ApplyPositivityLimiter_TwoMoment'
-          WRITE(*,*) 'iZ_B0: ', iZ_B0
-          WRITE(*,*) 'iZ_E0: ', iZ_E0
-
-          WRITE(*,*) 'iP, iZ2, iZ3, iZ4: ', &
-                      iP, iZ2, iZ3, iZ4
-
           CALL DescribeError_Euler &
-                 ( iErr_P(iP,iZ2,iZ3,iZ4), &
-                   Int_Option = [ iZ2 ], &
-                   Real_Option &
-                     = [ D_P   (iP,iZ2,iZ3,iZ4), &
-                         S1_P  (iP,iZ2,iZ3,iZ4), &
-                         S2_P  (iP,iZ2,iZ3,iZ4), &
-                         S3_P  (iP,iZ2,iZ3,iZ4), &
-                         E_P   (iP,iZ2,iZ3,iZ4), &
-                         Ne_P  (iP,iZ2,iZ3,iZ4), &
-                         G_11_P(iP,iZ2,iZ3,iZ4), &
-                         G_22_P(iP,iZ2,iZ3,iZ4), &
-                         G_33_P(iP,iZ2,iZ3,iZ4) ] )
+            ( iErr_P(iP,iZ2,iZ3,iZ4), &
+              Int_Option = [ ITERATION_P(iP,iZ2,iZ3,iZ4), 99999999, &
+                             iZ_B0(2), iZ_B0(3), iZ_B0(4), &
+                             iZ_E0(2), iZ_E0(3), iZ_E0(4), &
+                             iNodeX, iZ2, iZ3, iZ4 ], &
+              Real_Option = [ MeshX(1) % Center(iZ2), &
+                              MeshX(2) % Center(iZ3), &
+                              MeshX(3) % Center(iZ4), &
+                              MeshX(1) % Width (iZ2), &
+                              MeshX(2) % Width (iZ3), &
+                              MeshX(3) % Width (iZ4), &
+                              D_P   (iP,iZ2,iZ3,iZ4), &
+                              S1_P  (iP,iZ2,iZ3,iZ4), &
+                              S2_P  (iP,iZ2,iZ3,iZ4), &
+                              S3_P  (iP,iZ2,iZ3,iZ4), &
+                              E_P   (iP,iZ2,iZ3,iZ4), &
+                              Ne_P  (iP,iZ2,iZ3,iZ4), &
+                              G_11_P(iP,iZ2,iZ3,iZ4), &
+                              G_22_P(iP,iZ2,iZ3,iZ4), &
+                              G_33_P(iP,iZ2,iZ3,iZ4) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ApplyPositivityLimiter_TwoMoment (nPT_X)' )
+
         END IF
 
       END DO

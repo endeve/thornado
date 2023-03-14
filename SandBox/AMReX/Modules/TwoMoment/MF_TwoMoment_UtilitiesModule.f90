@@ -236,7 +236,8 @@ CONTAINS
     INTEGER :: ErrorExists
     INTEGER :: nIter(1)
 
-    INTEGER, ALLOCATABLE :: iErr_Euler(:,:,:,:)
+    INTEGER, ALLOCATABLE :: ITERATION_Euler(:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr_Euler     (:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
@@ -331,9 +332,12 @@ CONTAINS
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        ALLOCATE( iErr_Euler(1:nDOFX,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3)) )
+        ALLOCATE( ITERATION_Euler(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3)) )
+        ALLOCATE( iErr_Euler     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3)) )
 
         ErrorExists = 0
 
@@ -342,7 +346,8 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          iErr_Euler(iNX,iX1,iX2,iX3) = 0
+          ITERATION_Euler(iNX,iX1,iX2,iX3) = 0
+          iErr_Euler     (iNX,iX1,iX2,iX3) = 0
 
           CALL ComputePrimitive_Euler_Relativistic &
                ( CF(iNX,iX1,iX2,iX3,iCF_D ), &
@@ -360,7 +365,8 @@ CONTAINS
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 iErr_Option = iErr_Euler(iNX,iX1,iX2,iX3) )
+                 ITERATION_Option = ITERATION_Euler(iNX,iX1,iX2,iX3), &
+                 iErr_Option      = iErr_Euler     (iNX,iX1,iX2,iX3) )
 
           ErrorExists = ErrorExists + iErr_Euler(iNX,iX1,iX2,iX3)
 
@@ -371,9 +377,7 @@ CONTAINS
 
         IF( ErrorExists .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Fluid)'
-          WRITE(*,*) 'iX_B0: ', iX_B0
-          WRITE(*,*) 'iX_E0: ', iX_E0
+          CALL CreateMesh_MF( iLevel, MeshX )
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
@@ -382,20 +386,31 @@ CONTAINS
 
             IF( iErr_Euler(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-              WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+            CALL DescribeError_Euler &
+              ( iErr_Euler(iNX,iX1,iX2,iX3), &
+                Int_Option = [ ITERATION_Euler(iNX,iX1,iX2,iX3), 99999999, &
+                               iX_B0(1), iX_B0(2), iX_B0(3), &
+                               iX_E0(1), iX_E0(2), iX_E0(3), &
+                               iNX, iX1, iX2, iX3 ], &
+                Real_Option = [ MeshX(1) % Center(iX1), &
+                                MeshX(2) % Center(iX2), &
+                                MeshX(3) % Center(iX3), &
+                                MeshX(1) % Width (iX1), &
+                                MeshX(2) % Width (iX2), &
+                                MeshX(3) % Width (iX3), &
+                                CF(iNX,iX1,iX2,iX3,iCF_D ), &
+                                CF(iNX,iX1,iX2,iX3,iCF_S1), &
+                                CF(iNX,iX1,iX2,iX3,iCF_S2), &
+                                CF(iNX,iX1,iX2,iX3,iCF_S3), &
+                                CF(iNX,iX1,iX2,iX3,iCF_E ), &
+                                CF(iNX,iX1,iX2,iX3,iCF_Ne), &
+                                G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+                Char_Option = [ 'NA' ], &
+                Message_Option &
+                  = 'Calling from ComputeFromConserved_TwoMoment_MF (Fluid)' )
 
-              CALL DescribeError_Euler &
-                ( iErr_Euler(iNX,iX1,iX2,iX3), &
-                  Int_Option = [ iNX ], &
-                  Real_Option = [ CF(iNX,iX1,iX2,iX3,iCF_D ), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_S1), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_S2), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_S3), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_E ), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_Ne), &
-                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
 
             END IF
 
@@ -403,6 +418,8 @@ CONTAINS
           END DO
           END DO
           END DO
+
+          CALL DestroyMesh_MF( MeshX )
 
         END IF
 
@@ -501,7 +518,8 @@ CONTAINS
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        DEALLOCATE( iErr_Euler )
+        DEALLOCATE( ITERATION_Euler )
+        DEALLOCATE( iErr_Euler      )
 
         CALL DeallocateArray_Z &
                ( [ 1       , &

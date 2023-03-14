@@ -165,10 +165,12 @@ CONTAINS
           WRITE(*,*)
           WRITE(*,'(2x,A,I8.8)') &
             'ITERATION:          ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(2)
-          WRITE(*,'(2x,A,A)') &
-            'iDimX: ', TRIM( Char_Option(1) )
+          IF( Int_Option(2) .NE. 99999999 ) &
+            WRITE(*,'(2x,A,I8.8)') &
+              'iNX (Packed array): ', Int_Option(2)
+          IF( TRIM( Char_Option(1) ) .NE. 'NA' ) &
+            WRITE(*,'(2x,A,A)') &
+              'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,4I6.5)') &
             'iX1, iX2, iX3, iNX: ', &
              Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
@@ -241,14 +243,17 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ComputePrimitive_Scalar'
            WRITE(*,'(2x,A)') &
-            'CF_D .LT. Min_D'
+            'Reason for failure: CF_D .LT. Min_D'
           WRITE(*,*)
+
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(2)
-          WRITE(*,'(2x,A,A)') &
-            'iDimX: ', TRIM( Char_Option(1) )
+            'ITERATION:           ', Int_Option(1)
+          IF( Int_Option(2) .NE. 99999999 ) &
+            WRITE(*,'(2x,A,I8.8)') &
+              'iNX (Packed array): ', Int_Option(2)
+          IF( TRIM( Char_Option(1) ) .NE. 'NA' ) &
+            WRITE(*,'(2x,A,A16)') &
+              'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,4I6.5)') &
             'iX1, iX2, iX3, iNX: ', &
              Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
@@ -260,7 +265,7 @@ CONTAINS
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
-            'dX1, dX2, dX3:    ', &
+            'dX1 , dX2 , dX3 : ', &
              Real_Option(4), Real_Option(5), Real_Option(6)
           WRITE(*,'(2x,A,SPES24.16E3,A)') &
             'U(iCF_D       ) = ', Real_Option(7), '_DP'
@@ -293,14 +298,17 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: SolveZ_Bisection_Scalar'
            WRITE(*,'(2x,A)') &
-            'ITERATION .EQ. MAX_IT'
+            'Reason for failure: ITERATION .EQ. MAX_IT'
           WRITE(*,*)
+
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(2)
-          WRITE(*,'(2x,A,A)') &
-            'iDimX: ', TRIM( Char_Option(1) )
+            'ITERATION:           ', Int_Option(1)
+          IF( Int_Option(2) .NE. 99999999 ) &
+            WRITE(*,'(2x,A,I8.8)') &
+              'iNX (Packed array): ', Int_Option(2)
+          IF( TRIM( Char_Option(1) ) .NE. 'NA' ) &
+            WRITE(*,'(2x,A,A16)') &
+              'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,4I6.5)') &
             'iX1, iX2, iX3, iNX: ', &
              Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
@@ -312,7 +320,7 @@ CONTAINS
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
-            'dX1, dX2, dX3:    ', &
+            'dX1 , dX2 , dX3 : ', &
              Real_Option(4), Real_Option(5), Real_Option(6)
           WRITE(*,'(2x,A,SPES24.16E3,A)') &
             'U(iCF_D       ) = ', Real_Option(7), '_DP'
@@ -345,14 +353,17 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ComputePrimitive_Scalar'
            WRITE(*,'(2x,A)') &
-            'NANS IN'
+            'Reason for failure: NANS IN'
           WRITE(*,*)
+
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(2)
-          WRITE(*,'(2x,A,A)') &
-            'iDimX: ', TRIM( Char_Option(1) )
+            'ITERATION:           ', Int_Option(1)
+          IF( Int_Option(2) .NE. 99999999 ) &
+            WRITE(*,'(2x,A,I8.8)') &
+              'iNX (Packed array): ', Int_Option(2)
+          IF( TRIM( Char_Option(1) ) .NE. 'NA' ) &
+            WRITE(*,'(2x,A,A16)') &
+              'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,4I6.5)') &
             'iX1, iX2, iX3, iNX: ', &
              Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
@@ -364,7 +375,7 @@ CONTAINS
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
-            'dX1, dX2, dX3:    ', &
+            'dX1 , dX2 , dX3 : ', &
              Real_Option(4), Real_Option(5), Real_Option(6)
           WRITE(*,'(2x,A,SPES24.16E3,A)') &
             'U(iCF_D       ) = ', Real_Option(7), '_DP'
@@ -397,14 +408,17 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ComputePrimitive_Scalar'
            WRITE(*,'(2x,A)') &
-            'NANS OUT'
+            'Reason for failure: NANS OUT'
           WRITE(*,*)
+
           WRITE(*,'(2x,A,I8.8)') &
-            'ITERATION:          ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)') &
-            'iNX (Packed array): ', Int_Option(2)
-          WRITE(*,'(2x,A,A)') &
-            'iDimX: ', TRIM( Char_Option(1) )
+            'ITERATION:           ', Int_Option(1)
+          IF( Int_Option(2) .NE. 99999999 ) &
+            WRITE(*,'(2x,A,I8.8)') &
+              'iNX (Packed array): ', Int_Option(2)
+          IF( TRIM( Char_Option(1) ) .NE. 'NA' ) &
+            WRITE(*,'(2x,A,A16)') &
+              'iDimX: ', TRIM( Char_Option(1) )
           WRITE(*,'(2x,A,4I6.5)') &
             'iX1, iX2, iX3, iNX: ', &
              Int_Option(10), Int_Option(11), Int_Option(12), Int_Option(9)
@@ -416,7 +430,7 @@ CONTAINS
             'X1_C, X2_C, X3_C: ', &
              Real_Option(1), Real_Option(2), Real_Option(3)
           WRITE(*,'(2x,A,SP3ES15.6E3)') &
-            'dX1, dX2, dX3:    ', &
+            'dX1 , dX2 , dX3 : ', &
              Real_Option(4), Real_Option(5), Real_Option(6)
           WRITE(*,'(2x,A,SPES24.16E3,A)') &
             'U(iCF_D       ) = ', Real_Option(7), '_DP'
