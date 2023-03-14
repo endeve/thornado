@@ -30,16 +30,6 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
-TestPressure: \
-	$(weaklib) \
-	$(thornado) \
-	TestPressure.o
-	$(FLINKER) $(FLAGS) -o TestPressure_$(MACHINE) \
-	$(weaklib) \
-	$(thornado) \
-	TestPressure.o \
-	$(LIBRARIES)
-
 ComputePrimitiveTest: \
 	$(weaklib) \
 	$(thornado) \
@@ -48,6 +38,16 @@ ComputePrimitiveTest: \
 	$(weaklib) \
 	$(thornado) \
 	ComputePrimitiveTest.o \
+	$(LIBRARIES)
+
+TestPressure: \
+	$(weaklib) \
+	$(thornado) \
+	TestPressure.o
+	$(FLINKER) $(FLAGS) -o TestPressure_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	TestPressure.o \
 	$(LIBRARIES)
 
 clean:
@@ -60,30 +60,6 @@ clobber: clean
 	rm -rf TestPressure_$(MACHINE).dSYM
 	rm -f  ComputePrimitiveTest_$(MACHINE)
 	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
-
-ApplicationDriver.o: \
-  KindModule.o \
-  ProgramInitializationModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  EquationOfStateModule.o \
-  EquationOfStateModule_TABLE.o \
-  ProgramHeaderModule.o \
-  InitializationModule_Relativistic.o \
-  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
-  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  InputOutputModuleHDF.o \
-  FluidFieldsModule.o \
-  GeometryFieldsModule.o \
-  GravitySolutionModule_CFA_Poseidon.o \
-  Euler_dgDiscretizationModule.o \
-  TimeSteppingModule_SSPRK.o \
-  UnitsModule.o \
-  Euler_TallyModule_Relativistic.o \
-  TimersModule_Euler.o \
-  Poseidon_UtilitiesModule.o \
-  ApplicationDriver.f90
 
 ProgenitorModule.o: \
   KindModule.o \
@@ -135,6 +111,30 @@ TimeSteppingModule_SSPRK.o: \
   Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90
 
+ApplicationDriver.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  EquationOfStateModule.o \
+  EquationOfStateModule_TABLE.o \
+  ProgramHeaderModule.o \
+  InitializationModule_Relativistic.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  InputOutputModuleHDF.o \
+  FluidFieldsModule.o \
+  GeometryFieldsModule.o \
+  GravitySolutionModule_CFA_Poseidon.o \
+  Euler_dgDiscretizationModule.o \
+  TimeSteppingModule_SSPRK.o \
+  UnitsModule.o \
+  Euler_TallyModule_Relativistic.o \
+  TimersModule_Euler.o \
+  Poseidon_UtilitiesModule.o \
+  ApplicationDriver.f90
+
 ComputePrimitiveTest.o: \
   KindModule.o \
   UnitsModule.o \
@@ -144,3 +144,9 @@ ComputePrimitiveTest.o: \
   EquationOfStateModule_TABLE.o \
   Euler_UtilitiesModule_Relativistic.o \
   ComputePrimitiveTest.f90
+
+TestPressure.o: \
+  KindModule.o \
+  EquationOfStateModule.o \
+  UnitsModule.o \
+  TestPressure.f90
