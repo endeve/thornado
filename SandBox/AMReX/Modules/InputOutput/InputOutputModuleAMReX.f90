@@ -94,7 +94,10 @@ MODULE InputOutputModuleAMReX
     nCR, &
     ShortNamesPR, &
     unitsPR, &
-    nPR
+    nPR, &
+    ShortNamesIR, &
+    unitsIR, &
+    nIR
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
@@ -196,7 +199,7 @@ CONTAINS
     ( Time, StepNo, MF_uGF, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
       MF_uAF_Option, MF_uDF_Option, &
-      MF_uCR_Option, MF_uPR_Option, PlotFileNumber_Option )
+      MF_uCR_Option, MF_uPR_Option, MF_uIR_Option, PlotFileNumber_Option )
 
     REAL(DP)            , INTENT(in) :: Time
     INTEGER             , INTENT(in) :: StepNo(0:)
@@ -208,6 +211,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uIR_Option(0:)
     INTEGER             , INTENT(in), OPTIONAL :: PlotFileNumber_Option
 
     CHARACTER(08)                   :: NumberString
@@ -222,6 +226,7 @@ CONTAINS
     LOGICAL                         :: WriteFF_D
     LOGICAL                         :: WriteRF_C
     LOGICAL                         :: WriteRF_P
+    LOGICAL                         :: WriteRF_I
     INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
@@ -281,6 +286,14 @@ CONTAINS
 
       WriteRF_P = .TRUE.
       nF = nF + nPR * nE * nSpecies
+
+    END IF
+
+    WriteRF_I = .FALSE.
+    IF( PRESENT( MF_uIR_Option ) )THEN
+
+      WriteRF_I = .TRUE.
+      nF = nF + nIR
 
     END IF
 
@@ -426,6 +439,22 @@ CONTAINS
 
     END IF
 
+
+    IF( WriteRF_I )THEN
+
+      DO iFd = 1, nIR
+
+        CALL amrex_string_build &
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesIR(iFd) ) )
+
+      END DO
+
+      iOS = iOS + nIR
+
+    END IF
+
+
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -510,6 +539,15 @@ CONTAINS
 
       END IF
 
+      IF( WriteRF_I )THEN
+
+        CALL ComputeCellAverage_X_MF &
+               ( nIR, MF_uGF(iLevel), MF_uIR_Option(iLevel), &
+                 iOS, 'IR', MF_plt(iLevel) )
+
+        iOS = iOS + nIR
+
+      END IF
     END DO ! iLevel = 0, nLevels-1
 
     CALL amrex_write_plotfile &
@@ -720,7 +758,6 @@ CONTAINS
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
