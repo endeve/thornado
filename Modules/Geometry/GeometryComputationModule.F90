@@ -181,7 +181,7 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF)
     REAL(DP), INTENT(in)    :: &
       Mass
     TYPE(MeshType), INTENT(in) :: &
@@ -266,27 +266,27 @@ CONTAINS
 
     ! --- Interpolate from Lobatto to Gaussian Points ---
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              h_1_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_1), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              h_2_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_2), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              h_3_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_3), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              Alpha_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Alpha), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              Psi_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Psi), nDOFX )
@@ -311,7 +311,7 @@ CONTAINS
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
 
         G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
         G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
@@ -346,7 +346,7 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF)
     REAL(DP), INTENT(in)    :: &
       Mass
     TYPE(MeshType), INTENT(in) :: &
@@ -425,27 +425,27 @@ CONTAINS
 
     ! --- Interpolate from Lobatto to Gaussian Points ---
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              h_1_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_1), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              h_2_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_2), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              h_3_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_3), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              Alpha_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Alpha), nDOFX )
 
-    CALL MatrixMatrixMultiply
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
              Psi_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Psi), nDOFX )
@@ -470,7 +470,7 @@ CONTAINS
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
 
         G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
         G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
