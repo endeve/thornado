@@ -127,7 +127,6 @@ CONTAINS
            Source_DR_Option             = MeshX(1) % Width(1:nX(1)), &
            Source_DT_Option             = MeshX(2) % Width(1:nX(2)), &
            Source_DP_Option             = MeshX(3) % Width(1:nX(3)), &
-           Method_Flag_Option           = 3,                         &
            Max_Iterations_Option        = 20,                        &
            Flat_Guess_Option            = .TRUE.,                    &
            Print_Setup_Option           = .TRUE.,                    &
