@@ -13,7 +13,8 @@ PROGRAM main
   USE MF_TwoMoment_UtilitiesModule,     ONLY: &
     ComputeTimeStep_TwoMoment_MF,                &
     ComputeTimeStep_TwoMoment_Fancy_MF,          &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeIntegral_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_UtilitiesModule,     ONLY: &
@@ -27,7 +28,8 @@ PROGRAM main
     MF_uDF
   USE MF_FieldsModule_TwoMoment,                  ONLY: &
     MF_uPR, &
-    MF_uCR
+    MF_uCR, &
+    MF_uIR
   USE MF_TwoMoment_TallyModule,         ONLY: &
     ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
@@ -131,15 +133,19 @@ num = 1
      CALL ComputeFromConserved_Euler_MF &
             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-     CALL WriteFieldsAMReX_PlotFile &
-            ( t_new(0), StepNo, MF_uGF, &
-              MF_uGF_Option = MF_uGF, &
-              MF_uCF_Option = MF_uCF, &
-              MF_uPF_Option = MF_uPF, &
-              MF_uAF_Option = MF_uAF, &
-              MF_uDF_Option = MF_uDF, &
-              MF_uPR_Option = MF_uPR, &
-              MF_uCR_Option = MF_uCR )
+     CALL ComputeIntegral_TwoMoment_MF & 
+            ( MF_uGF, MF_uPF, MF_uPR, MF_uIR )
+
+!     CALL WriteFieldsAMReX_PlotFile &
+!            ( t_new(0), StepNo, MF_uGF, &
+!              MF_uGF_Option = MF_uGF, &
+!              MF_uCF_Option = MF_uCF, &
+!              MF_uPF_Option = MF_uPF, &
+!              MF_uAF_Option = MF_uAF, &
+!              MF_uDF_Option = MF_uDF, &
+!              MF_uPR_Option = MF_uPR, &
+!              MF_uCR_Option = MF_uCR, &
+!              MF_uIR_Option = MF_uIR )
 
 
       wrt = .FALSE.
@@ -153,6 +159,8 @@ num = 1
 
   CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
+  CALL ComputeIntegral_TwoMoment_MF & 
+            ( MF_uGF, MF_uPF, MF_uPR, MF_uIR )
 
   CALL ShowVariableFromMultiFab(0,MF_uPR(0),1, WriteToFile_Option = .TRUE.)
 
