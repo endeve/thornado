@@ -148,6 +148,7 @@ MODULE InitializationModule
     MF_uCR, &
     MF_Permute, &
     MF_uPR, &
+    MF_uIR, &
     FluxRegister_TwoMoment
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -543,6 +544,9 @@ CONTAINS
              nDOFZ * nCR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
     CALL MF_Permute(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * 2, swX )
+    CALL MF_uIR(iLevel) % SetVal( Zero )
+
     ! Assume nDOF_X1 = nDOF_X2 = nDOFX3
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
@@ -616,6 +620,7 @@ CONTAINS
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_Permute(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
+    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * 2, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
@@ -658,6 +663,7 @@ CONTAINS
 
     CALL amrex_multifab_destroy( MF_uPR(iLevel) )
     CALL amrex_multifab_destroy( MF_uCR(iLevel) )
+    CALL amrex_multifab_destroy( MF_uIR(iLevel) )
     CALL amrex_multifab_destroy( MF_uDF(iLevel) )
     CALL amrex_multifab_destroy( MF_uAF(iLevel) )
     CALL amrex_multifab_destroy( MF_uPF(iLevel) )
