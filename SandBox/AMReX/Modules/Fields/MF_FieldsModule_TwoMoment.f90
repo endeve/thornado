@@ -34,6 +34,10 @@ MODULE MF_FieldsModule_TwoMoment
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPR(:)
 
+  ! --- Integrated Variables ---
+
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uIR(:)
+
   TYPE(amrex_fluxregister), ALLOCATABLE, PUBLIC :: FluxRegister_TwoMoment(:)
 
   REAL(DP), ALLOCATABLE, PUBLIC :: OffGridFlux_TwoMoment_MF(:,:)
@@ -50,6 +54,7 @@ CONTAINS
     ALLOCATE( MF_uCR(0:nMaxLevels-1) )
     ALLOCATE( MF_Permute(0:nMaxLevels-1) )
     ALLOCATE( MF_uPR(0:nMaxLevels-1) )
+    ALLOCATE( MF_uIR(0:nMaxLevels-1) )
 
     ALLOCATE( FluxRegister_TwoMoment(0:nMaxLevels-1) )
 
@@ -70,6 +75,7 @@ CONTAINS
 
       CALL amrex_multifab_destroy( MF_uPR(iLevel) )
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
+      CALL amrex_multifab_destroy( MF_uIR(iLevel) )
       CALL amrex_multifab_destroy( MF_Permute(iLevel) )
 
 
@@ -79,6 +85,7 @@ CONTAINS
 
     DEALLOCATE( MF_uPR )
     DEALLOCATE( MF_uCR )
+    DEALLOCATE( MF_uIR )
     DEALLOCATE( MF_Permute )
 
   END SUBROUTINE DestroyFields_TwoMoment_MF
