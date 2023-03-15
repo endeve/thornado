@@ -33,6 +33,7 @@ PROGRAM main
     MF_uDF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
+    MF_uIR, &
     MF_uPR
   USE InitializationModule, ONLY: &
     InitializeProgram
@@ -43,7 +44,8 @@ PROGRAM main
     ComputeFromConserved_Euler_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeTimeStep_TwoMoment_Fancy_MF, &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeIntegral_TwoMoment_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_IMEX, ONLY: &
@@ -244,7 +246,8 @@ CONTAINS
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF, &
                MF_uCR_Option = MF_uCR, &
-               MF_uPR_Option = MF_uPR )
+               MF_uPR_Option = MF_uPR, &
+               MF_uIR_Option = MF_uIR )
 
       CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, &
