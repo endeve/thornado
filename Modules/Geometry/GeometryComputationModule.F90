@@ -9,9 +9,10 @@ MODULE GeometryComputationModule
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_L2G
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX_mod => MeshX, &
+    MeshType
   USE GeometryFieldsModule, ONLY: &
-    CoordinateSystem, &
+    CoordinateSystem_mod => CoordinateSystem, &
     iGF_Phi_N, &
     iGF_h_1,      iGF_h_2,      iGF_h_3,      &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
@@ -19,6 +20,8 @@ MODULE GeometryComputationModule
     iGF_SqrtGm, &
     iGF_Alpha, iGF_Psi, &
     nGF
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply
 
   IMPLICIT NONE
   PRIVATE
@@ -33,7 +36,7 @@ MODULE GeometryComputationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option )
+  SUBROUTINE ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option, MeshX_Option, CoordinateSystem_Option )
 
     INTEGER, INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -41,8 +44,14 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in), OPTIONAL :: &
       Mass_Option
+    TYPE(MeshType), INTENT(in), OPTIONAL   :: &
+      MeshX_Option(3)
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      CoordinateSystem_Option
 
     REAL(DP) :: Mass
+    TYPE(MeshType) :: MeshX(3)
+    CHARACTER(24) :: CoordinateSystem
 
     IF( PRESENT( Mass_Option ) )THEN
       Mass = Mass_Option
@@ -50,22 +59,45 @@ CONTAINS
       Mass = Zero
     END IF
 
+    IF( PRESENT( MeshX_Option ) )THEN
+      MeshX = MeshX_Option
+    ELSE
+      MeshX = MeshX_mod
+    END IF
+
+    IF( PRESENT(CoordinateSystem_Option) )THEN
+
+      IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
+        CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
+        CoordinateSystem = 'CARTESIAN'
+      ELSE
+        print*, '[ComputeGeometryX] Invalid Coordinate System: ', &
+                 CoordinateSystem_Option
+      END IF
+
+    ELSE
+      CoordinateSystem = CoordinateSystem_mod
+    END IF
+
     SELECT CASE ( TRIM( CoordinateSystem ) )
 
       CASE ( 'CARTESIAN' )
 
         CALL ComputeGeometryX_CARTESIAN &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass, MeshX )
 
       CASE ( 'SPHERICAL' )
 
         CALL ComputeGeometryX_SPHERICAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass, MeshX )
 
       CASE ( 'CYLINDRICAL' )
 
         CALL ComputeGeometryX_CYLINDRICAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass, MeshX )
 
       CASE DEFAULT
 
@@ -76,17 +108,11 @@ CONTAINS
 
     END SELECT
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( G )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( G )
-#endif
-
   END SUBROUTINE ComputeGeometryX
 
 
   SUBROUTINE ComputeGeometryX_CARTESIAN &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass, MeshX )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -94,29 +120,53 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       Mass
+    TYPE(MeshType), INTENT(in) :: &
+      MeshX(3)
 
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, iNodeX
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP MAP( to: iX_B1, iX_E1 ) &
+    !$OMP MAP( tofrom: G )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC COPYIN( iX_B1, iX_E1 ) &
+    !$ACC COPY( G )
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      ! --- Initialize to flat spacetime ---
-      G(:,iX1,iX2,iX3,iGF_Phi_N)    = Zero
-      G(:,iX1,iX2,iX3,iGF_h_1)      = One
-      G(:,iX1,iX2,iX3,iGF_h_2)      = One
-      G(:,iX1,iX2,iX3,iGF_h_3)      = One
-      G(:,iX1,iX2,iX3,iGF_Gm_dd_11) = One
-      G(:,iX1,iX2,iX3,iGF_Gm_dd_22) = One
-      G(:,iX1,iX2,iX3,iGF_Gm_dd_33) = One
-      G(:,iX1,iX2,iX3,iGF_SqrtGm)   = One
-      G(:,iX1,iX2,iX3,iGF_Alpha)    = One
-      G(:,iX1,iX2,iX3,iGF_Beta_1)   = Zero
-      G(:,iX1,iX2,iX3,iGF_Beta_2)   = Zero
-      G(:,iX1,iX2,iX3,iGF_Beta_3)   = Zero
-      G(:,iX1,iX2,iX3,iGF_Psi)      = One
+      DO iNodeX = 1, nDOFX
 
-      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+        ! --- Initialize to flat spacetime ---
+        G(iNodeX,iX1,iX2,iX3,iGF_Phi_N)    = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_h_1)      = One
+        G(iNodeX,iX1,iX2,iX3,iGF_h_2)      = One
+        G(iNodeX,iX1,iX2,iX3,iGF_h_3)      = One
+        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) = One
+        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) = One
+        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) = One
+        G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)   = One
+        G(iNodeX,iX1,iX2,iX3,iGF_Alpha)    = One
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Psi)      = One
+
+        CALL ComputeGeometryX_SpatialMetric &
+               ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
+
+      END DO
 
     END DO
     END DO
@@ -126,7 +176,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryX_SPHERICAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass, MeshX )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -134,91 +184,164 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       Mass
+    TYPE(MeshType), INTENT(in) :: &
+      MeshX(3)
 
     INTEGER  :: iX1, iX2, iX3, iNodeX
-    REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
-    REAL(DP) :: G_L(nDOFX,nGF)
+    INTEGER  :: nP_X, nX(3)
+    REAL(DP) :: x1L_q, x2L_q, x1G_q, x2G_q
+    REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: Alpha_L(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: Psi_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
 
-    XC = 0.0_DP
-    dX = 0.0_DP
+    nX   = iX_E1 - iX_B1 + 1
+    nP_X = PRODUCT( nX )
 
+    ASSOCIATE ( CenterX1 => MeshX(1) % Center, &
+                CenterX2 => MeshX(2) % Center, &
+                WidthX1  => MeshX(1) % Width, &
+                WidthX2  => MeshX(2) % Width )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA
+    !$OMP MAP( to: G, iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2 ) &
+    !$OMP MAP( alloc: h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( G, iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2 ) &
+    !$ACC CREATE( h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( x1L_q, x2L_q, x1G_q, x2G_q )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( x1L_q, x2L_q, x1G_q, x2G_q )
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( x1L_q, x2L_q, x1G_q, x2G_q )
+#endif
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      XC(2) = MeshX(2) % Center(iX2)
-      dX(2) = MeshX(2) % Width (iX2)
-
-      XC(1) = MeshX(1) % Center(iX1)
-      dX(1) = MeshX(1) % Width (iX1)
-
-      ! --- Compute Geometry Fields in Lobatto Points ---
-
       DO iNodeX = 1, nDOFX
+
+        ! --- Compute Geometry Fields in Lobatto Points ---
 
         ! --- Local Coordinates (Lobatto Points) ---
 
-        xL_q = NodesLX_q(1:3,iNodeX)
+        x1L_q = NodesLX_q(1,iNodeX)
+        x2L_q = NodesLX_q(2,iNodeX)
 
         ! --- Global Coordinates ---
 
-        xG_q = XC + dX * xL_q
+        x1G_q = CenterX1(iX1) + WidthX1(iX1) * x1L_q
+        x2G_q = CenterX2(iX2) + WidthX2(iX2) * x2L_q
 
         ! --- Compute Lapse Function and Conformal Factor ---
 
-        G_L(iNodeX,iGF_Alpha) &
-          = LapseFunction  ( xG_q(1), Mass )
-        G_L(iNodeX,iGF_Psi) &
-          = ConformalFactor( xG_q(1), Mass )
+        Alpha_L(iNodeX,iX1,iX2,iX3) &
+          = LapseFunction  ( x1G_q, Mass )
+        Psi_L(iNodeX,iX1,iX2,iX3) &
+          = ConformalFactor( x1G_q, Mass )
 
         ! --- Set Geometry in Lobatto Points ---
 
-        G_L(iNodeX,iGF_h_1) &
-          = G_L(iNodeX,iGF_Psi)**2
-        G_L(iNodeX,iGF_h_2) &
-          = G_L(iNodeX,iGF_Psi)**2 &
-              * xG_q(1)
-        G_L(iNodeX,iGF_h_3) &
-          = G_L(iNodeX,iGF_Psi)**2 &
-              * xG_q(1) * SIN( xG_q(2) )
+        h_1_L(iNodeX,iX1,iX2,iX3) &
+          = Psi_L(iNodeX,iX1,iX2,iX3)**2
+        h_2_L(iNodeX,iX1,iX2,iX3) &
+          = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q
+        h_3_L(iNodeX,iX1,iX2,iX3) &
+          = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q )
 
       END DO
 
-      ! --- Interpolate from Lobatto to Gaussian Points ---
+    END DO
+    END DO
+    END DO
 
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
+    ! --- Interpolate from Lobatto to Gaussian Points ---
 
-      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             h_1_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_1), nDOFX )
 
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             h_2_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_2), nDOFX )
 
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             h_3_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_3), nDOFX )
 
-      G(:,iX1,iX2,iX3,iGF_Beta_1) = Zero
-      G(:,iX1,iX2,iX3,iGF_Beta_2) = Zero
-      G(:,iX1,iX2,iX3,iGF_Beta_3) = Zero
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             Alpha_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Alpha), nDOFX )
+
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             Psi_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Psi), nDOFX )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNodeX = 1, nDOFX
+
+        CALL ComputeGeometryX_SpatialMetric &
+               ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm), &
+
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
+
+      END DO
 
     END DO
     END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA
+    !$OMP MAP( from: G ) &
+    !$OMP MAP( release: iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
+    !$OMP               h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( G ) &
+    !$ACC DELETE( iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
+    !$ACC         h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#endif
+
+    END ASSOCIATE
 
   END SUBROUTINE ComputeGeometryX_SPHERICAL
 
 
   SUBROUTINE ComputeGeometryX_CYLINDRICAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass, MeshX )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -226,74 +349,152 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       Mass
+    TYPE(MeshType), INTENT(in) :: &
+      MeshX(3)
 
-    REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
-    REAL(DP) :: G_L(nDOFX,nGF)
     INTEGER  :: iX1, iX2, iX3, iNodeX
+    INTEGER  :: nP_X, nX(3)
+    REAL(DP) :: x1L_q, x1G_q
+    REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: Alpha_L(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: Psi_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
 
-    XC = 0.0_DP
-    dX = 0.0_DP
+    nX   = iX_E1 - iX_B1 + 1
+    nP_X = PRODUCT( nX )
 
+    ASSOCIATE ( CenterX1 => MeshX(1) % Center, &
+                WidthX1  => MeshX(1) % Width )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA
+    !$OMP MAP( to: G, iX_B1, iX_E1, CenterX1, WidthX1 ) &
+    !$OMP MAP( alloc: h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( G, iX_B1, iX_E1, CenterX1, WidthX1 ) &
+    !$ACC CREATE( h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( x1L_q, x1G_q )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( x1L_q, x1G_q )
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( x1L_q, x1G_q )
+#endif
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-
-      XC(1) = MeshX(1) % Center(iX1)
-      dX(1) = MeshX(1) % Width (iX1)
 
       DO iNodeX = 1, nDOFX
 
         ! --- Local Coordinates (Lobatto Points) ---
 
-        xL_q = NodesLX_q(1:3,iNodeX)
+        x1L_q = NodesLX_q(1,iNodeX)
 
         ! --- Global Coordinates ---
 
-        xG_q = XC + dX * xL_q
+        x1G_q = CenterX1(iX1) + WidthX1(iX1) * x1L_q
 
         ! --- Compute Lapse Function and Conformal Factor ---
 
-        G_L(iNodeX,iGF_Alpha) &
+        Alpha_L(iNodeX,iX1,iX2,iX3) &
           = One
-        G_L(iNodeX,iGF_Psi) &
+        Psi_L(iNodeX,iX1,iX2,iX3) &
           = One
 
         ! --- Set Geometry in Lobatto Points ---
 
-        G_L(iNodeX,iGF_h_1) &
-          = G_L(iNodeX,iGF_Psi)**2
-        G_L(iNodeX,iGF_h_2) &
-          = G_L(iNodeX,iGF_Psi)**2
-        G_L(iNodeX,iGF_h_3) &
-          = G_L(iNodeX,iGF_Psi)**2 * xG_q(1)
+        h_1_L(iNodeX,iX1,iX2,iX3) &
+          = Psi_L(iNodeX,iX1,iX2,iX3)**2
+        h_2_L(iNodeX,iX1,iX2,iX3) &
+          = Psi_L(iNodeX,iX1,iX2,iX3)**2
+        h_3_L(iNodeX,iX1,iX2,iX3) &
+          = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q
 
       END DO
 
-      ! --- Interpolate from Lobatto to Gaussian Points ---
+    END DO
+    END DO
+    END DO
 
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
+    ! --- Interpolate from Lobatto to Gaussian Points ---
 
-      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             h_1_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_1), nDOFX )
 
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             h_2_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_2), nDOFX )
 
-      CALL DGEMV &
-             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-               G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             h_3_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_h_3), nDOFX )
+
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             Alpha_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Alpha), nDOFX )
+
+    CALL MatrixMatrixMultiply
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, One, LX_L2G, nDOFX, &
+             Psi_L, nDOFX, Zero, &
+             G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Psi), nDOFX )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNodeX = 1, nDOFX
+
+        CALL ComputeGeometryX_SpatialMetric &
+               ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm), &
+
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
+        G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
+
+      END DO
 
     END DO
     END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA
+    !$OMP MAP( from: G ) &
+    !$OMP MAP( release: iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
+    !$OMP               h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( G ) &
+    !$ACC DELETE( iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
+    !$ACC         h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+#endif
+
+    END ASSOCIATE
 
   END SUBROUTINE ComputeGeometryX_CYLINDRICAL
 
@@ -337,6 +538,11 @@ CONTAINS
 
 
   PURE REAL(DP) FUNCTION LapseFunction( R, M )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: R, M
 
@@ -350,6 +556,11 @@ CONTAINS
 
 
   PURE REAL(DP) FUNCTION ConformalFactor( R, M )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: R, M
 
