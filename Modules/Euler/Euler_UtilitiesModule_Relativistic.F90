@@ -3,6 +3,9 @@
 !> Equation 7.234.
 MODULE Euler_UtilitiesModule_Relativistic
 
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: &
+    ISNAN => IEEE_IS_NAN
+
   USE KindModule, ONLY: &
     DP, &
     Zero, &
@@ -125,8 +128,16 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 35
 
-  ! --- User must set this in fluid initialization and upload to GPU ---
+  ! --- User must set this in fluid initialization and update device ---
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
+
+#if   defined( THORNADO_OMP_OL )
+  !$OMP DECLARE &
+  !$OMP TARGET( epsMin_Euler_GR )
+#elif defined( THORNADO_OACC   )
+  !$ACC DECLARE &
+  !$ACC CREATE( epsMin_Euler_GR )
+#endif
 
 CONTAINS
 

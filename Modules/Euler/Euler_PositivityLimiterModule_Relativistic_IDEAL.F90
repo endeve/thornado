@@ -73,6 +73,13 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     MODULE PROCEDURE ComputePointValues_ManyFields
   END INTERFACE ComputePointValues
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP DECLARE &
+  !$OMP TARGET( Min_2 )
+#elif defined( THORNADO_OACC   )
+  !$ACC DECLARE &
+  !$ACC CREATE( Min_2 )
+#endif
 
 CONTAINS
 
@@ -174,10 +181,18 @@ CONTAINS
 
     END DO
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE &
+    !$OMP TO    ( Min_2 )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE &
+    !$ACC DEVICE( Min_2 )
+#endif
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: L_X )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(  L_X )
 #endif
