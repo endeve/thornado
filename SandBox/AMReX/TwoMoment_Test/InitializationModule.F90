@@ -109,6 +109,7 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
+    nIR, &
     DescribeRadiationFields_Primitive, &
     DescribeRadiationFields_Conserved, &
     SetUnitsRadiationFields
@@ -544,7 +545,7 @@ CONTAINS
              nDOFZ * nCR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
     CALL MF_Permute(iLevel) % SetVal( Zero )
 
-    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * 2, swX )
+    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * nIR, swX )
     CALL MF_uIR(iLevel) % SetVal( Zero )
 
     ! Assume nDOF_X1 = nDOF_X2 = nDOFX3
@@ -620,7 +621,7 @@ CONTAINS
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_Permute(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
-    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * 2, swX )
+    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * nIR, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
