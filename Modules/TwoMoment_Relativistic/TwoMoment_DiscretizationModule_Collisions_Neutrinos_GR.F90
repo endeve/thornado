@@ -391,11 +391,13 @@ CONTAINS
       DO iZ4 = iZ_B1(4), iZ_E1(4)
       DO iZ3 = iZ_B1(3), iZ_E1(3)
       DO iZ2 = iZ_B1(2), iZ_E1(2)
-      DO iNodeX = 1, nDOFX
 
-        tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
+        DO iNodeX = 1, nDOFX
 
-      END DO
+          tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
+
+        END DO
+
       END DO
       END DO
       END DO
@@ -405,11 +407,13 @@ CONTAINS
       DO iZ4 = iZ_B1(4), iZ_E1(4)
       DO iZ3 = iZ_B1(3), iZ_E1(3)
       DO iZ2 = iZ_B1(2), iZ_E1(2)
-      DO iNodeX = 1, nDOFX
 
-        tau(iNodeX,iZ2,iZ3,iZ4) = One
+        DO iNodeX = 1, nDOFX
 
-      END DO
+          tau(iNodeX,iZ2,iZ3,iZ4) = One
+
+        END DO
+
       END DO
       END DO
       END DO
@@ -429,10 +433,10 @@ CONTAINS
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
-
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-          * tau(iNodeX,iZ2,iZ3,iZ4) 
+            * tau(iNodeX,iZ2,iZ3,iZ4) 
+
       END DO
       END DO
 
@@ -448,14 +452,15 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iNodeX = 1, nDOFX
 
+      DO iNodeX = 1, nDOFX
 
-      dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) &
-        = dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) &
-        * tau(iNodeX,iZ2,iZ3,iZ4) 
+        dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) &
+          = dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) &
+            * tau(iNodeX,iZ2,iZ3,iZ4) 
 
-    END DO
+      END DO
+
     END DO
     END DO
     END DO
