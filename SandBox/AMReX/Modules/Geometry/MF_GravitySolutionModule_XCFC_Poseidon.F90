@@ -929,7 +929,6 @@ CONTAINS
     E_int   = 0.0_DP
     S_i     = 0.0_DP
     S_i_int = 0.0_DP
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -980,24 +979,53 @@ CONTAINS
           ITERATION(iNX,iX1,iX2,iX3) = 0
           iErr     (iNX,iX1,iX2,iX3) = 0
 
-!          CALL ComputePrimitive_Euler_Relativistic &
-!                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-!                   uPF(iPF_D ), &
-!                   uPF(iPF_V1), &
-!                   uPF(iPF_V2), &
-!                   uPF(iPF_V3), &
-!                   uPF(iPF_E ), &
-!                   uPF(iPF_Ne), &
-!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-!                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
-!                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
+
+
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
+
+          CALL ComputePrimitive_Euler_Relativistic &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                   uPF(iPF_D ), &
+                   uPF(iPF_V1), &
+                   uPF(iPF_V2), &
+                   uPF(iPF_V3), &
+                   uPF(iPF_E ), &
+                   uPF(iPF_Ne), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
+
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) * Psi6
+
 
           ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -1258,24 +1286,52 @@ CONTAINS
 
           ! --- Compute trace of stress tensor ---
 
-!          CALL ComputePrimitive_Euler_Relativistic &
-!                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6, &
-!                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6, &
-!                   uPF(iPF_D ), &
-!                   uPF(iPF_V1), &
-!                   uPF(iPF_V2), &
-!                   uPF(iPF_V3), &
-!                   uPF(iPF_E ), &
-!                   uPF(iPF_Ne), &
-!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-!                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-!                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
-!                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
+
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
+
+          CALL ComputePrimitive_Euler_Relativistic &
+                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                   uPF(iPF_D ), &
+                   uPF(iPF_V1), &
+                   uPF(iPF_V2), &
+                   uPF(iPF_V3), &
+                   uPF(iPF_E ), &
+                   uPF(iPF_Ne), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                   ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+                   iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
+
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) * Psi6
+          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
+            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) * Psi6
+
 
           ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -1724,7 +1780,6 @@ CONTAINS
       CALL dCF(iLevel) % SetVal( Zero )
 
     END DO ! iLevel = 0, nLevels-1
-
     ! --- Iterate to incorporate gravity in initial conditions ---
 
     CONVERGED = .FALSE.
