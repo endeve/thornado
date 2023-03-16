@@ -53,6 +53,7 @@ MODULE FinalizationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uIR, &
     DestroyFields_TwoMoment_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     FinalizeSlopeLimiter_Euler_MF
