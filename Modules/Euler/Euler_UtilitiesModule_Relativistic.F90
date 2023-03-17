@@ -116,6 +116,12 @@ MODULE Euler_UtilitiesModule_Relativistic
   ! --- User must set this in fluid initialization ---
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP DECLARE TARGET( epsMin_Euler_GR )
+#elif defined( THORNADO_OACC   )
+  !$ACC DECLARE CREATE( epsMin_Euler_GR )
+#endif
+
 CONTAINS
 
 
@@ -186,12 +192,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
+    !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #endif
@@ -704,11 +710,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    P, A, iErr, ErrorExists ) &
+    !$OMP MAP( from:    P, A, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      P, A, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      P, A, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
@@ -888,11 +894,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr, ErrorExists ) &
+    !$OMP MAP( from:    iErr ) &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr, ErrorExists ) &
+    !$ACC COPYOUT(      iErr ) &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
