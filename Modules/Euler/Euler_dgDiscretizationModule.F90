@@ -120,10 +120,10 @@ MODULE Euler_dgDiscretizationModule
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_Euler_DG_Explicit
 
