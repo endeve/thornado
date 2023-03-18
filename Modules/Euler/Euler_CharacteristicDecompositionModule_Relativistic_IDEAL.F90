@@ -22,10 +22,10 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 

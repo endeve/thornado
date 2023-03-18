@@ -120,10 +120,10 @@ MODULE Euler_dgDiscretizationModule
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_Euler_DG_Explicit
 
@@ -1134,7 +1134,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X1, iErr, ErrorExists ) &
+    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X1, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1144,7 +1144,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X1, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X1, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -1889,7 +1889,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X2, iErr, ErrorExists ) &
+    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X2, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1899,7 +1899,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X2, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X2, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -2643,7 +2643,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X3, iErr, ErrorExists ) &
+    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X3, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -2653,7 +2653,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X3, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X3, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -4392,13 +4392,19 @@ CONTAINS
       END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+      !$OMP TARGET UPDATE FROM( dGdX1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-      !$ACC PRESENT( iX_B0, iX_E0, dGdX1, G, dX1, dLXdX1_q )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(6)
+      !$ACC        UPDATE HOST( dGdX1 )
 #endif
+!TODO: fix this. Probably doesn't like the i = i + 1 structure
+!#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+!#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+!      !$ACC PRESENT( iX_B0, iX_E0, dGdX1, G, dX1, dLXdX1_q )
+!#elif defined( THORNADO_OMP    )
+!      !$OMP PARALLEL DO COLLAPSE(6)
+!#endif
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -4416,6 +4422,12 @@ CONTAINS
       END DO
       END DO
       END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE TO    ( dGdX1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC        UPDATE DEVICE( dGdX1 )
+#endif
 
       CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
@@ -4778,13 +4790,19 @@ CONTAINS
         END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+      !$OMP TARGET UPDATE FROM( dGdX2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRESENT( iX_B0, iX_E0, dGdX2, G, dX2, dLXdX2_q )
-#elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO COLLAPSE(6)
+      !$ACC        UPDATE HOST( dGdX2 )
 #endif
+!TODO: fix this. Probably doesn't like the i = i + 1 structure
+!#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+!#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+!        !$ACC PRESENT( iX_B0, iX_E0, dGdX2, G, dX2, dLXdX2_q )
+!#elif defined( THORNADO_OMP    )
+!        !$OMP PARALLEL DO COLLAPSE(6)
+!#endif
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -4802,6 +4820,12 @@ CONTAINS
         END DO
         END DO
         END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE TO    ( dGdX2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC        UPDATE DEVICE( dGdX2 )
+#endif
 
         CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
@@ -5150,13 +5174,19 @@ CONTAINS
         END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+      !$OMP TARGET UPDATE FROM( dGdX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRESENT( iX_B0, iX_E0, dGdX3, G, dX3, dLXdX3_q )
-#elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO COLLAPSE(6)
+      !$ACC        UPDATE HOST( dGdX3 )
 #endif
+!TODO: fix this. Probably doesn't like the i = i + 1 structure
+!#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+!#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+!        !$ACC PRESENT( iX_B0, iX_E0, dGdX3, G, dX3, dLXdX3_q )
+!#elif defined( THORNADO_OMP    )
+!        !$OMP PARALLEL DO COLLAPSE(6)
+!#endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -5174,6 +5204,12 @@ CONTAINS
         END DO
         END DO
         END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE TO    ( dGdX3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC        UPDATE DEVICE( dGdX3 )
+#endif
 
         CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 

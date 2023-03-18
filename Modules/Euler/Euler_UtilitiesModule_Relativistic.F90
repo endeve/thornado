@@ -132,11 +132,9 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
 #if   defined( THORNADO_OMP_OL )
-  !$OMP DECLARE &
-  !$OMP TARGET( epsMin_Euler_GR )
+  !$OMP DECLARE TARGET( epsMin_Euler_GR )
 #elif defined( THORNADO_OACC   )
-  !$ACC DECLARE &
-  !$ACC CREATE( epsMin_Euler_GR )
+  !$ACC DECLARE CREATE( epsMin_Euler_GR )
 #endif
 
 CONTAINS
@@ -251,13 +249,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, &
-    !$OMP               ITERATION, iErr, ErrorExists ) &
+    !$OMP               ITERATION, iErr ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC               ITERATION, iErr, ErrorExists ) &
+    !$ACC               ITERATION, iErr ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #endif
@@ -492,7 +490,7 @@ CONTAINS
 !!$
 !!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$OMP TARGET EXIT DATA &
-!!$    !$OMP MAP( from:    iErr, ErrorExists, &
+!!$    !$OMP MAP( from:    iErr, &
 !!$    !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
 !!$    !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
 !!$    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -503,7 +501,7 @@ CONTAINS
 !!$    !$OMP               ITERATE )
 !!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$ACC EXIT DATA &
-!!$    !$ACC COPYOUT(      iErr, ErrorExists, &
+!!$    !$ACC COPYOUT(      iErr, &
 !!$    !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
 !!$    !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
 !!$    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -875,11 +873,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    P, A, ITERATION, iErr, ErrorExists ) &
+    !$OMP MAP( from:    P, A, ITERATION, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      P, A, ITERATION, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      P, A, ITERATION, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
@@ -1075,11 +1073,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    ITERATION, iErr, ErrorExists ) &
+    !$OMP MAP( from:    ITERATION, iErr ) &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      ITERATION, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      ITERATION, iErr ) &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 

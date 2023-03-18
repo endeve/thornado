@@ -1,0 +1,172 @@
+name: Compile with nvhpc compiler
+
+on:
+  push:
+    branches:
+      - InterfaceWithPoseidon
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  compile-with-nvhpc:
+    name: Compile thornado with nvhpc on Ubuntu
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_nvhpc
+      ARCH: x86_64
+      NVARCH: Linux_x86_64
+      NVCOMPILERS: /opt/nvidia/hpc_sdk
+      NVHPC_SILENT: true
+      NVHPC_MAJOR: 22
+      NVHPC_MINOR: 7
+      CUDA_MAJOR: 11
+      CUDA_MINOR: 7
+      UBUNTU_VERSION: 2004
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+
+      - name: Update Ubuntu
+        run: |
+          git branch
+          sudo apt-get -qq update
+
+      - name: Set Environment Variables for Software and NVHPC_ROOT
+        run: |
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}" >> ${GITHUB_ENV}
+          echo "HDF5_DIR=${GITHUB_WORKSPACE}/hdf5" >> ${GITHUB_ENV}
+          echo "HDF5_ROOT=${GITHUB_WORKSPACE}/hdf5" >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
+          echo "NVHPC_DIR=${GITHUB_WORKSPACE}/nvhpc" >> ${GITHUB_ENV}
+          echo "NVHPC_ROOT=${NVCOMPILERS}/${NVARCH}/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
+
+      # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
+      - name: Download and Install nvhpc; Set nvhpc Environment Variables
+        run: |
+          mkdir ${NVHPC_DIR}
+          cd ${NVHPC_DIR}
+          wget https://developer.download.nvidia.com/hpc-sdk/${NVHPC_MAJOR}.${NVHPC_MINOR}/nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+          tar xpzf nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+          sudo nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
+          echo ${NVHPC_ROOT}/compilers/bin >> ${GITHUB_PATH}
+          echo "CUDA_ROOT=${NVHPC_ROOT}/math_libs" >> ${GITHUB_ENV}
+          echo "CUDART_ROOT=${NVHPC_ROOT}/cuda" >> ${GITHUB_ENV}
+          echo "LAPACK_ROOT=${NVHPC_ROOT}/compilers" >> ${GITHUB_ENV}
+          echo "BLAS_ROOT=${NVHPC_ROOT}/compilers" >> ${GITHUB_ENV}
+          echo "MPI_ROOT=${NVHPC_ROOT}/comm_libs/mpi" >> ${GITHUB_ENV}
+          echo ${NVHPC_ROOT}/comm_libs/mpi/bin >> ${GITHUB_PATH} # only needed for HDF5
+
+      # Compilation flags for nvhpc from
+      # https://forums.developer.nvidia.com/t/
+      # help-configuring-hdf5-with-nvhpc-no-version-information-available/183413
+      - name: Download, Compile, and Install hdf5 with nvhpc
+        run: |
+          mkdir ${HDF5_DIR}
+          cd ${HDF5_DIR}
+          wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.14/hdf5-1.14.0/src/hdf5-1.14.0.tar.gz
+          tar zxf hdf5-1.14.0.tar.gz
+          mkdir built_fortran
+          cd built_fortran
+          ../hdf5-1.14.0/configure --prefix=${HDF5_DIR} \
+          --enable-shared --enable-static \
+          --enable-fortran --enable-hl --enable-parallel \
+          CC=mpicc FC=mpifort F77=mpifort CPP=cpp \
+          CFLAGS="-fPIC -O1 -tp px -nomp" \
+          FCFLAGS="-fPIC -O1 -tp px -nomp" \
+          FFLAGS="-fPIC -O1 -tp px -nomp"
+          make -j -l6
+          make install
+
+      - name: Check Environment and Find Libraries and Include Directories
+        run: |
+          echo ""
+          echo "ls ${THORNADO_DIR}"
+          ls ${THORNADO_DIR}
+          echo ""
+          echo "ls ${NVHPC_DIR}"
+          ls ${NVHPC_DIR}
+          echo ""
+          echo "ls ${HDF5_DIR}"
+          ls ${HDF5_DIR}
+          echo ""
+          echo "ls ${WEAKLIB_DIR}"
+          ls ${WEAKLIB_DIR}
+          echo ""
+          echo "ls ${NVHPC_ROOT}"
+          ls ${NVHPC_ROOT}
+          echo ""
+          echo "ls ${NVHPC_ROOT}/comm_libs"
+          ls ${NVHPC_ROOT}/comm_libs
+          echo ""
+          echo ""
+          echo "ls ${NVHPC_ROOT}/comm_libs/mpi"
+          ls ${NVHPC_ROOT}/comm_libs/mpi
+          echo ""
+          echo "ls ${NVHPC_ROOT}/comm_libs/mpi/bin"
+          ls ${NVHPC_ROOT}/comm_libs/mpi/bin
+          echo ""
+          echo "ls ${NVHPC_ROOT}/comm_libs/mpi/include"
+          ls ${NVHPC_ROOT}/comm_libs/mpi/include
+          echo ""
+          echo "ls ${NVHPC_ROOT}/comm_libs/mpi/lib"
+          ls ${NVHPC_ROOT}/comm_libs/mpi/lib
+          echo ""
+          echo "ls ${NVHPC_ROOT}/compilers"
+          ls ${NVHPC_ROOT}/compilers
+          echo ""
+          echo "ls ${NVHPC_ROOT}/compilers/include"
+          ls ${NVHPC_ROOT}/compilers/include
+          echo ""
+          echo "ls ${NVHPC_ROOT}/compilers/lib"
+          ls ${NVHPC_ROOT}/compilers/lib
+          echo ""
+          echo "ls ${NVHPC_ROOT}/cuda"
+          ls ${NVHPC_ROOT}/cuda
+          echo ""
+          echo "ls ${NVHPC_ROOT}/cuda/bin"
+          ls ${NVHPC_ROOT}/cuda/bin
+          echo ""
+          echo "ls ${NVHPC_ROOT}/cuda/include"
+          ls ${NVHPC_ROOT}/cuda/include
+          echo ""
+          echo "ls ${NVHPC_ROOT}/cuda/lib64"
+          ls ${NVHPC_ROOT}/cuda/lib64
+          echo ""
+          echo "ls ${NVHPC_ROOT}/math_libs"
+          ls ${NVHPC_ROOT}/math_libs
+          echo ""
+          echo "ls ${NVHPC_ROOT}/math_libs/include"
+          ls ${NVHPC_ROOT}/math_libs/include
+          echo ""
+          echo "ls ${NVHPC_ROOT}/math_libs/lib64"
+          ls ${NVHPC_ROOT}/math_libs/lib64
+
+      - name: Compile thornado (Relativistic, IDEAL)
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables/
+          make OPT_LEVEL=DEBUG \
+               HYDRO=RELATIVISTIC \
+               HYDRO_RIEMANN_SOLVER=HLL \
+               USE_GPU=TRUE \
+               USE_OACC=TRUE \
+               USE_CUBLAS=TRUE \
+               ApplicationDriver
+
+      - name: Compile thornado (Non-Relativistic, TABLE)
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables/
+          make OPT_LEVEL=DEBUG \
+               HYDRO=NONRELATIVISTIC \
+               HYDRO_RIEMANN_SOLVER=HLL \
+               USE_GPU=TRUE \
+               USE_OACC=TRUE \
+               USE_CUBLAS=TRUE \
+               ApplicationDriver
