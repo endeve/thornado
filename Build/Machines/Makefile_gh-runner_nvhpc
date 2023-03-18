@@ -1,0 +1,46 @@
+## Makefile definitions for github runner with nvhpc compiler
+
+C       = nvc++ --c++11
+FORTRAN = nvfortran -Mpreprocess
+FLINKER = nvfortran
+
+DEBUG    = -g -O0 -Mnoopenmp -Ktrap=fp
+OPTIMIZE = -g -O2 -tp=pwr9
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -mp=multicore
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -mp=gpu -gpu=cuda11.7,cc70,ptxinfo -Minfo=accel
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -acc -gpu=cuda11.7,cc70,ptxinfo -Minfo=accel
+endif
+
+#HDF5_ROOT=/home/runner/work/thornado/thornado/hdf5
+
+# Hacked to include mpi (mpi.mod is in $(MPI_ROOT)/lib for some reason)
+INCLUDE_CUDA     = -I$(CUDA_ROOT)/include \
+		   -I$(MPI_ROOT)/lib
+INCLUDE_HDF5     = -I$(HDF5_ROOT)/include
+INCLUDE_LAPACK   = #-I$(LAPACK_ROOT)/include
+INCLUDE_MAGMA    =
+INCLUDE_PETSC    =
+INCLUDE_POSEIDON =
+INCLUDE_ROCM     =
+
+# Hacked to include mpi
+LIBRARIES_CUDA     = -L$(CUDA_ROOT)/lib64 -lcublas -lcusparse -lcusolver \
+		     -L$(CUDART_ROOT)/lib64 -lcudart \
+		     -L$(MPI_ROOT)/lib -lmpi_mpifh -lmpi
+LIBRARIES_HDF5     = -L$(HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L$(LAPACK_ROOT)/lib -llapack -L$(BLAS_ROOT)/lib -lblas
+LIBRARIES_MAGMA    =
+LIBRARIES_PETSC    =
+LIBRARIES_POSEIDON =
+LIBRARIES_ROCM     =
