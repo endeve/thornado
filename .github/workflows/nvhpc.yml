@@ -2,12 +2,9 @@ name: Compile with nvhpc compiler
 
 on:
   push:
-    branches:
-      - InterfaceWithPoseidon
-      - master
+    branches:   [ master, InterfaceWithPoseidon ]
   pull_request:
-    branches:
-      - master
+    branches:   [ master ]
 
 jobs:
   compile-with-nvhpc:
@@ -19,10 +16,10 @@ jobs:
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
       NVHPC_SILENT: true
-      NVHPC_MAJOR: 23
-      NVHPC_MINOR: 1
-      CUDA_MAJOR: 12
-      CUDA_MINOR: 0
+      NVHPC_MAJOR: 22
+      NVHPC_MINOR: 7
+      CUDA_MAJOR: 11
+      CUDA_MINOR: 7
       UBUNTU_VERSION: 2004
     steps:
       - name: Checkout thornado
