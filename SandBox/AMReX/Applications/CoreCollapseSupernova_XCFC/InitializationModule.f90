@@ -159,6 +159,7 @@ MODULE InitializationModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
+    ComputeIntegral_TwoMoment_MF, & 
     ComputeFromConserved_TwoMoment_MF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
