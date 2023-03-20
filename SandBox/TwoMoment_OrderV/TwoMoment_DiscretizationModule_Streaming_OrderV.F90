@@ -498,12 +498,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -773,7 +773,7 @@ CONTAINS
     !$ACC          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          NumericalFlux, GE, SqrtGm_F, Weights_X1, dZ1, dZ3, dZ4, &
+    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X1, dZ1, dZ3, dZ4, &
     !$ACC          nZ_X1, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -908,55 +908,7 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X1 = 1, nDOF_X1
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_B0(2))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X1 = 1, nDOF_X1
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ_E0(2)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X1, NumericalFlux, NumericalFlux2 )
 
     !--------------------
     ! --- Volume Term ---
@@ -1090,13 +1042,13 @@ CONTAINS
     !$OMP MAP( release: dZ1, dZ3, dZ4, &
     !$OMP               iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP               GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP               uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$OMP               uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ3, dZ4, &
     !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X1 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X1 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -1154,6 +1106,7 @@ CONTAINS
     REAL(DP) :: Flux_K(nCR)
     REAL(DP) :: uV1_L, uV2_L, uV3_L
     REAL(DP) :: uV1_R, uV2_R, uV3_R
+    REAL(DP) :: SUM_N, SUM_G1, SUM_G2, SUM_G3
 
     ! --- Geometry Fields ---
 
@@ -1270,12 +1223,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -1545,7 +1498,7 @@ CONTAINS
     !$ACC          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          NumericalFlux, GE, SqrtGm_F, Weights_X2, dZ1, dZ2, dZ4, &
+    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X2, dZ1, dZ2, dZ4, &
     !$ACC          nZ_X2, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -1680,55 +1633,7 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X2 = 1, nDOF_X2
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_B0(3))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X2 = 1, nDOF_X2
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ_E0(3)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X2, NumericalFlux, NumericalFlux2 )
 
     !--------------------
     ! --- Volume Term ---
@@ -1861,12 +1766,12 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X2 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X2 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -1924,6 +1829,7 @@ CONTAINS
     REAL(DP) :: Flux_K(nCR)
     REAL(DP) :: uV1_L, uV2_L, uV3_L
     REAL(DP) :: uV1_R, uV2_R, uV3_R
+    REAL(DP) :: SUM_N, SUM_G1, SUM_G2, SUM_G3
 
     ! --- Geometry Fields ---
 
@@ -2040,12 +1946,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$OMP             uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
@@ -2315,7 +2221,7 @@ CONTAINS
     !$ACC          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          NumericalFlux, GE, SqrtGm_F, Weights_X3, dZ1, dZ2, dZ3, &
+    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X3, dZ1, dZ2, dZ3, &
     !$ACC          nZ_X3, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -2450,55 +2356,7 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
-    DO iS  = 1       , nSpecies
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X3 = 1, nDOF_X3
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_B0(4))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_X3 = 1, nDOF_X3
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ_E0(4)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X3, NumericalFlux, NumericalFlux2 )
 
     !--------------------
     ! --- Volume Term ---
@@ -2631,12 +2489,12 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP      GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$OMP      uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         GX_K, GX_F, uCF_K, uCF_L, uCF_R, &
-    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, Flux_q, dU_X3 )
+    !$ACC         uCR_K, uCR_L, uCR_R, NumericalFlux, NumericalFlux2, Flux_q, dU_X3 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -2687,6 +2545,7 @@ CONTAINS
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_E
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
+    INTEGER  :: iZP_B0(4), iZP_E0(4)
 
     REAL(DP) :: EdgeEnergyCubed, Beta
     REAL(DP) :: A(3,3), Lambda(3)
@@ -2694,6 +2553,7 @@ CONTAINS
     REAL(DP) :: Flux_K(nCR), dFlux_K(nPR)
     REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
     REAL(DP) :: Flux_R(nCR), uPR_R(nPR)
+    REAL(DP) :: SUM_N, SUM_G1, SUM_G2, SUM_G3
 
     ! --- Eigenvalues ---
 
@@ -2792,6 +2652,13 @@ CONTAINS
            nSpecies, &
            iZ_B0(1)  :iZ_E0(1)  )
 
+    ! --- Permuted Phase Space Limits ---
+
+    iZP_B0(1) = iZ_B0(2) ; iZP_E0(1) = iZ_E0(2)
+    iZP_B0(2) = iZ_B0(3) ; iZP_E0(2) = iZ_E0(3)
+    iZP_B0(3) = iZ_B0(4) ; iZP_E0(3) = iZ_E0(4)
+    iZP_B0(4) = iZ_B0(1) ; iZP_E0(4) = iZ_E0(1)
+
     ASSOCIATE &
       ( xZ1 => MeshE    % Center, &
         dZ1 => MeshE    % Width, &
@@ -2802,21 +2669,21 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: xZ1, dZ1, dZ2, dZ3, dZ4, &
-    !$OMP          iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$OMP          iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$OMP MAP( alloc: uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
     !$OMP             dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP             dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$OMP             dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$OMP             Alpha, NumericalFlux, Flux_q, dU_E )
+    !$OMP             Alpha, NumericalFlux, NumericalFlux2, Flux_q, dU_E )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( xZ1, dZ1, dZ2, dZ3, dZ4, &
-    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
     !$ACC CREATE( uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$ACC         dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC         Alpha, NumericalFlux, Flux_q, dU_E )
+    !$ACC         Alpha, NumericalFlux, NumericalFlux2, Flux_q, dU_E )
 #endif
 
     ! --- Calculate Weak Derivatives ---
@@ -3056,7 +2923,7 @@ CONTAINS
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
     !$ACC          uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC          NumericalFlux, SqrtGm_K, Weights_E, xZ1, dZ2, dZ3, dZ4, &
+    !$ACC          NumericalFlux, NumericalFlux2, SqrtGm_K, Weights_E, xZ1, dZ2, dZ3, dZ4, &
     !$ACC          Alpha, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -3213,55 +3080,7 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_E = 1, nDOF_E
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              + LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              + NumericalFlux2(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_B0(1))
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iS  = 1       , nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iCR = 1       , nCR
-
-      DO iNodeZ_E = 1, nDOF_E
-
-        OffGridFlux_TwoMoment(iCR) &
-          = OffGridFlux_TwoMoment(iCR) &
-              - LeptonNumber(iS) &
-                  * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
-
-        OffGridFlux_TwoMoment(nCR+iCR) &
-          = OffGridFlux_TwoMoment(nCR+iCR) &
-              - NumericalFlux2(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ_E0(1)+1)
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_E, NumericalFlux, NumericalFlux2 )
 
     !--------------------
     ! --- Volume Term ---
@@ -3507,21 +3326,21 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: xZ1, dZ1, dZ2, dZ3, dZ4, &
-    !$OMP               iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$OMP               uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
     !$OMP               dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP               dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$OMP               dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$OMP               Alpha, NumericalFlux, Flux_q, dU_E )
+    !$OMP               Alpha, NumericalFlux, NumericalFlux2, Flux_q, dU_E )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( xZ1, dZ1, dZ2, dZ3, dZ4, &
-    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
     !$ACC         uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$ACC         dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC         Alpha, NumericalFlux, Flux_q, dU_E )
+    !$ACC         Alpha, NumericalFlux, NumericalFlux2, Flux_q, dU_E )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -3786,9 +3605,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP MAP( to: nZP_X ) &
     !$OMP PRIVATE( iNodeZ_X, iZ_F, iX_F )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC COPYIN( nZP_X ) &
     !$ACC PRIVATE( iNodeZ_X, iZ_F, iX_F ) &
     !$ACC PRESENT( PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
@@ -3832,9 +3653,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+    !$OMP MAP( to: nZP ) &
     !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC COPYIN( nZP ) &
     !$ACC PRIVATE( iNodeZ, iZ_K, iX_K ) &
     !$ACC PRESENT( PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
@@ -4053,7 +3876,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iZ_F, iX_F ) &
-    !$ACC PRESENT( PositionIndexZ_F, IndexTableZ_F )
+    !$ACC PRESENT( iZ_B0, iZ_E0, nZ_E, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iZ_F, iX_F )
@@ -4094,7 +3917,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRIVATE( iNodeZ, iZ_K, iX_K ) &
-    !$ACC PRESENT( PositionIndexZ_K, IndexTableZ_K )
+    !$ACC PRESENT( iZ_B0, iZ_E0, nZ, PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
@@ -4180,6 +4003,108 @@ CONTAINS
     NULLIFY( uN_R, uG1_R, uG2_R, uG3_R )
 
   END SUBROUTINE FinalizeIncrement_ObserverCorrections
+
+
+  SUBROUTINE ComputeOffGridFlux( iZP_B0, iZP_E0, nDOFZ_X, NumericalFlux, NumericalFlux2 )
+
+    INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
+    INTEGER, INTENT(in) :: nDOFZ_X ! nDOFZ_X1, ...
+
+    REAL(DP), INTENT(in) :: &
+      NumericalFlux (nDOFZ_X,nCR, &
+                     iZP_B0(1):iZP_E0(1)  , &
+                     iZP_B0(2):iZP_E0(2)  , &
+                     iZP_B0(3):iZP_E0(3)  , &
+                     nSpecies, &
+                     iZP_B0(4):iZP_E0(4)+1)
+    REAL(DP), INTENT(in) :: &
+      NumericalFlux2(nDOFZ_X,nCR, &
+                     iZP_B0(1):iZP_E0(1)  , &
+                     iZP_B0(2):iZP_E0(2)  , &
+                     iZP_B0(3):iZP_E0(3)  , &
+                     nSpecies, &
+                     iZP_B0(4):iZP_E0(4)+1)
+
+    INTEGER :: iZP1, iZP2, iZP3, iZP4, iS, iCR
+    INTEGER :: iNodeZ_X
+
+    REAL(DP) :: FluxIn1, FluxIn2, FluxOt1, FluxOt2 
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2  ) &
+    !$OMP MAP( tofrom: OffGridFlux_TwoMoment )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2 ) &
+    !$ACC COPY( OffGridFlux_TwoMoment ) &
+    !$ACC PRESENT( iZP_B0, iZP_E0, LeptonNumber, NumericalFlux, NumericalFlux2 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2  )
+#endif
+    DO iCR = 1, nCR
+
+      FluxIn1 = Zero
+      FluxIn2 = Zero
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP REDUCTION( + : FluxIn1, FluxIn2 )
+#elif defined( THORNADO_OACC   )
+      !$ACC LOOP VECTOR COLLAPSE(5) &
+      !$ACC REDUCTION( + : FluxIn1, FluxIn2 )
+#endif
+      DO iS  = 1       , nSpecies
+      DO iZP3 = iZP_B0(3), iZP_E0(3)
+      DO iZP2 = iZP_B0(2), iZP_E0(2)
+      DO iZP1 = iZP_B0(1), iZP_E0(1)
+
+        DO iNodeZ_X = 1, nDOFZ_X
+
+          FluxIn1 = FluxIn1 + LeptonNumber(iS) * NumericalFlux (iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
+          FluxIn2 = FluxIn2 +                    NumericalFlux2(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      FluxOt1 = Zero
+      FluxOt2 = Zero
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP REDUCTION( + : FluxOt1, FluxOt2 )
+#elif defined( THORNADO_OACC   )
+      !$ACC LOOP VECTOR COLLAPSE(5) &
+      !$ACC REDUCTION( + : FluxOt1, FluxOt2 )
+#endif
+      DO iS  = 1       , nSpecies
+      DO iZP3 = iZP_B0(3), iZP_E0(3)
+      DO iZP2 = iZP_B0(2), iZP_E0(2)
+      DO iZP1 = iZP_B0(1), iZP_E0(1)
+
+        DO iNodeZ_X = 1, nDOFZ_X
+
+          FluxOt1 = FluxOt1 + LeptonNumber(iS) * NumericalFlux (iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
+          FluxOt2 = FluxOt2 +                    NumericalFlux2(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      OffGridFlux_TwoMoment(iCR)     = OffGridFlux_TwoMoment(iCR)     + FluxIn1 - FluxOt1
+      OffGridFlux_TwoMoment(iCR+nCR) = OffGridFlux_TwoMoment(iCR+nCR) + FluxIn2 - FluxOt2
+
+    END DO
+
+  END SUBROUTINE ComputeOffGridFlux
 
 
 END MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
