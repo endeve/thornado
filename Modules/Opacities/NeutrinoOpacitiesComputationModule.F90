@@ -910,19 +910,19 @@ CONTAINS
       IF(     D_P < Ds_EC_T(1) .or. D_P > Ds_EC_T(SIZE(Ds_EC_T)) &
          .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
          .or. Y_p < Ys_EC_T(1) .or. Y_P > Ys_EC_T(SIZE(Ys_EC_T)) &
-         .or. Ah(iX) < 40.0d0) THEN
+         .or. Ah(iX) < 40.0d0) CYCLE
 
-        DO iE = iE_B, iE_E
-          opECT(iE,iX) = 0.0d0
-        END DO
-        EC_rate(iX) = 0.0d0
+        !DO iE = iE_B, iE_E
+        !  opECT(iE,iX) = 0.0d0
+        !END DO
+        !EC_rate(iX) = 0.0d0
 
-      ELSE
+      !ELSE
 
         CALL LogInterpolateSingleVariable_3D_Custom_Point &
              ( D_P,     T_P,     Y_P,  &
                Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-               OS_EmAb_EC_rate(1), EmAb_EC_rate_T, EC_rate(iX)) 
+               OS_EmAb_EC_rate(iNuE), EmAb_EC_rate_T, EC_rate(iX)) 
 
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD            
@@ -967,7 +967,7 @@ CONTAINS
           CALL LogInterpolateSingleVariable_3D_Custom_Point &
                ( D_P,     T_P,     Y_P,  &
                  Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-                 OS_EmAb_EC_spec(1), EmAb_EC_spec_T(:,:,:,iE), spec_fine(iE)) 
+                 OS_EmAb_EC_spec(iNuE), EmAb_EC_spec_T(:,:,:,iE), spec_fine(iE)) 
 
           loctot = loctot + spec_fine(iE) * EC_dE
 
@@ -1100,29 +1100,31 @@ CONTAINS
         DO iE = iE_B, iE_E
 
           opECT(iE,iX) = Xnuc * coeff * EC_rate(iX) &
-                       * spec_nodes(iE) / f0(iE,1,iX) * UnitEC
+                       * spec_nodes(iE) / f0(iE,iNuE,iX) * UnitEC
+
+          !now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
+          opEC(iE,iNuE,iX) = opEC(iE,iNuE,iX) + opECT(iE,iX)
 
         END DO
 
-      ENDIF
+      !ENDIF
     END DO
 
-!now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) 
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) 
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2) 
-#endif
-    DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
-
-        opEC(iE,1,iX) = opEC(iE,1,iX) + opECT(iE,iX)
-!        opEC(iE,1,iX) = opECT(iE,iX)
-
-      END DO
-    END DO
+!!now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) 
+!#elif defined(THORNADO_OACC)
+!    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) 
+!#elif defined(THORNADO_OMP)
+!    !$OMP PARALLEL DO COLLAPSE(2) 
+!#endif
+!    DO iX = iX_B, iX_E
+!      DO iE = iE_B, iE_E
+!
+!        opEC(iE,1,iX) = opEC(iE,1,iX) + opECT(iE,iX)
+!
+!      END DO
+!    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA                                    &
