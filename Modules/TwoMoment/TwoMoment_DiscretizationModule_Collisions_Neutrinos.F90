@@ -58,10 +58,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     SolveMatterEquations_FP_NestedNewton, &
     E_N
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_New
 

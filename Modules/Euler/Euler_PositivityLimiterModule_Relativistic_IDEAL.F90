@@ -52,10 +52,10 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: InitializePositivityLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: FinalizePositivityLimiter_Euler_Relativistic_IDEAL
