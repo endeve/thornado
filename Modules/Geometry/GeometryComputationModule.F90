@@ -36,7 +36,9 @@ MODULE GeometryComputationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option, MeshX_Option, CoordinateSystem_Option )
+  SUBROUTINE ComputeGeometryX &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, &
+      Mass_Option, MeshX_Option, CoordinateSystem_Option )
 
     INTEGER, INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -74,7 +76,7 @@ CONTAINS
       ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
         CoordinateSystem = 'CARTESIAN'
       ELSE
-        print*, '[ComputeGeometryX] Invalid Coordinate System: ', &
+        PRINT*, '[ComputeGeometryX] Invalid Coordinate System: ', &
                  CoordinateSystem_Option
       END IF
 
