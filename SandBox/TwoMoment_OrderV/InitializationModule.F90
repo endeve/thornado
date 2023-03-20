@@ -53,12 +53,6 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( uGF )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( uGF )
-#endif
-
     SELECT CASE( TRIM( ProgramName ) )
 
       CASE( 'SineWaveStreaming' )

@@ -82,6 +82,14 @@ CONTAINS
       CoordinateSystem = CoordinateSystem_mod
     END IF
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: G, iX_B1, iX_E1 )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  G, iX_B1, iX_E1 )
+#endif
+
     SELECT CASE ( TRIM( CoordinateSystem ) )
 
       CASE ( 'CARTESIAN' )
@@ -107,6 +115,20 @@ CONTAINS
         STOP
 
     END SELECT
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( G )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE HOST       ( G )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: G, iX_B1, iX_E1 )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       G, iX_B1, iX_E1 )
+#endif
 
   END SUBROUTINE ComputeGeometryX
 
