@@ -2,12 +2,9 @@ name: Compile with nvhpc compiler
 
 on:
   push:
-    branches:
-      - continuousIntegrationTesting
-      - master
+    branches:   [ master ]
   pull_request:
-    branches:
-      - master
+    branches:   [ master ]
 
 jobs:
   compile-with-nvhpc:
@@ -53,9 +50,9 @@ jobs:
         run: |
           mkdir ${NVHPC_DIR}
           cd ${NVHPC_DIR}
-          wget https://developer.download.nvidia.com/hpc-sdk/${NVHPC_MAJOR}.${NVHPC_MINOR}/nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-          tar xpzf nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-          sudo nvhpc_2022_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
+          wget https://developer.download.nvidia.com/hpc-sdk/${NVHPC_MAJOR}.${NVHPC_MINOR}/nvhpc_20${NVHPC_MAJOR}_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+          tar xpzf nvhpc_20${NVHPC_MAJOR}_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
+          sudo nvhpc_20${NVHPC_MAJOR}_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
           echo ${NVHPC_ROOT}/compilers/bin >> ${GITHUB_PATH}
           echo "CUDA_ROOT=${NVHPC_ROOT}/math_libs" >> ${GITHUB_ENV}
           echo "CUDART_ROOT=${NVHPC_ROOT}/cuda" >> ${GITHUB_ENV}
