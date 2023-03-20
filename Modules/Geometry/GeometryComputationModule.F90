@@ -485,12 +485,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA
     !$OMP MAP( from: G ) &
-    !$OMP MAP( release: iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
+    !$OMP MAP( release: iX_B1, iX_E1, CenterX1, WidthX1, &
     !$OMP               h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT( G ) &
-    !$ACC DELETE( iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
+    !$ACC DELETE( iX_B1, iX_E1, CenterX1, WidthX1, &
     !$ACC         h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
 #endif
 
