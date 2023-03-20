@@ -70,9 +70,9 @@ PROGRAM ApplicationDriver
     InitializeTimers_Euler, &
     FinalizeTimers_Euler
 
-  IMPLICIT NONE
+  USE MPI
 
-  INCLUDE 'mpif.h'
+  IMPLICIT NONE
 
   CHARACTER(32)  :: ProgramName
   CHARACTER(32)  :: AdvectionProfile
