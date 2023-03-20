@@ -48,6 +48,12 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(in) :: ProgenitorFileName
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( uGF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( uGF )
+#endif
+
     CALL InitializeFields_Fluid( ProgenitorFileName )
 
     CALL InitializeFields_Radiation
