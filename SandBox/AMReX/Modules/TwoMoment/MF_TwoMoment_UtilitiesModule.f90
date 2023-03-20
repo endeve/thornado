@@ -876,8 +876,6 @@ CONTAINS
 
 
 
-print*,I(iNodeX,iZ2,iZ3,iZ4,iIR_Ynu)
-STOP
       RMSnum   = 0.0_DP
       RMSdenom = 0.0_DP
       Nnu = 0.0_DP
