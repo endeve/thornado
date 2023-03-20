@@ -11,6 +11,7 @@ GeometryComputationModule.o: \
   ReferenceElementModuleX_Lagrange.o \
   MeshModule.o \
   GeometryFieldsModule.o \
+  LinearAlgebraModule.o \
   GeometryComputationModule.F90
 
 GeometryComputationModule_XCFC.o: \
