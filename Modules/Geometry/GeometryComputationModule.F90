@@ -125,49 +125,48 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iNodeX
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP MAP( to: iX_B1, iX_E1 ) &
+    !$OMP MAP( to:     iX_B1, iX_E1 ) &
     !$OMP MAP( tofrom: G )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC COPYIN( iX_B1, iX_E1 ) &
-    !$ACC COPY( G )
-#elif defined( THORNADO_OMP )
+    !$ACC COPYIN(      iX_B1, iX_E1 ) &
+    !$ACC COPY(        G )
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3    = iX_B1(3), iX_E1(3)
+    DO iX2    = iX_B1(2), iX_E1(2)
+    DO iX1    = iX_B1(1), iX_E1(1)
+    DO iNodeX = 1       , nDOFX
 
-      DO iNodeX = 1, nDOFX
+      ! --- Initialize to flat spacetime ---
 
-        ! --- Initialize to flat spacetime ---
-        G(iNodeX,iX1,iX2,iX3,iGF_Phi_N)    = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_h_1)      = One
-        G(iNodeX,iX1,iX2,iX3,iGF_h_2)      = One
-        G(iNodeX,iX1,iX2,iX3,iGF_h_3)      = One
-        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) = One
-        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) = One
-        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) = One
-        G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)   = One
-        G(iNodeX,iX1,iX2,iX3,iGF_Alpha)    = One
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Psi)      = One
+      G(iNodeX,iX1,iX2,iX3,iGF_Phi_N)    = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_h_1)      = One
+      G(iNodeX,iX1,iX2,iX3,iGF_h_2)      = One
+      G(iNodeX,iX1,iX2,iX3,iGF_h_3)      = One
+      G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) = One
+      G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) = One
+      G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) = One
+      G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)   = One
+      G(iNodeX,iX1,iX2,iX3,iGF_Alpha)    = One
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Psi)      = One
 
-        CALL ComputeGeometryX_SpatialMetric &
-               ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
+      CALL ComputeGeometryX_SpatialMetric &
+             ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
+               G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
+               G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
 
-      END DO
-
+    END DO
     END DO
     END DO
     END DO
@@ -190,11 +189,21 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iNodeX
     INTEGER  :: nP_X, nX(3)
     REAL(DP) :: x1L_q, x2L_q, x1G_q, x2G_q
-    REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: Alpha_L(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: Psi_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+    REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+    REAL(DP) :: Alpha_L(nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+    REAL(DP) :: Psi_L  (nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
 
     nX   = iX_E1 - iX_B1 + 1
     nP_X = PRODUCT( nX )
@@ -204,62 +213,60 @@ CONTAINS
                 WidthX1  => MeshX(1) % Width, &
                 WidthX2  => MeshX(2) % Width )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA
-    !$OMP MAP( to: G, iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2 ) &
+    !$OMP MAP( to:    G, iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2 ) &
     !$OMP MAP( alloc: h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( G, iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2 ) &
-    !$ACC CREATE( h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+    !$ACC COPYIN(     G, iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2 ) &
+    !$ACC CREATE(     h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
 #endif
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( x1L_q, x2L_q, x1G_q, x2G_q )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( x1L_q, x2L_q, x1G_q, x2G_q )
-#elif defined( THORNADO_OMP )
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( x1L_q, x2L_q, x1G_q, x2G_q )
 #endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3    = iX_B1(3), iX_E1(3)
+    DO iX2    = iX_B1(2), iX_E1(2)
+    DO iX1    = iX_B1(1), iX_E1(1)
+    DO iNodeX = 1       , nDOFX
 
-      DO iNodeX = 1, nDOFX
+      ! --- Compute Geometry Fields in Lobatto Points ---
 
-        ! --- Compute Geometry Fields in Lobatto Points ---
+      ! --- Local Coordinates (Lobatto Points) ---
 
-        ! --- Local Coordinates (Lobatto Points) ---
+      x1L_q = NodesLX_q(1,iNodeX)
+      x2L_q = NodesLX_q(2,iNodeX)
 
-        x1L_q = NodesLX_q(1,iNodeX)
-        x2L_q = NodesLX_q(2,iNodeX)
+      ! --- Global Coordinates ---
 
-        ! --- Global Coordinates ---
+      x1G_q = CenterX1(iX1) + WidthX1(iX1) * x1L_q
+      x2G_q = CenterX2(iX2) + WidthX2(iX2) * x2L_q
 
-        x1G_q = CenterX1(iX1) + WidthX1(iX1) * x1L_q
-        x2G_q = CenterX2(iX2) + WidthX2(iX2) * x2L_q
+      ! --- Compute Lapse Function and Conformal Factor ---
 
-        ! --- Compute Lapse Function and Conformal Factor ---
+      Alpha_L(iNodeX,iX1,iX2,iX3) &
+        = LapseFunction  ( x1G_q, Mass )
+      Psi_L(iNodeX,iX1,iX2,iX3) &
+        = ConformalFactor( x1G_q, Mass )
 
-        Alpha_L(iNodeX,iX1,iX2,iX3) &
-          = LapseFunction  ( x1G_q, Mass )
-        Psi_L(iNodeX,iX1,iX2,iX3) &
-          = ConformalFactor( x1G_q, Mass )
+      ! --- Set Geometry in Lobatto Points ---
 
-        ! --- Set Geometry in Lobatto Points ---
+      h_1_L(iNodeX,iX1,iX2,iX3) &
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2
+      h_2_L(iNodeX,iX1,iX2,iX3) &
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q
+      h_3_L(iNodeX,iX1,iX2,iX3) &
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q )
 
-        h_1_L(iNodeX,iX1,iX2,iX3) &
-          = Psi_L(iNodeX,iX1,iX2,iX3)**2
-        h_2_L(iNodeX,iX1,iX2,iX3) &
-          = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q
-        h_3_L(iNodeX,iX1,iX2,iX3) &
-          = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q )
-
-      END DO
-
+    END DO
     END DO
     END DO
     END DO
@@ -291,44 +298,42 @@ CONTAINS
              Psi_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Psi), nDOFX )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
-#elif defined( THORNADO_OMP )
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3    = iX_B1(3), iX_E1(3)
+    DO iX2    = iX_B1(2), iX_E1(2)
+    DO iX1    = iX_B1(1), iX_E1(1)
+    DO iNodeX = 1       , nDOFX
 
-      DO iNodeX = 1, nDOFX
+      CALL ComputeGeometryX_SpatialMetric &
+             ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
+               G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
+               G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
 
-        CALL ComputeGeometryX_SpatialMetric &
-               ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
-
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
-
-      END DO
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) = Zero
 
     END DO
     END DO
     END DO
+    END DO
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA
     !$OMP MAP( from: G ) &
     !$OMP MAP( release: iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
     !$OMP               h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( G ) &
     !$ACC DELETE( iX_B1, iX_E1, CenterX1, CenterX2, WidthX1, WidthX2, &
@@ -367,31 +372,30 @@ CONTAINS
     ASSOCIATE ( CenterX1 => MeshX(1) % Center, &
                 WidthX1  => MeshX(1) % Width )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA
     !$OMP MAP( to: G, iX_B1, iX_E1, CenterX1, WidthX1 ) &
     !$OMP MAP( alloc: h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( G, iX_B1, iX_E1, CenterX1, WidthX1 ) &
     !$ACC CREATE( h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
 #endif
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( x1L_q, x1G_q )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( x1L_q, x1G_q )
-#elif defined( THORNADO_OMP )
+#elif defined( THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( x1L_q, x1G_q )
 #endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-
-      DO iNodeX = 1, nDOFX
+    DO iX3    = iX_B1(3), iX_E1(3)
+    DO iX2    = iX_B1(2), iX_E1(2)
+    DO iX1    = iX_B1(1), iX_E1(1)
+    DO iNodeX = 1       , nDOFX
 
         ! --- Local Coordinates (Lobatto Points) ---
 
@@ -417,8 +421,7 @@ CONTAINS
         h_3_L(iNodeX,iX1,iX2,iX3) &
           = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q
 
-      END DO
-
+    END DO
     END DO
     END DO
     END DO
@@ -450,48 +453,46 @@ CONTAINS
              Psi_L, nDOFX, Zero, &
              G(1,iX_B1(1),iX_B1(2),iX_B1(3),iGF_Psi), nDOFX )
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
-#elif defined( THORNADO_OMP )
+#elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3    = iX_B1(3), iX_E1(3)
+    DO iX2    = iX_B1(2), iX_E1(2)
+    DO iX1    = iX_B1(1), iX_E1(1)
+    DO iNodeX = 1       , nDOFX
 
-      DO iNodeX = 1, nDOFX
+      CALL ComputeGeometryX_SpatialMetric &
+             ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
+               G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
+               G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
 
-        CALL ComputeGeometryX_SpatialMetric &
-               ( G(iNodeX,iX1,iX2,iX3,iGF_h_1), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_h_2), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_h_3), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
-
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)   = Zero
-        G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)   = Zero
-
-      END DO
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) = Zero
 
     END DO
     END DO
     END DO
+    END DO
 
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA
-    !$OMP MAP( from: G ) &
+    !$OMP MAP( from:    G ) &
     !$OMP MAP( release: iX_B1, iX_E1, CenterX1, WidthX1, &
     !$OMP               h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( G ) &
-    !$ACC DELETE( iX_B1, iX_E1, CenterX1, WidthX1, &
-    !$ACC         h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
+    !$ACC COPYOUT(      G ) &
+    !$ACC DELETE(       iX_B1, iX_E1, CenterX1, WidthX1, &
+    !$ACC               h_1_L, h_2_L, h_3_L, Alpha_L, Psi_L )
 #endif
 
     END ASSOCIATE
@@ -501,9 +502,9 @@ CONTAINS
 
   SUBROUTINE ComputeGeometryX_SpatialMetric &
       ( h_1, h_2, h_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -520,9 +521,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryX_FromScaleFactors( G )
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -538,9 +539,9 @@ CONTAINS
 
 
   PURE REAL(DP) FUNCTION LapseFunction( R, M )
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
@@ -556,9 +557,9 @@ CONTAINS
 
 
   PURE REAL(DP) FUNCTION ConformalFactor( R, M )
-#if defined(THORNADO_OMP_OL)
+#if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
+#elif defined( THORNADO_OACC   )
     !$ACC ROUTINE SEQ
 #endif
 
