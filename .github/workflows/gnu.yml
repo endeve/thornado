@@ -8,7 +8,6 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       THORNADO_MACHINE: gh-runner_gnu
-      COMPILE_FROM_CI: true
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v3
@@ -61,7 +60,7 @@ jobs:
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
-          make -j8
+          make
           make clobber
 
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
@@ -73,11 +72,11 @@ jobs:
       - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
-          make -j8
+          make
           make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
-          make -j8
+          make
           make realclean
