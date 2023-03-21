@@ -44,6 +44,7 @@ MODULE FinalizationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uIR, &
     DestroyFields_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -54,7 +55,8 @@ MODULE FinalizationModule
   USE MF_TwoMoment_TimeSteppingModule_Relativistic, ONLY: &
     Finalize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeIntegral_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -67,9 +69,7 @@ MODULE FinalizationModule
     StepNo, &
     dt, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
 
   IMPLICIT NONE
   PRIVATE
@@ -81,29 +81,7 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL ComputeFromConserved_TwoMoment_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-    CALL ComputeFromConserved_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-    CALL WriteFieldsAMReX_PlotFile &
-           ( t_new(0), StepNo, MF_uGF, &
-             MF_uGF_Option = MF_uGF, &
-             MF_uCF_Option = MF_uCF, &
-             MF_uPF_Option = MF_uPF, &
-             MF_uAF_Option = MF_uAF, &
-             MF_uDF_Option = MF_uDF )
-
-    CALL WriteFieldsAMReX_Checkpoint &
-           ( StepNo, nLevels, dt, t_new, &
-             MF_uGF % BA % P, &
-             iWriteFields_uGF = 1, &
-             iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 1, &
-             pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P, &
-             pMF_uCR_Option = MF_uCR % P )
 
     CALL Finalize_IMEX_RK_MF
 
@@ -120,7 +98,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_TwoMoment_MF
 
-    CALL DestroyOpacities
+    !CALL DestroyOpacities
 
     CALL FinalizeEquationOfState
 
@@ -134,9 +112,6 @@ CONTAINS
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF

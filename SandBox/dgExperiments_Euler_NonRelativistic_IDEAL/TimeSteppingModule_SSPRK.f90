@@ -49,19 +49,18 @@ MODULE TimeSteppingModule_SSPRK
         SurfaceFlux_X2_Option, &
         SurfaceFlux_X3_Option )
       USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)     :: &
+      INTEGER,  INTENT(in)    :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(in)    :: &
         G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(inout) :: &
+        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      LOGICAL, INTENT(in), OPTIONAL :: &
+      LOGICAL,  INTENT(in),  OPTIONAL :: &
         SuppressBC_Option
-      LOGICAL, INTENT(in), OPTIONAL :: &
+      LOGICAL,  INTENT(in),  OPTIONAL :: &
         UseXCFC_Option
       REAL(DP), INTENT(out), OPTIONAL :: &
         SurfaceFlux_X1_Option(:,:,:,:,:), &

@@ -34,12 +34,12 @@ MODULE TwoMoment_OpacityModule_Relativistic
 CONTAINS
 
 
-  SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, kT, E0, mu0, R0, Verbose_Option )
+  SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, Sigma, kT, E0, mu0, R0, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi, Sigma, kT, E0, mu0, R0
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -65,17 +65,17 @@ CONTAINS
       CASE( 'HomogeneousSphere1D' )
 
         CALL SetOpacities_HomogeneousSphere1D &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+               ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
 
       CASE( 'HomogeneousSphere2D' )
 
         CALL SetOpacities_HomogeneousSphere2D &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+               ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
 
       CASE( 'HomogeneousSphereGR' )
 
         CALL SetOpacities_HomogeneousSphereGR &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, kT, E0, mu0, R0 )
+               ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
 
       CASE DEFAULT
 
@@ -83,18 +83,19 @@ CONTAINS
         uOP(:,:,:,:,:,iOP_Chi  ,:) = Chi
         uOP(:,:,:,:,:,iOP_Sigma,:) = Sigma
 
+
     END SELECT
 
   END SUBROUTINE SetOpacities
 
 
   SUBROUTINE SetOpacities_HomogeneousSphere1D &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+    ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi
 
@@ -105,9 +106,9 @@ CONTAINS
     REAL(DP) :: Radius
 
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
       DO iNodeZ = 1, nDOFZ
@@ -122,7 +123,6 @@ CONTAINS
           = Chi * Half * ( One - TANH( ( Radius - R_0 ) / L_R ) )
         uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
           = Zero
-
       END DO
 
     END DO
@@ -130,16 +130,17 @@ CONTAINS
     END DO
     END DO
     END DO
+
   END SUBROUTINE SetOpacities_HomogeneousSphere1D
 
 
   SUBROUTINE SetOpacities_HomogeneousSphere2D &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+    ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi
 
@@ -150,9 +151,9 @@ CONTAINS
     REAL(DP) :: E, X1_C, X2_C, X3_C, R_C, Spectrum
 
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
       X1_C = MeshX(1) % Center(iZ2)
@@ -195,24 +196,25 @@ CONTAINS
   END SUBROUTINE SetOpacities_HomogeneousSphere2D
 
   SUBROUTINE SetOpacities_HomogeneousSphereGR &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, kT, E0, mu0, R0 )
+    ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi, kT, E0, mu0, R0
 
-    REAL(DP), PARAMETER :: L_R = 10000.00_DP!1.0d-04  --- Smoothing Lenght
+    REAL(DP), PARAMETER :: L_R = 3000.0_DP!1.0d-04  --- Smoothing Lenght
 
     INTEGER  :: iNodeZ, iNodeZ2, iZ1, iZ2, iZ3, iZ4, iS, iNodeE, iNodeX
     REAL(DP) :: Radius, E, Spectrum
 
+
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
       DO iNodeZ = 1, nDOFZ
@@ -234,6 +236,7 @@ CONTAINS
           = Chi * ( E / E0 )**2 * Half * ( One - TANH( ( Radius - R0 ) / L_R ) )
         uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
           = Zero
+
       END DO
 
     END DO
@@ -243,9 +246,9 @@ CONTAINS
     END DO
   END SUBROUTINE SetOpacities_HomogeneousSphereGR
 
-  SUBROUTINE CreateOpacities( nX, swX, nE, swE, Verbose_Option )
+  SUBROUTINE CreateOpacities( iZ_B1, iZ_E1, iOS_CPP, Verbose_Option )
 
-    INTEGER, INTENT(in) :: nX(3), swX(3), nE, swE
+    INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4), iOS_CPP(3)
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
@@ -262,12 +265,13 @@ CONTAINS
         '', 'Simple Opacities, nSpecies = ', nSpecies
     END IF
 
+
     ALLOCATE &
       ( uOP(1:nDOFZ, &
-            1-swE:nE+swE, &
-            1-swX(1):nX(1)+swX(1), &
-            1-swX(2):nX(2)+swX(2), &
-            1-swX(3):nX(3)+swX(3), &
+            iZ_B1(1):iZ_E1(1), &
+            iZ_B1(2)-iOS_CPP(1):iZ_E1(2)-iOS_CPP(1), &
+            iZ_B1(3)-iOS_CPP(2):iZ_E1(3)-iOS_CPP(2), &
+            iZ_B1(4)-iOS_CPP(3):iZ_E1(4)-iOS_CPP(3), &
             1:nOP,1:nSpecies) )
 
   END SUBROUTINE CreateOpacities

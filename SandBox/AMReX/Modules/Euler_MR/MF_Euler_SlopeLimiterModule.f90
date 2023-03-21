@@ -16,6 +16,10 @@ MODULE MF_Euler_SlopeLimiterModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
@@ -43,15 +47,6 @@ MODULE MF_Euler_SlopeLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    BetaTVD_Euler, &
-    BetaTVB_Euler, &
-    SlopeTolerance_Euler, &
-    UseSlopeLimiter_Euler, &
-    UseCharacteristicLimiting_Euler, &
-    UseTroubledCellIndicator_Euler, &
-    SlopeLimiterMethod_Euler, &
-    LimiterThresholdParameter_Euler, &
-    UseConservativeCorrection_Euler, &
     nLevels, &
     swX, &
     UseTiling, &
@@ -65,8 +60,6 @@ MODULE MF_Euler_SlopeLimiterModule
     ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
-!!$  USE AverageDownModule, ONLY: &
-!!$    AverageDown
 
   IMPLICIT NONE
   PRIVATE
@@ -80,30 +73,72 @@ MODULE MF_Euler_SlopeLimiterModule
     MODULE PROCEDURE ApplySlopeLimiter_Euler_MF_SingleLevel
   END INTERFACE ApplySlopeLimiter_Euler_MF
 
+  LOGICAL :: UseSlopeLimiter
+
 CONTAINS
 
 
   SUBROUTINE InitializeSlopeLimiter_Euler_MF
 
+    TYPE(amrex_parmparse) :: PP
+
+    CHARACTER(:), ALLOCATABLE :: SlopeLimiterMethod
+    REAL(DP)                  :: BetaTVD, BetaTVB
+    REAL(DP)                  :: SlopeTolerance
+    LOGICAL                   :: UseCharacteristicLimiting
+    LOGICAL                   :: UseTroubledCellIndicator
+    REAL(DP)                  :: LimiterThresholdParameter
+    LOGICAL                   :: UseConservativeCorrection
+
+    UseSlopeLimiter           = .TRUE.
+    SlopeLimiterMethod        = 'TVD'
+    BetaTVD                   = 1.75_DP
+    BetaTVB                   = 0.00_DP
+    SlopeTolerance            = 1.0e-6_DP
+    UseCharacteristicLimiting = .TRUE.
+    UseTroubledCellIndicator  = .TRUE.
+    LimiterThresholdParameter = 0.03_DP
+    UseConservativeCorrection = .TRUE.
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter_Euler', &
+                        UseSlopeLimiter )
+      CALL PP % query( 'SlopeLimiterMethod_Euler', &
+                        SlopeLimiterMethod )
+      CALL PP % query( 'BetaTVD_Euler', &
+                        BetaTVD )
+      CALL PP % query( 'BetaTVB_Euler', &
+                        BetaTVB )
+      CALL PP % query( 'SlopeTolerance_Euler', &
+                        SlopeTolerance )
+      CALL PP % query( 'UseCharacteristicLimiting_Euler', &
+                        UseCharacteristicLimiting )
+      CALL PP % query( 'UseTroubledCellIndicator_Euler', &
+                        UseTroubledCellIndicator )
+      CALL PP % query( 'LimiterThresholdParameter_Euler', &
+                        LimiterThresholdParameter )
+      CALL PP % query( 'UseConservativeCorrection_Euler', &
+                        UseConservativeCorrection )
+    CALL amrex_parmparse_destroy( PP )
+
     CALL InitializeSlopeLimiter_Euler &
            ( BetaTVD_Option &
-               = BetaTVD_Euler, &
+               = BetaTVD, &
              BetaTVB_Option &
-               = BetaTVB_Euler, &
+               = BetaTVB, &
              SlopeTolerance_Option &
-               = SlopeTolerance_Euler, &
+               = SlopeTolerance, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter_Euler, &
+               = UseSlopeLimiter, &
              UseCharacteristicLimiting_Option &
-               = UseCharacteristicLimiting_Euler, &
+               = UseCharacteristicLimiting, &
              UseTroubledCellIndicator_Option &
-               = UseTroubledCellIndicator_Euler, &
+               = UseTroubledCellIndicator, &
              SlopeLimiterMethod_Option &
-               = SlopeLimiterMethod_Euler, &
+               = SlopeLimiterMethod, &
              LimiterThresholdParameter_Option &
-               = LimiterThresholdParameter_Euler, &
+               = LimiterThresholdParameter, &
              UseConservativeCorrection_Option &
-               = UseConservativeCorrection_Euler, &
+               = UseConservativeCorrection, &
              Verbose_Option &
                = amrex_parallel_ioprocessor() )
 
@@ -118,9 +153,8 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels &
-    ( Time, MF_uGF, MF_uCF, MF_uDF )
+    ( MF_uGF, MF_uCF, MF_uDF )
 
-    REAL(DP),             INTENT(in)    :: Time  (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
@@ -144,33 +178,27 @@ CONTAINS
       END IF
 
       CALL ApplySlopeLimiter_Euler_MF_SingleLevel &
-             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF )
+             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     END DO
-
-    ! --- Ensure underlying coarse cells are consistent with
-    !     cells on refined level ---
-
-!!$    CALL AverageDown( MF_uGF, MF_uCF )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_MF_SingleLevel &
-    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
-    INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
+    INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
-    TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -182,13 +210,15 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
-    IF( .NOT. UseSlopeLimiter_Euler ) RETURN
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillPatch( iLevel, MF_uGF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 

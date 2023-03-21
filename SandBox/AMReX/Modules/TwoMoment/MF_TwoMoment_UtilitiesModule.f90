@@ -35,7 +35,11 @@ MODULE MF_TwoMoment_UtilitiesModule
     iPR_D, &
     iPR_I1, &
     iPR_I2, &
-    iPR_I3
+    iPR_I3, &
+    iIR_RMS, &
+    iIR_Ynu, &
+    nIR, &
+    LeptonNumber
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -65,6 +69,13 @@ MODULE MF_TwoMoment_UtilitiesModule
     iGF_Beta_1, &
     iGF_Beta_2, &
     iGF_Beta_3
+  USE GeometryFieldsModuleE,     ONLY: &
+    uGE, &
+    nGE, &
+    iGE_Ep2, &
+    iGE_Ep3
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment_Vector_Richardson
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
@@ -73,7 +84,13 @@ MODULE MF_TwoMoment_UtilitiesModule
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    MeshE
+  USE UnitsModule, ONLY: &
+    AtomicMassUnit, &
+    SpeedOfLight, &
+    PlanckConstant
+
 
   ! --- Local Modules ---
 
@@ -81,7 +98,8 @@ MODULE MF_TwoMoment_UtilitiesModule
     DP, &
     Zero, &
     One, &
-    Two
+    Two, &
+    FourPi
   USE InputParsingModule, ONLY: &
     nLevels, &
     nSpecies, &
@@ -106,6 +124,8 @@ MODULE MF_TwoMoment_UtilitiesModule
   PUBLIC :: ComputeTimeStep_TwoMoment_Fancy_MF
   PUBLIC :: ComputeTimeStep_TwoMoment_MF
   PUBLIC :: ComputeFromConserved_TwoMoment_MF
+  PUBLIC :: ComputeIntegral_TwoMoment_MF
+
 
 CONTAINS
 
@@ -236,7 +256,8 @@ CONTAINS
     INTEGER :: ErrorExists
     INTEGER :: nIter(1)
 
-    INTEGER, ALLOCATABLE :: iErr_Euler(:,:,:,:)
+    INTEGER, ALLOCATABLE :: ITERATION_Euler(:,:,:,:)
+    INTEGER, ALLOCATABLE :: iErr_Euler     (:,:,:,:)
 
     DO iLevel = 0, nLevels-1
 
@@ -331,9 +352,12 @@ CONTAINS
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        ALLOCATE( iErr_Euler(1:nDOFX,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3)) )
+        ALLOCATE( ITERATION_Euler(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3)) )
+        ALLOCATE( iErr_Euler     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                          iX_B0(2):iX_E0(2), &
+                                          iX_B0(3):iX_E0(3)) )
 
         ErrorExists = 0
 
@@ -342,7 +366,8 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1       , nDOFX
 
-          iErr_Euler(iNX,iX1,iX2,iX3) = 0
+          ITERATION_Euler(iNX,iX1,iX2,iX3) = 0
+          iErr_Euler     (iNX,iX1,iX2,iX3) = 0
 
           CALL ComputePrimitive_Euler_Relativistic &
                ( CF(iNX,iX1,iX2,iX3,iCF_D ), &
@@ -360,7 +385,8 @@ CONTAINS
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 iErr = iErr_Euler(iNX,iX1,iX2,iX3) )
+                 ITERATION_Option = ITERATION_Euler(iNX,iX1,iX2,iX3), &
+                 iErr_Option      = iErr_Euler     (iNX,iX1,iX2,iX3) )
 
           ErrorExists = ErrorExists + iErr_Euler(iNX,iX1,iX2,iX3)
 
@@ -371,9 +397,7 @@ CONTAINS
 
         IF( ErrorExists .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ComputeFromConserved_TwoMoment_MF (Fluid)'
-          WRITE(*,*) 'iX_B0: ', iX_B0
-          WRITE(*,*) 'iX_E0: ', iX_E0
+          CALL CreateMesh_MF( iLevel, MeshX )
 
           DO iX3 = iX_B0(3), iX_E0(3)
           DO iX2 = iX_B0(2), iX_E0(2)
@@ -382,20 +406,31 @@ CONTAINS
 
             IF( iErr_Euler(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-              WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+            CALL DescribeError_Euler &
+              ( iErr_Euler(iNX,iX1,iX2,iX3), &
+                Int_Option = [ ITERATION_Euler(iNX,iX1,iX2,iX3), 99999999, &
+                               iX_B0(1), iX_B0(2), iX_B0(3), &
+                               iX_E0(1), iX_E0(2), iX_E0(3), &
+                               iNX, iX1, iX2, iX3 ], &
+                Real_Option = [ MeshX(1) % Center(iX1), &
+                                MeshX(2) % Center(iX2), &
+                                MeshX(3) % Center(iX3), &
+                                MeshX(1) % Width (iX1), &
+                                MeshX(2) % Width (iX2), &
+                                MeshX(3) % Width (iX3), &
+                                CF(iNX,iX1,iX2,iX3,iCF_D ), &
+                                CF(iNX,iX1,iX2,iX3,iCF_S1), &
+                                CF(iNX,iX1,iX2,iX3,iCF_S2), &
+                                CF(iNX,iX1,iX2,iX3,iCF_S3), &
+                                CF(iNX,iX1,iX2,iX3,iCF_E ), &
+                                CF(iNX,iX1,iX2,iX3,iCF_Ne), &
+                                G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+                Char_Option = [ 'NA' ], &
+                Message_Option &
+                  = 'Calling from ComputeFromConserved_TwoMoment_MF (Fluid)' )
 
-              CALL DescribeError_Euler &
-                ( iErr_Euler(iNX,iX1,iX2,iX3), &
-                  Int_Option = [ iNX ], &
-                  Real_Option = [ CF(iNX,iX1,iX2,iX3,iCF_D ), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_S1), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_S2), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_S3), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_E ), &
-                                  CF(iNX,iX1,iX2,iX3,iCF_Ne), &
-                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                  G (iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
 
             END IF
 
@@ -403,6 +438,8 @@ CONTAINS
           END DO
           END DO
           END DO
+
+          CALL DestroyMesh_MF( MeshX )
 
         END IF
 
@@ -501,7 +538,8 @@ CONTAINS
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        DEALLOCATE( iErr_Euler )
+        DEALLOCATE( ITERATION_Euler )
+        DEALLOCATE( iErr_Euler      )
 
         CALL DeallocateArray_Z &
                ( [ 1       , &
@@ -658,6 +696,197 @@ CONTAINS
     dt = MINVAL( dt_min )
     END ASSOCIATE
   END SUBROUTINE CalculateTimeStep
+
+  SUBROUTINE ComputeIntegral_TwoMoment_MF &
+    ( MF_uGF, MF_uPF, MF_uPR,  MF_uIR )
+
+
+    TYPE(amrex_multifab), INTENT(in)    :: &
+      MF_uGF(0:nLevels-1), MF_uPR(0:nLevels-1), MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: &
+      MF_uIR(0:nLevels-1)
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uIR(:,:,:,:)
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PR(:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: IR(:,:,:,:,:)
+
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel, iLo_MF(4)
+
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uPF => MF_uPF(iLevel) % DataPtr( MFI )
+        uPR => MF_uPR(iLevel) % DataPtr( MFI )
+        uIR => MF_uIR(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        iZ_B0(1) = iE_B0
+        iZ_E0(1) = iE_E0
+        iZ_B1(1) = iE_B1
+        iZ_E1(1) = iE_E1
+
+        iZ_B0(2:4) = iX_B0
+        iZ_E0(2:4) = iX_E0
+        iZ_B1(2:4) = iX_B1
+        iZ_E1(2:4) = iX_E1
+
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
+
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nIR ], &
+                 IR )
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 PR )
+
+
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+
+        CALL amrex2thornado_X &
+               ( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, PF )
+
+        CALL amrex2thornado_X &
+               ( nIR, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uIR, IR )
+
+        CALL amrex2thornado_Z &
+               ( nPR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
+
+        CALL ComputeIntegral_TwoMoment &
+              ( iZ_B1, iZ_E1, iZ_B0, iZ_E0, &
+                PF, PR, IR )
+
+        CALL thornado2amrex_X &
+               ( nIR, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uIR, IR )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+
+  END SUBROUTINE ComputeIntegral_TwoMoment_MF
+
+  SUBROUTINE ComputeIntegral_TwoMoment &
+    ( iZ_B1, iZ_E1, iZ_B0, iZ_E0, uPF, uPR, I  )
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      uPF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPF)
+    REAL(DP), INTENT(in) :: &
+      uPR (1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(inout)    :: &
+      I(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nIR)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iNodeE, iNodeX, iS, iNodeZ
+    REAL (DP) :: RMSnum, RMSdenom, Nnu
+
+    ASSOCIATE &
+      ( dZ1 => MeshE  % Width )
+
+
+
+    RMSnum   = 0.0_DP
+    RMSdenom = 0.0_DP
+    Nnu = 0.0_DP
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iNodeX = 1, nDOFX
+
+    DO iS  = 1, nSpecies
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+        RMSnum = RMSnum &
+               + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+               * uGE(iNodeE,iZ1,iGE_Ep3) * uGE(iNodeE,iZ1,iGE_Ep2) &
+               * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
+
+        RMSdenom = RMSdenom &
+                 + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+                 * uGE(iNodeE,iZ1,iGE_Ep3) * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
+
+        Nnu = Nnu &
+               + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
+               * uGE(iNodeE,iZ1,iGE_Ep2) * LeptonNumber(iS) &
+               * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
+
+      END DO
+
+    END DO
+    END DO
+      I(iNodeX,iZ2,iZ3,iZ4,iIR_RMS) = SQRT( RMSnum / RMSdenom )
+
+      I(iNodeX,iZ2,iZ3,iZ4,iIR_Ynu) = Nnu * AtomicMassUnit / ( PlanckConstant * SpeedOfLight )**3 &
+                                    / uPF(iNodeX,iZ2,iZ3,iZ4,iPF_D)
+
+
+
+      RMSnum   = 0.0_DP
+      RMSdenom = 0.0_DP
+      Nnu = 0.0_DP
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END ASSOCIATE
+
+  END SUBROUTINE ComputeIntegral_TwoMoment
 
 
 END MODULE MF_TwoMoment_UtilitiesModule

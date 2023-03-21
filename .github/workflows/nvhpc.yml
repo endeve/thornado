@@ -1,10 +1,6 @@
 name: Compile with nvhpc compiler
 
-on:
-  push:
-    branches:   [ master ]
-  pull_request:
-    branches:   [ master ]
+on: [ push, pull_request ]
 
 jobs:
   compile-with-nvhpc:
@@ -146,24 +142,33 @@ jobs:
           echo "ls ${NVHPC_ROOT}/math_libs/lib64"
           ls ${NVHPC_ROOT}/math_libs/lib64
 
-      - name: Compile thornado (Relativistic, IDEAL)
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables/
           make OPT_LEVEL=DEBUG \
                HYDRO=RELATIVISTIC \
-               HYDRO_RIEMANN_SOLVER=HLL \
                USE_GPU=TRUE \
                USE_OACC=TRUE \
                USE_CUBLAS=TRUE \
                ApplicationDriver
+          make clobber
 
-      - name: Compile thornado (Non-Relativistic, TABLE)
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables/
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables/
           make OPT_LEVEL=DEBUG \
-               HYDRO=NONRELATIVISTIC \
-               HYDRO_RIEMANN_SOLVER=HLL \
                USE_GPU=TRUE \
                USE_OACC=TRUE \
                USE_CUBLAS=TRUE \
                ApplicationDriver
+          make clobber
+
+      - name: Compile SandBox/TwoMoment_OrderV/Executables/
+        run: |
+          cd ${THORNADO_DIR}/SandBox/TwoMoment_OrderV/Executables/
+          make OPT_LEVEL=DEBUG \
+               USE_GPU=TRUE \
+               USE_OACC=TRUE \
+               USE_CUBLAS=TRUE \
+               ApplicationDriver
+          make clobber

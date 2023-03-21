@@ -29,29 +29,6 @@ clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
 
-ApplicationDriver.o: \
-  KindModule.o \
-  ProgramInitializationModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  EquationOfStateModule.o \
-  ProgramHeaderModule.o \
-  InitializationModule_Relativistic.o \
-  Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
-  Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  InputOutputModuleHDF.o \
-  FluidFieldsModule.o \
-  GeometryFieldsModule.o \
-  GravitySolutionModule_CFA_Poseidon.o \
-  Euler_dgDiscretizationModule.o \
-  TimeSteppingModule_SSPRK.o \
-  UnitsModule.o \
-  Euler_TallyModule_Relativistic.o \
-  TimersModule_Euler.o \
-  Poseidon_UtilitiesModule.o \
-  ApplicationDriver.f90
-
 Poseidon_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -88,3 +65,27 @@ TimeSteppingModule_SSPRK.o: \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90
+
+ApplicationDriver.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  EquationOfStateModule.o \
+  ProgramHeaderModule.o \
+  InitializationModule_Relativistic.o \
+  Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  InputOutputModuleHDF.o \
+  FluidFieldsModule.o \
+  GeometryFieldsModule.o \
+  GravitySolutionModule_CFA_Poseidon.o \
+  Euler_dgDiscretizationModule.o \
+  TimeSteppingModule_SSPRK.o \
+  UnitsModule.o \
+  Euler_TallyModule_Relativistic.o \
+  TimersModule_Euler.o \
+  Poseidon_UtilitiesModule.o \
+  ApplicationDriver.f90
+

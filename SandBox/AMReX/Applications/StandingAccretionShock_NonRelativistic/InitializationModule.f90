@@ -38,9 +38,6 @@ MODULE InitializationModule
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_foextrap, &
-    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
@@ -144,8 +141,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    lo_bc, &
-    hi_bc, &
     ProgramName, &
     TagCriteria, &
     nRefinementBuffer, &
@@ -174,6 +169,8 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
+    INTEGER :: iLevel
+
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
@@ -193,12 +190,6 @@ CONTAINS
 
     CALL CreateFields_Geometry_MF
     CALL CreateFields_Euler_MF
-
-    ALLOCATE( lo_bc(1:amrex_spacedim,1) )
-    ALLOCATE( hi_bc(1:amrex_spacedim,1) )
-
-    lo_bc = amrex_bc_bogus
-    hi_bc = amrex_bc_bogus
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
@@ -273,10 +264,14 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-    ELSE
+      DO iLevel = 0, nLevels-1
 
-      CALL amrex_init_from_scratch( 0.0_DP )
-      ! nLevels read from checkpoint file
+        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+      END DO
+
+    ELSE
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
@@ -284,7 +279,7 @@ CONTAINS
 
     CALL InitializePositivityLimiter_Euler_MF
 
-    CALL AverageDown( MF_uGF, MF_uGF )
+    CALL AverageDown( MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
 
     t_old = t_new
@@ -297,7 +292,7 @@ CONTAINS
     CALL DescribeProgramHeader_AMReX
 
     CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, MF_uDF )
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -372,9 +367,6 @@ CONTAINS
 
     CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
-
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
@@ -408,9 +400,9 @@ CONTAINS
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -451,9 +443,9 @@ CONTAINS
     CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
 
     CALL ClearLevel( iLevel )
 
