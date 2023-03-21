@@ -1,0 +1,83 @@
+name: Compile with gnu compiler
+
+on: [ push, pull_request ]
+
+jobs:
+  compile-with-amrex_gnu:
+    name: Compile thornado with gnu compiler on Ubuntu
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_gnu
+      COMPILE_FROM_CI: true
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install libhdf5-dev
+          sudo apt-get -y install mpich
+          sudo apt-get -y update
+
+      - name: Set Environment Variables for Software
+        run: |
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"                       >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"                >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"                    >> ${GITHUB_ENV}
+          echo "HDF5_ROOT=/usr/lib/x86_64-linux-gnu/hdf5/serial"        >> ${GITHUB_ENV}
+          echo "LAPACK_ROOT=/usr/lib/x86_64-linux-gnu/lapack"           >> ${GITHUB_ENV}
+          echo "BLAS_ROOT=/usr/lib/x86_64-linux-gnu/blas"               >> ${GITHUB_ENV}
+          echo "HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/serial"         >> ${GITHUB_ENV}
+          echo "HDF5_INC=/usr/lib/x86_64-linux-gnu/hdf5/serial/include" >> ${GITHUB_ENV}
+          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial/lib"     >> ${GITHUB_ENV}
+          echo "LAPACK_DIR=/usr/lib/x86_64-linux-gnu/lapack"            >> ${GITHUB_ENV}
+          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu/lapack"            >> ${GITHUB_ENV}
+
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+          make -j8
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+          make -j8
+          make realclean
+
+      - name: Compile SandBox/AMReX/TwoMoment_Test
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
+          make -j8
+          make realclean

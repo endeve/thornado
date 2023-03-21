@@ -10,7 +10,9 @@ MODULE ProgenitorModule
   USE UtilitiesModule, ONLY: &
     WriteVector
 
+#ifndef THORNADO_NOHDF
   USE HDF5
+#endif
 
   IMPLICIT NONE
   PRIVATE
@@ -35,6 +37,8 @@ CONTAINS
     CHARACTER(LEN=*),       INTENT(in)  :: FileName
     TYPE(ProgenitorType1D), INTENT(out) :: P1D
     LOGICAL,                INTENT(in), OPTIONAL :: Verbose_Option
+
+#ifndef THORNADO_NOHDF
 
     INTEGER(HID_T) :: FileID
     INTEGER, DIMENSION(3) :: Dims
@@ -91,8 +95,11 @@ CONTAINS
     P1D % ElectronFraction &
       = P1D % ElectronFraction
 
+#endif
+
   END SUBROUTINE ReadProgenitor1D
 
+#ifndef THORNADO_NOHDF
 
   SUBROUTINE CreateProgenitor1D( nPoints, Progenitor1D )
 
@@ -187,5 +194,6 @@ CONTAINS
 
   END SUBROUTINE ReadFloat3Dto1D
 
+#endif
 
 END MODULE ProgenitorModule
