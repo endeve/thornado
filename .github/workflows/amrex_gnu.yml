@@ -1,0 +1,60 @@
+name: Compile with amrex and gnu compiler
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile-with-amrex_gnu:
+    name: Compile thornado with amrex and gnu compiler on Ubuntu
+    runs-on: ubuntu-latest
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-latest
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+
+      - name: Update Ubuntu
+        run: |
+          git branch
+          sudo apt-get -qq update
+
+      - name: Set Environment Variables for Software
+        run: |
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"        >> ${GITHUB_ENV}
+          echo "HDF5_DIR=${GITHUB_WORKSPACE}/hdf5"       >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/nvhpc"     >> ${GITHUB_ENV}
+
+      - name: Check Environment
+        run: |
+          echo ""
+          echo "ls ${THORNADO_DIR}"
+          ls ${THORNADO_DIR}
+          echo ""
+          echo "ls ${HDF5_DIR}"
+          ls ${HDF5_DIR}
+          echo ""
+          echo "ls ${WEAKLIB_DIR}"
+          ls ${WEAKLIB_DIR}
+          echo ""
+          echo "ls ${AMREX_DIR}"
+          ls ${AMREX_DIR}
+
+      - name: Compile thornado (Relativistic, IDEAL)
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR/
+          make
