@@ -1,10 +1,6 @@
 name: Compile with nvhpc compiler
 
-on:
-  push:
-    branches:   [ master ]
-  pull_request:
-    branches:   [ master ]
+on: [ push, pull_request ]
 
 jobs:
   compile-with-nvhpc:
