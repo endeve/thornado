@@ -2,7 +2,7 @@ name: Compile with nvhpc compiler
 
 on:
   push:
-    branches:   [ master, InterfaceWithPoseidon ]
+    branches:   [ master ]
   pull_request:
     branches:   [ master ]
 

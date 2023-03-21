@@ -229,14 +229,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-    !$OMP             dX1, dX2, dX3 ) &
-    !$OMP MAP( alloc: dU, tau )
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
+    !$OMP MAP( alloc: dU, tau, SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-    !$ACC             dX1, dX2, dX3 ) &
-    !$ACC CREATE(     dU, tau )
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
+    !$ACC CREATE(     dU, tau, SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -352,14 +350,38 @@ CONTAINS
     CALL ComputeIncrement_Euler_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
 
-    IF( PRESENT( SurfaceFlux_X1_Option ) ) &
+    IF( PRESENT( SurfaceFlux_X1_Option ) )THEN
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE FROM( SurfaceFlux_X1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC UPDATE HOST       ( SurfaceFlux_X1 )
+#endif
+#endif
       SurfaceFlux_X1_Option = SurfaceFlux_X1
+    END IF
 
-    IF( PRESENT( SurfaceFlux_X2_Option ) ) &
+    IF( PRESENT( SurfaceFlux_X2_Option ) )THEN
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE FROM( SurfaceFlux_X2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC UPDATE HOST       ( SurfaceFlux_X2 )
+#endif
+#endif
       SurfaceFlux_X2_Option = SurfaceFlux_X2
+    END IF
 
-    IF( PRESENT( SurfaceFlux_X3_Option ) ) &
+    IF( PRESENT( SurfaceFlux_X3_Option ) )THEN
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE FROM( SurfaceFlux_X3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC UPDATE HOST       ( SurfaceFlux_X3 )
+#endif
+#endif
       SurfaceFlux_X3_Option = SurfaceFlux_X3
+    END IF
 
     CALL TimersStop_Euler( Timer_Euler_Divergence )
 
@@ -426,13 +448,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    dU, U, D ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, tau, &
-    !$OMP               dX1, dX2, dX3 )
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau, &
+    !$OMP               SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 ) &
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      dU, U, D ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, tau, &
-    !$ACC               dX1, dX2, dX3 )
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau, &
+    !$ACC               SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
@@ -565,7 +587,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X1, SurfaceFlux_X1 )
+    !$OMP             NumericalFlux, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
@@ -576,7 +598,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X1, SurfaceFlux_X1 )
+    !$ACC             NumericalFlux, Flux_q, dU_X1 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -1134,7 +1156,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X1, iErr ) &
+    !$OMP MAP( from:    NumericalFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1144,7 +1166,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X1, iErr ) &
+    !$ACC COPYOUT(      NumericalFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -1320,7 +1342,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X2, SurfaceFlux_X2 )
+    !$OMP             NumericalFlux, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
@@ -1331,7 +1353,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X2, SurfaceFlux_X2 )
+    !$ACC             NumericalFlux, Flux_q, dU_X2 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -1889,7 +1911,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X2, iErr ) &
+    !$OMP MAP( from:    NumericalFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1899,7 +1921,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X2, iErr ) &
+    !$ACC COPYOUT(      NumericalFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -2075,7 +2097,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X3, SurfaceFlux_X3 )
+    !$OMP             NumericalFlux, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
@@ -2086,7 +2108,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X3, SurfaceFlux_X3 )
+    !$ACC             NumericalFlux, Flux_q, dU_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -2643,7 +2665,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X3, iErr ) &
+    !$OMP MAP( from:    NumericalFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -2653,7 +2675,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X3, iErr ) &
+    !$ACC COPYOUT(      NumericalFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
