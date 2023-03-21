@@ -878,17 +878,17 @@ CONTAINS
            jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
 
            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
+             = + U(jNodeX,iX_B0(1)+iX1-1,iX2,iX3,iCF_D)
            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-             = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
+             = - U(jNodeX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S1)
            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
+             = + U(jNodeX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S2)
            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
+             = + U(jNodeX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S3)
            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
+             = + U(jNodeX,iX_B0(1)+iX1-1,iX2,iX3,iCF_E)
            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
+             = + U(jNodeX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Ne)
 
          END DO
          END DO
@@ -958,7 +958,7 @@ CONTAINS
                                ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
 
                     U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = - U(jNodeZ,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                      = - U(jNodeZ,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
 
                   END DO
                   END DO
@@ -980,7 +980,7 @@ CONTAINS
                                ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
 
                     U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(jNodeZ,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                      = U(jNodeZ,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
 
                   END DO
                   END DO
@@ -992,7 +992,7 @@ CONTAINS
                   DO iNode = 1, nDOF
 
                     U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                      = U(iNode,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
 
                   END DO
 
