@@ -116,6 +116,20 @@ MODULE RadiationFieldsModule
                 'Lagrangian Eddington Factor       ', &
                 'Lagrangian Heat Flux Factor       ' ]
 
+  CHARACTER(6), DIMENSION(nGR), PUBLIC, PARAMETER :: &
+    ShortNamesGR = [ 'GR_N  ', &
+                     'GR_D  ', &
+                     'GR_I1 ', &
+                     'GR_I2 ', &
+                     'GR_I3 ', &
+                     'GR_J  ', &
+                     'GR_H1 ', &
+                     'GR_H2 ', &
+                     'GR_H3 ', &
+                     'GR_RMS', &
+                     'GR_F  ', &
+                     'GR_K  ', &
+                     'GR_Q  ' ]
   REAL(DP), DIMENSION(nGR), PUBLIC :: unitsGR
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uGR(:,:,:,:,:,:)
@@ -140,21 +154,6 @@ MODULE RadiationFieldsModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uDR(:,:,:,:)
 
-  ! --- Integrated Radiation Fields ---
-
-  INTEGER, PUBLIC, PARAMETER :: iIR_RMS  = 1  ! RMS Energy
-  INTEGER, PUBLIC, PARAMETER :: iIR_Ynu  = 2  ! Ynu
-  INTEGER, PUBLIC, PARAMETER :: nIR      = 2  ! n Integrated Radiation Fields
-
-  REAL(DP), DIMENSION(nIR), PUBLIC :: unitsIR
-
-  CHARACTER(7), DIMENSION(nIR), PUBLIC, PARAMETER :: &
-    namesIR = [ 'RMS Energy', &
-                'Ynu       ']
-
-  CHARACTER(6),  DIMENSION(nIR), PUBLIC, PARAMETER :: &
-    ShortNamesIR = [ 'IR_RMS', &
-                     'IR_Ynu' ]
 
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
@@ -469,14 +468,6 @@ CONTAINS
 
     END IF
 
-    IF( UnitsActive )THEN
-
-      ! --- Gray Units ---
-
-      unitsIR(iIR_RMS)   = MeV
-      unitsIR(iIR_Ynu)   = One
-
-    END IF
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
