@@ -33,7 +33,7 @@ PROGRAM main
     MF_uDF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
-    MF_uIR, &
+    MF_uGR, &
     MF_uPR
   USE InitializationModule, ONLY: &
     InitializeProgram
@@ -45,7 +45,7 @@ PROGRAM main
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeTimeStep_TwoMoment_Fancy_MF, &
     ComputeFromConserved_TwoMoment_MF, &
-    ComputeIntegral_TwoMoment_MF
+    ComputeGray_TwoMoment_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_IMEX, ONLY: &
@@ -238,9 +238,10 @@ CONTAINS
       CALL ComputeFromConserved_TwoMoment_MF &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-     CALL ComputeIntegral_TwoMoment_MF & 
-            ( MF_uGF, MF_uPF, MF_uPR, MF_uIR )
 
+      CALL ComputeGray_TwoMoment_MF &
+             ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
+  
       CALL WriteFieldsAMReX_PlotFile &
              ( t_new(0), StepNo, MF_uGF, &
                MF_uGF_Option = MF_uGF, &
@@ -248,11 +249,11 @@ CONTAINS
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF, &
-               MF_uCR_Option = MF_uCR, &
                MF_uPR_Option = MF_uPR, &
-               MF_uIR_Option = MF_uIR )
-
-      CALL ComputeTally_Euler_MF &
+               MF_uCR_Option = MF_uCR, &
+               MF_uGR_Option = MF_uGR )
+  
+        CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, &
                Verbose_Option = .FALSE. )
                !Verbose_Option = amrex_parallel_ioprocessor() )
