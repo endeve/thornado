@@ -172,6 +172,14 @@ PROGRAM ApplicationDriver
                MF_uAM_Option = MF_uAM, &
                MF_uDM_Option = MF_uDM )
 
+      IF( WriteNodalData )THEN
+
+        WRITE( NodalFileBaseName, '(I6.6)' ) StepNo
+
+        CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
+
+      END IF
+
       wrt = .FALSE.
 
     END IF
