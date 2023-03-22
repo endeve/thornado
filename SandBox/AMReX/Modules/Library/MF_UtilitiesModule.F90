@@ -150,6 +150,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
   PUBLIC :: thornado2amrex_Z
+  PUBLIC :: amrex2thornado_Integrated
+  PUBLIC :: thornado2amrex_Integrated
   PUBLIC :: amrex2amrex_permute_Z
   PUBLIC :: amrex_permute2amrex_Z
   PUBLIC :: MF_amrex2amrex_permute_Z_Level
@@ -162,6 +164,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: DeallocateArray_X
   PUBLIC :: AllocateArray_Z
   PUBLIC :: DeallocateArray_Z
+  PUBLIC :: AllocateArray_Integrated
+  PUBLIC :: DeallocateArray_Integrated
   PUBLIC :: PrintBoxArray
 
   INTERFACE MultiplyWithMetric
@@ -651,6 +655,81 @@ CONTAINS
 
   END SUBROUTINE thornado2amrex_Z
 
+  SUBROUTINE amrex2thornado_Integrated &
+    ( nFields, nS, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, &
+      Data_amrex, Data_thornado )
+
+    INTEGER,  INTENT(in)  :: nFields, nS
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), iLo_MF(4)
+    REAL(DP), INTENT(in)  :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(out) :: &
+      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+
+    INTEGER :: iX1, iX2, iX3, iS, iFd, iD, iNodeX
+
+    DO iS  = 1      , nS
+    DO iFd = 1      , nFields
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
+
+      DO iNodeX = 1    , nDOFX
+
+        iD = ( iS - 1 ) * nFields * nDOFX &
+                + ( iFd - 1 ) * nDOFX &
+                + iNodeX
+
+        Data_thornado(iNodeX,iX1,iX2,iX3,iFd,iS) &
+          = Data_amrex(iX1,iX2,iX3,iD)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE amrex2thornado_Integrated
+
+  SUBROUTINE thornado2amrex_Integrated &
+    ( nFields, nS, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, &
+      Data_amrex, Data_thornado )
+
+    INTEGER,  INTENT(in)  :: nFields, nS
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), iLo_MF(4)
+    REAL(DP), INTENT(out)  :: &
+      Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+    REAL(DP), INTENT(in) :: &
+      Data_thornado(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+
+    INTEGER :: iX1, iX2, iX3, iS, iFd, iD, iNodeX
+
+    DO iS  = 1      , nS
+    DO iFd = 1      , nFields
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
+
+      DO iNodeX = 1    , nDOFX
+
+        iD = ( iS - 1 ) * nFields * nDOFX &
+                + ( iFd - 1 ) * nDOFX &
+                + iNodeX
+
+        Data_amrex(iX1,iX2,iX3,iD) &
+          = Data_thornado(iNodeX,iX1,iX2,iX3,iFd,iS)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE thornado2amrex_Integrated
 
   SUBROUTINE thornado2amrex_X_F &
     ( nDOFX_X, nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, &
@@ -1478,6 +1557,34 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_Allocate_Z )
 
   END SUBROUTINE DeallocateArray_Z
+
+  SUBROUTINE AllocateArray_Integrated( iLo, iHi, A )
+
+    INTEGER ,              INTENT(in)    :: iLo(6), iHi(6)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:,:)
+
+
+    ALLOCATE( A(iLo(1):iHi(1), &
+                iLo(2):iHi(2), &
+                iLo(3):iHi(3), &
+                iLo(4):iHi(4), &
+                iLo(5):iHi(5), &
+                iLo(6):iHi(6)) )
+
+
+  END SUBROUTINE AllocateArray_Integrated
+
+
+  SUBROUTINE DeallocateArray_Integrated( iLo, iHi, A )
+
+    INTEGER ,              INTENT(in)    :: iLo(6), iHi(6)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:,:)
+
+
+    DEALLOCATE( A )
+
+
+  END SUBROUTINE DeallocateArray_Integrated
 
   SUBROUTINE amrex2amrex_permute_Z &
     ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
