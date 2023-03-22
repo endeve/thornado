@@ -444,14 +444,12 @@ CONTAINS
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
-print*, "here1"
     CALL Initialize_IMEX_RK_MF &
            ( Scheme, MF_uGF % BA, MF_uGF % DM, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
 
-print*, "here2"
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -459,11 +457,9 @@ print*, "here2"
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
 
-print*, "here3"
     CALL ComputeGray_TwoMoment_MF &
            ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
-print*, "here4"
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
@@ -475,7 +471,6 @@ print*, "here4"
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
 
-print*, "here5"
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
