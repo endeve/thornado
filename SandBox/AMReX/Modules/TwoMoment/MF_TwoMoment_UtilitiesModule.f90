@@ -744,12 +744,10 @@ CONTAINS
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLevel, iLo_MF(4)
 
-print*, "here1a"
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
-print*, "here1b"
       DO WHILE( MFI % next() )
 
 
@@ -757,10 +755,8 @@ print*, "here1b"
         uPF => MF_uPF(iLevel) % DataPtr( MFI )
         uCR => MF_uCR(iLevel) % DataPtr( MFI )
         uPR => MF_uPR(iLevel) % DataPtr( MFI )
-print*, "here1c"
         uGR => MF_uGR(iLevel) % DataPtr( MFI )
 
-print*, "here1d"
         iLo_MF = LBOUND( uGF )
 
         BX = MFI % tilebox()
