@@ -1,6 +1,7 @@
 name: Compile with gnu compiler
 
-on: [ push, pull_request ]
+on:
+  branch: [ master ]
 
 jobs:
   compile-with-amrex_gnu:
