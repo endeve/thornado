@@ -1,6 +1,8 @@
 name: Compile on Ubuntu-22.04 with nvhpc compilers
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches: [ master ]
 
 jobs:
   compile-with-nvhpc:

@@ -1,6 +1,8 @@
 name: Compile on Ubuntu-22.04 with gnu compilers
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches: [ master ]
 
 jobs:
   compile-with-amrex_gnu:
