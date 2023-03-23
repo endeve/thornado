@@ -33,6 +33,7 @@ MODULE MF_Euler_TallyModule
     CreateMesh, &
     DestroyMesh
   USE GeometryFieldsModule, ONLY: &
+    iGF_Alpha, &
     iGF_SqrtGm, &
     nGF, &
     CoordinateSystem
@@ -510,7 +511,8 @@ CONTAINS
             + d3X &
                 * WeightsX_q(iNX) &
                 * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_E)
+                * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                * ( U(iNX,iX1,iX2,iX3,iCF_E) + U(iNX,iX1,iX2,iX3,iCF_D) )
 
       ElectronNumber_Interior &
         = ElectronNumber_Interior &

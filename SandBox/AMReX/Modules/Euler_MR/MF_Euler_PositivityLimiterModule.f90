@@ -258,11 +258,11 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL ApplyPositivityLimiter_Euler &
-             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
+      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
+      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDF, D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &

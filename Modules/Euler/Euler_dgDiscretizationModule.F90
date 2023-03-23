@@ -550,6 +550,11 @@ CONTAINS
                     iX_B0(3):iX_E0(3), &
                     iX_B0(1):iX_E0(1)+1)
     REAL(DP) :: &
+      KomarMassFlux(nDOFX_X1, &
+                    iX_B0(2):iX_E0(2), &
+                    iX_B0(3):iX_E0(3), &
+                    iX_B0(1):iX_E0(1)+1)
+    REAL(DP) :: &
       Flux_q(nDOFX,nCF, &
              iX_B0(2):iX_E0(2), &
              iX_B0(3):iX_E0(3), &
@@ -587,7 +592,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X1 )
+    !$OMP             NumericalFlux, KomarMassFlux, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
@@ -598,7 +603,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X1 )
+    !$ACC             NumericalFlux, KomarMassFlux, Flux_q, dU_X1 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -831,6 +836,7 @@ CONTAINS
 
  ! Initializations needed in debug mode
  NumericalFlux  = Zero
+ KomarMassFlux  = Zero
  Flux_q         = Zero
  SurfaceFlux_X1 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
@@ -850,7 +856,7 @@ CONTAINS
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
     !$ACC          Alpha_F, Beta_1_F, &
     !$ACC          iErr, &
-    !$ACC          uCF_L, uCF_R, uDF_L, uDF_R, NumericalFlux, &
+    !$ACC          uCF_L, uCF_R, uDF_L, uDF_R, NumericalFlux, KomarMassFlux, &
     !$ACC          dX2, dX3, WeightsX_X1, IndexTableX_F, SurfaceFlux_X1 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -1013,6 +1019,11 @@ CONTAINS
 
       END DO ! iCF
 
+      KomarMassFlux(iNX,iX2,iX3,iX1) &
+        = Alpha_F(iNX_X) * ( Flux_F(iCF_E) + Flux_F(iCF_D) ) &
+            * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX2(iX2) * dX3(iX3) &
+            * WeightsX_X1(iNX)
+
     END DO ! iNX_X
 
     CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
@@ -1156,7 +1167,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, iErr ) &
+    !$OMP MAP( from:    NumericalFlux, KomarMassFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1166,7 +1177,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, iErr ) &
+    !$ACC COPYOUT(      NumericalFlux, KomarMassFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -1185,13 +1196,41 @@ CONTAINS
     DO iCF   = 1       , nCF
     DO iNX_X = 1       , nDOFX_X1
 
-      OffGridFlux_Euler_X1_Inner(iCF) &
-        = OffGridFlux_Euler_X1_Inner(iCF) &
-            + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_B0(1))
+#ifdef HYDRO_RELATIVISTIC
 
-      OffGridFlux_Euler_X1_Outer(iCF) &
-        = OffGridFlux_Euler_X1_Outer(iCF) &
-            + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1)
+      IF( iCF .NE. iCF_E )THEN
+
+        OffGridFlux_Euler_X1_Inner(iCF) &
+          = OffGridFlux_Euler_X1_Inner(iCF) &
+              + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_B0(1))
+
+        OffGridFlux_Euler_X1_Outer(iCF) &
+          = OffGridFlux_Euler_X1_Outer(iCF) &
+              + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1)
+
+      ELSE
+
+        OffGridFlux_Euler_X1_Inner(iCF) &
+          = OffGridFlux_Euler_X1_Inner(iCF) &
+              + KomarMassFlux(iNX_X,iX2,iX3,iX_B0(1))
+
+        OffGridFlux_Euler_X1_Outer(iCF) &
+          = OffGridFlux_Euler_X1_Outer(iCF) &
+              + KomarMassFlux(iNX_X,iX2,iX3,iX_E0(1)+1)
+
+      END IF
+
+#else
+
+     OffGridFlux_Euler_X1_Inner(iCF) &
+       = OffGridFlux_Euler_X1_Inner(iCF) &
+           + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_B0(1))
+
+     OffGridFlux_Euler_X1_Outer(iCF) &
+       = OffGridFlux_Euler_X1_Outer(iCF) &
+           + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1)
+
+#endif
 
     END DO
     END DO
@@ -1305,6 +1344,11 @@ CONTAINS
                     iX_B0(3):iX_E0(3), &
                     iX_B0(2):iX_E0(2)+1)
     REAL(DP) :: &
+      KomarMassFlux(nDOFX_X2, &
+                    iX_B0(1):iX_E0(1), &
+                    iX_B0(3):iX_E0(3), &
+                    iX_B0(2):iX_E0(2)+1)
+    REAL(DP) :: &
       Flux_q(nDOFX,nCF, &
              iX_B0(1):iX_E0(1), &
              iX_B0(3):iX_E0(3), &
@@ -1342,7 +1386,7 @@ CONTAINS
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X2 )
+    !$OMP             NumericalFlux, KomarMassFlux, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
@@ -1353,7 +1397,7 @@ CONTAINS
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X2 )
+    !$ACC             NumericalFlux, KomarMassFlux, Flux_q, dU_X2 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -1584,10 +1628,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
-! ! Initializations needed in debug mode
-! NumericalFlux  = Zero
-! Flux_q         = Zero
-! SurfaceFlux_X2 = Zero
+! Initializations needed in debug mode
+NumericalFlux  = Zero
+KomarMassFlux  = Zero
+Flux_q         = Zero
+SurfaceFlux_X2 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -1605,7 +1650,7 @@ CONTAINS
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
     !$ACC          Alpha_F, Beta_2_F, &
     !$ACC          iErr, &
-    !$ACC          uCF_L, uCF_R, uDF_L, uDF_R, NumericalFlux, &
+    !$ACC          uCF_L, uCF_R, uDF_L, uDF_R, NumericalFlux, KomarMassFlux, &
     !$ACC          dX1, dX3, WeightsX_X2, IndexTableX_F, SurfaceFlux_X2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -1768,6 +1813,11 @@ CONTAINS
 
       END DO ! iCF
 
+      KomarMassFlux(iNX,iX1,iX3,iX2) &
+        = Alpha_F(iNX_X) * ( Flux_F(iCF_E) + Flux_F(iCF_D) ) &
+            * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX1(iX1) * dX3(iX3) &
+            * WeightsX_X2(iNX)
+
     END DO ! iNX_X
 
     CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
@@ -1911,7 +1961,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, iErr ) &
+    !$OMP MAP( from:    NumericalFlux, KomarMassFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1921,7 +1971,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, iErr ) &
+    !$ACC COPYOUT(      NumericalFlux, KomarMassFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -1940,13 +1990,41 @@ CONTAINS
     DO iCF   = 1       , nCF
     DO iNX_X = 1       , nDOFX_X2
 
-      OffGridFlux_Euler_X2_Inner(iCF) &
-        = OffGridFlux_Euler_X2_Inner(iCF) &
-            + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_B0(2))
+#ifdef HYDRO_RELATIVISTIC
 
-      OffGridFlux_Euler_X2_Outer(iCF) &
-        = OffGridFlux_Euler_X2_Outer(iCF) &
-            + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_E0(2)+1)
+      IF( iCF .NE. iCF_E )THEN
+
+        OffGridFlux_Euler_X2_Inner(iCF) &
+          = OffGridFlux_Euler_X2_Inner(iCF) &
+              + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_B0(2))
+
+        OffGridFlux_Euler_X2_Outer(iCF) &
+          = OffGridFlux_Euler_X2_Outer(iCF) &
+              + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_E0(2)+1)
+
+    ELSE
+
+        OffGridFlux_Euler_X2_Inner(iCF) &
+          = OffGridFlux_Euler_X2_Inner(iCF) &
+              + KomarMassFlux(iNX_X,iX1,iX3,iX_B0(2))
+
+        OffGridFlux_Euler_X2_Outer(iCF) &
+          = OffGridFlux_Euler_X2_Outer(iCF) &
+              + KomarMassFlux(iNX_X,iX1,iX3,iX_E0(2)+1)
+
+    END IF
+
+#else
+
+        OffGridFlux_Euler_X2_Inner(iCF) &
+          = OffGridFlux_Euler_X2_Inner(iCF) &
+              + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_B0(2))
+
+        OffGridFlux_Euler_X2_Outer(iCF) &
+          = OffGridFlux_Euler_X2_Outer(iCF) &
+              + NumericalFlux(iNX_X,iCF,iX1,iX3,iX_E0(2)+1)
+
+#endif
 
     END DO
     END DO
