@@ -91,8 +91,6 @@ MODULE MF_InitializationModule
     Gamma_IDEAL, &
     UseTiling, &
     t_end, &
-    D_Min_Euler_PL, &
-    IntE_Min_Euler_PL, &
     xL
   USE MF_AccretionShockUtilitiesModule, ONLY: &
     FileName_Nodal1DIC_SAS, &
@@ -113,6 +111,9 @@ MODULE MF_InitializationModule
   PRIVATE
 
   PUBLIC :: InitializeFields_MF
+
+  REAL(DP), PUBLIC :: D_Min_Euler_PL
+  REAL(DP), PUBLIC :: IntE_Min_Euler_PL
 
 CONTAINS
 

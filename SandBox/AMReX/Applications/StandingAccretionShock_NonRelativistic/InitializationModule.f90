@@ -104,6 +104,9 @@ MODULE InitializationModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
+  USE MF_InitializationModule, ONLY: &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -277,7 +280,9 @@ CONTAINS
 
     END IF
 
-    CALL InitializePositivityLimiter_Euler_MF
+    CALL InitializePositivityLimiter_Euler_MF &
+           ( D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
+             IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
 
     CALL AverageDown( MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
