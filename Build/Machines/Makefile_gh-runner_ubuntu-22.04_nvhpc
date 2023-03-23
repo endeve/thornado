@@ -1,4 +1,4 @@
-## Makefile definitions for github runner with nvhpc compiler
+## Makefile definitions for gh-runner on Ubuntu 22.04 with nvhpc compilers
 
 C       = nvc++ --c++11
 FORTRAN = nvfortran -Mpreprocess
@@ -21,8 +21,6 @@ endif
 ifeq ($(USE_OACC),TRUE)
   OPENACC = -acc -gpu=cuda$(CUDA_MAJOR).$(CUDA_MINOR),cc70,ptxinfo -Minfo=accel
 endif
-
-#HDF5_ROOT=/home/runner/work/thornado/thornado/hdf5
 
 # Hacked to include mpi (mpi.mod is in $(MPI_ROOT)/lib for some reason)
 INCLUDE_CUDA     = -I$(CUDA_ROOT)/include \

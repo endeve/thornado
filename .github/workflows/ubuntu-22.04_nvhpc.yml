@@ -1,14 +1,13 @@
-name: Compile with nvhpc compiler
+name: Compile on Ubuntu-22.04 with nvhpc compilers
 
-on:
-  branch: [ master ]
+on: [ push, pull_request ]
 
 jobs:
   compile-with-nvhpc:
-    name: Compile thornado with nvhpc on Ubuntu
+    name: Compile thornado on Ubuntu-22.04 with nvhpc compilers
     runs-on: ubuntu-20.04
     env:
-      THORNADO_MACHINE: gh-runner_nvhpc
+      THORNADO_MACHINE: gh-runner_ubuntu-22.04_nvhpc
       ARCH: x86_64
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk

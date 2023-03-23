@@ -1,0 +1,138 @@
+name: Compile on MacOS with gnu compilers
+
+on: [ push, pull_request ]
+
+jobs:
+  compile-with-amrex_gnu:
+    name: Compile thornado on MacOS with gnu compilers
+    runs-on: macos-latest
+    env:
+      THORNADO_MACHINE: gh-runner_macos-latest_gnu
+      GCC_VERSION: 12.2.0
+      OMPI_VERSION: 4.1.5
+      HDF5_VERSION: 1.12.2_2
+      LAPACK_VERSION: 3.11
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+
+      - name: Download and install homebrew and dependencies
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          brew install gcc
+          brew install open-mpi
+          brew install hdf5
+          brew install lapack
+          echo ""
+          echo "find /usr/local/Cellar -iname '*hdf5.mod*'"
+          find /usr/local/Cellar -iname '*hdf5.mod*'
+          echo ""
+          echo "find /usr/local/Cellar -iname '*libhdf5_fortran*'"
+          find /usr/local/Cellar -iname '*libhdf5_fortran*'
+          echo ""
+          echo "find /usr/local/Cellar -iname '*libhdf5*'"
+          find /usr/local/Cellar -iname '*libhdf5*'
+          echo ""
+          echo "find /usr/local/Cellar -iname '*blas*'"
+          find /usr/local/Cellar -iname '*blas*'
+          echo ""
+          echo "find /usr/local/Cellar -iname '*lapack*'"
+          find /usr/local/Cellar -iname '*lapack*'
+          echo ""
+          echo "ls /usr/local/Cellar"
+          ls /usr/local/Cellar
+          echo ""
+          echo "ls /usr/local/Cellar/gcc"
+          ls /usr/local/Cellar/gcc
+          echo ""
+          echo "ls /usr/local/Cellar/gcc/*"
+          ls /usr/local/Cellar/gcc/*
+          echo ""
+          echo "ls /usr/local/Cellar/gcc/*/bin"
+          ls /usr/local/Cellar/gcc/*/bin
+          echo ""
+          echo "ls /usr/local/Cellar/open-mpi/"
+          ls /usr/local/Cellar/open-mpi/
+          echo ""
+          echo "ls /usr/local/Cellar/open-mpi/*"
+          ls /usr/local/Cellar/open-mpi/*
+          echo ""
+          echo "ls /usr/local/Cellar/open-mpi/*/bin"
+          ls /usr/local/Cellar/open-mpi/*/bin
+          echo ""
+          echo "ls /usr/local/Cellar/hdf5/"
+          ls /usr/local/Cellar/hdf5/
+          echo ""
+          echo "ls /usr/local/Cellar/hdf5/*"
+          ls /usr/local/Cellar/hdf5/*
+          echo ""
+          echo "ls /usr/local/Cellar/lapack"
+          ls /usr/local/Cellar/lapack
+          echo ""
+          echo "ls /usr/local/Cellar/lapack/*"
+          ls /usr/local/Cellar/lapack/*
+
+      - name: Set Environment Variables for Software
+        run: |
+          echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
+          echo "/usr/local/Cellar/open-mpi/${OMPI_VERSION}/bin" >> ${GITHUB_PATH}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"                          >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"                   >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"                       >> ${GITHUB_ENV}
+          echo "HDF5_ROOT=/usr/local/Cellar/hdf5/${HDF5_VERSION}"          >> ${GITHUB_ENV}
+          echo "LAPACK_ROOT=/usr/local/Cellar/lapack/${LAPACK_VERSION}"    >> ${GITHUB_ENV}
+          echo "BLAS_ROOT=/usr/local/Cellar/lapack/${LAPACK_VERSION}"      >> ${GITHUB_ENV}
+          echo "HDF5_DIR=/usr/local/Cellar/hdf5/${HDF5_VERSION}"           >> ${GITHUB_ENV}
+          echo "HDF5_INC=/usr/local/Cellar/hdf5/${HDF5_VERSION}/include"   >> ${GITHUB_ENV}
+          echo "HDF5_LIB=/usr/local/Cellar/hdf5/${HDF5_VERSION}/lib"       >> ${GITHUB_ENV}
+          echo "LAPACK_DIR=/usr/local/Cellar/lapack/${LAPACK_VERSION}"     >> ${GITHUB_ENV}
+          echo "LAPACK_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib" >> ${GITHUB_ENV}
+
+          #      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+          #        run: |
+          #          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+          #          make
+          #          make clobber
+          #
+          #      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+          #        run: |
+          #          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+          #          make
+          #          make clobber
+          #
+          #      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+          #        run: |
+          #          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+          #          make
+          #          make clobber
+          #
+          #      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+          #        run: |
+          #          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+          #          make
+          #          make clobber
+
+      - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+          make
+          make realclean
+
+      - name: Compile SandBox/AMReX/TwoMoment_Test
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
+          make
+          make realclean

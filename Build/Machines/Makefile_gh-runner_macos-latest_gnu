@@ -1,4 +1,4 @@
-## Makefile definitions for gh-runner with gnu compiler
+## Makefile definitions for gh-runner on MacOS with gnu compilers
 
 C       = mpic++ --c++11
 FORTRAN = mpif90 -cpp
