@@ -1,0 +1,3 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
+F90EXE_sources  += FluidFieldsModule.F90
+F90EXE_sources  += RadiationFieldsModule.F90

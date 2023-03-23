@@ -1,0 +1,2 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
+f90EXE_sources  += KindModule.f90

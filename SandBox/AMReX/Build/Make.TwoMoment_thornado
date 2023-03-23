@@ -1,0 +1,14 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
+F90EXE_sources  += TwoMoment_ClosureModule.F90
+F90EXE_sources  += TwoMoment_UtilitiesModule.F90
+F90EXE_sources  += TwoMoment_BoundaryConditionsModule.F90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment_Relativistic
+F90EXE_sources  += TwoMoment_UtilitiesModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Relativistic.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.F90
+F90EXE_sources  += TwoMoment_OpacityModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_PositivityLimiterModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_SlopeLimiterModule_Relativistic.F90
+F90EXE_sources  += TwoMoment_TimersModule_Relativistic.F90

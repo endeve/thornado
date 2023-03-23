@@ -50,17 +50,26 @@ include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader_thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR_thornado
+
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader_amrex
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR_amrex
+
 include Make.Euler_Relativistic_IDEAL_MR
 
 # Include rules for compilation

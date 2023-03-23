@@ -1,0 +1,12 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/TwoMoment
+F90EXE_sources  += TwoMoment_TimersModule_OrderV.F90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TwoMoment
+f90EXE_sources  += MF_TwoMoment_UtilitiesModule.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR.f90
+f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
+f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule.f90
+f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule.f90
+f90EXE_sources  += MF_TwoMoment_TallyModule.f90
