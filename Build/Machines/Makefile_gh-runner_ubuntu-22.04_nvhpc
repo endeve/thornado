@@ -1,4 +1,4 @@
-## Makefile definitions for github runner with nvhpc compiler
+## Makefile definitions for Ubuntu 22.04 with nvhpc compilers
 
 C       = nvc++ --c++11
 FORTRAN = nvfortran -Mpreprocess
@@ -28,7 +28,7 @@ endif
 INCLUDE_CUDA     = -I$(CUDA_ROOT)/include \
 		   -I$(MPI_ROOT)/lib
 INCLUDE_HDF5     = -I$(HDF5_ROOT)/include
-INCLUDE_LAPACK   = #-I$(LAPACK_ROOT)/include
+INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_POSEIDON =

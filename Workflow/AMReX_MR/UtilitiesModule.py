@@ -657,7 +657,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  GF_K_11' )
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
-        print( '  GF_Beta1' )
+        print( '  GF_Beta_1' )
         print( '  DF_TCI' )
         print( '  alphaE' )
         print( '  pr4' )

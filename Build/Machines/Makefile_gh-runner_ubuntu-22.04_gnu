@@ -1,4 +1,4 @@
-## Makefile definitions for gh-runner with gnu compiler
+## Makefile definitions for Ubuntu 22.04 with gnu compilers
 
 C       = mpic++ --c++11
 FORTRAN = mpif90 -cpp
