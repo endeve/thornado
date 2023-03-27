@@ -61,9 +61,14 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: Source_E
   PUBLIC :: NumericalFlux_LLF
 
+  INTERFACE ComputePrimitive_TwoMoment
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar
+    MODULE PROCEDURE ComputePrimitive_TwoMoment_Vector_Richardson
+  END INTERFACE ComputePrimitive_TwoMoment
+
 CONTAINS
 
-  SUBROUTINE ComputePrimitive_TwoMoment &
+  SUBROUTINE ComputePrimitive_TwoMoment_Scalar &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23, alp, B_u_1, B_u_2, B_u_3, nIterations_Option )
 
@@ -258,7 +263,7 @@ CONTAINS
       PRINT*
     END IF
 
-  END SUBROUTINE ComputePrimitive_TwoMoment
+  END SUBROUTINE ComputePrimitive_TwoMoment_Scalar
 
   SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
