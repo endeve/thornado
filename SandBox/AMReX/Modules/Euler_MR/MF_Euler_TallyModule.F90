@@ -4,6 +4,10 @@ MODULE MF_Euler_TallyModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_geometry_module, ONLY: &
     amrex_geometry
   USE amrex_multifab_module, ONLY: &
@@ -117,18 +121,23 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_MF &
-    ( SuppressTally_Option, BaseFileName_Option )
+    ( SuppressTally_Option )
 
-    LOGICAL,  INTENT(in),         OPTIONAL :: &
+    LOGICAL, INTENT(in), OPTIONAL :: &
       SuppressTally_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
-      BaseFileName_Option
 
-    CHARACTER(256) :: BaseFileName
-    INTEGER        :: FileUnit
+    CHARACTER(:), ALLOCATABLE :: TallyFileNameBase_Euler
+    INTEGER                   :: FileUnit
+    TYPE(amrex_parmparse)     :: PP
 
     CHARACTER(256) :: TimeLabel
     CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
+
+    TallyFileNameBase_Euler = TRIM( ProgramName )
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL pp % query( 'TallyFileNameBase_Euler', &
+                        TallyFileNameBase_Euler )
+    CALL amrex_parmparse_destroy( PP )
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
@@ -138,16 +147,10 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      BaseFileName = ''
-      IF( PRESENT( BaseFileName_Option ) ) &
-        BaseFileName = TRIM( BaseFileName_Option )
-
-      BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
-
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
-        = TRIM( BaseFileName ) // '.Tally_BaryonicMass.dat'
+        = TRIM( TallyFileNameBase_Euler ) // '.Tally_BaryonicMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -171,7 +174,7 @@ CONTAINS
       ! --- Energy ---
 
       Energy_FileName &
-        = TRIM( BaseFileName ) // '.Tally_Energy.dat'
+        = TRIM( TallyFileNameBase_Euler ) // '.Tally_Energy.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -195,7 +198,7 @@ CONTAINS
       ! --- Electron Number ---
 
       ElectronNumber_FileName &
-        = TRIM( BaseFileName ) // '.Tally_ElectronNumber.dat'
+        = TRIM( TallyFileNameBase_Euler ) // '.Tally_ElectronNumber.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
@@ -221,7 +224,7 @@ CONTAINS
       ! --- ADM Mass ---
 
       ADMMass_FileName &
-        = TRIM( BaseFileName ) // '.Tally_ADMMass.dat'
+        = TRIM( TallyFileNameBase_Euler ) // '.Tally_ADMMass.dat'
 
       TimeLabel     &
         = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
