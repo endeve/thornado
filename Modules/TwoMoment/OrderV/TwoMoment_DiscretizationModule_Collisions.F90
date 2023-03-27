@@ -1,4 +1,4 @@
-MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
+MODULE TwoMoment_DiscretizationModule_Collisions
 
   USE KindModule, ONLY: &
     DP, Zero, One, Half, Three
@@ -19,15 +19,15 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nDR, iDR_iter_outer
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_Collisions, &
     Timer_Collisions_PrimitiveFluid, &
     Timer_Collisions_Solve
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd
-  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     uOP, iOP_D0, iOP_Chi, iOP_Sigma, nOP
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
@@ -1260,4 +1260,4 @@ CONTAINS
   END SUBROUTINE FinalizeCollisions
 
 
-END MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
+END MODULE TwoMoment_DiscretizationModule_Collisions

@@ -1,9 +1,9 @@
 ifeq ($(TWOMOMENT_ORDER),ORDER_1)
-  include $(THORNADO_DIR)/Modules/TwoMoment/OrderV/Makefile_TwoMoment_OrderOne_Dependencies
+  include $(THORNADO_DIR)/Modules/TwoMoment/OrderOne/Makefile_TwoMoment_OrderOne_Dependencies
 else ifeq ($(TWOMOMENT_ORDER),ORDER_V)
   include $(THORNADO_DIR)/Modules/TwoMoment/OrderV/Makefile_TwoMoment_OrderV_Dependencies
 else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
-  include $(THORNADO_DIR)/Modules/TwoMoment/OrderV/Makefile_TwoMoment_Relativistic_Dependencies
+  include $(THORNADO_DIR)/Modules/TwoMoment/Relativistic/Makefile_TwoMoment_Relativistic_Dependencies
 endif
 
 TwoMoment_ClosureModule.o: \

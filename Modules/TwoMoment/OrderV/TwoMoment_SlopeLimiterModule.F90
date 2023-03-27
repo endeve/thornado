@@ -1,10 +1,10 @@
-MODULE TwoMoment_SlopeLimiterModule_OrderV
+MODULE TwoMoment_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFE, nDOFX, nDimsX
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_SL, &
@@ -529,4 +529,4 @@ CONTAINS
   END SUBROUTINE ApplySLopeLimiter_WENO
 
 
-END MODULE TwoMoment_SlopeLimiterModule_OrderV
+END MODULE TwoMoment_SlopeLimiterModule

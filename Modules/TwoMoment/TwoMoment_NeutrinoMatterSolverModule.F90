@@ -1,7 +1,7 @@
 #ifdef THORNADO_DEBUG
 #define THORNADO_DEBUG_IMPLICIT
 #endif
-MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
+MODULE TwoMoment_NeutrinoMatterSolverModule
 
   USE KindModule, ONLY: &
     DP, Zero, Third, Half, One, Two, Three, FourPi, SqrtTiny
@@ -15,7 +15,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
     nDOFE, nDOFX
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_Collisions_OuterLoop, &
@@ -67,7 +67,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem
 #if defined( TWOMOMENT_RELATIVISTIC )
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd
 #endif
   USE TwoMoment_ClosureModule, ONLY: &
@@ -4439,4 +4439,4 @@ CONTAINS
   END FUNCTION WNORM
 
 
-END MODULE TwoMoment_NeutrinoMatterSolverModule_OrderV
+END MODULE TwoMoment_NeutrinoMatterSolverModule

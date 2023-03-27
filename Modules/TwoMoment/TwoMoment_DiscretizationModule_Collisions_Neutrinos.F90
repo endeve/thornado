@@ -1,4 +1,4 @@
-MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
+MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
     DP
@@ -8,7 +8,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nDOFX, &
     nDOFE, &
     nDOFZ
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_Collisions, &
@@ -34,12 +34,12 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
     InitializeNeutrinoMatterSolverParameters
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
 
@@ -786,4 +786,4 @@ CONTAINS
   END SUBROUTINE ComputeAndMapIncrement
 
 
-END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
+END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
