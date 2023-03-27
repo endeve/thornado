@@ -125,7 +125,7 @@ MODULE InitializationModule
     InitializeClosure_TwoMoment
   USE TwoMoment_TimersModule_Relativistic, ONLY: &
     InitializeTimers
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
 
 

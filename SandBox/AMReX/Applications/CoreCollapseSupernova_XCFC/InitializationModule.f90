@@ -52,7 +52,7 @@ MODULE InitializationModule
     nNodesX, &
     nNodesE, &
     DescribeProgramHeaderX
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
