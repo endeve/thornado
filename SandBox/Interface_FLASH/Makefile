@@ -28,10 +28,6 @@ include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).
 
-ifeq ($(TWOMOMENT_ORDER),ORDER_V)
-  VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
-endif
-
 ifdef BUILDFLAG
   FFLAGS = $(FFLAGS_$(BUILDFLAG))
 else
@@ -117,16 +113,16 @@ OBJS += \
        PolynomialBasisMappingModule.o \
        PolynomialBasisModule_Legendre.o \
        TimersModule_Euler.o \
-       TwoMoment_UtilitiesModule_OrderV.o \
+       TwoMoment_UtilitiesModule.o \
        TwoMoment_TroubledCellIndicatorModule.o \
-       TwoMoment_SlopeLimiterModule_OrderV.o \
-       TwoMoment_TimersModule_OrderV.o \
-       TwoMoment_PositivityLimiterModule_OrderV.o \
-       TwoMoment_OpacityModule_OrderV.o \
-       TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-       TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-       TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-       TwoMoment_DiscretizationModule_Streaming_OrderV.o
+       TwoMoment_SlopeLimiterModule.o \
+       TwoMoment_TimersModule.o \
+       TwoMoment_PositivityLimiterModule.o \
+       TwoMoment_OpacityModule.o \
+       TwoMoment_DiscretizationModule_Collisions.o \
+       TwoMoment_NeutrinoMatterSolverModule.o \
+       TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+       TwoMoment_DiscretizationModule_Streaming.o
 endif
 
 ifeq ($(USE_CUDA),TRUE)

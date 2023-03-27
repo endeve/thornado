@@ -1,15 +1,8 @@
-TwoMomentClosure.o: \
+TwoMoment_TimersModule.o: \
   KindModule.o \
-  UtilitiesModule.o \
-  TwoMoment_ClosureModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMomentClosure.f90
+  TwoMoment_TimersModule.F90
 
-TwoMoment_TimersModule_OrderV.o: \
-  KindModule.o \
-  TwoMoment_TimersModule_OrderV.F90
-
-TwoMoment_UtilitiesModule_OrderV.o: \
+TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
@@ -21,14 +14,14 @@ TwoMoment_UtilitiesModule_OrderV.o: \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   LinearAlgebraModule.o \
-  TwoMoment_UtilitiesModule_OrderV.F90
+  TwoMoment_UtilitiesModule.F90
 
 TwoMoment_TroubledCellIndicatorModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   PolynomialBasisModuleX_Lagrange.o \
@@ -36,10 +29,10 @@ TwoMoment_TroubledCellIndicatorModule.o: \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_TroubledCellIndicatorModule.F90
 
-TwoMoment_SlopeLimiterModule_OrderV.o: \
+TwoMoment_SlopeLimiterModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   LinearAlgebraModule.o \
   UtilitiesModule.o \
   ReferenceElementModuleX.o \
@@ -51,12 +44,12 @@ TwoMoment_SlopeLimiterModule_OrderV.o: \
   RadiationFieldsModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_TroubledCellIndicatorModule.o \
-  TwoMoment_SlopeLimiterModule_OrderV.F90
+  TwoMoment_SlopeLimiterModule.F90
 
-TwoMoment_PositivityLimiterModule_OrderV.o: \
+TwoMoment_PositivityLimiterModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
   ReferenceElementModule.o \
@@ -67,20 +60,20 @@ TwoMoment_PositivityLimiterModule_OrderV.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   MeshModule.o \
-  TwoMoment_PositivityLimiterModule_OrderV.F90
+  TwoMoment_PositivityLimiterModule.F90
 
-TwoMoment_OpacityModule_OrderV.o: \
+TwoMoment_OpacityModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleZ.o \
   MeshModule.o \
   RadiationFieldsModule.o \
-  TwoMoment_OpacityModule_OrderV.F90
+  TwoMoment_OpacityModule.F90
 
-TwoMoment_DiscretizationModule_Streaming_OrderV.o: \
+TwoMoment_DiscretizationModule_Streaming.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
@@ -95,10 +88,10 @@ TwoMoment_DiscretizationModule_Streaming_OrderV.o: \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_BoundaryConditionsModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Streaming_OrderV.F90
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_DiscretizationModule_Streaming.F90
 
-TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
+TwoMoment_DiscretizationModule_Collisions.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.o \
@@ -106,41 +99,12 @@ TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_OpacityModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_OrderV.F90
+  TwoMoment_TimersModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_OpacityModule.o \
+  TwoMoment_DiscretizationModule_Collisions.F90
 
-TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  EquationOfStateModule_TABLE.o \
-  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.F90
-
-TwoMoment_NeutrinoMatterSolverModule_OrderV.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  TimersModule.o \
-  ArrayUtilitiesModule.o \
-  LinearAlgebraModule.o \
-  ReferenceElementModuleE.o \
-  MeshModule.o \
-  RadiationFieldsModule.o \
-  EquationOfStateModule_TABLE.o \
-  NeutrinoOpacitiesComputationModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
-
-TwoMoment_TallyModule_OrderV.o: \
+TwoMoment_TallyModule.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
@@ -152,9 +116,9 @@ TwoMoment_TallyModule_OrderV.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
-  TwoMoment_TallyModule_OrderV.F90
+  TwoMoment_TallyModule.F90
 
-TwoMoment_TimeSteppingModule_OrderV.o: \
+TwoMoment_TimeSteppingModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.o \
@@ -164,9 +128,9 @@ TwoMoment_TimeSteppingModule_OrderV.o: \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   Euler_dgDiscretizationModule.o \
   RadiationFieldsModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-  TwoMoment_TallyModule_OrderV.o \
-  TwoMoment_TimeSteppingModule_OrderV.F90
+  TwoMoment_TimersModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_TallyModule.o \
+  TwoMoment_TimeSteppingModule.F90
