@@ -1,4 +1,4 @@
-MODULE TwoMoment_TimersModule_Relativistic
+MODULE TwoMoment_TimersModule
 
   USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: &
     I8 => INT64
@@ -86,4 +86,4 @@ CONTAINS
   END FUNCTION TimersWtime
 
 
-END MODULE TwoMoment_TimersModule_Relativistic
+END MODULE TwoMoment_TimersModule

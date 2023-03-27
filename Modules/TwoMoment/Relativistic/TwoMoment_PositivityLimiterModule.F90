@@ -1,4 +1,4 @@
-MODULE TwoMoment_PositivityLimiterModule_Relativistic
+MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, &
@@ -1704,4 +1704,4 @@ m=0
 
 
 
-END MODULE TwoMoment_PositivityLimiterModule_Relativistic
+END MODULE TwoMoment_PositivityLimiterModule

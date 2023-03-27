@@ -1,4 +1,4 @@
-MODULE TwoMoment_TimeSteppingModule_Relativistic
+MODULE TwoMoment_TimeSteppingModule
 
   USE KindModule, ONLY: &
     DP, Zero
@@ -17,9 +17,9 @@ MODULE TwoMoment_TimeSteppingModule_Relativistic
 !!$    DetectTroubledCells_TwoMoment
 !!$  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
 !!$    ApplySlopeLimiter_TwoMoment
-  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
-  USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
 !!$  USE TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
 !!$    ComputeIncrement_TwoMoment_Implicit
@@ -375,4 +375,4 @@ CONTAINS
   END SUBROUTINE DeallocateArray7D
 
 
-END MODULE TwoMoment_TimeSteppingModule_Relativistic
+END MODULE TwoMoment_TimeSteppingModule

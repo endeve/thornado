@@ -1,4 +1,4 @@
-MODULE TwoMoment_UtilitiesModule_Relativistic
+MODULE TwoMoment_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five, SqrtTiny, FourPi
@@ -2729,4 +2729,4 @@ CONTAINS
 
   END SUBROUTINE ComputeForFluid
 
-END MODULE TwoMoment_UtilitiesModule_Relativistic
+END MODULE TwoMoment_UtilitiesModule
