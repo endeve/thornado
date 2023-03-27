@@ -6,6 +6,10 @@ else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
   include $(THORNADO_DIR)/Modules/TwoMoment/Relativistic/Makefile_TwoMoment_Relativistic_Dependencies
 endif
 
+TwoMoment_TimersModule.o: \
+  KindModule.o \
+  TwoMoment_TimersModule.F90
+
 TwoMoment_ClosureModule.o: \
   KindModule.o \
   TwoMoment_ClosureModule.F90
@@ -29,7 +33,7 @@ TwoMoment_NeutrinoMatterSolverModule.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
-  TimersModule.o \
+  TwoMoment_TimersModule.o \
   ArrayUtilitiesModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleE.o \

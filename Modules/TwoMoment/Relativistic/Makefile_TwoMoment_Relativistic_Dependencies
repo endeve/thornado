@@ -1,7 +1,3 @@
-TwoMoment_TimersModule.o: \
-  KindModule.o \
-  TwoMoment_TimersModule.F90
-
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \

@@ -1,5 +1,4 @@
 TWO_MOMENT += \
-  TwoMoment_TimersModule.o \
   TwoMoment_UtilitiesModule.o \
   TwoMoment_TroubledCellIndicatorModule.o \
   TwoMoment_SlopeLimiterModule.o \
