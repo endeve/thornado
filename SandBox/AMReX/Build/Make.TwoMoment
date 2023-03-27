@@ -28,3 +28,8 @@ F90EXE_sources  += TwoMoment_OpacityModule_Relativistic.F90
 F90EXE_sources  += TwoMoment_PositivityLimiterModule_Relativistic.F90
 F90EXE_sources  += TwoMoment_SlopeLimiterModule_Relativistic.F90
 F90EXE_sources  += TwoMoment_TimersModule_Relativistic.F90
+
+# THORNADO_DIR/SandBox/TwoMoment_OrderV
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/TwoMoment
+F90EXE_sources  += TwoMoment_TimersModule_OrderV.F90

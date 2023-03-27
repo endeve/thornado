@@ -73,6 +73,13 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     MODULE PROCEDURE ComputePointValues_ManyFields
   END INTERFACE ComputePointValues
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP DECLARE &
+  !$OMP TARGET( Min_2 )
+#elif defined( THORNADO_OACC   )
+  !$ACC DECLARE &
+  !$ACC CREATE( Min_2 )
+#endif
 
 CONTAINS
 
@@ -174,10 +181,18 @@ CONTAINS
 
     END DO
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE &
+    !$OMP TO    ( Min_2 )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE &
+    !$ACC DEVICE( Min_2 )
+#endif
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: L_X )
-#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(  L_X )
 #endif
@@ -217,7 +232,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K
-    REAL(DP) :: Min_D, Min_K, Min_ESq, Theta_D, Theta_P, q
+    REAL(DP) :: Min_D, Min_K, Theta_D, Theta_P, q
 
     INTEGER :: iErr(              iX_B0(1):iX_E0(1), &
                                   iX_B0(2):iX_E0(2), &
@@ -485,15 +500,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( Min_ESq, Theta_P )
+    !$OMP PRIVATE( Theta_P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U_K, U_Q, U_P, g1P, g2P, g3P, Theta_q, &
     !$ACC          iErr, NegativeStates ) &
-    !$ACC PRIVATE( Min_ESq, Theta_P )
+    !$ACC PRIVATE( Theta_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( Min_ESq, Theta_P )
+    !$OMP PRIVATE( Theta_P )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -504,8 +519,6 @@ CONTAINS
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
       IF( U_K(iCF_E,iX1,iX2,iX3) .LT. Zero ) iErr(iX1,iX2,iX3) = 01
-
-      Min_ESq = Min_2 * U_K(iCF_E,iX1,iX2,iX3)**2
 
       Theta_q(iX1,iX2,iX3) = One
 
@@ -521,8 +534,7 @@ CONTAINS
                 U_P(iPT,iCF_E ,iX1,iX2,iX3), &
                 g1P(iPT      ,iX1,iX2,iX3), &
                 g2P(iPT      ,iX1,iX2,iX3), &
-                g3P(iPT      ,iX1,iX2,iX3), &
-                Min_ESq )
+                g3P(iPT      ,iX1,iX2,iX3) )
 
         IF( q .LT. Zero )THEN
 
@@ -542,7 +554,7 @@ CONTAINS
                    g1P(iPT      ,iX1,iX2,iX3), &
                    g2P(iPT      ,iX1,iX2,iX3), &
                    g3P(iPT      ,iX1,iX2,iX3), &
-                   Min_ESq, Theta_P, &
+                   Theta_P, &
                    iErr(iX1,iX2,iX3) )
 
           Theta_q(iX1,iX2,iX3) = MIN( Theta_q(iX1,iX2,iX3), Theta_P )
@@ -685,7 +697,7 @@ CONTAINS
 
 
   FUNCTION Computeq &
-    ( D, S1, S2, S3, tau, g1, g2, g3, Min_ESq ) RESULT( q )
+    ( D, S1, S2, S3, tau, g1, g2, g3 ) RESULT( q )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -693,13 +705,13 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, g1, g2, g3, Min_ESq
+    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, g1, g2, g3
 
     REAL(DP) :: q
 
     q = tau + D &
-          - SQRT( D**2 + ( S1**2 / g1 + S2**2 / g2 + S3**2 / g3 ) &
-                  + Min_ESq )
+          - D * SQRT( One + ( S1**2 / g1 + S2**2 / g2 + S3**2 / g3 ) / D**2 &
+                  + Min_2 )
 
     RETURN
   END FUNCTION Computeq
@@ -708,7 +720,7 @@ CONTAINS
   SUBROUTINE SolveTheta_Bisection &
     ( D_P, S1_P, S2_P, S3_P, E_P, &
       D_K, S1_K, S2_K, S3_K, E_K, &
-      g1_P, g2_P, g3_P, Min_ESq, Theta_P, iErr )
+      g1_P, g2_P, g3_P, Theta_P, iErr )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -718,7 +730,7 @@ CONTAINS
 
     REAL(DP), INTENT(in)    :: D_P, S1_P, S2_P, S3_P, E_P, &
                                D_K, S1_K, S2_K, S3_K, E_K, &
-                               g1_P, g2_P, g3_P, Min_ESq
+                               g1_P, g2_P, g3_P
     REAL(DP), INTENT(out)   :: Theta_P
     INTEGER , INTENT(inout) :: iErr
 
@@ -737,7 +749,7 @@ CONTAINS
               x_a * S2_P + ( One - x_a ) * S2_K, &
               x_a * S3_P + ( One - x_a ) * S3_K, &
               x_a *  E_P + ( One - x_a ) *  E_K, &
-              g1_P, g2_P, g3_P, Min_ESq )
+              g1_P, g2_P, g3_P )
 
     x_b = One
     f_b = Computeq &
@@ -746,7 +758,7 @@ CONTAINS
               x_b * S2_P + ( One - x_b ) * S2_K, &
               x_b * S3_P + ( One - x_b ) * S3_K, &
               x_b *  E_P + ( One - x_b ) *  E_K, &
-              g1_P, g2_P, g3_P, Min_ESq )
+              g1_P, g2_P, g3_P )
 
     IF( .NOT. f_a * f_b < 0 ) iErr = 02
 
@@ -766,7 +778,7 @@ CONTAINS
                 x_c * S2_P + ( One - x_c ) * S2_K, &
                 x_c * S3_P + ( One - x_c ) * S3_K, &
                 x_c *  E_P + ( One - x_c ) *  E_K, &
-                g1_P, g2_P, g3_P, Min_ESq )
+                g1_P, g2_P, g3_P )
 
       IF( f_a * f_c < Zero )THEN
 

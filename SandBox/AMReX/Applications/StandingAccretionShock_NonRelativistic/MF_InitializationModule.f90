@@ -91,8 +91,6 @@ MODULE MF_InitializationModule
     Gamma_IDEAL, &
     UseTiling, &
     t_end, &
-    D_Min_Euler_PL, &
-    IntE_Min_Euler_PL, &
     xL
   USE MF_AccretionShockUtilitiesModule, ONLY: &
     FileName_Nodal1DIC_SAS, &
@@ -105,11 +103,17 @@ MODULE MF_InitializationModule
     MF_uPF, &
     MF_uAF, &
     MF_uDF
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeFields_MF
+
+  REAL(DP), PUBLIC :: D_Min_Euler_PL
+  REAL(DP), PUBLIC :: IntE_Min_Euler_PL
 
 CONTAINS
 
@@ -550,8 +554,12 @@ CONTAINS
       CALL MF_uGFF(0) % COPY( MF_uGF, 1, 1, nDOFX * nGF, swX )
       CALL MF_uCFF(0) % COPY( MF_uCF, 1, 1, nDOFX * nCF, swX )
 
+      CALL DestroyMesh_MF( MeshX )
+
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGFF, MF_uCFF, MF_uPFF, MF_uAFF )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       CALL WriteFieldsAMReX_PlotFile &
              ( -1.0e100_DP * Millisecond, [99999999], MF_uGFF, &

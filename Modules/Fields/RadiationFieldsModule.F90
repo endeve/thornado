@@ -116,6 +116,20 @@ MODULE RadiationFieldsModule
                 'Lagrangian Eddington Factor       ', &
                 'Lagrangian Heat Flux Factor       ' ]
 
+  CHARACTER(6), DIMENSION(nGR), PUBLIC, PARAMETER :: &
+    ShortNamesGR = [ 'GR_N  ', &
+                     'GR_D  ', &
+                     'GR_I1 ', &
+                     'GR_I2 ', &
+                     'GR_I3 ', &
+                     'GR_J  ', &
+                     'GR_H1 ', &
+                     'GR_H2 ', &
+                     'GR_H3 ', &
+                     'GR_RMS', &
+                     'GR_F  ', &
+                     'GR_K  ', &
+                     'GR_Q  ' ]
   REAL(DP), DIMENSION(nGR), PUBLIC :: unitsGR
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uGR(:,:,:,:,:,:)
@@ -139,6 +153,7 @@ MODULE RadiationFieldsModule
   REAL(DP), DIMENSION(nDR), PUBLIC :: unitsDR
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uDR(:,:,:,:)
+
 
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields

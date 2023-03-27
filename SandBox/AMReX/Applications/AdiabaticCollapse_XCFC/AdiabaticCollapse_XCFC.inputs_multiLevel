@@ -55,6 +55,7 @@ poseidon.l_limit           = 0
 poseidon.max_fp_iters      = 20
 poseidon.anderson_m        = 3
 poseidon.converge_criteria = 1.0e-08
+poseidon.FillGhostCells    = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter_Euler           = 1

@@ -19,7 +19,9 @@ MODULE InputParsingModule
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
-    UnitsDisplay
+    UnitsDisplay, &
+    SolarMass, &
+    Centimeter
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
@@ -44,7 +46,7 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
-  INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart
+  INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   REAL(DP)                  :: t_end
   LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
   LOGICAL     , SAVE        :: DEBUG
@@ -62,30 +64,13 @@ MODULE InputParsingModule
   INTEGER  :: nE, nSpecies, swE, bcE
   REAL(DP) :: eL, eR, zoomE
 
-  ! --- Boundary Conditions ---
-
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: lo_bc(:,:)
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: hi_bc(:,:)
-
   ! --- Slope Limiter ---
 
-  LOGICAL                       :: UseSlopeLimiter_Euler
-  LOGICAL                       :: UseSlopeLimiter_TwoMoment
-  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod_Euler
-  REAL(DP)                      :: BetaTVD_Euler
-  REAL(DP)                      :: BetaTVD_TwoMoment
-  REAL(DP)                      :: BetaTVB_Euler
-  REAL(DP)                      :: SlopeTolerance_Euler
-  LOGICAL                       :: UseCharacteristicLimiting_Euler
-  LOGICAL                       :: UseTroubledCellIndicator_Euler
-  REAL(DP)                      :: LimiterThresholdParameter_Euler
-  LOGICAL                       :: UseConservativeCorrection_Euler
+  LOGICAL  :: UseSlopeLimiter_TwoMoment
+  REAL(DP) :: BetaTVD_TwoMoment
 
   ! --- Positivity Limiter ---
 
-  LOGICAL  :: UsePositivityLimiter_Euler
-  REAL(DP) :: Min_1_Euler, Min_2_Euler
-  REAL(DP) :: D_Min_Euler_PL, IntE_Min_Euler_PL
   LOGICAL  :: UsePositivityLimiter_TwoMoment
   REAL(DP) :: Min_1_TwoMoment, Min_2_TwoMoment
 
@@ -101,6 +86,7 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Iso
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_NES
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Pair
+  CHARACTER(:), ALLOCATABLE :: OpacityTableName_Brem
 
   ! --- Non-Linear Solver Parameters ---
   INTEGER  ::  M_outer
@@ -212,6 +198,7 @@ call amrex_parmparse_destroy( pp )
     dt_chk           = -1.0_DP
     dt_rel           = 0.0_DP
     UseXCFC          = .FALSE.
+    iReGrid          = 1
     SolveGravity_NR  = .FALSE.
     Scheme           = ''
     nE               = 1
@@ -261,6 +248,8 @@ call amrex_parmparse_destroy( pp )
                          UsePhysicalUnits )
       CALL PP % query ( 'UseXCFC', &
                          UseXCFC )
+      CALL PP % query ( 'iReGrid', &
+                         iReGrid )
       CALL PP % query ( 'SolveGravity_NR', &
                          SolveGravity_NR )
       CALL PP % query ( 'nE', &
@@ -293,67 +282,25 @@ call amrex_parmparse_destroy( pp )
 
     ! --- Slope Limiter Parameters SL.* ---
 
-    UseSlopeLimiter_Euler           = .TRUE.
-    UseSlopeLimiter_TwoMoment       = .TRUE.
-    SlopeLimiterMethod_Euler        = 'TVD'
-    BetaTVD_Euler                   = 1.75_DP
-    BetaTVD_TwoMoment               = 1.75_DP
-    BetaTVB_Euler                   = Zero
-    SlopeTolerance_Euler            = 1.0e-6_DP
-    UseCharacteristicLimiting_Euler = .TRUE.
-    UseTroubledCellIndicator_Euler  = .TRUE.
-    LimiterThresholdParameter_Euler = 0.03_DP
-    UseConservativeCorrection_Euler = .TRUE.
+    UseSlopeLimiter_TwoMoment = .TRUE.
+    BetaTVD_TwoMoment         = 1.75_DP
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter_Euler', &
-                        UseSlopeLimiter_Euler )
       CALL PP % query( 'UseSlopeLimiter_TwoMoment', &
                         UseSlopeLimiter_TwoMoment )
-      CALL PP % query( 'SlopeLimiterMethod_Euler', &
-                        SlopeLimiterMethod_Euler )
-      CALL PP % query( 'BetaTVD_Euler', &
-                        BetaTVD_Euler )
       CALL PP % query( 'BetaTVD_TwoMoment', &
                         BetaTVD_TwoMoment )
-      CALL PP % query( 'BetaTVB_Euler', &
-                        BetaTVB_Euler )
-      CALL PP % query( 'SlopeTolerance_Euler', &
-                        SlopeTolerance_Euler )
-      CALL PP % query( 'UseCharacteristicLimiting_Euler', &
-                        UseCharacteristicLimiting_Euler )
-      CALL PP % query( 'UseTroubledCellIndicator_Euler', &
-                        UseTroubledCellIndicator_Euler )
-      CALL PP % query( 'LimiterThresholdParameter_Euler', &
-                        LimiterThresholdParameter_Euler )
-      CALL PP % query( 'UseConservativeCorrection_Euler', &
-                        UseConservativeCorrection_Euler )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivity Limiter Parameters PL.* ---
 
-    UsePositivityLimiter_Euler     = .TRUE.
     UsePositivityLimiter_TwoMoment = .TRUE.
-    Min_1_Euler                    = 1.0e-12_DP
-    D_Min_Euler_PL                 = Zero
-    IntE_Min_Euler_PL              = Zero
     Min_1_TwoMoment                = 1.0e-12_DP
-    Min_2_Euler                    = 1.0e-12_DP
     Min_2_TwoMoment                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % query( 'UsePositivityLimiter_Euler', &
-                        UsePositivityLimiter_Euler )
       CALL PP % query( 'UsePositivityLimiter_TwoMoment', &
                         UsePositivityLimiter_TwoMoment )
-      CALL PP % query( 'Min_1_Euler', &
-                        Min_1_Euler )
-      CALL PP % query( 'D_Min_Euler_PL', &
-                        D_Min_Euler_PL )
-      CALL PP % query( 'IntE_Min_Euler_PL', &
-                        IntE_Min_Euler_PL )
       CALL PP % query( 'Min_1_TwoMoment', &
                         Min_1_TwoMoment )
-      CALL PP % query( 'Min_2_Euler', &
-                        Min_2_Euler )
       CALL PP % query( 'Min_2_TwoMoment', &
                         Min_2_TwoMoment )
     CALL amrex_parmparse_destroy( PP )
@@ -395,6 +342,7 @@ call amrex_parmparse_destroy( pp )
       t_end  = t_end  * UnitsDisplay % TimeUnit
       dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
       dt_chk = dt_chk * UnitsDisplay % TimeUnit
+      dt_rel = dt_rel * UnitsDisplay % TimeUnit
 
       xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
       xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
@@ -405,6 +353,16 @@ call amrex_parmparse_destroy( pp )
 
       eL = eL * UnitsDisplay % EnergyUnit
       eR = eR * UnitsDisplay % EnergyUnit
+
+      Chi = Chi * ( 1.0_DP / Centimeter )
+
+      Mass = Mass * SolarMass
+      E0 = E0 * UnitsDisplay % EnergyUnit
+      mu0 = mu0 * UnitsDisplay % EnergyUnit
+      kT = kT * UnitsDisplay % EnergyUnit
+      R0 = R0 * UnitsDisplay % LengthX1Unit
+
+
 
     END IF
 
@@ -428,6 +386,7 @@ call amrex_parmparse_destroy( pp )
     OpacityTableName_Iso  = ''
     OpacityTableName_NES  = ''
     OpacityTableName_Pair = ''
+    OpacityTableName_Brem = ''
     CALL amrex_parmparse_build( PP, 'OP' )
       CALL PP % query( 'OpacityTableName_AbEm', &
                         OpacityTableName_AbEm )
@@ -437,6 +396,8 @@ call amrex_parmparse_destroy( pp )
                         OpacityTableName_NES )
       CALL PP % query( 'OpacityTableName_Pair', &
                         OpacityTableName_Pair )
+      CALL PP % query( 'OpacityTableName_Brem', &
+                        OpacityTableName_Brem )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Non-Linear Solver parameters NL.* ---
@@ -610,6 +571,8 @@ call amrex_parmparse_destroy( pp )
                                       BlockingFactor
       WRITE(*,'(4x,A26,1x,I2.2)')    'nMaxLevels:', &
                                       nMaxLevels
+      WRITE(*,'(4x,A26,1x,I2.2)')    'iReGrid:', &
+                                      iReGrid
       WRITE(*,'(4x,A26,1x,L)')       'UseFluxCorrection_Euler:', &
                                       UseFluxCorrection_Euler
       WRITE(*,'(4x,A26,1x,L)')       'UseTiling:', &

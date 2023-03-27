@@ -17,13 +17,13 @@ def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
         if ( isdir( FileOrDirName ) and FileOrDirName[-1] != '/' ):
             FileOrDirName += '/'
 
-        YN = input( '{:} exists. overwrite? (Y/N): '.format( FileOrDirName ) )
+        YN = input( '  {:} exists. Overwrite? (y/N): '.format( FileOrDirName ) )
 
-        if YN == 'Y' :
-            print( 'Overwriting' )
+        if YN == 'Y' or YN == 'y' :
+            print( '  Overwriting' )
             OW = True
         else:
-            print( 'Not overwriting' )
+            print( '  Not overwriting' )
             OW = False
 
     return OW
@@ -138,6 +138,7 @@ def ChoosePlotFile \
 def GetData( DataDirectory, PlotFileBaseName, Field, \
              CoordinateSystem, UsePhysicalUnits, argv = [ 'a' ], \
              MaxLevel = -1, iX3_CS = 0, \
+             SSi = -1, SSf = -1, nSS = -1, \
              ReturnTime = False, ReturnMesh = False, Verbose = False ):
 
     import yt
@@ -157,7 +158,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     # https://yt-project.org/doc/faq/index.html#how-can-i-change-yt-s-log-level
     yt.funcs.mylog.setLevel(40) # Suppress yt warnings
 
-    FileArray = GetFileArray( DataDirectory, PlotFileBaseName )
+    FileArray = GetFileArray( DataDirectory, PlotFileBaseName, \
+                              SSi = SSi, SSf = SSf, nSS = nSS )
 
     File = ChoosePlotFile( FileArray, PlotFileBaseName, argv = argv, \
                            Verbose = Verbose )
@@ -168,7 +170,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     Time = ds.current_time.to_ndarray()
     nX   = ds.domain_dimensions
     xL   = ds.domain_left_edge
-    xU   = ds.domain_right_edge
+    xH   = ds.domain_right_edge
 
     nDimsX = 1
     if nX[1] > 1: nDimsX += 1
@@ -194,27 +196,20 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                 dims            = nX * 2**MaxLevel, \
                 num_ghost_zones = nX[0] )
 
-#    ds.force_periodicity()
+    ds.force_periodicity()
 
     # --- Get Mesh ---
 
     xL = np.copy( xL.to_ndarray() )
-    xU = np.copy( xU.to_ndarray() )
+    xH = np.copy( xH.to_ndarray() )
 
-    X1 = np.copy( CoveringGrid['X1_C'].to_ndarray()[:,0,0] )
-    X2 = np.copy( CoveringGrid['X2_C'].to_ndarray()[0,:,0] )
-    X3 = np.copy( CoveringGrid['X3_C'].to_ndarray()[0,0,:] )
+    X1 = np.copy( CoveringGrid['X1_C'].to_ndarray() )
+    X2 = np.copy( CoveringGrid['X2_C'].to_ndarray() )
+    X3 = np.copy( CoveringGrid['X3_C'].to_ndarray() )
 
-    dX1 = np.copy( CoveringGrid['dX1'].to_ndarray()[:,0,0] )
-    dX2 = np.copy( CoveringGrid['dX2'].to_ndarray()[0,:,0] )
-    dX3 = np.copy( CoveringGrid['dX3'].to_ndarray()[0,0,:] )
-
-    if nDimsX < 3:
-        X3  = X3 [0] * np.ones( 1, np.float64 )
-        dX3 = dX3[0] * np.ones( 1, np.float64 )
-    if nDimsX < 2:
-        X2  = X2 [0] * np.ones( 1 )
-        dX2 = dX2[0] * np.ones( 1 )
+    dX1 = np.copy( CoveringGrid['dX1'].to_ndarray() )
+    dX2 = np.copy( CoveringGrid['dX2'].to_ndarray() )
+    dX3 = np.copy( CoveringGrid['dX3'].to_ndarray() )
 
     if   Field == 'MPIProcess':
 
@@ -224,7 +219,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     elif Field == 'PF_D':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'g/cm**3'
+        DataUnits = 'g/cm^3'
 
     elif Field == 'PF_V1':
 
@@ -250,53 +245,53 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     elif Field == 'PF_E':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'PF_Ne':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = '1/cm**3'
+        DataUnits = '1/cm^3'
 
     elif Field == 'CF_D':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'g/cm**3'
+        DataUnits = 'g/cm^3'
 
     elif Field == 'CF_S1':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'g/cm**2/s'
+        DataUnits = 'g/cm^2/s'
 
     elif Field == 'CF_S2':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
 
-        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm**2/s'
-        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm**2/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm^2/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm^2/s'
         elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
 
     elif Field == 'CF_S3':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
 
-        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm**2/s'
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm^2/s'
         elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm/s'
         elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
 
     elif Field == 'CF_E':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'CF_Ne':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = '1/cm**3'
+        DataUnits = '1/cm^3'
 
     elif Field == 'AF_P':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'AF_Ye':
 
@@ -329,15 +324,15 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         if   CoordinateSystem == 'cartesian'  : DataUnits = ''
         elif CoordinateSystem == 'cylindrical': DataUnits = ''
-        elif CoordinateSystem == 'spherical'  : DataUnits = 'km**2'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
 
     elif Field == 'GF_Gm_33':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
 
         if   CoordinateSystem == 'cartesian'  : DataUnits = ''
-        elif CoordinateSystem == 'cylindrical': DataUnits = 'km**2'
-        elif CoordinateSystem == 'spherical'  : DataUnits = 'km**2'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km^2'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
 
     elif Field == 'GF_K_11':
 
@@ -369,6 +364,15 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     # --- Derived Fields ---
 
+    elif Field == 'alphaE':
+
+        alpha = np.copy( CoveringGrid['GF_Alpha'].to_ndarray() )
+        D     = np.copy( CoveringGrid['CF_D'].to_ndarray() )
+        tau   = np.copy( CoveringGrid['CF_E'].to_ndarray() )
+
+        Data = alpha * ( tau + D )
+        DataUnits = 'erg/cm^3'
+
     elif Field == 'pr4':
 
         p = np.copy( CoveringGrid['AF_P'].to_ndarray() )
@@ -378,7 +382,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         for iX1 in range( nX[0] ):
             for iX2 in range( nX[1] ):
                 for iX3 in range( nX[2] ):
-                    Data[iX1,iX2,iX3] = p[iX1,iX2,iX3] * ( X1[iX1] * 1.0e5 )**4
+                    Data[iX1,iX2,iX3] = p[iX1,iX2,iX3] \
+                                          * ( X1[iX1,iX2,iX3] * 1.0e5 )**4
 
         DataUnits = 'erg*cm'
 
@@ -404,7 +409,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = B
 
-        DataUnits = 'cm**2/s**2'
+        DataUnits = 'cm^2/s^2'
 
     elif Field == 'PolytropicConstant':
 
@@ -414,7 +419,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data  = AF_P / PF_D**AF_Gm
 
-        DataUnits = 'erg/cm**3/(g/cm**3)**(Gamma_IDEAL)'
+        DataUnits = 'erg/cm^3/(g/cm^3)^(Gamma_IDEAL)'
 
     elif Field == 'NonRelativisticSpecificEnthalpy':
 
@@ -424,7 +429,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         Data = ( e + p ) / rho
 
-        DataUnits = 'cm**2/s**2'
+        DataUnits = 'cm^2/s^2'
 
     elif Field == 'RelativisticSpecificEnthalpy':
 
@@ -484,12 +489,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                     AngleAveragedMass[iX1] \
                       += rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
                     AngleAveragedRadialVelocity[iX1] \
                       += V1[iX1,iX2,iX3] * rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
             AngleAveragedRadialVelocity[iX1] /= AngleAveragedMass[iX1]
 
@@ -536,12 +543,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                     AngleAveragedMass[iX1] \
                       += rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
                     AngleAveragedRadialVelocity[iX1] \
                       += V1[iX1,iX2,iX3] * rho[iX1,iX2,iX3] \
                            * Psi[iX1,iX2,iX3]**4 \
-                           * np.sin( X2[iX2] ) * dX1[iX1] * dX2[iX2]
+                           * np.sin( X2[iX1,iX2,iX3] ) \
+                           * dX1[iX1,iX2,iX3] * dX2[iX1,iX2,iX3]
 
             AngleAveragedRadialVelocity[iX1] /= AngleAveragedMass[iX1]
 
@@ -565,7 +574,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
                       = rho[iX1,iX2,iX3] * ( c * 1.0e5 )**2 \
                           * W**2 * BetaSq / ( W + 1.0 )
 
-        DataUnits = 'erg/cm**3'
+        DataUnits = 'erg/cm^3'
 
     elif Field == 'Vorticity':
 
@@ -579,44 +588,43 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         V1A = np.empty( (nX[0],nX[1]+2,nX[2]), np.float64 )
         V2A = np.empty( (nX[0],nX[1]+2,nX[2]), np.float64 )
 
-        h1A[:,1:-1,:] = h1
-        h2A[:,1:-1,:] = h2
-        V1A[:,1:-1,:] = V1
-        V2A[:,1:-1,:] = V2
-
-        k = 0
+        h1A[:,1:-1,:] = np.copy( h1 )
+        h2A[:,1:-1,:] = np.copy( h2 )
+        V1A[:,1:-1,:] = np.copy( V1 )
+        V2A[:,1:-1,:] = np.copy( V2 )
 
         # --- Apply reflecting boundary conditions in theta ---
 
         for i in range( nX[0] ):
+            for k in range( nX[2] ):
 
-          h1A[i,0,k] = +h1A[i,1,k]
-          h2A[i,0,k] = +h2A[i,1,k]
-          V1A[i,0,k] = +V1A[i,1,k]
-          V2A[i,0,k] = -V2A[i,1,k]
+                h1A[i,0,k] = +h1A[i,1,k]
+                h2A[i,0,k] = +h2A[i,1,k]
+                V1A[i,0,k] = +V1A[i,1,k]
+                V2A[i,0,k] = -V2A[i,1,k]
 
-          h1A[i,nX[1]+1,k] = +h1A[i,nX[1],k]
-          h2A[i,nX[1]+1,k] = +h2A[i,nX[1],k]
-          V1A[i,nX[1]+1,k] = +V1A[i,nX[1],k]
-          V2A[i,nX[1]+1,k] = -V2A[i,nX[1],k]
+                h1A[i,-1,k] = +h1A[i,-2,k]
+                h2A[i,-1,k] = +h2A[i,-2,k]
+                V1A[i,-1,k] = +V1A[i,-2,k]
+                V2A[i,-1,k] = -V2A[i,-2,k]
 
         # --- Compute vorticity in domain using
-        #     central differences for derivatives ---
+        #     central differences for derivatives (assume 2D) ---
 
         Data = np.zeros( (nX[0],nX[1],nX[2]), np.float64 )
 
-        k = 0
         for i in range( 1, nX[0] - 1 ):
             for j in range( 1, nX[1] + 1 ):
+                for k in range( nX[2] ):
 
-                Data[i,j-1,k] \
-                  = 1.0 / ( h1A[i,j,k]      * h2A[i,j,k] ) \
-                    * ( (   h2A[i+1,j,k]**2 * V2A[i+1,j,k] \
-                          - h2A[i-1,j,k]**2 * V2A[i-1,j,k] ) \
-                          / ( 2.0 * X1[i] ) \
-                      - (   h1A[i,j+1,k]**2 * V1A[i,j+1,k] \
-                          - h1A[i,j-1,k]**2 * V1A[i,j-1,k] ) \
-                          / ( 2.0 * X2[j-1] ) )
+                    Data[i,j-1,k] \
+                      = 1.0 / ( h1A[i,j,k]      * h2A[i,j,k] ) \
+                        * ( (   h2A[i+1,j,k]**2 * V2A[i+1,j,k] \
+                              - h2A[i-1,j,k]**2 * V2A[i-1,j,k] ) \
+                              / ( 2.0 * X1[i,j,k] ) \
+                          - (   h1A[i,j+1,k]**2 * V1A[i,j+1,k] \
+                              - h1A[i,j-1,k]**2 * V1A[i,j-1,k] ) \
+                              / ( 2.0 * X2[i,j-1,k] ) )
 
         DataUnits = '1/s'
 
@@ -639,14 +647,19 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  CF_E' )
         print( '  CF_Ne' )
         print( '  AF_P' )
+        print( '  AF_Ye' )
+        print( '  AF_T' )
+        print( '  AF_S' )
         print( '  AF_Cs' )
         print( '  GF_Gm_11' )
         print( '  GF_Gm_22' )
         print( '  GF_Gm_33' )
+        print( '  GF_K_11' )
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
-        print( '  GF_Beta1' )
+        print( '  GF_Beta_1' )
         print( '  DF_TCI' )
+        print( '  alphaE' )
         print( '  pr4' )
         print( '  RelativisticBernoulliConstant' )
         print( '  PolytropicConstant' )
@@ -665,21 +678,9 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     del ds, CoveringGrid
     gc.collect()
 
-    if nDimsX == 1:
-
-        Data = np.copy( Data[:,0,0] )
-
-    elif nDimsX == 2:
-
-        Data = np.copy( Data[:,:,0] )
-
-    else:
-
-        Data = np.copy( Data[:,:,iX3_CS] )
-
     if ReturnTime and ReturnMesh:
 
-        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX, Time
+        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xH, nX, Time
 
     elif ReturnTime:
 
@@ -687,7 +688,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     elif ReturnMesh:
 
-        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xU, nX
+        return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, xL, xH, nX
 
     else:
 
@@ -718,3 +719,34 @@ def GetNorm( UseLogScale, Data, vmin = +1.0e100, vmax = -1.0e100 ):
         Norm = plt.Normalize ( vmin = vmin, vmax = vmax )
 
     return Norm
+
+def MapCenterToCorners( X1_C, X2_C, dX1, dX2 ):
+
+    if( X1_C.ndim == 3 ): X1_C = np.copy( X1_C[:,:,0] )
+    if( X2_C.ndim == 3 ): X2_C = np.copy( X2_C[:,:,0] )
+    if( dX1 .ndim == 3 ): dX1  = np.copy( dX1 [:,:,0] )
+    if( dX2 .ndim == 3 ): dX2  = np.copy( dX2 [:,:,0] )
+
+    nX = [ X1_C.shape[0], X1_C.shape[1] ]
+
+    X1c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+    X2c = np.empty( (nX[0]+1,nX[1]+1), np.float64 )
+    for iX1 in range( nX[0] ):
+        for iX2 in range( nX[1] ):
+            X1c[iX1,iX2] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+            X2c[iX1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+            if   iX2 == nX[1]-1 and iX1 == nX[0]-1:
+                X1c[iX1,iX2+1  ] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+                X2c[iX1,iX2+1  ] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+                X1c[iX1+1,iX2  ] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2  ] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+                X1c[iX1+1,iX2+1] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            elif iX2 == nX[1]-1:
+                X1c[iX1,iX2+1] = X1_C[iX1,iX2] - 0.5 * dX1[iX1,iX2]
+                X2c[iX1,iX2+1] = X2_C[iX1,iX2] + 0.5 * dX2[iX1,iX2]
+            elif iX1 == nX[0]-1:
+                X1c[iX1+1,iX2] = X1_C[iX1,iX2] + 0.5 * dX1[iX1,iX2]
+                X2c[iX1+1,iX2] = X2_C[iX1,iX2] - 0.5 * dX2[iX1,iX2]
+
+    return X1c, X2c

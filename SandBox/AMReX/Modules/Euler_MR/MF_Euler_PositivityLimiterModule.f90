@@ -12,6 +12,10 @@ MODULE MF_Euler_PositivityLimiterModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
@@ -41,6 +45,7 @@ MODULE MF_Euler_PositivityLimiterModule
 
   USE MF_KindModule, ONLY: &
     DP, &
+    Zero, &
     One
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
@@ -48,11 +53,6 @@ MODULE MF_Euler_PositivityLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    UsePositivityLimiter_Euler, &
-    Min_1_Euler, &
-    Min_2_Euler, &
-    D_Min_Euler_PL, &
-    IntE_Min_Euler_PL, &
     EquationOfState, &
     nLevels, &
     UseTiling, &
@@ -64,8 +64,6 @@ MODULE MF_Euler_PositivityLimiterModule
     EdgeMap, &
     ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
-  USE FillPatchModule, ONLY: &
-    FillPatch
 
   IMPLICIT NONE
   PRIVATE
@@ -79,15 +77,31 @@ MODULE MF_Euler_PositivityLimiterModule
     MODULE PROCEDURE ApplyPositivityLimiter_Euler_MF_SingleLevel
   END INTERFACE ApplyPositivityLimiter_Euler_MF
 
+  LOGICAL  :: UsePositivityLimiter
+
 CONTAINS
 
 
-  SUBROUTINE InitializePositivityLimiter_Euler_MF
+  SUBROUTINE InitializePositivityLimiter_Euler_MF &
+    ( D_Min_Euler_PL_Option, IntE_Min_Euler_PL_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: D_Min_Euler_PL_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IntE_Min_Euler_PL_Option
+
+    TYPE(amrex_parmparse) :: PP
+
+    REAL(DP) :: Min_1, Min_2, D_Min_Euler_PL, IntE_Min_Euler_PL
+
+    UsePositivityLimiter = .TRUE.
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % query( 'UsePositivityLimiter_Euler', &
+                        UsePositivityLimiter )
+    CALL amrex_parmparse_destroy( PP )
 
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
       CALL InitializePositivityLimiter_Euler &
-             ( UsePositivityLimiter_Option = UsePositivityLimiter_Euler, &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
                Verbose_Option = amrex_parallel_ioprocessor(), &
                Min_1_Option = ( One + EPSILON(One) ) * Min_D, &
                Min_2_Option = ( One + EPSILON(One) ) * Min_T, &
@@ -98,13 +112,30 @@ CONTAINS
 
     ELSE
 
+      Min_1 = 1.0e-12_DP
+      Min_2 = 1.0e-12_DP
+      CALL amrex_parmparse_build( PP, 'PL' )
+        CALL PP % query( 'Min_1_Euler', &
+                          Min_1 )
+        CALL PP % query( 'Min_2_Euler', &
+                          Min_2 )
+      CALL amrex_parmparse_destroy( PP )
+
+      D_Min_Euler_PL = Zero
+      IF( PRESENT( D_Min_Euler_PL_Option ) ) &
+        D_Min_Euler_PL = D_Min_Euler_PL_Option
+
+      IntE_Min_Euler_PL = Zero
+      IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
+        IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
+
       CALL InitializePositivityLimiter_Euler &
-             ( UsePositivityLimiter_Option = UsePositivityLimiter_Euler, &
-               Verbose_Option = amrex_parallel_ioprocessor(), &
-               Min_1_Option = Min_1_Euler, &
-               Min_2_Option = Min_2_Euler, &
-               D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
-               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+               Verbose_Option              = amrex_parallel_ioprocessor(), &
+               Min_1_Option                = Min_1, &
+               Min_2_Option                = Min_2, &
+               D_Min_Euler_PL_Option       = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option    = IntE_Min_Euler_PL )
 
     END IF
 
@@ -121,43 +152,32 @@ CONTAINS
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
     ( MF_uGF, MF_uCF, MF_uDF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
 
-    INTEGER, PARAMETER :: nCycles = 1
+    INTEGER :: iLevel, iErr
 
-    INTEGER :: iCycle, iLevel, iErr
+    DO iLevel = 0, nLevels-1
 
-    DO iCycle = 1, nCycles
+      IF( DEBUG )THEN
 
-      DO iLevel = 0, nLevels-1
+        CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
-        IF( DEBUG )THEN
+        IF( amrex_parallel_ioprocessor() )THEN
 
-          CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+          WRITE(*,'(2x,A,I3.3)') &
+            'CALL ApplyPositivityLimiter_Euler_MF_SingleLevel, iLevel: ', &
+            iLevel
 
-          IF( amrex_parallel_ioprocessor() )THEN
+        END IF
 
-            WRITE(*,'(2x,A,I3.3)') &
-              'CALL ApplyPositivityLimiter_Euler_MF_SingleLevel, iLevel: ', &
-              iLevel
+      END IF ! DEBUG
 
-          END IF
+      CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
+             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
-        END IF ! DEBUG
-
-        CALL FillPatch( iLevel, 0.0_DP, MF_uGF, MF_uCF )
-
-        CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
-               ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-
-      END DO ! iLevel
-
-      ! --- Ensure underlying coarse cells are consistent with
-      !     cells on refined level ---
-
-    END DO ! iCycle
+    END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels
 
@@ -166,16 +186,16 @@ CONTAINS
     ( iLevel, MF_uGF, MF_uCF, MF_uDF )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
 
-    TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -187,17 +207,17 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
-    IF( .NOT. UsePositivityLimiter_Euler ) RETURN
+    IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF => MF_uGF(iLevel) % DataPtr( MFI )
-      uCF => MF_uCF(iLevel) % DataPtr( MFI )
-      uDF => MF_uDF(iLevel) % DataPtr( MFI )
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+      uDF => MF_uDF % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 
@@ -237,7 +257,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-      CALL ApplyPositivityLimiter_Euler( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
+      CALL ApplyPositivityLimiter_Euler &
+             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 

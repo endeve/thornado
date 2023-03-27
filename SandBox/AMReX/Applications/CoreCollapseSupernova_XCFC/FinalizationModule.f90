@@ -53,6 +53,7 @@ MODULE FinalizationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uGR, &
     DestroyFields_TwoMoment_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     FinalizeSlopeLimiter_Euler_MF
@@ -67,7 +68,8 @@ MODULE FinalizationModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeGray_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -83,9 +85,7 @@ MODULE FinalizationModule
     dt, &
     dt_TM, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     FinalizeGravitySolver_XCFC_Poseidon_MF
   USE MF_TimersModule, ONLY: &
@@ -112,6 +112,10 @@ CONTAINS
     CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
+
+    CALL ComputeGray_TwoMoment_MF &
+           ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
+ 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
@@ -119,8 +123,9 @@ CONTAINS
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
+             MF_uGR_Option = MF_uGR )
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
@@ -178,9 +183,6 @@ CONTAINS
     CALL FinalizeReferenceElementX
 
     CALL DestroyMesh( MeshE )
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF

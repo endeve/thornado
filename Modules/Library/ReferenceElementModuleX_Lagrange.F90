@@ -192,12 +192,14 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
     !$OMP          LX_X1_Up, LX_X2_Up, LX_X3_Up, &
-    !$OMP          dLXdX1_q, dLXdX2_q, dLXdX3_q )
+    !$OMP          dLXdX1_q, dLXdX2_q, dLXdX3_q, &
+    !$OMP          LX_L2G )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
     !$ACC         LX_X1_Up, LX_X2_Up, LX_X3_Up, &
-    !$ACC         dLXdX1_q, dLXdX2_q, dLXdX3_q )
+    !$ACC         dLXdX1_q, dLXdX2_q, dLXdX3_q, &
+    !$ACC         LX_L2G )
 #endif
 
   END SUBROUTINE InitializeReferenceElementX_Lagrange
@@ -209,12 +211,14 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
     !$OMP               LX_X1_Up, LX_X2_Up, LX_X3_Up, &
-    !$OMP               dLXdX1_q, dLXdX2_q, dLXdX3_q )
+    !$OMP               dLXdX1_q, dLXdX2_q, dLXdX3_q, &
+    !$OMP               LX_L2G )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
     !$ACC         LX_X1_Up, LX_X2_Up, LX_X3_Up, &
-    !$ACC         dLXdX1_q, dLXdX2_q, dLXdX3_q )
+    !$ACC         dLXdX1_q, dLXdX2_q, dLXdX3_q, &
+    !$ACC         LX_L2G )
 #endif
 
     DEALLOCATE( LX_X1_Dn )

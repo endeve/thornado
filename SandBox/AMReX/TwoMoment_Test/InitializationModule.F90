@@ -39,9 +39,6 @@ MODULE InitializationModule
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_foextrap, &
-    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
@@ -112,6 +109,7 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
+    nGR, &
     DescribeRadiationFields_Primitive, &
     DescribeRadiationFields_Conserved, &
     SetUnitsRadiationFields
@@ -151,6 +149,7 @@ MODULE InitializationModule
     MF_uCR, &
     MF_Permute, &
     MF_uPR, &
+    MF_uGR, &
     FluxRegister_TwoMoment
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -170,13 +169,14 @@ MODULE InitializationModule
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     Initialize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeGray_TwoMoment_MF
   USE MF_UtilitiesModule, ONLY: &
     amrex2amrex_permute_Z, &
     amrex_permute2amrex_Z, &
     MF_amrex2amrex_permute_Z_Level, &
     MF_amrex_permute2amrex_Z_Level
-    
+
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -190,6 +190,13 @@ MODULE InitializationModule
     zoomE, &
     StepNo, &
     iRestart, &
+    D_0, &
+    Sigma, &
+    Chi, &
+    kT, &
+    Mu0, &
+    E0, &
+    R0, &
     dt, &
     t_old, &
     t_new, &
@@ -209,8 +216,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    lo_bc, &
-    hi_bc, &
     ProgramName, &
     TagCriteria, &
     nRefinementBuffer, &
@@ -222,6 +227,7 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
+    IOS_CPP,               &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -262,12 +268,6 @@ CONTAINS
     CALL CreateFields_Geometry_MF
     CALL CreateFields_Euler_MF
     CALL CreateFields_TwoMoment_MF
-
-    ALLOCATE( lo_bc(1:amrex_spacedim,1) )
-    ALLOCATE( hi_bc(1:amrex_spacedim,1) )
-
-    lo_bc = amrex_bc_bogus
-    hi_bc = amrex_bc_bogus
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
@@ -325,6 +325,7 @@ CONTAINS
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
 
+
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
@@ -342,19 +343,22 @@ CONTAINS
 
     ELSE
 
+      CALL CreateMesh_MF( 0, MeshX )
+
       CALL InitializeEquationOfState &
                ( EquationOfState_Option = EquationOfState, &
                  Gamma_IDEAL_Option = Gamma_IDEAL, &
                  Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL CreateOpacities &
-             ( nX, [ 1, 1, 1 ], nE, 1, &
+             ( iZ_B1, iZ_E1, iOS_CPP, &
                Verbose_Option = amrex_parallel_ioprocessor() )
-!I think I need to define BX and calculate iZ_B and iZ_E from that instead
+
       CALL SetOpacities &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, &
+             ( iZ_B0, iZ_E0, iOS_CPP, D_0, Chi, Sigma, kT, E0, mu0, R0, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
+      CALL DestroyMesh_MF( MeshX )
     END IF
 
     CALL InitializeClosure_TwoMoment
@@ -436,16 +440,16 @@ CONTAINS
 
     DO i = 0, nLevels-1
 
-      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+!      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
     END DO
 
-   
-    CALL AverageDown( MF_uGF, MF_Permute )
+
+!    CALL AverageDown( MF_uGF, MF_Permute )
 
     DO i = 0, nLevels-1
 
-      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+!      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
     END DO
 
@@ -465,10 +469,21 @@ CONTAINS
     CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
+
+    CALL ComputeGray_TwoMoment_MF &
+           ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
+             MF_uGF_Option = MF_uGF, &
+             MF_uCF_Option = MF_uCF, &
+             MF_uPF_Option = MF_uPF, &
+             MF_uAF_Option = MF_uAF, &
+             MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
+             MF_uGR_Option = MF_uGR )
+
 
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
@@ -476,7 +491,7 @@ CONTAINS
 
     CALL ComputeTally_TwoMoment_MF &
            ( amrex_geom(0), MF_uGF, MF_uCF, MF_uCR, &
-             t_new(0), Verbose_Option = .FALSE. )
+             t_new(0), SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
   END SUBROUTINE InitializeProgram
 
@@ -536,6 +551,9 @@ CONTAINS
              nDOFZ * nCR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
     CALL MF_Permute(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
+    CALL MF_uGR(iLevel) % SetVal( Zero )
+
     ! Assume nDOF_X1 = nDOF_X2 = nDOFX3
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
@@ -549,29 +567,29 @@ CONTAINS
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCR(iLevel), MF_uCF(iLevel) )
 
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
 
 
     IF(iLevel .NE. 0) THEN
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+      !  CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
-    ELSE 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+    !   CALL FillPatch( iLevel, MF_uGF, MF_Permute )
+    ELSE
+    !   CALL FillPatch( iLevel, MF_uGF, MF_uCR )
     END IF
-   
+
 
     IF(iLevel .NE. 0) THEN
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+    !    CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
     END IF
@@ -588,7 +606,7 @@ CONTAINS
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-    INTEGER :: i 
+    INTEGER :: i
 
     BA = pBA
     DM = pDM
@@ -609,6 +627,7 @@ CONTAINS
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_Permute(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
@@ -616,29 +635,29 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOF_X1 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
 
     IF(iLevel .NE. 0) THEN
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+  !      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
 
-       CALL FillCoarsePatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute )
-    ELSE 
-       CALL FillCoarsePatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
+   !    CALL FillCoarsePatch( iLevel, MF_uGF, MF_Permute )
+    ELSE
+    !   CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
     END IF
-   
+
 
     IF(iLevel .NE. 0) THEN
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+ !       CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
     END IF
@@ -651,6 +670,7 @@ CONTAINS
 
     CALL amrex_multifab_destroy( MF_uPR(iLevel) )
     CALL amrex_multifab_destroy( MF_uCR(iLevel) )
+    CALL amrex_multifab_destroy( MF_uGR(iLevel) )
     CALL amrex_multifab_destroy( MF_uDF(iLevel) )
     CALL amrex_multifab_destroy( MF_uAF(iLevel) )
     CALL amrex_multifab_destroy( MF_uPF(iLevel) )
@@ -687,28 +707,28 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
 
 
     IF(iLevel .NE. 0) THEN
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+   !     CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_Permute, MF_uCR_tmp )
-    ELSE 
-       CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR, MF_uCR_tmp  )
+   !    CALL FillPatch( iLevel, MF_uGF, MF_Permute, MF_uCR_tmp )
+    ELSE
+    !   CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp  )
     END IF
-   
 
 
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCR, MF_uCR_tmp )
+
+!    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
 
@@ -731,8 +751,8 @@ CONTAINS
     CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
     CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
     CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
-    CALL MF_Permute(iLevel) % COPY &
-           ( MF_uCR_tmp, 1, 1, nDOFZ * nCR * nE * nSpecies, swX )
+!    CALL MF_Permute(iLevel) % COPY &
+!           ( MF_uCR_tmp, 1, 1, nDOFZ * nCR * nE * nSpecies, swX )
 
     CALL amrex_multifab_destroy( MF_uPR_tmp )
     CALL amrex_multifab_destroy( MF_uCR_tmp )
@@ -746,7 +766,7 @@ CONTAINS
 
       DO i = iLevel - 1, iLevel
 
-        CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+ !       CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
 
       END DO
     END IF

@@ -46,6 +46,8 @@ MODULE TwoMoment_PositivityLimiterModule_Relativistic
     ComputePrimitive_Euler_Relativistic
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
+  USE MeshModule, ONLY: &
+    MeshX
 
   IMPLICIT NONE
   PRIVATE
@@ -493,7 +495,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       GX (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                   iZ_B1(4):iZ_E1(4),1:nGF)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(inout) :: &
       U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                   iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
@@ -686,12 +688,20 @@ CONTAINS
          iZ_B0(4):iZ_E0(4), &
          nSpecies)
 
-    INTEGER :: iErr_Q(nDOFX,iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_B0(3), &
-                            iZ_B0(4):iZ_E0(4))
-    INTEGER :: iErr_P(nPT_X,iZ_B0(2):iZ_E0(2), &
-                            iZ_B0(3):iZ_B0(3), &
-                            iZ_B0(4):iZ_E0(4))
+    INTEGER :: ITERATION_Q(nDOFX,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+    INTEGER :: iErr_Q     (nDOFX,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+
+    INTEGER :: ITERATION_P(nPT_X,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+    INTEGER :: iErr_P     (nPT_X,iZ_B0(2):iZ_E0(2), &
+                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(4):iZ_E0(4))
+
     INTEGER :: ErrorExists
 
     Verbose = .TRUE.
@@ -788,7 +798,8 @@ CONTAINS
     DO iZ2    = iZ_B0(2), iZ_E0(2)
     DO iNodeX = 1       , nDOFX
 
-      iErr_Q(iNodeX,iZ2,iZ3,iZ4) = 0
+      ITERATION_Q(iNodeX,iZ2,iZ3,iZ4) = 0
+      iErr_Q     (iNodeX,iZ2,iZ3,iZ4) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( D_Q   (iNodeX,iZ2,iZ3,iZ4), &
@@ -806,9 +817,10 @@ CONTAINS
                G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_33_Q(iNodeX,iZ2,iZ3,iZ4), &
-               iErr = iErr_Q(iNodeX,iZ2,iZ3,iZ4) )
+               ITERATION_Option = ITERATION_Q(iNodeX,iZ2,iZ3,iZ4), &
+               iErr_Option      = iErr_Q     (iNodeX,iZ2,iZ3,iZ4) )
 
-        ErrorExists = ErrorExists + iErr_Q(iNodeX,iZ2,iZ3,iZ4)
+      ErrorExists = ErrorExists + iErr_Q(iNodeX,iZ2,iZ3,iZ4)
 
     END DO
     END DO
@@ -824,26 +836,30 @@ CONTAINS
 
         IF( iErr_Q(iNodeX,iZ2,iZ3,IZ4) .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ApplyPositivityLimiter_TwoMoment'
-          WRITE(*,*) 'iZ_B0: ', iZ_B0
-          WRITE(*,*) 'iZ_E0: ', iZ_E0
-
-          WRITE(*,*) 'iNodeX, iZ2, iZ3, iZ4: ', &
-                      iNodeX, iZ2, iZ3, iZ4
-
           CALL DescribeError_Euler &
-                 ( iErr_Q(iNodeX,iZ2,iZ3,iZ4), &
-                   Int_Option = [ iZ2 ], &
-                   Real_Option &
-                     = [ D_Q   (iNodeX,iZ2,iZ3,iZ4), &
-                         S1_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         S2_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         S3_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         E_Q   (iNodeX,iZ2,iZ3,iZ4), &
-                         Ne_Q  (iNodeX,iZ2,iZ3,iZ4), &
-                         G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
-                         G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
-                         G_33_Q(iNodeX,iZ2,iZ3,iZ4) ] )
+            ( iErr_Q(iNodeX,iZ2,iZ3,iZ4), &
+              Int_Option = [ ITERATION_Q(iNodeX,iZ2,iZ3,iZ4), 99999999, &
+                             iZ_B0(2), iZ_B0(3), iZ_B0(4), &
+                             iZ_E0(2), iZ_E0(3), iZ_E0(4), &
+                             iNodeX, iZ2, iZ3, iZ4 ], &
+              Real_Option = [ MeshX(1) % Center(iZ2), &
+                              MeshX(2) % Center(iZ3), &
+                              MeshX(3) % Center(iZ4), &
+                              MeshX(1) % Width (iZ2), &
+                              MeshX(2) % Width (iZ3), &
+                              MeshX(3) % Width (iZ4), &
+                              D_Q   (iNodeX,iZ2,iZ3,iZ4), &
+                              S1_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              S2_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              S3_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              E_Q   (iNodeX,iZ2,iZ3,iZ4), &
+                              Ne_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
+                              G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
+                              G_33_Q(iNodeX,iZ2,iZ3,iZ4) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ApplyPositivityLimiter_TwoMoment (nDOFX)' )
 
         END IF
 
@@ -887,7 +903,8 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iP  = 1       , nPT_X
 
-      iErr_P(iP,iZ2,iZ3,iZ4) = 0
+      ITERATION_P(iP,iZ2,iZ3,iZ4) = 0
+      iErr_P     (iP,iZ2,iZ3,iZ4) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( D_P   (iP,iZ2,iZ3,iZ4), &
@@ -905,7 +922,8 @@ CONTAINS
                G_11_P(iP,iZ2,iZ3,iZ4), &
                G_22_P(iP,iZ2,iZ3,iZ4), &
                G_33_P(iP,iZ2,iZ3,iZ4), &
-               iErr = iErr_P(iP,iZ2,iZ3,iZ4) )
+               ITERATION_Option = ITERATION_P(iP,iZ2,iZ3,iZ4), &
+               iErr_Option      = iErr_P     (iP,iZ2,iZ3,iZ4) )
 
       ErrorExists = ErrorExists + iErr_P(iP,iZ2,iZ3,iZ4)
 
@@ -923,26 +941,31 @@ CONTAINS
 
         IF( iErr_P(iP,iZ2,iZ3,IZ4) .NE. 0 )THEN
 
-          WRITE(*,*) 'ERROR: ApplyPositivityLimiter_TwoMoment'
-          WRITE(*,*) 'iZ_B0: ', iZ_B0
-          WRITE(*,*) 'iZ_E0: ', iZ_E0
-
-          WRITE(*,*) 'iP, iZ2, iZ3, iZ4: ', &
-                      iP, iZ2, iZ3, iZ4
-
           CALL DescribeError_Euler &
-                 ( iErr_P(iP,iZ2,iZ3,iZ4), &
-                   Int_Option = [ iZ2 ], &
-                   Real_Option &
-                     = [ D_P   (iP,iZ2,iZ3,iZ4), &
-                         S1_P  (iP,iZ2,iZ3,iZ4), &
-                         S2_P  (iP,iZ2,iZ3,iZ4), &
-                         S3_P  (iP,iZ2,iZ3,iZ4), &
-                         E_P   (iP,iZ2,iZ3,iZ4), &
-                         Ne_P  (iP,iZ2,iZ3,iZ4), &
-                         G_11_P(iP,iZ2,iZ3,iZ4), &
-                         G_22_P(iP,iZ2,iZ3,iZ4), &
-                         G_33_P(iP,iZ2,iZ3,iZ4) ] )
+            ( iErr_P(iP,iZ2,iZ3,iZ4), &
+              Int_Option = [ ITERATION_P(iP,iZ2,iZ3,iZ4), 99999999, &
+                             iZ_B0(2), iZ_B0(3), iZ_B0(4), &
+                             iZ_E0(2), iZ_E0(3), iZ_E0(4), &
+                             iNodeX, iZ2, iZ3, iZ4 ], &
+              Real_Option = [ MeshX(1) % Center(iZ2), &
+                              MeshX(2) % Center(iZ3), &
+                              MeshX(3) % Center(iZ4), &
+                              MeshX(1) % Width (iZ2), &
+                              MeshX(2) % Width (iZ3), &
+                              MeshX(3) % Width (iZ4), &
+                              D_P   (iP,iZ2,iZ3,iZ4), &
+                              S1_P  (iP,iZ2,iZ3,iZ4), &
+                              S2_P  (iP,iZ2,iZ3,iZ4), &
+                              S3_P  (iP,iZ2,iZ3,iZ4), &
+                              E_P   (iP,iZ2,iZ3,iZ4), &
+                              Ne_P  (iP,iZ2,iZ3,iZ4), &
+                              G_11_P(iP,iZ2,iZ3,iZ4), &
+                              G_22_P(iP,iZ2,iZ3,iZ4), &
+                              G_33_P(iP,iZ2,iZ3,iZ4) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ApplyPositivityLimiter_TwoMoment (nPT_X)' )
+
         END IF
 
       END DO
@@ -1232,15 +1255,15 @@ m=0
     G_uu(0,0) = - 1.0_DP / alp**2
     G_uu(1:3,0) = B(1:3) / alp**2
     G_uu(0,1:3) = B(1:3) / alp**2
-    G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)
-    G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)
-    G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)
-    G_uu(1,2) = - alp**2 * B(1) * B(2)
-    G_uu(1,3) = - alp**2 * B(1) * B(3)
-    G_uu(2,1) = - alp**2 * B(1) * B(2)
-    G_uu(3,1) = - alp**2 * B(1) * B(3)
-    G_uu(2,3) = - alp**2 * B(2) * B(3)
-    G_uu(3,2) = - alp**2 * B(2) * B(3)
+    G_uu(1,1) = 1.0_DP / Gm_dd_11 - B(1) * B(1) / alp**2
+    G_uu(2,2) = 1.0_DP / Gm_dd_22 - B(2) * B(2) / alp**2
+    G_uu(3,3) = 1.0_DP / Gm_dd_33 - B(3) * B(3) / alp**2
+    G_uu(1,2) = - B(1) * B(2) / alp**2
+    G_uu(1,3) = - B(1) * B(3) / alp**2
+    G_uu(2,1) = - B(1) * B(2) / alp**2
+    G_uu(3,1) = - B(1) * B(3) / alp**2
+    G_uu(2,3) = - B(2) * B(3) / alp**2
+    G_uu(3,2) = - B(2) * B(3) / alp**2
 
     G(0) = ( V1 * G1 + V2 * G2 + V3 * G3 ) / alp
     G(1) = G1
@@ -1343,42 +1366,6 @@ m=0
 
   END SUBROUTINE SolveTheta_Bisection
 
-!  SUBROUTINE PointsZtoPointsX( nNodes, iPT_Z, iPT_X )
-!
-!
-!    INTEGER, INTENT(in)  :: nNodes, iPT_Z
-!    INTEGER, INTENT(out) :: iPT_X
-!
-!    IF (nNodes .EQ. 2) THEN
-!
-!      IF(iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 10) THEN
-!        iPT_X = 1
-!      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 7) THEN
-!        iPT_X = 2
-!      ELSE IF(iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 8) THEN
-!        iPT_X = 3
-!      ELSE IF(iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 12) THEN
-!        iPT_X = 4
-!      END IF
-!
-!    ELSE IF(nNodes .EQ. 3) THEN
-!
-!      IF(iPT_Z .EQ. 16 .OR. iPT_Z .EQ. 17 .OR. iPT_Z .EQ. 18) THEN
-!        iPT_X = 1
-!      ELSE IF(iPT_Z .EQ. 1 .OR. iPT_Z .EQ. 2 .OR. iPT_Z .EQ. 3 .OR. iPT_Z .EQ. 10 .OR. iPT_Z .EQ. 13) THEN
-!        iPT_X = 2
-!      ELSE IF(iPT_Z .EQ. 4 .OR. iPT_Z .EQ. 5 .OR. iPT_Z .EQ. 6 .OR. iPT_Z .EQ. 11 .OR. iPT_Z .EQ. 14) THEN
-!        iPT_X = 3
-!      ELSE IF(iPT_Z .EQ. 7 .OR. iPT_Z .EQ. 8 .OR. iPT_Z .EQ. 9 .OR. iPT_Z .EQ. 12 .OR. iPT_Z .EQ. 15) THEN
-!        iPT_X = 4
-!      ELSE IF(iPT_Z .EQ. 19 .OR. iPT_Z .EQ. 20 .OR. iPT_Z .EQ. 21) THEN
-!        iPT_X = 5
-!      END IF
-!
-!    END IF
-!
-!  END SUBROUTINE
-!
   SUBROUTINE CheckCellAverageRealizability(iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, &
               V_1_P, V_2_P, V_3_P, G_11_P, G_22_P, G_33_P, &
               A_P, B1_P, B2_P, B3_P, RealizableCellAverage)
@@ -1649,15 +1636,15 @@ m=0
             G_uu(0,0) = - 1.0_DP / alp**2
             G_uu(1:3,0) = B(1:3) / alp**2
             G_uu(0,1:3) = B(1:3) / alp**2
-            G_uu(1,1) = 1.0_DP / Gm_dd_11 - alp**2 * B(1) * B(1)
-            G_uu(2,2) = 1.0_DP / Gm_dd_22 - alp**2 * B(2) * B(2)
-            G_uu(3,3) = 1.0_DP / Gm_dd_33 - alp**2 * B(3) * B(3)
-            G_uu(1,2) = - alp**2 * B(1) * B(2)
-            G_uu(1,3) = - alp**2 * B(1) * B(3)
-            G_uu(2,1) = - alp**2 * B(1) * B(2)
-            G_uu(3,1) = - alp**2 * B(1) * B(3)
-            G_uu(2,3) = - alp**2 * B(2) * B(3)
-            G_uu(3,2) = - alp**2 * B(2) * B(3)
+            G_uu(1,1) = 1.0_DP / Gm_dd_11 - B(1) * B(1) / alp**2
+            G_uu(2,2) = 1.0_DP / Gm_dd_22 - B(2) * B(2) / alp**2
+            G_uu(3,3) = 1.0_DP / Gm_dd_33 - B(3) * B(3) / alp**2
+            G_uu(1,2) = - B(1) * B(2) / alp**2
+            G_uu(1,3) = - B(1) * B(3) / alp**2
+            G_uu(2,1) = - B(1) * B(2) / alp**2
+            G_uu(3,1) = - B(1) * B(3) / alp**2
+            G_uu(2,3) = - B(2) * B(3) / alp**2
+            G_uu(3,2) = - B(2) * B(3) / alp**2
 
             G(1) = G1_K(iZ1,iZ2,iZ3,iZ4,iS)
             G(2) = G2_K(iZ1,iZ2,iZ3,iZ4,iS)
