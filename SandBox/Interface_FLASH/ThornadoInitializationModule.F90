@@ -86,23 +86,17 @@ module ThornadoInitializationModule
   use TwoMoment_MeshRefinementModule, only : &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment
-#ifdef TWOMOMENT_ORDER_1
-  use TwoMoment_PositivityLimiterModule, only: &
-    InitializePositivityLimiter_TwoMoment, &
-    FinalizePositivityLimiter_TwoMoment
-#elif TWOMOMENT_ORDER_V
-  use TwoMoment_SlopeLimiterModule_OrderV, only: &
+  use TwoMoment_SlopeLimiterModule, only: &
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment
-  use TwoMoment_PositivityLimiterModule_OrderV, only: &
+  use TwoMoment_PositivityLimiterModule, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
   use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
     InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
-  use TwoMoment_NeutrinoMatterSolverModule_OrderV, only: &
+  use TwoMoment_NeutrinoMatterSolverModule, only: &
     InitializeNeutrinoMatterSolverParameters
-#endif
 
   implicit none
   private
@@ -366,6 +360,7 @@ contains
              Max_3_Option &
                = ( One - 1.0d-3 * EPSILON( One ) ) * Max_Y )
 #endif
+#endif
 
     call InitializeNeutrinoMatterSolverParameters &
            ( M_outer_Option = M_outer_Option, &
@@ -380,7 +375,6 @@ contains
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
              Verbose_Option = Verbose )
-#endif
 
   end subroutine InitThornado
 
