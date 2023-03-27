@@ -56,6 +56,11 @@ CONTAINS
 
   SUBROUTINE ComputeConserved_TwoMoment &
     ( D, I_1, I_2, I_3, N, G_1, G_2, G_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: D, I_1, I_2, I_3
     REAL(DP), INTENT(out) :: N, G_1, G_2, G_3
