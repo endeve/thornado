@@ -110,7 +110,7 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
-    nIR, &
+    nGR, &
     DescribeRadiationFields_Primitive, &
     DescribeRadiationFields_Conserved, &
     SetUnitsRadiationFields
@@ -149,7 +149,7 @@ MODULE InitializationModule
     CreateFields_TwoMoment_MF, &
     MF_uCR, &
     MF_uPR, &
-    MF_uIR, &
+    MF_uGR, &
     FluxRegister_TwoMoment
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -169,7 +169,8 @@ MODULE InitializationModule
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     Initialize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeGray_TwoMoment_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
@@ -443,7 +444,6 @@ CONTAINS
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
-
     CALL Initialize_IMEX_RK_MF &
            ( Scheme, MF_uGF % BA, MF_uGF % DM, &
              Verbose_Option = amrex_parallel_ioprocessor() )
@@ -456,14 +456,20 @@ CONTAINS
     CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
+
+    CALL ComputeGray_TwoMoment_MF &
+           ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
              MF_uCF_Option = MF_uCF, &
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
+             MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
+             MF_uGR_Option = MF_uGR )
 
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
@@ -524,8 +530,8 @@ CONTAINS
     CALL MF_uPR(iLevel) % SetVal( Zero )
 
 
-    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * nIR, swX )
-    CALL MF_uIR(iLevel) % SetVal( Zero )
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
+    CALL MF_uGR(iLevel) % SetVal( Zero )
 
 
 
@@ -593,7 +599,7 @@ CONTAINS
 
     CALL amrex_multifab_destroy( MF_uPR(iLevel) )
     CALL amrex_multifab_destroy( MF_uCR(iLevel) )
-    CALL amrex_multifab_destroy( MF_uIR(iLevel) )
+    CALL amrex_multifab_destroy( MF_uGR(iLevel) )
     CALL amrex_multifab_destroy( MF_uDF(iLevel) )
     CALL amrex_multifab_destroy( MF_uAF(iLevel) )
     CALL amrex_multifab_destroy( MF_uPF(iLevel) )
@@ -646,7 +652,7 @@ CONTAINS
            ( MF_uCR(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
-    CALL amrex_multifab_build( MF_uIR(iLevel), BA, DM, nDOFX * nIR, swX )
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &

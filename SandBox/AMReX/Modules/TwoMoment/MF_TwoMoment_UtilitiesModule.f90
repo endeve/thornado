@@ -33,12 +33,23 @@ MODULE MF_TwoMoment_UtilitiesModule
     iCR_G3, &
     nPR, &
     iPR_D, &
-    iPR_I1, &
-    iPR_I2, &
-    iPR_I3, &
-    iIR_RMS, &
-    iIR_Ynu, &
-    nIR, &
+    iPR_I1,  &
+    iPR_I2,  &
+    iPR_I3,  &
+    iGR_N,   &      
+    iGR_D,   & 
+    iGR_I1,  & 
+    iGR_I2,  &
+    iGR_I3,  & 
+    iGR_J,   & 
+    iGR_H1,  & 
+    iGR_H2,  & 
+    iGR_H3,  & 
+    iGR_RMS, &
+    iGR_F,   & 
+    iGR_K,   & 
+    iGR_Q,   & 
+    nGR,     & 
     LeptonNumber
   USE FluidFieldsModule, ONLY: &
     nCF, &
@@ -85,8 +96,10 @@ MODULE MF_TwoMoment_UtilitiesModule
     DescribeError_Euler
   USE MeshModule, ONLY: &
     MeshX, &
-    MeshE
+    MeshE, &
+    NodeCoordinate
   USE UnitsModule, ONLY: &
+    UnitsActive, &
     AtomicMassUnit, &
     SpeedOfLight, &
     PlanckConstant
@@ -113,10 +126,14 @@ MODULE MF_TwoMoment_UtilitiesModule
     thornado2amrex_X, &
     amrex2thornado_Z, &
     thornado2amrex_Z, &
+    amrex2thornado_Integrated, &
+    thornado2amrex_Integrated, &
     AllocateArray_X, &
     DeallocateArray_X, &
     AllocateArray_Z, &
-    DeallocateArray_Z
+    DeallocateArray_Z, &
+    AllocateArray_Integrated, &
+    DeallocateArray_Integrated
 
   IMPLICIT NONE
   PRIVATE
@@ -124,7 +141,7 @@ MODULE MF_TwoMoment_UtilitiesModule
   PUBLIC :: ComputeTimeStep_TwoMoment_Fancy_MF
   PUBLIC :: ComputeTimeStep_TwoMoment_MF
   PUBLIC :: ComputeFromConserved_TwoMoment_MF
-  PUBLIC :: ComputeIntegral_TwoMoment_MF
+  PUBLIC :: ComputeGray_TwoMoment_MF
 
 
 CONTAINS
@@ -697,32 +714,35 @@ CONTAINS
     END ASSOCIATE
   END SUBROUTINE CalculateTimeStep
 
-  SUBROUTINE ComputeIntegral_TwoMoment_MF &
-    ( MF_uGF, MF_uPF, MF_uPR,  MF_uIR )
+  SUBROUTINE ComputeGray_TwoMoment_MF &
+    ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
 
     TYPE(amrex_multifab), INTENT(in)    :: &
-      MF_uGF(0:nLevels-1), MF_uPR(0:nLevels-1), MF_uPF(0:nLevels-1)
+      MF_uGF(0:nLevels-1), MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: &
+      MF_uCR(0:nLevels-1), MF_uPR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
-      MF_uIR(0:nLevels-1)
+      MF_uGR(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uPR(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uIR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGR(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CR(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PR(:,:,:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: IR(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: GR(:,:,:,:,:,:)
 
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLevel, iLo_MF(4)
-
 
     DO iLevel = 0, nLevels-1
 
@@ -733,8 +753,9 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uPF => MF_uPF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
         uPR => MF_uPR(iLevel) % DataPtr( MFI )
-        uIR => MF_uIR(iLevel) % DataPtr( MFI )
+        uGR => MF_uGR(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -763,11 +784,6 @@ CONTAINS
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
                  PF )
-
-        CALL AllocateArray_X &
-               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nIR ], &
-                 IR )
         CALL AllocateArray_Z &
                ( [ 1       , &
                    iZ_B1(1), &
@@ -783,8 +799,39 @@ CONTAINS
                    iZ_E1(4), &
                    nCR     , &
                    nSpecies ], &
+                 CR )
+
+        CALL AllocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nPR     , &
+                   nSpecies ], &
                  PR )
 
+        CALL AllocateArray_Integrated &
+               ( [ 1       , &
+                   iX_B1(1), &
+                   iX_B1(2), &
+                   iX_B1(3), &
+                   1       , &
+                   1        ], &
+                 [ nDOFX   , &
+                   iX_E1(1), &
+                   iX_E1(2), &
+                   iX_E1(3), &
+                   nGR     , &
+                   nSpecies ], &
+                 GR )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
@@ -792,19 +839,25 @@ CONTAINS
         CALL amrex2thornado_X &
                ( nPF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uPF, PF )
 
-        CALL amrex2thornado_X &
-               ( nIR, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uIR, IR )
+        CALL amrex2thornado_Z &
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, CR )
 
         CALL amrex2thornado_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
 
-        CALL ComputeIntegral_TwoMoment &
-              ( iZ_B1, iZ_E1, iZ_B0, iZ_E0, &
-                PF, PR, IR )
+        CALL amrex2thornado_Integrated &
+               ( nGR, nSpecies, iX_B1, iX_E1, &
+                 iLo_MF, iX_B0, iX_E0, uGR, GR )
 
-        CALL thornado2amrex_X &
-               ( nIR, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uIR, IR )
+        CALL ComputeGray_TwoMoment &
+              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+                G, PF, CR, PR, GR )
+
+        CALL thornado2amrex_Integrated &
+               ( nGR, nSpecies, iX_B1, iX_E1, &
+                 iLo_MF, iX_B0, iX_E0, uGR, GR )
 
       END DO
 
@@ -813,80 +866,167 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE ComputeIntegral_TwoMoment_MF
+  END SUBROUTINE ComputeGray_TwoMoment_MF
 
-  SUBROUTINE ComputeIntegral_TwoMoment &
-    ( iZ_B1, iZ_E1, iZ_B0, iZ_E0, uPF, uPR, I  )
 
-    INTEGER,  INTENT(in)    :: &
+  SUBROUTINE ComputeGray_TwoMoment &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CR, PR, GR )
+
+    INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)    :: &
-      uPF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPF)
-    REAL(DP), INTENT(in) :: &
-      uPR (1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
-    REAL(DP), INTENT(inout)    :: &
-      I(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nIR)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nPF)
+    REAL(DP), INTENT(in)  :: &
+      CR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      PR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      GR(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGR,1:nSpecies)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iNodeE, iNodeX, iS, iNodeZ
-    REAL (DP) :: RMSnum, RMSdenom, Nnu
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iGR, iS, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: hc3, E_0, E, RMS_Int3, RMS_Int5
+    REAL(DP) :: W2(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W3(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W3_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W5_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
 
-    ASSOCIATE &
-      ( dZ1 => MeshE  % Width )
+    IF( UnitsActive )THEN
 
+      hc3 = ( PlanckConstant * SpeedOfLight )**3
 
+    ELSE
 
-    RMSnum   = 0.0_DP
-    RMSdenom = 0.0_DP
-    Nnu = 0.0_DP
+      hc3 = One
 
+    END IF
+
+    ! --- Integration Weights ---
+
+    ASSOCIATE( dZ1 => MeshE % Width )
+
+    E_0 = NodeCoordinate( MeshE, iZ_B0(1), 1 )
+
+    DO iZ1    = iZ_B0(1), iZ_E0(1)
+    DO iNodeE = 1, nDOFE
+
+      E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+      W2(iNodeE,iZ1) = FourPi * WeightsE(iNodeE) * ( dZ1(iZ1) * E**2 / hc3 )
+
+      W3(iNodeE,iZ1) = W2(iNodeE,iZ1) * E
+
+      W3_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )
+
+      W5_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**3
+
+    END DO
+    END DO
+
+    END ASSOCIATE ! dZ1
+
+    ! --- Initialize Gray Radiation Fields ---
+    DO iS  = 1, nSpecies
+    DO iGR = 1, nGR
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iNodeX = 1, nDOFX
 
-    DO iS  = 1, nSpecies
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeX = 1, nDOFX
 
-
-      DO iNodeE = 1, nDOFE
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-        RMSnum = RMSnum &
-               + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
-               * uGE(iNodeE,iZ1,iGE_Ep3) * uGE(iNodeE,iZ1,iGE_Ep2) &
-               * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
-
-        RMSdenom = RMSdenom &
-                 + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
-                 * uGE(iNodeE,iZ1,iGE_Ep3) * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
-
-        Nnu = Nnu &
-               + FourPi * dZ1(iZ1) * WeightsE(iNodeE) &
-               * uGE(iNodeE,iZ1,iGE_Ep2) * LeptonNumber(iS) &
-               * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR,iS) = Zero
 
       END DO
 
     END DO
     END DO
-      I(iNodeX,iZ2,iZ3,iZ4,iIR_RMS) = SQRT( RMSnum / RMSdenom )
+    END DO
+    END DO
+    END DO
 
-      I(iNodeX,iZ2,iZ3,iZ4,iIR_Ynu) = Nnu * AtomicMassUnit / ( PlanckConstant * SpeedOfLight )**3 &
-                                    / uPF(iNodeX,iZ2,iZ3,iZ4,iPF_D)
+    ! --- Integrate Over Energy ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        RMS_Int3 = Zero
+        RMS_Int5 = Zero
+
+        DO iZ1    = iZ_B0(1), iZ_E0(1)
+        DO iNodeE = 1, nDOFE
+
+          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_I1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I1,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_I2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I2,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_H1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_H1,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_H2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_H2,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_H3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_H3,iS) &
+                + W3(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
+
+          RMS_Int3 &
+            = RMS_Int3 &
+                + W3_RMS(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+          RMS_Int5 &
+            = RMS_Int5 &
+                + W5_RMS(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
 
 
+        END DO
+        END DO
 
-      RMSnum   = 0.0_DP
-      RMSdenom = 0.0_DP
-      Nnu = 0.0_DP
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_RMS,iS) &
+          = E_0 * SQRT( RMS_Int5 / RMS_Int3 )
+
+
+      END DO
 
     END DO
     END DO
     END DO
     END DO
-    END ASSOCIATE
-
-  END SUBROUTINE ComputeIntegral_TwoMoment
+    
+  END SUBROUTINE ComputeGray_TwoMoment
 
 
 END MODULE MF_TwoMoment_UtilitiesModule

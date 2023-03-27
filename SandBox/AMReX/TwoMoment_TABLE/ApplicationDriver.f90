@@ -14,7 +14,7 @@ PROGRAM main
     ComputeTimeStep_TwoMoment_MF,                &
     ComputeTimeStep_TwoMoment_Fancy_MF,          &
     ComputeFromConserved_TwoMoment_MF,           &
-    ComputeIntegral_TwoMoment_MF
+    ComputeGray_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_UtilitiesModule,     ONLY: &
@@ -29,7 +29,7 @@ PROGRAM main
   USE MF_FieldsModule_TwoMoment,                  ONLY: &
     MF_uPR, &
     MF_uCR, &
-    MF_uIR
+    MF_uGR
   USE MF_TwoMoment_TallyModule,         ONLY: &
     ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
@@ -131,11 +131,20 @@ num = 1
      CALL ComputeFromConserved_Euler_MF &
             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-     CALL ComputeIntegral_TwoMoment_MF &
-            ( MF_uGF, MF_uPF, MF_uPR, MF_uIR )
+     CALL ComputeGray_TwoMoment_MF &
+            ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
+ 
+     CALL WriteFieldsAMReX_Checkpoint &
+            ( StepNo, nLevels, dt, t_new, &
+              MF_uGF % BA % P, &
+              iWriteFields_uGF = 1, &
+              iWriteFields_uCF = 1, &
+              iWriteFields_uCR = 1, &
+              pMF_uGF_Option = MF_uGF % P, &
+              pMF_uCF_Option = MF_uCF % P, &
+              pMF_uCR_Option = MF_uCR % P )
 
-
-      CALL WriteFieldsAMReX_PlotFile &
+     CALL WriteFieldsAMReX_PlotFile &
             ( t_new(0), StepNo, MF_uGF, &
               MF_uGF_Option = MF_uGF, &
               MF_uCF_Option = MF_uCF, &
@@ -144,9 +153,8 @@ num = 1
               MF_uDF_Option = MF_uDF, &
               MF_uPR_Option = MF_uPR, &
               MF_uCR_Option = MF_uCR, &
-              MF_uIR_Option = MF_uIR )
-
-
+              MF_uGR_Option = MF_uGR )
+ 
       num = num + 1
       wrt = .FALSE.
     END IF
@@ -168,18 +176,10 @@ num = 1
 
   CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-  CALL ComputeIntegral_TwoMoment_MF & 
-            ( MF_uGF, MF_uPF, MF_uPR, MF_uIR )
 
-  CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t_new, &
-           MF_uGF % BA % P, &
-           iWriteFields_uGF = 1, &
-           iWriteFields_uCF = 1, &
-           iWriteFields_uCR = 1, &
-           pMF_uGF_Option = MF_uGF % P, &
-           pMF_uCF_Option = MF_uCF % P, &
-           pMF_uCR_Option = MF_uCR % P )
+
+  CALL ComputeGray_TwoMoment_MF &
+         ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
   CALL WriteFieldsAMReX_PlotFile &
          ( t_new(0), StepNo, MF_uGF, &
@@ -190,7 +190,18 @@ num = 1
            MF_uDF_Option = MF_uDF, &
            MF_uPR_Option = MF_uPR, &
            MF_uCR_Option = MF_uCR, &
-           MF_uIR_Option = MF_uIR )
+           MF_uGR_Option = MF_uGR )
+
+
+  CALL WriteFieldsAMReX_Checkpoint &
+         ( StepNo, nLevels, dt, t_new, &
+           MF_uGF % BA % P, &
+           iWriteFields_uGF = 1, &
+           iWriteFields_uCF = 1, &
+           iWriteFields_uCR = 1, &
+           pMF_uGF_Option = MF_uGF % P, &
+           pMF_uCF_Option = MF_uCF % P, &
+           pMF_uCR_Option = MF_uCR % P )
 
 
 

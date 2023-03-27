@@ -95,9 +95,9 @@ MODULE InputOutputModuleAMReX
     ShortNamesPR, &
     unitsPR, &
     nPR, &
-    ShortNamesIR, &
-    unitsIR, &
-    nIR
+    ShortNamesGR, &
+    unitsGR, &
+    nGR
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
@@ -121,6 +121,7 @@ MODULE InputOutputModuleAMReX
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uGR, &
     FluxRegister_TwoMoment
   USE FillPatchModule, ONLY: &
     FillPatch
@@ -199,7 +200,7 @@ CONTAINS
     ( Time, StepNo, MF_uGF, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
       MF_uAF_Option, MF_uDF_Option, &
-      MF_uCR_Option, MF_uPR_Option, MF_uIR_Option, PlotFileNumber_Option )
+      MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option )
 
     REAL(DP)            , INTENT(in) :: Time
     INTEGER             , INTENT(in) :: StepNo(0:)
@@ -211,13 +212,14 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uIR_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGR_Option(0:)
     INTEGER             , INTENT(in), OPTIONAL :: PlotFileNumber_Option
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
     CHARACTER(32)                   :: ShortNamesCR_Z
     CHARACTER(32)                   :: ShortNamesPR_Z
+    CHARACTER(32)                   :: ShortNamesGR_Z
     CHARACTER(3)                    :: iSC, iZ1C
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C
@@ -226,7 +228,7 @@ CONTAINS
     LOGICAL                         :: WriteFF_D
     LOGICAL                         :: WriteRF_C
     LOGICAL                         :: WriteRF_P
-    LOGICAL                         :: WriteRF_I
+    LOGICAL                         :: WriteRF_GR
     INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
@@ -289,11 +291,11 @@ CONTAINS
 
     END IF
 
-    WriteRF_I = .FALSE.
-    IF( PRESENT( MF_uIR_Option ) )THEN
+    WriteRF_GR = .FALSE.
+    IF( PRESENT( MF_uGR_Option ) )THEN
 
-      WriteRF_I = .TRUE.
-      nF = nF + nIR
+      WriteRF_GR = .TRUE.
+      nF = nF + nGR *  nSpecies
 
     END IF
 
@@ -440,16 +442,23 @@ CONTAINS
     END IF
 
 
-    IF( WriteRF_I )THEN
+    IF( WriteRF_GR )THEN
 
-      DO iFd = 1, nIR
+      DO iS  = 1       , nSpecies
+      DO iFd = 1, nGR
+
+        WRITE(iSC ,'(I3.3)') iS
+
+        ShortNamesGR_Z = TRIM( ShortNamesGR(iFd) ) // '_' // iSC
 
         CALL amrex_string_build &
-               ( VarNames( iFd + iOS ), TRIM( ShortNamesIR(iFd) ) )
+               ( VarNames( iFd &
+                   + ( iS - 1 ) * nGR + iOS ), TRIM( ShortNamesGR_Z ) )
 
       END DO
+      END DO
 
-      iOS = iOS + nIR
+      iOS = iOS + nGR * nSpecies
 
     END IF
 
@@ -539,13 +548,13 @@ CONTAINS
 
       END IF
 
-      IF( WriteRF_I )THEN
+      IF( WriteRF_GR )THEN
 
-        CALL ComputeCellAverage_X_MF &
-               ( nIR, MF_uGF(iLevel), MF_uIR_Option(iLevel), &
-                 iOS, 'IR', MF_plt(iLevel) )
+        CALL ComputeCellAverage_Integral_MF &
+               ( nGR, MF_uGF(iLevel), MF_uGR_Option(iLevel), &
+                 iOS, 'GR', MF_plt(iLevel) )
 
-        iOS = iOS + nIR
+        iOS = iOS + nGR * nSpecies
 
       END IF
     END DO ! iLevel = 0, nLevels-1
@@ -685,6 +694,13 @@ CONTAINS
                  nDOFZ * nPR * nE * nSpecies, swX )
         CALL MF_uPR(iLevel) % SetVal( Zero )
 
+
+        CALL amrex_multifab_build &
+               ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
+                 nDOFX * nGR * nSpecies, swX )
+        CALL MF_uGR(iLevel) % SetVal( Zero )
+
+
         ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
         IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
 
@@ -789,6 +805,8 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_X_MF
 
 
+
+
   SUBROUTINE ComputeCellAverage_Z_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
@@ -879,13 +897,79 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_Z_MF
 
 
+  SUBROUTINE ComputeCellAverage_Integral_MF &
+    ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
+
+    INTEGER,              INTENT(in)    :: nFd, iOS
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF
+    CHARACTER(2),         INTENT(in)    :: Field
+    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+
+    INTEGER                       :: iX1, iX2, iX3, iFd, iS
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_U(4), hi_U(4)
+    REAL(DP)                      :: G_K(nDOFX,nGF)
+    REAL(DP)                      :: U_K(nDOFX,nFd,nSpecies)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      G     => MF_uGF % DataPtr( MFI )
+      U     => MF     % DataPtr( MFI )
+      U_plt => MF_plt % DataPtr( MFI )
+
+      BX = MFI % TileBox()
+
+      lo_G = LBOUND( G ); hi_G = UBOUND( G )
+      lo_U = LBOUND( U ); hi_U = UBOUND( U )
+ 
+
+      DO iS = 1, nSpecies
+      DO iX3 = BX % lo(3), BX % hi(3)
+      DO iX2 = BX % lo(2), BX % hi(2)
+      DO iX1 = BX % lo(1), BX % hi(1)
+
+        G_K(1:nDOFX,1:nGF) &
+          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+        U_K(1:nDOFX,1:nFd,1:nSpecies) &
+          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nFd, nSpecies ] )
+
+        DO iFd = 1, nFd
+
+          U_plt(iX1,iX2,iX3,iFd + ( iS - 1 ) * nFd + iOS) &
+            = SUM( WeightsX_q * U_K(:,iFd,iS) * G_K(:,iGF_SqrtGm) ) &
+                / SUM( WeightsX_q * G_K(:,iGF_SqrtGm) )
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL ConvertUnits( Field, nFd, iOS, U_plt )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE ComputeCellAverage_Integral_MF
+
   SUBROUTINE ConvertUnits( Field, nFd, iOS, U_plt )
 
     CHARACTER(2), INTENT(in)    :: Field
     INTEGER     , INTENT(in)    :: nFd, iOS
     REAL(DP)    , INTENT(inout) :: U_plt(:,:,:,:)
 
-    INTEGER :: iFd
+    INTEGER :: iFd, iS
 
     SELECT CASE( Field )
 
@@ -943,6 +1027,17 @@ CONTAINS
 
           U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsPR(iFd)
 
+        END DO
+
+      CASE( 'GR' )
+
+        DO iS = 1, nSpecies
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+(iS-1)*nFd+iOS) &
+            = U_plt(:,:,:,iFd+(iS-1)*nFd+iOS) / unitsGR(iFd)
+
+        END DO
         END DO
 
       CASE DEFAULT
