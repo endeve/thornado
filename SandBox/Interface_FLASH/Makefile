@@ -19,8 +19,8 @@ TWOMOMENT_ORDER = ORDER_V
 # Import thornado Makefiles
 THORNADO_DIR = ../../
 include $(THORNADO_DIR)/Build/Makefile_GPU
-include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Defines
+include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 ## DEFINES   += -DTHORNADO_DEBUG
