@@ -119,7 +119,7 @@ MODULE InitializationModule
     InitializeClosure_TwoMoment
   USE OpacityModule_Table, ONLY: &
     InitializeOpacities_TABLE
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     InitializeTimers
 
   ! --- Local Modules ---
