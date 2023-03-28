@@ -103,7 +103,7 @@ MODULE MF_UtilitiesModule
 #ifndef THORNADO_NOTRANSPORT
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment
 #endif
 
