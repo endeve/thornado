@@ -35,7 +35,7 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     nCR
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE TwoMoment_PositivityLimiterModule_Relativistic, ONLY: &
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment

@@ -27,7 +27,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     OffGridFlux_TwoMoment  
   USE MeshModule, ONLY: &

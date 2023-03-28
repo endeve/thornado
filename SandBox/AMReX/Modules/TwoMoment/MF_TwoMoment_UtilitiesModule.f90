@@ -87,7 +87,7 @@ MODULE MF_TwoMoment_UtilitiesModule
     iGE_Ep3
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment_Vector_Richardson
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
