@@ -40,7 +40,7 @@ MODULE InitializationModule_Neutrinos
     nSpecies, iNuE, iNuE_Bar, &
     uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromPressure_TABLE, &

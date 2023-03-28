@@ -19,18 +19,14 @@ TWOMOMENT_ORDER = ORDER_V
 # Import thornado Makefiles
 THORNADO_DIR = ../../
 include $(THORNADO_DIR)/Build/Makefile_GPU
-include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Defines
+include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 ## DEFINES   += -DTHORNADO_DEBUG
 
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).
-
-ifeq ($(TWOMOMENT_ORDER),ORDER_V)
-  VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
-endif
 
 ifdef BUILDFLAG
   FFLAGS = $(FFLAGS_$(BUILDFLAG))
@@ -117,16 +113,16 @@ OBJS += \
        PolynomialBasisMappingModule.o \
        PolynomialBasisModule_Legendre.o \
        TimersModule_Euler.o \
-       TwoMoment_UtilitiesModule_OrderV.o \
+       TwoMoment_UtilitiesModule.o \
        TwoMoment_TroubledCellIndicatorModule.o \
-       TwoMoment_SlopeLimiterModule_OrderV.o \
-       TwoMoment_TimersModule_OrderV.o \
-       TwoMoment_PositivityLimiterModule_OrderV.o \
-       TwoMoment_OpacityModule_OrderV.o \
-       TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-       TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-       TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-       TwoMoment_DiscretizationModule_Streaming_OrderV.o
+       TwoMoment_SlopeLimiterModule.o \
+       TwoMoment_TimersModule.o \
+       TwoMoment_PositivityLimiterModule.o \
+       TwoMoment_OpacityModule.o \
+       TwoMoment_DiscretizationModule_Collisions.o \
+       TwoMoment_NeutrinoMatterSolverModule.o \
+       TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+       TwoMoment_DiscretizationModule_Streaming.o
 endif
 
 ifeq ($(USE_CUDA),TRUE)
@@ -229,22 +225,22 @@ TimeSteppingModule_Flash.o: \
   TimersModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
   TwoMoment_TroubledCellIndicatorModule.o \
   PolynomialBasisMappingModule.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
   Euler_BoundaryConditionsModule.o \
-  TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
   ReferenceElementModuleZ.o \
-  TwoMoment_OpacityModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+  TwoMoment_OpacityModule.o \
+  TwoMoment_DiscretizationModule_Collisions.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   InputOutputModuleHDF.o \
   Euler_dgDiscretizationModule.o \
-  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
@@ -276,23 +272,23 @@ ThornadoInitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
   TwoMoment_TroubledCellIndicatorModule.o \
   PolynomialBasisMappingModule.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
   Euler_BoundaryConditionsModule.o \
-  TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
   ReferenceElementModuleZ.o \
-  TwoMoment_OpacityModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+  TwoMoment_OpacityModule.o \
+  TwoMoment_DiscretizationModule_Collisions.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   InputOutputModuleHDF.o \
   Euler_dgDiscretizationModule.o \
   TwoMoment_MeshRefinementModule.o \
-  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
   ThornadoInitializationModule.F90
 endif

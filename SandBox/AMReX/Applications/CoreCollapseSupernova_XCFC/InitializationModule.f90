@@ -52,7 +52,7 @@ MODULE InitializationModule
     nNodesX, &
     nNodesE, &
     DescribeProgramHeaderX
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -119,7 +119,7 @@ MODULE InitializationModule
     InitializeClosure_TwoMoment
   USE OpacityModule_Table, ONLY: &
     InitializeOpacities_TABLE
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     InitializeTimers
 
   ! --- Local Modules ---

@@ -1,4 +1,4 @@
-MODULE TwoMoment_DiscretizationModule_Collisions_Relativistic
+MODULE TwoMoment_DiscretizationModule_Collisions
 
   USE KindModule, ONLY: &
     DP, Zero, One
@@ -19,9 +19,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Relativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd
-  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     uOP, iOP_D0, iOP_Chi, iOP_Sigma, nOP
 
   IMPLICIT NONE
@@ -515,4 +515,4 @@ CONTAINS
   END SUBROUTINE FinalizeCollisions
 
 
-END MODULE TwoMoment_DiscretizationModule_Collisions_Relativistic
+END MODULE TwoMoment_DiscretizationModule_Collisions

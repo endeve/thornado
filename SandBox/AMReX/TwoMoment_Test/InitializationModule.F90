@@ -115,14 +115,14 @@ MODULE InitializationModule
     SetUnitsRadiationFields
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
-  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     CreateOpacities, &
     SetOpacities
   USE OpacityModule_Table, ONLY:   &
     InitializeOpacities_TABLE
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     InitializeTimers
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler

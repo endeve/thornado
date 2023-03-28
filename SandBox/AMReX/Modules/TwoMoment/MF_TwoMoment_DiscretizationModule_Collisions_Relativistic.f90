@@ -24,7 +24,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
+  USE TwoMoment_DiscretizationModule_Collisions, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
   USE MeshModule, ONLY: &
     MeshX

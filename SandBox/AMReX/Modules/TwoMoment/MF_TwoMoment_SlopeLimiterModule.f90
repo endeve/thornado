@@ -37,7 +37,7 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     nCR
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment, &
     ApplySlopeLimiter_TwoMoment

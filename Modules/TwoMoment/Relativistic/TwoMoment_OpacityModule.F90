@@ -1,4 +1,4 @@
-MODULE TwoMoment_OpacityModule_Relativistic
+MODULE TwoMoment_OpacityModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Three
@@ -284,4 +284,4 @@ CONTAINS
   END SUBROUTINE DestroyOpacities
 
 
-END MODULE TwoMoment_OpacityModule_Relativistic
+END MODULE TwoMoment_OpacityModule
