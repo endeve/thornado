@@ -7,6 +7,3 @@ F90EXE_sources += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
 f90EXE_sources += ApplicationDriver.f90
 f90EXE_sources += TaggingModule.f90
 
-# THORNADO_DIR/SandBox/TwoMoment_OrderV
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
-F90EXE_sources  += TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
