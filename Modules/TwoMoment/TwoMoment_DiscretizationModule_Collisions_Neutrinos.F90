@@ -1,7 +1,8 @@
 MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
-    DP
+    DP, &
+    Zero
   USE UnitsModule, ONLY: &
     AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
@@ -383,10 +384,10 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33), &
                Zero, Zero, Zero, &
-               GX_N(:,iGF_Alpha   ), &
-               GX_N(:,iGF_Beta_1  ), &
-               GX_N(:,iGF_Beta_2  ), &
-               GX_N(:,iGF_Beta_3  ) )
+               GX_N(iN_X,iGF_Alpha   ), &
+               GX_N(iN_X,iGF_Beta_1  ), &
+               GX_N(iN_X,iGF_Beta_2  ), &
+               GX_N(iN_X,iGF_Beta_3  ) )
 #endif
 
     END DO
