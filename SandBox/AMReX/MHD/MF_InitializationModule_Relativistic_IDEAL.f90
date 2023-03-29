@@ -401,7 +401,7 @@ CONTAINS
                                       + uPM_K(iNX,iPM_V2)**2 &
                                       + uPM_K(iNX,iPM_V3)**2 ) )
 
-              IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
+              IF( SQRT( X1**2 + X2**2 ) < 0.3_DP )THEN
 
                 CB1 = -1.0d-3 * X2 / SQRT( X1**2 + X2**2 )
                 CB2 =  1.0d-3 * X1 / SQRT( X1**2 + X2**2 )
