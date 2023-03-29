@@ -538,12 +538,12 @@ CONTAINS
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-          uCF_K(iCF_D ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX)
-          uCF_K(iCF_S1) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX)
-          uCF_K(iCF_S2) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX)
-          uCF_K(iCF_S3) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX)
-          uCF_K(iCF_E ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX)
-          uCF_K(iCF_Ne) = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX)
+          uCF_K(iCF_D ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
+          uCF_K(iCF_S1) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
+          uCF_K(iCF_S2) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
+          uCF_K(iCF_S3) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
+          uCF_K(iCF_E ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
+          uCF_K(iCF_Ne) = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
 
           CALL ComputePrimitive_Euler_Relativistic &
                  ( uCF_K(iCF_D ), &
