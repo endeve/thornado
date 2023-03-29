@@ -13,7 +13,7 @@ thornado.WriteNodalData = 1
 thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
 
 thornado.t_end   = 2.4e+1 # Final time
-thornado.iCycleD = 10     # MOD this number to display info
+thornado.iCycleD = -10     # MOD this number to display info
 
 thornado.PlotFileBaseName = "plt"
 thornado.dt_wrt  = 2.4e-1 # Time increment to write plot-file
@@ -35,14 +35,12 @@ geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = -0.5 -0.5 -0.5 # Lower domain size
 geometry.prob_hi   =  0.5  0.5  0.5 # Upper domain size
 
-amr.n_cell            = 128 128 01 # Number of cells in each dimension
-thornado.swX          = 01 01 01 # Stencil width (nGhostCells) in each dimension
-amr.max_grid_size_x   = 1
+amr.n_cell            = 16 16 01 # Number of cells in each dimension
+thornado.swX          = 01 01 00 # Stencil width (nGhostCells) in each dimension
+amr.max_grid_size_x   = 8
 amr.blocking_factor_x = 1
-amr.max_grid_size_y   = 1
+amr.max_grid_size_y   = 8
 amr.blocking_factor_y = 1
-amr.max_grid_size_z   = 1
-amr.blocking_factor_z = 1
 amr.max_level         = 0
 
 # Equation of state parameters
