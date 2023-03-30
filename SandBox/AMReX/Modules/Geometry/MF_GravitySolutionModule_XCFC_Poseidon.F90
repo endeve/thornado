@@ -215,11 +215,13 @@ CONTAINS
     ( MF_uGF, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(in)   , OPTIONAL :: MF_uCF(0:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-    TYPE(amrex_multifab)  :: MF_uGS(0:nLevels-1), MF_uMF(0:nLevels-1)
+    TYPE(amrex_multifab)  :: MF_uGS    (0:nLevels-1), &
+                             MF_uMF    (0:nLevels-1), &
+                             MF_uCF_tmp(0:nLevels-1)
     TYPE(amrex_parmparse) :: PP
 
     INTEGER          :: iLevel
@@ -266,6 +268,11 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
+               ( MF_uCF_tmp(iLevel), MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
+                 nDOFX * nCF, swX )
+        CALL MF_uCF_tmp(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                  nDOFX * nGS, swXX )
         CALL MF_uGS(iLevel) % SetVal( Zero )
@@ -277,11 +284,15 @@ CONTAINS
 
       END DO
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+      CALL MF_uCF_tmp(iLevel) % COPY &
+            ( MF_uCF(iLevel), 1, 1, nDOFX * nCF, swX )
 
-      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF_tmp )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+             ( MF_uGF, MF_uCF_tmp, MF_uGS )
+
+      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF_tmp )
 
       CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
@@ -310,8 +321,9 @@ CONTAINS
 
       DO iLevel = 0, nLevels-1
 
-        CALL amrex_multifab_destroy( MF_uMF(iLevel) )
-        CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+        CALL amrex_multifab_destroy( MF_uCF_tmp(iLevel) )
+        CALL amrex_multifab_destroy( MF_uMF    (iLevel) )
+        CALL amrex_multifab_destroy( MF_uGS    (iLevel) )
 
       END DO
 
