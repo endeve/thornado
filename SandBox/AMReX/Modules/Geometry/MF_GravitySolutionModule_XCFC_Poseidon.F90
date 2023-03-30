@@ -272,6 +272,9 @@ CONTAINS
                  nDOFX * nCF, swX )
         CALL MF_uCF_tmp(iLevel) % SetVal( Zero )
 
+        CALL MF_uCF_tmp(iLevel) % COPY &
+               ( MF_uCF(iLevel), 1, 1, nDOFX * nCF, swX )
+
         CALL amrex_multifab_build &
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                  nDOFX * nGS, swXX )
@@ -283,9 +286,6 @@ CONTAINS
         CALL MF_uMF(iLevel) % SetVal( Zero )
 
       END DO
-
-      CALL MF_uCF_tmp(iLevel) % COPY &
-            ( MF_uCF(iLevel), 1, 1, nDOFX * nCF, swX )
 
       CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF_tmp )
 
@@ -1475,7 +1475,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     INTEGER             , INTENT(in)    :: Power
     INTEGER             , INTENT(in)    :: nDOFE, iE_B0, iE_E0, nS
-    TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_U  (0:nLevels-1)
 
     TYPE(amrex_imultifab) :: iMF_FineMask
     TYPE(amrex_box)       :: BX
