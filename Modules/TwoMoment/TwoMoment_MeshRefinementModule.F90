@@ -180,7 +180,7 @@ CONTAINS
   END FUNCTION RefineX_TwoMoment
 
 
-  FUNCTION RefineX_TwoMoment_Vector( nX, U_Crs, U_Fin )
+  SUBROUTINE RefineX_TwoMoment_Vector( nX, U_Crs, U_Fin )
 
     INTEGER,  INTENT(in)  :: nX(3)
     REAL(DP), INTENT(in)  :: U_Crs(nDOFX,nX(1),nX(2),nX(3))
@@ -238,7 +238,7 @@ CONTAINS
     !$ACC DELETE( nX, U_Crs, ProjectionMatrix, WeightsX_Q )
 #endif
 
-  END FUNCTION RefineX_TwoMoment_Vector
+  END SUBROUTINE RefineX_TwoMoment_Vector
 
 
   SUBROUTINE Coarsen_TwoMoment( nE, nX, U_Crs, U_Fin )
