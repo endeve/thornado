@@ -15,6 +15,8 @@ MODULE TwoMoment_MeshRefinementModule
     NodeNumberTable4D
   USE PolynomialBasisModule_Lagrange, ONLY: &
     IndLX_Q, L_X1, L_X2, L_X3
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply
 
   IMPLICIT NONE
   PRIVATE
@@ -23,6 +25,7 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: FinalizeMeshRefinement_TwoMoment
   PUBLIC :: Refine_TwoMoment
   PUBLIC :: RefineX_TwoMoment
+  PUBLIC :: RefineX_TwoMoment_Vector
   PUBLIC :: Coarsen_TwoMoment
   PUBLIC :: CoarsenX_TwoMoment
 
@@ -175,6 +178,67 @@ CONTAINS
     U_Fin = MATMUL( ProjectionMatrix(:,:,iFine), U_Crs ) / WeightsX_q
 
   END FUNCTION RefineX_TwoMoment
+
+
+  FUNCTION RefineX_TwoMoment_Vector( nX, U_Crs, U_Fin )
+
+    INTEGER,  INTENT(in)  :: nX(3)
+    REAL(DP), INTENT(in)  :: U_Crs(nDOFX,nX(1),nX(2),nX(3))
+    REAL(DP)              :: U_Fin(nDOFX,nX(1),nX(2),nX(3),nFine)
+
+    INTEGER :: iNodeX, iX1, iX2, iX3
+    INTEGER :: nP_X, iFine
+
+    nP_X = PRODUCT( nX )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA
+    !$OMP MAP( to:    nX, U_Crs, ProjectionMatrix, WeightsX_Q ) &
+    !$OMP MAP( alloc: U_Fin )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     nX, U_Crs, Projectionmatrix, WeightsX_Q ) &
+    !$ACC CREATE(     U_Fin )
+#endif
+
+    DO iFine = 1, nFine
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX, nP_X, nDOFX, &
+               One, ProjectionMatrix(:,:,iFine), nDOFX, 
+               U_Crs, nDOFX, 
+               Zero, U_Fin(:,:,:,:,iFine), nDOFX )
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iFine = 1, nFine
+      DO iX3 = 1, nX(3)
+        DO iX2 = 1, nX(2)
+          DO iX1 = 1, nX(1)
+            DO iNodeX = 1, nDOFX
+              U_Fin(iNodeX,iX1,iX2,iX3,iFine) = U_Fin(iNodeX,iX1,iX2,iX3,iFine) / WeightsX_Q(iNodeX)
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA
+    !$OMP MAP( from: U_Fin ) &
+    !$OMP MAP( release: nX, U_Crs, ProjectionMatrix, WeightsX_Q )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U_Fin ) &
+    !$ACC DELETE( nX, U_Crs, ProjectionMatrix, WeightsX_Q )
+#endif
+
+  END FUNCTION RefineX_TwoMoment_Vector
 
 
   SUBROUTINE Coarsen_TwoMoment( nE, nX, U_Crs, U_Fin )
