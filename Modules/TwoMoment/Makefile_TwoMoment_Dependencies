@@ -20,7 +20,8 @@ TwoMoment_MeshRefinementModule.o: \
   ReferenceElementModuleX.o \
   ReferenceElementModule.o \
   PolynomialBasisModule_Lagrange.o \
-  TwoMoment_MeshRefinementModule.f90
+  LinearAlgebraModule.o \
+  TwoMoment_MeshRefinementModule.F90
 
 TwoMoment_BoundaryConditionsModule.o: \
   KindModule.o \
