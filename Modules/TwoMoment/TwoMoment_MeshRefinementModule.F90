@@ -204,8 +204,8 @@ CONTAINS
     DO iFine = 1, nFine
       CALL MatrixMatrixMultiply &
              ( 'N', 'N', nDOFX, nP_X, nDOFX, &
-               One, ProjectionMatrix(:,:,iFine), nDOFX, 
-               U_Crs, nDOFX, 
+               One, ProjectionMatrix(:,:,iFine), nDOFX,  &
+               U_Crs, nDOFX, &
                Zero, U_Fin(:,:,:,:,iFine), nDOFX )
     END DO
 
