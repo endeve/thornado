@@ -87,6 +87,7 @@ OBJS = \
        TwoMoment_BoundaryConditionsModule.o \
        TwoMoment_UtilitiesModule.o \
        TwoMoment_MeshRefinementModule.o \
+       TwoMoment_TimersModule.o \
        NeutrinoOpacitiesModule.o \
        OpacityModule_TABLE.o \
        NeutrinoOpacitiesComputationModule.o \
@@ -113,16 +114,10 @@ OBJS += \
        PolynomialBasisMappingModule.o \
        PolynomialBasisModule_Legendre.o \
        TimersModule_Euler.o \
-       TwoMoment_UtilitiesModule.o \
        TwoMoment_TroubledCellIndicatorModule.o \
        TwoMoment_SlopeLimiterModule.o \
-       TwoMoment_TimersModule.o \
-       TwoMoment_PositivityLimiterModule.o \
        TwoMoment_OpacityModule.o \
-       TwoMoment_DiscretizationModule_Collisions.o \
-       TwoMoment_NeutrinoMatterSolverModule.o \
-       TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
-       TwoMoment_DiscretizationModule_Streaming.o
+       TwoMoment_DiscretizationModule_Collisions.o
 endif
 
 ifeq ($(USE_CUDA),TRUE)
