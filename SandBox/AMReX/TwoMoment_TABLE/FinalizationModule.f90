@@ -25,9 +25,9 @@ MODULE FinalizationModule
     DestroyGeometryFieldsE
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
-  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     DestroyOpacities
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
 
   ! --- Local Modules ---

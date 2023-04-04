@@ -1,4 +1,4 @@
-MODULE TwoMoment_UtilitiesModule_OrderV
+MODULE TwoMoment_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five, &
@@ -56,7 +56,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
     FluxFactor, &
     EddingtonFactor, &
     HeatFluxFactor
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_Streaming_NumericalFlux_InOut, &
@@ -4461,4 +4461,4 @@ CONTAINS
   END SUBROUTINE FaceVelocity_X3
 
 
-END MODULE TwoMoment_UtilitiesModule_OrderV
+END MODULE TwoMoment_UtilitiesModule

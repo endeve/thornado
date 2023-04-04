@@ -1,4 +1,4 @@
-MODULE TwoMoment_TallyModule_OrderV
+MODULE TwoMoment_TallyModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, FourPi
@@ -1235,4 +1235,4 @@ CONTAINS
   END SUBROUTINE FinalizeTally
 
 
-END MODULE TwoMoment_TallyModule_OrderV
+END MODULE TwoMoment_TallyModule

@@ -1,4 +1,4 @@
-MODULE TwoMoment_SlopeLimiterModule_Relativistic
+MODULE TwoMoment_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, One
@@ -1064,4 +1064,4 @@ CONTAINS
   END SUBROUTINE ApplySLopeLimiter_WENO
 
 
-END MODULE TwoMoment_SlopeLimiterModule_Relativistic
+END MODULE TwoMoment_SlopeLimiterModule

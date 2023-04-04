@@ -13,3 +13,11 @@ $(THORNADO_DIR)/Modules/Euler: \
 $(THORNADO_DIR)/Modules/TwoMoment: \
 $(THORNADO_DIR)/Modules/Runtime: \
 ..
+
+ifeq ($(TWOMOMENT_ORDER),ORDER_1)
+  VPATH += $(THORNADO_DIR)/Modules/TwoMoment/OrderOne
+else ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+  VPATH += $(THORNADO_DIR)/Modules/TwoMoment/OrderV
+else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
+  VPATH += $(THORNADO_DIR)/Modules/TwoMoment/Relativistic
+endif

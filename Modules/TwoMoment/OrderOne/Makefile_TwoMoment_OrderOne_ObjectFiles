@@ -1,0 +1,6 @@
+TWO_MOMENT += \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_CharacteristicDecompositionModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o
