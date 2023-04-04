@@ -28,6 +28,7 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: RefineX_TwoMoment_Vector
   PUBLIC :: Coarsen_TwoMoment
   PUBLIC :: CoarsenX_TwoMoment
+  PUBLIC :: CoarsenX_TwoMoment_Vector
 
   INTEGER  :: nFine, nFineX(3)
   REAL(DP), PUBLIC :: VolumeRatio
@@ -122,10 +123,26 @@ CONTAINS
     DEALLOCATE( xiX2 )
     DEALLOCATE( xiX3 )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA
+    !$OMP MAP( to: ProjectionMatrix, ProjectionMatrix_T, VolumeRatio )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  ProjectionMatrix, ProjectionMatrix_T, VolumeRatio )
+#endif
+
   END SUBROUTINE InitializeMeshRefinement_TwoMoment
 
 
   SUBROUTINE FinalizeMeshRefinement_TwoMoment
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA
+    !$OMP MAP( release: ProjectionMatrix, ProjectionMatrix_T, VolumeRatio )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC DELETE(       ProjectionMatrix, ProjectionMatrix_T, VolumeRatio )
+#endif
 
     DEALLOCATE( ProjectionMatrix )
     DEALLOCATE( ProjectionMatrix_T )
@@ -288,6 +305,70 @@ CONTAINS
     U_Crs = VolumeRatio * MATMUL( ProjectionMatrix_T(:,:,iFine), U_Fin ) / WeightsX_q
 
   END FUNCTION CoarsenX_TwoMoment
+
+
+  SUBROUTINE CoarsenX_TwoMoment_Vector( nX, U_Crs, U_Fin )
+
+    INTEGER,  INTENT(in)  :: nX(3)
+    REAL(DP), INTENT(in)  :: U_Crs(nDOFX,nX(1),nX(2),nX(3))
+    REAL(DP)              :: U_Fin(nDOFX,nX(1),nX(2),nX(3),nFine)
+
+    INTEGER :: iNodeX, iX1, iX2, iX3
+    INTEGER :: nP_X, iFine
+
+    nP_X = PRODUCT( nX )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA
+    !$OMP MAP( to:    nX, U_Fin, ProjectionMatrix_T, WeightsX_Q ) &
+    !$OMP MAP( alloc: U_Crs )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     nX, U_Fin, Projectionmatrix_T, WeightsX_Q ) &
+    !$ACC CREATE(     U_Crs )
+#endif
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX, nP_X, nDOFX, &
+             One, ProjectionMatrix_T(:,:,1), nDOFX,  &
+             U_Fin(:,:,:,:,1), nDOFX, &
+             Zero, U_Crs, nDOFX )
+    DO iFine = 2, nFine
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX, nP_X, nDOFX, &
+               One, ProjectionMatrix_T(:,:,iFine), nDOFX,  &
+               U_Fin(:,:,:,:,iFine), nDOFX, &
+               One, U_Crs, nDOFX )
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX = 1, nDOFX
+            U_Crs(iNodeX,iX1,iX2,iX3) = VolumeRatio * U_Crs(iNodeX,iX1,iX2,iX3) / WeightsX_Q(iNodeX)
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA
+    !$OMP MAP( from: U_Crs ) &
+    !$OMP MAP( release: nX, U_Fin, ProjectionMatrix_T, WeightsX_Q )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U_Fin ) &
+    !$ACC DELETE( nX, U_Crs, ProjectionMatrix_T, WeightsX_Q )
+#endif
+
+  END SUBROUTINE CoarsenX_TwoMoment_Vector
 
 
   FUNCTION Pack_TwoMoment( nE, U ) RESULT( U_P )
