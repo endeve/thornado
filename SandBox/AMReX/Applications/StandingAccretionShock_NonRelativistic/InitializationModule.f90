@@ -267,12 +267,11 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      DO iLevel = 0, nLevels-1
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
 
-        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-
-      END DO
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
 
     ELSE
 
@@ -285,7 +284,8 @@ CONTAINS
              IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
 
     CALL AverageDown( MF_uGF )
-    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL AverageDown &
+           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
@@ -295,12 +295,6 @@ CONTAINS
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
-
-    CALL ApplySlopeLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )

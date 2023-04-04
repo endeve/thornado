@@ -223,8 +223,9 @@ CONTAINS
 
     CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
 
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL SetUnitsFluidFields &
+           ( TRIM( CoordinateSystem ), &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
@@ -306,7 +307,8 @@ CONTAINS
     END IF
 
     CALL AverageDown( MF_uGF )
-    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL AverageDown &
+           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
