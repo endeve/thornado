@@ -201,7 +201,7 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: nX(3)
     REAL(DP), INTENT(in)  :: U_Crs(nDOFX,nX(1),nX(2),nX(3))
-    REAL(DP)              :: U_Fin(nDOFX,nX(1),nX(2),nX(3),nFine)
+    REAL(DP), INTENT(out) :: U_Fin(nDOFX,nX(1),nX(2),nX(3),nFine)
 
     INTEGER :: iNodeX, iX1, iX2, iX3
     INTEGER :: nP_X, iFine
@@ -247,12 +247,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA
-    !$OMP MAP( from: U_Fin ) &
+    !$OMP MAP( from:    U_Fin ) &
     !$OMP MAP( release: nX, U_Crs, ProjectionMatrix, WeightsX_Q )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U_Fin ) &
-    !$ACC DELETE( nX, U_Crs, ProjectionMatrix, WeightsX_Q )
+    !$ACC COPYOUT(      U_Fin ) &
+    !$ACC DELETE(       nX, U_Crs, ProjectionMatrix, WeightsX_Q )
 #endif
 
   END SUBROUTINE RefineX_TwoMoment_Vector
@@ -307,11 +307,11 @@ CONTAINS
   END FUNCTION CoarsenX_TwoMoment
 
 
-  SUBROUTINE CoarsenX_TwoMoment_Vector( nX, U_Crs, U_Fin )
+  SUBROUTINE CoarsenX_TwoMoment_Vector( nX, U_Fin, U_Crs )
 
     INTEGER,  INTENT(in)  :: nX(3)
-    REAL(DP), INTENT(in)  :: U_Crs(nDOFX,nX(1),nX(2),nX(3))
-    REAL(DP)              :: U_Fin(nDOFX,nX(1),nX(2),nX(3),nFine)
+    REAL(DP), INTENT(in)  :: U_Fin(nDOFX,nX(1),nX(2),nX(3),nFine)
+    REAL(DP), INTENT(out) :: U_Crs(nDOFX,nX(1),nX(2),nX(3))
 
     INTEGER :: iNodeX, iX1, iX2, iX3
     INTEGER :: nP_X, iFine
@@ -360,12 +360,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA
-    !$OMP MAP( from: U_Crs ) &
+    !$OMP MAP( from:    U_Crs ) &
     !$OMP MAP( release: nX, U_Fin, ProjectionMatrix_T, WeightsX_Q )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U_Fin ) &
-    !$ACC DELETE( nX, U_Crs, ProjectionMatrix_T, WeightsX_Q )
+    !$ACC COPYOUT(      U_Crs ) &
+    !$ACC DELETE(       nX, U_Fin, ProjectionMatrix_T, WeightsX_Q )
 #endif
 
   END SUBROUTINE CoarsenX_TwoMoment_Vector
