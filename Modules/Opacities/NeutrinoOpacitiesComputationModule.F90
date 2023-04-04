@@ -883,12 +883,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE                                  &
     !$OMP PRIVATE( D_P, T_P, Y_P, spec_nodes, spec_elements_nodes, & 
-    !$OMP          spec_elements, spec_fine, tmev, Xnuc )          &
+    !$OMP          spec_elements, spec_fine, tmev, Xnuc, loctot )  &
     !$OMP MAP    ( to: CenterE, WidthE, NodesE )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG                                       &
     !$ACC PRIVATE( D_P, T_P, Y_P, spec_nodes, spec_elements_nodes, & 
-    !$ACC          spec_elements, spec_fine, tmev, Xnuc )          &
+    !$ACC          spec_elements, spec_fine, tmev, Xnuc, loctot )  &
     !$ACC COPYIN ( CenterE, WidthE, NodesE )                       &
     !$ACC PRESENT( Me, Mn, Mp, Xh, Ah, EC_rate, OS_EmAb_EC_rate,   &
     !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,      &
@@ -896,10 +896,9 @@ CONTAINS
     !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T) 
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO                                              &
-    !$OMP PRIVATE( iE, iE1, iE2, iNodeE1, D_P, T_P, Y_P,           &
-    !$OMP          spec_nodes, spec_elements_nodes,                &
-    !$OMP          spec_elements, spec_fine, tmev, Xnuc,           &
-    !$OMP          lowerFaceE, E_node, a, b, f_a, f_b )
+    !$OMP PRIVATE( D_P, T_P, Y_P, spec_nodes, spec_elements_nodes, &
+    !$OMP          spec_elements, spec_fine, tmev, Xnuc, loctot,   &
+    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b )
 #endif
     DO iX = iX_B, iX_E
 
@@ -911,13 +910,6 @@ CONTAINS
          .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
          .or. Y_p < Ys_EC_T(1) .or. Y_P > Ys_EC_T(SIZE(Ys_EC_T)) &
          .or. Ah(iX) < 40.0d0) CYCLE
-
-        !DO iE = iE_B, iE_E
-        !  opECT(iE,iX) = 0.0d0
-        !END DO
-        !EC_rate(iX) = 0.0d0
-
-      !ELSE
 
         CALL LogInterpolateSingleVariable_3D_Custom_Point &
              ( D_P,     T_P,     Y_P,  &
@@ -1078,10 +1070,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD         &
-    !$OMP PRIVATE ( iE1, iNodeE1 )          
+    !$OMP PRIVATE ( iE1 )          
 #elif defined(THORNADO_OACC)
     !$ACC LOOP VECTOR              &
-    !$ACC PRIVATE ( iE1, iNodeE1 )         
+    !$ACC PRIVATE ( iE1 )         
 #endif
         DO iE = iE_B, EC_iNodeE_max
           iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
@@ -1107,24 +1099,7 @@ CONTAINS
 
         END DO
 
-      !ENDIF
     END DO
-
-!!now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
-!#if defined(THORNADO_OMP_OL)
-!    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) 
-!#elif defined(THORNADO_OACC)
-!    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) 
-!#elif defined(THORNADO_OMP)
-!    !$OMP PARALLEL DO COLLAPSE(2) 
-!#endif
-!    DO iX = iX_B, iX_E
-!      DO iE = iE_B, iE_E
-!
-!        opEC(iE,1,iX) = opEC(iE,1,iX) + opECT(iE,iX)
-!
-!      END DO
-!    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA                                    &
