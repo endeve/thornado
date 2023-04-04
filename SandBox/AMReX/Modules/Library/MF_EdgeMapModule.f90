@@ -1,6 +1,5 @@
 MODULE MF_EdgeMapModule
 
-
   ! --- AMReX Modules ---
 
   USE amrex_fort_module, ONLY: &
@@ -40,28 +39,26 @@ MODULE MF_EdgeMapModule
 CONTAINS
 
 
-
-
   SUBROUTINE ConstructEdgeMap( iLevel, BX, Edge_Map )
 
-    INTEGER,         INTENT(in)    :: iLevel
+    INTEGER        , INTENT(in)    :: iLevel
     TYPE(amrex_box), INTENT(in)    :: BX
-    TYPE(EdgeMap),   INTENT(inout) :: Edge_Map
+    TYPE(EdgeMap)  , INTENT(inout) :: Edge_Map
 
-    INTEGER :: iDim
+    INTEGER :: iDimX
 
     Edge_Map % IsLowerBoundary = .FALSE.
     Edge_Map % IsUpperBoundary = .FALSE.
 
-    DO iDim = 1, 3
+    DO iDimX = 1, 3
 
-      IF( iDim .LE. amrex_spacedim )THEN
+      IF( iDimX .LE. amrex_spacedim )THEN
 
-        IF( BX % lo( iDim ) .LE. amrex_geom(iLevel) % DOMAIN % lo( iDim ) ) &
-          Edge_Map % IsLowerBoundary( iDim ) = .TRUE.
+        IF( BX % lo( iDimX ) .LE. amrex_geom(iLevel) % DOMAIN % lo( iDimX ) ) &
+          Edge_Map % IsLowerBoundary( iDimX ) = .TRUE.
 
-        IF( BX % hi( iDim ) .GE. amrex_geom(iLevel) % DOMAIN % hi( iDim ) ) &
-          Edge_Map % IsUpperBoundary( iDim ) = .TRUE.
+        IF( BX % hi( iDimX ) .GE. amrex_geom(iLevel) % DOMAIN % hi( iDimX ) ) &
+          Edge_Map % IsUpperBoundary( iDimX ) = .TRUE.
 
       END IF
 
@@ -73,28 +70,28 @@ CONTAINS
   SUBROUTINE EdgeMap_GetBC( this, iApplyBC )
 
     CLASS(EdgeMap), INTENT(in)  :: this
-    INTEGER,        INTENT(out) :: iApplyBC(3)
+    INTEGER       , INTENT(out) :: iApplyBC(3)
 
-    INTEGER :: iDim
+    INTEGER :: iDimX
 
-    DO iDim = 1, 3
+    DO iDimX = 1, 3
 
-      IF     ( this % IsLowerBoundary( iDim ) .AND. &
-               this % IsUpperBoundary( iDim ) )THEN
+      IF     ( this % IsLowerBoundary( iDimX ) .AND. &
+               this % IsUpperBoundary( iDimX ) )THEN
 
-        iApplyBC(iDim) = iApplyBC_Euler_Both
+        iApplyBC(iDimX) = iApplyBC_Euler_Both
 
-      ELSE IF( this % IsLowerBoundary( iDim ) )THEN
+      ELSE IF( this % IsLowerBoundary( iDimX ) )THEN
 
-        iApplyBC(iDim) = iApplyBC_Euler_Inner
+        iApplyBC(iDimX) = iApplyBC_Euler_Inner
 
-      ELSE IF( this % IsUpperBoundary( iDim ) )THEN
+      ELSE IF( this % IsUpperBoundary( iDimX ) )THEN
 
-        iApplyBC(iDim) = iApplyBC_Euler_Outer
+        iApplyBC(iDimX) = iApplyBC_Euler_Outer
 
       ELSE
 
-        iApplyBC(iDim) = iApplyBC_Euler_None
+        iApplyBC(iDimX) = iApplyBC_Euler_None
 
       END IF
 
