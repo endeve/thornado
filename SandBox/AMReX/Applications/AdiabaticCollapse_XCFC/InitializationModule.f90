@@ -282,6 +282,12 @@ CONTAINS
 
       CALL DestroyMesh_MF( MeshX )
 
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -312,11 +318,6 @@ CONTAINS
 
     CALL DescribeProgramHeader_AMReX
 
-    CALL ApplySlopeLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
