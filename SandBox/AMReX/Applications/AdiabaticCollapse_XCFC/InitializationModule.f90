@@ -269,11 +269,12 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      CALL ApplySlopeLimiter_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uDF )
+      DO iLevel = 0, nLevels-1
 
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uDF )
+        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+      END DO
 
       CALL CreateMesh_MF( 0, MeshX )
 
@@ -281,17 +282,16 @@ CONTAINS
 
       CALL DestroyMesh_MF( MeshX )
 
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
       CALL ApplySlopeLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
 
       CALL ApplyPositivityLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ComputeFromConserved_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     ELSE
 
@@ -317,6 +317,7 @@ CONTAINS
              EvolveGravity_Option = .TRUE. )
 
     CALL DescribeProgramHeader_AMReX
+
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
