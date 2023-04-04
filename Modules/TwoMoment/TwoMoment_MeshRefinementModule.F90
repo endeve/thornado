@@ -137,10 +137,10 @@ CONTAINS
   SUBROUTINE FinalizeMeshRefinement_TwoMoment
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA
+    !$OMP TARGET EXIT DATA
     !$OMP MAP( release: ProjectionMatrix, ProjectionMatrix_T, VolumeRatio )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
+    !$ACC EXIT DATA &
     !$ACC DELETE(       ProjectionMatrix, ProjectionMatrix_T, VolumeRatio )
 #endif
 
