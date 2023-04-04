@@ -89,13 +89,6 @@ CONTAINS
 
   SUBROUTINE FinalizeEquationOfState_IDEAL
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Gamma_IDEAL )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( Gamma_IDEAL )
-#endif
   END SUBROUTINE FinalizeEquationOfState_IDEAL
 
 
