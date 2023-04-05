@@ -18,7 +18,6 @@ TwoMoment_MeshRefinementModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
-  ReferenceElementModule.o \
   PolynomialBasisModule_Lagrange.o \
   LinearAlgebraModule.o \
   TwoMoment_MeshRefinementModule.F90

@@ -3,13 +3,11 @@ MODULE TwoMoment_MeshRefinementModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX, nDimsX, &
-    nNodesE, nDOFE, nDOF
+    nNodesX, nDOFX, nDimsX
   USE ReferenceElementModuleX, ONLY: &
     NodesX1, WeightsX1, &
     NodesX2, WeightsX2, &
     NodesX3, WeightsX3, &
-    NodeNumberTableX3D, &
     WeightsX_q
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
