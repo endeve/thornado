@@ -926,9 +926,10 @@ CONTAINS
 
       W5_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**3
 
-    END DO
-    END DO
 
+    
+    END DO
+    END DO
     END ASSOCIATE ! dZ1
 
     ! --- Initialize Gray Radiation Fields ---

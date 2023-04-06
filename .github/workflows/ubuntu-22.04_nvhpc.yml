@@ -32,7 +32,7 @@ jobs:
           git branch
           sudo apt-get -qq update
 
-      - name: Set Environment Variables for Software and NVHPC_ROOT
+      - name: Set Environment Variables
         run: |
           echo "THORNADO_DIR=${GITHUB_WORKSPACE}"        >> ${GITHUB_ENV}
           echo "HDF5_DIR=${GITHUB_WORKSPACE}/hdf5"       >> ${GITHUB_ENV}
