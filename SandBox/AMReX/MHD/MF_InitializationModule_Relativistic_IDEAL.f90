@@ -421,7 +421,7 @@ CONTAINS
 
               uPM_K(iNX,iPM_B1) = W * VdotB * uPM_K(iNX,iPM_V1) + CB1 / W
               uPM_K(iNX,iPM_B2) = W * VdotB * uPM_K(iNX,iPM_V2) + CB2 / W
-              uPM_K(iNX,iPM_B3) = W * VdotB * uPM_K(iNX,iPM_V3) + CB2 / W
+              uPM_K(iNX,iPM_B3) = W * VdotB * uPM_K(iNX,iPM_V3) + CB3 / W
 
             ELSE IF( TRIM( AdvectionProfile ) .EQ. 'LoopAdvection3D' )THEN
 
@@ -458,7 +458,7 @@ CONTAINS
 
               uPM_K(iNX,iPM_B1) = W * VdotB * uPM_K(iNX,iPM_V1) + CB1 / W
               uPM_K(iNX,iPM_B2) = W * VdotB * uPM_K(iNX,iPM_V2) + CB2 / W
-              uPM_K(iNX,iPM_B3) = W * VdotB * uPM_K(iNX,iPM_V3) + CB2 / W
+              uPM_K(iNX,iPM_B3) = W * VdotB * uPM_K(iNX,iPM_V3) + CB3 / W
 
             END IF
 
