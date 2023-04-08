@@ -1,4 +1,4 @@
-MODULE TwoMoment_PositivityLimiterModule_OrderV
+MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, &
@@ -7,7 +7,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
     nDOFZ, nNodesZ, &
     nDOFE, nNodesE, &
     nDOFX, nNodesX
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_PL, &
@@ -2518,4 +2518,4 @@ CONTAINS
   END SUBROUTINE ComputeGlobalEnergyMomentum
 
 
-END MODULE TwoMoment_PositivityLimiterModule_OrderV
+END MODULE TwoMoment_PositivityLimiterModule

@@ -61,9 +61,10 @@ MODULE MF_Euler_PositivityLimiterModule
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
+  USE MF_EdgeMapModule, ONLY: &
+    ConstructEdgeMap, &
+    EdgeMap
 
   IMPLICIT NONE
   PRIVATE

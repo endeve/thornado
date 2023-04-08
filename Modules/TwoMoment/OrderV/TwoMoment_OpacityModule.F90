@@ -1,4 +1,4 @@
-MODULE TwoMoment_OpacityModule_OrderV
+MODULE TwoMoment_OpacityModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Three, SqrtTiny
@@ -434,4 +434,4 @@ CONTAINS
   END SUBROUTINE DestroyOpacities
 
 
-END MODULE TwoMoment_OpacityModule_OrderV
+END MODULE TwoMoment_OpacityModule

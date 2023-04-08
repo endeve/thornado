@@ -87,7 +87,7 @@ MODULE MF_TwoMoment_UtilitiesModule
     iGE_Ep3
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment_Vector_Richardson
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
@@ -926,9 +926,10 @@ CONTAINS
 
       W5_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**3
 
-    END DO
-    END DO
 
+    
+    END DO
+    END DO
     END ASSOCIATE ! dZ1
 
     ! --- Initialize Gray Radiation Fields ---

@@ -55,9 +55,10 @@ MODULE MF_Euler_SlopeLimiterModule
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
+  USE MF_EdgeMapModule, ONLY: &
+    EdgeMap, &
+    ConstructEdgeMap
   USE FillPatchModule, ONLY: &
     FillPatch
 
@@ -267,7 +268,7 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-      CALL Edge_Map % Euler_GetBC( iApplyBC )
+      CALL Edge_Map % GetBC( iApplyBC )
 
       CALL ApplySlopeLimiter_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &

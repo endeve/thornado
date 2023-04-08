@@ -215,11 +215,13 @@ CONTAINS
     ( MF_uGF, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(in)   , OPTIONAL :: MF_uCF(0:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
-    TYPE(amrex_multifab)  :: MF_uGS(0:nLevels-1), MF_uMF(0:nLevels-1)
+    TYPE(amrex_multifab)  :: MF_uGS    (0:nLevels-1), &
+                             MF_uMF    (0:nLevels-1), &
+                             MF_uCF_tmp(0:nLevels-1)
     TYPE(amrex_parmparse) :: PP
 
     INTEGER          :: iLevel
@@ -266,6 +268,14 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
+               ( MF_uCF_tmp(iLevel), MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
+                 nDOFX * nCF, swX )
+        CALL MF_uCF_tmp(iLevel) % SetVal( Zero )
+
+        CALL MF_uCF_tmp(iLevel) % COPY &
+               ( MF_uCF(iLevel), 1, 1, nDOFX * nCF, swX )
+
+        CALL amrex_multifab_build &
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                  nDOFX * nGS, swXX )
         CALL MF_uGS(iLevel) % SetVal( Zero )
@@ -277,11 +287,12 @@ CONTAINS
 
       END DO
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF_tmp )
 
-      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+             ( MF_uGF, MF_uCF_tmp, MF_uGS )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF_tmp )
 
       CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
 
@@ -310,12 +321,13 @@ CONTAINS
 
       DO iLevel = 0, nLevels-1
 
-        CALL amrex_multifab_destroy( MF_uMF(iLevel) )
-        CALL amrex_multifab_destroy( MF_uGS(iLevel) )
+        CALL amrex_multifab_destroy( MF_uCF_tmp(iLevel) )
+        CALL amrex_multifab_destroy( MF_uMF    (iLevel) )
+        CALL amrex_multifab_destroy( MF_uGS    (iLevel) )
 
       END DO
 
-    END IF ! iLevel = 0, nLevels-1
+    END IF ! iRestart .GE. 0
 
 #endif
 
@@ -461,7 +473,7 @@ CONTAINS
     ( MF_uGF, MF_uCF, MF_uGS )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:) ! Psi^6 * U
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
 
     TYPE(amrex_imultifab) :: iMF_FineMask
@@ -476,7 +488,8 @@ CONTAINS
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, ErrorExists
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
-    REAL(DP) :: uPF(nPF), LorentzFactor, BetaDotV, Enthalpy, Pressure
+    REAL(DP) :: uCF_K(nCF), uPF_K(nPF), &
+                LorentzFactor, BetaDotV, Enthalpy, Pressure
 
     INTEGER, ALLOCATABLE :: ITERATION(:,:,:,:)
     INTEGER, ALLOCATABLE :: iErr     (:,:,:,:)
@@ -537,76 +550,57 @@ CONTAINS
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
+          uCF_K(iCF_D ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
+          uCF_K(iCF_S1) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
+          uCF_K(iCF_S2) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
+          uCF_K(iCF_S3) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
+          uCF_K(iCF_E ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
+          uCF_K(iCF_Ne) = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
 
           CALL ComputePrimitive_Euler_Relativistic &
-                 ( uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
-                   uPF(iPF_D ), &
-                   uPF(iPF_V1), &
-                   uPF(iPF_V2), &
-                   uPF(iPF_V3), &
-                   uPF(iPF_E ), &
-                   uPF(iPF_Ne), &
+                 ( uCF_K(iCF_D ), &
+                   uCF_K(iCF_S1), &
+                   uCF_K(iCF_S2), &
+                   uCF_K(iCF_S3), &
+                   uCF_K(iCF_E ), &
+                   uCF_K(iCF_Ne), &
+                   uPF_K(iPF_D ), &
+                   uPF_K(iPF_V1), &
+                   uPF_K(iPF_V2), &
+                   uPF_K(iPF_V3), &
+                   uPF_K(iPF_E ), &
+                   uPF_K(iPF_Ne), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                    uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
                    ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
                    iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) * Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) * Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) * Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) * Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) * Psi6
-          uCF    (iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) &
-            = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) * Psi6
-
           ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
           CALL ComputePressureFromPrimitive &
-                 ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+                 ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), Pressure )
 
           LorentzFactor &
             = One / SQRT( One                              &
                 - ( uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
-                      * uPF(iPF_V1)**2 &
+                      * uPF_K(iPF_V1)**2 &
                   + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
-                      * uPF(iPF_V2)**2 &
+                      * uPF_K(iPF_V2)**2 &
                   + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
-                      * uPF(iPF_V3)**2 ) )
+                      * uPF_K(iPF_V3)**2 ) )
 
           BetaDotV =   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
                          * uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
-                         * uPF(iPF_V1) &
+                         * uPF_K(iPF_V1) &
                      + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
                          * uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
-                         * uPF(iPF_V2) &
+                         * uPF_K(iPF_V2) &
                      + uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
                          * uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
-                         * uPF(iPF_V3)
+                         * uPF_K(iPF_V3)
 
-          Enthalpy = uPF(iPF_D) + uPF(iPF_E) + Pressure
+          Enthalpy = uPF_K(iPF_D) + uPF_K(iPF_E) + Pressure
 
           uGS(iX1,iX2,iX3,nDOFX*(iGS_Mg-1)+iNX) &
             = ( Enthalpy * ( Two * LorentzFactor**2 &
@@ -1481,7 +1475,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     INTEGER             , INTENT(in)    :: Power
     INTEGER             , INTENT(in)    :: nDOFE, iE_B0, iE_E0, nS
-    TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_U  (0:nLevels-1)
 
     TYPE(amrex_imultifab) :: iMF_FineMask
     TYPE(amrex_box)       :: BX

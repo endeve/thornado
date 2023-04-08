@@ -4,7 +4,7 @@ MODULE TwoMoment_TroubledCellIndicatorModule
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFE, nDOFX, nDimsX
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
     Timer_TCI, &

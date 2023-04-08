@@ -16,9 +16,9 @@ PROGRAM ApplicationDriver
     uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment
-  USE TwoMoment_TimeSteppingModule_Relativistic, ONLY: &
+  USE TwoMoment_TimeSteppingModule, ONLY: &
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
     Update_IMEX_RK

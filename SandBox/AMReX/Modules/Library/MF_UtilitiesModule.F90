@@ -103,7 +103,7 @@ MODULE MF_UtilitiesModule
 #ifndef THORNADO_NOTRANSPORT
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment
 #endif
 
@@ -129,8 +129,6 @@ MODULE MF_UtilitiesModule
     DestroyMesh_MF
 #ifndef THORNADO_NOTRANSPORT
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
 #endif
   USE MF_TimersModule, ONLY: &
@@ -139,6 +137,9 @@ MODULE MF_UtilitiesModule
     Timer_AMReX_Allocate_X, &
     Timer_AMReX_Allocate_Z, &
     Timer_AMReX_PermuteData_X
+  USE MF_EdgeMapModule, ONLY: &
+    ConstructEdgeMap, &
+    EdgeMap
 
   IMPLICIT NONE
   PRIVATE
@@ -988,7 +989,7 @@ CONTAINS
                             iZ_B1(3):iZ_E1(3), &
                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
 
 

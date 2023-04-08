@@ -1,4 +1,4 @@
- MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
+ MODULE TwoMoment_DiscretizationModule_Streaming
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, &
@@ -75,7 +75,7 @@
     EddingtonFactor
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputePrimitive_TwoMoment_Vector_Richardson, &
     ComputeConserved_TwoMoment, &
@@ -8065,4 +8065,4 @@ CONTAINS
 
 
 
-END MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
+END MODULE TwoMoment_DiscretizationModule_Streaming

@@ -77,9 +77,10 @@ MODULE MF_InitializationModule
     UseTiling
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+  USE MF_EdgeMapModule, ONLY: &
     EdgeMap, &
-    ConstructEdgeMap, &
+    ConstructEdgeMap
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
 
   IMPLICIT NONE

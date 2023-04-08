@@ -31,7 +31,7 @@ jobs:
           sudo apt-get -y install mpich
           sudo apt-get -y update
 
-      - name: Set Environment Variables for Software
+      - name: Set Environment Variables
         run: |
           echo "THORNADO_DIR=${GITHUB_WORKSPACE}"                       >> ${GITHUB_ENV}
           echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"                >> ${GITHUB_ENV}

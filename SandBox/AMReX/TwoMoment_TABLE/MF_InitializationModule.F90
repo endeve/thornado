@@ -89,7 +89,7 @@ MODULE MF_InitializationModule
     iGF_Phi_N, &
     iGF_Psi, &
     iGF_SqrtGm
-  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
    uOP, &
    iOP_Sigma
   USE MeshModule, ONLY: &
@@ -100,7 +100,7 @@ MODULE MF_InitializationModule
     NodeCoordinate
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
   USE UnitsModule, ONLY: &
     UnitsDisplay, &

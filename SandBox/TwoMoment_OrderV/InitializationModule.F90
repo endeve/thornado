@@ -28,9 +28,9 @@ MODULE InitializationModule
     nSpecies, &
     uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, nPR, &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
-  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     uOP, iOP_Sigma
 
   IMPLICIT NONE

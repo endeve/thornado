@@ -34,7 +34,7 @@ MODULE FinalizationModule
     FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
     FinalizeMeshRefinement_Euler
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
   USE GeometryFieldsModuleE, ONLY: &
     DestroyGeometryFieldsE
