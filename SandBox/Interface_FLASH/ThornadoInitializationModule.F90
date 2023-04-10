@@ -3,6 +3,7 @@ module ThornadoInitializationModule
   use KindModule, only: &
     DP, SqrtTiny, One, Zero
   use UnitsModule, only : &
+    ActivateUnitsDisplay, &
     MeV
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
@@ -430,15 +431,17 @@ contains
 
 
   subroutine InitThornado_Patch &
-    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
+    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option, ActivateUnits_Option )
 
     use ProgramHeaderModule, only: nE, swE, nNodesX
 
     integer,  intent(in) :: nX(3), swX(3), nSpecies
     real(dp), intent(in) :: xL(3), xR(3)
     character(len=*), intent(in), optional :: CoordinateSystem_Option
+    logical,          intent(in), optional :: ActivateUnits_Option
 
     integer :: iDim, bcX(3)
+    logical :: ActivateUnits
     character(24) :: CoordinateSystem
 
     IF( PRESENT(CoordinateSystem_Option) )THEN
@@ -454,6 +457,19 @@ contains
 
     ELSE
       CoordinateSystem = 'CARTESIAN'
+    END IF
+
+    IF( PRESENT( ActivateUnits_Option ) )THEN
+      ActivateUnits = ActivateUnits_Option
+    ELSE
+      ActivateUnits = .FALSE.
+    END IF
+
+    IF( ActivateUnits )THEN
+
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = CoordinateSystem_Option )
+
     END IF
 
     ! bcX is for general thornado setting
