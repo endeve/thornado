@@ -134,7 +134,7 @@ CONTAINS
     DEALLOCATE( xiX3 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA
+    !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: ProjectionMatrix, ProjectionMatrix_T )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
@@ -147,7 +147,7 @@ CONTAINS
   SUBROUTINE FinalizeMeshRefinement_TwoMoment
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA
+    !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: ProjectionMatrix, ProjectionMatrix_T )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
@@ -171,7 +171,7 @@ CONTAINS
     nP_X = PRODUCT( nX ) * nVar
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA
+    !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    U_Crs, ProjectionMatrix ) &
     !$OMP MAP( alloc: U_Fin )
 #elif defined( THORNADO_OACC   )
@@ -187,7 +187,7 @@ CONTAINS
              Zero, U_Fin, nDOFX*nFine )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA
+    !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U_Fin ) &
     !$OMP MAP( release: U_Crs, ProjectionMatrix )
 #elif defined( THORNADO_OACC   )
@@ -210,7 +210,7 @@ CONTAINS
     nP_X = PRODUCT( nX ) * nVar
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA
+    !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    U_Fin, ProjectionMatrix_T ) &
     !$OMP MAP( alloc: U_Crs )
 #elif defined( THORNADO_OACC   )
@@ -226,7 +226,7 @@ CONTAINS
              Zero, U_Crs, nDOFX )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA
+    !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U_Crs ) &
     !$OMP MAP( release: U_Fin, ProjectionMatrix_T )
 #elif defined( THORNADO_OACC   )
