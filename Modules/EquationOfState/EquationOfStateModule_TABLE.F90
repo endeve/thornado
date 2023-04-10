@@ -68,7 +68,7 @@ MODULE EquationOfStateModule_TABLE
     proton_mass = 938.2720813d0
   REAL(DP), PARAMETER :: &
     dmnp = 1.29333922d0
-  REAL(DP) :: minvar 
+  REAL(DP) :: minvar, OS_loc
   REAL(DP), PARAMETER :: &
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
@@ -421,11 +421,6 @@ CONTAINS
       ( Gm_T(1:EOS % DV % nPoints(1), &
              1:EOS % DV % nPoints(2), &
              1:EOS % DV % nPoints(3)) )
-
-    P_T  = EOS % DV % Variables(iP_T ) % Values
-    S_T  = EOS % DV % Variables(iS_T ) % Values
-    E_T  = EOS % DV % Variables(iE_T ) % Values
-    Me_T = EOS % DV % Variables(iMe_T) % Values
     !For SFHo tables from 
     !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
     !up until git commit hash a36240ed
@@ -436,10 +431,26 @@ CONTAINS
     !correct, we add the mass difference back in and then
     !add the SFHo reference masses for the chemical potential
     !(mn for Mn, mp for Mp)  
-    !After this renomalisation to the original SFHo tables,
-    !we need to recalculate the offsets 
-    Mp_T = EOS % DV % Variables(iMp_T) % Values + LOG10(dmnp + proton_mass)
-    Mn_T = EOS % DV % Variables(iMn_T) % Values + LOG10(dmnp + neutron_mass)
+    !For this renomalisation to the original SFHo tables,
+    !we need to recalculate the offsets first
+
+    P_T  = EOS % DV % Variables(iP_T ) % Values
+    S_T  = EOS % DV % Variables(iS_T ) % Values
+    E_T  = EOS % DV % Variables(iE_T ) % Values
+    Me_T = EOS % DV % Variables(iMe_T) % Values
+
+    minvar = OS_Mp/(-2.0d0)
+    OS_loc = MIN(0.0d0,minvar+proton_mass+dmnp)+1.0d-100
+    Mp_T   = LOG10(10.0d0**(EOS % DV % Variables(iMp_T) % Values) &
+           - OS_Mp + proton_mass + dmnp + OS_loc)
+    OS_Mp  = OS_loc
+
+    minvar = OS_Mn/(-2.0d0)
+    OS_loc = MIN(0.0d0,minvar+neutron_mass+dmnp)+1.0d-100
+    Mn_T   = LOG10(10.0d0**(EOS % DV % Variables(iMn_T) % Values) &
+           - OS_Mn + neutron_mass + dmnp + OS_loc)
+    OS_Mn  = OS_loc
+ 
     Xp_T = EOS % DV % Variables(iXp_T) % Values
     Xn_T = EOS % DV % Variables(iXn_T) % Values
     Xa_T = EOS % DV % Variables(iXa_T) % Values
@@ -447,11 +458,6 @@ CONTAINS
     Ah_T = EOS % DV % Variables(iAh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
 
-    minvar = 10.0d0**MINVAL(Mp_T)
-    OS_Mp  = -2.0d0 * MIN( 1.0d-299, minvar )
-    minvar = 10.0d0**MINVAL(Mn_T)
-    OS_Mn  = -2.0d0 * MIN( 1.0d-299, minvar )
-    
     CALL InitializeEOSInversion &
            ( D_T, T_T, Y_T, &
              10.0d0**( E_T ) - OS_E, &
