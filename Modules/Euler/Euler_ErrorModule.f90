@@ -21,7 +21,7 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Message_Option
     INTEGER         , INTENT(in), OPTIONAL :: Int_Option(:)
     REAL(DP)        , INTENT(in), OPTIONAL :: Real_Option(:)
-    CHARACTER(2)    , INTENT(in), OPTIONAL :: Char_Option(:)
+    CHARACTER(*)    , INTENT(in), OPTIONAL :: Char_Option(:)
 
     CHARACTER(LEN=128) :: Message
 

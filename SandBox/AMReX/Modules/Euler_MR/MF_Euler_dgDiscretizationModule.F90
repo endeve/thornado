@@ -64,9 +64,10 @@ MODULE  MF_Euler_dgDiscretizationModule
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
+  USE MF_EdgeMapModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -346,6 +347,8 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+
 
       CALL ComputeIncrement_Euler_DG_Explicit &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &

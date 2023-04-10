@@ -154,7 +154,6 @@ MODULE RadiationFieldsModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uDR(:,:,:,:)
 
-
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
   PUBLIC :: SetUnitsRadiationFields

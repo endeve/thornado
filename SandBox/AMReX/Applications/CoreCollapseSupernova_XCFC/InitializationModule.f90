@@ -159,7 +159,7 @@ MODULE InitializationModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeGray_TwoMoment_MF, & 
+    ComputeGray_TwoMoment_MF, &
     ComputeFromConserved_TwoMoment_MF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -256,8 +256,6 @@ CONTAINS
 
     INTEGER :: iLevel
 
-
-
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
@@ -320,8 +318,9 @@ CONTAINS
 
     CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
 
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL SetUnitsFluidFields &
+           ( TRIM( CoordinateSystem ), &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeRadiationFields_Conserved( amrex_parallel_ioprocessor() )
 
@@ -348,7 +347,6 @@ CONTAINS
              OpacityTableName_Brem_Option = OpacityTableName_Brem, &
              EquationOfStateTableName_Option = EosTableName, &
              Verbose_Option = amrex_parallel_ioprocessor())
-
 
     CALL InitializeNeutrinoMatterSolverParameters &
            ( M_outer_Option &
@@ -420,13 +418,17 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      DO iLevel = 0, nLevels-1
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
 
-        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
-        CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-        CALL FillPatch( iLevel, MF_uGF, MF_uCR )
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
 
-      END DO
+      CALL ApplySlopeLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
+
+      CALL ApplyPositivityLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
 
       CALL CreateMesh_MF( 0, MeshX )
 
@@ -440,7 +442,20 @@ CONTAINS
       CALL ComputeFromConserved_TwoMoment_MF &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-      CALL InitializeMetric_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+      CALL InitializeMetric_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplySlopeLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
+
+      CALL ApplyPositivityLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
 
     ELSE
 
@@ -457,25 +472,15 @@ CONTAINS
     END IF
 
     CALL AverageDown( MF_uGF )
-    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL AverageDown &
+           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
     !!$CALL AverageDown( MF_uGF, MF_uCR )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
+
     CALL DescribeProgramHeader_AMReX
-
-    CALL ApplySlopeLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplySlopeLimiter_TwoMoment_MF &
-           ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
-
-    CALL ApplyPositivityLimiter_TwoMoment_MF &
-           ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
