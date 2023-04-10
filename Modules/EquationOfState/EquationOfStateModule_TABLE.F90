@@ -60,6 +60,14 @@ MODULE EquationOfStateModule_TABLE
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
+  REAL(DP), PARAMETER :: &
+    neutron_mass = 939.56542052d0
+  REAL(DP), PARAMETER :: &
+    proton_mass = 938.2720813d0
+  REAL(DP), PARAMETER :: &
+    dmnp = 1.29333922d0
+  REAL(DP) :: minvar 
+  REAL(DP), PARAMETER :: &
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
@@ -400,8 +408,20 @@ CONTAINS
     S_T  = EOS % DV % Variables(iS_T ) % Values
     E_T  = EOS % DV % Variables(iE_T ) % Values
     Me_T = EOS % DV % Variables(iMe_T) % Values
-    Mp_T = EOS % DV % Variables(iMp_T) % Values
-    Mn_T = EOS % DV % Variables(iMn_T) % Values
+    !For SFHo tables from 
+    !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
+    !up until git commit hash a36240ed
+    !the neutron and proton chemical potentials
+    !are tabulated subtracting the neutron-proton-mass difference
+    !in order to use the same conventions as used in Chimera
+    !to account for this, and get detailed balence factors 
+    !correct, we add the mass difference back in and then
+    !add the SFHo reference masses for the chemical potential
+    !(mn for Mn, mp for Mp)  
+    !After this renomalisation to the original SFHo tables,
+    !we need to recalculate the offsets 
+    Mp_T = EOS % DV % Variables(iMp_T) % Values + LOG10(dmnp + proton_mass)
+    Mn_T = EOS % DV % Variables(iMn_T) % Values + LOG10(dmnp + neutron_mass)
     Xp_T = EOS % DV % Variables(iXp_T) % Values
     Xn_T = EOS % DV % Variables(iXn_T) % Values
     Xa_T = EOS % DV % Variables(iXa_T) % Values
@@ -409,6 +429,11 @@ CONTAINS
     Ah_T = EOS % DV % Variables(iAh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
 
+    minvar = 10.0d0**MINVAL(Mp_T)
+    OS_Mp  = -2.0d0 * MIN( 1.0d-299, minvar )
+    minvar = 10.0d0**MINVAL(Mn_T)
+    OS_Mn  = -2.0d0 * MIN( 1.0d-299, minvar )
+    
     CALL InitializeEOSInversion &
            ( D_T, T_T, Y_T, &
              10.0d0**( E_T ) - OS_E, &
