@@ -35,14 +35,23 @@ else
 endif
 FFLAGS += $(FFLAGS_HDF5)
 FFLAGS += $(FFLAGS_LAPACK)
-ifeq ($(USE_GPU),TRUE)
+ifeq ($(USE_CUDA),TRUE)
   FFLAGS += $(FFLAGS_CUDA)
+endif
+ifeq ($(USE_HIP),TRUE)
+  FFLAGS += $(FFLAGS_ROCM)
+endif
+ifeq ($(USE_ONEMKL),TRUE)
+  FFLAGS += $(FFLAGS_ONEMKL)
 endif
 ifeq ($(USE_OACC),TRUE)
   FFLAGS += $(FFLAGS_OACC)
 endif
 ifeq ($(USE_OMP_OL),TRUE)
   FFLAGS += $(FFLAGS_OMP_OL)
+endif
+ifeq ($(USE_OMP),TRUE)
+  FFLAGS += $(OPENMP)
 endif
 ifeq ($(MICROPHYSICS),WEAKLIB)
   FFLAGS += -I../../../../weaklib/include
