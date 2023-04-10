@@ -3400,13 +3400,13 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &
+    !$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, &
-    !$ACC          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
+    !$ACC COPYIN( MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$ACC CREATE( uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif
 
@@ -3425,12 +3425,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, &
+    !$OMP MAP( release: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$OMP               nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3, &
     !$OMP               uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, &
+    !$ACC DELETE( MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3,  &
     !$ACC         uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif

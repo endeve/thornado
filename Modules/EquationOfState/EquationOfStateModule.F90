@@ -817,7 +817,7 @@ CONTAINS
     ELSE
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D, E, Y, T, Error_Option = Error )
+             ( D, E, Y, T, Error )
 
     END IF
 
