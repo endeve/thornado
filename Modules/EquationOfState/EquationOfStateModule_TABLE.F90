@@ -90,6 +90,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonMassFraction_TABLE
   PUBLIC :: ComputeNeutronMassFraction_TABLE
+  PUBLIC :: ComputeElectronNeutrinoChemicalPotential_TABLE
 
   REAL(DP), PUBLIC :: Min_D, Min_T, Min_Y
   REAL(DP), PUBLIC :: Max_D, Max_T, Max_Y
@@ -182,6 +183,11 @@ MODULE EquationOfStateModule_TABLE
   INTERFACE ComputeNeutronMassFraction_TABLE
     MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Scalar
     MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeElectronNeutrinoChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeDependentVariable_TABLE
@@ -1971,6 +1977,127 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector
+
+
+  SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar &
+    ( D, T, Y, Mnu )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: Mnu
+
+    REAL(DP) :: D_P, T_P, Y_P
+    INTEGER  :: iD, iT, iY
+    REAL(DP) :: dD, dT, dY
+    REAL(DP) :: Me, Mp, Mn
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / UnitD
+    T_P = T / UnitT
+    Y_P = Y / UnitY
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+
+    Me = Me * UnitMe
+    Mp = Mp * UnitMp
+    Mn = Mn * UnitMn
+
+    Mnu = ( Me + Mp ) - Mn
+
+#else
+
+    Mnu = Zero
+
+#endif
+
+  END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
+
+
+  SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector &
+    ( D, T, Y, Mnu )
+
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out) :: Mnu(1:)
+
+    REAL(DP) :: D_P, T_P, Y_P
+    INTEGER  :: iD, iT, iY
+    REAL(DP) :: dD, dT, dY
+    REAL(DP) :: Me, Mp, Mn
+
+    INTEGER  :: iP, nP
+
+    nP = SIZE( D )
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( D_P, T_P, Y_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn ) &
+    !$OMP MAP( to: D, T, Y, D_T, T_T, Y_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
+    !$OMP MAP( from: Mnu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( D_P, T_P, Y_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn ) &
+    !$ACC COPYIN( D, T, Y, D_T, T_T, Y_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
+    !$ACC COPYOUT( Mnu )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( D_P, T_P, Y_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn )
+#endif
+    DO iP = 1, nP
+
+      D_P = D(iP) / UnitD
+      T_P = T(iP) / UnitT
+      Y_P = Y(iP) / UnitY
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+
+      Me = Me * UnitMe
+      Mp = Mp * UnitMp
+      Mn = Mn * UnitMn
+
+      Mnu(iP) = ( Me + Mp ) - Mn
+
+    END DO
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: Mnu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYOUT( Mnu )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+      Mnu(iP) = Zero
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
 
 
   SUBROUTINE ComputeDependentVariable_TABLE_Scalar &
