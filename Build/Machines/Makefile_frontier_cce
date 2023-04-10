@@ -37,3 +37,12 @@ LIBRARIES_MAGMA    = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     = -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64
+
+wlInterpolationModule.o: wlInterpolationModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
+wlInterpolationUtilitiesModule.o: wlInterpolationUtilitiesModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
+NeutrinoOpacitiesComputationModule.o: NeutrinoOpacitiesComputationModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
+EquationOfStateModule_TABLE.o: EquationOfStateModule_TABLE.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
