@@ -28,7 +28,17 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_Collisions_SolveLS, &
     Timer_Collisions_UpdateFP, &
     Timer_Collisions_CheckOuter, &
-    Timer_Collisions_CheckInner
+    Timer_Collisions_CheckInner, &
+    Timer_Opacity_D0, &
+    Timer_Opacity_LimitD0, &
+    Timer_Opacity_EC, &
+    Timer_Opacity_ES, &
+    Timer_Opacity_NES, &
+    Timer_Opacity_Pair, &
+    Timer_Opacity_Brem, &
+    Timer_OpacityRate_NES, &
+    Timer_OpacityRate_Pair, &
+    Timer_OpacityRate_Brem
   USE ArrayUtilitiesModule, ONLY: &
     CreatePackIndex, &
     ArrayPack, &
@@ -54,7 +64,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeSpecificInternalEnergy_TABLE, &
     ComputePressure_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions_DG, &
+    ComputeEquilibriumDistributions, &
+    LimitEquilibriumDistributions_DG, &
     ComputeNeutrinoOpacities_EC, &
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
@@ -1503,18 +1514,35 @@ CONTAINS
 
     ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions_DG &
+    CALL TimersStart( Timer_Opacity_D0 )
+
+    CALL ComputeEquilibriumDistributions &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P )
 
 !!$    CALL ComputeEquilibriumDistributions_DG &
 !!$           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, SqrtGm_P, Dnu_0_P )
 
+    CALL TimersStop( Timer_Opacity_D0 )
+
+    CALL TimersStart( Timer_Opacity_LimitD0 )
+
+    CALL LimitEquilibriumDistributions_DG &
+           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, Dnu_0_P )
+
+    CALL TimersStop( Timer_Opacity_LimitD0 )
+
     ! --- EmAb ---
+
+    CALL TimersStart( Timer_Opacity_EC )
 
     CALL ComputeNeutrinoOpacities_EC &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Chi_EmAb_P )
 
+    CALL TimersStop( Timer_Opacity_EC )
+
     ! --- Isoenergetic scattering ---
+
+    CALL TimersStart( Timer_Opacity_ES )
 
     CALL ComputeNeutrinoOpacities_ES &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P )
@@ -1542,9 +1570,13 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop( Timer_Opacity_ES )
+
     IF( Include_NES )THEN
 
       ! --- NES Scattering Functions ---
+
+      CALL TimersStart( Timer_Opacity_NES )
 
       CALL ComputeNeutrinoOpacities_NES &
              ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, H_I_0_P, H_II_0_P )
@@ -1556,11 +1588,15 @@ CONTAINS
 
       END IF
 
+      CALL TimersStop( Timer_Opacity_NES )
+
     END IF
 
     IF( Include_Pair )THEN
 
       ! --- Pair Kernels ---
+
+      CALL TimersStart( Timer_Opacity_Pair )
 
       CALL ComputeNeutrinoOpacities_Pair &
              ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, J_I_0_P, J_II_0_P )
@@ -1572,14 +1608,20 @@ CONTAINS
 
       END IF
 
+      CALL TimersStop( Timer_Opacity_Pair )
+
     END IF
 
     IF( Include_Brem )THEN
 
       ! --- Brem Kernels ---
 
+      CALL TimersStart( Timer_Opacity_Brem )
+
       CALL ComputeNeutrinoOpacities_Brem &
              ( 1, nE_G, 1, nX, D_P, T_P, Y_P, S_Sigma_P )
+
+      CALL TimersStop( Timer_Opacity_Brem )
 
     END IF
 
@@ -1793,6 +1835,8 @@ CONTAINS
 
     ! --- NES Emissivities and Opacities ---
 
+    CALL TimersStart( Timer_OpacityRate_NES )
+
     CALL ComputeNeutrinoOpacityRates_NES &
            ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
              Eta_NES_P, Chi_NES_P )
@@ -1809,7 +1853,11 @@ CONTAINS
 
     END IF
 
+    CALL TimersStop( Timer_OpacityRate_NES )
+
     ! --- Pair Emissivities and Opacities ---
+
+    CALL TimersStart( Timer_OpacityRate_Pair )
 
     CALL ComputeNeutrinoOpacityRates_Pair &
            ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
@@ -1827,7 +1875,11 @@ CONTAINS
 
     END IF
 
+    CALL TimersStop( Timer_OpacityRate_Pair )
+
     ! --- Brem Emissivities and Opacities ---
+
+    CALL TimersStart( Timer_OpacityRate_Brem )
 
     CALL ComputeNeutrinoOpacityRates_Brem &
            ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
@@ -1844,6 +1896,8 @@ CONTAINS
                L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P )
 
     END IF
+
+    CALL TimersStop( Timer_OpacityRate_Brem )
 
     IF ( nX < nX_G ) THEN
 

@@ -40,6 +40,16 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_Collisions_UpdateFP
   REAL(DP), PUBLIC :: Timer_Collisions_CheckOuter
   REAL(DP), PUBLIC :: Timer_Collisions_CheckInner
+  REAL(DP), PUBLIC :: Timer_Opacity_D0
+  REAL(DP), PUBLIC :: Timer_Opacity_LimitD0
+  REAL(DP), PUBLIC :: Timer_Opacity_EC
+  REAL(DP), PUBLIC :: Timer_Opacity_ES
+  REAL(DP), PUBLIC :: Timer_Opacity_NES
+  REAL(DP), PUBLIC :: Timer_Opacity_Pair
+  REAL(DP), PUBLIC :: Timer_Opacity_Brem
+  REAL(DP), PUBLIC :: Timer_OpacityRate_NES
+  REAL(DP), PUBLIC :: Timer_OpacityRate_Pair
+  REAL(DP), PUBLIC :: Timer_OpacityRate_Brem
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_TCI_Permute
   REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
@@ -105,6 +115,18 @@ CONTAINS
     Timer_Collisions_UpdateFP            = Zero
     Timer_Collisions_CheckOuter          = Zero
     Timer_Collisions_CheckInner          = Zero
+
+    Timer_Opacity_D0                     = Zero
+    Timer_Opacity_LimitD0                = Zero
+    Timer_Opacity_EC                     = Zero
+    Timer_Opacity_ES                     = Zero
+    Timer_Opacity_NES                    = Zero
+    Timer_Opacity_Pair                   = Zero
+    Timer_Opacity_Brem                   = Zero
+
+    Timer_OpacityRate_NES                = Zero
+    Timer_OpacityRate_Pair               = Zero
+    Timer_OpacityRate_Brem               = Zero
 
     Timer_TCI                            = Zero
     Timer_TCI_Permute                    = Zero
@@ -207,6 +229,26 @@ CONTAINS
       '    Timer_Collisions_CheckOuter          :', Timer_Collisions_CheckOuter         , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Collisions_CheckInner          :', Timer_Collisions_CheckInner         , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_D0                     :', Timer_Opacity_D0                    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_LimitD0                :', Timer_Opacity_LimitD0               , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_EC                     :', Timer_Opacity_EC                    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_ES                     :', Timer_Opacity_ES                    , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_NES                    :', Timer_Opacity_NES                   , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_Pair                   :', Timer_Opacity_Pair                  , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_Brem                   :', Timer_Opacity_Brem                  , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_NES                :', Timer_OpacityRate_NES               , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_Pair               :', Timer_OpacityRate_Pair              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_Brem               :', Timer_OpacityRate_Brem              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
