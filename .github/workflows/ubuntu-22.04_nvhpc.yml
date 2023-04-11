@@ -26,6 +26,7 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
+          ref: weakphys
 
       - name: Update Ubuntu
         run: |
