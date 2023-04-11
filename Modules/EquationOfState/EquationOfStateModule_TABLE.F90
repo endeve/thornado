@@ -68,7 +68,7 @@ MODULE EquationOfStateModule_TABLE
     proton_mass = 938.2720813d0
   REAL(DP), PARAMETER :: &
     dmnp = 1.29333922d0
-  REAL(DP) :: minvar, OS_loc &
+  REAL(DP) :: minvar, OS_loc
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
