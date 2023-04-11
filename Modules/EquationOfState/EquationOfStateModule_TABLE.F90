@@ -69,7 +69,6 @@ MODULE EquationOfStateModule_TABLE
   REAL(DP), PARAMETER :: &
     dmnp = 1.29333922d0
   REAL(DP) :: minvar, OS_loc &
-  REAL(DP), PARAMETER :: &
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
