@@ -4424,7 +4424,6 @@ CONTAINS
     DO iN_X = 1, nX_G
       IF( MASK_OUTER(iN_X) )THEN
 
-
         Fnorm = MAXVAL( ABS( Fm(:,iN_X) ) )
 
         CONVERGED = Fnorm <= Rtol_outer
