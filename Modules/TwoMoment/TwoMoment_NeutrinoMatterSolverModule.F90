@@ -2148,6 +2148,7 @@ CONTAINS
       Ef_old(iN_X) = Ef
 
       ! --- Scaling Factors ---
+
       S_Y    (iN_X) = One / ( D(iN_X) * Y (iN_X) / AtomicMassUnit )
       S_Ef   (iN_X) = One / ( D(iN_X) * Ef )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
@@ -2187,8 +2188,8 @@ CONTAINS
       DO iN_E = 1, nE_G
 
         vDotInu =   V_u_1(iN_X) * Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-                + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-                + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
+                  + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+                  + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
         ! AH: Need to inline this to workaround CCE OpenMP offload bug
         !CALL ComputeEddingtonTensorComponents_dd &
@@ -2206,15 +2207,17 @@ CONTAINS
         FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
 
         EFactor &
-          = EddingtonFactor &
-              ( Dnu(iN_E,iS,iN_X), FFactor )
+          = EddingtonFactor( Dnu(iN_E,iS,iN_X), FFactor )
 
         a = Half * ( One - EFactor )
         b = Half * ( Three * EFactor - One )
 
-        h_d_1 = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_2 = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_3 = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) / ( FFactor * Dnu(iN_E,iS,iN_X) )
+        h_d_1 = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
+        h_d_2 = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
+        h_d_3 = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
 
         ! --- Diagonal Eddington Tensor Components ---
 
@@ -2254,20 +2257,30 @@ CONTAINS
         ! --- Eulerian Neutrino Momentum Density (Scaled by Neutrino Energy) ---
 
         Fnu_d_1 &
-          = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) + V_d_1 * Dnu(iN_E,iS,iN_X) + vDotK_d_1
+          = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+              + V_d_1 * Dnu(iN_E,iS,iN_X) + vDotK_d_1
 
         Fnu_d_2 &
-          = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) + V_d_2 * Dnu(iN_E,iS,iN_X) + vDotK_d_2
+          = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+              + V_d_2 * Dnu(iN_E,iS,iN_X) + vDotK_d_2
 
         Fnu_d_3 &
-          = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) + V_d_3 * Dnu(iN_E,iS,iN_X) + vDotK_d_3
+          = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+              + V_d_3 * Dnu(iN_E,iS,iN_X) + vDotK_d_3
 
         ! --- Old States for Neutrino Number Density and Flux ---
 
-        C_Dnu    (iN_E,iS,iN_X) = Dnu    (iN_E,iS,iN_X) + vDotInu
-        C_Inu_d_1(iN_E,iS,iN_X) = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) + vDotK_d_1
-        C_Inu_d_2(iN_E,iS,iN_X) = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) + vDotK_d_2
-        C_Inu_d_3(iN_E,iS,iN_X) = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) + vDotK_d_3
+        C_Dnu    (iN_E,iS,iN_X) &
+          = Dnu    (iN_E,iS,iN_X) + vDotInu
+
+        C_Inu_d_1(iN_E,iS,iN_X) &
+          = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) + vDotK_d_1
+
+        C_Inu_d_2(iN_E,iS,iN_X) &
+          = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) + vDotK_d_2
+
+        C_Inu_d_3(iN_E,iS,iN_X) &
+          = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) + vDotK_d_3
 
         IF ( iS <= iNuE_Bar ) THEN
         SUM_Y  = SUM_Y  + Nnu     * W2_S(iN_E) * LeptonNumber(iS)
@@ -2277,8 +2290,10 @@ CONTAINS
         SUM_V1 = SUM_V1 + Fnu_d_1 * W3_S(iN_E)
         SUM_V2 = SUM_V2 + Fnu_d_2 * W3_S(iN_E)
         SUM_V3 = SUM_V3 + Fnu_d_3 * W3_S(iN_E)
+
       END DO
       END DO
+
       ! --- Include Old Matter State in Constant (C) Terms ---
 
       C_Y    (iN_X) = U_Y    (iN_X) + wMatrRHS(iY ) * SUM_Y  * S_Y    (iN_X)
@@ -2286,6 +2301,7 @@ CONTAINS
       C_V_d_1(iN_X) = U_V_d_1(iN_X) + wMatrRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
       C_V_d_2(iN_X) = U_V_d_2(iN_X) + wMatrRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
       C_V_d_3(iN_X) = U_V_d_3(iN_X) + wMatrRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
+
     END DO
 
   END SUBROUTINE InitializeRHS_OrderV
