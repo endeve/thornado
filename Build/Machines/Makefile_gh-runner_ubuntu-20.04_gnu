@@ -1,4 +1,4 @@
-## Makefile definitions for Ubuntu 22.04 with gnu compilers
+## Makefile definitions for Ubuntu 20.04 with gnu compilers
 
 C       = mpic++ --c++11
 FORTRAN = mpif90 -cpp
