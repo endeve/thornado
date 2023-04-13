@@ -50,6 +50,7 @@ include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.git
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
