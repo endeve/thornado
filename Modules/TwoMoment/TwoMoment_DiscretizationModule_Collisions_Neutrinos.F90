@@ -193,13 +193,16 @@ CONTAINS
     CALL TimersStart( Timer_Collisions_PrimitiveTwoMoment )
 
 #if   defined( TWOMOMENT_ORDER_1 )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33) )
+
 #elif defined( TWOMOMENT_ORDER_V )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
@@ -211,7 +214,9 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_33), &
              PositionIndexZ, &
              nIterations_Prim )
+
 #elif defined( TWOMOMENT_RELATIVISTIC )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
@@ -227,6 +232,7 @@ CONTAINS
              GX_N(:,iGF_Beta_3  ), &
              PositionIndexZ, &
              nIterations_Prim )
+
 #endif
 
     CALL TimersStop( Timer_Collisions_PrimitiveTwoMoment )

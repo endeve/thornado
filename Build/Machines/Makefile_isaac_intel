@@ -1,10 +1,10 @@
-## Makefile definitions for Ubuntu 22.04 with gnu compilers
+## Makefile definitions for ISAAC with intel compilers
 
-C       = mpic++ --c++11
-FORTRAN = mpif90 -cpp
-FLINKER = mpif90
+C       = mpicxx --c++11
+FORTRAN = mpiifort -cpp
+FLINKER = mpiifort
 
-DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -fbounds-check
 OPTIMIZE = -g -O2
 
 SUFFIX_f90 =
@@ -23,7 +23,7 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = -I$(HDF5_ROOT)/include
+INCLUDE_HDF5     = -I$(HDF5_DIR)/include
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
@@ -31,8 +31,8 @@ INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = -L$(HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
-LIBRARIES_LAPACK   = -L$(LAPACK_ROOT) -llapack -L$(BLAS_ROOT) -lblas
+LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L$(LAPACK_DIR)/lib64 -llapack -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
