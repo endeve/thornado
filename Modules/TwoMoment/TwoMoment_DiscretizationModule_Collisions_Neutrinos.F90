@@ -311,6 +311,9 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
+        nIterations_Inner(iN_X) &
+          = FLOOR( DBLE( nIterations_Inner(iN_X) ) / DBLE( nIterations_Outer(iN_X) ) )
+
         uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
           = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
                  REAL( nIterations_Outer(iN_X) ) )

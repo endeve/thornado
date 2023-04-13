@@ -1044,8 +1044,8 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Alpha
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Beta_u_1, Beta_u_2, Beta_u_3
-    INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner
-    INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Outer
+    INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Inner
+    INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Outer
 
     ! --- Local Variables ---
 
@@ -1388,9 +1388,6 @@ CONTAINS
     END DO ! --- Outer Loop ---
 
     CALL TimersStop( Timer_Collisions_OuterLoop )
-
-    nIterations_Inner &
-      = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -4335,13 +4332,10 @@ CONTAINS
 
         END DO
 
+        nIterations_Inner(iN_X) &
+          = nIterations_Inner(iN_X) + 1
         IF( CONVERGED )THEN
-
           MASK(iN_X) = .FALSE.
-
-          nIterations_Inner(iN_X) &
-            = nIterations_Inner(iN_X) + k_inner
-
         END IF
 
       END IF
@@ -4387,9 +4381,9 @@ CONTAINS
 
         CONVERGED = Fnorm <= Rtol_outer
 
+        nIterations_Outer(iN_X) = k_outer
         IF( CONVERGED )THEN
           MASK_OUTER(iN_X) = .FALSE.
-          nIterations_Outer(iN_X) = k_outer
         END IF
 
         MASK_INNER(iN_X) = MASK_OUTER(iN_X)
