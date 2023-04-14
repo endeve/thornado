@@ -149,6 +149,13 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
+#if defined( THORNADO_GIT_VERSION )
+
+    IF( amrex_parallel_ioprocessor() ) &
+      WRITE(*,'(A,A)') 'thornado git version: ', THORNADO_GIT_VERSION
+
+#endif
+
 mass=zero
 r0=zero
 e0=zero
