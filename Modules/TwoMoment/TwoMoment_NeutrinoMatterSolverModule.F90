@@ -1106,6 +1106,7 @@ CONTAINS
     !$ACC   BVEC_inner, GVECm_inner, FVECm_inner, &
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
+
     SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
 
     ! --- Initial RHS ---
@@ -3288,8 +3289,8 @@ CONTAINS
       IF( MASK(iN_X) )THEN
 
         vDotInu =   V_u_1(iN_X) * Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-                + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-                + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
+                  + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+                  + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
         ! AH: Need to inline this to workaround CCE OpenMP offload bug
         !CALL ComputeEddingtonTensorComponents_dd &
