@@ -892,7 +892,7 @@ CONTAINS
                                * hbarMeVs**3
   REAL(dp), PARAMETER :: kmev  = 8.61733d-11   ! Boltzmann's constant [MeV K^{-1}]
 
-  REAL(dp) :: Me(iX_B:iX_E), Mn(iX_B:iX_E), Mp(iX_B:iX_E)
+  !REAL(dp) :: Me(iX_B:iX_E), Mn(iX_B:iX_E), Mp(iX_B:iX_E)
   REAL(dp) :: Xh(iX_B:iX_E), Ah(iX_B:iX_E)
   REAL(dp) :: EC_rate(iX_B:iX_E)
   REAL(dp) :: opECT(iE_B:iE_E,iX_B:iX_E)
@@ -907,27 +907,16 @@ CONTAINS
   NodesE(:)  = MeshE % Nodes(:)
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET ENTER DATA &
-  !$OMP MAP( alloc: Me, Mn, Mp, Xh, Ah, EC_rate,  & 
+  !$OMP TARGET ENTER DATA                         &
+  !$OMP MAP( alloc: Xh, Ah, EC_rate,              & 
   !$OMP      opECT, spec_nodes, spec_elements,    &
   !$OMP      spec_elements_nodes, spec_fine )
 #elif defined(THORNADO_OACC)
-  !$ACC ENTER DATA &
-  !$ACC CREATE( Me, Mn, Mp, Xh, Ah, EC_rate,      &
+  !$ACC ENTER DATA                                &
+  !$ACC CREATE( Xh, Ah, EC_rate,                  &
   !$ACC         opECT, spec_nodes, spec_elements, &
   !$ACC         spec_elements_nodes, spec_fine )
 #endif
-
-    ! --- Compute Chemical Potentials ---
-
-    CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
-
-    CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, Mp )
-
-    CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, Mn )
 
     ! --- Compute heavy mass fraction and number ---
 
@@ -1160,16 +1149,16 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA                                    &
-    !$OMP MAP( release: Me, Mn, Mp, Xh, Ah, EC_rate,          &
-    !$OMP               opECT, spec_nodes, spec_elements,     &
-    !$OMP               spec_elements_nodes, spec_fine,       &
+    !$OMP TARGET EXIT DATA                                &
+    !$OMP MAP( release: Xh, Ah, EC_rate,                  &
+    !$OMP               opECT, spec_nodes, spec_elements, &
+    !$OMP               spec_elements_nodes, spec_fine,   &
     !$OMP               CenterE, WidthE, NodesE )     
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA                                           &
-    !$ACC DELETE  (     Me, Mn, Mp, Xh, Ah, EC_rate,          &
-    !$ACC               opECT, spec_nodes, spec_elements,     &
-    !$ACC               spec_elements_nodes, spec_fine,       &
+    !$ACC EXIT DATA                                       &
+    !$ACC DELETE  (     Xh, Ah, EC_rate,                  &
+    !$ACC               opECT, spec_nodes, spec_elements, &
+    !$ACC               spec_elements_nodes, spec_fine,   &
     !$ACC               CenterE, WidthE, NodesE )     
 #endif
 
