@@ -45,3 +45,7 @@ else
    endif
    DEFINES      += $(MDEFS)$(PP)THORNADO_LA_LAPACK
 endif
+
+# from https://gist.github.com/pch-envision/9dbbc4f9313ec468859631a049188bc4
+THORNADO_GIT_VERSION = $(shell git describe --abbrev=12 --dirty --always --tags)
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_VERSION=\"$(THORNADO_GIT_VERSION)\"
