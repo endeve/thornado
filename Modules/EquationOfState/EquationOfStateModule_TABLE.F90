@@ -21,7 +21,7 @@ MODULE EquationOfStateModule_TABLE
     ComputeTemperatureWith_DEY_Single_Guess_NoError, &
     ComputeTemperatureWith_DEY_Single_NoGuess_Error, &
     ComputeTemperatureWith_DEY_Single_NoGuess_NoError, &
-    ComputeTemperatureWith_DPY_Single_NoGuess, &
+    ComputeTemperatureWith_DPY_Single_NoGuess_Error, &
     DescribeEOSInversionError
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_3D_Custom_Point, &
@@ -1017,9 +1017,9 @@ CONTAINS
     P_P = P / UnitP
     Y_P = Y / UnitY
 
-    CALL ComputeTemperatureWith_DPY_Single_NoGuess &
+    CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
            ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
-             Error_Option = Error )
+             Error )
 
     T = T_P * UnitT
 

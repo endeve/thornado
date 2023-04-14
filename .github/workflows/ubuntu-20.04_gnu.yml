@@ -1,13 +1,13 @@
-name: Compile thornado on Ubuntu 22.04 with gnu compilers
+name: Compile thornado on Ubuntu 20.04 with gnu compilers
 
 on: [ push, pull_request ]
 
 jobs:
   compile-with-amrex_gnu:
-    name: Compile thornado on Ubuntu 22.04 with gnu compilers
+    name: Compile thornado on Ubuntu 20.04 with gnu compilers
     runs-on: ubuntu-20.04
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-22.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v3

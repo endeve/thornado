@@ -193,13 +193,16 @@ CONTAINS
     CALL TimersStart( Timer_Collisions_PrimitiveTwoMoment )
 
 #if   defined( TWOMOMENT_ORDER_1 )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33) )
+
 #elif defined( TWOMOMENT_ORDER_V )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
@@ -211,7 +214,9 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_33), &
              PositionIndexZ, &
              nIterations_Prim )
+
 #elif defined( TWOMOMENT_RELATIVISTIC )
+
     CALL ComputePrimitive_TwoMoment &
            ( N_P, G1_P, G2_P, G3_P, &
              J_P, H1_P, H2_P, H3_P, &
@@ -227,6 +232,7 @@ CONTAINS
              GX_N(:,iGF_Beta_3  ), &
              PositionIndexZ, &
              nIterations_Prim )
+
 #endif
 
     CALL TimersStop( Timer_Collisions_PrimitiveTwoMoment )
@@ -311,6 +317,10 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
+        nIterations_Inner(iN_X) &
+          = FLOOR(   DBLE( nIterations_Inner(iN_X) ) &
+                   / DBLE( nIterations_Outer(iN_X) ) )
+
         uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
           = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
                  REAL( nIterations_Outer(iN_X) ) )
@@ -339,6 +349,7 @@ CONTAINS
     DO iN_E = 1, nE_G
 
 #if   defined( TWOMOMENT_ORDER_1 )
+
       CALL ComputeConserved_TwoMoment &
              ( PR_N(iN_E,iS,iN_X,iCR_N ), &
                PR_N(iN_E,iS,iN_X,iCR_G1), &
@@ -351,7 +362,9 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
+
 #elif defined( TWOMOMENT_ORDER_V )
+
       CALL ComputeConserved_TwoMoment &
              ( PR_N(iN_E,iS,iN_X,iCR_N ), &
                PR_N(iN_E,iS,iN_X,iCR_G1), &
@@ -367,7 +380,9 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
+
 #elif defined( TWOMOMENT_RELATIVISTIC )
+
       CALL ComputeConserved_TwoMoment &
              ( PR_N(iN_E,iS,iN_X,iCR_N ), &
                PR_N(iN_E,iS,iN_X,iCR_G1), &
@@ -388,6 +403,7 @@ CONTAINS
                GX_N(iN_X,iGF_Beta_1  ), &
                GX_N(iN_X,iGF_Beta_2  ), &
                GX_N(iN_X,iGF_Beta_3  ) )
+
 #endif
 
     END DO

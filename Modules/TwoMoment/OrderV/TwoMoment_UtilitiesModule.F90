@@ -352,9 +352,9 @@ CONTAINS
           CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) &
                         <= Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
 
+          nIterations(iZ) = k
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
-            nIterations(iZ) = k
           ELSE IF ( Mk == M ) THEN
             DO j = 1, Mk - 1
               DO i = 1, 4
@@ -641,9 +641,9 @@ CONTAINS
           CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
                                  Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
 
+          nIterations(iZ) = k
           IF ( CONVERGED ) THEN
             ITERATE(iZ) = .FALSE.
-            nIterations(iZ) = k
           ELSE IF ( Mk == M ) THEN
             DO j = 1, Mk - 1
               DO i = 1, 4

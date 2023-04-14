@@ -1,4 +1,4 @@
-## Makefile definitions for Ubuntu 22.04 with nvhpc compilers
+## Makefile definitions for Ubuntu 20.04 with nvhpc compilers
 
 C       = nvc++ --c++11
 FORTRAN = nvfortran -Mpreprocess

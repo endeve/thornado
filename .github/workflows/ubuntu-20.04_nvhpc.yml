@@ -1,13 +1,13 @@
-name: Compile thornado on Ubuntu 22.04 with nvhpc compilers
+name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
 
 on: [ push, pull_request ]
 
 jobs:
   compile-with-nvhpc:
-    name: Compile thornado on Ubuntu 22.04 with nvhpc compilers
+    name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
     runs-on: ubuntu-20.04
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-22.04_nvhpc
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_nvhpc
       ARCH: x86_64
       NVARCH: Linux_x86_64
       NVCOMPILERS: /opt/nvidia/hpc_sdk
@@ -16,7 +16,6 @@ jobs:
       NVHPC_MINOR: 7
       CUDA_MAJOR: 11
       CUDA_MINOR: 7
-      UBUNTU_VERSION: 2004
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v3

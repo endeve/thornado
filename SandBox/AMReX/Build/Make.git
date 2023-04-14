@@ -1,0 +1,4 @@
+# from https://gist.github.com/pch-envision/9dbbc4f9313ec468859631a049188bc4
+
+THORNADO_AMREX_GIT_VERSION = $(shell git describe --abbrev=12 --dirty --always --tags)
+DEFINES += -DTHORNADO_AMREX_GIT_VERSION=\"$(THORNADO_AMREX_GIT_VERSION)\"
